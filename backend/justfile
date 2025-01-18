@@ -9,3 +9,6 @@ test:
 
 serve:
     go run -mod=mod ./cmd/server
+
+query:
+    go run -mod=mod ./cmd/client
