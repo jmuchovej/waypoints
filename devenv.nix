@@ -2,7 +2,7 @@
 
 {
   # https://github.com/cachix/devenv/issues/1174#issuecomment-2088381294
-  stdenv = pkgs.stdenvNoCC;
+  # stdenv = pkgs.stdenvNoCC;
   # https://devenv.sh/basics/
   #! Needs to be set during `enterShell` because something else sets `DEVELOPER_DIR` 👀
   env.DEVELOPER_DIR = "/Applications/Xcode.app/Contents/Developer";

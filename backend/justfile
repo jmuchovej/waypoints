@@ -6,3 +6,6 @@ update-deps:
 
 test:
     go test ./...
+
+serve:
+    go run -mod=mod ./cmd/server
