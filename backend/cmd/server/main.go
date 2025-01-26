@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"tempo/ent"
-	"tempo/ent/proto/entpb"
+	"tempo/ent/proto/tempo"
 
 	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc"
@@ -26,13 +26,13 @@ func main() {
 	}
 
 	// Initialize the generated User service.
-	svc_user := entpb.NewUserService(client)
+	svc_user := tempo.NewUserService(client)
 
 	// Create a new gRPC server (you can wire multiple services to a single server).
 	server := grpc.NewServer()
 
 	// Register the User service with the server.
-	entpb.RegisterUserServiceServer(server, svc_user)
+	tempo.RegisterUserServiceServer(server, svc_user)
 
 	// Open port 8367 for listening to traffic.
 	lis, err := net.Listen("tcp", ":8367")

@@ -63,7 +63,9 @@ func (Task) Edges() []ent.Edge {
 
 func (Task) Annotations() []schema.Annotation {
 	return []schema.Annotation{
-		entproto.Message(),
+		entproto.Message(
+			entproto.PackageName("tempo"),
+		),
 		entproto.Service(),
 	}
 }

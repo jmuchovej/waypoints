@@ -4,9 +4,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v5.28.3
-// source: entpb/entpb.proto
+// source: tempo/tempo.proto
 
-package entpb
+package tempo
 
 import (
 	context "context"
@@ -22,12 +22,12 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	TaskService_Create_FullMethodName      = "/entpb.TaskService/Create"
-	TaskService_Get_FullMethodName         = "/entpb.TaskService/Get"
-	TaskService_Update_FullMethodName      = "/entpb.TaskService/Update"
-	TaskService_Delete_FullMethodName      = "/entpb.TaskService/Delete"
-	TaskService_List_FullMethodName        = "/entpb.TaskService/List"
-	TaskService_BatchCreate_FullMethodName = "/entpb.TaskService/BatchCreate"
+	TaskService_Create_FullMethodName      = "/tempo.TaskService/Create"
+	TaskService_Get_FullMethodName         = "/tempo.TaskService/Get"
+	TaskService_Update_FullMethodName      = "/tempo.TaskService/Update"
+	TaskService_Delete_FullMethodName      = "/tempo.TaskService/Delete"
+	TaskService_List_FullMethodName        = "/tempo.TaskService/List"
+	TaskService_BatchCreate_FullMethodName = "/tempo.TaskService/BatchCreate"
 )
 
 // TaskServiceClient is the client API for TaskService service.
@@ -264,7 +264,7 @@ func _TaskService_BatchCreate_Handler(srv interface{}, ctx context.Context, dec 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TaskService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "entpb.TaskService",
+	ServiceName: "tempo.TaskService",
 	HandlerType: (*TaskServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -293,16 +293,16 @@ var TaskService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "entpb/entpb.proto",
+	Metadata: "tempo/tempo.proto",
 }
 
 const (
-	UserService_Create_FullMethodName      = "/entpb.UserService/Create"
-	UserService_Get_FullMethodName         = "/entpb.UserService/Get"
-	UserService_Update_FullMethodName      = "/entpb.UserService/Update"
-	UserService_Delete_FullMethodName      = "/entpb.UserService/Delete"
-	UserService_List_FullMethodName        = "/entpb.UserService/List"
-	UserService_BatchCreate_FullMethodName = "/entpb.UserService/BatchCreate"
+	UserService_Create_FullMethodName      = "/tempo.UserService/Create"
+	UserService_Get_FullMethodName         = "/tempo.UserService/Get"
+	UserService_Update_FullMethodName      = "/tempo.UserService/Update"
+	UserService_Delete_FullMethodName      = "/tempo.UserService/Delete"
+	UserService_List_FullMethodName        = "/tempo.UserService/List"
+	UserService_BatchCreate_FullMethodName = "/tempo.UserService/BatchCreate"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -539,7 +539,7 @@ func _UserService_BatchCreate_Handler(srv interface{}, ctx context.Context, dec 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var UserService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "entpb.UserService",
+	ServiceName: "tempo.UserService",
 	HandlerType: (*UserServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -568,5 +568,5 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "entpb/entpb.proto",
+	Metadata: "tempo/tempo.proto",
 }

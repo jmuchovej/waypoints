@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"time"
 
-	"tempo/ent/proto/entpb"
+	"tempo/ent/proto/tempo"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -15,22 +14,20 @@ import (
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	// Open a connection to the server.
-	conn, err := grpc.Dial(":8367", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(":8367", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed connecting to server: %s", err)
 	}
 	defer conn.Close()
 
 	// Create a User service Client on the connection.
-	client_user := entpb.NewUserServiceClient(conn)
+	client_user := tempo.NewUserServiceClient(conn)
 
 	// Ask the server to create a random User.
 	ctx := context.Background()
 	user := randomUser()
-	created, err := client_user.Create(ctx, &entpb.CreateUserRequest{
+	created, err := client_user.Create(ctx, &tempo.CreateUserRequest{
 		User: user,
 	})
 	if err != nil {
@@ -40,7 +37,7 @@ func main() {
 	log.Printf("user created with id: %x", created.Id)
 
 	// On a separate RPC invocation, retrieve the user we saved previously.
-	get, err := client_user.Get(ctx, &entpb.GetUserRequest{
+	get, err := client_user.Get(ctx, &tempo.GetUserRequest{
 		Id: created.Id,
 	})
 	if err != nil {
@@ -50,8 +47,8 @@ func main() {
 	log.Printf("retrieved user with id=%x: %v", get.Id, get)
 }
 
-func randomUser() *entpb.User {
-	return &entpb.User{
+func randomUser() *tempo.User {
+	return &tempo.User{
 		Name:  fmt.Sprintf("user-%d", rand.Int()),
 		Email: fmt.Sprintf("user-%d@testing.tempo.do", rand.Int()),
 	}
