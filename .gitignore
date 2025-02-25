@@ -1,3 +1,5 @@
+.docker/
+
 # Created by https://www.toptal.com/developers/gitignore/api/dart,flutter,python,node,macos,windows,linux,android
 # Edit at https://www.toptal.com/developers/gitignore?templates=dart,flutter,python,node,macos,windows,linux,android
 
@@ -155,7 +157,8 @@ lib/generated_plugin_registrant.dart
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
