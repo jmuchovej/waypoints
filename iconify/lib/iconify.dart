@@ -18,23 +18,23 @@ class Iconify extends StatelessWidget {
 
   const Iconify(
     this.icon, {
-    Key? key,
+    super.key,
     this.color,
     this.size = 24,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return SvgPicture.string(
       icon,
-      colorFilter: color != null ? ColorFilter.mode(color!, BlendMode.srcIn): null,
+      colorFilter:
+          color != null ? ColorFilter.mode(color!, BlendMode.srcIn) : null,
       width: size,
       height: size,
       alignment: Alignment.center,
     );
   }
 }
-
 
 class IconSet {
   const IconSet(this._icons);
