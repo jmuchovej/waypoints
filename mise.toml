@@ -7,7 +7,10 @@ flutter = "3.29.0"
 go = "1.24.0"
 "go:github.com/caarlos0/jsonfmt" = "latest"
 java = "24.0.0"
+minio = "2025-02-18T16-25-55Z"
 "pipx:fastapi" = { version = "0.115.8", standard = "" }
+postgres = "17.4"
 python = "3.13.2"
 rust = "1.84.1"
 yamlfmt = "0.16.0"
+
