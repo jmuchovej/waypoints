@@ -1,7 +1,5 @@
-.docker/
-
-# Created by https://www.toptal.com/developers/gitignore/api/dart,flutter,python,node,macos,windows,linux,android
-# Edit at https://www.toptal.com/developers/gitignore?templates=dart,flutter,python,node,macos,windows,linux,android
+# Created by https://www.toptal.com/developers/gitignore/api/dart,flutter,python,node,macos,windows,linux,android,database
+# Edit at https://www.toptal.com/developers/gitignore?templates=dart,flutter,python,node,macos,windows,linux,android,database
 
 ### Android ###
 # Gradle files
@@ -75,6 +73,16 @@ doc/api/
 ### Dart Patch ###
 # dotenv environment variables file
 .env
+
+### Database ###
+*.accdb
+*.db
+*.dbf
+*.mdb
+*.pdb
+*.sqlite3
+*.db-shm
+*.db-wal
 
 ### Flutter ###
 # Flutter/Dart/Pub related
@@ -157,8 +165,7 @@ lib/generated_plugin_registrant.dart
 .LSOverride
 
 # Icon must end with two \r
-Icon
-
+Icon
 
 # Thumbnails
 ._*
@@ -515,5 +522,5 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/dart,flutter,python,node,macos,windows,linux,android
+# End of https://www.toptal.com/developers/gitignore/api/dart,flutter,python,node,macos,windows,linux,android,database
 

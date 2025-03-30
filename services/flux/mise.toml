@@ -1,0 +1,12 @@
+[env]
+DATABASE_URL = "sqlite://{{ config_root }}/tempo-flux.db?mode=rwc"
+
+[tasks.do-migrations]
+description = "Refreshes migrations"
+run = "sea-orm-cli migrate refresh"
+dir = "{{ config_root }}/backend"
+
+[tasks.mk-entities]
+description = "Update entities from schemas"
+run = "sea-orm-cli generate entity -o src/entities"
+dir = "{{ config_root }}/backend"
