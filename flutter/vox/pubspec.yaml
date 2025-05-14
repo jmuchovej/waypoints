@@ -1,8 +1,8 @@
-name: transcription
+name: vox
 description: "Audio transcription & 'analysis'."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
 # followed by an optional build number separated by a +.
@@ -36,6 +36,9 @@ dependencies:
   just_audio_cache: ^0.1.2
   flutter_riverpod: ^2.6.1
   scrollable_positioned_list: ^0.3.8
+  foundation:
+    path: "../../foundation"
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -58,7 +61,6 @@ flutter:
   assets:
     - assets/
   #   - images/a_dot_ham.jpeg
-
 # An image asset can refer to one or more resolution-specific "variants", see
 # https://flutter.dev/to/resolution-aware-images
 
