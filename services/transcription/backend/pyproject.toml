@@ -1,0 +1,29 @@
+[project]
+name = "tempo-transcription"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "assemblyai>=0.37.0",
+    "fastapi[standard]>=0.115.8",
+    "minio>=7.2.15",
+    "pydantic>=2.10.6",
+    "pylimbo>=0.0.12",
+    "python-multipart>=0.0.20",
+    "slowapi>=0.1.9",
+    "soundfile>=0.13.1",
+    "sqlmodel>=0.0.22",
+    "typer>=0.15.1",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[project.urls]
+Homepage = "https://tempo.do/features/transcription"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.build]
+package-dir = "src"

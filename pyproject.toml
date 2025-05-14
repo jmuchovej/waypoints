@@ -1,0 +1,45 @@
+[project]
+name = "tempo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "clerk-backend-api>=1.8.0",
+    "minio>=7.2.15",
+    "slowapi>=0.1.9",
+    "sqlmodel>=0.0.22",
+    "tempo-transcription",
+    "uvicorn[standard]>=0.34.0",
+]
+
+[project.urls]
+Homepage = "https://tempo.do"
+
+[project.scripts]
+tempo = "tempo.server.__main__:cli"
+start-api = "tempo.server.__main__:serve"
+
+[dependency-groups]
+dev = [
+    "ipython>=8.32.0",
+    "jedi>=0.19.2",
+    "mypy>=1.15.0",
+    "rich>=13.9.4",
+    "ruff>=0.9.7",
+]
+
+[tool.uv.sources]
+tempo-transcription = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+  "services/*/backend",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.build]
+package-dir = "src"
