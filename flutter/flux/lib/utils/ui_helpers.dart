@@ -3,6 +3,18 @@ import '../models/task.dart' as Task;
 import 'package:iconify/icons/phosphor.dart';
 import 'package:iconify/iconify.dart';
 
+extension TaskStatusIcons on Task.Status {
+  Widget get icon {
+    return UIHelpers.buildStatusIcon(this);
+  }
+}
+
+extension TaskPriorityIcons on Task.Priority {
+  Widget get icon {
+    return UIHelpers.buildPriorityIndicator(this);
+  }
+}
+
 class UIHelpers {
   static Widget buildStatusIcon(Task.Status status) {
     String icon;
