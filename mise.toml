@@ -3,25 +3,17 @@
 "aqua:numtide/treefmt" = "2.1.1"
 cargo = "0.86.0"
 flutter = "3.29.2"
-go = "1.24.1"
-"go:github.com/caarlos0/jsonfmt" = "latest"
 java = "24.0.0"
-minio = "2025-03-12T18-04-18Z"
-"pipx:fastapi" = { version = "0.115.12", standard = "" }
-postgres = "17.4"
-python = "3.13.2"
 rust = "1.85.1"
 yamlfmt = "0.16.0"
 colima = "0.8.1"
 act = "0.2.75"
-uv = "0.6.10"
 aapt2 = "8.9.1-12782657"
 "aqua:gradle/gradle-distributions" = "8.13.0"
 swiftformat = "0.55.5"
 swift = "6.0.3"
 yq = "4.45.1"
 android-sdk = "latest"
-"cargo:sea-orm-cli" = "1.1.7"
 ruby = "3.4.2"
 "gem:cocoapods" = "1.16.2"
 
@@ -34,13 +26,3 @@ ruby = "3.4.2"
 [env]
 DATABASE_URL = "sqlite://{{ config_root }}/tempo-flux.db?mode=rwc"
 ANDROID_HOME = "{{ env.HOME }}/Library/Android/sdk"
-
-[tasks.do-migrations]
-description = "Refreshes migrations"
-run = "sea-orm-cli migrate refresh"
-dir = "{{ config_root }}/crates/flux"
-
-[tasks.mk-entities]
-description = "Update entities from schemas"
-run = "sea-orm-cli generate entity -o src/entities"
-dir = "{{ config_root }}/crates/flux"

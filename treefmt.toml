@@ -49,8 +49,8 @@ walk = "auto"
 # https://github.com/numtide/treefmt-nix/blob/main/examples/formatter-dart-format.toml
 [formatter.dart-format]
 command = "dart"
-options = [ "format" ]
-includes = [ "*.dart" ]
+options = ["format"]
+includes = ["*.dart"]
 excludes = []
 priority = 0
 
@@ -78,11 +78,12 @@ excludes = []
 includes = ["*.yaml", "*.yml"]
 
 # https://github.com/numtide/treefmt-nix/blob/main/examples/formatter-jsonfmt.toml
-# [formatter.jsonfmt]
-# command = "jsonfmt"
-# options = ["-w"]
-# includes = [ "*.json", ]
-# excludes = [ "tsconfig.json", ]
+# NOTE Look into using https://github.com/google/json5format
+[formatter.jsonfmt]
+command = "jsonfmt"
+options = ["-w"]
+includes = ["*.json"]
+excludes = ["**/tsconfig.json"]
 
 #! NOTE this requires either `brew install ...` 👎 or doing a `java -jar ...` 🥲
 #! https://github.com/facebook/ktfmt?tab=readme-ov-file#installation
@@ -98,4 +99,26 @@ includes = ["*.yaml", "*.yml"]
 command = "swift"
 options = ["format", "-i"]
 excludes = []
-includes = ["*.swift", ]
+includes = ["*.swift"]
+
+# TODO fix this. it's unclear why `clang-format` fails to build... 😢
+# https://github.com/numtide/treefmt-nix/blob/main/examples/formatter-clang-format.toml
+# [formatter.clang-format]
+# command = "clang-format"
+# excludes = []
+# includes = [
+#   "*.c",
+#   "*.cc",
+#   "*.cpp",
+#   "*.h",
+#   "*.hh",
+#   "*.hpp",
+#   "*.glsl",
+#   "*.vert",
+#   ".tesc",
+#   ".tese",
+#   ".geom",
+#   ".frag",
+#   ".comp",
+# ]
+# options = ["-i", "--style=LLVM"]
