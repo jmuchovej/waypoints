@@ -27,6 +27,8 @@ impl MigrationTrait for Migration {
                 .col(pk_uuid(Task::UUID))
                 .col(string(Task::Name))
                 .col(string(Task::Description))
+                .col(timestamp(Task::CreateDate))
+                .col(timestamp(Task::ModifyDate))
                 .col(timestamp(Task::DueDate))
                 .col(timestamp_null(Task::StartDate))
                 .col(timestamp_null(Task::EndDate))
@@ -44,7 +46,7 @@ impl MigrationTrait for Migration {
                   Task::EstimatedEnergy, Alias::new("estimated-effort"), EstimatedEnergy::iter(),
                 ))
                 .col(enumeration_null(
-                  Task::Urgency, Alias::new("urgency"), Urgency::iter(),
+                  Task::Priority, Alias::new("priority"), Priority::iter(),
                 ))
                 .foreign_key(
                     ForeignKey::create()
@@ -101,6 +103,10 @@ enum Task {
     Name,
     /// What's this task about?
     Description,
+    /// When was this `Task` created?
+    CreateDate,
+    /// When was this `Task` last modified?
+    ModifyDate,
     /// When did we start working on this `Task`?
     StartDate,
     /// When was this task `Completed` or `Deleted`?
@@ -123,8 +129,8 @@ enum Task {
     EstimatedTime,
     /// How much **energy** do you estimate is `Task` will take?
     EstimatedEnergy,
-    /// How **urgently** does this `Task` need to be completed?
-    Urgency,
+    /// How **important** is it that this `Task` is completed ASAP?
+    Priority,
 }
 
 #[derive(DeriveIden, EnumIter)]
@@ -211,7 +217,7 @@ pub enum EstimatedEnergy {
 /// This is an optional field, thus doesn't need to be supplied (i.e., it defaults to `null`).
 #[derive(DeriveIden, EnumIter)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)", rename_all = "kebab-case")]
-pub enum Urgency {
+pub enum Priority {
   /// Low. Not much pressure to complete this, but should be higher-pressure than null values.
   L,
   /// Medium. This task is regularly urgent, but it's not too pressing to finish it.

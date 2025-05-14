@@ -19,13 +19,28 @@ aapt2 = "8.9.1-12782657"
 "aqua:gradle/gradle-distributions" = "8.13.0"
 swiftformat = "0.55.5"
 swift = "6.0.3"
-cocoapods = "1.16.2"
 yq = "4.45.1"
-android-sdk = "19.0"
+android-sdk = "latest"
 "cargo:sea-orm-cli" = "1.1.7"
+ruby = "3.4.2"
+"gem:cocoapods" = "1.16.2"
 
 # [hooks]
 # preinstall = "mise install android-sdk@19.0"
 
 [alias]
-android-sdk = "https://github.com/Syquel/mise-android-sdk.git"
+# android-sdk = "https://github.com/mise-plugins/mise-android-sdk.git"
+
+[env]
+DATABASE_URL = "sqlite://{{ config_root }}/tempo-flux.db?mode=rwc"
+ANDROID_HOME = "{{ env.HOME }}/Library/Android/sdk"
+
+[tasks.do-migrations]
+description = "Refreshes migrations"
+run = "sea-orm-cli migrate refresh"
+dir = "{{ config_root }}/crates/flux"
+
+[tasks.mk-entities]
+description = "Update entities from schemas"
+run = "sea-orm-cli generate entity -o src/entities"
+dir = "{{ config_root }}/crates/flux"

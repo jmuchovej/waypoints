@@ -1,8 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-  "services/flux/backend",
-  "services/flux/backend/migration",
+  "crates/moments",
+  "crates/flux",
+  "crates/flux/migration",
   # "services/transcription/backend",
   # "services/bricks/backend",
 ]
