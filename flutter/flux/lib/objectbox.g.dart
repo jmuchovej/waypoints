@@ -90,7 +90,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
     id: const obx_int.IdUid(2, 7278675679357761182),
     name: 'Task',
-    lastPropertyId: const obx_int.IdUid(19, 7644925181373162569),
+    lastPropertyId: const obx_int.IdUid(21, 3647704395819838786),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
@@ -209,6 +209,18 @@ final _entities = <obx_int.ModelEntity>[
         id: const obx_int.IdUid(19, 7644925181373162569),
         name: 'dbPriority',
         type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(20, 1389540471313905943),
+        name: 'deleted',
+        type: 1,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(21, 3647704395819838786),
+        name: 'archived',
+        type: 1,
         flags: 0,
       ),
     ],
@@ -421,7 +433,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
             object.recurrence == null
                 ? null
                 : fbb.writeString(object.recurrence!);
-        fbb.startTable(20);
+        fbb.startTable(22);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
         fbb.addOffset(2, nameOffset);
@@ -441,6 +453,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addInt64(16, object.dbEstimatedEnergy);
         fbb.addInt64(17, object.dbEstimatedTime);
         fbb.addInt64(18, object.dbPriority);
+        fbb.addBool(19, object.deleted);
+        fbb.addBool(20, object.archived);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -513,6 +527,18 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final recurrenceParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGetNullable(buffer, rootOffset, 28);
+        final archivedParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          44,
+          false,
+        );
+        final deletedParam = const fb.BoolReader().vTableGet(
+          buffer,
+          rootOffset,
+          42,
+          false,
+        );
         final object =
             Task(
                 uuid: uuidParam,
@@ -527,6 +553,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
                 waitDate: waitDateParam,
                 untilDate: untilDateParam,
                 recurrence: recurrenceParam,
+                archived: archivedParam,
+                deleted: deletedParam,
               )
               ..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0)
               ..dbStatus = const fb.Int64Reader().vTableGet(
@@ -774,6 +802,16 @@ class Task_ {
   /// See [Task.dbPriority].
   static final dbPriority = obx.QueryIntegerProperty<Task>(
     _entities[1].properties[18],
+  );
+
+  /// See [Task.deleted].
+  static final deleted = obx.QueryBooleanProperty<Task>(
+    _entities[1].properties[19],
+  );
+
+  /// See [Task.archived].
+  static final archived = obx.QueryBooleanProperty<Task>(
+    _entities[1].properties[20],
   );
 
   /// see [Task.children]

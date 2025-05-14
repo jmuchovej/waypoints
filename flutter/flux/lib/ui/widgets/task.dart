@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flux/models/task/status.dart';
+import 'package:flux/models/task/priority.dart';
+import 'package:flux/models/task/energy.dart';
+import 'package:flux/models/task/time.dart';
 import 'package:flux/objectbox.dart';
 import 'package:flux/ui/screens/task_editor.dart' show TaskEditorScreen;
 import 'package:flux/utils/extensions.dart';
-import 'package:flux/utils/ui_helpers.dart';
-
-import '../../models/task.dart';
+import 'package:flux/models/task.dart';
 
 class TaskWidget extends StatefulWidget {
   final Task task;
@@ -18,7 +20,8 @@ class TaskWidget extends StatefulWidget {
 
 class TaskWidgetState extends State<TaskWidget>
     with SingleTickerProviderStateMixin {
-  bool _isExpanded = false;
+  bool _openedPanelStatus = false;
+  bool _openedPanelPriority = false;
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -39,10 +42,27 @@ class TaskWidgetState extends State<TaskWidget>
     super.dispose();
   }
 
+  void _togglePanelStatus() {
+    if (_openedPanelPriority) {
+      _openedPanelPriority = false;
+    }
+
+    _openedPanelStatus = !_openedPanelStatus;
+    _togglePanel();
+  }
+
+  void _togglePanelPriority() {
+    if (_openedPanelStatus) {
+      _openedPanelStatus = false;
+    }
+
+    _openedPanelPriority = !_openedPanelPriority;
+    _togglePanel();
+  }
+
   void _togglePanel() {
     setState(() {
-      _isExpanded = !_isExpanded;
-      if (_isExpanded) {
+      if (_openedPanelStatus || _openedPanelPriority) {
         _controller.forward();
       } else {
         _controller.reverse();
@@ -50,33 +70,38 @@ class TaskWidgetState extends State<TaskWidget>
     });
   }
 
-  void _updateStatus(Status status) {
-    final box = ObjectBox.taskBox();
-    widget.task.status = status;
+  void _closePanels() {
+    setState(() {
+      _openedPanelStatus = false;
+      _openedPanelPriority = false;
+      _controller.reverse();
+    });
+  }
+
+  void _updateTask() {
     widget.task.modifyDate = DateTime.now();
+    final box = ObjectBox.taskBox();
     box.put(widget.task);
 
-    widget.onTap();
+    // widget.onTap();
+    _closePanels();
+  }
 
-    _togglePanel();
+  void _updateStatus(Status status) {
+    widget.task.status = status;
+    _updateTask();
   }
 
   void _updatePriority(Priority priority) {
-    final box = ObjectBox.taskBox();
     widget.task.priority = priority;
-    widget.task.modifyDate = DateTime.now();
-    box.put(widget.task);
-
-    widget.onTap();
-
-    _togglePanel();
+    _updateTask();
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: [_buildTaskTile(), _buildEditPanel()],
+      children: [_buildTaskTile(), _buildEditPanel(context)],
     );
   }
 
@@ -101,28 +126,29 @@ class TaskWidgetState extends State<TaskWidget>
               ),
       leading: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onTap: _togglePanel,
+        onTap: _togglePanelStatus,
         child: Container(
           padding: const EdgeInsets.all(4.0),
-          child: UIHelpers.buildStatusIcon(widget.task.status),
+          child: widget.task.status.icon,
         ),
       ),
       trailing: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onTap: _togglePanel,
+        onTap: _togglePanelPriority,
         child: Container(
           padding: const EdgeInsets.all(4.0),
-          child: UIHelpers.buildPriorityIndicator(widget.task.priority),
+          child: widget.task.priority.icon,
         ),
       ),
       onTap: widget.onTap,
     );
   }
 
-  Widget _buildEditPanel() {
+  Widget _buildEditPanel(BuildContext context) {
     return SizeTransition(
       sizeFactor: _animation,
       child: Container(
+        width: MediaQuery.of(context).size.width,
         padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
@@ -134,25 +160,27 @@ class TaskWidgetState extends State<TaskWidget>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ..._buildPanelSelect<Status>(
-              context,
-              "Status:",
-              widget.task.status,
-              Status.values.where((s) => s != Status.unknown).toList(),
-              _updateStatus,
-              (status) => status.icon,
-              (status) => status.toDisplayString(),
-            ),
-            SizedBox(height: 8.0),
-            ..._buildPanelSelect<Priority>(
-              context,
-              "Priority:",
-              widget.task.priority,
-              Priority.values.where((p) => p != Priority.unknown).toList(),
-              _updatePriority,
-              (priority) => priority.icon,
-              (priority) => priority.toDisplayString(),
-            ),
+            if (_openedPanelStatus)
+              ..._buildPanelSelect<Status>(
+                context,
+                "Status:",
+                widget.task.status,
+                widget.task.status.eligibleTransitions,
+                _updateStatus,
+                (status) => status.icon,
+                (status) => status.toDisplayString(),
+              ),
+
+            if (_openedPanelPriority)
+              ..._buildPanelSelect<Priority>(
+                context,
+                "Priority:",
+                widget.task.priority,
+                Priority.values.where((p) => p != Priority.unknown).toList(),
+                _updatePriority,
+                (priority) => priority.icon,
+                (priority) => priority.toDisplayString(),
+              ),
           ],
         ),
       ),

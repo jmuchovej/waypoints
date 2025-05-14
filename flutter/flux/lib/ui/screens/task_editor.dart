@@ -1,9 +1,10 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import 'package:flux/objectbox.g.dart';
-import 'package:intl/date_symbols.dart';
+import 'package:flux/models/task/status.dart';
+import 'package:flux/models/task/priority.dart';
+import 'package:flux/models/task/energy.dart';
+import 'package:flux/models/task/time.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/task.dart' as Task;
@@ -30,10 +31,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   late AttributedTextEditingController _descriptionController;
   late FocusNode _descriptionFocusNode;
   late DateTime _dueDate;
-  late Task.Status _status;
-  Task.Priority? _priority;
-  Task.EstimatedTime? _estimatedTime;
-  Task.EstimatedEnergy? _estimatedEnergy;
+  late Status _status;
+  Priority _priority = Priority.unknown;
+  EstimatedTime _estimatedTime = EstimatedTime.unknown;
+  EstimatedEnergy _estimatedEnergy = EstimatedEnergy.unknown;
   TaskList? _selectedProject;
   List<TaskList> _availableProjects = [];
 
@@ -104,7 +105,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _nameController = AttributedTextEditingController();
       _descriptionController = AttributedTextEditingController();
       _dueDate = DateTime.now().add(const Duration(days: 1));
-      _status = Task.Status.todo;
+      _status = Status.todo;
 
       // If we have a pre-selected project, set it
       if (widget.projectId != null) {
@@ -219,7 +220,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Status',
-                  child: DropdownButtonFormField<Task.Status>(
+                  child: DropdownButtonFormField<Status>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -228,7 +229,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _status,
-                    onChanged: (value) {
+                    onChanged: (Status? value) {
                       if (value != null) {
                         setState(() {
                           _status = value;
@@ -236,10 +237,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       }
                     },
                     items:
-                        Task.Status.values
-                            .where((s) => s != Task.Status.unknown)
+                        Status.values
+                            .where((s) => s != Status.unknown)
                             .map(
-                              (s) => DropdownMenuItem<Task.Status>(
+                              (s) => DropdownMenuItem<Status>(
                                 value: s,
                                 child: Text(s.toDisplayString()),
                               ),
@@ -252,7 +253,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Priority',
-                  child: DropdownButtonFormField<Task.Priority>(
+                  child: DropdownButtonFormField<Priority>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -261,16 +262,18 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _priority,
-                    onChanged: (value) {
-                      setState(() {
-                        _priority = value;
-                      });
+                    onChanged: (Priority? value) {
+                      if (value != null) {
+                        setState(() {
+                          _priority = value;
+                        });
+                      }
                     },
                     items:
-                        Task.Priority.values
+                        Priority.values
                             // .where((p) => p != Task.Priority.unknown)
                             .map(
-                              (p) => DropdownMenuItem<Task.Priority>(
+                              (p) => DropdownMenuItem<Priority>(
                                 value: p,
                                 child: Text(p.toDisplayString()),
                               ),
@@ -286,7 +289,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Estimated Time',
-                  child: DropdownButtonFormField<Task.EstimatedTime>(
+                  child: DropdownButtonFormField<EstimatedTime>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -295,16 +298,18 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _estimatedTime,
-                    onChanged: (value) {
-                      setState(() {
-                        _estimatedTime = value;
-                      });
+                    onChanged: (EstimatedTime? value) {
+                      if (value != null) {
+                        setState(() {
+                          _estimatedTime = value;
+                        });
+                      }
                     },
                     items:
-                        Task.EstimatedTime.values
+                        EstimatedTime.values
                             // .where((time) => time != Task.EstimatedTime.unknown)
                             .map(
-                              (t) => DropdownMenuItem<Task.EstimatedTime>(
+                              (t) => DropdownMenuItem<EstimatedTime>(
                                 value: t,
                                 child: Text(t.toDisplayString()),
                               ),
@@ -317,7 +322,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Estimated Energy',
-                  child: DropdownButtonFormField<Task.EstimatedEnergy>(
+                  child: DropdownButtonFormField<EstimatedEnergy>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -326,16 +331,18 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _estimatedEnergy,
-                    onChanged: (value) {
-                      setState(() {
-                        _estimatedEnergy = value;
-                      });
+                    onChanged: (EstimatedEnergy? value) {
+                      if (value != null) {
+                        setState(() {
+                          _estimatedEnergy = value;
+                        });
+                      }
                     },
                     items:
-                        Task.EstimatedEnergy.values
+                        EstimatedEnergy.values
                             // .where((e) => e != Task.EstimatedEnergy.unknown)
                             .map(
-                              (e) => DropdownMenuItem<Task.EstimatedEnergy>(
+                              (e) => DropdownMenuItem<EstimatedEnergy>(
                                 value: e,
                                 child: Text(e.toDisplayString()),
                               ),

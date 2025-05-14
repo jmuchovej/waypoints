@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import '../../models/task.dart' as Task;
+import 'package:flux/models/task.dart';
 import '../../models/task_list.dart';
 import '../../objectbox.dart';
 import '../../utils/date_formatter.dart';
-import '../../utils/ui_helpers.dart';
 import './task_editor.dart';
 
 class ProjectsScreen extends StatefulWidget {
@@ -18,7 +17,7 @@ class ProjectsScreen extends StatefulWidget {
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
   List<TaskList> _taskLists = [];
-  List<Task.Task> _tasks = [];
+  List<Task> _tasks = [];
   TaskList? _selectedTaskList;
   bool _isLoading = true;
 
@@ -290,7 +289,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                           task.name,
                           style: TextStyle(
                             decoration:
-                                task.status == Task.Status.complete
+                                task.status.isCompleted
                                     ? TextDecoration.lineThrough
                                     : null,
                           ),
@@ -311,10 +310,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                           ],
                         ),
                         isThreeLine: task.description.isNotEmpty,
-                        leading: UIHelpers.buildStatusIcon(task.status),
-                        trailing: UIHelpers.buildPriorityIndicator(
-                          task.priority,
-                        ),
+                        leading: task.status.icon,
+                        trailing: task.priority.icon,
                         onTap: () {
                           Navigator.push(
                             context,
