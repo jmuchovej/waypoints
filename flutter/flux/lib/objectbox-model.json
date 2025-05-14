@@ -1,0 +1,220 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:4983537336074398303",
+      "lastPropertyId": "9:6574837331722644342",
+      "name": "Activity",
+      "properties": [
+        {
+          "id": "1:5466253195160453523",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1626474969670026011",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:4125286737714137982",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:4729817957699936477",
+          "name": "startDate",
+          "type": 10
+        },
+        {
+          "id": "5:4908926673969193028",
+          "name": "endDate",
+          "type": 10
+        },
+        {
+          "id": "6:5009981876194689134",
+          "name": "tags",
+          "type": 9
+        },
+        {
+          "id": "7:3042900383439043724",
+          "name": "taskId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "1:242198680048991134",
+          "relationTarget": "Task"
+        },
+        {
+          "id": "8:4553623920862810011",
+          "name": "dbKind",
+          "type": 6
+        },
+        {
+          "id": "9:6574837331722644342",
+          "name": "dbStatus",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:7278675679357761182",
+      "lastPropertyId": "19:7644925181373162569",
+      "name": "Task",
+      "properties": [
+        {
+          "id": "1:3048559804478178683",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4438785004658963202",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:3796242812225598302",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:4675400274376993056",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "5:1222172115166529489",
+          "name": "createDate",
+          "type": 10
+        },
+        {
+          "id": "6:6170072911061229896",
+          "name": "modifyDate",
+          "type": 10
+        },
+        {
+          "id": "7:362136369870420516",
+          "name": "startDate",
+          "type": 10
+        },
+        {
+          "id": "8:8876211902729084213",
+          "name": "endDate",
+          "type": 10
+        },
+        {
+          "id": "9:9157334442097554880",
+          "name": "scheduledDate",
+          "type": 10
+        },
+        {
+          "id": "10:5029885741976042758",
+          "name": "dueDate",
+          "type": 10
+        },
+        {
+          "id": "11:3315516494807397469",
+          "name": "waitDate",
+          "type": 10
+        },
+        {
+          "id": "12:812182784203487135",
+          "name": "untilDate",
+          "type": 10
+        },
+        {
+          "id": "13:1013870457568167152",
+          "name": "recurrence",
+          "type": 9
+        },
+        {
+          "id": "14:4683021615963198198",
+          "name": "parentId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "2:5141665770762620625",
+          "relationTarget": "Task"
+        },
+        {
+          "id": "15:6086896741226142593",
+          "name": "taskListId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "3:6382721955573370644",
+          "relationTarget": "TaskList"
+        },
+        {
+          "id": "16:2414844377267583525",
+          "name": "dbStatus",
+          "type": 6
+        },
+        {
+          "id": "17:6664775742954436596",
+          "name": "dbEstimatedEnergy",
+          "type": 6
+        },
+        {
+          "id": "18:2255781598063803728",
+          "name": "dbEstimatedTime",
+          "type": 6
+        },
+        {
+          "id": "19:7644925181373162569",
+          "name": "dbPriority",
+          "type": 6
+        }
+      ],
+      "relations": [
+        {
+          "id": "1:3556189712129093839",
+          "name": "children",
+          "targetId": "2:7278675679357761182"
+        }
+      ]
+    },
+    {
+      "id": "3:4839618414176668197",
+      "lastPropertyId": "4:57393604026175878",
+      "name": "TaskList",
+      "properties": [
+        {
+          "id": "1:3972703814669240933",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2399386719616194911",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:6716913192325937233",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:57393604026175878",
+          "name": "description",
+          "type": 9
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "3:4839618414176668197",
+  "lastIndexId": "3:6382721955573370644",
+  "lastRelationId": "1:3556189712129093839",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}
