@@ -1,0 +1,5 @@
+{
+  {% for name, svg in icons -%}
+  "{{ name }}": "{{ svg }}"{% if not loop.last %},{% endif %}
+  {% endfor %}
+}

@@ -1,0 +1,7 @@
+[tools]
+bun = "1.2.13"
+dart = "3.7.3"
+
+[tasks.gen]
+run = "bash ./gen/icons.sh"
+description = "Generates icon fonts from Iconify"

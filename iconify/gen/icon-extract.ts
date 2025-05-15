@@ -24,9 +24,7 @@ for (const [prefix, IconSet] of Object.entries(prefixes)) {
   });
 
   const env = nunjucks.configure({ autoescape: false })
-  const dart = env.render("./gen/iconset.dart.njk", {
-    IconSet, prefix, icons,
-  });
+  const json = env.render("./gen/iconset.json.njk", { icons });
 
-  await writeFile(`./lib/icons/${IconSet.toLowerCase()}.dart`, dart, "utf-8")
+  await writeFile(`./icons/${prefix}.json`, json, "utf-8")
 }
