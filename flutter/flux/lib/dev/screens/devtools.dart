@@ -1,5 +1,6 @@
 // lib/ui/screens/dev_tools.dart
 import 'package:flutter/material.dart';
+import 'package:flux/app.dart';
 import 'package:flux/dev/database/seed.dart';
 import 'package:flux/objectbox.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,9 +27,9 @@ class _DevToolsScreenState extends State<DevToolsScreen> {
       _isLoading = true;
     });
 
-    final taskCount = ObjectBox.taskBox().count();
-    final projectCount = ObjectBox.taskListBox().count();
-    final activityCount = ObjectBox.activityBox().count();
+    final taskCount = obx.tasks.count();
+    final projectCount = obx.projects.count();
+    final activityCount = obx.activities.count();
 
     setState(() {
       _taskCount = taskCount;

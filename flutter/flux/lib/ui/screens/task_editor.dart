@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flux/app.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flux/foundation/task.dart';
 import 'package:flux/foundation/project.dart';
-import 'package:flux/objectbox.dart';
 import 'package:flux/utils/date_formatter.dart';
 import 'package:flux/utils/logging.dart' show logger;
 
@@ -61,7 +61,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   void _initializeEditor() async {
     // Load projects
-    _availableProjects = ObjectBox.taskListBox().getAll();
+    _availableProjects = obx.getProjects();
     logger.d("Loaded projects:");
     for (var project in _availableProjects) {
       logger.d("- ${project.name}");
@@ -413,8 +413,6 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     final description = _descriptionController.text.toPlainText().trim();
     final name = _nameController.text.toPlainText().trim();
 
-    final taskBox = ObjectBox.taskBox();
-
     if (widget.task == null) {
       // Create new task
       final newTask = TaskEntity(
@@ -435,7 +433,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         newTask.project.target = _selectedProject;
       }
 
-      taskBox.put(newTask);
+      obx.putTask(newTask);
     } else {
       // Update existing task
       widget.task!.name = name;
@@ -450,7 +448,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       // Update project association
       widget.task!.project.target = _selectedProject;
 
-      taskBox.put(widget.task!);
+      obx.putTask(widget.task!);
     }
 
     Navigator.pop(context);

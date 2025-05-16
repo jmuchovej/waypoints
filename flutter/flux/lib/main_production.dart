@@ -7,7 +7,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   EnvironmentConfig.setEnvironment(Environment.production);
 
-  await ObjectBox.create();
+  obx = await ObjectBox.create();
 
   final routes = [...defaultAppRoutes];
 

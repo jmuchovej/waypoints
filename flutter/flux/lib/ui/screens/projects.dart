@@ -1,15 +1,15 @@
-import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
-import 'package:flux/ui/widgets/task.dart';
-import 'package:flux/foundation/task.dart';
+import 'package:flux/app.dart';
 import 'package:flux/foundation/project.dart';
-import 'package:flux/objectbox.dart';
+import 'package:flux/foundation/task.dart';
 import 'package:flux/ui/screens/task_editor.dart';
+import 'package:flux/ui/widgets/task.dart';
+import 'package:uuid/uuid.dart';
 
 class ProjectsScreen extends StatefulWidget {
-  final ProjectEntity? initialTaskList;
+  final ProjectEntity? initialProject;
 
-  const ProjectsScreen({super.key, this.initialTaskList});
+  const ProjectsScreen({super.key, this.initialProject});
 
   @override
   State<ProjectsScreen> createState() => _ProjectsScreenState();
@@ -18,13 +18,13 @@ class ProjectsScreen extends StatefulWidget {
 class _ProjectsScreenState extends State<ProjectsScreen> {
   List<ProjectEntity> _projects = [];
   List<TaskEntity> _tasks = [];
-  ProjectEntity? _selectedTaskList;
+  ProjectEntity? _selectedProject;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _selectedTaskList = widget.initialTaskList;
+    _selectedProject = widget.initialProject;
     _loadData();
   }
 
@@ -34,22 +34,22 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     });
 
     // Load all task lists
-    _projects = ObjectBox.taskListBox().getAll();
+    _projects = obx.getProjects();
 
-    if (_selectedTaskList != null) {
+    if (_selectedProject != null) {
       // Make sure we have the latest version from the database
-      final refreshedList = ObjectBox.taskListBox().get(_selectedTaskList!.id);
+      final refreshedList = obx.getProjectByID(_selectedProject!.id);
       if (refreshedList != null) {
-        _selectedTaskList = refreshedList;
+        _selectedProject = refreshedList;
         // Load tasks for selected project
-        _tasks = _selectedTaskList!.tasks.toList();
+        _tasks = _selectedProject!.tasks.toList();
       } else {
         _tasks = [];
       }
     } else if (_projects.isNotEmpty) {
       // Select the first task list by default
-      _selectedTaskList = _projects.first;
-      _tasks = _selectedTaskList!.tasks.toList();
+      _selectedProject = _projects.first;
+      _tasks = _selectedProject!.tasks.toList();
     } else {
       _tasks = [];
     }
@@ -65,7 +65,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       appBar: AppBar(
         title: Text('Projects'),
         actions: [
-          IconButton(icon: Icon(Icons.add), onPressed: _createNewTaskList),
+          IconButton(icon: Icon(Icons.add), onPressed: _createNewProject),
         ],
       ),
       body:
@@ -95,15 +95,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     right: BorderSide(color: Colors.grey.shade300),
                   ),
                 ),
-                child: _buildTaskListSidebar(),
+                child: _buildProjectSidebar(),
               ),
 
               // Right side for tasks in selected list
               Expanded(
                 child:
-                    _selectedTaskList == null
+                    _selectedProject == null
                         ? Center(child: Text('Select a project'))
-                        : _buildTaskListContent(),
+                        : _buildProjectContent(),
               ),
             ],
           );
@@ -119,15 +119,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     bottom: BorderSide(color: Colors.grey.shade300),
                   ),
                 ),
-                child: _buildTaskListDropdown(),
+                child: _buildProjectDropdown(),
               ),
 
               // Tasks in selected list
               Expanded(
                 child:
-                    _selectedTaskList == null
+                    _selectedProject == null
                         ? Center(child: Text('Select a project'))
-                        : _buildTaskListContent(),
+                        : _buildProjectContent(),
               ),
             ],
           );
@@ -156,29 +156,29 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           ElevatedButton.icon(
             icon: Icon(Icons.add),
             label: Text('Create Project'),
-            onPressed: _createNewTaskList,
+            onPressed: _createNewProject,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTaskListSidebar() {
+  Widget _buildProjectSidebar() {
     return ListView.builder(
       itemCount: _projects.length,
       itemBuilder: (context, index) {
-        final taskList = _projects[index];
+        final project = _projects[index];
         return ListTile(
-          title: Text(taskList.name),
+          title: Text(project.name),
           subtitle: Text(
-            '${taskList.tasks.length} tasks',
+            '${project.tasks.length} tasks',
             style: TextStyle(fontSize: 12),
           ),
-          selected: _selectedTaskList?.id == taskList.id,
+          selected: _selectedProject?.id == project.id,
           onTap: () {
             setState(() {
-              _selectedTaskList = taskList;
-              _tasks = taskList.tasks.toList();
+              _selectedProject = project;
+              _tasks = project.tasks.toList();
             });
           },
           trailing: PopupMenuButton(
@@ -190,9 +190,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 ],
             onSelected: (value) {
               if (value == 'edit') {
-                _editTaskList(taskList);
+                _editProject(project);
               } else if (value == 'delete') {
-                _deleteTaskList(taskList);
+                _deleteProject(project);
               }
             },
           ),
@@ -201,28 +201,28 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  Widget _buildTaskListDropdown() {
+  Widget _buildProjectDropdown() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: DropdownButton<ProjectEntity>(
-            value: _selectedTaskList,
+            value: _selectedProject,
             isExpanded: true,
             hint: Text('Select a project'),
             onChanged: (ProjectEntity? value) {
               if (value != null) {
                 setState(() {
-                  _selectedTaskList = value;
+                  _selectedProject = value;
                   _tasks = value.tasks.toList();
                 });
               }
             },
             items:
-                _projects.map((ProjectEntity taskList) {
+                _projects.map((ProjectEntity project) {
                   return DropdownMenuItem<ProjectEntity>(
-                    value: taskList,
-                    child: Text(taskList.name),
+                    value: project,
+                    child: Text(project.name),
                   );
                 }).toList(),
           ),
@@ -230,15 +230,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         IconButton(
           icon: Icon(Icons.edit),
           onPressed:
-              _selectedTaskList != null
-                  ? () => _editTaskList(_selectedTaskList!)
+              _selectedProject != null
+                  ? () => _editProject(_selectedProject!)
                   : null,
         ),
       ],
     );
   }
 
-  Widget _buildTaskListContent() {
+  Widget _buildProjectContent() {
     return Column(
       children: [
         Padding(
@@ -250,12 +250,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedTaskList!.name,
+                    _selectedProject!.name,
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  if (_selectedTaskList!.description.isNotEmpty)
+                  if (_selectedProject!.description.isNotEmpty)
                     Text(
-                      _selectedTaskList!.description,
+                      _selectedProject!.description,
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                 ],
@@ -304,7 +304,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  void _createNewTaskList() {
+  void _createNewProject() {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
 
@@ -343,18 +343,18 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (nameController.text.trim().isNotEmpty) {
-                    final newTaskList = ProjectEntity(
+                    final newProject = ProjectEntity(
                       uuid: const Uuid().v4(),
                       name: nameController.text.trim(),
                       description: descriptionController.text.trim(),
                     );
 
-                    ObjectBox.taskListBox().put(newTaskList);
+                    obx.putProject(newProject);
                     Navigator.pop(context);
 
                     _loadData();
                     setState(() {
-                      _selectedTaskList = newTaskList;
+                      _selectedProject = newProject;
                     });
                   }
                 },
@@ -365,10 +365,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  void _editTaskList(ProjectEntity taskList) {
-    final nameController = TextEditingController(text: taskList.name);
+  void _editProject(ProjectEntity project) {
+    final nameController = TextEditingController(text: project.name);
     final descriptionController = TextEditingController(
-      text: taskList.description,
+      text: project.description,
     );
 
     showDialog(
@@ -406,10 +406,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (nameController.text.trim().isNotEmpty) {
-                    taskList.name = nameController.text.trim();
-                    taskList.description = descriptionController.text.trim();
+                    project.name = nameController.text.trim();
+                    project.description = descriptionController.text.trim();
 
-                    ObjectBox.taskListBox().put(taskList);
+                    obx.putProject(project);
                     Navigator.pop(context);
 
                     _loadData();
@@ -422,14 +422,14 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  void _deleteTaskList(ProjectEntity taskList) {
+  void _deleteProject(ProjectEntity project) {
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
             title: Text('Delete Project'),
             content: Text(
-              'Are you sure you want to delete "${taskList.name}"? '
+              'Are you sure you want to delete "${project.name}"? '
               'This will not delete the tasks, but they will no longer be associated with this project.',
             ),
             actions: [
@@ -441,13 +441,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
                 onPressed: () {
                   // Remove project association from tasks
-                  for (final task in taskList.tasks) {
+                  for (final task in project.tasks) {
                     task.project.target = null;
-                    ObjectBox.taskBox().put(task);
+                    obx.putTask(task);
                   }
 
                   // Delete the task list
-                  ObjectBox.taskListBox().remove(taskList.id);
+                  obx.deleteProject(project);
                   Navigator.pop(context);
 
                   // Select another task list if available
@@ -461,13 +461,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   void _addTaskToProject() {
-    if (_selectedTaskList == null) return;
+    if (_selectedProject == null) return;
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => TaskEditorScreen(projectId: _selectedTaskList!.id),
+        builder: (context) => TaskEditorScreen(projectId: _selectedProject!.id),
       ),
     ).then((_) => _loadData());
   }

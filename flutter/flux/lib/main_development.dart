@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flux/config/environment.dart';
 import 'package:flux/dev/database/seed.dart';
 import 'package:flux/dev/screens/devtools.dart';
@@ -6,10 +8,16 @@ import 'package:flux/objectbox.dart';
 import 'package:flux/app.dart';
 
 void main() async {
+  // debugPaintSizeEnabled = true;
+  // Optional: Enable other debug flags
+  debugPaintBaselinesEnabled = true; // Shows text baselines
+  debugPaintPointersEnabled = true; // Shows pointer hit testing
+  debugPaintLayerBordersEnabled = true; // Shows layer boundaries
+
   WidgetsFlutterBinding.ensureInitialized();
   EnvironmentConfig.setEnvironment(Environment.development);
 
-  await ObjectBox.create();
+  obx = await ObjectBox.create();
   await SeedDataService.seedIfNeeded();
 
   final routes = [
@@ -27,5 +35,5 @@ void main() async {
     ),
   ];
 
-  runApp(TempoFlux(routes: routes));
+  runApp(ProviderScope(child: TempoFlux(routes: routes)));
 }

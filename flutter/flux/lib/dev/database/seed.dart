@@ -1,9 +1,10 @@
 // lib/services/seed_data_service.dart
 import 'package:flutter/foundation.dart';
+import 'package:flux/app.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flux/entities/task.dart';
-import 'package:flux/entities/project.dart';
-import 'package:flux/entities/activity.dart';
+import 'package:flux/foundation/task.dart';
+import 'package:flux/foundation/project.dart';
+import 'package:flux/foundation/activity.dart';
 import 'package:flux/objectbox.dart';
 import 'package:flux/utils/logging.dart';
 
@@ -20,8 +21,8 @@ class SeedDataService {
     if (!kDebugMode && !force) return;
 
     // Check if database is empty
-    final taskCount = ObjectBox.taskBox().count();
-    final projectCount = ObjectBox.taskListBox().count();
+    final taskCount = obx.tasks.count();
+    final projectCount = obx.projects.count();
 
     if ((taskCount == 0 && projectCount == 0) || force) {
       await _seedSampleData();
@@ -36,11 +37,11 @@ class SeedDataService {
   static Future<void> _seedSampleData() async {
     // Create sample projects
     final projects = _createSampleProjects();
-    final projectIds = ObjectBox.taskListBox().putMany(projects);
+    final projectIds = obx.batchAddProjects(projects);
     logger.d('Created ${projectIds.length} sample projects');
 
     // Reload projects to get their assigned IDs
-    final savedProjects = ObjectBox.taskListBox().getAll();
+    final savedProjects = obx.getProjects();
 
     // Create sample tasks for each project
     final allTasks = <TaskEntity>[];
@@ -51,12 +52,12 @@ class SeedDataService {
     }
 
     // Save all tasks
-    final taskIds = ObjectBox.taskBox().putMany(allTasks);
+    final taskIds = obx.batchAddTasks(allTasks);
     logger.d('Created ${taskIds.length} sample tasks');
 
     // Create sample activities
     final activities = _createSampleActivities(allTasks);
-    final activityIds = ObjectBox.activityBox().putMany(activities);
+    final activityIds = obx.batchAddActivities(activities);
     logger.d('Created ${activityIds.length} sample activities');
   }
 
@@ -366,14 +367,10 @@ class SeedDataService {
 
   /// Clears all sample data from the database
   static Future<void> clearAllData() async {
-    final taskBox = ObjectBox.taskBox();
-    final projectBox = ObjectBox.taskListBox();
-    final activityBox = ObjectBox.activityBox();
-
     // Remove all entities
-    taskBox.removeAll();
-    projectBox.removeAll();
-    activityBox.removeAll();
+    obx.tasks.removeAll();
+    obx.projects.removeAll();
+    obx.activities.removeAll();
 
     _hasSeeded = false;
     logger.i('All data cleared from database');

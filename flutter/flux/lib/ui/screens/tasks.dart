@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flux/app.dart';
 import 'package:flux/foundation/task.dart';
 import 'package:flux/ui/widgets/task.dart';
 import 'package:flux/utils/date_formatter.dart';
@@ -30,7 +31,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
     // Query tasks ordered by due date, excluding deleted tasks
     final query =
-        ObjectBox.taskBox()
+        obx.tasks
             .query(TaskEntity_.deleted.notEquals(true))
             .order(TaskEntity_.dueDate)
             .build();

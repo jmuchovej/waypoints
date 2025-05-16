@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flux/objectbox.dart';
 import 'package:flux/ui/screens/home.dart';
 import 'package:flux/ui/screens/projects.dart';
 import 'package:flux/ui/screens/super_task.dart';
 import 'package:flux/ui/screens/tasks.dart';
+
+late ObjectBox obx;
 
 class AppRoute {
   final Widget screen;
@@ -34,14 +37,14 @@ final defaultAppRoutes = [
       label: 'Projects',
     ),
   ),
-  // AppRoute(
-  //   SuperTaskScreen(),
-  //   (context) => NavigationDestination(
-  //     icon: Icon(Icons.power_outlined, color: Colors.grey.shade400),
-  //     selectedIcon: Icon(Icons.power, color: Theme.of(context).primaryColor),
-  //     label: 'SuperTask',
-  //   ),
-  // ),
+  AppRoute(
+    SuperTaskScreen(),
+    (context) => NavigationDestination(
+      icon: Icon(Icons.power_outlined, color: Colors.grey.shade400),
+      selectedIcon: Icon(Icons.power, color: Theme.of(context).primaryColor),
+      label: 'SuperTask',
+    ),
+  ),
 ];
 
 class TempoFlux extends StatelessWidget {
