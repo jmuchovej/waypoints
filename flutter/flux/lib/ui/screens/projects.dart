@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flux/ui/widgets/task.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flux/models/task.dart';
 import '../../models/task_list.dart';
@@ -284,34 +285,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     itemCount: _tasks.length,
                     itemBuilder: (context, index) {
                       final task = _tasks[index];
-                      return ListTile(
-                        title: Text(
-                          task.name,
-                          style: TextStyle(
-                            decoration:
-                                task.status.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                          ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (task.description.isNotEmpty)
-                              Text(
-                                task.description,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            Text(
-                              'Due: ${DateFormatter.formatDate(task.dueDate)}',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        isThreeLine: task.description.isNotEmpty,
-                        leading: task.status.icon,
-                        trailing: task.priority.icon,
+                      return TaskWidget(
+                        task: task,
+                        showDueDate: true,
                         onTap: () {
                           Navigator.push(
                             context,

@@ -1,10 +1,10 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flux/models/task/status.dart';
-import 'package:flux/models/task/priority.dart';
-import 'package:flux/models/task/energy.dart';
-import 'package:flux/models/task/time.dart';
+import 'package:flux/models/task/_status.dart';
+import 'package:flux/models/task/_priority.dart';
+import 'package:flux/models/task/_energy.dart';
+import 'package:flux/models/task/_time.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/task.dart' as Task;
@@ -31,10 +31,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   late AttributedTextEditingController _descriptionController;
   late FocusNode _descriptionFocusNode;
   late DateTime _dueDate;
-  late Status _status;
-  Priority _priority = Priority.unknown;
-  EstimatedTime _estimatedTime = EstimatedTime.unknown;
-  EstimatedEnergy _estimatedEnergy = EstimatedEnergy.unknown;
+  late TaskStatus _status;
+  TaskPriority _priority = TaskPriority.M;
+  TaskTimeEstimate _estimatedTime = TaskTimeEstimate.M;
+  TaskEnergyEstimate _estimatedEnergy = TaskEnergyEstimate.M;
   TaskList? _selectedProject;
   List<TaskList> _availableProjects = [];
 
@@ -105,7 +105,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _nameController = AttributedTextEditingController();
       _descriptionController = AttributedTextEditingController();
       _dueDate = DateTime.now().add(const Duration(days: 1));
-      _status = Status.todo;
+      _status = TaskStatus.todo;
 
       // If we have a pre-selected project, set it
       if (widget.projectId != null) {
@@ -220,7 +220,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Status',
-                  child: DropdownButtonFormField<Status>(
+                  child: DropdownButtonFormField<TaskStatus>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -229,7 +229,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _status,
-                    onChanged: (Status? value) {
+                    onChanged: (TaskStatus? value) {
                       if (value != null) {
                         setState(() {
                           _status = value;
@@ -237,10 +237,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       }
                     },
                     items:
-                        Status.values
-                            .where((s) => s != Status.unknown)
+                        TaskStatus.values
                             .map(
-                              (s) => DropdownMenuItem<Status>(
+                              (s) => DropdownMenuItem<TaskStatus>(
                                 value: s,
                                 child: Text(s.toDisplayString()),
                               ),
@@ -253,7 +252,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Priority',
-                  child: DropdownButtonFormField<Priority>(
+                  child: DropdownButtonFormField<TaskPriority>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -262,7 +261,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _priority,
-                    onChanged: (Priority? value) {
+                    onChanged: (TaskPriority? value) {
                       if (value != null) {
                         setState(() {
                           _priority = value;
@@ -270,10 +269,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       }
                     },
                     items:
-                        Priority.values
-                            // .where((p) => p != Task.Priority.unknown)
+                        TaskPriority.values
                             .map(
-                              (p) => DropdownMenuItem<Priority>(
+                              (p) => DropdownMenuItem<TaskPriority>(
                                 value: p,
                                 child: Text(p.toDisplayString()),
                               ),
@@ -289,7 +287,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Estimated Time',
-                  child: DropdownButtonFormField<EstimatedTime>(
+                  child: DropdownButtonFormField<TaskTimeEstimate>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -298,7 +296,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _estimatedTime,
-                    onChanged: (EstimatedTime? value) {
+                    onChanged: (TaskTimeEstimate? value) {
                       if (value != null) {
                         setState(() {
                           _estimatedTime = value;
@@ -306,10 +304,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       }
                     },
                     items:
-                        EstimatedTime.values
-                            // .where((time) => time != Task.EstimatedTime.unknown)
+                        TaskTimeEstimate.values
                             .map(
-                              (t) => DropdownMenuItem<EstimatedTime>(
+                              (t) => DropdownMenuItem<TaskTimeEstimate>(
                                 value: t,
                                 child: Text(t.toDisplayString()),
                               ),
@@ -322,7 +319,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Estimated Energy',
-                  child: DropdownButtonFormField<EstimatedEnergy>(
+                  child: DropdownButtonFormField<TaskEnergyEstimate>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -331,7 +328,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       ),
                     ),
                     value: _estimatedEnergy,
-                    onChanged: (EstimatedEnergy? value) {
+                    onChanged: (TaskEnergyEstimate? value) {
                       if (value != null) {
                         setState(() {
                           _estimatedEnergy = value;
@@ -339,10 +336,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       }
                     },
                     items:
-                        EstimatedEnergy.values
-                            // .where((e) => e != Task.EstimatedEnergy.unknown)
+                        TaskEnergyEstimate.values
                             .map(
-                              (e) => DropdownMenuItem<EstimatedEnergy>(
+                              (e) => DropdownMenuItem<TaskEnergyEstimate>(
                                 value: e,
                                 child: Text(e.toDisplayString()),
                               ),
