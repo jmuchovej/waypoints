@@ -1,18 +1,18 @@
 import 'package:objectbox/objectbox.dart';
-import './task/status.dart' hide assertStableEnumValues;
-import './task/status.dart' as S show assertStableEnumValues;
-import './task/energy.dart' hide assertStableEnumValues;
-import './task/energy.dart' as E show assertStableEnumValues;
-import './task/priority.dart' hide assertStableEnumValues;
-import './task/priority.dart' as P show assertStableEnumValues;
-import './task/time.dart' hide assertStableEnumValues;
-import './task/time.dart' as T show assertStableEnumValues;
+import 'task/_status.dart' hide assertStableEnumValues;
+import 'task/_status.dart' as S show assertStableEnumValues;
+import 'task/_energy.dart' hide assertStableEnumValues;
+import 'task/_energy.dart' as E show assertStableEnumValues;
+import 'task/_priority.dart' hide assertStableEnumValues;
+import 'task/_priority.dart' as P show assertStableEnumValues;
+import 'task/_time.dart' hide assertStableEnumValues;
+import 'task/_time.dart' as T show assertStableEnumValues;
 import 'task_list.dart';
 
-export './task/status.dart' hide assertStableEnumValues;
-export './task/priority.dart' hide assertStableEnumValues;
-export './task/energy.dart' hide assertStableEnumValues;
-export './task/time.dart' hide assertStableEnumValues;
+export 'task/_status.dart' hide assertStableEnumValues;
+export 'task/_priority.dart' hide assertStableEnumValues;
+export 'task/_energy.dart' hide assertStableEnumValues;
+export 'task/_time.dart' hide assertStableEnumValues;
 
 @Entity()
 class Task {
@@ -50,16 +50,16 @@ class Task {
   String? recurrence;
 
   @Transient()
-  Status status;
+  TaskStatus status;
 
   @Transient()
-  EstimatedTime estimatedTime;
+  TaskTimeEstimate estimatedTime;
 
   @Transient()
-  EstimatedEnergy estimatedEnergy;
+  TaskEnergyEstimate estimatedEnergy;
 
   @Transient()
-  Priority priority;
+  TaskPriority priority;
 
   bool deleted;
   bool archived;
@@ -83,10 +83,10 @@ class Task {
     this.recurrence,
     this.archived = false,
     this.deleted = false,
-    this.status = Status.todo,
-    this.estimatedTime = EstimatedTime.unknown,
-    this.estimatedEnergy = EstimatedEnergy.unknown,
-    this.priority = Priority.unknown,
+    this.status = TaskStatus.todo,
+    this.estimatedTime = TaskTimeEstimate.M,
+    this.estimatedEnergy = TaskEnergyEstimate.M,
+    this.priority = TaskPriority.M,
   });
 
   void update() {
@@ -105,16 +105,8 @@ class Task {
     return status.index;
   }
 
-  set dbStatus(int? value) {
-    if (value == null) {
-      status = Status.unknown;
-      return;
-    }
-
-    status =
-        value > 0 && value < Status.values.length
-            ? Status.values[value]
-            : Status.unknown;
+  set dbStatus(int value) {
+    status = TaskStatus.values[value];
   }
 
   int get dbEstimatedEnergy {
@@ -122,16 +114,8 @@ class Task {
     return estimatedEnergy.index;
   }
 
-  set dbEstimatedEnergy(int? value) {
-    if (value == null) {
-      estimatedEnergy = EstimatedEnergy.unknown;
-      return;
-    }
-
-    estimatedEnergy =
-        value > 0 && value < EstimatedEnergy.values.length
-            ? EstimatedEnergy.values[value]
-            : EstimatedEnergy.unknown;
+  set dbEstimatedEnergy(int value) {
+    estimatedEnergy = TaskEnergyEstimate.values[value];
   }
 
   int get dbEstimatedTime {
@@ -139,16 +123,8 @@ class Task {
     return estimatedTime.index;
   }
 
-  set dbEstimatedTime(int? value) {
-    if (value == null) {
-      estimatedTime = EstimatedTime.unknown;
-      return;
-    }
-
-    estimatedTime =
-        value > 0 && value < EstimatedTime.values.length
-            ? EstimatedTime.values[value]
-            : EstimatedTime.unknown;
+  set dbEstimatedTime(int value) {
+    estimatedTime = TaskTimeEstimate.values[value];
   }
 
   int get dbPriority {
@@ -156,15 +132,7 @@ class Task {
     return priority.index;
   }
 
-  set dbPriority(int? value) {
-    if (value == null) {
-      priority = Priority.unknown;
-      return;
-    }
-
-    priority =
-        value > 0 && value < Priority.values.length
-            ? Priority.values[value]
-            : Priority.unknown;
+  set dbPriority(int value) {
+    priority = TaskPriority.values[value];
   }
 }
