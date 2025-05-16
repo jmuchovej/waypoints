@@ -1,24 +1,26 @@
-import 'dart:developer';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import './utils/logging.dart';
-import './objectbox.dart';
-import './ui/screens/tasks.dart';
-import './ui/screens/projects.dart';
+import 'package:flux/utils/logging.dart';
+import 'package:flux/objectbox.dart';
+import 'package:flux/ui/screens/tasks.dart';
+import 'package:flux/ui/screens/projects.dart';
+
+import 'package:flux/dev/stub.dart'
+    if (dart.library.io) 'package:flux/dev/tools.dart';
 
 void main() async {
-  // Initialize ObjectBox
   WidgetsFlutterBinding.ensureInitialized();
-  final directory = await getApplicationDocumentsDirectory();
-  log(directory.toString());
   await ObjectBox.create();
 
-  runApp(TaskManagerApp());
+  if (kDebugMode) {
+    await initDevEnvironment();
+  }
+
+  runApp(TempoFlux());
 }
 
-class TaskManagerApp extends StatelessWidget {
-  const TaskManagerApp({super.key});
+class TempoFlux extends StatelessWidget {
+  const TempoFlux({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -44,12 +46,16 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [TasksScreen(), ProjectsScreen()];
-
   @override
   Widget build(BuildContext context) {
+    final List<Widget> screens = [TasksScreen(), ProjectsScreen()];
+
+    if (kDebugMode) {
+      addDevTools(screens);
+    }
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
@@ -57,10 +63,13 @@ class _MainScreenState extends State<MainScreen> {
             _selectedIndex = index;
           });
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: Icon(Icons.home_outlined, color: Colors.grey.shade400),
+            selectedIcon: Icon(
+              Icons.home_rounded,
+              color: Theme.of(context).primaryColor,
+            ),
             label: 'Tasks',
           ),
           NavigationDestination(
@@ -68,6 +77,7 @@ class _MainScreenState extends State<MainScreen> {
             selectedIcon: Icon(Icons.folder),
             label: 'Projects',
           ),
+          getDevToolsDestination(context),
         ],
       ),
     );
