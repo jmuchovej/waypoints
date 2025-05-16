@@ -1,18 +1,21 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
-import 'package:flux/models/task/status.dart';
-import 'package:flux/models/task/priority.dart';
-import 'package:flux/models/task/energy.dart';
-import 'package:flux/models/task/time.dart';
 import 'package:flux/objectbox.dart';
-import 'package:flux/ui/screens/task_editor.dart' show TaskEditorScreen;
-import 'package:flux/utils/extensions.dart';
 import 'package:flux/models/task.dart';
+import 'package:flux/utils/date_formatter.dart';
 
 class TaskWidget extends StatefulWidget {
   final Task task;
+  final bool showDueDate;
   final void Function() onTap;
 
-  const TaskWidget({super.key, required this.task, required this.onTap});
+  const TaskWidget({
+    super.key,
+    required this.task,
+    required this.onTap,
+    this.showDueDate = false,
+  });
 
   @override
   TaskWidgetState createState() => TaskWidgetState();
@@ -87,12 +90,12 @@ class TaskWidgetState extends State<TaskWidget>
     _closePanels();
   }
 
-  void _updateStatus(Status status) {
+  void _updateStatus(TaskStatus status) {
     widget.task.status = status;
     _updateTask();
   }
 
-  void _updatePriority(Priority priority) {
+  void _updatePriority(TaskPriority priority) {
     widget.task.priority = priority;
     _updateTask();
   }
@@ -106,6 +109,22 @@ class TaskWidgetState extends State<TaskWidget>
   }
 
   Widget _buildTaskTile() {
+    final subtitle = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.task.description.isNotEmpty)
+          Text(
+            widget.task.description,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (widget.showDueDate)
+          Text(
+            'Due: ${DateFormatter.formatDate(widget.task.dueDate)}',
+            style: TextStyle(fontSize: 12),
+          ),
+      ],
+    );
     return ListTile(
       title: Text(
         widget.task.name,
@@ -116,14 +135,8 @@ class TaskWidgetState extends State<TaskWidget>
                   : null,
         ),
       ),
-      subtitle:
-          widget.task.description.isEmpty
-              ? null
-              : Text(
-                widget.task.description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+      subtitle: subtitle,
+      isThreeLine: subtitle.children.length == 2,
       leading: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _togglePanelStatus,
@@ -161,7 +174,7 @@ class TaskWidgetState extends State<TaskWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_openedPanelStatus)
-              ..._buildPanelSelect<Status>(
+              ..._buildPanelSelect<TaskStatus>(
                 context,
                 "Status:",
                 widget.task.status,
@@ -172,11 +185,11 @@ class TaskWidgetState extends State<TaskWidget>
               ),
 
             if (_openedPanelPriority)
-              ..._buildPanelSelect<Priority>(
+              ..._buildPanelSelect<TaskPriority>(
                 context,
                 "Priority:",
                 widget.task.priority,
-                Priority.values.where((p) => p != Priority.unknown).toList(),
+                TaskPriority.values.toList(),
                 _updatePriority,
                 (priority) => priority.icon,
                 (priority) => priority.toDisplayString(),
