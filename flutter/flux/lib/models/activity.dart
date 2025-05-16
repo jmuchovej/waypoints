@@ -1,47 +1,15 @@
 import 'package:objectbox/objectbox.dart';
-import 'task.dart' show Task;
 
-enum Kind {
-  unknown, // Safety fallback
-  activity, // Generic activity
-  task, // Working on task
-  event, // Calendar event
-  intervalWork, // Work period (Pomodoro)
-  intervalRest, // Rest period (Pomodoro)
-  timeBlock, // Time-block with related tasks
-}
+import './task.dart';
 
-void _assertStableEnumValuesKind() {
-  assert(0 == Kind.unknown.index);
-  assert(1 == Kind.activity.index);
-  assert(2 == Kind.task.index);
-  assert(3 == Kind.event.index);
-  assert(4 == Kind.intervalWork.index);
-  assert(5 == Kind.intervalRest.index);
-  assert(6 == Kind.timeBlock.index);
-}
+import 'activity/_kind.dart' hide assertStableEnumValues;
+import 'activity/_kind.dart' as K show assertStableEnumValues;
 
-enum Status {
-  unknown, // Safety fallback
-  created, // Initial state
-  scheduled, // Start time assigned but not started
-  inProgress, // Currently active
-  paused, // Temporarily interrupted
-  completed, // Finished
-  archived, // Hidden but retrievable
-  deleted, // Marked as deleted but not removed
-}
+import 'activity/_status.dart' hide assertStableEnumValues;
+import 'activity/_status.dart' as S show assertStableEnumValues;
 
-void _assertStableEnumValuesStatus() {
-  assert(0 == Status.unknown.index);
-  assert(1 == Status.created.index);
-  assert(2 == Status.scheduled.index);
-  assert(3 == Status.inProgress.index);
-  assert(4 == Status.paused.index);
-  assert(5 == Status.completed.index);
-  assert(6 == Status.archived.index);
-  assert(7 == Status.deleted.index);
-}
+export 'activity/_status.dart' hide assertStableEnumValues;
+export 'activity/_kind.dart' hide assertStableEnumValues;
 
 @Entity()
 class Activity {
@@ -58,23 +26,28 @@ class Activity {
   DateTime? endDate;
 
   @Transient()
-  Kind kind;
+  ActivityKind kind;
 
   @Transient()
-  Status status;
+  ActivityStatus status;
 
   String? tags; // JSON string for tags
 
   final task = ToOne<Task>();
+
+  bool archived;
+  bool deleted;
 
   Activity({
     required this.uuid,
     required this.name,
     this.startDate,
     this.endDate,
-    this.kind = Kind.activity,
-    this.status = Status.created,
+    this.kind = ActivityKind.activity,
+    this.status = ActivityStatus.created,
     this.tags,
+    this.archived = false,
+    this.deleted = false,
   });
 
   @override
@@ -85,26 +58,22 @@ class Activity {
   }
 
   int get dbKind {
-    _assertStableEnumValuesKind();
+    K.assertStableEnumValues();
     return kind.index;
   }
 
   set dbKind(int value) {
-    kind =
-        value > 0 && value < Kind.values.length
-            ? Kind.values[value]
-            : Kind.unknown;
+    assert(0 < value && value < ActivityKind.values.length);
+    kind = ActivityKind.values[value];
   }
 
   int get dbStatus {
-    _assertStableEnumValuesStatus();
+    S.assertStableEnumValues();
     return status.index;
   }
 
   set dbStatus(int value) {
-    status =
-        value > 0 && value < Status.values.length
-            ? Status.values[value]
-            : Status.unknown;
+    assert(0 < value && value < ActivityStatus.values.length);
+    status = ActivityStatus.values[value];
   }
 }
