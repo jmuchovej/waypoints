@@ -9,6 +9,7 @@ export './task/_enums/_time.dart';
 export './task/_entity.dart';
 export './task/_node.dart';
 export './task/_commands.dart';
+export './task/_edits.dart';
 export './task/_views.dart';
 
 const NamedAttribution taskAttribution = NamedAttribution("task");

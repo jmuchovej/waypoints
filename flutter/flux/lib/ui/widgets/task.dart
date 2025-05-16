@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flux/app.dart';
 import 'package:flux/objectbox.dart';
 import 'package:flux/foundation/task.dart';
 import 'package:flux/utils/date_formatter.dart';
@@ -81,8 +82,7 @@ class TaskWidgetState extends State<TaskWidget>
 
   void _updateTask() {
     widget.task.modifyDate = DateTime.now();
-    final box = ObjectBox.taskBox();
-    box.put(widget.task);
+    obx.putTask(widget.task);
 
     // widget.onTap();
     _closePanels();

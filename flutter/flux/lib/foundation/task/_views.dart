@@ -35,7 +35,7 @@ class TaskComponentBuilder extends ComponentBuilder {
       status: node.task.status,
       changeStatus: (TaskStatus status) {
         _editor.execute([
-          ChangeTaskCompletionRequest(nodeId: node.id, status: status),
+          ChangeTaskStatusRequest(nodeId: node.id, status: status),
         ]);
       },
       text: node.name,
@@ -59,6 +59,7 @@ class TaskComponentBuilder extends ComponentBuilder {
     return TaskComponent(
       key: componentContext.componentKey,
       viewModel: componentViewModel,
+      showDebugPaint: true,
     );
   }
 }
@@ -106,7 +107,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
   TextBlockIndentCalculator indentCalculator;
 
   TaskStatus status;
-  void Function(TaskStatus)? changeStatus;
+  void Function(TaskStatus) changeStatus;
 
   @override
   AttributedText text;
@@ -260,25 +261,19 @@ class _TaskComponentState extends State<TaskComponent>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: widget.viewModel.indentCalculator(
-              widget.viewModel.textStyleBuilder({}),
-              widget.viewModel.indent,
-            ),
-          ),
+          // SizedBox(
+          //   width: widget.viewModel.indentCalculator(
+          //     widget.viewModel.textStyleBuilder({}),
+          //     widget.viewModel.indent,
+          //   ),
+          // ),
           Padding(
-            padding: const EdgeInsets.only(left: 16, right: 4),
-            child: Checkbox(
-              visualDensity: Theme.of(context).visualDensity,
-              value: widget.viewModel.status.isCompleted,
-              onChanged:
-                  widget.viewModel.changeStatus != null
-                      ? (newValue) {
-                        TaskStatus status =
-                            newValue! ? TaskStatus.complete : TaskStatus.paused;
-                        widget.viewModel.changeStatus!(status);
-                      }
-                      : null,
+            padding: const EdgeInsets.only(left: 8, right: 4),
+            child: TaskStatusWidget(
+              status: widget.viewModel.status,
+              onChange: (status) {
+                widget.viewModel.changeStatus(status);
+              },
             ),
           ),
           Expanded(

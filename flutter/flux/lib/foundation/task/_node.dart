@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flux/app.dart';
 import 'package:flux/foundation/task.dart';
-import 'package:flux/objectbox.g.dart';
 import 'package:flux/ui/editor.dart';
-import 'package:flux/objectbox.dart';
 
 @immutable
 class TaskNode extends TextNode {
@@ -14,10 +13,7 @@ class TaskNode extends TextNode {
     Map<String, dynamic>? metadata,
     int indent = -1,
   }) {
-    final box = ObjectBox.taskBox();
-    final query = box.query(TaskEntity_.uuid.equals(uuid)).build();
-    final task = query.find().single;
-    query.close();
+    final task = obx.getTaskByUUID(uuid);
 
     return TaskNode.fromTask(task, metadata: metadata, indent: indent);
   }
@@ -43,8 +39,7 @@ class TaskNode extends TextNode {
   String get id => task.uuid;
 
   AttributedText get name => AttributedText(task.name);
-  @override
-  AttributedText get text => name;
+
   AttributedText get description => AttributedText(task.description);
   TaskStatus get status => task.status;
   DateTime get dueDate => task.dueDate;
@@ -58,10 +53,22 @@ class TaskNode extends TextNode {
     Map<String, dynamic>? metadata,
   }) {
     return TaskNode.fromTask(
-      task ?? this.task,
+      (task ?? this.task).copyWith(),
       indent: indent ?? this.indent,
       metadata: metadata ?? this.metadata,
     );
+  }
+
+  @override
+  TaskNode copyTextNodeWith({
+    String? id,
+    AttributedText? text,
+    Map<String, dynamic>? metadata,
+  }) {
+    final task = TaskNode.fromUUID(
+      id ?? this.id,
+    ).task.copyWith(name: (text ?? name).toPlainText());
+    return TaskNode.fromTask(task, metadata: metadata ?? this.metadata);
   }
 
   @override

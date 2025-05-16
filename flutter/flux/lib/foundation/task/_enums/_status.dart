@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flux/foundation/task.dart';
 import 'package:flux/objectbox.dart';
 import 'package:super_editor/super_editor.dart';
 
@@ -179,58 +180,56 @@ extension StatusDisplayString on TaskStatus {
   }
 }
 
-// class TaskStatusWidget extends StatefulWidget {
-//   final TaskEntity task;
-//   TaskStatus get status => task.status;
-//   const TaskStatusWidget({super.key, required this.task});
-//
-//   @override
-//   State<TaskStatusWidget> createState() => _TaskStatusWidgetState();
-// }
-//
-// class _TaskStatusWidgetState extends State<TaskStatusWidget>
-//     with SingleTickerProviderStateMixin {
-//   @override
-//   void initState() {
-//     super.initState();
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return GestureDetector(
-//       behavior: HitTestBehavior.translucent,
-//       onTap: () => _statusChanger(context),
-//       child: Container(padding: EdgeInsets.all(4.0), child: widget.status.icon),
-//     );
-//   }
-//
-//   Widget _statusChanger(BuildContext context) {
-//     return SingleChildScrollView(
-//       scrollDirection: Axis.horizontal,
-//       child: Row(
-//         children: [
-//           for (final option in widget.status.eligibleTransitions)
-//             Padding(
-//               padding: const EdgeInsets.only(right: 8.0),
-//               child: ActionChip(
-//                 avatar: option.icon,
-//                 label: Text(option.toDisplayString()),
-//                 backgroundColor:
-//                     widget.status == option
-//                         ? Theme.of(context).colorScheme.primaryContainer
-//                         : null,
-//                 onPressed: () => _updateStatus(option),
-//               ),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-//
-//   void _updateStatus(TaskStatus status) {
-//     widget.task.status = status;
-//     widget.task.modifyDate = DateTime.now();
-//     final box = ObjectBox.taskBox();
-//     box.put(widget.task);
-//   }
-// }
+class TaskStatusWidget extends StatefulWidget {
+  final TaskStatus status;
+  final Function(TaskStatus status) onChange;
+
+  const TaskStatusWidget({
+    super.key,
+    required this.status,
+    required this.onChange,
+  });
+
+  @override
+  State<TaskStatusWidget> createState() => _TaskStatusWidgetState();
+}
+
+class _TaskStatusWidgetState extends State<TaskStatusWidget>
+    with SingleTickerProviderStateMixin {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => _statusChanger(context),
+      child: Container(padding: EdgeInsets.all(4.0), child: widget.status.icon),
+    );
+  }
+
+  Widget _statusChanger(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final option in widget.status.eligibleTransitions)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ActionChip(
+                avatar: option.icon,
+                label: Text(option.toDisplayString()),
+                backgroundColor:
+                    widget.status == option
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : null,
+                onPressed: () => widget.onChange(option),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flux/app.dart';
 import 'package:flux/foundation/task.dart';
 import 'package:flux/objectbox.dart';
 import 'package:flux/ui/editor.dart';
@@ -10,7 +11,7 @@ class SuperTaskScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final document = _loadTasksDocument();
     final composer = MutableDocumentComposer();
-    final editor = createDefaultDocumentEditor(
+    final editor = createFluxDocumentEditor(
       composer: composer,
       document: document,
     );
@@ -19,6 +20,11 @@ class SuperTaskScreen extends StatelessWidget {
       appBar: AppBar(title: Text('Tasks')),
       body: SuperEditor(
         editor: editor,
+        debugPaint: DebugPaintConfig(
+          gestures: true,
+          scrolling: true,
+          layout: true,
+        ),
         componentBuilders: [
           TaskComponentBuilder(editor),
           // ProjectComponentBuilder(),
@@ -33,7 +39,7 @@ class SuperTaskScreen extends StatelessWidget {
   }
 
   MutableDocument _loadTasksDocument() {
-    final tasks = ObjectBox.taskBox().getAll();
+    final tasks = obx.getTasks();
 
     final List<TaskNode> nodes = List.castFrom(
       tasks.map((task) => TaskNode.fromTask(task)).toList(),
