@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:iconify/iconify.dart';
 
 enum TaskStatus {
   todo, // Initial state

@@ -1,12 +1,10 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:flux/objectbox.dart';
-import 'package:flux/models/task.dart';
+import 'package:flux/entities/task.dart';
 import 'package:flux/utils/date_formatter.dart';
 
 class TaskWidget extends StatefulWidget {
-  final Task task;
+  final TaskEntity task;
   final bool showDueDate;
   final void Function() onTap;
 
@@ -120,7 +118,7 @@ class TaskWidgetState extends State<TaskWidget>
           ),
         if (widget.showDueDate)
           Text(
-            'Due: ${DateFormatter.formatDate(widget.task.dueDate)}',
+            'Due: ${DateFormatter.formatDate(widget.task.dueDate!)}',
             style: TextStyle(fontSize: 12),
           ),
       ],

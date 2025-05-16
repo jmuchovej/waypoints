@@ -1,6 +1,6 @@
 import 'package:objectbox/objectbox.dart';
 
-import './task.dart';
+import 'task.dart';
 
 import 'activity/_kind.dart' hide assertStableEnumValues;
 import 'activity/_kind.dart' as K show assertStableEnumValues;
@@ -12,7 +12,7 @@ export 'activity/_status.dart' hide assertStableEnumValues;
 export 'activity/_kind.dart' hide assertStableEnumValues;
 
 @Entity()
-class Activity {
+class ActivityEntity {
   @Id()
   int id = 0;
 
@@ -31,14 +31,14 @@ class Activity {
   @Transient()
   ActivityStatus status;
 
-  String? tags; // JSON string for tags
+  List<String>? tags;
 
-  final task = ToOne<Task>();
+  final task = ToOne<TaskEntity>();
 
   bool archived;
   bool deleted;
 
-  Activity({
+  ActivityEntity({
     required this.uuid,
     required this.name,
     this.startDate,
@@ -53,7 +53,7 @@ class Activity {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    if (other is! Activity) return false;
+    if (other is! ActivityEntity) return false;
     return id == other.id && uuid == other.uuid;
   }
 

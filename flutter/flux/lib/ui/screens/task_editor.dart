@@ -1,28 +1,20 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
-import 'package:flux/models/task/_status.dart';
-import 'package:flux/models/task/_priority.dart';
-import 'package:flux/models/task/_energy.dart';
-import 'package:flux/models/task/_time.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
-import '../../models/task.dart' as Task;
-import '../../models/task_list.dart' show TaskList;
-import '../../objectbox.dart';
-import '../../utils/date_formatter.dart';
-import '../../utils/extensions.dart';
-import '../../utils/logging.dart' show logger;
+import 'package:flux/entities/task.dart';
+import 'package:flux/entities/project.dart';
+import 'package:flux/objectbox.dart';
+import 'package:flux/utils/date_formatter.dart';
+import 'package:flux/utils/logging.dart' show logger;
 
 class TaskEditorScreen extends StatefulWidget {
-  final Task.Task? task;
+  final TaskEntity? task;
   final int? projectId; // Pre-selected project for new tasks
 
-  const TaskEditorScreen({Key? key, this.task, this.projectId})
-    : super(key: key);
+  const TaskEditorScreen({super.key, this.task, this.projectId});
 
   @override
-  _TaskEditorScreenState createState() => _TaskEditorScreenState();
+  State<TaskEditorScreen> createState() => _TaskEditorScreenState();
 }
 
 class _TaskEditorScreenState extends State<TaskEditorScreen> {
@@ -33,10 +25,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   late DateTime _dueDate;
   late TaskStatus _status;
   TaskPriority _priority = TaskPriority.M;
-  TaskTimeEstimate _estimatedTime = TaskTimeEstimate.M;
-  TaskEnergyEstimate _estimatedEnergy = TaskEnergyEstimate.M;
-  TaskList? _selectedProject;
-  List<TaskList> _availableProjects = [];
+  TaskTimeEstimate _timeEstimate = TaskTimeEstimate.M;
+  TaskEnergyEstimate _energyEstimate = TaskEnergyEstimate.M;
+  ProjectEntity? _selectedProject;
+  List<ProjectEntity> _availableProjects = [];
 
   bool _isInitialized = false;
 
@@ -83,9 +75,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       _dueDate = widget.task!.dueDate;
       _status = widget.task!.status;
       _priority = widget.task!.priority;
-      _estimatedTime = widget.task!.estimatedTime;
-      _estimatedEnergy = widget.task!.estimatedEnergy;
-      var taskList = widget.task!.taskList.target;
+      _timeEstimate = widget.task!.timeEstimate;
+      _energyEstimate = widget.task!.energyEstimate;
+      var taskList = widget.task!.project.target;
       for (var project in _availableProjects) {
         if (taskList != null && project.id == taskList.id) {
           logger.d("${project.id} =?= ${taskList.id}");
@@ -95,7 +87,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           break;
         }
       }
-      _selectedProject = widget.task!.taskList.target;
+      _selectedProject = widget.task!.project.target;
 
       // Initialize SuperEditor document with task description
       _descriptionController = AttributedTextEditingController(
@@ -189,7 +181,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
               Expanded(
                 child: _buildField(
                   'Project',
-                  child: DropdownButtonFormField<TaskList?>(
+                  child: DropdownButtonFormField<ProjectEntity?>(
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       contentPadding: EdgeInsets.symmetric(
@@ -205,7 +197,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                     },
                     items:
                         _availableProjects.map((project) {
-                          return DropdownMenuItem<TaskList?>(
+                          return DropdownMenuItem<ProjectEntity?>(
                             value: project,
                             child: Text(project.name),
                           );
@@ -295,11 +287,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                         vertical: 8,
                       ),
                     ),
-                    value: _estimatedTime,
+                    value: _timeEstimate,
                     onChanged: (TaskTimeEstimate? value) {
                       if (value != null) {
                         setState(() {
-                          _estimatedTime = value;
+                          _timeEstimate = value;
                         });
                       }
                     },
@@ -327,11 +319,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                         vertical: 8,
                       ),
                     ),
-                    value: _estimatedEnergy,
+                    value: _energyEstimate,
                     onChanged: (TaskEnergyEstimate? value) {
                       if (value != null) {
                         setState(() {
-                          _estimatedEnergy = value;
+                          _energyEstimate = value;
                         });
                       }
                     },
@@ -425,7 +417,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
     if (widget.task == null) {
       // Create new task
-      final newTask = Task.Task(
+      final newTask = TaskEntity(
         uuid: const Uuid().v4(),
         name: name,
         description: description,
@@ -434,13 +426,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         dueDate: _dueDate,
         status: _status,
         priority: _priority,
-        estimatedTime: _estimatedTime,
-        estimatedEnergy: _estimatedEnergy,
+        timeEstimate: _timeEstimate,
+        energyEstimate: _energyEstimate,
       );
 
       // Set project if selected
       if (_selectedProject != null) {
-        newTask.taskList.target = _selectedProject;
+        newTask.project.target = _selectedProject;
       }
 
       taskBox.put(newTask);
@@ -452,11 +444,11 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       widget.task!.dueDate = _dueDate;
       widget.task!.status = _status;
       widget.task!.priority = _priority;
-      widget.task!.estimatedTime = _estimatedTime;
-      widget.task!.estimatedEnergy = _estimatedEnergy;
+      widget.task!.timeEstimate = _timeEstimate;
+      widget.task!.energyEstimate = _energyEstimate;
 
       // Update project association
-      widget.task!.taskList.target = _selectedProject;
+      widget.task!.project.target = _selectedProject;
 
       taskBox.put(widget.task!);
     }

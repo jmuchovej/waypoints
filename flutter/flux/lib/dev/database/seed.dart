@@ -1,9 +1,9 @@
 // lib/services/seed_data_service.dart
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flux/models/task.dart';
-import 'package:flux/models/task_list.dart';
-import 'package:flux/models/activity.dart';
+import 'package:flux/entities/task.dart';
+import 'package:flux/entities/project.dart';
+import 'package:flux/entities/activity.dart';
 import 'package:flux/objectbox.dart';
 import 'package:flux/utils/logging.dart';
 
@@ -43,7 +43,7 @@ class SeedDataService {
     final savedProjects = ObjectBox.taskListBox().getAll();
 
     // Create sample tasks for each project
-    final allTasks = <Task>[];
+    final allTasks = <TaskEntity>[];
 
     for (final project in savedProjects) {
       final tasks = _createSampleTasksForProject(project);
@@ -61,24 +61,24 @@ class SeedDataService {
   }
 
   /// Creates sample projects
-  static List<TaskList> _createSampleProjects() {
+  static List<ProjectEntity> _createSampleProjects() {
     return [
-      TaskList(
+      ProjectEntity(
         uuid: const Uuid().v4(),
         name: 'Personal',
         description: 'Personal tasks and projects',
       ),
-      TaskList(
+      ProjectEntity(
         uuid: const Uuid().v4(),
         name: 'Work',
         description: 'Work-related tasks and projects',
       ),
-      TaskList(
+      ProjectEntity(
         uuid: const Uuid().v4(),
         name: 'Health',
         description: 'Health and wellness tasks',
       ),
-      TaskList(
+      ProjectEntity(
         uuid: const Uuid().v4(),
         name: 'Research',
         description: 'Research projects and literature review',
@@ -87,9 +87,9 @@ class SeedDataService {
   }
 
   /// Creates sample tasks for a given project
-  static List<Task> _createSampleTasksForProject(TaskList project) {
+  static List<TaskEntity> _createSampleTasksForProject(ProjectEntity project) {
     final now = DateTime.now();
-    final tasks = <Task>[];
+    final tasks = <TaskEntity>[];
 
     // Create different tasks based on project type
     switch (project.name) {
@@ -102,8 +102,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 1)),
             status: TaskStatus.todo,
             priority: TaskPriority.M,
-            estimatedTime: TaskTimeEstimate.S,
-            estimatedEnergy: TaskEnergyEstimate.M,
+            timeEstimate: TaskTimeEstimate.S,
+            energyEstimate: TaskEnergyEstimate.M,
           ),
           _createTask(
             'Clean apartment',
@@ -112,8 +112,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 3)),
             status: TaskStatus.scheduled,
             priority: TaskPriority.L,
-            estimatedTime: TaskTimeEstimate.M,
-            estimatedEnergy: TaskEnergyEstimate.L,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.L,
           ),
           _createTask(
             'Plan weekend trip',
@@ -122,8 +122,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 5)),
             status: TaskStatus.started,
             priority: TaskPriority.H,
-            estimatedTime: TaskTimeEstimate.M,
-            estimatedEnergy: TaskEnergyEstimate.M,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.M,
           ),
         ]);
         break;
@@ -137,8 +137,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 7)),
             status: TaskStatus.workInProgress,
             priority: TaskPriority.H,
-            estimatedTime: TaskTimeEstimate.L,
-            estimatedEnergy: TaskEnergyEstimate.L,
+            timeEstimate: TaskTimeEstimate.L,
+            energyEstimate: TaskEnergyEstimate.L,
           ),
           _createTask(
             'Review team members code',
@@ -147,8 +147,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 2)),
             status: TaskStatus.waiting,
             priority: TaskPriority.M,
-            estimatedTime: TaskTimeEstimate.M,
-            estimatedEnergy: TaskEnergyEstimate.M,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.M,
           ),
           _createTask(
             'Prepare for client meeting',
@@ -157,8 +157,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 1)),
             status: TaskStatus.todo,
             priority: TaskPriority.H,
-            estimatedTime: TaskTimeEstimate.S,
-            estimatedEnergy: TaskEnergyEstimate.M,
+            timeEstimate: TaskTimeEstimate.S,
+            energyEstimate: TaskEnergyEstimate.M,
           ),
           _createTask(
             'Update documentation',
@@ -167,8 +167,8 @@ class SeedDataService {
             dueDate: now.subtract(const Duration(days: 2)),
             status: TaskStatus.complete,
             priority: TaskPriority.L,
-            estimatedTime: TaskTimeEstimate.M,
-            estimatedEnergy: TaskEnergyEstimate.S,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.S,
           ),
         ]);
         break;
@@ -182,8 +182,8 @@ class SeedDataService {
             dueDate: now,
             status: TaskStatus.paused,
             priority: TaskPriority.M,
-            estimatedTime: TaskTimeEstimate.S,
-            estimatedEnergy: TaskEnergyEstimate.M,
+            timeEstimate: TaskTimeEstimate.S,
+            energyEstimate: TaskEnergyEstimate.M,
           ),
           _createTask(
             'Schedule annual checkup',
@@ -192,8 +192,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 14)),
             status: TaskStatus.todo,
             priority: TaskPriority.M,
-            estimatedTime: TaskTimeEstimate.XS,
-            estimatedEnergy: TaskEnergyEstimate.XS,
+            timeEstimate: TaskTimeEstimate.XS,
+            energyEstimate: TaskEnergyEstimate.XS,
           ),
           _createTask(
             'Meal prep for the week',
@@ -202,8 +202,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 2)),
             status: TaskStatus.scheduled,
             priority: TaskPriority.M,
-            estimatedTime: TaskTimeEstimate.M,
-            estimatedEnergy: TaskEnergyEstimate.M,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.M,
           ),
         ]);
         break;
@@ -217,8 +217,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 5)),
             status: TaskStatus.started,
             priority: TaskPriority.H,
-            estimatedTime: TaskTimeEstimate.L,
-            estimatedEnergy: TaskEnergyEstimate.L,
+            timeEstimate: TaskTimeEstimate.L,
+            energyEstimate: TaskEnergyEstimate.L,
           ),
           _createTask(
             'Revise experiment design',
@@ -227,8 +227,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 3)),
             status: TaskStatus.todo,
             priority: TaskPriority.H,
-            estimatedTime: TaskTimeEstimate.M,
-            estimatedEnergy: TaskEnergyEstimate.L,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.L,
           ),
           _createTask(
             'Analyze preliminary data',
@@ -237,8 +237,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 7)),
             status: TaskStatus.waiting,
             priority: TaskPriority.M,
-            estimatedTime: TaskTimeEstimate.M,
-            estimatedEnergy: TaskEnergyEstimate.M,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.M,
           ),
           _createTask(
             'Draft research proposal',
@@ -247,8 +247,8 @@ class SeedDataService {
             dueDate: now.add(const Duration(days: 14)),
             status: TaskStatus.todo,
             priority: TaskPriority.H,
-            estimatedTime: TaskTimeEstimate.XL,
-            estimatedEnergy: TaskEnergyEstimate.XL,
+            timeEstimate: TaskTimeEstimate.XL,
+            energyEstimate: TaskEnergyEstimate.XL,
           ),
         ]);
         break;
@@ -258,18 +258,18 @@ class SeedDataService {
   }
 
   /// Helper method to create a task with common properties
-  static Task _createTask(
+  static TaskEntity _createTask(
     String name,
     String description,
-    TaskList project, {
+    ProjectEntity project, {
     required DateTime dueDate,
     required TaskStatus status,
     required TaskPriority priority,
-    required TaskTimeEstimate estimatedTime,
-    required TaskEnergyEstimate estimatedEnergy,
+    required TaskTimeEstimate timeEstimate,
+    required TaskEnergyEstimate energyEstimate,
   }) {
     final now = DateTime.now();
-    final task = Task(
+    final task = TaskEntity(
       uuid: const Uuid().v4(),
       name: name,
       description: description,
@@ -278,17 +278,17 @@ class SeedDataService {
       dueDate: dueDate,
       status: status,
       priority: priority,
-      estimatedTime: estimatedTime,
-      estimatedEnergy: estimatedEnergy,
+      timeEstimate: timeEstimate,
+      energyEstimate: energyEstimate,
     );
 
-    task.taskList.target = project;
+    task.project.target = project;
     return task;
   }
 
   /// Creates sample activities for tasks
-  static List<Activity> _createSampleActivities(List<Task> tasks) {
-    final activities = <Activity>[];
+  static List<ActivityEntity> _createSampleActivities(List<TaskEntity> tasks) {
+    final activities = <ActivityEntity>[];
     final now = DateTime.now();
 
     // Create sample activities for some of the tasks
@@ -301,7 +301,7 @@ class SeedDataService {
       // Create a completed activity
       if (task.status.isCompleted) {
         activities.add(
-          Activity(
+          ActivityEntity(
             uuid: const Uuid().v4(),
             name: 'Working on: ${task.name}',
             startDate: now.subtract(const Duration(hours: 4)),
@@ -314,7 +314,7 @@ class SeedDataService {
       // Create an in-progress activity
       else if (task.status.isPending) {
         activities.add(
-          Activity(
+          ActivityEntity(
             uuid: const Uuid().v4(),
             name: 'Working on: ${task.name}',
             startDate: now.subtract(const Duration(minutes: 45)),
@@ -327,7 +327,7 @@ class SeedDataService {
 
     // Add some non-task activities
     activities.addAll([
-      Activity(
+      ActivityEntity(
         uuid: const Uuid().v4(),
         name: 'Morning meditation',
         startDate: DateTime(now.year, now.month, now.day, 7, 0),
@@ -335,7 +335,7 @@ class SeedDataService {
         kind: ActivityKind.activity,
         status: ActivityStatus.completed,
       ),
-      Activity(
+      ActivityEntity(
         uuid: const Uuid().v4(),
         name: 'Team meeting',
         startDate: DateTime(now.year, now.month, now.day, 10, 0),
@@ -343,7 +343,7 @@ class SeedDataService {
         kind: ActivityKind.event,
         status: ActivityStatus.completed,
       ),
-      Activity(
+      ActivityEntity(
         uuid: const Uuid().v4(),
         name: 'Lunch break',
         startDate: DateTime(now.year, now.month, now.day, 12, 0),
@@ -351,7 +351,7 @@ class SeedDataService {
         kind: ActivityKind.activity,
         status: ActivityStatus.completed,
       ),
-      Activity(
+      ActivityEntity(
         uuid: const Uuid().v4(),
         name: 'Focus session',
         startDate: DateTime(now.year, now.month, now.day + 1, 9, 0),

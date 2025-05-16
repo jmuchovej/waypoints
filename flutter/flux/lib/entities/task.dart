@@ -7,7 +7,7 @@ import 'task/_priority.dart' hide assertStableEnumValues;
 import 'task/_priority.dart' as P show assertStableEnumValues;
 import 'task/_time.dart' hide assertStableEnumValues;
 import 'task/_time.dart' as T show assertStableEnumValues;
-import 'task_list.dart';
+import 'project.dart';
 
 export 'task/_status.dart' hide assertStableEnumValues;
 export 'task/_priority.dart' hide assertStableEnumValues;
@@ -15,7 +15,7 @@ export 'task/_energy.dart' hide assertStableEnumValues;
 export 'task/_time.dart' hide assertStableEnumValues;
 
 @Entity()
-class Task {
+class TaskEntity {
   @Id()
   int id = 0;
 
@@ -53,10 +53,10 @@ class Task {
   TaskStatus status;
 
   @Transient()
-  TaskTimeEstimate estimatedTime;
+  TaskTimeEstimate timeEstimate;
 
   @Transient()
-  TaskEnergyEstimate estimatedEnergy;
+  TaskEnergyEstimate energyEstimate;
 
   @Transient()
   TaskPriority priority;
@@ -64,17 +64,19 @@ class Task {
   bool deleted;
   bool archived;
 
-  final parent = ToOne<Task>();
-  final children = ToMany<Task>();
-  final taskList = ToOne<TaskList>();
+  final parent = ToOne<TaskEntity>();
+  @Backlink()
+  final children = ToMany<TaskEntity>();
 
-  Task({
+  final project = ToOne<ProjectEntity>();
+
+  TaskEntity({
     required this.uuid,
     required this.name,
-    required this.description,
-    required this.createDate,
-    required this.modifyDate,
-    required this.dueDate,
+    DateTime? createDate,
+    DateTime? modifyDate,
+    DateTime? dueDate,
+    this.description = "",
     this.startDate,
     this.endDate,
     this.scheduledDate,
@@ -84,10 +86,65 @@ class Task {
     this.archived = false,
     this.deleted = false,
     this.status = TaskStatus.todo,
-    this.estimatedTime = TaskTimeEstimate.M,
-    this.estimatedEnergy = TaskEnergyEstimate.M,
+    this.timeEstimate = TaskTimeEstimate.M,
+    this.energyEstimate = TaskEnergyEstimate.M,
     this.priority = TaskPriority.M,
-  });
+  }) : dueDate = dueDate ?? DateTime.now().add(Duration(days: 1)),
+       createDate = createDate ?? DateTime.now(),
+       modifyDate = modifyDate ?? DateTime.now();
+
+  TaskEntity copyWith({
+    String? uuid,
+    String? name,
+    String? description,
+    DateTime? createDate,
+    DateTime? modifyDate,
+    DateTime? startDate,
+    DateTime? endDate,
+    DateTime? scheduledDate,
+    DateTime? dueDate,
+    DateTime? waitDate,
+    DateTime? untilDate,
+    String? recurrence,
+    TaskStatus? status,
+    TaskTimeEstimate? timeEstimate,
+    TaskEnergyEstimate? energyEstimate,
+    TaskPriority? priority,
+    bool? deleted,
+    bool? archived,
+    TaskEntity? parent,
+    List<TaskEntity>? children,
+    ProjectEntity? project,
+  }) {
+    final task = TaskEntity(
+      uuid: uuid ?? this.uuid,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      createDate: createDate ?? this.createDate,
+      modifyDate: modifyDate ?? this.modifyDate,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+      dueDate: dueDate ?? this.dueDate,
+      waitDate: waitDate ?? this.waitDate,
+      untilDate: untilDate ?? this.untilDate,
+      recurrence: recurrence ?? this.recurrence,
+      status: status ?? this.status,
+      timeEstimate: timeEstimate ?? this.timeEstimate,
+      energyEstimate: energyEstimate ?? this.energyEstimate,
+      priority: priority ?? this.priority,
+      deleted: deleted ?? this.deleted,
+      archived: archived ?? this.archived,
+    );
+
+    task.parent.target = parent ?? this.parent.target;
+    for (final child in (children ?? this.children.toList())) {
+      task.children.add(child);
+    }
+    task.project.target = project ?? this.project.target;
+
+    return task;
+  }
 
   void update() {
     modifyDate = DateTime.now();
@@ -96,7 +153,7 @@ class Task {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    if (other is! Task) return false;
+    if (other is! TaskEntity) return false;
     return id == other.id && uuid == other.uuid;
   }
 
@@ -111,20 +168,20 @@ class Task {
 
   int get dbEstimatedEnergy {
     E.assertStableEnumValues();
-    return estimatedEnergy.index;
+    return energyEstimate.index;
   }
 
   set dbEstimatedEnergy(int value) {
-    estimatedEnergy = TaskEnergyEstimate.values[value];
+    energyEstimate = TaskEnergyEstimate.values[value];
   }
 
   int get dbEstimatedTime {
     T.assertStableEnumValues();
-    return estimatedTime.index;
+    return timeEstimate.index;
   }
 
   set dbEstimatedTime(int value) {
-    estimatedTime = TaskTimeEstimate.values[value];
+    timeEstimate = TaskTimeEstimate.values[value];
   }
 
   int get dbPriority {

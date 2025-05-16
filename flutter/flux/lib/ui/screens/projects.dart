@@ -1,25 +1,24 @@
+import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:flux/ui/widgets/task.dart';
-import 'package:uuid/uuid.dart';
-import 'package:flux/models/task.dart';
-import '../../models/task_list.dart';
-import '../../objectbox.dart';
-import '../../utils/date_formatter.dart';
-import './task_editor.dart';
+import 'package:flux/entities/task.dart';
+import 'package:flux/entities/project.dart';
+import 'package:flux/objectbox.dart';
+import 'package:flux/ui/screens/task_editor.dart';
 
 class ProjectsScreen extends StatefulWidget {
-  final TaskList? initialTaskList;
+  final ProjectEntity? initialTaskList;
 
-  ProjectsScreen({super.key, this.initialTaskList});
+  const ProjectsScreen({super.key, this.initialTaskList});
 
   @override
-  _ProjectsScreenState createState() => _ProjectsScreenState();
+  State<ProjectsScreen> createState() => _ProjectsScreenState();
 }
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
-  List<TaskList> _taskLists = [];
-  List<Task> _tasks = [];
-  TaskList? _selectedTaskList;
+  List<ProjectEntity> _projects = [];
+  List<TaskEntity> _tasks = [];
+  ProjectEntity? _selectedTaskList;
   bool _isLoading = true;
 
   @override
@@ -35,7 +34,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     });
 
     // Load all task lists
-    _taskLists = ObjectBox.taskListBox().getAll();
+    _projects = ObjectBox.taskListBox().getAll();
 
     if (_selectedTaskList != null) {
       // Make sure we have the latest version from the database
@@ -47,9 +46,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       } else {
         _tasks = [];
       }
-    } else if (_taskLists.isNotEmpty) {
+    } else if (_projects.isNotEmpty) {
       // Select the first task list by default
-      _selectedTaskList = _taskLists.first;
+      _selectedTaskList = _projects.first;
       _tasks = _selectedTaskList!.tasks.toList();
     } else {
       _tasks = [];
@@ -77,7 +76,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Widget _buildMainContent() {
-    if (_taskLists.isEmpty) {
+    if (_projects.isEmpty) {
       return _buildEmptyState();
     }
 
@@ -166,9 +165,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   Widget _buildTaskListSidebar() {
     return ListView.builder(
-      itemCount: _taskLists.length,
+      itemCount: _projects.length,
       itemBuilder: (context, index) {
-        final taskList = _taskLists[index];
+        final taskList = _projects[index];
         return ListTile(
           title: Text(taskList.name),
           subtitle: Text(
@@ -207,11 +206,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: DropdownButton<TaskList>(
+          child: DropdownButton<ProjectEntity>(
             value: _selectedTaskList,
             isExpanded: true,
             hint: Text('Select a project'),
-            onChanged: (TaskList? value) {
+            onChanged: (ProjectEntity? value) {
               if (value != null) {
                 setState(() {
                   _selectedTaskList = value;
@@ -220,8 +219,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               }
             },
             items:
-                _taskLists.map((TaskList taskList) {
-                  return DropdownMenuItem<TaskList>(
+                _projects.map((ProjectEntity taskList) {
+                  return DropdownMenuItem<ProjectEntity>(
                     value: taskList,
                     child: Text(taskList.name),
                   );
@@ -344,7 +343,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (nameController.text.trim().isNotEmpty) {
-                    final newTaskList = TaskList(
+                    final newTaskList = ProjectEntity(
                       uuid: const Uuid().v4(),
                       name: nameController.text.trim(),
                       description: descriptionController.text.trim(),
@@ -366,7 +365,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  void _editTaskList(TaskList taskList) {
+  void _editTaskList(ProjectEntity taskList) {
     final nameController = TextEditingController(text: taskList.name);
     final descriptionController = TextEditingController(
       text: taskList.description,
@@ -423,7 +422,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     );
   }
 
-  void _deleteTaskList(TaskList taskList) {
+  void _deleteTaskList(ProjectEntity taskList) {
     showDialog(
       context: context,
       builder:
@@ -443,7 +442,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 onPressed: () {
                   // Remove project association from tasks
                   for (final task in taskList.tasks) {
-                    task.taskList.target = null;
+                    task.project.target = null;
                     ObjectBox.taskBox().put(task);
                   }
 
