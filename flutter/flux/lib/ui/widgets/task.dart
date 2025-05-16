@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flux/objectbox.dart';
-import 'package:flux/entities/task.dart';
+import 'package:flux/foundation/task.dart';
 import 'package:flux/utils/date_formatter.dart';
 
 class TaskWidget extends StatefulWidget {

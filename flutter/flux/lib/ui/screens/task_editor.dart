@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flux/entities/task.dart';
-import 'package:flux/entities/project.dart';
+import 'package:flux/foundation/task.dart';
+import 'package:flux/foundation/project.dart';
 import 'package:flux/objectbox.dart';
 import 'package:flux/utils/date_formatter.dart';
 import 'package:flux/utils/logging.dart' show logger;

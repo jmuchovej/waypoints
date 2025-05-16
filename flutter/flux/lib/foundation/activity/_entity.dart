@@ -1,15 +1,6 @@
 import 'package:objectbox/objectbox.dart';
-
-import 'task.dart';
-
-import 'activity/_kind.dart' hide assertStableEnumValues;
-import 'activity/_kind.dart' as K show assertStableEnumValues;
-
-import 'activity/_status.dart' hide assertStableEnumValues;
-import 'activity/_status.dart' as S show assertStableEnumValues;
-
-export 'activity/_status.dart' hide assertStableEnumValues;
-export 'activity/_kind.dart' hide assertStableEnumValues;
+import 'package:flux/foundation/task.dart';
+import 'package:flux/foundation/activity.dart';
 
 @Entity()
 class ActivityEntity {
@@ -58,7 +49,7 @@ class ActivityEntity {
   }
 
   int get dbKind {
-    K.assertStableEnumValues();
+    ActivityKind.assertStableEnumValues();
     return kind.index;
   }
 
@@ -68,7 +59,7 @@ class ActivityEntity {
   }
 
   int get dbStatus {
-    S.assertStableEnumValues();
+    ActivityStatus.assertStableEnumValues();
     return status.index;
   }
 

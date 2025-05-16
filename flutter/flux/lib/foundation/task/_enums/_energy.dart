@@ -5,15 +5,15 @@ enum TaskEnergyEstimate {
   S, // Little energy
   M, // Medium energy
   L, // Significant energy
-  XL, // Peak energy required
-}
+  XL; // Peak energy required
 
-void assertStableEnumValues() {
-  assert(0 == TaskEnergyEstimate.XS.index);
-  assert(1 == TaskEnergyEstimate.S.index);
-  assert(2 == TaskEnergyEstimate.M.index);
-  assert(3 == TaskEnergyEstimate.L.index);
-  assert(4 == TaskEnergyEstimate.XL.index);
+  static void assertStableEnumValues() {
+    assert(0 == TaskEnergyEstimate.XS.index);
+    assert(1 == TaskEnergyEstimate.S.index);
+    assert(2 == TaskEnergyEstimate.M.index);
+    assert(3 == TaskEnergyEstimate.L.index);
+    assert(4 == TaskEnergyEstimate.XL.index);
+  }
 }
 
 extension EstimatedEnergyColors on TaskEnergyEstimate {

@@ -1,18 +1,6 @@
 import 'package:objectbox/objectbox.dart';
-import 'task/_status.dart' hide assertStableEnumValues;
-import 'task/_status.dart' as S show assertStableEnumValues;
-import 'task/_energy.dart' hide assertStableEnumValues;
-import 'task/_energy.dart' as E show assertStableEnumValues;
-import 'task/_priority.dart' hide assertStableEnumValues;
-import 'task/_priority.dart' as P show assertStableEnumValues;
-import 'task/_time.dart' hide assertStableEnumValues;
-import 'task/_time.dart' as T show assertStableEnumValues;
-import 'project.dart';
-
-export 'task/_status.dart' hide assertStableEnumValues;
-export 'task/_priority.dart' hide assertStableEnumValues;
-export 'task/_energy.dart' hide assertStableEnumValues;
-export 'task/_time.dart' hide assertStableEnumValues;
+import 'package:flux/foundation/task.dart';
+import 'package:flux/foundation/project.dart';
 
 @Entity()
 class TaskEntity {
@@ -158,7 +146,7 @@ class TaskEntity {
   }
 
   int get dbStatus {
-    S.assertStableEnumValues();
+    TaskStatus.assertStableEnumValues();
     return status.index;
   }
 
@@ -167,7 +155,7 @@ class TaskEntity {
   }
 
   int get dbEstimatedEnergy {
-    E.assertStableEnumValues();
+    TaskEnergyEstimate.assertStableEnumValues();
     return energyEstimate.index;
   }
 
@@ -176,7 +164,7 @@ class TaskEntity {
   }
 
   int get dbEstimatedTime {
-    T.assertStableEnumValues();
+    TaskTimeEstimate.assertStableEnumValues();
     return timeEstimate.index;
   }
 
@@ -185,7 +173,7 @@ class TaskEntity {
   }
 
   int get dbPriority {
-    P.assertStableEnumValues();
+    TaskPriority.assertStableEnumValues();
     return priority.index;
   }
 

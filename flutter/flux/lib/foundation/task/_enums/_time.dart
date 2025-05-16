@@ -5,15 +5,15 @@ enum TaskTimeEstimate {
   S, // Small - quick task
   M, // Medium - average task
   L, // Large - significant time
-  XL, // Extra large - major time commitment
-}
+  XL; // Extra large - major time commitment
 
-void assertStableEnumValues() {
-  assert(0 == TaskTimeEstimate.XS.index);
-  assert(1 == TaskTimeEstimate.S.index);
-  assert(2 == TaskTimeEstimate.M.index);
-  assert(3 == TaskTimeEstimate.L.index);
-  assert(4 == TaskTimeEstimate.XL.index);
+  static void assertStableEnumValues() {
+    assert(0 == TaskTimeEstimate.XS.index);
+    assert(1 == TaskTimeEstimate.S.index);
+    assert(2 == TaskTimeEstimate.M.index);
+    assert(3 == TaskTimeEstimate.L.index);
+    assert(4 == TaskTimeEstimate.XL.index);
+  }
 }
 
 extension EstimatedTimeColors on TaskTimeEstimate {

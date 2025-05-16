@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flux/objectbox.dart';
+import 'package:super_editor/super_editor.dart';
 
 enum TaskStatus {
   todo, // Initial state
@@ -9,19 +11,19 @@ enum TaskStatus {
   scheduled, // Future task
   stopped, // No longer working on it
   dropped, // Decided not to complete
-  complete, // Finished! 🎉
-}
+  complete; // Finished! 🎉
 
-void assertStableEnumValues() {
-  assert(0 == TaskStatus.todo.index);
-  assert(1 == TaskStatus.started.index);
-  assert(2 == TaskStatus.waiting.index);
-  assert(3 == TaskStatus.paused.index);
-  assert(4 == TaskStatus.workInProgress.index);
-  assert(5 == TaskStatus.scheduled.index);
-  assert(6 == TaskStatus.stopped.index);
-  assert(7 == TaskStatus.dropped.index);
-  assert(8 == TaskStatus.complete.index);
+  static void assertStableEnumValues() {
+    assert(0 == TaskStatus.todo.index);
+    assert(1 == TaskStatus.started.index);
+    assert(2 == TaskStatus.waiting.index);
+    assert(3 == TaskStatus.paused.index);
+    assert(4 == TaskStatus.workInProgress.index);
+    assert(5 == TaskStatus.scheduled.index);
+    assert(6 == TaskStatus.stopped.index);
+    assert(7 == TaskStatus.dropped.index);
+    assert(8 == TaskStatus.complete.index);
+  }
 }
 
 extension AllowedTransitions on TaskStatus {
@@ -176,3 +178,59 @@ extension StatusDisplayString on TaskStatus {
     }
   }
 }
+
+// class TaskStatusWidget extends StatefulWidget {
+//   final TaskEntity task;
+//   TaskStatus get status => task.status;
+//   const TaskStatusWidget({super.key, required this.task});
+//
+//   @override
+//   State<TaskStatusWidget> createState() => _TaskStatusWidgetState();
+// }
+//
+// class _TaskStatusWidgetState extends State<TaskStatusWidget>
+//     with SingleTickerProviderStateMixin {
+//   @override
+//   void initState() {
+//     super.initState();
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return GestureDetector(
+//       behavior: HitTestBehavior.translucent,
+//       onTap: () => _statusChanger(context),
+//       child: Container(padding: EdgeInsets.all(4.0), child: widget.status.icon),
+//     );
+//   }
+//
+//   Widget _statusChanger(BuildContext context) {
+//     return SingleChildScrollView(
+//       scrollDirection: Axis.horizontal,
+//       child: Row(
+//         children: [
+//           for (final option in widget.status.eligibleTransitions)
+//             Padding(
+//               padding: const EdgeInsets.only(right: 8.0),
+//               child: ActionChip(
+//                 avatar: option.icon,
+//                 label: Text(option.toDisplayString()),
+//                 backgroundColor:
+//                     widget.status == option
+//                         ? Theme.of(context).colorScheme.primaryContainer
+//                         : null,
+//                 onPressed: () => _updateStatus(option),
+//               ),
+//             ),
+//         ],
+//       ),
+//     );
+//   }
+//
+//   void _updateStatus(TaskStatus status) {
+//     widget.task.status = status;
+//     widget.task.modifyDate = DateTime.now();
+//     final box = ObjectBox.taskBox();
+//     box.put(widget.task);
+//   }
+// }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flux/entities/task.dart';
+import 'package:flux/foundation/task.dart';
 import 'package:flux/ui/widgets/task.dart';
 import 'package:flux/utils/date_formatter.dart';
 import 'package:flux/ui/screens/task_editor.dart';

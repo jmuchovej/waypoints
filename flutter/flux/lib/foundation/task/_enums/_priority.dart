@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 enum TaskPriority {
   L, // Low priority
   M, // Medium priority
-  H, // High priority
-}
+  H; // High priority
 
-void assertStableEnumValues() {
-  assert(0 == TaskPriority.L.index);
-  assert(1 == TaskPriority.M.index);
-  assert(2 == TaskPriority.H.index);
+  static void assertStableEnumValues() {
+    assert(0 == TaskPriority.L.index);
+    assert(1 == TaskPriority.M.index);
+    assert(2 == TaskPriority.H.index);
+  }
 }
 
 extension PriorityColors on TaskPriority {

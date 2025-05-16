@@ -1,5 +1,5 @@
 import 'package:objectbox/objectbox.dart';
-import 'task.dart';
+import 'package:flux/foundation/task.dart';
 
 @Entity()
 class ProjectEntity {
