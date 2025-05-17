@@ -1,0 +1,6 @@
+#include "../../Flutter/productionDebug.xcconfig"
+#include "Warnings.xcconfig"
+
+ASSET_PREFIX=production
+BUNDLE_NAME=Tempo Flux
+BUNDLE_DISPLAY_NAME=Tempo Flux

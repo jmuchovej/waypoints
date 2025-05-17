@@ -1,6 +1,6 @@
+import 'package:flux/flavors.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:flux/config/environment.dart';
 import 'package:flux/foundation/task.dart';
 import 'package:flux/foundation/project.dart';
 import 'package:flux/foundation/activity.dart';
@@ -23,7 +23,7 @@ class ObjectBox {
   Box<ActivityEntity> get activities => _activities;
 
   ObjectBox._create(this._store) {
-    if (EnvironmentConfig.isDevelopment && Admin.isAvailable()) {
+    if (F.appFlavor == Flavor.development && Admin.isAvailable()) {
       _admin = Admin(_store);
     }
 

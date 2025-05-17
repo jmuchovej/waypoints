@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flux/flavors.dart';
 import 'package:flux/objectbox.dart';
 import 'package:flux/ui/screens/home.dart';
 import 'package:flux/ui/screens/projects.dart';
@@ -58,7 +59,7 @@ class TempoFlux extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tempo Flux',
+      title: F.title,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
