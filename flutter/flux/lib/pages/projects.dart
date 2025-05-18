@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flux/app.dart';
 import 'package:flux/foundation/project.dart';
 import 'package:flux/foundation/task.dart';
-import 'package:flux/ui/screens/task_editor.dart';
+import 'package:flux/pages/task_editor.dart';
 import 'package:flux/ui/widgets/task.dart';
 import 'package:uuid/uuid.dart';
 

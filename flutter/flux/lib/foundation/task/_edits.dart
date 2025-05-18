@@ -1,10 +1,47 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'package:flux/app.dart';
 import 'package:flux/foundation/task.dart';
-import 'package:flux/objectbox.dart';
-import 'package:flux/objectbox.g.dart';
-import 'package:flux/ui/editor.dart';
+import 'package:flux/editor.dart';
+import 'package:flux/utils/logging.dart';
+
+class TaskSelectionManager extends ChangeNotifier {
+  String? _selectedTaskID;
+
+  String? get selectedTaskID => _selectedTaskID;
+  // set selectedTaskID(String? taskID) {
+  //   if (selectedTaskID != taskID) {
+  //     _selectedTaskID = taskID;
+  //     notifyListeners();
+  //     logger.d('Sent listener notifications!');
+  //   }
+  // }
+
+  bool isTaskSelected(String taskID) => taskID == selectedTaskID;
+
+  void selectTask(String taskID) {
+    if (selectedTaskID != taskID) {
+      _selectedTaskID = taskID;
+      notifyListeners();
+    }
+  }
+
+  void deselectTask() {
+    if (_selectedTaskID != null) {
+      _selectedTaskID = null;
+      notifyListeners();
+    }
+  }
+
+  void toggleTaskSelection(String taskID) {
+    if (isTaskSelected(taskID)) {
+      deselectTask();
+    } else {
+      selectTask(taskID);
+    }
+  }
+}
 
 class ChangeTaskStatusRequest implements EditRequest {
   ChangeTaskStatusRequest({required this.nodeId, required this.status});
@@ -127,7 +164,7 @@ class ChangeTaskPriorityCommand extends EditCommand {
 //     final existingNode = document.getNodeById(nodeId);
 //     if (existingNode is! ParagraphNode) {
 //       editorOpsLog.warning(
-//         "Tried to convert ParagraphNode with ID '$nodeId' to TaskNode, but that node has the wrong type: ${existingNode.runtimeType}",
+//         'Tried to convert ParagraphNode with ID '$nodeId' to TaskNode, but that node has the wrong type: ${existingNode.runtimeType}',
 //       );
 //       return;
 //     }
@@ -185,7 +222,7 @@ class ChangeTaskPriorityCommand extends EditCommand {
 //     final node = document.getNodeById(nodeId);
 //     final taskNode = node as TaskNode;
 //     final newMetadata = Map<String, dynamic>.from(paragraphMetadata ?? {});
-//     newMetadata["blockType"] = paragraphAttribution;
+//     newMetadata['blockType'] = paragraphAttribution;
 
 //     final newParagraphNode = ParagraphNode(
 //       id: taskNode.id,

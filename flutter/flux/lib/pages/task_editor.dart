@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flux/app.dart';
-import 'package:super_editor/super_editor.dart';
+import 'package:flux/editor.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flux/foundation/task.dart';
 import 'package:flux/foundation/project.dart';

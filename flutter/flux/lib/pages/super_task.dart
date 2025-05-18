@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flux/app.dart';
 import 'package:flux/foundation/task.dart';
-import 'package:flux/objectbox.dart';
-import 'package:flux/ui/editor.dart';
+import 'package:flux/editor.dart';
+import 'package:flux/utils/logging.dart';
 
-class SuperTaskScreen extends StatelessWidget {
+class SuperTaskScreen extends ConsumerWidget {
   const SuperTaskScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final document = _loadTasksDocument();
     final composer = MutableDocumentComposer();
     final editor = createFluxDocumentEditor(

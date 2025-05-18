@@ -1,3 +1,4 @@
+import 'package:flux/super_editor/newlines.dart';
 import 'package:super_editor/super_editor.dart'
     hide
         TaskNode,
@@ -30,7 +31,7 @@ import 'package:super_editor/super_editor.dart'
         UpdateSubTaskIndentAfterTaskDeletionReaction,
         backspaceToConvertTaskToParagraph;
 
-import 'package:flux/foundation/task.dart';
+import 'package:flux/foundation/task/editor.dart';
 import 'package:flux/foundation/project.dart';
 import 'package:flux/foundation/activity.dart';
 
@@ -148,71 +149,7 @@ final requestHandlers = List.unmodifiable(<EditRequestHandler>[
             textToInsert: request.textToInsert,
           )
           : null,
-  (editor, request) =>
-      request
-              is InsertSoftNewlineAtCaretRequest //
-          ? const InsertSoftNewlineCommand()
-          : null,
-  (editor, request) {
-    if (request is! InsertNewlineAtCaretRequest) {
-      return null;
-    }
-
-    final selection = editor.composer.selection;
-    if (selection == null) {
-      return null;
-    }
-
-    final base = selection.base;
-    if (editor.document.getNodeById(base.nodeId) is! ListItemNode) {
-      return null;
-    }
-
-    return InsertNewlineInListItemAtCaretCommand(request.newNodeId);
-  },
-  (editor, request) {
-    if (request is! InsertNewlineAtCaretRequest) {
-      return null;
-    }
-
-    final selection = editor.composer.selection;
-    if (selection == null) {
-      return null;
-    }
-
-    final base = selection.base;
-    final node = editor.document.getNodeById(base.nodeId);
-    if (node is! ParagraphNode) {
-      return null;
-    }
-    if (node.metadata[NodeMetadata.blockType] != codeAttribution) {
-      return null;
-    }
-
-    return InsertNewlineInCodeBlockAtCaretCommand(request.newNodeId);
-  },
-  (editor, request) {
-    if (request is! InsertNewlineAtCaretRequest) {
-      return null;
-    }
-
-    final selection = editor.composer.selection;
-    if (selection == null) {
-      return null;
-    }
-
-    final base = selection.base;
-    if (editor.document.getNodeById(base.nodeId) is! TaskNode) {
-      return null;
-    }
-
-    return InsertNewlineInTaskAtCaretCommand(request.newNodeId);
-  },
-  (editor, request) =>
-      request
-              is InsertNewlineAtCaretRequest //
-          ? DefaultInsertNewlineAtCaretCommand(request.newNodeId)
-          : null,
+  ...newlineRequestHandlers,
   (editor, request) =>
       request is PasteStructuredContentEditorRequest
           ? PasteStructuredContentEditorCommand(

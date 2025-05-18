@@ -11,6 +11,14 @@ export './task/_node.dart';
 export './task/_commands.dart';
 export './task/_edits.dart';
 export './task/_views.dart';
+export './task/_selection.dart';
+
+export './task/_widget/title.dart';
+export './task/_widget/status.dart';
 
 const NamedAttribution taskAttribution = NamedAttribution("task");
 const BlockSelector taskSelector = BlockSelector("task");
+const NamedAttribution taskTitleAttribution = NamedAttribution("taskTitle");
+const NamedAttribution taskDescriptionAttribution = NamedAttribution(
+  "taskDescription",
+);

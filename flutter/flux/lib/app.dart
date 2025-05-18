@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flux/flavors.dart';
 import 'package:flux/objectbox.dart';
-import 'package:flux/ui/screens/home.dart';
-import 'package:flux/ui/screens/projects.dart';
-import 'package:flux/ui/screens/super_task.dart';
-import 'package:flux/ui/screens/tasks.dart';
+import 'package:flux/pages/home.dart';
+import 'package:flux/pages/projects.dart';
+import 'package:flux/pages/super_task.dart';
+import 'package:flux/pages/tasks.dart';
 
 late ObjectBox obx;
 

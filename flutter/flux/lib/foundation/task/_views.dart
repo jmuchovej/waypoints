@@ -1,7 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flux/foundation/task.dart';
-import 'package:flux/ui/editor.dart';
+import 'package:flux/editor.dart';
+import 'package:flux/utils/logging.dart';
 
 /// Styles all task components to apply top padding
 final taskStyles = StyleRule(const BlockSelector("task"), (document, node) {
@@ -212,7 +216,7 @@ double defaultTaskIndentCalculator(TextStyle textStyle, int indent) {
 ///
 /// The appearance of a [TaskComponent] is configured by the given
 /// [viewModel].
-class TaskComponent extends StatefulWidget {
+class TaskComponent extends ConsumerStatefulWidget {
   const TaskComponent({
     super.key,
     required this.viewModel,
@@ -223,10 +227,10 @@ class TaskComponent extends StatefulWidget {
   final bool showDebugPaint;
 
   @override
-  State<TaskComponent> createState() => _TaskComponentState();
+  TaskComponentState createState() => TaskComponentState();
 }
 
-class _TaskComponentState extends State<TaskComponent>
+class TaskComponentState extends ConsumerState<TaskComponent>
     with ProxyDocumentComponent<TaskComponent>, ProxyTextComposable {
   final _textKey = GlobalKey();
 
@@ -256,43 +260,95 @@ class _TaskComponentState extends State<TaskComponent>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: widget.viewModel.textDirection,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // SizedBox(
-          //   width: widget.viewModel.indentCalculator(
-          //     widget.viewModel.textStyleBuilder({}),
-          //     widget.viewModel.indent,
-          //   ),
-          // ),
-          Padding(
-            padding: const EdgeInsets.only(left: 8, right: 4),
-            child: TaskStatusWidget(
-              status: widget.viewModel.status,
-              onChange: (status) {
-                widget.viewModel.changeStatus(status);
-              },
-            ),
+    final selectionNotifier = ref.watch(taskSelectionProvider.notifier);
+    final selectionTaskIDs = ref.watch(taskSelectionProvider);
+    final isSelected = selectionTaskIDs.contains(widget.viewModel.nodeId);
+
+    return GestureDetector(
+      onTap: () {
+        selectionNotifier.toggle(widget.viewModel.nodeId);
+        logger.d("${widget.viewModel.nodeId} selected=?=$isSelected");
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color:
+              isSelected
+                  ? Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.3)
+                  : Colors.transparent,
+        ),
+        child: Directionality(
+          textDirection: widget.viewModel.textDirection,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // SizedBox(
+                  //   width: widget.viewModel.indentCalculator(
+                  //     widget.viewModel.textStyleBuilder({}),
+                  //     widget.viewModel.indent,
+                  //   ),
+                  // ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, right: 4),
+                    child: TaskStatusWidget(
+                      status: widget.viewModel.status,
+                      onChange: (status) {
+                        widget.viewModel.changeStatus(status);
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: TaskTitleWidget(
+                      viewModel: widget.viewModel,
+                      textKey: _textKey,
+                    ),
+                  ),
+                ],
+              ),
+              if (isSelected) Row(children: [_buildQuickActions()]),
+            ],
           ),
-          Expanded(
-            child: TextComponent(
-              key: _textKey,
-              text: widget.viewModel.text,
-              textDirection: widget.viewModel.textDirection,
-              textAlign: widget.viewModel.textAlignment,
-              textStyleBuilder: _computeStyles,
-              inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
-              textSelection: widget.viewModel.selection,
-              selectionColor: widget.viewModel.selectionColor,
-              highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
-              underlines: widget.viewModel.createUnderlines(),
-              showDebugPaint: widget.showDebugPaint,
-            ),
-          ),
-        ],
+        ),
       ),
     );
+  }
+
+  Widget _buildQuickActions() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(Icons.calendar_today, size: 18),
+          onPressed: () {
+            // Show date picker for due date
+          },
+        ),
+        IconButton(
+          icon: Icon(Icons.flag, size: 18),
+          onPressed: () {
+            // Show priority selector
+          },
+        ),
+        // Add other quick actions
+      ],
+    );
+  }
+
+  void _handleTaskTap() {
+    final nodeID = widget.viewModel.nodeId;
+    logger.d("task tapped! nodeID=$nodeID");
+    // if (!isSelectedectionManager.isTaskSelected(nodeID)) {
+    //   widget.selectionManager.selectTask(nodeID);
+    //   logger.d("selected task! nodeID=$nodeID");
+    //   return;
+    // }
+
+    // logger.d("task nodeID=$nodeID is: ${widget.viewModel.isSelected}");
+    // TODO implement editing mode on the task itself...
   }
 }

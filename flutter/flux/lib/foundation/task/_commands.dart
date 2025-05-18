@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
+import 'package:flux/editor.dart';
 import 'package:flux/foundation/task.dart';
-import 'package:flux/ui/editor.dart';
 
 ExecutionInstruction enterToInsertNewTask({
   required SuperEditorContext editContext,

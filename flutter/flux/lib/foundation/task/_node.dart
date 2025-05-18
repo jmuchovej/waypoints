@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flux/app.dart';
 import 'package:flux/foundation/task.dart';
-import 'package:flux/ui/editor.dart';
+import 'package:flux/editor.dart';
 
 @immutable
 class TaskNode extends TextNode {
