@@ -1,6 +1,0 @@
-#include "../../Flutter/developmentProfile.xcconfig"
-#include "Warnings.xcconfig"
-
-ASSET_PREFIX=development
-BUNDLE_NAME=Tempo Flux (Dev)
-BUNDLE_DISPLAY_NAME=Tempo Flux (Dev)

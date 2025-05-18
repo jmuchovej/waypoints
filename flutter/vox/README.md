@@ -1,16 +1,7 @@
-# transcription
+# Vox
 
-Audio transcription & 'analysis'.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Vox is action-oriented pillar of Tempo. Flux helps you manage your tasks,
+routines, and events – in other words, all the things that make up your
+day-to-day. With deep integrations to Codex and Vox, Flux helps you pace your
+days, weeks, months, and beyond, so that you can run the race rather than
+intermittently sprinting and walking.

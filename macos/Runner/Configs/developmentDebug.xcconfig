@@ -1,0 +1,6 @@
+#include "../../Flutter/developmentDebug.xcconfig"
+#include "Warnings.xcconfig"
+
+ASSET_PREFIX=development
+BUNDLE_NAME=Tempo (Dev)
+BUNDLE_DISPLAY_NAME=Tempo (Dev)

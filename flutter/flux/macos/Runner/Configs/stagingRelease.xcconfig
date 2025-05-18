@@ -1,6 +1,0 @@
-#include "../../Flutter/stagingRelease.xcconfig"
-#include "Warnings.xcconfig"
-
-ASSET_PREFIX=staging
-BUNDLE_NAME=Tempo Flux (Staging)
-BUNDLE_DISPLAY_NAME=Tempo Flux (Staging)
