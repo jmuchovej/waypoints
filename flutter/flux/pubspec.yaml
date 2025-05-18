@@ -27,8 +27,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # foundation:
-  #   path: "../../foundation"
   objectbox: ^4.2.0
   objectbox_flutter_libs: any
   super_editor: ^0.3.0-dev.23
@@ -41,6 +39,7 @@ dependencies:
   logger: ^2.5.0
   collection: ^1.19.1
   path: ^1.9.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
