@@ -1,5 +1,5 @@
 import 'package:objectbox/objectbox.dart';
-import 'package:flux/foundation/task.dart';
+import 'package:tempo/core/models/task.dart';
 
 @Entity()
 class ProjectEntity {
@@ -7,7 +7,7 @@ class ProjectEntity {
   int id = 0;
 
   String uuid;
-  String name;
+  String title;
   String description;
 
   @Backlink('project')
@@ -19,7 +19,7 @@ class ProjectEntity {
 
   ProjectEntity({
     required this.uuid,
-    required this.name,
+    required this.title,
     required this.description,
   });
 
@@ -29,4 +29,7 @@ class ProjectEntity {
     if (other is! ProjectEntity) return false;
     return id == other.id && uuid == other.uuid;
   }
+
+  @override
+  int get hashCode => uuid.hashCode ^ title.hashCode ^ description.hashCode;
 }
