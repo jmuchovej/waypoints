@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flux/config/environment.dart';
+import 'package:tempo/flavors.dart';
 
 class DebugBorder extends StatelessWidget {
   final Widget child;
@@ -9,7 +9,7 @@ class DebugBorder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!EnvironmentConfig.isDevelopment) {
+    if (F.appFlavor != Flavor.development) {
       return child;
     }
 

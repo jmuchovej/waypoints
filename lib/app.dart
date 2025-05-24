@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flux/flavors.dart';
-import 'package:flux/objectbox.dart';
-import 'package:flux/pages/home.dart';
-import 'package:flux/pages/projects.dart';
-import 'package:flux/pages/super_task.dart';
-import 'package:flux/pages/tasks.dart';
+import 'package:tempo/flavors.dart';
+import 'package:tempo/objectbox.dart';
+import 'package:tempo/pages/home.dart';
+import 'package:tempo/pages/projects.dart';
+import 'package:tempo/modules/flux/pages/tasks.dart';
 
 late ObjectBox obx;
 
@@ -19,10 +18,13 @@ final defaultAppRoutes = [
   AppRoute(
     TasksScreen(),
     (context) => NavigationDestination(
-      icon: Icon(Icons.home_outlined, color: Colors.grey.shade400),
+      icon: Icon(
+        Icons.format_list_bulleted_rounded,
+        color: ColorScheme.of(context).primaryContainer,
+      ),
       selectedIcon: Icon(
-        Icons.home_rounded,
-        color: Theme.of(context).primaryColor,
+        Icons.format_list_bulleted_rounded,
+        color: ColorScheme.of(context).primary,
       ),
       label: 'Tasks',
     ),
@@ -30,23 +32,31 @@ final defaultAppRoutes = [
   AppRoute(
     ProjectsScreen(),
     (context) => NavigationDestination(
-      icon: Icon(Icons.folder_outlined, color: Colors.grey.shade400),
+      icon: Icon(Icons.folder_outlined, color: ColorScheme.of(context).primaryContainer),
       selectedIcon: Icon(
         Icons.folder_rounded,
-        color: Theme.of(context).primaryColor,
+        color: ColorScheme.of(context).primary,
       ),
       label: 'Projects',
     ),
   ),
-  AppRoute(
-    SuperTaskScreen(),
-    (context) => NavigationDestination(
-      icon: Icon(Icons.power_outlined, color: Colors.grey.shade400),
-      selectedIcon: Icon(Icons.power, color: Theme.of(context).primaryColor),
-      label: 'SuperTask',
-    ),
-  ),
 ];
+
+final lightTheme = ThemeData(
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: Colors.blue,
+    brightness: Brightness.light,
+  ),
+  useMaterial3: true,
+);
+
+final darkTheme = ThemeData(
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: Colors.blue,
+    brightness: Brightness.dark,
+  ),
+  useMaterial3: true,
+);
 
 class TempoFlux extends StatelessWidget {
   final List<Widget> screens;
@@ -60,12 +70,13 @@ class TempoFlux extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: F.title,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        useMaterial3: true,
-      ),
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: ThemeMode.system,
       home: HomeScreen(screens: screens, destinations: destinations),
+      debugShowCheckedModeBanner: false,
+      // debugShowMaterialGrid: true,
+      // initialRoute: "/",
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:flux/app.dart';
+import 'package:tempo/app.dart';
 
 Future<void> preRunApp() async {}
 

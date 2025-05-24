@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flux/dev/database/seed.dart';
-import 'package:flux/dev/screens/devtools.dart';
-import 'package:flux/objectbox.dart';
-import 'package:flux/app.dart';
+import 'package:tempo/infrastructure/_logging.dart';
+import 'package:tempo/dev/database/seed.dart';
+import 'package:tempo/dev/screens/devtools.dart';
+import 'package:tempo/objectbox.dart';
+import 'package:tempo/app.dart';
 
 Future<void> preRunApp() async {
   // debugPaintSizeEnabled = true;
   // Optional: Enable other debug flags
   // debugPaintBaselinesEnabled = true; // Shows text baselines
+  debugPaintLayerBordersEnabled = true;
   // debugPaintPointersEnabled = true; // Shows pointer hit testing
   // debugPaintLayerBordersEnabled = true; // Shows layer boundaries
 
   await SeedDataService.seedIfNeeded();
+
+  initLoggers(Level.FINEST, tempoLoggers);
+  initLoggers(Level.FINER, superEditorLoggers);
+  deactivateLoggers(FTLLoggers);
 }
 
 List<AppRoute> appRoutes() {
@@ -48,10 +54,10 @@ Future<void> main() async {
     AppRoute(
       DevToolsScreen(),
       (context) => NavigationDestination(
-        icon: Icon(Icons.developer_mode_outlined, color: Colors.grey.shade400),
+        icon: Icon(Icons.developer_mode_outlined, color: ColorScheme.of(context).primary),
         selectedIcon: Icon(
           Icons.developer_mode,
-          color: Theme.of(context).primaryColor,
+          color: ColorScheme.of(context).primary,
         ),
         label: 'Dev Tools',
       ),

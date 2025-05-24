@@ -1,13 +1,12 @@
 // lib/ui/screens/dev_tools.dart
 import 'package:flutter/material.dart';
-import 'package:flux/app.dart';
-import 'package:flux/dev/database/seed.dart';
-import 'package:flux/objectbox.dart';
+import 'package:tempo/app.dart' show obx;
+import 'package:tempo/dev/database/seed.dart';
 import 'package:path_provider/path_provider.dart';
 
 class DevToolsScreen extends StatefulWidget {
   @override
-  _DevToolsScreenState createState() => _DevToolsScreenState();
+  State<DevToolsScreen> createState() => _DevToolsScreenState();
 }
 
 class _DevToolsScreenState extends State<DevToolsScreen> {

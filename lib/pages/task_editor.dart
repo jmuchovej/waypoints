@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flux/app.dart';
-import 'package:flux/editor.dart';
+import 'package:tempo/app.dart' show obx;
+import 'package:tempo/core/editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flux/foundation/task.dart';
-import 'package:flux/foundation/project.dart';
-import 'package:flux/utils/date_formatter.dart';
-import 'package:flux/utils/logging.dart' show logger;
+import 'package:tempo/core/models/task.dart';
+import 'package:tempo/core/models/project.dart';
+import 'package:tempo/utils/date_formatter.dart';
+import 'package:tempo/utils/logging.dart' show logger;
 
 class TaskEditorScreen extends StatefulWidget {
   final TaskEntity? task;
@@ -18,9 +18,8 @@ class TaskEditorScreen extends StatefulWidget {
 }
 
 class _TaskEditorScreenState extends State<TaskEditorScreen> {
-  late AttributedTextEditingController _nameController;
-  late FocusNode _nameFocusNode;
-  late AttributedTextEditingController _descriptionController;
+  late AttributedTextEditingController _titleController;
+  late FocusNode _titleFocusNode;
   late FocusNode _descriptionFocusNode;
   late DateTime _dueDate;
   late TaskStatus _status;
@@ -35,10 +34,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   @override
   void initState() {
     super.initState();
-    _nameFocusNode = FocusNode();
+    _titleFocusNode = FocusNode();
     _descriptionFocusNode = FocusNode();
 
-    _nameFocusNode.addListener(_onFocusChange);
+    _titleFocusNode.addListener(_onFocusChange);
     _descriptionFocusNode.addListener(_onFocusChange);
 
     _initializeEditor();
@@ -46,10 +45,10 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
 
   @override
   void dispose() {
-    _nameFocusNode.removeListener(_onFocusChange);
+    _titleFocusNode.removeListener(_onFocusChange);
     _descriptionFocusNode.removeListener(_onFocusChange);
 
-    _nameFocusNode.dispose();
+    _titleFocusNode.dispose();
     _descriptionFocusNode.dispose();
     super.dispose();
   }
@@ -64,38 +63,31 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     _availableProjects = obx.getProjects();
     logger.d("Loaded projects:");
     for (var project in _availableProjects) {
-      logger.d("- ${project.name}");
+      logger.d("- ${project.title}");
     }
 
     // Initialize with existing task data or defaults
     if (widget.task != null) {
-      _nameController = AttributedTextEditingController(
-        text: AttributedText(widget.task!.name),
+      _titleController = AttributedTextEditingController(
+        text: AttributedText(widget.task!.title),
       );
       _dueDate = widget.task!.dueDate;
       _status = widget.task!.status;
       _priority = widget.task!.priority;
       _timeEstimate = widget.task!.timeEstimate;
       _energyEstimate = widget.task!.energyEstimate;
-      var taskList = widget.task!.project.target;
-      for (var project in _availableProjects) {
-        if (taskList != null && project.id == taskList.id) {
-          logger.d("${project.id} =?= ${taskList.id}");
-          logger.d("${project.uuid} =?= ${taskList.uuid}");
-          logger.d("${project.name} =?= ${taskList.name}");
-          logger.d("${project.description} =?= ${taskList.description}");
+      final currentProject = widget.task!.project.target;
+      for (final project in _availableProjects) {
+        if (currentProject != null && project == currentProject) {
+          logger.d("${project.id} =?= ${currentProject.id}");
+          logger.d("${project.uuid} =?= ${currentProject.uuid}");
+          logger.d("${project.title} =?= ${currentProject.title}");
           break;
         }
       }
       _selectedProject = widget.task!.project.target;
-
-      // Initialize SuperEditor document with task description
-      _descriptionController = AttributedTextEditingController(
-        text: AttributedText(widget.task!.description),
-      );
     } else {
-      _nameController = AttributedTextEditingController();
-      _descriptionController = AttributedTextEditingController();
+      _titleController = AttributedTextEditingController();
       _dueDate = DateTime.now().add(const Duration(days: 1));
       _status = TaskStatus.todo;
 
@@ -136,18 +128,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildTextField(
-              label: "Task Name",
-              focusNode: _nameFocusNode,
-              controller: _nameController,
-            ),
-            const SizedBox(height: 24),
-
-            _buildTextField(
-              label: "Description",
-              focusNode: _descriptionFocusNode,
-              controller: _descriptionController,
-              minLines: 3,
-              maxLines: 5,
+              label: "Task title",
+              focusNode: _titleFocusNode,
+              controller: _titleController,
             ),
             const SizedBox(height: 24),
 
@@ -199,7 +182,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                         _availableProjects.map((project) {
                           return DropdownMenuItem<ProjectEntity?>(
                             value: project,
-                            child: Text(project.name),
+                            child: Text(project.title),
                           );
                         }).toList(),
                   ),
@@ -402,23 +385,20 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   }
 
   void _saveTask() {
-    if (_nameController.text.toPlainText().trim().isEmpty) {
+    if (_titleController.text.toPlainText().trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task name cannot be empty')),
+        const SnackBar(content: Text('Task title cannot be empty')),
       );
       return;
     }
 
-    // Extract description from document
-    final description = _descriptionController.text.toPlainText().trim();
-    final name = _nameController.text.toPlainText().trim();
+    final title = _titleController.text.toPlainText().trim();
 
     if (widget.task == null) {
       // Create new task
       final newTask = TaskEntity(
         uuid: const Uuid().v4(),
-        name: name,
-        description: description,
+        title: title,
         createDate: DateTime.now(),
         modifyDate: DateTime.now(),
         dueDate: _dueDate,
@@ -436,14 +416,13 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       obx.putTask(newTask);
     } else {
       // Update existing task
-      widget.task!.name = name;
-      widget.task!.description = description;
+      widget.task!.title = title;
       widget.task!.modifyDate = DateTime.now();
       widget.task!.dueDate = _dueDate;
-      widget.task!.status = _status;
-      widget.task!.priority = _priority;
-      widget.task!.timeEstimate = _timeEstimate;
-      widget.task!.energyEstimate = _energyEstimate;
+      widget.task!.obxStatus = TaskStatus.values.indexOf(_status);
+      widget.task!.obxPriority = TaskPriority.values.indexOf(_priority);
+      widget.task!.obxTimeEstimate = TaskTimeEstimate.values.indexOf(_timeEstimate);
+      widget.task!.obxEnergyEstimate = TaskEnergyEstimate.values.indexOf(_energyEstimate);
 
       // Update project association
       widget.task!.project.target = _selectedProject;

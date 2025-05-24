@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flux/app.dart';
-import 'package:flux/flavors.dart';
-import 'package:flux/main_development.dart' as d;
-import 'package:flux/main_production.dart' as p;
-import 'package:flux/objectbox.dart';
+import 'package:tempo/app.dart';
+import 'package:tempo/flavors.dart';
+import 'package:tempo/main_development.dart' as d;
+import 'package:tempo/main_production.dart' as p;
+import 'package:tempo/objectbox.dart';
 
 void main() async {
   F.appFlavor = Flavor.values.firstWhere(

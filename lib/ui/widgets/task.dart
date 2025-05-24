@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flux/app.dart';
-import 'package:flux/objectbox.dart';
-import 'package:flux/foundation/task.dart';
-import 'package:flux/utils/date_formatter.dart';
+import 'package:tempo/app.dart';
+import 'package:tempo/core/models/task.dart';
+import 'package:tempo/utils/date_formatter.dart';
 
 class TaskWidget extends StatefulWidget {
   final TaskEntity task;
@@ -89,12 +88,12 @@ class TaskWidgetState extends State<TaskWidget>
   }
 
   void _updateStatus(TaskStatus status) {
-    widget.task.status = status;
+    widget.task.obxStatus = TaskStatus.values.indexOf(status);
     _updateTask();
   }
 
   void _updatePriority(TaskPriority priority) {
-    widget.task.priority = priority;
+    widget.task.obxPriority = TaskPriority.values.indexOf(priority);
     _updateTask();
   }
 
@@ -102,20 +101,20 @@ class TaskWidgetState extends State<TaskWidget>
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: [_buildTaskTile(), _buildEditPanel(context)],
+      children: [_buildTaskTile(context), _buildEditPanel(context)],
     );
   }
 
-  Widget _buildTaskTile() {
+  Widget _buildTaskTile(BuildContext context) {
     final subtitle = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.task.description.isNotEmpty)
-          Text(
-            widget.task.description,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        // if (widget.task.description.isNotEmpty)
+        //   Text(
+        //     widget.task.description,
+        //     maxLines: 1,
+        //     overflow: TextOverflow.ellipsis,
+        //   ),
         if (widget.showDueDate)
           Text(
             'Due: ${DateFormatter.formatDate(widget.task.dueDate!)}',
@@ -125,7 +124,7 @@ class TaskWidgetState extends State<TaskWidget>
     );
     return ListTile(
       title: Text(
-        widget.task.name,
+        widget.task.title,
         style: TextStyle(
           decoration:
               widget.task.status.isCompleted
@@ -140,7 +139,7 @@ class TaskWidgetState extends State<TaskWidget>
         onTap: _togglePanelStatus,
         child: Container(
           padding: const EdgeInsets.all(4.0),
-          child: widget.task.status.icon,
+          child: widget.task.status.buildIcon(context),
         ),
       ),
       trailing: GestureDetector(
@@ -178,7 +177,7 @@ class TaskWidgetState extends State<TaskWidget>
                 widget.task.status,
                 widget.task.status.eligibleTransitions,
                 _updateStatus,
-                (status) => status.icon,
+                (status) => status.buildIcon(context),
                 (status) => status.toDisplayString(),
               ),
 

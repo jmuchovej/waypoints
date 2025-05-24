@@ -1,12 +1,12 @@
-// lib/services/seed_data_service.dart
 import 'package:flutter/foundation.dart';
-import 'package:flux/app.dart';
+import 'package:tempo/app.dart' show obx;
+// import 'package:tempo/core/editor_appflowy/appflowy_editor.dart';
+import 'package:tempo/core/editor/super_editor.dart';
+import 'package:tempo/infrastructure/_logging.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flux/foundation/task.dart';
-import 'package:flux/foundation/project.dart';
-import 'package:flux/foundation/activity.dart';
-import 'package:flux/objectbox.dart';
-import 'package:flux/utils/logging.dart';
+import 'package:tempo/core/models/task.dart';
+import 'package:tempo/core/models/project.dart';
+import 'package:tempo/core/models/activity.dart';
 
 class SeedDataService {
   static bool _hasSeeded = false;
@@ -27,9 +27,9 @@ class SeedDataService {
     if ((taskCount == 0 && projectCount == 0) || force) {
       await _seedSampleData();
       _hasSeeded = true;
-      logger.i('Sample data seeded successfully');
+      devtoolsDatabaseLog.fine('All data cleared from database');
     } else {
-      logger.d('Database already contains data, skipping seed');
+      devtoolsDatabaseLog.fine('All data cleared from database');
     }
   }
 
@@ -38,7 +38,7 @@ class SeedDataService {
     // Create sample projects
     final projects = _createSampleProjects();
     final projectIds = obx.batchAddProjects(projects);
-    logger.d('Created ${projectIds.length} sample projects');
+    devtoolsDatabaseLog.finer('Created ${projectIds.length} sample projects');
 
     // Reload projects to get their assigned IDs
     final savedProjects = obx.getProjects();
@@ -53,12 +53,12 @@ class SeedDataService {
 
     // Save all tasks
     final taskIds = obx.batchAddTasks(allTasks);
-    logger.d('Created ${taskIds.length} sample tasks');
+    devtoolsDatabaseLog.finer('Created ${taskIds.length} sample tasks');
 
     // Create sample activities
     final activities = _createSampleActivities(allTasks);
     final activityIds = obx.batchAddActivities(activities);
-    logger.d('Created ${activityIds.length} sample activities');
+    devtoolsDatabaseLog.finer('Created ${activityIds.length} sample activities');
   }
 
   /// Creates sample projects
@@ -66,22 +66,22 @@ class SeedDataService {
     return [
       ProjectEntity(
         uuid: const Uuid().v4(),
-        name: 'Personal',
+        title: 'Personal',
         description: 'Personal tasks and projects',
       ),
       ProjectEntity(
         uuid: const Uuid().v4(),
-        name: 'Work',
+        title: 'Work',
         description: 'Work-related tasks and projects',
       ),
       ProjectEntity(
         uuid: const Uuid().v4(),
-        name: 'Health',
+        title: 'Health',
         description: 'Health and wellness tasks',
       ),
       ProjectEntity(
         uuid: const Uuid().v4(),
-        name: 'Research',
+        title: 'Research',
         description: 'Research projects and literature review',
       ),
     ];
@@ -93,7 +93,7 @@ class SeedDataService {
     final tasks = <TaskEntity>[];
 
     // Create different tasks based on project type
-    switch (project.name) {
+    switch (project.title) {
       case 'Personal':
         tasks.addAll([
           _createTask(
@@ -260,8 +260,8 @@ class SeedDataService {
 
   /// Helper method to create a task with common properties
   static TaskEntity _createTask(
-    String name,
-    String description,
+    String title,
+    String notes,
     ProjectEntity project, {
     required DateTime dueDate,
     required TaskStatus status,
@@ -272,8 +272,8 @@ class SeedDataService {
     final now = DateTime.now();
     final task = TaskEntity(
       uuid: const Uuid().v4(),
-      name: name,
-      description: description,
+      title: title,
+      // notes: Delta()..insert(notes),
       createDate: now.subtract(const Duration(days: 2)),
       modifyDate: now,
       dueDate: dueDate,
@@ -304,7 +304,7 @@ class SeedDataService {
         activities.add(
           ActivityEntity(
             uuid: const Uuid().v4(),
-            name: 'Working on: ${task.name}',
+            title: 'Working on: ${task.title}',
             startDate: now.subtract(const Duration(hours: 4)),
             endDate: now.subtract(const Duration(hours: 3)),
             kind: ActivityKind.task,
@@ -317,7 +317,7 @@ class SeedDataService {
         activities.add(
           ActivityEntity(
             uuid: const Uuid().v4(),
-            name: 'Working on: ${task.name}',
+            title: 'Working on: ${task.title}',
             startDate: now.subtract(const Duration(minutes: 45)),
             kind: ActivityKind.task,
             status: ActivityStatus.paused,
@@ -330,7 +330,7 @@ class SeedDataService {
     activities.addAll([
       ActivityEntity(
         uuid: const Uuid().v4(),
-        name: 'Morning meditation',
+        title: 'Morning meditation',
         startDate: DateTime(now.year, now.month, now.day, 7, 0),
         endDate: DateTime(now.year, now.month, now.day, 7, 15),
         kind: ActivityKind.activity,
@@ -338,7 +338,7 @@ class SeedDataService {
       ),
       ActivityEntity(
         uuid: const Uuid().v4(),
-        name: 'Team meeting',
+        title: 'Team meeting',
         startDate: DateTime(now.year, now.month, now.day, 10, 0),
         endDate: DateTime(now.year, now.month, now.day, 11, 0),
         kind: ActivityKind.event,
@@ -346,7 +346,7 @@ class SeedDataService {
       ),
       ActivityEntity(
         uuid: const Uuid().v4(),
-        name: 'Lunch break',
+        title: 'Lunch break',
         startDate: DateTime(now.year, now.month, now.day, 12, 0),
         endDate: DateTime(now.year, now.month, now.day, 13, 0),
         kind: ActivityKind.activity,
@@ -354,7 +354,7 @@ class SeedDataService {
       ),
       ActivityEntity(
         uuid: const Uuid().v4(),
-        name: 'Focus session',
+        title: 'Focus session',
         startDate: DateTime(now.year, now.month, now.day + 1, 9, 0),
         endDate: DateTime(now.year, now.month, now.day + 1, 10, 30),
         kind: ActivityKind.intervalWork,
@@ -373,6 +373,6 @@ class SeedDataService {
     obx.activities.removeAll();
 
     _hasSeeded = false;
-    logger.i('All data cleared from database');
+    devtoolsDatabaseLog.fine('All data cleared from database');
   }
 }

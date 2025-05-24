@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flux/app.dart';
-import 'package:flux/foundation/project.dart';
-import 'package:flux/foundation/task.dart';
-import 'package:flux/pages/task_editor.dart';
-import 'package:flux/ui/widgets/task.dart';
+import 'package:tempo/app.dart';
+import 'package:tempo/core/models/task.dart';
+import 'package:tempo/core/models/project.dart';
+import 'package:tempo/pages/task_editor.dart';
+import 'package:tempo/ui/widgets/task.dart';
 import 'package:uuid/uuid.dart';
 
 class ProjectsScreen extends StatefulWidget {
@@ -169,7 +169,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       itemBuilder: (context, index) {
         final project = _projects[index];
         return ListTile(
-          title: Text(project.name),
+          title: Text(project.title),
           subtitle: Text(
             '${project.tasks.length} tasks',
             style: TextStyle(fontSize: 12),
@@ -222,7 +222,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 _projects.map((ProjectEntity project) {
                   return DropdownMenuItem<ProjectEntity>(
                     value: project,
-                    child: Text(project.name),
+                    child: Text(project.title),
                   );
                 }).toList(),
           ),
@@ -250,7 +250,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _selectedProject!.name,
+                    _selectedProject!.title,
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   if (_selectedProject!.description.isNotEmpty)
@@ -305,7 +305,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   void _createNewProject() {
-    final nameController = TextEditingController();
+    final titleController = TextEditingController();
     final descriptionController = TextEditingController();
 
     showDialog(
@@ -317,9 +317,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: nameController,
+                  controller: titleController,
                   decoration: InputDecoration(
-                    labelText: 'Project Name',
+                    labelText: 'Project title',
                     border: OutlineInputBorder(),
                   ),
                   autofocus: true,
@@ -342,10 +342,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (nameController.text.trim().isNotEmpty) {
+                  if (titleController.text.trim().isNotEmpty) {
                     final newProject = ProjectEntity(
                       uuid: const Uuid().v4(),
-                      name: nameController.text.trim(),
+                      title: titleController.text.trim(),
                       description: descriptionController.text.trim(),
                     );
 
@@ -366,7 +366,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   void _editProject(ProjectEntity project) {
-    final nameController = TextEditingController(text: project.name);
+    final titleController = TextEditingController(text: project.title);
     final descriptionController = TextEditingController(
       text: project.description,
     );
@@ -380,9 +380,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: nameController,
+                  controller: titleController,
                   decoration: InputDecoration(
-                    labelText: 'Project Name',
+                    labelText: 'Project title',
                     border: OutlineInputBorder(),
                   ),
                   autofocus: true,
@@ -405,8 +405,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (nameController.text.trim().isNotEmpty) {
-                    project.name = nameController.text.trim();
+                  if (titleController.text.trim().isNotEmpty) {
+                    project.title = titleController.text.trim();
                     project.description = descriptionController.text.trim();
 
                     obx.putProject(project);
@@ -429,7 +429,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           (context) => AlertDialog(
             title: Text('Delete Project'),
             content: Text(
-              'Are you sure you want to delete "${project.name}"? '
+              'Are you sure you want to delete "${project.title}"? '
               'This will not delete the tasks, but they will no longer be associated with this project.',
             ),
             actions: [

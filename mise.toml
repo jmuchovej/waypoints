@@ -26,3 +26,9 @@ ruby = "3.4.2"
 [env]
 DATABASE_URL = "sqlite://{{ config_root }}/tempo-flux.db?mode=rwc"
 ANDROID_HOME = "{{ env.HOME }}/Library/Android/sdk"
+
+[tasks.build-runner]
+run = "dart run build_runner build"
+
+[tasks.flavorizr]
+run = "dart run flutter_flavorizr"
