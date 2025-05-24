@@ -64,5 +64,5 @@ Future<void> main() async {
     ),
   ];
 
-  runApp(ProviderScope(child: TempoFlux(routes: routes)));
+  runApp(ProviderScope(child: Tempo(routes: routes)));
 }

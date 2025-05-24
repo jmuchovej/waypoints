@@ -4,6 +4,7 @@ import 'package:tempo/objectbox.dart';
 import 'package:tempo/pages/home.dart';
 import 'package:tempo/pages/projects.dart';
 import 'package:tempo/modules/flux/pages/tasks.dart';
+import 'package:tempo/theme/theme.dart';
 
 late ObjectBox obx;
 
@@ -42,36 +43,39 @@ final defaultAppRoutes = [
   ),
 ];
 
-final lightTheme = ThemeData(
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: Colors.blue,
-    brightness: Brightness.light,
-  ),
-  useMaterial3: true,
-);
+// final lightTheme = ThemeData(
+//   colorScheme: ColorScheme.fromSeed(
+//     seedColor: Colors.blue,
+//     brightness: Brightness.light,
+//   ),
+//   useMaterial3: true,
+// );
+//
+// final darkTheme = ThemeData(
+//   colorScheme: ColorScheme.fromSeed(
+//     seedColor: Colors.blue,
+//     brightness: Brightness.dark,
+//   ),
+//   useMaterial3: true,
+// );
 
-final darkTheme = ThemeData(
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: Colors.blue,
-    brightness: Brightness.dark,
-  ),
-  useMaterial3: true,
-);
-
-class TempoFlux extends StatelessWidget {
-  final List<Widget> screens;
-  final List<NavigationDestination Function(BuildContext)> destinations;
-
-  TempoFlux({super.key, required List<AppRoute> routes})
+class Tempo extends StatelessWidget {
+  Tempo({super.key, required List<AppRoute> routes})
     : screens = routes.map((route) => route.screen).toList(),
       destinations = routes.map((route) => route.destination).toList();
 
+  final List<Widget> screens;
+  final List<NavigationDestination Function(BuildContext)> destinations;
+
   @override
   Widget build(BuildContext context) {
+    TextTheme textTheme = createTextTheme(context, display: "Lato", body: "Lato");
+    TempoTheme theme = TempoTheme(textTheme);
+
     return MaterialApp(
       title: F.title,
-      theme: lightTheme,
-      darkTheme: darkTheme,
+      theme: theme.light(),
+      darkTheme: theme.dark(),
       themeMode: ThemeMode.system,
       home: HomeScreen(screens: screens, destinations: destinations),
       debugShowCheckedModeBanner: false,
