@@ -1,38 +1,7 @@
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flux/foundation/task.dart';
-import 'package:flux/editor.dart';
 
-class TaskSelectionNotifier extends StateNotifier<Set<String>> {
-  TaskSelectionNotifier() : super({});
-
-  bool isSelected(String taskID) => state.contains(taskID);
-
-  void select(String taskID) {
-    state = {...state, taskID};
-  }
-
-  void deselect(String taskID) {
-    state = {...state}..remove(taskID);
-  }
-
-  void toggle(String taskID) {
-    if (isSelected(taskID)) {
-      deselect(taskID);
-    } else {
-      select(taskID);
-    }
-  }
-
-  void clear() {
-    state = {};
-  }
-}
-
-final taskSelectionProvider =
-    StateNotifierProvider<TaskSelectionNotifier, Set<String>>(
-      (ref) => TaskSelectionNotifier(),
-    );
+import 'package:tempo/core/editor/super_editor.dart';
+import 'package:tempo/utils/logging.dart';
 
 ExecutionInstruction escToDeselectTask({
   required SuperEditorContext editContext,
@@ -70,13 +39,34 @@ ExecutionInstruction escToDeselectTask({
     return ExecutionInstruction.continueExecution;
   }
 
-  editContext.editor.execute([DeselectTaskRequest(node.id)]);
+  // editContext.editor.execute([DeselectTaskRequest(node.id)]);
 
   return ExecutionInstruction.haltExecution;
 }
 
-class DeselectTaskRequest extends EditRequest {
+class TaskSelectionRequest extends EditRequest {
   final String taskID;
 
-  DeselectTaskRequest(this.taskID);
+  TaskSelectionRequest(this.taskID);
+}
+
+class TaskSelectionCommand extends EditCommand {
+  final String taskID;
+
+  TaskSelectionCommand(this.taskID);
+
+  @override
+  void execute(EditContext context, CommandExecutor executor) {
+    final document = context.document;
+
+    final task = document.getNodeById(taskID);
+    if (task is! TaskNode) {
+      // The specified node isn't a task. Nothing for us to indent.
+      return;
+    }
+
+    document.replaceNodeById(task.id, task.copyTaskWith());
+
+    executor.logChanges([DocumentEdit(NodeChangeEvent(task.id))]);
+  }
 }

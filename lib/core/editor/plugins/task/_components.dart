@@ -1,25 +1,22 @@
-import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flux/foundation/task.dart';
-import 'package:flux/editor.dart';
-import 'package:flux/utils/logging.dart';
+import 'package:tempo/core/models/task.dart';
+import 'package:tempo/core/editor/super_editor.dart';
+import 'package:tempo/infrastructure/_logging.dart';
+import 'package:tempo/utils/logging.dart';
 
 /// Styles all task components to apply top padding
-final taskStyles = StyleRule(const BlockSelector("task"), (document, node) {
+final taskStyles = StyleRule(taskSelector, (document, node) {
   if (node is! TaskNode) {
     return {};
   }
 
-  return {Styles.padding: const CascadingPadding.only(top: 24)};
+  return {Styles.padding: const CascadingPadding.only(top: 12)};
 });
 
 class TaskComponentBuilder extends ComponentBuilder {
-  TaskComponentBuilder(this._editor);
-
-  final Editor _editor;
+  TaskComponentBuilder();
+  Editor? editor;
 
   @override
   TaskComponentViewModel? createViewModel(
@@ -30,24 +27,20 @@ class TaskComponentBuilder extends ComponentBuilder {
       return null;
     }
 
-    final textDirection = getParagraphDirection(node.name.toPlainText());
+    final textDirection = getParagraphDirection(node.title.toPlainText());
 
     return TaskComponentViewModel(
       nodeId: node.id,
       padding: EdgeInsets.zero,
       indent: node.indent,
       status: node.task.status,
-      changeStatus: (TaskStatus status) {
-        _editor.execute([
-          ChangeTaskStatusRequest(nodeId: node.id, status: status),
-        ]);
-      },
-      text: node.name,
+      changeStatus: (TaskStatus status) {},
+      text: node.title,
       textDirection: textDirection,
       textAlignment:
           textDirection == TextDirection.ltr ? TextAlign.left : TextAlign.right,
       textStyleBuilder: noStyleBuilder,
-      selectionColor: const Color(0x00000000),
+      selectionColor: Colors.blue.shade300,
     );
   }
 
@@ -56,13 +49,14 @@ class TaskComponentBuilder extends ComponentBuilder {
     SingleColumnDocumentComponentContext componentContext,
     SingleColumnLayoutComponentViewModel componentViewModel,
   ) {
-    if (componentViewModel is! TaskComponentViewModel) {
+    if (componentViewModel is! TaskComponentViewModel || editor == null) {
       return null;
     }
 
     return TaskComponent(
       key: componentContext.componentKey,
       viewModel: componentViewModel,
+      editor: editor as Editor,
       showDebugPaint: true,
     );
   }
@@ -83,6 +77,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
     this.inlineWidgetBuilders = const [],
     this.textDirection = TextDirection.ltr,
     this.textAlignment = TextAlign.left,
+    this.isSelected = false,
     this.selection,
     required this.selectionColor,
     this.highlightWhenEmpty = false,
@@ -123,6 +118,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
   TextDirection textDirection;
   @override
   TextAlign textAlignment;
+  bool isSelected;
   @override
   TextSelection? selection;
   @override
@@ -216,21 +212,24 @@ double defaultTaskIndentCalculator(TextStyle textStyle, int indent) {
 ///
 /// The appearance of a [TaskComponent] is configured by the given
 /// [viewModel].
-class TaskComponent extends ConsumerStatefulWidget {
+class TaskComponent extends StatefulWidget {
   const TaskComponent({
     super.key,
+    required this.editor,
     required this.viewModel,
     this.showDebugPaint = false,
   });
 
   final TaskComponentViewModel viewModel;
   final bool showDebugPaint;
+  bool get isSelected => viewModel.isSelected;
+  final Editor editor;
 
   @override
-  TaskComponentState createState() => TaskComponentState();
+  State<TaskComponent> createState() => TaskComponentState();
 }
 
-class TaskComponentState extends ConsumerState<TaskComponent>
+class TaskComponentState extends State<TaskComponent>
     with ProxyDocumentComponent<TaskComponent>, ProxyTextComposable {
   final _textKey = GlobalKey();
 
@@ -259,61 +258,90 @@ class TaskComponentState extends ConsumerState<TaskComponent>
   }
 
   @override
-  Widget build(BuildContext context) {
-    final selectionNotifier = ref.watch(taskSelectionProvider.notifier);
-    final selectionTaskIDs = ref.watch(taskSelectionProvider);
-    final isSelected = selectionTaskIDs.contains(widget.viewModel.nodeId);
+  NodePosition? getPositionAtOffset(Offset localOffset) {
+    final node = document.getNodeById(widget.viewModel.nodeId) as TaskNode;
 
-    return GestureDetector(
-      onTap: () {
-        selectionNotifier.toggle(widget.viewModel.nodeId);
-        logger.d("${widget.viewModel.nodeId} selected=?=$isSelected");
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color:
-              isSelected
-                  ? Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer.withValues(alpha: 0.3)
-                  : Colors.transparent,
+    if (!node.inEditMode) {
+      return TextNodePosition(offset: 0);
+    }
+
+    return super.getPositionAtOffset(localOffset);
+  }
+
+  Editor get editor => widget.editor;
+  Document get document => editor.document;
+  TaskNode get node =>
+      document.getNodeById(widget.viewModel.nodeId) as TaskNode;
+
+  void _onTap() {
+    if (!node.inEditMode) {
+      editor.execute([
+        ChangeSelectionRequest(
+          DocumentSelection(
+            base: DocumentPosition(
+              nodeId: node.id,
+              nodePosition: const TextNodePosition(offset: 0),
+            ),
+            extent: DocumentPosition(
+              nodeId: node.id,
+              nodePosition: TextNodePosition(offset: node.text.length),
+            ),
+          ),
+          SelectionChangeType.placeCaret,
+          SelectionReason.userInteraction,
         ),
-        child: Directionality(
-          textDirection: widget.viewModel.textDirection,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
+      ]);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // return Container(
+    //   decoration: BoxDecoration(
+    //     borderRadius: BorderRadius.circular(8),
+    //     color: widget.isSelected ? widget.viewModel.selectionColor : null,
+    //   ),
+    // pluginTaskLog.finest('size: ${context.size}');
+    return Directionality(
+      textDirection: widget.viewModel.textDirection,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 4,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // SizedBox(
-                  //   width: widget.viewModel.indentCalculator(
-                  //     widget.viewModel.textStyleBuilder({}),
-                  //     widget.viewModel.indent,
-                  //   ),
-                  // ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8, right: 4),
-                    child: TaskStatusWidget(
-                      status: widget.viewModel.status,
-                      onChange: (status) {
-                        widget.viewModel.changeStatus(status);
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: TaskTitleWidget(
-                      viewModel: widget.viewModel,
-                      textKey: _textKey,
-                    ),
-                  ),
-                ],
+              // SizedBox(
+              //   width: widget.viewModel.indentCalculator(
+              //     widget.viewModel.textStyleBuilder({}),
+              //     widget.viewModel.indent,
+              //   ),
+              // ),
+              TaskStatusWidget(
+                status: widget.viewModel.status,
+                onChange: (status) {
+                  widget.viewModel.changeStatus(status);
+                },
               ),
-              if (isSelected) Row(children: [_buildQuickActions()]),
+              Expanded(
+                child: TextComponent(
+                  key: _textKey,
+                  text: widget.viewModel.text,
+                  textDirection: widget.viewModel.textDirection,
+                  textAlign: widget.viewModel.textAlignment,
+                  textStyleBuilder: _computeStyles,
+                  inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
+                  // textSelection: widget.viewModel.selection,
+                  selectionColor: widget.viewModel.selectionColor,
+                  highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
+                  underlines: widget.viewModel.createUnderlines(),
+                  showDebugPaint: true,
+                ),
+              ),
             ],
           ),
-        ),
+          // if (widget.isSelected) Row(children: [_buildQuickActions()]),
+        ],
       ),
     );
   }
@@ -350,5 +378,122 @@ class TaskComponentState extends ConsumerState<TaskComponent>
 
     // logger.d("task nodeID=$nodeID is: ${widget.viewModel.isSelected}");
     // TODO implement editing mode on the task itself...
+  }
+}
+
+class TaskStatusWidget extends StatefulWidget {
+  final TaskStatus status;
+  final Function(TaskStatus status) onChange;
+
+  const TaskStatusWidget({
+    super.key,
+    required this.status,
+    required this.onChange,
+  });
+
+  @override
+  State<TaskStatusWidget> createState() => _TaskStatusWidgetState();
+}
+
+class _TaskStatusWidgetState extends State<TaskStatusWidget>
+    with SingleTickerProviderStateMixin {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => _statusChanger(context),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 4.0),
+        child: Icon(
+          widget.status.icon,
+          color: ColorScheme.of(context).primary,
+          applyTextScaling: true,
+          semanticLabel: widget.status.toDisplayString(),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChanger(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final option in widget.status.eligibleTransitions)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ActionChip(
+                avatar: option.buildIcon(context),
+                label: Text(option.toDisplayString()),
+                backgroundColor:
+                    widget.status == option
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : null,
+                onPressed: () => widget.onChange(option),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class TaskTitleWidget extends StatefulWidget {
+  final TaskComponentViewModel viewModel;
+  final GlobalKey<State<StatefulWidget>> textKey;
+
+  const TaskTitleWidget({
+    super.key,
+    required this.viewModel,
+    required this.textKey,
+  });
+
+  @override
+  State<TaskTitleWidget> createState() => _TaskTitleWidgetState();
+}
+
+class _TaskTitleWidgetState extends State<TaskTitleWidget>
+    with SingleTickerProviderStateMixin {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  /// Computes the [TextStyle] for this task's inner [TextComponent].
+  TextStyle _computeStyles(Set<Attribution> attributions) {
+    // Show a strikethrough across the entire task if it's complete.
+    final style = widget.viewModel.textStyleBuilder(attributions);
+    return widget.viewModel.status.isCompleted
+        ? style.copyWith(
+          decoration:
+              style.decoration == null
+                  ? TextDecoration.lineThrough
+                  : TextDecoration.combine([
+                    TextDecoration.lineThrough,
+                    style.decoration!,
+                  ]),
+        )
+        : style;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextComponent(
+      key: widget.textKey,
+      text: widget.viewModel.text,
+      textDirection: widget.viewModel.textDirection,
+      textAlign: widget.viewModel.textAlignment,
+      textStyleBuilder: _computeStyles,
+      inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
+      // textSelection: widget.viewModel.selection,
+      selectionColor: widget.viewModel.selectionColor,
+      highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
+      underlines: widget.viewModel.createUnderlines(),
+    );
   }
 }
