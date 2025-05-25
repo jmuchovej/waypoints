@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/core/editor/super_editor.dart';
-import 'package:tempo/infrastructure/_logging.dart';
 import 'package:tempo/infrastructure/platform.dart';
 
 import '_keybinds.dart';
@@ -40,22 +39,13 @@ class Motion extends ValueNotifier<MotionMode> implements Editable {
   void activateMobile() => value = MotionMode.mobile;
 
   @override
-  void onTransactionEnd(List<EditEvent> edits) {
-    // TODO: implement onTransactionEnd
-    return;
-  }
+  void onTransactionEnd(List<EditEvent> edits) {}
 
   @override
-  void onTransactionStart() {
-    // TODO: implement onTransactionStart
-    return;
-  }
+  void onTransactionStart() {}
 
   @override
-  void reset() {
-    // TODO: implement reset
-    return;
-  }
+  void reset() {}
 }
 
 class MotionPlugin extends SuperEditorPlugin {
