@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/flavors.dart';
-import 'package:tempo/objectbox.dart';
-import 'package:tempo/pages/home.dart';
+import 'package:tempo/src/database/objectbox.dart';
 import 'package:tempo/pages/projects.dart';
-import 'package:tempo/modules/flux/pages/tasks.dart';
+import 'package:tempo/flux/pages/tasks.dart';
 import 'package:tempo/theme/theme.dart';
 
 late ObjectBox obx;
@@ -81,6 +80,44 @@ class Tempo extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       // debugShowMaterialGrid: true,
       // initialRoute: "/",
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  final List<Widget> screens;
+  final List<NavigationDestination Function(BuildContext)> destinations;
+
+  const HomeScreen({
+    super.key,
+    required this.screens,
+    required this.destinations,
+  });
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: widget.screens[_selectedIndex],
+      backgroundColor: ColorScheme.of(context).surface,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        destinations:
+            widget.destinations
+                .map((destination) => destination(context))
+                .toList(),
+      ),
     );
   }
 }

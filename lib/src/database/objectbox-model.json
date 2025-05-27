@@ -1,0 +1,246 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:3471702328273018748",
+      "lastPropertyId": "11:9031194294876340968",
+      "name": "ActivityEntity",
+      "properties": [
+        {
+          "id": "1:5931537194768865077",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8332979111981637129",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:2095270453480913270",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:1912902288360065195",
+          "name": "startDate",
+          "type": 10
+        },
+        {
+          "id": "5:3349891592589606227",
+          "name": "endDate",
+          "type": 10
+        },
+        {
+          "id": "6:3314648905005835354",
+          "name": "tags",
+          "type": 30
+        },
+        {
+          "id": "7:1613878364808957853",
+          "name": "taskId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "1:8620383880995841245",
+          "relationTarget": "TaskEntity"
+        },
+        {
+          "id": "8:5652289673302938019",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "9:2583403339137719321",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "10:9168541774733154514",
+          "name": "dbKind",
+          "type": 6
+        },
+        {
+          "id": "11:9031194294876340968",
+          "name": "dbStatus",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:36414948713215824",
+      "lastPropertyId": "5:2998774070410253891",
+      "name": "ProjectEntity",
+      "properties": [
+        {
+          "id": "1:3447992293178846754",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8976043581845137453",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:3434422692853596346",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "4:4906644364146336698",
+          "name": "titlePlainText",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "2:4459407214553810135"
+        },
+        {
+          "id": "5:2998774070410253891",
+          "name": "parentId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "3:2776346777332734208",
+          "relationTarget": "ProjectEntity"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:6582267033951405794",
+      "lastPropertyId": "21:1204419577543125508",
+      "name": "TaskEntity",
+      "properties": [
+        {
+          "id": "1:4892708261745879796",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:470727257194276490",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:3069893233448009325",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "4:2483928275695402842",
+          "name": "titlePlainText",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "4:5908242421724091460"
+        },
+        {
+          "id": "5:2221909574169205834",
+          "name": "createDate",
+          "type": 10
+        },
+        {
+          "id": "6:4848375574264389248",
+          "name": "modifyDate",
+          "type": 10
+        },
+        {
+          "id": "7:390075223797711017",
+          "name": "startDate",
+          "type": 10
+        },
+        {
+          "id": "8:4007098929926165451",
+          "name": "endDate",
+          "type": 10
+        },
+        {
+          "id": "9:4018940901835854242",
+          "name": "scheduledDate",
+          "type": 10
+        },
+        {
+          "id": "10:7372981215260909434",
+          "name": "dueDate",
+          "type": 10
+        },
+        {
+          "id": "11:1501858051205611772",
+          "name": "waitDate",
+          "type": 10
+        },
+        {
+          "id": "12:8323886595701755647",
+          "name": "untilDate",
+          "type": 10
+        },
+        {
+          "id": "13:1142263616855060253",
+          "name": "recurrence",
+          "type": 9
+        },
+        {
+          "id": "14:5056306821884838706",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "15:2356629153744318997",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "16:1688157770170896586",
+          "name": "parentId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "5:5660178738258184621",
+          "relationTarget": "TaskEntity"
+        },
+        {
+          "id": "17:7930670945680887692",
+          "name": "projectId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "6:1422842143143287317",
+          "relationTarget": "ProjectEntity"
+        },
+        {
+          "id": "18:4470741490884719054",
+          "name": "obxStatus",
+          "type": 6
+        },
+        {
+          "id": "19:109335889520322542",
+          "name": "obxEnergyEstimate",
+          "type": 6
+        },
+        {
+          "id": "20:2467153179031370431",
+          "name": "obxTimeEstimate",
+          "type": 6
+        },
+        {
+          "id": "21:1204419577543125508",
+          "name": "obxPriority",
+          "type": 6
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "3:6582267033951405794",
+  "lastIndexId": "6:1422842143143287317",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

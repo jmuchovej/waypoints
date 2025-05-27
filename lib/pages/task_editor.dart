@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/app.dart' show obx;
-import 'package:tempo/core/editor/super_editor.dart';
+import 'package:tempo/src/editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
-import 'package:tempo/core/models/task.dart';
-import 'package:tempo/core/models/project.dart';
+import 'package:tempo/src/database/objectbox/models/task.dart';
+import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/utils/date_formatter.dart';
 import 'package:tempo/utils/logging.dart' show logger;
 

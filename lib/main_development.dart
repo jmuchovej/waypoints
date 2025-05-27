@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tempo/infrastructure/_logging.dart';
+import 'package:tempo/src/infrastructure/_logging.dart';
 import 'package:tempo/dev/database/seed.dart';
 import 'package:tempo/dev/screens/devtools.dart';
-import 'package:tempo/objectbox.dart';
+import 'package:tempo/src/database/objectbox.dart';
 import 'package:tempo/app.dart';
 
 Future<void> preRunApp() async {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/app.dart';
-import 'package:tempo/core/models/task.dart';
-import 'package:tempo/core/models/project.dart';
+import 'package:tempo/src/database/objectbox/models/task.dart';
+import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/pages/task_editor.dart';
 import 'package:tempo/ui/widgets/task.dart';
 import 'package:uuid/uuid.dart';

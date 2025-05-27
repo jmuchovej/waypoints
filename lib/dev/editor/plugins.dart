@@ -1,4 +1,4 @@
-import 'package:tempo/core/editor/super_editor.dart';
+import 'package:tempo/src/editor/super_editor.dart';
 
 class DevToolsPlugin implements SuperEditorPlugin {
   @override

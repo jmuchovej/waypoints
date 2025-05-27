@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:tempo/app.dart' show obx;
-// import 'package:tempo/core/editor_appflowy/appflowy_editor.dart';
-import 'package:tempo/core/editor/super_editor.dart';
-import 'package:tempo/infrastructure/_logging.dart';
+import 'package:tempo/src/infrastructure/_logging.dart';
 import 'package:uuid/uuid.dart';
-import 'package:tempo/core/models/task.dart';
-import 'package:tempo/core/models/project.dart';
-import 'package:tempo/core/models/activity.dart';
+import 'package:tempo/src/database/objectbox/models/task.dart';
+import 'package:tempo/src/database/objectbox/models/project.dart';
+import 'package:tempo/src/database/objectbox/models/activity.dart';
 
 class SeedDataService {
   static bool _hasSeeded = false;

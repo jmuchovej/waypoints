@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/app.dart';
-import 'package:tempo/core/models/task.dart';
+import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/utils/date_formatter.dart';
 
 class TaskWidget extends StatefulWidget {
