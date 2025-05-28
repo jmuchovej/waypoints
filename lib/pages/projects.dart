@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:super_editor/super_text_field.dart';
 import 'package:tempo/app.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
@@ -168,8 +169,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       itemCount: _projects.length,
       itemBuilder: (context, index) {
         final project = _projects[index];
+        final controller = AttributedTextEditingController(text: project.title);
         return ListTile(
-          title: Text(project.title),
+          title: SuperTextField(textController: controller,),
           subtitle: Text(
             '${project.tasks.length} tasks',
             style: TextStyle(fontSize: 12),
@@ -222,7 +224,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 _projects.map((ProjectEntity project) {
                   return DropdownMenuItem<ProjectEntity>(
                     value: project,
-                    child: Text(project.title),
+                    child: SuperTextField(
+                      textInputAction: TextInputAction.none,
+                      textController: AttributedTextEditingController(text: project.title)
+                    ),
                   );
                 }).toList(),
           ),
@@ -249,15 +254,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _selectedProject!.title,
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  SuperTextField(
+                    textController: AttributedTextEditingController(
+                      text: _selectedProject!.title,
+                    )
+                    // style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  if (_selectedProject!.description.isNotEmpty)
-                    Text(
-                      _selectedProject!.description,
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
+                  // if (_selectedProject!.description.isNotEmpty)
+                  //   Text(
+                  //     _selectedProject!.description.toPlainText(),
+                  //     style: TextStyle(color: Colors.grey[600]),
+                  //   ),
                 ],
               ),
               ElevatedButton.icon(
@@ -305,8 +312,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   void _createNewProject() {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
+    final titleController = AttributedTextEditingController();
+    final descriptionController = AttributedTextEditingController();
 
     showDialog(
       context: context,
@@ -316,22 +323,22 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Project title',
-                    border: OutlineInputBorder(),
-                  ),
-                  autofocus: true,
+                SuperTextField(
+                  textController: titleController,
+                  // decoration: InputDecoration(
+                  //   labelText: 'Project title',
+                  //   border: OutlineInputBorder(),
+                  // ),
+                  // autofocus: true,
                 ),
                 SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
+                SuperTextField(
+                  textController: descriptionController,
+                  // decoration: InputDecoration(
+                  //   labelText: 'Description',
+                  //   border: OutlineInputBorder(),
+                  // ),
+                  // maxLines: 3,
                 ),
               ],
             ),
@@ -342,11 +349,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (titleController.text.trim().isNotEmpty) {
+                  if (titleController.text.isNotEmpty) {
                     final newProject = ProjectEntity(
                       uuid: const Uuid().v4(),
-                      title: titleController.text.trim(),
-                      description: descriptionController.text.trim(),
+                      title: titleController.text,
+                      // description: descriptionController.text.trim(),
                     );
 
                     obx.putProject(newProject);
@@ -366,10 +373,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   void _editProject(ProjectEntity project) {
-    final titleController = TextEditingController(text: project.title);
-    final descriptionController = TextEditingController(
-      text: project.description,
-    );
+    final titleController = AttributedTextEditingController(text: project.title);
 
     showDialog(
       context: context,
@@ -379,22 +383,13 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Project title',
-                    border: OutlineInputBorder(),
-                  ),
-                  autofocus: true,
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
+                SuperTextField(
+                  textController: titleController,
+                  // decoration: InputDecoration(
+                  //   labelText: 'Project title',
+                  //   border: OutlineInputBorder(),
+                  // ),
+                  // autofocus: true,
                 ),
               ],
             ),
@@ -405,9 +400,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (titleController.text.trim().isNotEmpty) {
-                    project.title = titleController.text.trim();
-                    project.description = descriptionController.text.trim();
+                  if (titleController.text.isNotEmpty) {
+                    project.title = titleController.text;
 
                     obx.putProject(project);
                     Navigator.pop(context);

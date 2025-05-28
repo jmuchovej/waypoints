@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:tempo/app.dart' show obx;
+import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/infrastructure/_logging.dart';
 import 'package:uuid/uuid.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
@@ -25,7 +26,7 @@ class SeedDataService {
     if ((taskCount == 0 && projectCount == 0) || force) {
       await _seedSampleData();
       _hasSeeded = true;
-      devtoolsDatabaseLog.fine('All data cleared from database');
+      devtoolsDatabaseLog.fine('All data seeded to database');
     } else {
       devtoolsDatabaseLog.fine('All data cleared from database');
     }
@@ -64,23 +65,23 @@ class SeedDataService {
     return [
       ProjectEntity(
         uuid: const Uuid().v4(),
-        title: 'Personal',
-        description: 'Personal tasks and projects',
+        title: AttributedText('Personal'),
+        // description: 'Personal tasks and projects',
       ),
       ProjectEntity(
         uuid: const Uuid().v4(),
-        title: 'Work',
-        description: 'Work-related tasks and projects',
+        title: AttributedText('Work'),
+        // description: 'Work-related tasks and projects',
       ),
       ProjectEntity(
         uuid: const Uuid().v4(),
-        title: 'Health',
-        description: 'Health and wellness tasks',
+        title: AttributedText('Health'),
+        // description: 'Health and wellness tasks',
       ),
       ProjectEntity(
         uuid: const Uuid().v4(),
-        title: 'Research',
-        description: 'Research projects and literature review',
+        title: AttributedText('Research'),
+        // description: 'Research projects and literature review',
       ),
     ];
   }
@@ -91,7 +92,7 @@ class SeedDataService {
     final tasks = <TaskEntity>[];
 
     // Create different tasks based on project type
-    switch (project.title) {
+    switch (project.titlePlainText) {
       case 'Personal':
         tasks.addAll([
           _createTask(
@@ -270,7 +271,7 @@ class SeedDataService {
     final now = DateTime.now();
     final task = TaskEntity(
       uuid: const Uuid().v4(),
-      title: title,
+      title: AttributedText(title),
       // notes: Delta()..insert(notes),
       createDate: now.subtract(const Duration(days: 2)),
       modifyDate: now,

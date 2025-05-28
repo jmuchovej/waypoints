@@ -21,10 +21,7 @@ class ProjectEntity with AttributedTextEntity {
   @Backlink()
   final children = ToMany<ProjectEntity>();
 
-  ProjectEntity({
-    required this.uuid,
-    AttributedText? title,
-  }) {
+  ProjectEntity({required this.uuid, AttributedText? title}) {
     this.title = title ?? AttributedText('');
   }
 

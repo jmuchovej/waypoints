@@ -1,111 +1,172 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 
-extension MultiAttributionSpanJSON on MultiAttributionSpan {
+/// Extension methods for AttributedText JSON serialization
+extension AttributedTextJson on AttributedText {
+  /// Convert AttributedText to a JSON-serializable Map
   Map<String, dynamic> toJson() {
-    return {'start': start, 'end': end, 'attributions': attributions.toList()};
-  }
-
-  static MultiAttributionSpan fromJson(Map<String, dynamic> json) {
-    final {
-      'start': int start,
-      'end': int end,
-      'attributions': List<String> attributions,
-    } = json;
-    return MultiAttributionSpan(
-      attributions: Set.from(attributions.map((a) => NamedAttribution(a))),
-      start: start,
-      end: end,
-    );
-  }
-}
-
-extension AttributedTextJSON on AttributedText {
-  Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> json = {
       'text': toPlainText(),
-      'spans': computeAttributionSpans().map((span) => span.toJson()).toList(),
-      'version': 1,
+      'spans': <Map<String, dynamic>>[],
     };
+
+    json["spans"] =
+        spans
+            .collapseSpans(contentLength: length)
+            .map(
+              (ms) => {
+                "start": ms.start,
+                "end": ms.end,
+                'attributions':
+                    ms.attributions.map((attr) => attr.toJson()).toList(),
+              },
+            )
+            .toList();
+
+    return json;
   }
 
-  static AttributedText fromJson(Map<String, dynamic> json) {
-    if (json.isEmpty) return AttributedText();
+  /// Convert AttributedText to JSON string
+  String toJsonString() => jsonEncode(toJson());
 
+  /// Create AttributedText from a JSON Map
+  static AttributedText fromJson(Map<String, dynamic> json) {
     final text = json['text'] as String? ?? '';
-    final multiSpans =
-        (json['spans'] as List<dynamic>? ?? [])
-            .cast<Map<String, dynamic>>()
-            .map((sj) => MultiAttributionSpanJSON.fromJson(sj))
-            .toList();
-    final attributions = AttributedSpans();
-    for (final multiSpan in multiSpans) {
-      final MultiAttributionSpan(:start, :end) = multiSpan;
-      for (final attribution in multiSpan.attributions) {
-        attributions.addAttribution(
-          newAttribution: attribution,
-          start: start,
-          end: end,
+    final attributedText = AttributedText(text);
+
+    // Add spans if present
+    final spansList = json['spans'] as List<dynamic>? ?? [];
+    for (final spanJson in spansList) {
+      // Handle the Span structure from toJson which has 'attributions' array
+      final attributionsList = spanJson['attributions'] as List<dynamic>? ?? [];
+      final start = spanJson['start'] as int;
+      final end = spanJson['end'] as int;
+
+      // Process each attribution in the span
+      for (final attributionJson in attributionsList) {
+        final attribution = AttributionJson.fromJson(
+          attributionJson as Map<String, dynamic>,
         );
+        if (attribution != null) {
+          attributedText.addAttribution(attribution, SpanRange(start, end));
+        }
       }
     }
 
-    return AttributedText(text, attributions);
+    return attributedText;
+  }
+
+  /// Create AttributedText from JSON string
+  static AttributedText fromJsonString(String json) {
+    if (json.isEmpty) return AttributedText();
+    try {
+      final data = jsonDecode(json) as Map<String, dynamic>;
+      return fromJson(data);
+    } catch (e) {
+      // If JSON is invalid, return empty AttributedText
+      return AttributedText();
+    }
   }
 }
 
-extension AttributionJSON on Attribution {
+/// Extension methods for Attribution JSON serialization
+extension AttributionJson on Attribution {
+  /// Convert Attribution to JSON
   Map<String, dynamic> toJson() {
+    // Check for specific attribution types
     switch (this) {
       case NamedAttribution _:
-        return {'type': 'named', 'name': (this as NamedAttribution).name};
-      case LinkAttribution _:
-        return {'type': 'link', 'url': (this as LinkAttribution).plainTextUri};
-      // TODO implement oklch support
-      case ColorAttribution _:
+        return {'type': 'named', 'id': id};
+      case ScriptAttribution(:final type):
+        return {'type': type};
+      case LinkAttribution(:final uri, :final plainTextUri):
         return {
-          'type': 'color',
-          'color': (this as ColorAttribution).color.toString(),
+          'type': id,
+          'url': plainTextUri,
+          'uri': uri?.toString(),
         };
-      case BackgroundColorAttribution _:
-        return {
-          'type': 'background-color',
-          'color': (this as BackgroundColorAttribution).color.toString(),
-        };
-      case FontSizeAttribution _:
-        return {
-          'type': 'font-family',
-          'size': (this as FontSizeAttribution).fontSize,
-        };
-      case FontFamilyAttribution _:
-        return {
-          'type': 'font-family',
-          'family': (this as FontFamilyAttribution).fontFamily,
-        };
+      case FontSizeAttribution(:final fontSize):
+        return {'type': id, 'size': fontSize};
+      case FontFamilyAttribution(:final fontFamily):
+        return {'type': id, 'family': fontFamily};
+      case ColorAttribution(:final color):
+        return {'type': id, 'color': color.toJson()};
+      case BackgroundColorAttribution(:final color):
+        return {'type': id, 'color': color.toJson()};
       default:
-        return {'type': 'unknown', 'attribution': toString()};
+        return {'type': 'unknown', 'as_string': toString()};
     }
   }
 
-  static Attribution fromJson(Map<String, dynamic> json) {
-    final {'type': String type} = json;
-
+  /// Convert JSON back to Attribution
+  static Attribution? fromJson(Map<String, dynamic> json) {
+    final type = json['type'] as String?;
     switch (type) {
       case 'named':
-        return NamedAttribution(json['name'] as String);
+        return NamedAttribution(json['id'] as String);
+
+      case 'superscript':
+        return const ScriptAttribution.superscript();
+
+      case 'subscript':
+        return const ScriptAttribution.subscript();
+
       case 'link':
-        return LinkAttribution(json['url'] as String);
-      case 'color':
-        return ColorAttribution(json['color'] as Color);
-      case 'background-color':
-        return BackgroundColorAttribution(json['color'] as Color);
-      case 'font-size':
+        final url = json['url'] as String;
+        final uriStr = json['uri'] as String?;
+        return uriStr != null
+            ? LinkAttribution(url, Uri.parse(uriStr))
+            : LinkAttribution(url);
+
+      case 'fontSize':
         return FontSizeAttribution(json['size'] as double);
-      case 'font-family':
+
+      case 'fontFamily':
         return FontFamilyAttribution(json['family'] as String);
+
+      case 'color':
+        final colorData = json['color'] as Map<String, double>?;
+        if (colorData != null) {
+          return ColorAttribution(ColorJson.fromJson(colorData));
+        }
+        return null;
+
+      case 'backgroundColor':
+        final colorData = json['color'] as Map<String, double>?;
+        if (colorData != null) {
+          return BackgroundColorAttribution(ColorJson.fromJson(colorData));
+        }
+        return null;
+
       default:
-        final {'attribution': String? attribution} = json;
-        return NamedAttribution('unknown_${attribution ?? 'attribution'}');
+        return null;
     }
+  }
+}
+
+/// Extension to provide easy access to MultiAttributionSpan's attributions
+extension MultiAttributionSpanExtensions on MultiAttributionSpan {
+  /// Get the attributions as a List (instead of Set)
+  List<Attribution> get attributionsList => attributions.toList();
+}
+
+extension ColorJson on Color {
+  Map<String, double> toJson() {
+    return {
+      'r': r,
+      'g': g,
+      'b': b,
+      'a': a,
+    };
+  }
+
+  static Color fromJson(Map<String, double> json) {
+    return Color.fromARGB(
+      json['a'] as int,
+      json['r'] as int,
+      json['g'] as int,
+      json['b'] as int,
+    );
   }
 }

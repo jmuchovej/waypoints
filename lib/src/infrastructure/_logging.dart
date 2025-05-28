@@ -3,7 +3,7 @@ import 'package:logging/logging.dart';
 export 'package:logging/logging.dart'
     show Logger, Level, hierarchicalLoggingEnabled;
 
-import 'package:super_editor/super_editor.dart' hide Logger, initLoggers;
+import 'package:tempo/src/editor/super_editor.dart' hide Logger, initLoggers;
 import 'package:follow_the_leader/follow_the_leader.dart' show FtlLogs;
 
 class LogNames {

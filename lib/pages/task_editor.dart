@@ -5,7 +5,7 @@ import 'package:uuid/uuid.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/utils/date_formatter.dart';
-import 'package:tempo/utils/logging.dart' show logger;
+import 'package:tempo/src/infrastructure.dart';
 
 class TaskEditorScreen extends StatefulWidget {
   final TaskEntity? task;
@@ -61,15 +61,15 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   void _initializeEditor() async {
     // Load projects
     _availableProjects = obx.getProjects();
-    logger.d("Loaded projects:");
+    fluxEditorLog.finest("Loaded projects:");
     for (var project in _availableProjects) {
-      logger.d("- ${project.title}");
+      fluxEditorLog.finest("- ${project.title}");
     }
 
     // Initialize with existing task data or defaults
     if (widget.task != null) {
       _titleController = AttributedTextEditingController(
-        text: AttributedText(widget.task!.title),
+        text: widget.task!.title,
       );
       _dueDate = widget.task!.dueDate;
       _status = widget.task!.status;
@@ -79,9 +79,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       final currentProject = widget.task!.project.target;
       for (final project in _availableProjects) {
         if (currentProject != null && project == currentProject) {
-          logger.d("${project.id} =?= ${currentProject.id}");
-          logger.d("${project.uuid} =?= ${currentProject.uuid}");
-          logger.d("${project.title} =?= ${currentProject.title}");
+          fluxEditorLog.finest("${project.id} =?= ${currentProject.id}");
+          fluxEditorLog.finest("${project.uuid} =?= ${currentProject.uuid}");
+          fluxEditorLog.finest("${project.title} =?= ${currentProject.title}");
           break;
         }
       }
@@ -182,7 +182,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                         _availableProjects.map((project) {
                           return DropdownMenuItem<ProjectEntity?>(
                             value: project,
-                            child: Text(project.title),
+                            child: SuperTextField(
+                              textController: AttributedTextEditingController(text: project.title),
+                            ),
                           );
                         }).toList(),
                   ),
@@ -392,7 +394,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       return;
     }
 
-    final title = _titleController.text.toPlainText().trim();
+    final title = _titleController.text;
 
     if (widget.task == null) {
       // Create new task

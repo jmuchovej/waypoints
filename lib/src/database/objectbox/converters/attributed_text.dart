@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/editor/attributed_text.dart';
@@ -11,19 +10,12 @@ import 'package:tempo/src/editor/attributed_text.dart';
 class ObjectBoxAttributedText {
   /// Convert AttributedText to JSON string for storage
   static String toJson(AttributedText text) {
-    return jsonEncode(text.toJson());
+    return text.toJsonString();
   }
 
   /// Convert JSON string back to AttributedText
   static AttributedText fromJson(String json) {
-    if (json.isEmpty) return AttributedText();
-    try {
-      final data = jsonDecode(json) as Map<String, dynamic>;
-      return AttributedTextJSON.fromJson(data);
-    } catch (e) {
-      // If JSON is invalid, return empty AttributedText
-      return AttributedText();
-    }
+    return AttributedTextJson.fromJsonString(json);
   }
 
   /// Extract plain text for querying
@@ -60,7 +52,10 @@ class ObjectBoxAttributedText {
 mixin AttributedTextEntity {
   /// Helper to get AttributedText from stored JSON
   @protected
-  AttributedText getAttributedText(String jsonString, String fallbackPlainText) {
+  AttributedText getAttributedText(
+    String jsonString,
+    String fallbackPlainText,
+  ) {
     if (jsonString.isEmpty) return AttributedText(fallbackPlainText);
     return ObjectBoxAttributedText.fromJson(jsonString);
   }

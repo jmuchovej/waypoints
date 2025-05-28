@@ -43,7 +43,7 @@ class TaskNode extends TextNode {
     int indent = -1,
     this.inEditMode = false,
   }) : indent = _computeIndentation(task, indent),
-       super(id: task.uuid, text: AttributedText(task.title)) {
+       super(id: task.uuid, text: task.title) {
     // TODO determine how to impute the indentation on-creation
     initAddToMetadata({"blockType": taskAttribution, "inEditMode": inEditMode});
   }
@@ -51,7 +51,7 @@ class TaskNode extends TextNode {
   @override
   String get id => task.uuid;
 
-  AttributedText get title => AttributedText(task.title);
+  AttributedText get title => task.title;
 
   TaskStatus get status => task.status;
   DateTime get dueDate => task.dueDate;
@@ -81,7 +81,7 @@ class TaskNode extends TextNode {
   }) {
     final task = TaskNode.fromUUID(
       id ?? this.id,
-    ).task.copyWith(title: (text ?? title).toPlainText());
+    ).task.copyWith(title: text ?? title);
     return TaskNode.fromTask(task, metadata: metadata ?? this.metadata);
   }
 

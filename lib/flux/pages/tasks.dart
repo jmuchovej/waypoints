@@ -4,7 +4,7 @@ import 'package:tempo/src/editor/plugins/motion/motion.dart';
 import 'package:tempo/src/editor/plugins/node_metadata/node_metadata.dart';
 import 'package:tempo/src/editor/plugins/task/task.dart';
 import 'package:tempo/flux/editor.dart';
-import 'package:tempo/objectbox.g.dart';
+import 'package:tempo/src/database/objectbox.g.dart';
 
 class TasksScreen extends StatelessWidget {
   const TasksScreen({super.key});

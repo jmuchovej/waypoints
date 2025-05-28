@@ -1,13 +1,10 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
-import 'package:path/path.dart';
 import 'package:tempo/src/editor/layers/drag_handles.dart';
 import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/src/infrastructure/_logging.dart';
-import 'package:tempo/utils/logging.dart';
+import 'package:tempo/src/infrastructure.dart';
 
 import 'package:tempo/src/editor/layers/block_highlighter.dart';
 

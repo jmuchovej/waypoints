@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/app.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
+import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/utils/date_formatter.dart';
+import 'package:tempo/src/editor/super_text.dart';
 
 class TaskWidget extends StatefulWidget {
   final TaskEntity task;
@@ -106,6 +108,9 @@ class TaskWidgetState extends State<TaskWidget>
   }
 
   Widget _buildTaskTile(BuildContext context) {
+    final controller = AttributedTextEditingController(
+      text: widget.task.title,
+    );
     final subtitle = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -123,15 +128,7 @@ class TaskWidgetState extends State<TaskWidget>
       ],
     );
     return ListTile(
-      title: Text(
-        widget.task.title,
-        style: TextStyle(
-          decoration:
-              widget.task.status.isCompleted
-                  ? TextDecoration.lineThrough
-                  : null,
-        ),
-      ),
+      title: SuperTextField(textController: controller),
       subtitle: subtitle,
       isThreeLine: subtitle.children.length == 2,
       leading: GestureDetector(

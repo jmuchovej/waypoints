@@ -368,7 +368,7 @@ class TaskComponentState extends State<TaskComponent>
 
   void _handleTaskTap() {
     final nodeID = widget.viewModel.nodeId;
-    logger.d("task tapped! nodeID=$nodeID");
+    pluginTaskLog.fine("task tapped! nodeID=$nodeID");
     // if (!isSelectedectionManager.isTaskSelected(nodeID)) {
     //   widget.selectionManager.selectTask(nodeID);
     //   logger.d("selected task! nodeID=$nodeID");

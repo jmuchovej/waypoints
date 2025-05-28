@@ -71,45 +71,6 @@
       "relations": []
     },
     {
-      "id": "2:36414948713215824",
-      "lastPropertyId": "5:2998774070410253891",
-      "name": "ProjectEntity",
-      "properties": [
-        {
-          "id": "1:3447992293178846754",
-          "name": "id",
-          "type": 6,
-          "flags": 1
-        },
-        {
-          "id": "2:8976043581845137453",
-          "name": "uuid",
-          "type": 9
-        },
-        {
-          "id": "3:3434422692853596346",
-          "name": "titleJson",
-          "type": 9
-        },
-        {
-          "id": "4:4906644364146336698",
-          "name": "titlePlainText",
-          "type": 9,
-          "flags": 2048,
-          "indexId": "2:4459407214553810135"
-        },
-        {
-          "id": "5:2998774070410253891",
-          "name": "parentId",
-          "type": 11,
-          "flags": 520,
-          "indexId": "3:2776346777332734208",
-          "relationTarget": "ProjectEntity"
-        }
-      ],
-      "relations": []
-    },
-    {
       "id": "3:6582267033951405794",
       "lastPropertyId": "21:1204419577543125508",
       "name": "TaskEntity",
@@ -230,17 +191,70 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "5:7373679035215447225",
+      "lastPropertyId": "5:4514279718420578978",
+      "name": "ProjectEntity",
+      "properties": [
+        {
+          "id": "1:5842251814498208370",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5134835783431281584",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:6348849762496155262",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "4:5515910637713855371",
+          "name": "titlePlainText",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "9:838185840127892101"
+        },
+        {
+          "id": "5:4514279718420578978",
+          "name": "parentId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "10:1298323376581432664",
+          "relationTarget": "ProjectEntity"
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "3:6582267033951405794",
-  "lastIndexId": "6:1422842143143287317",
+  "lastEntityId": "5:7373679035215447225",
+  "lastIndexId": "10:1298323376581432664",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
   "modelVersionParserMinimum": 5,
-  "retiredEntityUids": [],
+  "retiredEntityUids": [
+    36414948713215824,
+    587039245591597227
+  ],
   "retiredIndexUids": [],
-  "retiredPropertyUids": [],
+  "retiredPropertyUids": [
+    3447992293178846754,
+    8976043581845137453,
+    3434422692853596346,
+    4906644364146336698,
+    2998774070410253891,
+    6570237329210478381,
+    5007328769585178892,
+    7013170914439577670,
+    7861254809516415832,
+    6364421086383439270
+  ],
   "retiredRelationUids": [],
   "version": 1
 }
