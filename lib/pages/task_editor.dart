@@ -7,6 +7,7 @@ import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/utils/date_formatter.dart';
 import 'package:tempo/src/infrastructure.dart';
+import 'package:jiffy/jiffy.dart';
 
 class TaskEditorScreen extends StatefulWidget {
   final TaskEntity? task;
@@ -194,7 +195,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                 // Due date
                 _buildPillButton(
                   label: 'Due',
-                  value: _formatRelativeDate(_dueDate),
+                  value: Jiffy.parseFromDateTime(_dueDate).fromNow(),
                   icon: Icons.calendar_today_outlined,
                   onTap: _selectDueDate,
                 ),
@@ -369,34 +370,6 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         ),
       ),
     );
-  }
-
-  String _formatRelativeDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final dateOnly = DateTime(date.year, date.month, date.day);
-    
-    final difference = dateOnly.difference(today).inDays;
-    
-    if (difference == 0) return 'Today';
-    if (difference == 1) return 'Tomorrow';
-    if (difference == -1) return 'Yesterday';
-    if (difference > 1 && difference <= 6) return 'In $difference days';
-    if (difference < -1 && difference >= -6) return '${-difference} days ago';
-    if (difference >= 7 && difference < 14) return 'Next week';
-    if (difference <= -7 && difference > -14) return 'Last week';
-    
-    // For dates further out, show month and day
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final month = months[date.month - 1];
-    
-    // If it's the same year, just show month and day
-    if (date.year == now.year) {
-      return '$month ${date.day}';
-    }
-    
-    // Otherwise show full date
-    return '$month ${date.day}, ${date.year}';
   }
 
   void _showProjectSelector() {
