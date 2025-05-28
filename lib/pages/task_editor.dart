@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/app.dart' show obx;
 import 'package:tempo/src/editor/super_editor.dart';
+import 'package:tempo/src/editor/super_text.dart';
 import 'package:uuid/uuid.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
@@ -182,8 +183,9 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                         _availableProjects.map((project) {
                           return DropdownMenuItem<ProjectEntity?>(
                             value: project,
-                            child: SuperTextField(
-                              textController: AttributedTextEditingController(text: project.title),
+                            child: TempoTextField(
+                              controller: AttributedTextEditingController(text: project.title),
+                              readOnly: true,
                             ),
                           );
                         }).toList(),
@@ -452,16 +454,13 @@ Widget _buildTextField({
       ),
       borderRadius: BorderRadius.circular(4),
     ),
-    child: SuperTextField(
+    child: TempoTextField(
       focusNode: focusNode,
-      textController: controller,
+      hintText: AttributedText(label),
+      controller: controller,
       minLines: minLines,
       maxLines: maxLines,
       padding: const EdgeInsets.all(8),
-      hintBuilder: (context) {
-        return Text(label, style: TextStyle(color: Colors.grey, fontSize: 12));
-      },
-      hintBehavior: HintBehavior.displayHintUntilTextEntered,
     ),
   );
 }

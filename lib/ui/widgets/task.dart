@@ -128,7 +128,7 @@ class TaskWidgetState extends State<TaskWidget>
       ],
     );
     return ListTile(
-      title: SuperTextField(textController: controller),
+      title: TempoTextField(controller: controller),
       subtitle: subtitle,
       isThreeLine: subtitle.children.length == 2,
       leading: GestureDetector(

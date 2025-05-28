@@ -4,6 +4,7 @@ import 'package:tempo/app.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/pages/task_editor.dart';
+import 'package:tempo/src/editor/super_text.dart';
 import 'package:tempo/ui/widgets/task.dart';
 import 'package:uuid/uuid.dart';
 
@@ -171,7 +172,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         final project = _projects[index];
         final controller = AttributedTextEditingController(text: project.title);
         return ListTile(
-          title: SuperTextField(textController: controller,),
+          title: TempoTextField(controller: controller,),
           subtitle: Text(
             '${project.tasks.length} tasks',
             style: TextStyle(fontSize: 12),
@@ -224,9 +225,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 _projects.map((ProjectEntity project) {
                   return DropdownMenuItem<ProjectEntity>(
                     value: project,
-                    child: SuperTextField(
-                      textInputAction: TextInputAction.none,
-                      textController: AttributedTextEditingController(text: project.title)
+                    child: TempoTextField(
+                      controller: AttributedTextEditingController(text: project.title),
+                      readOnly: true,
                     ),
                   );
                 }).toList(),
@@ -244,6 +245,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Widget _buildProjectContent() {
+    final projectController = AttributedTextEditingController(text: _selectedProject!.title);
     return Column(
       children: [
         Padding(
@@ -254,10 +256,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SuperTextField(
-                    textController: AttributedTextEditingController(
-                      text: _selectedProject!.title,
-                    )
+                  TempoTextField(
+                    controller: projectController,
                     // style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   // if (_selectedProject!.description.isNotEmpty)
@@ -323,8 +323,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SuperTextField(
-                  textController: titleController,
+                TempoTextField(
+                  controller: titleController,
                   // decoration: InputDecoration(
                   //   labelText: 'Project title',
                   //   border: OutlineInputBorder(),
@@ -332,8 +332,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   // autofocus: true,
                 ),
                 SizedBox(height: 16),
-                SuperTextField(
-                  textController: descriptionController,
+                TempoTextField(
+                  controller: descriptionController,
                   // decoration: InputDecoration(
                   //   labelText: 'Description',
                   //   border: OutlineInputBorder(),
@@ -383,8 +383,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SuperTextField(
-                  textController: titleController,
+                TempoTextField(
+                  controller: titleController,
                   // decoration: InputDecoration(
                   //   labelText: 'Project title',
                   //   border: OutlineInputBorder(),

@@ -60,6 +60,8 @@ dependencies:
   drift: ^2.26.1
   drift_flutter: ^0.2.4
   meta: ^1.16.0
+  super_text_layout: ^0.1.19
+  super_editor_markdown: ^0.1.7
 
 dev_dependencies:
   flutter_test:

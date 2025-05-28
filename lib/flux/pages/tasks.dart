@@ -35,7 +35,8 @@ class TasksScreen extends StatelessWidget {
       insertModeColor: ColorScheme.of(context).secondaryContainer,
     );
     final taskPlugin = TaskPlugin();
-    final plugins = {nodeMetadataPlugin, motionPlugin, taskPlugin};
+    final markdownPlugin = MarkdownInlineUpstreamSyntaxPlugin();
+    final plugins = {nodeMetadataPlugin, motionPlugin, markdownPlugin, taskPlugin};
 
     return Scaffold(
       // appBar: AppBar(title: const Text('Tasks')),
