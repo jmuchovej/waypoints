@@ -35,8 +35,8 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   @override
   void initState() {
     super.initState();
-    _titleFocusNode = FocusNode();
-    _descriptionFocusNode = FocusNode();
+    _titleFocusNode = FocusNode(debugLabel: "task.editor.title");
+    _descriptionFocusNode = FocusNode(debugLabel: "task.editor.description");
 
     _titleFocusNode.addListener(_onFocusChange);
     _descriptionFocusNode.addListener(_onFocusChange);
@@ -109,267 +109,422 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
   Widget build(BuildContext context) {
     if (!_isInitialized) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.task == null ? 'New Task' : 'Edit Task'),
-        ),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text(widget.task == null ? 'New Task' : 'Edit Task'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.save), onPressed: _saveTask),
+          TextButton.icon(
+            icon: const Icon(Icons.save),
+            label: const Text('Save'),
+            onPressed: _saveTask,
+          ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title row with status checkbox
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Status checkbox
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, right: 12.0),
+                      child: _buildStatusCheckbox(),
+                    ),
+                    // Title field
+                    Expanded(child: _buildTitleField()),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Properties row (Project, Priority, Time, Energy)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildPillButton(
+                      label: 'Project',
+                      value: _selectedProject?.title.toPlainText() ?? 'Project',
+                      icon: Icons.folder_outlined,
+                      hasValue: _selectedProject != null,
+                      onTap: () => _showProjectSelector(),
+                    ),
+                    _buildPillButton(
+                      label: 'Priority',
+                      value: _priority.toDisplayString(),
+                      icon: Icons.flag_outlined,
+                      color: _priority.color,
+                      onTap: () => _showPrioritySelector(),
+                    ),
+                    _buildPillButton(
+                      label: 'Time',
+                      value: _timeEstimate.toDisplayString(),
+                      icon: Icons.timer_outlined,
+                      color: _timeEstimate.color,
+                      onTap: () => _showTimeEstimateSelector(),
+                    ),
+                    _buildPillButton(
+                      label: 'Energy',
+                      value: _energyEstimate.toDisplayString(),
+                      icon: Icons.battery_charging_full_outlined,
+                      color: _energyEstimate.color,
+                      onTap: () => _showEnergyEstimateSelector(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Due date
+                _buildPillButton(
+                  label: 'Due',
+                  value: _formatRelativeDate(_dueDate),
+                  icon: Icons.calendar_today_outlined,
+                  onTap: _selectDueDate,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitleField() {
+    return TempoTextField(
+      focusNode: _titleFocusNode,
+      controller: _titleController,
+      hintText: AttributedText('Untitled'),
+      textStyleBuilder: (attributions) {
+        final theme = Theme.of(context);
+        return TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          color: theme.colorScheme.onSurface,
+        );
+      },
+      hintStyleBuilder: (attributions) {
+        final theme = Theme.of(context);
+        return TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusCheckbox() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          // Regular click: toggle between todo and complete
+          _status =
+              _status == TaskStatus.todo
+                  ? TaskStatus.complete
+                  : TaskStatus.todo;
+        });
+      },
+      onSecondaryTap: () {
+        // Right-click: show menu with dropped option
+        _showStatusMenu();
+      },
+      onLongPress: () {
+        // Long press on mobile: show menu with dropped option
+        _showStatusMenu();
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Icon(_status.icon, size: 28, color: _status.color),
+      ),
+    );
+  }
+
+  void _showStatusMenu() {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final Offset position = button.localToGlobal(
+      Offset.zero,
+      ancestor: overlay,
+    );
+
+    showMenu<TaskStatus>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy + button.size.height,
+        position.dx + button.size.width,
+        position.dy,
+      ),
+      items: [
+        PopupMenuItem(
+          value: TaskStatus.todo,
+          child: Row(
+            children: [
+              Icon(TaskStatus.todo.icon, color: TaskStatus.todo.color),
+              const SizedBox(width: 8),
+              Text(TaskStatus.todo.toDisplayString()),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: TaskStatus.complete,
+          child: Row(
+            children: [
+              Icon(TaskStatus.complete.icon, color: TaskStatus.complete.color),
+              const SizedBox(width: 8),
+              Text(TaskStatus.complete.toDisplayString()),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: TaskStatus.dropped,
+          child: Row(
+            children: [
+              Icon(TaskStatus.dropped.icon, color: TaskStatus.dropped.color),
+              const SizedBox(width: 8),
+              Text(TaskStatus.dropped.toDisplayString()),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value != null) {
+        setState(() {
+          _status = value;
+        });
+      }
+    });
+  }
+
+  Widget _buildPillButton({
+    required String label,
+    required String value,
+    required IconData icon,
+    Color? color,
+    required VoidCallback onTap,
+    bool hasValue = true,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildTextField(
-              label: "Task title",
-              focusNode: _titleFocusNode,
-              controller: _titleController,
+            Icon(
+              icon,
+              size: 16,
+              color: color ?? theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 24),
-
-            _buildRow([
-              Expanded(
-                child: _buildField(
-                  'Due Date',
-                  child: InkWell(
-                    onTap: _selectDueDate,
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(DateFormatter.formatDate(_dueDate)),
-                          const Icon(Icons.calendar_today, size: 18),
-                        ],
-                      ),
-                    ),
-                  ),
+            const SizedBox(width: 6),
+            if (hasValue) ...[
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color ?? theme.colorScheme.onSurface,
                 ),
               ),
-
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildField(
-                  'Project',
-                  child: DropdownButtonFormField<ProjectEntity?>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    value: _selectedProject,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedProject = value;
-                      });
-                    },
-                    items:
-                        _availableProjects.map((project) {
-                          return DropdownMenuItem<ProjectEntity?>(
-                            value: project,
-                            child: TempoTextField(
-                              controller: AttributedTextEditingController(text: project.title),
-                              readOnly: true,
-                            ),
-                          );
-                        }).toList(),
-                  ),
+            ] else ...[
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            ]),
-            const SizedBox(height: 16),
-
-            _buildRow([
-              Expanded(
-                child: _buildField(
-                  'Status',
-                  child: DropdownButtonFormField<TaskStatus>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    value: _status,
-                    onChanged: (TaskStatus? value) {
-                      if (value != null) {
-                        setState(() {
-                          _status = value;
-                        });
-                      }
-                    },
-                    items:
-                        TaskStatus.values
-                            .map(
-                              (s) => DropdownMenuItem<TaskStatus>(
-                                value: s,
-                                child: Text(s.toDisplayString()),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildField(
-                  'Priority',
-                  child: DropdownButtonFormField<TaskPriority>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    value: _priority,
-                    onChanged: (TaskPriority? value) {
-                      if (value != null) {
-                        setState(() {
-                          _priority = value;
-                        });
-                      }
-                    },
-                    items:
-                        TaskPriority.values
-                            .map(
-                              (p) => DropdownMenuItem<TaskPriority>(
-                                value: p,
-                                child: Text(p.toDisplayString()),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 16),
-
-            _buildRow([
-              Expanded(
-                child: _buildField(
-                  'Estimated Time',
-                  child: DropdownButtonFormField<TaskTimeEstimate>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    value: _timeEstimate,
-                    onChanged: (TaskTimeEstimate? value) {
-                      if (value != null) {
-                        setState(() {
-                          _timeEstimate = value;
-                        });
-                      }
-                    },
-                    items:
-                        TaskTimeEstimate.values
-                            .map(
-                              (t) => DropdownMenuItem<TaskTimeEstimate>(
-                                value: t,
-                                child: Text(t.toDisplayString()),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildField(
-                  'Estimated Energy',
-                  child: DropdownButtonFormField<TaskEnergyEstimate>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    value: _energyEstimate,
-                    onChanged: (TaskEnergyEstimate? value) {
-                      if (value != null) {
-                        setState(() {
-                          _energyEstimate = value;
-                        });
-                      }
-                    },
-                    items:
-                        TaskEnergyEstimate.values
-                            .map(
-                              (e) => DropdownMenuItem<TaskEnergyEstimate>(
-                                value: e,
-                                child: Text(e.toDisplayString()),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ),
-              ),
-            ]),
-
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _saveTask,
-                child: Text(
-                  widget.task == null ? 'Create Task' : 'Save Changes',
-                ),
-              ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  String _formatRelativeDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    
+    final difference = dateOnly.difference(today).inDays;
+    
+    if (difference == 0) return 'Today';
+    if (difference == 1) return 'Tomorrow';
+    if (difference == -1) return 'Yesterday';
+    if (difference > 1 && difference <= 6) return 'In $difference days';
+    if (difference < -1 && difference >= -6) return '${-difference} days ago';
+    if (difference >= 7 && difference < 14) return 'Next week';
+    if (difference <= -7 && difference > -14) return 'Last week';
+    
+    // For dates further out, show month and day
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final month = months[date.month - 1];
+    
+    // If it's the same year, just show month and day
+    if (date.year == now.year) {
+      return '$month ${date.day}';
+    }
+    
+    // Otherwise show full date
+    return '$month ${date.day}, ${date.year}';
+  }
+
+  void _showProjectSelector() {
+    showModalBottomSheet(
+      context: context,
+      builder:
+          (context) => Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select Project',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 16),
+                ..._availableProjects.map(
+                  (project) => ListTile(
+                    leading: const Icon(Icons.folder_outlined),
+                    title: TempoTextField.fromAttributedText(
+                      project.title,
+                      readOnly: true,
+                    ),
+                    selected: _selectedProject == project,
+                    onTap: () {
+                      setState(() {
+                        _selectedProject = project;
+                      });
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.clear),
+                  title: const Text('No project'),
+                  selected: _selectedProject == null,
+                  onTap: () {
+                    setState(() {
+                      _selectedProject = null;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ),
     );
   }
 
-  Widget _buildField(String label, {required Widget child}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 4),
-        child,
-      ],
+  void _showPrioritySelector() {
+    _showEnumSelector<TaskPriority>(
+      title: 'Select Priority',
+      values: TaskPriority.values,
+      currentValue: _priority,
+      getIcon: (priority) => Icons.flag_outlined,
+      getColor: (priority) => priority.color,
+      onSelected: (priority) {
+        setState(() {
+          _priority = priority;
+        });
+      },
     );
   }
 
-  Widget _buildRow(List<Widget> children) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+  void _showTimeEstimateSelector() {
+    _showEnumSelector<TaskTimeEstimate>(
+      title: 'Select Time Estimate',
+      values: TaskTimeEstimate.values,
+      currentValue: _timeEstimate,
+      getIcon: (time) => Icons.timer_outlined,
+      getColor: (time) => time.color,
+      onSelected: (time) {
+        setState(() {
+          _timeEstimate = time;
+        });
+      },
+    );
+  }
+
+  void _showEnergyEstimateSelector() {
+    _showEnumSelector<TaskEnergyEstimate>(
+      title: 'Select Energy Estimate',
+      values: TaskEnergyEstimate.values,
+      currentValue: _energyEstimate,
+      getIcon: (energy) => Icons.battery_charging_full_outlined,
+      getColor: (energy) => energy.color,
+      onSelected: (energy) {
+        setState(() {
+          _energyEstimate = energy;
+        });
+      },
+    );
+  }
+
+  void _showEnumSelector<T extends Enum>({
+    required String title,
+    required List<T> values,
+    required T currentValue,
+    required IconData Function(T) getIcon,
+    Color Function(T)? getColor,
+    required void Function(T) onSelected,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      builder:
+          (context) => Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 16),
+                ...values.map(
+                  (value) => ListTile(
+                    leading: Icon(getIcon(value), color: getColor?.call(value)),
+                    title: Text(value.toDisplayString()),
+                    selected: currentValue == value,
+                    onTap: () {
+                      onSelected(value);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
     );
   }
 
@@ -425,8 +580,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       widget.task!.dueDate = _dueDate;
       widget.task!.obxStatus = TaskStatus.values.indexOf(_status);
       widget.task!.obxPriority = TaskPriority.values.indexOf(_priority);
-      widget.task!.obxTimeEstimate = TaskTimeEstimate.values.indexOf(_timeEstimate);
-      widget.task!.obxEnergyEstimate = TaskEnergyEstimate.values.indexOf(_energyEstimate);
+      widget.task!.obxTimeEstimate = TaskTimeEstimate.values.indexOf(
+        _timeEstimate,
+      );
+      widget.task!.obxEnergyEstimate = TaskEnergyEstimate.values.indexOf(
+        _energyEstimate,
+      );
 
       // Update project association
       widget.task!.project.target = _selectedProject;

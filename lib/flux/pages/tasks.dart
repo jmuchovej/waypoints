@@ -5,6 +5,8 @@ import 'package:tempo/src/editor/plugins/node_metadata/node_metadata.dart';
 import 'package:tempo/src/editor/plugins/task/task.dart';
 import 'package:tempo/flux/editor.dart';
 import 'package:tempo/src/database/objectbox.g.dart';
+import 'package:tempo/pages/task_editor.dart';
+import 'package:tempo/src/database/objectbox/models/task.dart';
 
 class TasksScreen extends StatelessWidget {
   const TasksScreen({super.key});
@@ -34,7 +36,16 @@ class TasksScreen extends StatelessWidget {
       normalModeColor: ColorScheme.of(context).secondaryContainer,
       insertModeColor: ColorScheme.of(context).secondaryContainer,
     );
-    final taskPlugin = TaskPlugin();
+    final taskPlugin = TaskPlugin(
+      onTaskTap: (TaskEntity task) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TaskEditorScreen(task: task),
+          ),
+        );
+      },
+    );
     final markdownPlugin = MarkdownInlineUpstreamSyntaxPlugin();
     final plugins = {nodeMetadataPlugin, motionPlugin, markdownPlugin, taskPlugin};
 

@@ -6,6 +6,8 @@ import 'package:tempo/src/database/objectbox/converters/attributed_text.dart';
 import 'package:tempo/src/editor/attributed_text.dart';
 import 'dart:convert';
 
+import 'package:tempo/src/infrastructure.dart';
+
 @Entity()
 class TaskEntity with AttributedTextEntity {
   @Id()
@@ -257,20 +259,7 @@ extension EstimatedEnergyColors on TaskEnergyEstimate {
 }
 
 extension EstimatedEnergyDisplayString on TaskEnergyEstimate {
-  String toDisplayString() {
-    switch (this) {
-      case TaskEnergyEstimate.XS:
-        return 'XS';
-      case TaskEnergyEstimate.S:
-        return 'S';
-      case TaskEnergyEstimate.M:
-        return 'M';
-      case TaskEnergyEstimate.L:
-        return 'L';
-      case TaskEnergyEstimate.XL:
-        return 'XL';
-    }
-  }
+  String toDisplayString() => name.toUpperCase();
 }
 
 enum TaskPriority {
@@ -304,7 +293,7 @@ extension PriorityIcons on TaskPriority {
   }
 }
 
-extension PriortyDisplayString on TaskPriority {
+extension PriorityDisplayString on TaskPriority {
   String toDisplayString() {
     switch (this) {
       case TaskPriority.L:
@@ -446,6 +435,7 @@ extension StatusIcons on TaskStatus {
 }
 
 extension StatusDisplayString on TaskStatus {
+  @override
   String toDisplayString() {
     switch (this) {
       case TaskStatus.todo:
@@ -504,18 +494,5 @@ extension EstimatedTimeColors on TaskTimeEstimate {
 }
 
 extension EstimatedTimeDisplayString on TaskTimeEstimate {
-  String toDisplayString() {
-    switch (this) {
-      case TaskTimeEstimate.XS:
-        return 'XS';
-      case TaskTimeEstimate.S:
-        return 'S';
-      case TaskTimeEstimate.M:
-        return 'M';
-      case TaskTimeEstimate.L:
-        return 'L';
-      case TaskTimeEstimate.XL:
-        return 'XL';
-    }
-  }
+  String toDisplayString() => name.toUpperCase();
 }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/infrastructure/_logging.dart';
+import 'package:tempo/src/models.dart';
 
 import '_components.dart';
 import '_keybinds.dart';
@@ -12,12 +13,13 @@ import '_requests.dart';
 class TaskPlugin extends SuperEditorPlugin {
   static const taskKey = 'TaskPlugin.task';
 
-  TaskPlugin()
-    : _componentBuilder = TaskComponentBuilder(),
-      _selectionStyler = TaskSelectionStyler(),
-      _contentTapHandler = switch (defaultTargetPlatform) {
-        _ => TaskContentTapDelegate(),
-      } {
+  TaskPlugin({
+    this.onTaskTap,
+  })  : _componentBuilder = TaskComponentBuilder(),
+        _selectionStyler = TaskSelectionStyler(),
+        _contentTapHandler = switch (defaultTargetPlatform) {
+          _ => TaskContentTapDelegate(onTaskTap: onTaskTap),
+        } {
     pluginTaskLog.finest(
       'created `_componentBuilder` = ${_componentBuilder.runtimeType}',
     );
@@ -29,6 +31,8 @@ class TaskPlugin extends SuperEditorPlugin {
     );
     pluginTaskLog.finest('contentTapHandlers = $contentTapHandlers');
   }
+
+  final void Function(TaskEntity task)? onTaskTap;
 
   late final List<EditReaction> _reactions;
   late final List<EditRequestHandler> _requests;
@@ -131,9 +135,12 @@ class TaskTapOverlayBuilder extends SuperEditorLayerBuilder {
 }
 
 class TaskContentTapDelegate extends ContentTapDelegate {
-  TaskContentTapDelegate();
+  TaskContentTapDelegate({
+    this.onTaskTap,
+  });
 
   Editor? editor;
+  final void Function(TaskEntity task)? onTaskTap;
 
   @override
   MouseCursor? mouseCursorForContentHover(DocumentPosition hoverPosition) {
@@ -168,19 +175,12 @@ class TaskContentTapDelegate extends ContentTapDelegate {
     }
 
     pluginTaskLog.fine("  Indeed, a task node!");
-    final position = DocumentPosition(
-      nodeId: nodeId,
-      nodePosition: tapPosition.nodePosition,
-    );
-    // editor!.execute([
-    //   ChangeSelectionRequest(
-    //     DocumentSelection.collapsed(position: position),
-    //     SelectionChangeType.expandSelection,
-    //     SelectionReason.userInteraction,
-    //   ),
-    // ]);
 
-    pluginTaskLog.fine(node.title);
+    // Navigate to task editor if callback is provided
+    if (onTaskTap != null) {
+      onTaskTap!(node.task);
+    }
+
     return TapHandlingInstruction.halt;
   }
 

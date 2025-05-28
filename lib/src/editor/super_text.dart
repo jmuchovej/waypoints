@@ -21,6 +21,20 @@ class TempoTextField extends StatefulWidget {
     this.focusNode,
   });
 
+  TempoTextField.fromAttributedText(
+    AttributedText text, {
+    super.key,
+    this.hintText,
+    this.readOnly = false,
+    this.textStyleBuilder,
+    this.hintStyleBuilder,
+    this.onMarkdownConversion,
+    this.minLines,
+    this.maxLines,
+    this.padding,
+    this.focusNode,
+  }) : controller = AttributedTextEditingController(text: text);
+
   final AttributedTextEditingController controller;
   final AttributedText? hintText;
   final bool readOnly;
@@ -58,7 +72,10 @@ class _TempoTextFieldState extends State<TempoTextField> {
     if (!widget.readOnly) {
       widget.controller.removeListener(_onTextChanged);
     }
-    _focusNode.dispose();
+    // Only dispose the focus node if we created it (not passed from parent)
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -106,14 +123,15 @@ class _TempoTextFieldState extends State<TempoTextField> {
 
       // Hint text support
       hintBehavior: HintBehavior.displayHintUntilTextEntered,
-      hintBuilder: widget.hintText != null
-          ? (context) => Text(
+      hintBuilder:
+          widget.hintText != null
+              ? (context) => Text(
                 widget.hintText!.toPlainText(),
                 style: (widget.hintStyleBuilder ?? _defaultHintStyleBuilder)(
                   widget.hintText!.getAllAttributionsAt(0),
                 ),
               )
-          : null,
+              : null,
 
       // Text styling
       textStyleBuilder: widget.textStyleBuilder ?? _defaultTextStyleBuilder,
@@ -122,7 +140,6 @@ class _TempoTextFieldState extends State<TempoTextField> {
       // selectionControls: widget.readOnly ? null : materialTextSelectionControls,
       minLines: widget.minLines,
       maxLines: widget.maxLines,
-
       padding: widget.padding,
     );
   }
