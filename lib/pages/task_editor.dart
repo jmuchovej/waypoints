@@ -6,10 +6,8 @@ import 'package:tempo/src/editor/super_text.dart';
 import 'package:uuid/uuid.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
-import 'package:tempo/utils/date_formatter.dart';
 import 'package:tempo/src/infrastructure.dart';
 import 'package:jiffy/jiffy.dart';
-import 'package:go_router/go_router.dart';
 
 class TaskEditorScreen extends StatefulWidget {
   final TaskEntity? task;

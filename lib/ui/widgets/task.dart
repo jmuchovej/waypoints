@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:jiffy/jiffy.dart';
 import 'package:tempo/main.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/utils/date_formatter.dart';
 import 'package:tempo/src/editor/super_text.dart';
 
 class TaskWidget extends StatefulWidget {
@@ -111,6 +111,7 @@ class TaskWidgetState extends State<TaskWidget>
     final controller = AttributedTextEditingController(
       text: widget.task.title,
     );
+    final dueDate = Jiffy.parseFromDateTime(widget.task.dueDate);
     final subtitle = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -122,7 +123,7 @@ class TaskWidgetState extends State<TaskWidget>
         //   ),
         if (widget.showDueDate)
           Text(
-            'Due: ${DateFormatter.formatDate(widget.task.dueDate!)}',
+            'Due ${dueDate.fromNow()}',
             style: TextStyle(fontSize: 12),
           ),
       ],
