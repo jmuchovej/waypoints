@@ -2,28 +2,6 @@ import 'package:meta/meta.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/editor/attributed_text.dart';
 
-/// Helper class for storing AttributedText in ObjectBox
-///
-/// Since ObjectBox doesn't support custom converters directly,
-/// this class provides utilities to handle AttributedText storage
-/// with both JSON (for full fidelity) and plain text (for querying).
-class ObjectBoxAttributedText {
-  /// Convert AttributedText to JSON string for storage
-  static String toJson(AttributedText text) {
-    return text.toJsonString();
-  }
-
-  /// Convert JSON string back to AttributedText
-  static AttributedText fromJson(String json) {
-    return AttributedTextJson.fromJsonString(json);
-  }
-
-  /// Extract plain text for querying
-  static String toPlainText(AttributedText text) {
-    return text.toPlainText();
-  }
-}
-
 /// Mixin to add AttributedText support to ObjectBox entities
 ///
 /// Usage:
@@ -42,7 +20,6 @@ class ObjectBoxAttributedText {
 ///
 ///   // Use the mixin's helper methods
 ///   AttributedText get title => getAttributedText(_titleJson, titlePlainText);
-///   set title(AttributedText value) => setAttributedText(
 ///     value,
 ///     (json) => _titleJson = json,
 ///     (plain) => titlePlainText = plain,
@@ -57,7 +34,7 @@ mixin AttributedTextEntity {
     String fallbackPlainText,
   ) {
     if (jsonString.isEmpty) return AttributedText(fallbackPlainText);
-    return ObjectBoxAttributedText.fromJson(jsonString);
+    return AttributedTextJson.fromJsonString(jsonString);
   }
 
   /// Helper to set AttributedText and update both JSON and plain text
@@ -67,7 +44,7 @@ mixin AttributedTextEntity {
     void Function(String json) setJson,
     void Function(String plainText) setPlainText,
   ) {
-    setJson(ObjectBoxAttributedText.toJson(value));
-    setPlainText(ObjectBoxAttributedText.toPlainText(value));
+    setJson(value.toJsonString());
+    setPlainText(value.toPlainText());
   }
 }

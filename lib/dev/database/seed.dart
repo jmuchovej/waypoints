@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:tempo/app.dart' show obx;
+import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/infrastructure/_logging.dart';
 import 'package:uuid/uuid.dart';

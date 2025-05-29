@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tempo/app.dart' show obx;
+import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 

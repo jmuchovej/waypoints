@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tempo/app.dart' show obx;
+import 'package:go_router/go_router.dart';
+import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/editor/super_text.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +9,7 @@ import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/utils/date_formatter.dart';
 import 'package:tempo/src/infrastructure.dart';
 import 'package:jiffy/jiffy.dart';
+import 'package:go_router/go_router.dart';
 
 class TaskEditorScreen extends StatefulWidget {
   final TaskEntity? task;
@@ -122,7 +124,14 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              // If we can't pop, go to tasks page
+              context.go('/tasks');
+            }
+          },
         ),
         actions: [
           TextButton.icon(
@@ -399,7 +408,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                       setState(() {
                         _selectedProject = project;
                       });
-                      Navigator.pop(context);
+                      context.pop();
                     },
                   ),
                 ),
@@ -491,7 +500,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
                     selected: currentValue == value,
                     onTap: () {
                       onSelected(value);
-                      Navigator.pop(context);
+                      context.pop();
                     },
                   ),
                 ),
@@ -566,7 +575,12 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
       obx.putTask(widget.task!);
     }
 
-    Navigator.pop(context);
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      // If we can't pop, go to tasks page
+      context.go('/tasks');
+    }
   }
 }
 

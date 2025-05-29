@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tempo/app.dart';
+import 'package:tempo/main.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/utils/date_formatter.dart';

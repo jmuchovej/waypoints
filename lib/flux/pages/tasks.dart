@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:tempo/app.dart' show obx;
+import 'package:go_router/go_router.dart';
+import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor/plugins/motion/motion.dart';
 import 'package:tempo/src/editor/plugins/node_metadata/node_metadata.dart';
 import 'package:tempo/src/editor/plugins/task/task.dart';
 import 'package:tempo/flux/editor.dart';
 import 'package:tempo/src/database/objectbox.g.dart';
-import 'package:tempo/pages/task_editor.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
+import 'package:tempo/src/infrastructure/router.dart';
 
 class TasksScreen extends StatelessWidget {
   const TasksScreen({super.key});
@@ -38,12 +39,7 @@ class TasksScreen extends StatelessWidget {
     );
     final taskPlugin = TaskPlugin(
       onTaskTap: (TaskEntity task) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TaskEditorScreen(task: task),
-          ),
-        );
+        context.go('/thing/${task.uuid}');
       },
     );
     final markdownPlugin = MarkdownInlineUpstreamSyntaxPlugin();
@@ -65,6 +61,10 @@ class TasksScreen extends StatelessWidget {
           ),
           Expanded(child: createSuperEditor(context, document, composer, plugins))
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.go('/task/new'),
+        child: const Icon(Icons.add),
       ),
     );
   }

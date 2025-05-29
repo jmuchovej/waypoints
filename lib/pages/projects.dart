@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:super_editor/super_text_field.dart';
-import 'package:tempo/app.dart';
+import 'package:tempo/main.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/pages/task_editor.dart';
@@ -295,13 +296,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                         task: task,
                         showDueDate: true,
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => TaskEditorScreen(task: task),
-                            ),
-                          ).then((_) => _loadData());
+                          context.go('/task/${task.uuid}', extra: task);
                         },
                       );
                     },
@@ -457,11 +452,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   void _addTaskToProject() {
     if (_selectedProject == null) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TaskEditorScreen(projectId: _selectedProject!.id),
-      ),
-    ).then((_) => _loadData());
+    context.go('/task/new?projectId=${_selectedProject!.id}');
   }
 }

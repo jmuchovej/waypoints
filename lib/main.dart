@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tempo/app.dart';
+import 'package:tempo/dev/database/seed.dart';
 import 'package:tempo/flavors.dart';
-import 'package:tempo/main_development.dart' as d;
-import 'package:tempo/main_production.dart' as p;
+import 'package:tempo/theme/theme.dart';
 import 'package:tempo/src/database/objectbox.dart';
+import 'package:tempo/src/infrastructure.dart';
+
+late ObjectBox obx;
 
 void main() async {
   F.appFlavor = Flavor.values.firstWhere(
@@ -15,27 +18,40 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   obx = await ObjectBox.create();
 
-  switch (F.appFlavor) {
-    case Flavor.development:
-      await d.preRunApp();
-      break;
-    case Flavor.staging:
-    case Flavor.production:
-      await p.preRunApp();
-      break;
+  if (F.appFlavor == Flavor.development) {
+    await SeedDataService.seedIfNeeded();
+    // Optional: Enable other debug flags
+    // debugPaintSizeEnabled = true;
+    debugPaintBaselinesEnabled = true; // Shows text baselines
+    // debugPaintPointersEnabled = true; // Shows pointer hit testing
+    debugPaintLayerBordersEnabled = true; // Shows layer boundaries
   }
+  initLoggers(Level.FINEST, tempoLoggers);
+  initLoggers(Level.FINER, superEditorLoggers);
+  deactivateLoggers(FTLLoggers);
 
-  List<AppRoute> routes;
+  runApp(const ProviderScope(child: Tempo()));
+}
 
-  switch (F.appFlavor) {
-    case Flavor.development:
-      routes = d.appRoutes();
-      break;
-    case Flavor.staging:
-    case Flavor.production:
-      routes = p.appRoutes();
-      break;
+class Tempo extends StatelessWidget {
+  const Tempo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    TextTheme textTheme = createTextTheme(
+      context,
+      display: "Lato",
+      body: "Lato",
+    );
+    TempoTheme theme = TempoTheme(textTheme);
+
+    return MaterialApp.router(
+      title: F.title,
+      theme: theme.light(),
+      darkTheme: theme.dark(),
+      themeMode: ThemeMode.system,
+      routerConfig: router,
+      debugShowCheckedModeBanner: false,
+    );
   }
-
-  runApp(ProviderScope(child: Tempo(routes: routes)));
 }

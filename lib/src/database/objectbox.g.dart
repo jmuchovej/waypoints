@@ -17,6 +17,7 @@ import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 import '../../src/database/objectbox/models/activity.dart';
 import '../../src/database/objectbox/models/project.dart';
 import '../../src/database/objectbox/models/task.dart';
+import '../../src/database/objectbox/models/uuid_registry.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 
@@ -300,6 +301,48 @@ final _entities = <obx_int.ModelEntity>[
       ),
     ],
   ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(6, 5775314737086256322),
+    name: 'UuidRegistry',
+    lastPropertyId: const obx_int.IdUid(5, 3680222096249410861),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 9129147746426577852),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 5619924904068214772),
+        name: 'uuid',
+        type: 9,
+        flags: 2080,
+        indexId: const obx_int.IdUid(11, 7724071036268333014),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 8178039634129130458),
+        name: 'entityType',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(12, 1020584761340276532),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 6553032617634444941),
+        name: 'entityId',
+        type: 6,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(5, 3680222096249410861),
+        name: 'createdAt',
+        type: 10,
+        flags: 0,
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[],
+  ),
 ];
 
 /// Shortcut for [obx.Store.new] that passes [getObjectBoxModel] and for Flutter
@@ -340,8 +383,8 @@ Future<obx.Store> openStore({
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(5, 7373679035215447225),
-    lastIndexId: const obx_int.IdUid(10, 1298323376581432664),
+    lastEntityId: const obx_int.IdUid(6, 5775314737086256322),
+    lastIndexId: const obx_int.IdUid(12, 1020584761340276532),
     lastRelationId: const obx_int.IdUid(0, 0),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [36414948713215824, 587039245591597227],
@@ -732,6 +775,54 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
+    UuidRegistry: obx_int.EntityDefinition<UuidRegistry>(
+      model: _entities[3],
+      toOneRelations: (UuidRegistry object) => [],
+      toManyRelations: (UuidRegistry object) => {},
+      getId: (UuidRegistry object) => object.id,
+      setId: (UuidRegistry object, int id) {
+        object.id = id;
+      },
+      objectToFB: (UuidRegistry object, fb.Builder fbb) {
+        final uuidOffset = fbb.writeString(object.uuid);
+        final entityTypeOffset = fbb.writeString(object.entityType);
+        fbb.startTable(6);
+        fbb.addInt64(0, object.id);
+        fbb.addOffset(1, uuidOffset);
+        fbb.addOffset(2, entityTypeOffset);
+        fbb.addInt64(3, object.entityId);
+        fbb.addInt64(4, object.createdAt.millisecondsSinceEpoch);
+        fbb.finish(fbb.endTable());
+        return object.id;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final uuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final entityTypeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final entityIdParam = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          10,
+          0,
+        );
+        final createdAtParam = DateTime.fromMillisecondsSinceEpoch(
+          const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0),
+        );
+        final object = UuidRegistry(
+          uuid: uuidParam,
+          entityType: entityTypeParam,
+          entityId: entityIdParam,
+          createdAt: createdAtParam,
+        )..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+
+        return object;
+      },
+    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -943,5 +1034,33 @@ class ProjectEntity_ {
   /// see [ProjectEntity.children]
   static final children = obx.QueryBacklinkToMany<ProjectEntity, ProjectEntity>(
     ProjectEntity_.parent,
+  );
+}
+
+/// [UuidRegistry] entity fields to define ObjectBox queries.
+class UuidRegistry_ {
+  /// See [UuidRegistry.id].
+  static final id = obx.QueryIntegerProperty<UuidRegistry>(
+    _entities[3].properties[0],
+  );
+
+  /// See [UuidRegistry.uuid].
+  static final uuid = obx.QueryStringProperty<UuidRegistry>(
+    _entities[3].properties[1],
+  );
+
+  /// See [UuidRegistry.entityType].
+  static final entityType = obx.QueryStringProperty<UuidRegistry>(
+    _entities[3].properties[2],
+  );
+
+  /// See [UuidRegistry.entityId].
+  static final entityId = obx.QueryIntegerProperty<UuidRegistry>(
+    _entities[3].properties[3],
+  );
+
+  /// See [UuidRegistry.createdAt].
+  static final createdAt = obx.QueryDateProperty<UuidRegistry>(
+    _entities[3].properties[4],
   );
 }

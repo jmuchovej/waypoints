@@ -1,13 +1,15 @@
 import 'package:objectbox/objectbox.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
-import 'package:tempo/src/database/objectbox/converters/attributed_text.dart';
+import 'package:tempo/src/database/objectbox/mixins/attributed_text.dart';
+import 'package:tempo/src/database/objectbox/mixins/uuid_entity.dart';
 
 @Entity()
-class ProjectEntity with AttributedTextEntity {
+class ProjectEntity with AttributedTextEntity, UuidEntity {
   @Id()
   int id = 0;
 
+  @override
   String uuid;
 
   String titleJson = '';
@@ -20,6 +22,9 @@ class ProjectEntity with AttributedTextEntity {
   final parent = ToOne<ProjectEntity>();
   @Backlink()
   final children = ToMany<ProjectEntity>();
+  
+  @override
+  String get entityType => 'project';
 
   ProjectEntity({required this.uuid, AttributedText? title}) {
     this.title = title ?? AttributedText('');

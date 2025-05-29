@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:objectbox/objectbox.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/src/database/objectbox/converters/attributed_text.dart';
+import 'package:tempo/src/database/objectbox/mixins/attributed_text.dart';
 import 'package:tempo/src/editor/attributed_text.dart';
 import 'dart:convert';
+import 'package:tempo/src/database/objectbox/mixins/uuid_entity.dart';
 
 import 'package:tempo/src/infrastructure.dart';
 
 @Entity()
-class TaskEntity with AttributedTextEntity {
+class TaskEntity with AttributedTextEntity, UuidEntity {
   @Id()
   int id = 0;
 
+  @override
   String uuid;
 
   /// Serialized AttributedText JSON
@@ -47,6 +49,9 @@ class TaskEntity with AttributedTextEntity {
   DateTime? untilDate;
 
   String? recurrence;
+  
+  @override
+  String get entityType => 'task';
 
   TaskStatus _status;
   TaskTimeEstimate _timeEstimate;

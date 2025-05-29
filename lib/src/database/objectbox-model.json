@@ -230,10 +230,48 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "6:5775314737086256322",
+      "lastPropertyId": "5:3680222096249410861",
+      "name": "UuidRegistry",
+      "properties": [
+        {
+          "id": "1:9129147746426577852",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5619924904068214772",
+          "name": "uuid",
+          "type": 9,
+          "flags": 2080,
+          "indexId": "11:7724071036268333014"
+        },
+        {
+          "id": "3:8178039634129130458",
+          "name": "entityType",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "12:1020584761340276532"
+        },
+        {
+          "id": "4:6553032617634444941",
+          "name": "entityId",
+          "type": 6
+        },
+        {
+          "id": "5:3680222096249410861",
+          "name": "createdAt",
+          "type": 10
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "5:7373679035215447225",
-  "lastIndexId": "10:1298323376581432664",
+  "lastEntityId": "6:5775314737086256322",
+  "lastIndexId": "12:1020584761340276532",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

@@ -1,10 +1,12 @@
 // lib/ui/screens/dev_tools.dart
 import 'package:flutter/material.dart';
-import 'package:tempo/app.dart' show obx;
+import 'package:tempo/main.dart' show obx;
 import 'package:tempo/dev/database/seed.dart';
 import 'package:path_provider/path_provider.dart';
 
 class DevToolsScreen extends StatefulWidget {
+  const DevToolsScreen();
+
   @override
   State<DevToolsScreen> createState() => _DevToolsScreenState();
 }
