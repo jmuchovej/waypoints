@@ -1,4 +1,5 @@
 #include "../../Flutter/stagingDebug.xcconfig"
+#include "../../Pods/Target Support Files/Pods-Runner/Pods-Runner.debug-staging.xcconfig"
 #include "Warnings.xcconfig"
 
 ASSET_PREFIX=staging
