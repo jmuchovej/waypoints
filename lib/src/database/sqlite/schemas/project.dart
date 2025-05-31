@@ -91,6 +91,12 @@ enum ProjectStatus {
   }
 }
 
+extension ProjectStatusGrouping on ProjectStatus {
+  bool get isCompleted => [ProjectStatus.dropped, ProjectStatus.complete].contains(this);
+  bool get isPending => [ProjectStatus.paused, ProjectStatus.active].contains(this);
+  bool get isAwaiting => [ProjectStatus.planning, ].contains(this);
+}
+
 enum ProjectPriority {
   L, // Low priority
   M, // Medium priority

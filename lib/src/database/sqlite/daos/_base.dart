@@ -4,6 +4,7 @@ import 'package:tempo/src/database/sqlite/daos/task.dart';
 import 'package:tempo/src/database/sqlite/database.dart';
 import 'package:tempo/src/database/sqlite/tables/schema.drift.dart';
 import 'package:tempo/src/database/sqlite/tables/thing.drift.dart';
+import 'package:tempo/src/editor/super_editor.dart';
 import 'package:uuid/uuid.dart';
 
 class ThingDAO {
@@ -13,7 +14,7 @@ class ThingDAO {
   final Schema _schema;
 
   String get uuid => _thing.uuid;
-  String get title => _thing.title;
+  AttributedText get title => _thing.title;
   DateTime get createdAt => _thing.createdAt;
   DateTime get updatedAt => _thing.updatedAt;
   bool get deleted => _thing.deleted;
@@ -139,7 +140,7 @@ class SchemaRepository {
 
   Future<ThingDAO> create(
     String name, {
-    required String title,
+    required AttributedText title,
     Map<String, dynamic>? properties,
     Map<String, dynamic>? metadata,
   }) async {

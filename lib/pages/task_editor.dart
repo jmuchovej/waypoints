@@ -10,10 +10,10 @@ import 'package:tempo/src/infrastructure.dart';
 import 'package:jiffy/jiffy.dart';
 
 class TaskEditorScreen extends StatefulWidget {
+  const TaskEditorScreen({super.key, this.task, this.projectId});
+
   final TaskEntity? task;
   final int? projectId; // Pre-selected project for new tasks
-
-  const TaskEditorScreen({super.key, this.task, this.projectId});
 
   @override
   State<TaskEditorScreen> createState() => _TaskEditorScreenState();

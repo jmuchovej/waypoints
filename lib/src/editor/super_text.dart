@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:super_editor_markdown/super_editor_markdown.dart';
 import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/src/editor/super_text.dart';
 
 export 'package:super_text_layout/super_text_layout.dart';
 

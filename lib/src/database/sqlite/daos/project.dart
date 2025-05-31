@@ -1,4 +1,5 @@
 import 'package:tempo/src/database/sqlite/daos/_base.dart';
+import 'package:tempo/src/database/sqlite/schemas/project.dart';
 import 'package:tempo/src/database/sqlite/schemas/task.dart';
 
 class ProjectDAO extends ThingDAO {

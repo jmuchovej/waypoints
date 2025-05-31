@@ -36,7 +36,7 @@ class AttributedTextConverter extends TypeConverter<AttributedText, String>
   const AttributedTextConverter();
   @override
   AttributedText fromJson(Map<String, dynamic> json) {
-    return AttributedTextJSON.fromJson(json);
+    return AttributedTextJson.fromJson(json);
   }
 
   @override
