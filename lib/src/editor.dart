@@ -90,7 +90,11 @@ SuperEditor createSuperEditor(
         SuperEditorAndroidHandlesDocumentLayerBuilder(),
       ],
 
-      DefaultCaretOverlayBuilder(),
+      DefaultCaretOverlayBuilder(
+        caretStyle: const CaretStyle().copyWith(
+          color: ColorScheme.of(context).primary,
+        ),
+      ),
     ],
 
     keyboardActions: [...defaultImeKeyboardActions],
