@@ -3,15 +3,40 @@ import 'package:objectbox/objectbox.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/database/objectbox/mixins/attributed_text.dart';
-import 'package:tempo/src/editor/attributed_text.dart';
-import 'dart:convert';
 import 'package:tempo/src/database/objectbox/mixins/uuid_entity.dart';
-
-import 'package:tempo/src/infrastructure.dart';
 
 @Entity()
 class TaskEntity with AttributedTextEntity, UuidEntity {
+  TaskEntity({
+    required this.uuid,
+    AttributedText? title,
+    DateTime? createDate,
+    DateTime? modifyDate,
+    DateTime? dueDate,
+    this.startDate,
+    this.endDate,
+    this.scheduledDate,
+    this.waitDate,
+    this.untilDate,
+    this.recurrence,
+    this.archived = false,
+    this.deleted = false,
+    TaskStatus status = TaskStatus.todo,
+    TaskTimeEstimate timeEstimate = TaskTimeEstimate.M,
+    TaskEnergyEstimate energyEstimate = TaskEnergyEstimate.M,
+    TaskPriority priority = TaskPriority.M,
+  }) : dueDate = dueDate ?? DateTime.now().add(Duration(days: 1)),
+       createDate = createDate ?? DateTime.now(),
+       modifyDate = modifyDate ?? DateTime.now(),
+       _status = status,
+       _timeEstimate = timeEstimate,
+       _energyEstimate = energyEstimate,
+       _priority = priority {
+    this.title = title ?? AttributedText('');
+  }
+
   @Id()
+  @override
   int id = 0;
 
   @override
@@ -49,7 +74,7 @@ class TaskEntity with AttributedTextEntity, UuidEntity {
   DateTime? untilDate;
 
   String? recurrence;
-  
+
   @override
   String get entityType => 'task';
 
@@ -66,34 +91,6 @@ class TaskEntity with AttributedTextEntity, UuidEntity {
   final children = ToMany<TaskEntity>();
 
   final project = ToOne<ProjectEntity>();
-
-  TaskEntity({
-    required this.uuid,
-    AttributedText? title,
-    DateTime? createDate,
-    DateTime? modifyDate,
-    DateTime? dueDate,
-    this.startDate,
-    this.endDate,
-    this.scheduledDate,
-    this.waitDate,
-    this.untilDate,
-    this.recurrence,
-    this.archived = false,
-    this.deleted = false,
-    TaskStatus status = TaskStatus.todo,
-    TaskTimeEstimate timeEstimate = TaskTimeEstimate.M,
-    TaskEnergyEstimate energyEstimate = TaskEnergyEstimate.M,
-    TaskPriority priority = TaskPriority.M,
-  }) : dueDate = dueDate ?? DateTime.now().add(Duration(days: 1)),
-       createDate = createDate ?? DateTime.now(),
-       modifyDate = modifyDate ?? DateTime.now(),
-       _status = status,
-       _timeEstimate = timeEstimate,
-       _energyEstimate = energyEstimate,
-       _priority = priority {
-    this.title = title ?? AttributedText('');
-  }
 
   TaskEntity copyWith({
     String? uuid,

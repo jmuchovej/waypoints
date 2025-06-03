@@ -11,6 +11,7 @@ const BlockSelector blockSelectorQuote = BlockSelector("blockquote");
 
 Stylesheet buildStylesheet(BuildContext context) {
   return Stylesheet(
+    documentPadding: EdgeInsets.symmetric(horizontal: 100.0, vertical: 24.0),
     rules: [
       StyleRule(BlockSelector.all, (doc, docNode) {
         return {
@@ -40,22 +41,13 @@ Stylesheet buildStylesheet(BuildContext context) {
       StyleRule(blockSelectorP, (doc, docNode) {
         return {Styles.padding: const CascadingPadding.only(top: 24)};
       }),
-      StyleRule(blockSelectorP.after("header1"), (
-        doc,
-        docNode,
-      ) {
+      StyleRule(blockSelectorP.after("header1"), (doc, docNode) {
         return {Styles.padding: const CascadingPadding.only(top: 0)};
       }),
-      StyleRule(blockSelectorP.after("header2"), (
-        doc,
-        docNode,
-      ) {
+      StyleRule(blockSelectorP.after("header2"), (doc, docNode) {
         return {Styles.padding: const CascadingPadding.only(top: 0)};
       }),
-      StyleRule(blockSelectorP.after("header3"), (
-        doc,
-        docNode,
-      ) {
+      StyleRule(blockSelectorP.after("header3"), (doc, docNode) {
         return {Styles.padding: const CascadingPadding.only(top: 0)};
       }),
       StyleRule(blockSelectorList, (doc, docNode) {

@@ -173,7 +173,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         final project = _projects[index];
         final controller = AttributedTextEditingController(text: project.title);
         return ListTile(
-          title: TempoTextField(controller: controller,),
+          title: TempoTextField(controller: controller),
           subtitle: Text(
             '${project.tasks.length} tasks',
             style: TextStyle(fontSize: 12),
@@ -227,7 +227,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   return DropdownMenuItem<ProjectEntity>(
                     value: project,
                     child: TempoTextField(
-                      controller: AttributedTextEditingController(text: project.title),
+                      controller: AttributedTextEditingController(
+                        text: project.title,
+                      ),
                       readOnly: true,
                     ),
                   );
@@ -246,7 +248,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   Widget _buildProjectContent() {
-    final projectController = AttributedTextEditingController(text: _selectedProject!.title);
+    final projectController = AttributedTextEditingController(
+      text: _selectedProject!.title,
+    );
     return Column(
       children: [
         Padding(
@@ -368,7 +372,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 
   void _editProject(ProjectEntity project) {
-    final titleController = AttributedTextEditingController(text: project.title);
+    final titleController = AttributedTextEditingController(
+      text: project.title,
+    );
 
     showDialog(
       context: context,

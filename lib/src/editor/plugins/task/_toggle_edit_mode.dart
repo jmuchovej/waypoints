@@ -5,7 +5,8 @@ ExecutionInstruction spacebarToggleTaskEditMode({
   required SuperEditorContext editorContext,
   required KeyEvent keyEvent,
 }) {
-  if (keyEvent is! KeyDownEvent || keyEvent.logicalKey != LogicalKeyboardKey.space) {
+  if (keyEvent is! KeyDownEvent ||
+      keyEvent.logicalKey != LogicalKeyboardKey.space) {
     return ExecutionInstruction.continueExecution;
   }
 
@@ -16,13 +17,11 @@ ExecutionInstruction spacebarToggleTaskEditMode({
 
   final document = editorContext.document;
   final node = document.getNodeById(selection.extent.nodeId);
-  if (node == null || node is! TaskNode || (node is TaskNode && node.asTask.inEditMode)) {
+  if (node == null || node is! TaskNode || node.asTask.inEditMode) {
     return ExecutionInstruction.continueExecution;
   }
 
-  editorContext.editor.execute([
-    ToggleTaskEditModeRequest(node.id),
-  ]);
+  editorContext.editor.execute([ToggleTaskEditModeRequest(node.id)]);
 
   return ExecutionInstruction.haltExecution;
 }

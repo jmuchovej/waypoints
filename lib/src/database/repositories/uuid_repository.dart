@@ -3,14 +3,15 @@ import 'package:tempo/src/database/objectbox/models/uuid_registry.dart';
 import 'package:tempo/src/database/objectbox.g.dart';
 
 class UuidRepository {
-  final Box<UuidRegistry> _box;
-
   UuidRepository(this._box);
+
+  final Box<UuidRegistry> _box;
 
   /// Registers a UUID for an entity type. Throws if UUID already exists.
   void registerUuid(String uuid, String entityType, int entityId) {
     // Check if UUID already exists
-    final existing = _box.query(UuidRegistry_.uuid.equals(uuid)).build().findFirst();
+    final existing =
+        _box.query(UuidRegistry_.uuid.equals(uuid)).build().findFirst();
     if (existing != null) {
       throw UuidAlreadyExistsException(uuid, existing.entityType, entityType);
     }
@@ -26,7 +27,8 @@ class UuidRepository {
 
   /// Updates the entity ID for an existing UUID (for updates)
   void updateEntityId(String uuid, int newEntityId) {
-    final existing = _box.query(UuidRegistry_.uuid.equals(uuid)).build().findFirst();
+    final existing =
+        _box.query(UuidRegistry_.uuid.equals(uuid)).build().findFirst();
     if (existing != null) {
       existing.entityId = newEntityId;
       _box.put(existing);
@@ -35,7 +37,8 @@ class UuidRepository {
 
   /// Removes a UUID from the registry
   void unregisterUuid(String uuid) {
-    final existing = _box.query(UuidRegistry_.uuid.equals(uuid)).build().findFirst();
+    final existing =
+        _box.query(UuidRegistry_.uuid.equals(uuid)).build().findFirst();
     if (existing != null) {
       _box.remove(existing.id);
     }
@@ -57,8 +60,10 @@ class UuidRepository {
 
   static String _generateUuid() {
     // Use your preferred UUID generation method
-    return DateTime.now().millisecondsSinceEpoch.toString() + 
-           (1000 + (999 * (DateTime.now().microsecond / 1000000))).round().toString();
+    return DateTime.now().millisecondsSinceEpoch.toString() +
+        (1000 + (999 * (DateTime.now().microsecond / 1000000)))
+            .round()
+            .toString();
   }
 }
 
@@ -96,7 +101,11 @@ class UuidAlreadyExistsException implements Exception {
   final String existingEntityType;
   final String attemptedEntityType;
 
-  UuidAlreadyExistsException(this.uuid, this.existingEntityType, this.attemptedEntityType);
+  UuidAlreadyExistsException(
+    this.uuid,
+    this.existingEntityType,
+    this.attemptedEntityType,
+  );
 
   @override
   String toString() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
+import 'package:tempo/src/editor/nodes/_thing.dart';
 
 const NamedAttribution taskAttribution = NamedAttribution("task");
 const BlockSelector taskSelector = BlockSelector("task");
@@ -22,7 +23,7 @@ int _computeIndentation(TaskEntity? task, int indent) {
 }
 
 @immutable
-class TaskNode extends TextNode {
+class TaskNode extends TextNode implements ThingNode {
   late final TaskEntity task;
   final int indent;
   final bool inEditMode;
@@ -59,6 +60,12 @@ class TaskNode extends TextNode {
   TaskTimeEstimate get timeEstimate => task.timeEstimate;
   TaskEnergyEstimate get energyEstimate => task.energyEstimate;
 
+  @override
+  String get thingUuid => task.uuid;
+
+  @override
+  String get thingType => 'task';
+
   TaskNode copyTaskWith({
     TaskEntity? task,
     int? indent,
@@ -87,9 +94,7 @@ class TaskNode extends TextNode {
 
   @override
   bool hasEquivalentContent(DocumentNode other) {
-    return other is TaskNode &&
-        status == other.status &&
-        text == other.text;
+    return other is TaskNode && status == other.status && text == other.text;
   }
 
   @override

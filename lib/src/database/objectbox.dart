@@ -54,7 +54,10 @@ class ObjectBox {
     return ObjectBox._create(store);
   }
 
-  List<TaskEntity> getTasks<D>({Condition<TaskEntity>? query, QueryProperty<TaskEntity, D>? order}) {
+  List<TaskEntity> getTasks<D>({
+    Condition<TaskEntity>? query,
+    QueryProperty<TaskEntity, D>? order,
+  }) {
     var queryBuilder = _tasks.query(query);
     if (order != null) {
       queryBuilder = queryBuilder.order<D>(order, flags: Order.descending);
@@ -64,8 +67,16 @@ class ObjectBox {
     return Q.find();
   }
 
-  TaskEntity getTaskByUUID(String uuid) =>
-      _tasks.query(TaskEntity_.uuid.equals(uuid)).build().find().single;
+  TaskEntity getTaskByUUID(String uuid) {
+    final results = _tasks.query(TaskEntity_.uuid.equals(uuid)).build().find();
+    if (results.isEmpty) {
+      throw StateError(
+        'Task with UUID "$uuid" not found in ObjectBox. '
+        'All tasks must be persisted to the database.',
+      );
+    }
+    return results.single;
+  }
 
   TaskEntity getTaskByID(int id) => _tasks.get(id)!;
 

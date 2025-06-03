@@ -1,8 +1,4 @@
-enum Flavor {
-  development,
-  staging,
-  production,
-}
+enum Flavor { development, staging, production }
 
 class F {
   static late final Flavor appFlavor;
@@ -19,5 +15,4 @@ class F {
         return 'Tempo';
     }
   }
-
 }

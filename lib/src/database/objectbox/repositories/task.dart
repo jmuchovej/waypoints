@@ -163,7 +163,7 @@ class TaskRepository {
             .query(
               TaskEntity_.deleted.equals(false) &
                   TaskEntity_.archived.equals(false) &
-                  TaskEntity_.status.notOneOf([
+                  TaskEntity_.obxStatus.notOneOf([
                     TaskStatus.complete.index,
                     TaskStatus.dropped.index,
                   ]),

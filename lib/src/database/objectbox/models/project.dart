@@ -22,7 +22,7 @@ class ProjectEntity with AttributedTextEntity, UuidEntity {
   final parent = ToOne<ProjectEntity>();
   @Backlink()
   final children = ToMany<ProjectEntity>();
-  
+
   @override
   String get entityType => 'project';
 

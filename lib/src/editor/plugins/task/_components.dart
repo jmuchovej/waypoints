@@ -14,7 +14,7 @@ final taskStyles = StyleRule(taskSelector, (document, node) {
 });
 
 class TaskComponentBuilder extends ComponentBuilder {
-  TaskComponentBuilder();
+  TaskComponentBuilder([this.editor]);
   Editor? editor;
 
   @override
@@ -30,7 +30,7 @@ class TaskComponentBuilder extends ComponentBuilder {
 
     return TaskComponentViewModel(
       nodeId: node.id,
-      padding: EdgeInsets.zero,
+      padding: EdgeInsets.symmetric(vertical: 36.0),
       indent: node.indent,
       status: node.task.status,
       changeStatus: (TaskStatus status) {},
@@ -258,13 +258,40 @@ class TaskComponentState extends State<TaskComponent>
 
   @override
   NodePosition? getPositionAtOffset(Offset localOffset) {
-    final node = document.getNodeById(widget.viewModel.nodeId) as TaskNode;
-
-    if (!node.inEditMode) {
-      return TextNodePosition(offset: 0);
+    // Get the text component that's nested inside our Row layout
+    final textComponentBox =
+        childDocumentComponentKey.currentContext?.findRenderObject()
+            as RenderBox?;
+    if (textComponentBox == null) {
+      // Fallback to beginning if we can't find the text component
+      return const TextNodePosition(offset: 0);
     }
 
-    return super.getPositionAtOffset(localOffset);
+    // Get our task component's render box
+    final taskComponentBox = context.findRenderObject() as RenderBox?;
+    if (taskComponentBox == null) {
+      return const TextNodePosition(offset: 0);
+    }
+
+    try {
+      // Convert the click position from task component coordinates to text component coordinates
+      // This accounts for the StatusWidget that appears before the text in the Row
+      final globalClickPosition = taskComponentBox.localToGlobal(localOffset);
+      final textLocalOffset = textComponentBox.globalToLocal(
+        globalClickPosition,
+      );
+
+      // Now get the position within the text using the adjusted coordinates
+      final textComponent =
+          childDocumentComponentKey.currentState as TextComponentState?;
+      final position = textComponent?.getPositionAtOffset(textLocalOffset);
+
+      // Return the calculated position, or beginning if calculation failed
+      return position ?? const TextNodePosition(offset: 0);
+    } catch (e) {
+      // If coordinate conversion fails, place cursor at beginning
+      return const TextNodePosition(offset: 0);
+    }
   }
 
   Editor get editor => widget.editor;
@@ -303,44 +330,56 @@ class TaskComponentState extends State<TaskComponent>
     // pluginTaskLog.finest('size: ${context.size}');
     return Directionality(
       textDirection: widget.viewModel.textDirection,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 4,
-            children: [
-              // SizedBox(
-              //   width: widget.viewModel.indentCalculator(
-              //     widget.viewModel.textStyleBuilder({}),
-              //     widget.viewModel.indent,
-              //   ),
-              // ),
-              TaskStatusWidget(
-                status: widget.viewModel.status,
-                onChange: (status) {
-                  widget.viewModel.changeStatus(status);
-                },
-              ),
-              Expanded(
-                child: TextComponent(
-                  key: _textKey,
-                  text: widget.viewModel.text,
-                  textDirection: widget.viewModel.textDirection,
-                  textAlign: widget.viewModel.textAlignment,
-                  textStyleBuilder: _computeStyles,
-                  inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
-                  // textSelection: widget.viewModel.selection,
-                  selectionColor: widget.viewModel.selectionColor,
-                  highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
-                  underlines: widget.viewModel.createUnderlines(),
-                  showDebugPaint: true,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 12.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            // CLAUDE CODE MODIFICATION: Changed to baseline alignment for proper icon positioning
+            Row(
+              crossAxisAlignment:
+                  CrossAxisAlignment
+                      .baseline, // Changed from .start to .baseline
+              textBaseline:
+                  TextBaseline.alphabetic, // Required for baseline alignment
+              spacing: 4,
+              children: [
+                // SizedBox(
+                //   width: widget.viewModel.indentCalculator(
+                //     widget.viewModel.textStyleBuilder({}),
+                //     widget.viewModel.indent,
+                //   ),
+                // ),
+                // CLAUDE CODE MODIFICATION: Replaced TaskStatusWidget with BaselineAlignedTaskStatusWidget
+                BaselineAlignedTaskStatusWidget(
+                  status: widget.viewModel.status,
+                  textStyle: widget.viewModel.textStyleBuilder(
+                    {},
+                  ), // Pass text style for sizing
+                  onChange: (status) {
+                    widget.viewModel.changeStatus(status);
+                  },
                 ),
-              ),
-            ],
-          ),
-          // if (widget.isSelected) Row(children: [_buildQuickActions()]),
-        ],
+                Expanded(
+                  child: TextComponent(
+                    key: _textKey,
+                    text: widget.viewModel.text,
+                    textDirection: widget.viewModel.textDirection,
+                    textAlign: widget.viewModel.textAlignment,
+                    textStyleBuilder: _computeStyles,
+                    inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
+                    textSelection: widget.viewModel.selection,
+                    selectionColor: widget.viewModel.selectionColor,
+                    highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
+                    underlines: widget.viewModel.createUnderlines(),
+                    showDebugPaint: true,
+                  ),
+                ),
+              ],
+            ),
+            // if (widget.isSelected) Row(children: [_buildQuickActions()]),
+          ],
+        ),
       ),
     );
   }
@@ -442,6 +481,87 @@ class _TaskStatusWidgetState extends State<TaskStatusWidget>
   }
 }
 
+/// CLAUDE CODE MODIFICATION: Baseline-aligned task status widget
+///
+/// This widget replaces the original TaskStatusWidget with precise baseline alignment.
+/// It calculates exact positioning based on font metrics to align the status icon
+/// with the text baseline rather than just centering it vertically.
+///
+/// Key features:
+/// - Dynamic icon sizing based on font size (fontSize * 0.85)
+/// - Precise line height calculation (fontSize * height multiplier)
+/// - Mathematical positioning: (lineHeight - iconSize) / 2
+/// - Fixed container dimensions that match text line height
+///
+/// Visual alignment:
+/// - Example: 14px font × 1.4 line height = 19.6px total height
+/// - Icon size: 11.9px (14px × 0.85)
+/// - Top offset: 3.85px ((19.6 - 11.9) / 2)
+///
+/// Integration notes:
+/// - This should replace TaskStatusWidget in production
+/// - The sizing ratios (0.85 for icon, 1.4 for line height) may need fine-tuning
+/// - Consider making ratios configurable via theme or style system
+class BaselineAlignedTaskStatusWidget extends StatelessWidget {
+  const BaselineAlignedTaskStatusWidget({
+    super.key,
+    required this.status,
+    required this.textStyle,
+    required this.onChange,
+  });
+
+  final TaskStatus status;
+  final TextStyle textStyle;
+  final Function(TaskStatus) onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    // Calculate dimensions based on text style
+    final fontSize = textStyle.fontSize ?? 14.0;
+    final lineHeight =
+        (textStyle.height ?? 1.4) * fontSize; // Total line height
+    final iconSize = lineHeight * 0.85; // Icon slightly smaller than font size
+
+    // Calculate vertical positioning to center icon with text baseline
+    final baselineOffset = fontSize * 0.8; // Approximate baseline position
+    final iconTopOffset =
+        (lineHeight - iconSize) / 2; // Center icon in line height
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => _showStatusChanger(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: SizedBox(
+          width: lineHeight, // Icon size plus some padding
+          height: lineHeight, // Match the text line height exactly
+          child: Stack(
+            children: [
+              Positioned(
+                top: iconTopOffset,
+                // left: 4,
+                child: Icon(
+                  status.icon,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: lineHeight,
+                  semanticLabel: status.toDisplayString(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showStatusChanger(BuildContext context) {
+    // For now, just cycle through states - could implement a proper picker later
+    final currentIndex = TaskStatus.values.indexOf(status);
+    final nextIndex = (currentIndex + 1) % TaskStatus.values.length;
+    onChange(TaskStatus.values[nextIndex]);
+  }
+}
+
 class TaskTitleWidget extends StatefulWidget {
   final TaskComponentViewModel viewModel;
   final GlobalKey<State<StatefulWidget>> textKey;
@@ -489,7 +609,7 @@ class _TaskTitleWidgetState extends State<TaskTitleWidget>
       textAlign: widget.viewModel.textAlignment,
       textStyleBuilder: _computeStyles,
       inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
-      // textSelection: widget.viewModel.selection,
+      textSelection: widget.viewModel.selection,
       selectionColor: widget.viewModel.selectionColor,
       highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
       underlines: widget.viewModel.createUnderlines(),

@@ -111,9 +111,6 @@ class _TempoTextFieldState extends State<TempoTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return SuperTextField(
       textController: widget.controller,
       imeConfiguration: TextInputConfiguration(readOnly: widget.readOnly),

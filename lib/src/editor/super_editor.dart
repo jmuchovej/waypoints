@@ -1,6 +1,6 @@
 export 'package:tempo/src/editor/nodes/_task.dart';
+export 'package:tempo/src/editor/nodes/_thing.dart';
 export 'package:tempo/src/editor/extensions.dart';
-export 'package:tempo/src/editor/layers/caret.dart';
 export 'package:tempo/src/editor/inline.dart';
 
 export 'package:super_editor/super_editor.dart'

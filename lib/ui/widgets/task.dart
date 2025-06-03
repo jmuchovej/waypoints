@@ -6,16 +6,16 @@ import 'package:tempo/src/editor/super_editor.dart';
 import 'package:tempo/src/editor/super_text.dart';
 
 class TaskWidget extends StatefulWidget {
-  final TaskEntity task;
-  final bool showDueDate;
-  final void Function() onTap;
-
   const TaskWidget({
     super.key,
     required this.task,
     required this.onTap,
     this.showDueDate = false,
   });
+
+  final TaskEntity task;
+  final bool showDueDate;
+  final void Function() onTap;
 
   @override
   TaskWidgetState createState() => TaskWidgetState();
@@ -108,9 +108,7 @@ class TaskWidgetState extends State<TaskWidget>
   }
 
   Widget _buildTaskTile(BuildContext context) {
-    final controller = AttributedTextEditingController(
-      text: widget.task.title,
-    );
+    final controller = AttributedTextEditingController(text: widget.task.title);
     final dueDate = Jiffy.parseFromDateTime(widget.task.dueDate);
     final subtitle = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,10 +120,7 @@ class TaskWidgetState extends State<TaskWidget>
         //     overflow: TextOverflow.ellipsis,
         //   ),
         if (widget.showDueDate)
-          Text(
-            'Due ${dueDate.fromNow()}',
-            style: TextStyle(fontSize: 12),
-          ),
+          Text('Due ${dueDate.fromNow()}', style: TextStyle(fontSize: 12)),
       ],
     );
     return ListTile(

@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 TextTheme createTextTheme(
-    BuildContext context, {
-      required String body, required String display
-      }) {
+  BuildContext context, {
+  required String body,
+  required String display,
+}) {
   final TextTheme baseTextTheme = Theme.of(context).textTheme;
   final TextTheme bodyTextTheme = GoogleFonts.getTextTheme(body, baseTextTheme);
-  final TextTheme displayTextTheme =
-      GoogleFonts.getTextTheme(display, baseTextTheme);
+  final TextTheme displayTextTheme = GoogleFonts.getTextTheme(
+    display,
+    baseTextTheme,
+  );
   final TextTheme textTheme = displayTextTheme.copyWith(
     bodyLarge: bodyTextTheme.bodyLarge,
     bodyMedium: bodyTextTheme.bodyMedium,
@@ -355,22 +358,19 @@ class TempoTheme {
     return theme(darkHighContrastScheme());
   }
 
-
   ThemeData theme(ColorScheme colorScheme) => ThemeData(
-     useMaterial3: true,
-     brightness: colorScheme.brightness,
-     colorScheme: colorScheme,
-     textTheme: textTheme.apply(
-       bodyColor: colorScheme.onSurface,
-       displayColor: colorScheme.onSurface,
-     ),
-     scaffoldBackgroundColor: colorScheme.background,
-     canvasColor: colorScheme.surface,
+    useMaterial3: true,
+    brightness: colorScheme.brightness,
+    colorScheme: colorScheme,
+    textTheme: textTheme.apply(
+      bodyColor: colorScheme.onSurface,
+      displayColor: colorScheme.onSurface,
+    ),
+    scaffoldBackgroundColor: colorScheme.background,
+    canvasColor: colorScheme.surface,
   );
 
-
-  List<ExtendedColor> get extendedColors => [
-  ];
+  List<ExtendedColor> get extendedColors => [];
 }
 
 class ExtendedColor {

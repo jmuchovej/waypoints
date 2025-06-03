@@ -38,11 +38,7 @@ class Tempo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = createTextTheme(
-      context,
-      display: "Lato",
-      body: "Lato",
-    );
+    final textTheme = createTextTheme(context, display: "Lato", body: "Lato");
     final theme = TempoTheme(textTheme);
 
     return MaterialApp.router(

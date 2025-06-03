@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:tempo/main.dart' show obx;
-import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/src/infrastructure/_logging.dart';
+import 'package:tempo/src/editor.dart';
+import 'package:tempo/src/infrastructure.dart';
 import 'package:uuid/uuid.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
@@ -57,7 +57,9 @@ class SeedDataService {
     // Create sample activities
     final activities = _createSampleActivities(allTasks);
     final activityIds = obx.batchAddActivities(activities);
-    devtoolsDatabaseLog.finer('Created ${activityIds.length} sample activities');
+    devtoolsDatabaseLog.finer(
+      'Created ${activityIds.length} sample activities',
+    );
   }
 
   /// Creates sample projects

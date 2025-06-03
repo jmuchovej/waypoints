@@ -81,11 +81,7 @@ extension AttributionJson on Attribution {
       case ScriptAttribution(:final type):
         return {'type': type};
       case LinkAttribution(:final uri, :final plainTextUri):
-        return {
-          'type': id,
-          'url': plainTextUri,
-          'uri': uri?.toString(),
-        };
+        return {'type': id, 'url': plainTextUri, 'uri': uri?.toString()};
       case FontSizeAttribution(:final fontSize):
         return {'type': id, 'size': fontSize};
       case FontFamilyAttribution(:final fontFamily):
@@ -153,12 +149,7 @@ extension MultiAttributionSpanExtensions on MultiAttributionSpan {
 
 extension ColorJson on Color {
   Map<String, double> toJson() {
-    return {
-      'r': r,
-      'g': g,
-      'b': b,
-      'a': a,
-    };
+    return {'r': r, 'g': g, 'b': b, 'a': a};
   }
 
   static Color fromJson(Map<String, double> json) {

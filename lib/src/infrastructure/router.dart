@@ -4,7 +4,7 @@ import 'package:tempo/main.dart' show obx;
 import 'package:tempo/pages/home.dart';
 import 'package:tempo/pages/projects.dart';
 import 'package:tempo/pages/task_editor.dart';
-import 'package:tempo/flux/pages/tasks.dart';
+import 'package:tempo/modules/flux/pages/tasks.dart';
 import 'package:tempo/src/database/objectbox/models/task.dart';
 import 'package:tempo/src/database/objectbox/models/project.dart';
 import 'package:tempo/dev/screens/devtools.dart';
@@ -12,7 +12,7 @@ import 'package:tempo/flavors.dart';
 import 'package:tempo/src/database/repositories/uuid_repository.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/tasks',
+  initialLocation: '/scaffolding-demo',
   routes: [
     ShellRoute(
       builder: (context, state, child) => HomeShell(child: child),
@@ -27,12 +27,13 @@ final GoRouter router = GoRouter(
           name: 'projects',
           builder: (context, state) => const ProjectsScreen(),
         ),
-        if (F.appFlavor == Flavor.development)
+        if (F.appFlavor == Flavor.development) ...[
           GoRoute(
             path: '/devtools',
             name: 'devtools',
             builder: (context, state) => const DevToolsScreen(),
           ),
+        ],
       ],
     ),
     // Entity route with subpath - prevents conflicts with top-level routes
@@ -45,31 +46,32 @@ final GoRouter router = GoRouter(
       },
     ),
   ],
-  errorBuilder: (context, state) => Scaffold(
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(
-            'Page not found',
-            style: Theme.of(context).textTheme.headlineSmall,
+  errorBuilder:
+      (context, state) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Page not found',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.uri.toString(),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Go Home'),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            state.uri.toString(),
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () => context.go('/'),
-            child: const Text('Go Home'),
-          ),
-        ],
+        ),
       ),
-    ),
-  ),
 );
 
 // Entity lookup function - determines entity type by UUID and returns appropriate screen
@@ -87,9 +89,7 @@ Widget _buildEntityScreen(String uuid) {
     case 'task':
       try {
         final task = obx.getTaskByUUID(uuid);
-        if (task != null) {
-          return TaskEditorScreen(task: task);
-        }
+        return TaskEditorScreen(task: task);
       } catch (e) {
         // Task not found - possibly deleted but registry not updated
       }
@@ -143,10 +143,7 @@ Widget _buildEntityNotFoundScreen(String uuid, [String? entityType]) {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(
-            'UUID: $uuid',
-            style: const TextStyle(color: Colors.grey),
-          ),
+          Text('UUID: $uuid', style: const TextStyle(color: Colors.grey)),
           if (entityType != null) ...[
             const SizedBox(height: 4),
             Text(
@@ -156,10 +153,11 @@ Widget _buildEntityNotFoundScreen(String uuid, [String? entityType]) {
           ],
           const SizedBox(height: 16),
           Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () => GoRouter.of(context).go('/tasks'),
-              child: const Text('Go to Tasks'),
-            ),
+            builder:
+                (context) => ElevatedButton(
+                  onPressed: () => GoRouter.of(context).go('/tasks'),
+                  child: const Text('Go to Tasks'),
+                ),
           ),
         ],
       ),

@@ -6,31 +6,18 @@ import 'package:tempo/src/infrastructure/_logging.dart';
 import 'package:tempo/src/models.dart';
 
 import '_components.dart';
-import '_keybinds.dart';
-import '_reactions.dart';
-import '_requests.dart';
+
+export './_components.dart' show TaskComponentBuilder;
 
 class TaskPlugin extends SuperEditorPlugin {
-  static const taskKey = 'TaskPlugin.task';
+  TaskPlugin({this.onTaskTap})
+    : _componentBuilder = TaskComponentBuilder(),
+      _selectionStyler = TaskSelectionStyler(),
+      _contentTapHandler = switch (defaultTargetPlatform) {
+        _ => TaskContentTapDelegate(onTaskTap: onTaskTap),
+      };
 
-  TaskPlugin({
-    this.onTaskTap,
-  })  : _componentBuilder = TaskComponentBuilder(),
-        _selectionStyler = TaskSelectionStyler(),
-        _contentTapHandler = switch (defaultTargetPlatform) {
-          _ => TaskContentTapDelegate(onTaskTap: onTaskTap),
-        } {
-    pluginTaskLog.finest(
-      'created `_componentBuilder` = ${_componentBuilder.runtimeType}',
-    );
-    pluginTaskLog.finest(
-      'created `_selectionStyler` = ${_selectionStyler.runtimeType}',
-    );
-    pluginTaskLog.finest(
-      'created `_contentTapHandler` = ${_contentTapHandler.runtimeType}',
-    );
-    pluginTaskLog.finest('contentTapHandlers = $contentTapHandlers');
-  }
+  static const taskKey = 'TaskPlugin.task';
 
   final void Function(TaskEntity task)? onTaskTap;
 
@@ -46,7 +33,7 @@ class TaskPlugin extends SuperEditorPlugin {
   ];
 
   @override
-  List<ComponentBuilder> get componentBuilders => [_componentBuilder];
+  List<ComponentBuilder> get componentBuilders => []; // Moved to base componentBuilders list for hover wrapping
   final TaskComponentBuilder _componentBuilder;
 
   @override
@@ -135,9 +122,7 @@ class TaskTapOverlayBuilder extends SuperEditorLayerBuilder {
 }
 
 class TaskContentTapDelegate extends ContentTapDelegate {
-  TaskContentTapDelegate({
-    this.onTaskTap,
-  });
+  TaskContentTapDelegate({this.onTaskTap});
 
   Editor? editor;
   final void Function(TaskEntity task)? onTaskTap;
@@ -155,6 +140,13 @@ class TaskContentTapDelegate extends ContentTapDelegate {
   @override
   TapHandlingInstruction onTap(DocumentTapDetails details) {
     pluginTaskLog.finest('received a single-tap!');
+
+    // Let motion plugin handle taps in normal mode
+    // final motion = editor?.context.find<Motion>(Motion.key);
+    // if (motion != null && motion.value == MotionMode.normal) {
+    //   return TapHandlingInstruction.continueHandling;
+    // }
+
     if (editor == null) {
       pluginTaskLog.finest('¿editor is null?');
       return TapHandlingInstruction.continueHandling;
