@@ -3,9 +3,7 @@ import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor.dart';
 import 'package:tempo/src/infrastructure.dart';
 import 'package:uuid/uuid.dart';
-import 'package:tempo/src/database/objectbox/models/task.dart';
-import 'package:tempo/src/database/objectbox/models/project.dart';
-import 'package:tempo/src/database/objectbox/models/activity.dart';
+import 'package:tempo/src/things/entities.dart';
 
 class SeedDataService {
   static bool _hasSeeded = false;

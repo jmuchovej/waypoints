@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tempo/flavors.dart';
+import 'package:tempo/src/infrastructure.dart';
 
 class HomeShell extends StatelessWidget {
   final Widget child;
@@ -24,14 +25,14 @@ class HomeShell extends StatelessWidget {
   void _onDestinationSelected(BuildContext context, int index) {
     switch (index) {
       case 0:
-        context.go('/tasks');
+        context.gotoTasks();
         break;
       case 1:
-        context.go('/projects');
+        context.gotoProjects();
         break;
       case 2:
         if (F.appFlavor == Flavor.development) {
-          context.go('/devtools');
+          context.gotoDevTools();
         }
         break;
     }

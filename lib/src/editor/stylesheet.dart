@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tempo/src/editor/plugins/task/_components.dart';
+import 'package:tempo/src/things/task.dart' show taskStyles;
 import 'package:tempo/src/editor/super_editor.dart';
 
 const BlockSelector blockSelectorH1 = BlockSelector("header1");

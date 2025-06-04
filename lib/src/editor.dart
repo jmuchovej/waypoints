@@ -3,16 +3,17 @@ import 'package:flutter/material.dart';
 // TODO once `MotionPlugin` properly works, drop this!
 import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 import 'package:tempo/flavors.dart';
-import 'package:tempo/src/editor/plugins/task/task.dart';
 
-import './editor/super_editor.dart';
-import './editor/scaffolding/scaffolding.dart';
-import './editor/stylesheet.dart';
+import 'package:tempo/src/editor/super_editor.dart';
+import 'package:tempo/src/editor/scaffolding/scaffolding.dart';
+import 'package:tempo/src/editor/stylesheet.dart';
 
-export './editor/super_editor.dart';
-export './editor/super_text.dart';
-export './editor/attributed_text.dart';
-export './editor/scaffolding/scaffolding.dart';
+export 'package:tempo/src/editor/super_editor.dart';
+export 'package:tempo/src/editor/super_text.dart';
+export 'package:tempo/src/editor/attributed_text.dart';
+export 'package:tempo/src/editor/scaffolding/scaffolding.dart';
+
+import 'package:tempo/src/things/task.dart';
 
 SuperEditor createSuperEditor(
   BuildContext context,

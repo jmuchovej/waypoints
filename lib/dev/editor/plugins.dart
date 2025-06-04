@@ -6,8 +6,7 @@ class DevToolsPlugin implements SuperEditorPlugin {
   List<SingleColumnLayoutStylePhase> get appendedStylePhases => const [];
 
   @override
-  void attach(Editor editor) {
-  }
+  void attach(Editor editor) {}
 
   @override
   // TODO: implement componentBuilders
@@ -33,5 +32,4 @@ class DevToolsPlugin implements SuperEditorPlugin {
   @override
   // TODO: implement keyboardActions
   List<DocumentKeyboardAction> get keyboardActions => const [];
-
 }

@@ -5,14 +5,13 @@ import 'package:tempo/pages/home.dart';
 import 'package:tempo/pages/projects.dart';
 import 'package:tempo/pages/task_editor.dart';
 import 'package:tempo/modules/flux/pages/tasks.dart';
-import 'package:tempo/src/database/objectbox/models/task.dart';
-import 'package:tempo/src/database/objectbox/models/project.dart';
+import 'package:tempo/src/things/entities.dart';
 import 'package:tempo/dev/screens/devtools.dart';
 import 'package:tempo/flavors.dart';
 import 'package:tempo/src/database/repositories/uuid_repository.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/scaffolding-demo',
+  initialLocation: '/tasks',
   routes: [
     ShellRoute(
       builder: (context, state, child) => HomeShell(child: child),
@@ -65,7 +64,7 @@ final GoRouter router = GoRouter(
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => context.go('/'),
+                onPressed: () => context.gotoHome(),
                 child: const Text('Go Home'),
               ),
             ],
@@ -167,27 +166,30 @@ Widget _buildEntityNotFoundScreen(String uuid, [String? entityType]) {
 
 // Extension methods for easier navigation
 extension GoRouterNavigation on BuildContext {
-  void goToEntity(String uuid) {
+  void gotoEntity(String uuid) {
     GoRouter.of(this).go('/thing/$uuid');
   }
 
-  void goToTask(TaskEntity task) {
+  void gotoTask(TaskEntity task) {
     GoRouter.of(this).go('/thing/${task.uuid}');
   }
 
-  void goToProject(ProjectEntity project) {
+  void gotoProject(ProjectEntity project) {
     GoRouter.of(this).go('/thing/${project.uuid}');
   }
 
-  void goToTasks() {
+  void gotoTasks() {
     GoRouter.of(this).go('/tasks');
   }
 
-  void goToProjects() {
+  void gotoProjects() {
     GoRouter.of(this).go('/projects');
   }
 
-  void goHome() {
-    GoRouter.of(this).go('/tasks');
+  void gotoHome() {
+    gotoTasks();
+  }
+  void gotoDevTools() {
+    GoRouter.of(this).go('/devtools');
   }
 }

@@ -4,73 +4,6 @@
   "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
   "entities": [
     {
-      "id": "1:3471702328273018748",
-      "lastPropertyId": "11:9031194294876340968",
-      "name": "ActivityEntity",
-      "properties": [
-        {
-          "id": "1:5931537194768865077",
-          "name": "id",
-          "type": 6,
-          "flags": 1
-        },
-        {
-          "id": "2:8332979111981637129",
-          "name": "uuid",
-          "type": 9
-        },
-        {
-          "id": "3:2095270453480913270",
-          "name": "title",
-          "type": 9
-        },
-        {
-          "id": "4:1912902288360065195",
-          "name": "startDate",
-          "type": 10
-        },
-        {
-          "id": "5:3349891592589606227",
-          "name": "endDate",
-          "type": 10
-        },
-        {
-          "id": "6:3314648905005835354",
-          "name": "tags",
-          "type": 30
-        },
-        {
-          "id": "7:1613878364808957853",
-          "name": "taskId",
-          "type": 11,
-          "flags": 520,
-          "indexId": "1:8620383880995841245",
-          "relationTarget": "TaskEntity"
-        },
-        {
-          "id": "8:5652289673302938019",
-          "name": "archived",
-          "type": 1
-        },
-        {
-          "id": "9:2583403339137719321",
-          "name": "deleted",
-          "type": 1
-        },
-        {
-          "id": "10:9168541774733154514",
-          "name": "dbKind",
-          "type": 6
-        },
-        {
-          "id": "11:9031194294876340968",
-          "name": "dbStatus",
-          "type": 6
-        }
-      ],
-      "relations": []
-    },
-    {
       "id": "3:6582267033951405794",
       "lastPropertyId": "21:1204419577543125508",
       "name": "TaskEntity",
@@ -193,45 +126,6 @@
       "relations": []
     },
     {
-      "id": "5:7373679035215447225",
-      "lastPropertyId": "5:4514279718420578978",
-      "name": "ProjectEntity",
-      "properties": [
-        {
-          "id": "1:5842251814498208370",
-          "name": "id",
-          "type": 6,
-          "flags": 1
-        },
-        {
-          "id": "2:5134835783431281584",
-          "name": "uuid",
-          "type": 9
-        },
-        {
-          "id": "3:6348849762496155262",
-          "name": "titleJson",
-          "type": 9
-        },
-        {
-          "id": "4:5515910637713855371",
-          "name": "titlePlainText",
-          "type": 9,
-          "flags": 2048,
-          "indexId": "9:838185840127892101"
-        },
-        {
-          "id": "5:4514279718420578978",
-          "name": "parentId",
-          "type": 11,
-          "flags": 520,
-          "indexId": "10:1298323376581432664",
-          "relationTarget": "ProjectEntity"
-        }
-      ],
-      "relations": []
-    },
-    {
       "id": "6:5775314737086256322",
       "lastPropertyId": "5:3680222096249410861",
       "name": "UuidRegistry",
@@ -268,17 +162,125 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "7:6587089514686823531",
+      "lastPropertyId": "5:3575756453373043879",
+      "name": "ProjectEntity",
+      "properties": [
+        {
+          "id": "1:773004102117582547",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3666118728451235110",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:1578690092598916915",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "4:9219226429947844223",
+          "name": "titlePlainText",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "13:783379532695341161"
+        },
+        {
+          "id": "5:3575756453373043879",
+          "name": "parentId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "14:247555524715760619",
+          "relationTarget": "ProjectEntity"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "8:4793835938932565059",
+      "lastPropertyId": "11:6794952888698161012",
+      "name": "ActivityEntity",
+      "properties": [
+        {
+          "id": "1:6008265715517132532",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3464255673342286696",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:5054418813091077781",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:6784063258998125006",
+          "name": "startDate",
+          "type": 10
+        },
+        {
+          "id": "5:591729312510774270",
+          "name": "endDate",
+          "type": 10
+        },
+        {
+          "id": "6:4176147631489898049",
+          "name": "tags",
+          "type": 30
+        },
+        {
+          "id": "7:7364912780746165442",
+          "name": "taskId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "15:1116143446451537281",
+          "relationTarget": "TaskEntity"
+        },
+        {
+          "id": "8:61654057361034876",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "9:6818831783878099959",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "10:957403433450616301",
+          "name": "dbKind",
+          "type": 6
+        },
+        {
+          "id": "11:6794952888698161012",
+          "name": "dbStatus",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "6:5775314737086256322",
-  "lastIndexId": "12:1020584761340276532",
+  "lastEntityId": "8:4793835938932565059",
+  "lastIndexId": "15:1116143446451537281",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [
     36414948713215824,
-    587039245591597227
+    587039245591597227,
+    3471702328273018748,
+    7373679035215447225
   ],
   "retiredIndexUids": [],
   "retiredPropertyUids": [
@@ -291,7 +293,23 @@
     5007328769585178892,
     7013170914439577670,
     7861254809516415832,
-    6364421086383439270
+    6364421086383439270,
+    5931537194768865077,
+    8332979111981637129,
+    2095270453480913270,
+    1912902288360065195,
+    3349891592589606227,
+    3314648905005835354,
+    1613878364808957853,
+    5652289673302938019,
+    2583403339137719321,
+    9168541774733154514,
+    9031194294876340968,
+    5842251814498208370,
+    5134835783431281584,
+    6348849762496155262,
+    5515910637713855371,
+    4514279718420578978
   ],
   "retiredRelationUids": [],
   "version": 1

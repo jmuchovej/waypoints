@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jiffy/jiffy.dart';
 import 'package:tempo/main.dart';
-import 'package:tempo/src/database/objectbox/models/task.dart';
-import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/src/editor/super_text.dart';
+import 'package:tempo/src/things/task.dart';
+import 'package:tempo/src/editor.dart';
 
 class TaskWidget extends StatefulWidget {
   const TaskWidget({

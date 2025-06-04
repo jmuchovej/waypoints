@@ -2,6 +2,13 @@ import 'package:objectbox/objectbox.dart';
 
 @Entity()
 class UuidRegistry {
+  UuidRegistry({
+    required this.uuid,
+    required this.entityType,
+    required this.entityId,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
   @Id()
   int id = 0;
 
@@ -16,11 +23,4 @@ class UuidRegistry {
   int entityId;
 
   DateTime createdAt;
-
-  UuidRegistry({
-    required this.uuid,
-    required this.entityType,
-    required this.entityId,
-    DateTime? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now();
 }

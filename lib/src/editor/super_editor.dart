@@ -1,5 +1,3 @@
-export 'package:tempo/src/editor/nodes/_task.dart';
-export 'package:tempo/src/editor/nodes/_thing.dart';
 export 'package:tempo/src/editor/extensions.dart';
 export 'package:tempo/src/editor/inline.dart';
 

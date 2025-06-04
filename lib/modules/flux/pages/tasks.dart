@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/main.dart' show obx;
-import 'package:tempo/src/editor/interaction/interaction.dart';
-import 'package:tempo/src/editor/plugins/scaffolding/scaffolding.dart';
 import 'package:tempo/src/editor.dart';
+
+import 'package:tempo/src/things/task/task.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});

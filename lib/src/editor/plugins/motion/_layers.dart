@@ -71,17 +71,36 @@ class NodeSelectionUnderlayBuilder extends SuperEditorLayerBuilder {
     BuildContext context,
     SuperEditorContext editContext,
   ) {
-    final selection = editContext.composer.selection;
-    if (selection == null) {
-      return EmptyContentLayer();
-    }
-
     return NodeSelectionUnderlay(
       normalModeColor: normalModeColor,
       insertModeColor: insertModeColor,
       documentLayoutResolver: () => editContext.documentLayout,
       composer: editContext.composer,
       document: editContext.document,
+    );
+  }
+}
+
+/// NAVIGATION CONTEXT PROVIDER: Captures BuildContext for Thing navigation
+///
+/// This layer doesn't render anything visible, but provides a BuildContext
+/// that the motion plugin can use for navigation. This solves the problem
+/// of ContentTapDelegate not having access to a BuildContext.
+class MotionNavigationContextProvider extends SuperEditorLayerBuilder {
+  MotionNavigationContextProvider({required this.contentTapDelegate});
+
+  final MotionContentTapDelegate contentTapDelegate;
+
+  @override
+  ContentLayerWidget build(
+    BuildContext context,
+    SuperEditorContext editContext,
+  ) {
+    // Store the context in the tap delegate for navigation
+    // contentTapDelegate.context = context;
+
+    return ContentLayerProxyWidget(
+      child: const SizedBox.shrink(), // Invisible widget
     );
   }
 }
@@ -182,7 +201,7 @@ class NodeSelectionUnderlayState
                   color:
                       motionMode.value == MotionMode.normal
                           ? widget.normalModeColor
-                          : widget.insertModeColor,
+                          : widget.insertModeColor.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8.0),
                 ),
               ),

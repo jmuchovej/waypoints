@@ -1,5 +1,4 @@
-import 'package:objectbox/objectbox.dart';
-import 'package:tempo/src/database/objectbox/models/uuid_registry.dart';
+import 'package:tempo/src/database/objectbox/uuid_registry.dart';
 import 'package:tempo/src/database/objectbox.g.dart';
 
 class UuidRepository {
@@ -97,15 +96,15 @@ class UuidService {
 }
 
 class UuidAlreadyExistsException implements Exception {
-  final String uuid;
-  final String existingEntityType;
-  final String attemptedEntityType;
-
   UuidAlreadyExistsException(
     this.uuid,
     this.existingEntityType,
     this.attemptedEntityType,
   );
+
+  final String uuid;
+  final String existingEntityType;
+  final String attemptedEntityType;
 
   @override
   String toString() {
