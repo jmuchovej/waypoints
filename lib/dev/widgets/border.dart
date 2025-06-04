@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:tempo/flavors.dart';
 
 class DebugBorder extends StatelessWidget {
+  const DebugBorder({super.key, required this.child, this.color = Colors.red});
+
   final Widget child;
   final Color color;
-
-  const DebugBorder({super.key, required this.child, this.color = Colors.red});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +13,7 @@ class DebugBorder extends StatelessWidget {
       return child;
     }
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(border: Border.all(color: color, width: 2)),
       child: child,
     );
