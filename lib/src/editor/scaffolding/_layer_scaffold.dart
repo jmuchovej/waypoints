@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
-import 'package:tempo/src/editor/interaction/_hover_manager.dart';
+import '_manager_hover.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 
-import './_config.dart';
-import './_manager_link.dart';
+import '_config.dart';
+import '_manager_link.dart';
 
 /// The [ScaffoldingLayerBuilder] simply assembles the [ScaffoldingOverlay],
 /// see those docs for more details!

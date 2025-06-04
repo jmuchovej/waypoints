@@ -4,8 +4,8 @@ class LeaderLinkManager {
   final _links = <String, LeaderLink>{};
   final _linkListeners = <String, int>{};
 
-  LeaderLink getLink(String nodeId) {
-    return _links.putIfAbsent(nodeId, () => LeaderLink());
+  LeaderLink getLink(String nodeID) {
+    return _links.putIfAbsent(nodeID, () => LeaderLink());
   }
 
   void retainLink(String nodeId) {

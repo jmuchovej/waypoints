@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
-import 'package:tempo/src/editor/plugins/scaffolding/_config.dart';
+import 'package:tempo/src/editor/scaffolding/_config.dart';
 
 class DragHandle extends StatefulWidget {
   const DragHandle({super.key});
@@ -42,13 +42,15 @@ class DragHandleState extends State<DragHandle> {
 class DragHandleElement extends ScaffoldElement {
   @override
   Widget build(BuildContext context, String nodeID, LeaderLink link) {
-    return Follower.withAligner(
+    return Follower.withOffset(
       link: link,
-      aligner: const StaticOffsetAligner(
+      // aligner: const StaticOffsetAligner(
         offset: Offset(-10, 0),
         leaderAnchor: Alignment.centerLeft,
         followerAnchor: Alignment.centerRight,
-      ),
+      // ),
+      repaintWhenLeaderChanges: true,
+      // showDebugPaint: true,
       child: DragHandle(),
     );
   }

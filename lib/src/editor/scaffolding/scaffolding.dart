@@ -1,15 +1,16 @@
 import 'package:follow_the_leader/follow_the_leader.dart';
-import 'package:tempo/src/editor/interaction/_hover_manager.dart';
 import 'package:tempo/src/editor/super_editor.dart';
 
-import './_elements/_switch_node_type.dart';
-import './_elements/_drag_handle.dart';
-import './_manager_link.dart';
-import './_layer_scaffold.dart';
-import './_layer_hover.dart';
+import '_elements/_switch_node_type.dart';
+import '_elements/_drag_handle.dart';
+import '_manager_link.dart';
+import '_manager_hover.dart';
+import '_layer_scaffold.dart';
+import '_layer_hover.dart';
 
-export './_components.dart' show ScaffoldedComponentBuilder;
-export './_manager_link.dart' show LeaderLinkManager;
+export '_components.dart' show ScaffoldedComponentBuilder;
+export '_manager_link.dart' show LeaderLinkManager;
+export '_manager_hover.dart' show HoverManager;
 
 /// The [ScaffoldingPlugin] provides a way to anchor [Follower]s to
 /// [LeaderLink]s. This allows us to attach widgets like [DragHandle],
@@ -38,7 +39,5 @@ class ScaffoldingPlugin extends SuperEditorPlugin {
     ),
   ];
   @override
-  List<SuperEditorLayerBuilder> get documentUnderlayBuilders => [
-    DebugHoverLayerBuilder(hoverManager: hoverManager, enabled: showDebugPaint),
-  ];
+  List<SuperEditorLayerBuilder> get documentUnderlayBuilders => const [];
 }

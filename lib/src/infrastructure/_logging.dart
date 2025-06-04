@@ -3,7 +3,7 @@ import 'package:logging/logging.dart';
 export 'package:logging/logging.dart'
     show Logger, Level, hierarchicalLoggingEnabled;
 
-import 'package:tempo/src/editor/super_editor.dart' hide Logger, initLoggers;
+import 'package:tempo/src/editor/super_editor.dart';
 import 'package:follow_the_leader/follow_the_leader.dart' show FtlLogs;
 
 class LogNames {
@@ -13,7 +13,7 @@ class LogNames {
   static const plugin = 'plugin';
   static const pluginMotion = '${LogNames.plugin}.motion';
   static const pluginTask = '${LogNames.plugin}.task';
-  static const pluginNodeMetadata = '${LogNames.plugin}.nodeMetadata';
+  static const pluginScaffold = '${LogNames.plugin}.scaffold';
 
   static const layer = 'layer';
   static const layerBlockHighlighter = '${LogNames.layer}.blockHighlighter';
@@ -35,7 +35,7 @@ final devtoolsDatabaseLog = Logger(LogNames.devtoolsDatabase);
 final pluginLog = Logger(LogNames.plugin);
 final pluginMotionLog = Logger(LogNames.pluginMotion);
 final pluginTaskLog = Logger(LogNames.pluginTask);
-final pluginNodeMetadataLog = Logger(LogNames.pluginNodeMetadata);
+final pluginScaffoldLog = Logger(LogNames.pluginScaffold);
 
 // Custom SuperEditor Layers
 final layerLog = Logger(LogNames.layer);
@@ -82,7 +82,7 @@ final Set<Logger> tempoLoggers = {
   pluginLog,
   pluginMotionLog,
   pluginTaskLog,
-  pluginNodeMetadataLog,
+  pluginScaffoldLog,
 
   // Custom SuperEditor Layers
   layerLog,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
-import 'package:tempo/src/editor/plugins/scaffolding/_config.dart';
+import 'package:tempo/src/editor/scaffolding/_config.dart';
 import 'package:tempo/src/things/things.dart' show ThingNode;
 
 // TODO: actually implement node type switching. LOL.

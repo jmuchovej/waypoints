@@ -6,13 +6,13 @@ import 'package:tempo/flavors.dart';
 import 'package:tempo/src/editor/plugins/task/task.dart';
 
 import './editor/super_editor.dart';
-import './editor/interaction/interaction.dart';
-import './editor/plugins/scaffolding/scaffolding.dart';
+import './editor/scaffolding/scaffolding.dart';
 import './editor/stylesheet.dart';
 
 export './editor/super_editor.dart';
 export './editor/super_text.dart';
 export './editor/attributed_text.dart';
+export './editor/scaffolding/scaffolding.dart';
 
 SuperEditor createSuperEditor(
   BuildContext context,
@@ -54,26 +54,38 @@ SuperEditor createSuperEditor(
       ScaffoldedComponentBuilder(
         innerBuilder: TaskComponentBuilder(editor),
         linkManager: linkManager,
+        hoverManager: hoverManager,
+        composer: composer,
       ),
       ScaffoldedComponentBuilder(
         innerBuilder: BlockquoteComponentBuilder(),
         linkManager: linkManager,
+        hoverManager: hoverManager,
+        composer: composer,
       ),
       ScaffoldedComponentBuilder(
         innerBuilder: ParagraphComponentBuilder(),
         linkManager: linkManager,
+        hoverManager: hoverManager,
+        composer: composer,
       ),
       ScaffoldedComponentBuilder(
         innerBuilder: ListItemComponentBuilder(),
         linkManager: linkManager,
+        hoverManager: hoverManager,
+        composer: composer,
       ),
       ScaffoldedComponentBuilder(
         innerBuilder: ImageComponentBuilder(),
         linkManager: linkManager,
+        hoverManager: hoverManager,
+        composer: composer,
       ),
       ScaffoldedComponentBuilder(
         innerBuilder: HorizontalRuleComponentBuilder(),
         linkManager: linkManager,
+        hoverManager: hoverManager,
+        composer: composer,
       ),
     ],
 
