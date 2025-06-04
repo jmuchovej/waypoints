@@ -1,11 +1,12 @@
-// lib/ui/screens/dev_tools.dart
 import 'package:flutter/material.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:tempo/main.dart' show obx;
 import 'package:tempo/dev/database/seed.dart';
 import 'package:path_provider/path_provider.dart';
 
+@RoutePage()
 class DevToolsScreen extends StatefulWidget {
-  const DevToolsScreen();
+  const DevToolsScreen({super.key});
 
   @override
   State<DevToolsScreen> createState() => _DevToolsScreenState();
@@ -126,7 +127,7 @@ class _DevToolsScreenState extends State<DevToolsScreen> {
                     label: Text('Generate Sample Data'),
                     onPressed: () async {
                       await SeedDataService.seedIfNeeded(force: true);
-                      _refreshCounts();
+                      await _refreshCounts();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Sample data generated')),
                       );
@@ -146,7 +147,7 @@ class _DevToolsScreenState extends State<DevToolsScreen> {
                       final confirmed = await _showConfirmationDialog();
                       if (confirmed) {
                         await SeedDataService.clearAllData();
-                        _refreshCounts();
+                        await _refreshCounts();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('All data cleared')),
                         );
@@ -182,7 +183,7 @@ class _DevToolsScreenState extends State<DevToolsScreen> {
                 final directory = await getApplicationDocumentsDirectory();
                 final dbPath = '${directory.path}/obx';
 
-                showDialog(
+                await showDialog(
                   context: context,
                   builder:
                       (context) => AlertDialog(

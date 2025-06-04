@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tempo/dev/database/seed.dart';
 import 'package:tempo/flavors.dart';
+import 'package:tempo/src/infrastructure/auto_router.dart';
 import 'package:tempo/theme/theme.dart';
 import 'package:tempo/src/database/objectbox.dart';
 import 'package:tempo/src/infrastructure.dart';
@@ -30,11 +31,14 @@ void main() async {
   initLoggers(Level.FINER, superEditorLoggers);
   deactivateLoggers(FTLLoggers);
 
-  runApp(const ProviderScope(child: Tempo()));
+  runApp(ProviderScope(child: Tempo()));
 }
 
 class Tempo extends StatelessWidget {
-  const Tempo({super.key});
+  Tempo({super.key});
+
+  // Create the auto_route router
+  final _appRouter = AppRouter();
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +52,7 @@ class Tempo extends StatelessWidget {
       theme: theme.light(),
       darkTheme: theme.dark(),
       themeMode: ThemeMode.system,
-      routerConfig: router,
+      routerConfig: _appRouter.config(),
       debugShowCheckedModeBanner: false,
     );
   }

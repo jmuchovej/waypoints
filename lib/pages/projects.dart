@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:go_router/go_router.dart';
 import 'package:super_editor/super_text_field.dart';
 import 'package:tempo/main.dart';
@@ -7,10 +8,11 @@ import 'package:tempo/src/editor/super_text.dart';
 import 'package:tempo/ui/widgets/task.dart';
 import 'package:uuid/uuid.dart';
 
+@RoutePage()
 class ProjectsScreen extends StatefulWidget {
-  final ProjectEntity? initialProject;
-
   const ProjectsScreen({super.key, this.initialProject});
+
+  final ProjectEntity? initialProject;
 
   @override
   State<ProjectsScreen> createState() => _ProjectsScreenState();

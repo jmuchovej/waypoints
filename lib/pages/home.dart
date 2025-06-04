@@ -4,9 +4,9 @@ import 'package:tempo/flavors.dart';
 import 'package:tempo/src/infrastructure.dart';
 
 class HomeShell extends StatelessWidget {
-  final Widget child;
-
   const HomeShell({super.key, required this.child});
+
+  final Widget child;
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();

@@ -16,7 +16,7 @@ documentation: "https://tempo.do/docs/"
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 0.0.1+1
 
 environment:
   sdk: ^3.7.2
@@ -64,6 +64,7 @@ dependencies:
   super_text_layout: any
   super_editor_markdown: any
   super_keyboard: any
+  auto_route: ^10.1.0+1
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,7 @@ dev_dependencies:
   objectbox_generator: any
   flutter_flavorizr: ^2.4.0
   drift_dev: ^2.26.1
+  auto_route_generator: ^10.0.0
 
 flutter:
   uses-material-design: true

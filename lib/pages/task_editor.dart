@@ -63,7 +63,7 @@ class _TaskEditorScreenState extends State<TaskEditorScreen> {
     // Load projects
     _availableProjects = obx.getProjects();
     fluxEditorLog.finest("Loaded projects:");
-    for (var project in _availableProjects) {
+    for (final project in _availableProjects) {
       fluxEditorLog.finest("- ${project.title}");
     }
 

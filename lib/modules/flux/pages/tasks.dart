@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor.dart';
 
-import 'package:tempo/src/things/task/task.dart';
+import 'package:tempo/src/things/task.dart';
 
+@RoutePage()
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
 
