@@ -5,7 +5,7 @@ export 'package:tempo/src/things/_task/entity.dart';
 export 'package:tempo/src/things/_task/node.dart';
 export 'package:tempo/src/things/_task/components/builder.dart';
 export 'package:tempo/src/things/_task/components/component.dart';
-export 'package:tempo/src/things/_task/components/picker_status.dart';
+export 'package:tempo/src/things/_task/components/chips/status.dart';
 
 const NamedAttribution taskAttribution = NamedAttribution("task");
 const BlockSelector taskSelector = BlockSelector("task");
@@ -20,6 +20,7 @@ final taskStyles = StyleRule(taskSelector, (document, node) {
     return {};
   }
 
-  return {Styles.padding: const CascadingPadding.only(top: 6)};
+  // return {Styles.padding: const CascadingPadding.only(top: 6)};
+  return {};
 });
 

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/src/infrastructure.dart';
-
 import 'package:tempo/src/things/_task/components/builder.dart';
 import 'package:tempo/src/things/_task/node.dart';
 import 'package:tempo/src/things/_task/entity.dart';
-import 'package:tempo/src/things/_task/components/picker_status.dart';
+import 'package:tempo/src/things/_task/components/chips/status.dart';
+import 'package:tempo/src/things/_task/components/chips/progress.dart';
+import 'package:tempo/src/things/_task/components/chips/due_date.dart';
+import 'package:tempo/src/things/_task/components/chips/project.dart';
 
 /// A document component that displays a complete-able task.
 ///
@@ -60,6 +61,7 @@ class TaskComponentState extends State<TaskComponent>
         : style;
   }
 
+
   @override
   NodePosition? getPositionAtOffset(Offset localOffset) {
     // Get the text component that's nested inside our Row layout
@@ -103,68 +105,41 @@ class TaskComponentState extends State<TaskComponent>
   TaskNode get node =>
       document.getNodeById(widget.viewModel.nodeId) as TaskNode;
 
-  void _onTap() {
-    if (!node.inEditMode) {
-      editor.execute([
-        ChangeSelectionRequest(
-          DocumentSelection(
-            base: DocumentPosition(
-              nodeId: node.id,
-              nodePosition: const TextNodePosition(offset: 0),
-            ),
-            extent: DocumentPosition(
-              nodeId: node.id,
-              nodePosition: TextNodePosition(offset: node.text.length),
-            ),
-          ),
-          SelectionChangeType.placeCaret,
-          SelectionReason.userInteraction,
-        ),
-      ]);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // return Container(
-    //   decoration: BoxDecoration(
-    //     borderRadius: BorderRadius.circular(8),
-    //     color: widget.isSelected ? widget.viewModel.selectionColor : null,
-    //   ),
-    // pluginTaskLog.finest('size: ${context.size}');
     return Directionality(
       textDirection: widget.viewModel.textDirection,
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 12.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // CLAUDE CODE MODIFICATION: Changed to baseline alignment for proper icon positioning
-            Row(
-              crossAxisAlignment:
-                  CrossAxisAlignment
-                      .baseline, // Changed from .start to .baseline
-              textBaseline:
-                  TextBaseline.alphabetic, // Required for baseline alignment
-              spacing: 4,
+            // Indentation spacing
+            SizedBox(
+              width: tempoTaskIndentCalculator(
+                widget.viewModel.textStyleBuilder({}),
+                widget.viewModel.indent,
+              ),
+            ),
+            // Status widget column
+            Column(
               children: [
-                // SizedBox(
-                //   width: widget.viewModel.indentCalculator(
-                //     widget.viewModel.textStyleBuilder({}),
-                //     widget.viewModel.indent,
-                //   ),
-                // ),
-                BaselineAlignedTaskStatusWidget(
+                TaskStatusChip(
                   status: widget.viewModel.status,
-                  textStyle: widget.viewModel.textStyleBuilder(
-                    {},
-                  ), // Pass text style for sizing
+                  textStyle: widget.viewModel.textStyleBuilder({}),
                   onChange: (status) {
                     widget.viewModel.changeStatus(status);
                   },
                 ),
-                Expanded(
-                  child: TextComponent(
+              ],
+            ),
+            const SizedBox(width: 8),
+            // Content column (text + progress pill)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextComponent(
                     key: _textKey,
                     text: widget.viewModel.text,
                     textDirection: widget.viewModel.textDirection,
@@ -177,47 +152,12 @@ class TaskComponentState extends State<TaskComponent>
                     underlines: widget.viewModel.createUnderlines(),
                     showDebugPaint: true,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            // if (widget.isSelected) Row(children: [_buildQuickActions()]),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildQuickActions() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(Icons.calendar_today, size: 18),
-          onPressed: () {
-            // Show date picker for due date
-          },
-        ),
-        IconButton(
-          icon: Icon(Icons.flag, size: 18),
-          onPressed: () {
-            // Show priority selector
-          },
-        ),
-        // Add other quick actions
-      ],
-    );
-  }
-
-  void _handleTaskTap() {
-    final nodeID = widget.viewModel.nodeId;
-    pluginTaskLog.fine("task tapped! nodeID=$nodeID");
-    // if (!isSelectedectionManager.isTaskSelected(nodeID)) {
-    //   widget.selectionManager.selectTask(nodeID);
-    //   logger.d("selected task! nodeID=$nodeID");
-    //   return;
-    // }
-
-    // logger.d("task nodeID=$nodeID is: ${widget.viewModel.isSelected}");
-    // TODO implement editing mode on the task itself...
   }
 }

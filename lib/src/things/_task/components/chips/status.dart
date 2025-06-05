@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../entity.dart';
+import '../../entity.dart';
 
 class TaskStatusWidget extends StatefulWidget {
   const TaskStatusWidget({
@@ -83,8 +83,8 @@ class _TaskStatusWidgetState extends State<TaskStatusWidget>
 /// - This should replace TaskStatusWidget in production
 /// - The sizing ratios (0.85 for icon, 1.4 for line height) may need fine-tuning
 /// - Consider making ratios configurable via theme or style system
-class BaselineAlignedTaskStatusWidget extends StatelessWidget {
-  const BaselineAlignedTaskStatusWidget({
+class TaskStatusChip extends StatelessWidget {
+  const TaskStatusChip({
     super.key,
     required this.status,
     required this.textStyle,
@@ -109,7 +109,7 @@ class BaselineAlignedTaskStatusWidget extends StatelessWidget {
         (lineHeight - iconSize) / 2; // Center icon in line height
 
     return GestureDetector(
-      behavior: HitTestBehavior.translucent,
+      behavior: HitTestBehavior.opaque,
       onTap: () => _showStatusChanger(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),

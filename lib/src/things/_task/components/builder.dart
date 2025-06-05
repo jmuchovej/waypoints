@@ -31,6 +31,7 @@ class TaskComponentBuilder extends ComponentBuilder {
       textAlignment:
           textDirection == TextDirection.ltr ? TextAlign.left : TextAlign.right,
       textStyleBuilder: noStyleBuilder,
+      indent: node.indent,
       selectionColor: Colors.blue.shade300,
     );
   }
@@ -63,6 +64,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
     required this.changeStatus,
     required this.text,
     required this.textStyleBuilder,
+    this.indent = 0,
     this.inlineWidgetBuilders = const [],
     this.textDirection = TextDirection.ltr,
     this.textAlignment = TextAlign.left,
@@ -94,6 +96,9 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
   TaskStatus status;
   void Function(TaskStatus) changeStatus;
 
+  /// The indent level of this task - `0` is no indent.
+  int indent;
+
   @override
   AttributedText text;
   @override
@@ -122,6 +127,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
       changeStatus: changeStatus,
       text: text,
       textStyleBuilder: textStyleBuilder,
+      indent: indent,
       inlineWidgetBuilders: inlineWidgetBuilders,
       textDirection: textDirection,
       textAlignment: textAlignment,
@@ -179,4 +185,12 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
       grammarErrors.hashCode ^
       composingRegion.hashCode ^
       showComposingRegionUnderline.hashCode;
+}
+
+/// Calculates the indentation width for Tempo tasks.
+///
+/// This uses a spacing of approximately 24 pixels per indent level,
+/// which provides good visual hierarchy for nested tasks.
+double tempoTaskIndentCalculator(TextStyle textStyle, int indent) {
+  return 24.0 * indent;
 }

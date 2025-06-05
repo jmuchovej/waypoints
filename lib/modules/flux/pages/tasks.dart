@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:tempo/main.dart' show obx;
 import 'package:tempo/src/editor.dart';
+import 'package:tempo/src/infrastructure.dart';
 
 import 'package:tempo/src/things/task.dart';
 
@@ -22,41 +23,107 @@ class _TasksScreenState extends State<TasksScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeEditor();
-    _hoverManager = HoverManager();
-    _linkManager = LeaderLinkManager();
+    fluxLog.info('📋 TasksScreen.initState() called');
+    try {
+      // Initialize managers first
+      _hoverManager = HoverManager();
+      fluxLog.info('📋 TasksScreen.initState() - hover manager created');
+      _linkManager = LeaderLinkManager();
+      fluxLog.info('📋 TasksScreen.initState() - link manager created');
+
+      // Initialize editor after managers are ready
+      _initializeEditor();
+      fluxLog.info('📋 TasksScreen.initState() - editor initialized');
+
+      fluxLog.info('📋 TasksScreen.initState() completed successfully');
+    } catch (e, stackTrace) {
+      fluxLog.severe('📋 Error in TasksScreen.initState(): $e', e, stackTrace);
+      rethrow;
+    }
   }
 
   void _initializeEditor() {
-    // Initialize document
-    final nodeID = Editor.createNodeId();
-    _document = MutableDocument.empty(nodeID);
-    _document.deleteNode(nodeID);
+    fluxLog.info('📋 _initializeEditor() called');
+    try {
+      // Initialize document
+      final nodeID = Editor.createNodeId();
+      _document = MutableDocument.empty(nodeID);
+      _document.deleteNode(nodeID);
 
-    // Load tasks
-    final midnight = DateTime.now().copyWith(
-      hour: 0,
-      minute: 0,
-      second: 0,
-      millisecond: 0,
-      microsecond: 0,
-    );
-    final yesterday = midnight.subtract(const Duration(microseconds: 1));
-    final tonight = yesterday.add(const Duration(days: 1));
-    final tasks = obx.getTasks(
-      // query: TaskEntity_.dueDate.betweenDate(yesterday, tonight),
-      // order: TaskEntity_.createDate
-    );
-    for (final task in tasks) {
-      _document.add(TaskNode.fromTask(task));
+      // Load tasks
+      final midnight = DateTime.now().copyWith(
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+        microsecond: 0,
+      );
+      final yesterday = midnight.subtract(const Duration(microseconds: 1));
+      final tonight = yesterday.add(const Duration(days: 1));
+      // Debug: Check total task count and parent relationships
+      final allTasks = obx.getTasks();
+      fluxLog.info('📋 Total tasks in database: ${allTasks.length}');
+
+      // Debug: Check parent relationships
+      int tasksWithParents = 0;
+      int tasksWithoutParents = 0;
+      for (final task in allTasks) {
+        if (task.parent.hasValue) {
+          tasksWithParents++;
+        } else {
+          tasksWithoutParents++;
+        }
+      }
+      fluxLog.info('📋 Tasks with parents: $tasksWithParents, without parents: $tasksWithoutParents');
+
+      // Load only top-level tasks (tasks without parents) - manual filtering for now
+      // TODO: Fix ObjectBox query syntax for null relations
+      final topLevelTasks = allTasks.where((task) => !task.parent.hasValue).toList();
+      fluxLog.info('📋 Loaded ${topLevelTasks.length} top-level tasks via manual filtering');
+
+      // Process each top-level task and its hierarchy
+      for (int i = 0; i < topLevelTasks.length; i++) {
+        final task = topLevelTasks[i];
+        try {
+          fluxLog.info('📋 Processing top-level task ${i + 1}/${topLevelTasks.length}: ${task.title.text}');
+          _addTaskWithSubtasks(task);
+          fluxLog.info('📋 Added task hierarchy for: ${task.title.text}');
+        } catch (e, stackTrace) {
+          fluxLog.severe('📋 Error processing task ${i + 1} (${task.title.text}): $e', e, stackTrace);
+          // Continue processing other tasks instead of failing completely
+        }
+      }
+
+      fluxLog.info('📋 Finished processing all tasks');
+
+      // Initialize composer
+      fluxLog.info('📋 Initializing MutableDocumentComposer');
+      _composer = MutableDocumentComposer();
+      fluxLog.info('📋 _initializeEditor() completed successfully');
+    } catch (e, stackTrace) {
+      fluxLog.severe('📋 Error in _initializeEditor(): $e', e, stackTrace);
+      rethrow;
     }
+  }
 
-    // Initialize composer
-    _composer = MutableDocumentComposer();
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  /// Adds only top-level tasks to the document (no subtasks shown directly).
+  void _addTaskWithSubtasks(TaskEntity task) {
+    // Add the parent task
+    final taskNode = TaskNode.fromTask(task);
+    _document.add(taskNode);
+
+    // Don't add subtasks to the document - they'll be shown as progress pills instead
   }
 
   @override
   Widget build(BuildContext context) {
+    fluxLog.info('📋 TasksScreen.build() called');
+
     // Initialize plugins (context-dependent)
     // final motionPlugin = MotionPlugin(
     //   normalModeColor: ColorScheme.of(context).secondaryContainer,
@@ -67,13 +134,29 @@ class _TasksScreenState extends State<TasksScreen> {
     // );
 
     // Create SuperEditor with cached hover manager
-    final superEditor = createSuperEditor(
-      context,
-      _document,
-      _composer,
-      hoverManager: _hoverManager,
-      linkManager: _linkManager,
-    );
+    Widget superEditor;
+    try {
+      superEditor = createSuperEditor(
+        context,
+        _document,
+        _composer,
+        hoverManager: _hoverManager,
+        linkManager: _linkManager,
+      );
+      fluxLog.info('📋 SuperEditor created successfully');
+    } catch (e, stackTrace) {
+      fluxLog.severe('📋 Error creating SuperEditor: $e', e, stackTrace);
+      superEditor = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Error creating editor: $e'),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       // appBar: AppBar(title: const Text('Tasks')),

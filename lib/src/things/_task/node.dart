@@ -11,6 +11,7 @@ int _computeIndentation(TaskEntity? task, int indent) {
   indent = 0;
   while (task != null && task.parent.hasValue) {
     indent += 1;
+    task = task.parent.target;
   }
 
   return indent;
