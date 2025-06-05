@@ -26,26 +26,46 @@ class SeedDataService {
       _hasSeeded = true;
       devtoolsDatabaseLog.fine('All data seeded to database');
     } else {
-      devtoolsDatabaseLog.fine('All data cleared from database');
+      devtoolsDatabaseLog.fine('Database already contains data');
     }
   }
 
   /// Seeds the database with sample projects and tasks
   static Future<void> _seedSampleData() async {
-    // Create sample projects
-    final projects = _createSampleProjects();
-    final projectIds = obx.batchAddProjects(projects);
-    devtoolsDatabaseLog.finer('Created ${projectIds.length} sample projects');
+    // Create sample areas (top-level projects that act as areas)
+    final areas = _createSampleAreas();
+    final areaIds = obx.batchAddProjects(areas);
+    devtoolsDatabaseLog.finer('Created ${areaIds.length} sample areas');
 
-    // Reload projects to get their assigned IDs
-    final savedProjects = obx.getProjects();
+    // Reload areas to get their assigned IDs
+    final savedAreas =
+        obx.getProjects().where((p) => p.parent.target == null).toList();
 
-    // Create sample tasks for each project
+    // Create actionable projects under each area
+    final allProjects = <ProjectEntity>[];
+    final projectsByArea = <ProjectEntity, List<ProjectEntity>>{};
+
+    for (final area in savedAreas) {
+      final projects = _createProjectsForArea(area);
+      allProjects.addAll(projects);
+      projectsByArea[area] = projects;
+    }
+
+    final projectIds = obx.batchAddProjects(allProjects);
+    devtoolsDatabaseLog.finer(
+      'Created ${projectIds.length} actionable projects',
+    );
+
+    // Reload all projects to get their assigned IDs
+    final savedProjects =
+        obx.getProjects().where((p) => p.parent.target != null).toList();
+
+    // Create tasks with subtasks for each project
     final allTasks = <TaskEntity>[];
 
     for (final project in savedProjects) {
-      final tasks = _createSampleTasksForProject(project);
-      allTasks.addAll(tasks);
+      final tasksWithSubtasks = _createTasksForProject(project);
+      allTasks.addAll(tasksWithSubtasks);
     }
 
     // Save all tasks
@@ -60,201 +80,562 @@ class SeedDataService {
     );
   }
 
-  /// Creates sample projects
-  static List<ProjectEntity> _createSampleProjects() {
+  /// Creates sample areas (top-level projects that act as areas in PARA)
+  static List<ProjectEntity> _createSampleAreas() {
     return [
       ProjectEntity(
         uuid: const Uuid().v4(),
-        title: AttributedText('Personal'),
-        // description: 'Personal tasks and projects',
+        title: AttributedText('🏠 Personal'),
+      ),
+      ProjectEntity(uuid: const Uuid().v4(), title: AttributedText('💼 Work')),
+      ProjectEntity(
+        uuid: const Uuid().v4(),
+        title: AttributedText('🧠 Research'),
       ),
       ProjectEntity(
         uuid: const Uuid().v4(),
-        title: AttributedText('Work'),
-        // description: 'Work-related tasks and projects',
-      ),
-      ProjectEntity(
-        uuid: const Uuid().v4(),
-        title: AttributedText('Health'),
-        // description: 'Health and wellness tasks',
-      ),
-      ProjectEntity(
-        uuid: const Uuid().v4(),
-        title: AttributedText('Research'),
-        // description: 'Research projects and literature review',
+        title: AttributedText('🎯 Learning'),
       ),
     ];
   }
 
-  /// Creates sample tasks for a given project
-  static List<TaskEntity> _createSampleTasksForProject(ProjectEntity project) {
+  /// Creates actionable projects for a given area
+  static List<ProjectEntity> _createProjectsForArea(ProjectEntity area) {
+    final projects = <ProjectEntity>[];
     final now = DateTime.now();
-    final tasks = <TaskEntity>[];
 
-    // Create different tasks based on project type
-    switch (project.titlePlainText) {
-      case 'Personal':
-        tasks.addAll([
-          _createTask(
-            'Buy groceries',
-            'Milk, eggs, bread, vegetables',
-            project,
-            dueDate: now.add(const Duration(days: 1)),
-            status: TaskStatus.todo,
-            priority: TaskPriority.M,
-            timeEstimate: TaskTimeEstimate.S,
-            energyEstimate: TaskEnergyEstimate.M,
-          ),
-          _createTask(
-            'Clean apartment',
-            'Vacuum, dust, clean bathroom',
-            project,
-            dueDate: now.add(const Duration(days: 3)),
-            status: TaskStatus.scheduled,
-            priority: TaskPriority.L,
-            timeEstimate: TaskTimeEstimate.M,
-            energyEstimate: TaskEnergyEstimate.L,
-          ),
-          _createTask(
-            'Plan weekend trip',
-            'Research destinations, book accommodations',
-            project,
-            dueDate: now.add(const Duration(days: 5)),
-            status: TaskStatus.started,
-            priority: TaskPriority.H,
-            timeEstimate: TaskTimeEstimate.M,
-            energyEstimate: TaskEnergyEstimate.M,
-          ),
+    switch (area.titlePlainText) {
+      case '🏠 Personal':
+        projects.addAll([
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Japan Trip 2025'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Home Office Renovation'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Digital Photo Archive'),
+          )..parent.target = area,
         ]);
         break;
 
-      case 'Work':
-        tasks.addAll([
-          _createTask(
-            'Complete quarterly report',
-            'Analyze data and prepare presentation',
-            project,
-            dueDate: now.add(const Duration(days: 7)),
-            status: TaskStatus.workInProgress,
-            priority: TaskPriority.H,
-            timeEstimate: TaskTimeEstimate.L,
-            energyEstimate: TaskEnergyEstimate.L,
-          ),
-          _createTask(
-            'Review team members code',
-            'Code review for the new feature implementation',
-            project,
-            dueDate: now.add(const Duration(days: 2)),
-            status: TaskStatus.waiting,
-            priority: TaskPriority.M,
-            timeEstimate: TaskTimeEstimate.M,
-            energyEstimate: TaskEnergyEstimate.M,
-          ),
-          _createTask(
-            'Prepare for client meeting',
-            'Create agenda and gather materials',
-            project,
-            dueDate: now.add(const Duration(days: 1)),
-            status: TaskStatus.todo,
-            priority: TaskPriority.H,
-            timeEstimate: TaskTimeEstimate.S,
-            energyEstimate: TaskEnergyEstimate.M,
-          ),
-          _createTask(
-            'Update documentation',
-            'Add new API endpoints to the documentation',
-            project,
-            dueDate: now.subtract(const Duration(days: 2)),
-            status: TaskStatus.complete,
-            priority: TaskPriority.L,
-            timeEstimate: TaskTimeEstimate.M,
-            energyEstimate: TaskEnergyEstimate.S,
-          ),
+      case '💼 Work':
+        projects.addAll([
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Q1 Product Launch'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Team Onboarding Process'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('API v2 Migration'),
+          )..parent.target = area,
         ]);
         break;
 
-      case 'Health':
-        tasks.addAll([
-          _createTask(
-            'Morning workout',
-            '30 minutes cardio, 15 minutes strength training',
-            project,
-            dueDate: now,
-            status: TaskStatus.paused,
-            priority: TaskPriority.M,
-            timeEstimate: TaskTimeEstimate.S,
-            energyEstimate: TaskEnergyEstimate.M,
-          ),
-          _createTask(
-            'Schedule annual checkup',
-            'Call doctor\'s office for appointment',
-            project,
-            dueDate: now.add(const Duration(days: 14)),
-            status: TaskStatus.todo,
-            priority: TaskPriority.M,
-            timeEstimate: TaskTimeEstimate.XS,
-            energyEstimate: TaskEnergyEstimate.XS,
-          ),
-          _createTask(
-            'Meal prep for the week',
-            'Plan meals and prepare ingredients',
-            project,
-            dueDate: now.add(const Duration(days: 2)),
-            status: TaskStatus.scheduled,
-            priority: TaskPriority.M,
-            timeEstimate: TaskTimeEstimate.M,
-            energyEstimate: TaskEnergyEstimate.M,
-          ),
+      case '🧠 Research':
+        projects.addAll([
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('ML Paper Submission - ICML 2025'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Grant Proposal - NSF'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Cognitive Load Study'),
+          )..parent.target = area,
         ]);
         break;
 
-      case 'Research':
-        tasks.addAll([
-          _createTask(
-            'Literature review',
-            'Read recent papers on computational cognitive science',
-            project,
-            dueDate: now.add(const Duration(days: 5)),
-            status: TaskStatus.started,
-            priority: TaskPriority.H,
-            timeEstimate: TaskTimeEstimate.L,
-            energyEstimate: TaskEnergyEstimate.L,
-          ),
-          _createTask(
-            'Revise experiment design',
-            'Update methodology based on feedback',
-            project,
-            dueDate: now.add(const Duration(days: 3)),
-            status: TaskStatus.todo,
-            priority: TaskPriority.H,
-            timeEstimate: TaskTimeEstimate.M,
-            energyEstimate: TaskEnergyEstimate.L,
-          ),
-          _createTask(
-            'Analyze preliminary data',
-            'Run statistical analysis on pilot study results',
-            project,
-            dueDate: now.add(const Duration(days: 7)),
-            status: TaskStatus.waiting,
-            priority: TaskPriority.M,
-            timeEstimate: TaskTimeEstimate.M,
-            energyEstimate: TaskEnergyEstimate.M,
-          ),
-          _createTask(
-            'Draft research proposal',
-            'Prepare document for grant submission',
-            project,
-            dueDate: now.add(const Duration(days: 14)),
-            status: TaskStatus.todo,
-            priority: TaskPriority.H,
-            timeEstimate: TaskTimeEstimate.XL,
-            energyEstimate: TaskEnergyEstimate.XL,
-          ),
+      case '🎯 Learning':
+        projects.addAll([
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Rust Programming Course'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Spanish B2 Certification'),
+          )..parent.target = area,
+          ProjectEntity(
+            uuid: const Uuid().v4(),
+            title: AttributedText('Piano - Chopin Etude Op.10 No.4'),
+          )..parent.target = area,
         ]);
         break;
     }
 
+    return projects;
+  }
+
+  /// Creates tasks with subtasks for a given project
+  static List<TaskEntity> _createTasksForProject(ProjectEntity project) {
+    final now = DateTime.now();
+    final tasks = <TaskEntity>[];
+
+    switch (project.titlePlainText) {
+      // Personal Projects
+      case 'Japan Trip 2025':
+        tasks.addAll(
+          _createTaskHierarchy([
+            _TaskTemplate(
+              title: 'Book flights and accommodations',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 60)),
+              priority: TaskPriority.H,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Research flight options (JAL, ANA, United)',
+                  status: TaskStatus.started,
+                  dueDate: now.add(const Duration(days: 45)),
+                ),
+                _TaskTemplate(
+                  title: 'Compare hotel vs Airbnb in Tokyo, Kyoto, Osaka',
+                  status: TaskStatus.todo,
+                  dueDate: now.add(const Duration(days: 50)),
+                ),
+                _TaskTemplate(
+                  title: 'Book JR Pass for rail travel',
+                  status: TaskStatus.todo,
+                  dueDate: now.add(const Duration(days: 55)),
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Plan itinerary',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 75)),
+              priority: TaskPriority.M,
+              subtasks: [
+                _TaskTemplate(
+                  title:
+                      'Tokyo (5 days): Shibuya, Harajuku, Akihabara, TeamLab',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Kyoto (3 days): Temples, Arashiyama, Gion',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Osaka (2 days): Castle, Dotonbori, Day trip to Nara',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+          ], project),
+        );
+        break;
+
+      case 'Home Office Renovation':
+        tasks.addAll(
+          _createTaskHierarchy([
+            _TaskTemplate(
+              title: 'Design and planning',
+              status: TaskStatus.workInProgress,
+              dueDate: now.add(const Duration(days: 14)),
+              priority: TaskPriority.H,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Measure room dimensions',
+                  status: TaskStatus.complete,
+                ),
+                _TaskTemplate(
+                  title: 'Create mood board on Pinterest',
+                  status: TaskStatus.workInProgress,
+                ),
+                _TaskTemplate(
+                  title: 'Sketch layout options',
+                  status: TaskStatus.started,
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Purchase furniture and equipment',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 30)),
+              priority: TaskPriority.M,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Standing desk: Compare Uplift vs Fully vs Flexispot',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title:
+                      'Ergonomic chair: Test Herman Miller Aeron vs Steelcase Leap',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Monitor arm for dual 27" displays',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Cable management system',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+          ], project),
+        );
+        break;
+
+      // Work Projects
+      case 'Q1 Product Launch':
+        tasks.addAll(
+          _createTaskHierarchy([
+            _TaskTemplate(
+              title: 'Complete feature development',
+              status: TaskStatus.workInProgress,
+              dueDate: now.subtract(const Duration(days: 2)), // Overdue!
+              priority: TaskPriority.H,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Implement user authentication flow',
+                  status: TaskStatus.complete,
+                ),
+                _TaskTemplate(
+                  title: 'Build dashboard analytics view',
+                  status: TaskStatus.workInProgress,
+                ),
+                _TaskTemplate(
+                  title: 'Add export functionality',
+                  status: TaskStatus.started,
+                ),
+                _TaskTemplate(
+                  title: 'Integrate payment processing',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Prepare marketing materials',
+              status: TaskStatus.started,
+              dueDate: now.add(const Duration(days: 7)),
+              priority: TaskPriority.H,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Write product announcement blog post',
+                  status: TaskStatus.started,
+                ),
+                _TaskTemplate(
+                  title: 'Create demo video script',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Design email campaign templates',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+          ], project),
+        );
+        break;
+
+      case 'API v2 Migration':
+        tasks.addAll(
+          _createTaskHierarchy([
+            _TaskTemplate(
+              title: 'Document current API endpoints',
+              status: TaskStatus.complete,
+              dueDate: now.subtract(const Duration(days: 7)),
+              priority: TaskPriority.M,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'List all v1 endpoints with parameters',
+                  status: TaskStatus.complete,
+                ),
+                _TaskTemplate(
+                  title: 'Identify deprecated endpoints',
+                  status: TaskStatus.complete,
+                ),
+                _TaskTemplate(
+                  title: 'Map v1 to v2 endpoint changes',
+                  status: TaskStatus.complete,
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Update client libraries',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 21)),
+              priority: TaskPriority.H,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Update JavaScript SDK',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Update Python SDK',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Update mobile SDKs (iOS/Android)',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+          ], project),
+        );
+        break;
+
+      // Research Projects
+      case 'ML Paper Submission - ICML 2025':
+        tasks.addAll(
+          _createTaskHierarchy([
+            _TaskTemplate(
+              title: 'Literature review',
+              status: TaskStatus.workInProgress,
+              dueDate: now.add(const Duration(days: 14)),
+              priority: TaskPriority.H,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Review: "Attention Is All You Need" follow-up papers',
+                  status: TaskStatus.complete,
+                ),
+                _TaskTemplate(
+                  title: 'Review: Recent sparse attention mechanisms',
+                  status: TaskStatus.workInProgress,
+                ),
+                _TaskTemplate(
+                  title: 'Review: Efficient transformers survey (Tay et al.)',
+                  status: TaskStatus.started,
+                ),
+                _TaskTemplate(
+                  title: 'Compile bibliography in Zotero',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Experimental setup',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 30)),
+              priority: TaskPriority.H,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Prepare datasets: WikiText-103, C4, OpenWebText',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Implement baseline models',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Set up GPU cluster experiments',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Write paper draft',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 90)),
+              priority: TaskPriority.M,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Abstract and introduction',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Related work section',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Methodology section',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Results and discussion',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+          ], project),
+        );
+        break;
+
+      // Learning Projects
+      case 'Rust Programming Course':
+        tasks.addAll(
+          _createTaskHierarchy([
+            _TaskTemplate(
+              title: 'Complete "The Rust Programming Language" book',
+              status: TaskStatus.workInProgress,
+              dueDate: now.add(const Duration(days: 30)),
+              priority: TaskPriority.M,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Ch 1-3: Getting Started, Guessing Game',
+                  status: TaskStatus.complete,
+                ),
+                _TaskTemplate(
+                  title: 'Ch 4-6: Ownership, Structs, Enums',
+                  status: TaskStatus.complete,
+                ),
+                _TaskTemplate(
+                  title: 'Ch 7-9: Modules, Collections, Error Handling',
+                  status: TaskStatus.workInProgress,
+                ),
+                _TaskTemplate(
+                  title: 'Ch 10-12: Generics, Testing, CLI Project',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Build practice project: Task manager CLI',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 45)),
+              priority: TaskPriority.M,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Design data structures for tasks',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Implement CRUD operations',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Add SQLite persistence',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Create CLI interface with clap',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+          ], project),
+        );
+        break;
+
+      case 'Spanish B2 Certification':
+        tasks.addAll(
+          _createTaskHierarchy([
+            _TaskTemplate(
+              title: 'Weekly conversation practice',
+              status: TaskStatus.scheduled,
+              dueDate: now.add(const Duration(days: 3)),
+              priority: TaskPriority.H,
+              recurrence: 'FREQ=WEEKLY;BYDAY=MO,WE,FR',
+              subtasks: [
+                _TaskTemplate(
+                  title: 'iTalki lesson - María (Wednesday)',
+                  status: TaskStatus.scheduled,
+                  dueDate: now.add(const Duration(days: 2)),
+                ),
+                _TaskTemplate(
+                  title: 'Conversation exchange - Carlos (Friday)',
+                  status: TaskStatus.scheduled,
+                  dueDate: now.add(const Duration(days: 4)),
+                ),
+              ],
+            ),
+            _TaskTemplate(
+              title: 'Complete DELE B2 practice exam',
+              status: TaskStatus.todo,
+              dueDate: now.add(const Duration(days: 10)),
+              priority: TaskPriority.M,
+              subtasks: [
+                _TaskTemplate(
+                  title: 'Reading comprehension section',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Listening comprehension section',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Written expression section',
+                  status: TaskStatus.todo,
+                ),
+                _TaskTemplate(
+                  title: 'Oral expression practice',
+                  status: TaskStatus.todo,
+                ),
+              ],
+            ),
+          ], project),
+        );
+        break;
+
+      // Add catch-all for other projects
+      default:
+        tasks.addAll([
+          _createTask(
+            'Define project scope and objectives',
+            'Create clear goals and success metrics',
+            project,
+            dueDate: now.add(const Duration(days: 7)),
+            status: TaskStatus.todo,
+            priority: TaskPriority.H,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.M,
+          ),
+          _createTask(
+            'Create project timeline',
+            'Break down into milestones and deliverables',
+            project,
+            dueDate: now.add(const Duration(days: 14)),
+            status: TaskStatus.todo,
+            priority: TaskPriority.M,
+            timeEstimate: TaskTimeEstimate.M,
+            energyEstimate: TaskEnergyEstimate.M,
+          ),
+        ]);
+    }
+
     return tasks;
+  }
+
+  /// Helper to create a task hierarchy from templates
+  static List<TaskEntity> _createTaskHierarchy(
+    List<_TaskTemplate> templates,
+    ProjectEntity project,
+  ) {
+    final tasks = <TaskEntity>[];
+
+    for (final template in templates) {
+      final parentTask = _createTaskFromTemplate(template, project);
+      tasks.add(parentTask);
+
+      // Create subtasks
+      for (final subtaskTemplate in template.subtasks) {
+        final subtask = _createTaskFromTemplate(subtaskTemplate, project);
+        subtask.parent.target = parentTask;
+        tasks.add(subtask);
+      }
+    }
+
+    return tasks;
+  }
+
+  /// Helper to create a task from a template
+  static TaskEntity _createTaskFromTemplate(
+    _TaskTemplate template,
+    ProjectEntity project,
+  ) {
+    final now = DateTime.now();
+    return _createTask(
+      template.title,
+      template.notes,
+      project,
+      dueDate: template.dueDate ?? now.add(const Duration(days: 7)),
+      status: template.status,
+      priority: template.priority,
+      timeEstimate: template.timeEstimate,
+      energyEstimate: template.energyEstimate,
+      recurrence: template.recurrence,
+    );
   }
 
   /// Helper method to create a task with common properties
@@ -267,20 +648,46 @@ class SeedDataService {
     required TaskPriority priority,
     required TaskTimeEstimate timeEstimate,
     required TaskEnergyEstimate energyEstimate,
+    String? recurrence,
   }) {
     final now = DateTime.now();
     final task = TaskEntity(
       uuid: const Uuid().v4(),
       title: AttributedText(title),
-      // notes: Delta()..insert(notes),
-      createDate: now.subtract(const Duration(days: 2)),
-      modifyDate: now,
+      // Created a week ago
+      createDate: now.subtract(Duration(days: 7)),
+      // Modified based on due date
+      modifyDate: now.subtract(
+        Duration(hours: (now.difference(dueDate).inHours.abs() * 0.3).round()),
+      ),
       dueDate: dueDate,
       status: status,
       priority: priority,
       timeEstimate: timeEstimate,
       energyEstimate: energyEstimate,
+      recurrence: recurrence,
     );
+
+    // Set dates based on status
+    switch (status) {
+      case TaskStatus.scheduled:
+        task.scheduledDate = dueDate.subtract(const Duration(days: 1));
+        break;
+      case TaskStatus.started:
+      case TaskStatus.workInProgress:
+        task.startDate = now.subtract(const Duration(days: 2));
+        break;
+      case TaskStatus.complete:
+        task.startDate = now.subtract(const Duration(days: 3));
+        task.endDate = now.subtract(const Duration(days: 1));
+        break;
+      case TaskStatus.waiting:
+        task.waitDate = now;
+        task.untilDate = now.add(const Duration(days: 3));
+        break;
+      default:
+        break;
+    }
 
     task.project.target = project;
     return task;
@@ -291,73 +698,117 @@ class SeedDataService {
     final activities = <ActivityEntity>[];
     final now = DateTime.now();
 
-    // Create sample activities for some of the tasks
-    for (var i = 0; i < tasks.length; i++) {
-      // Only create activities for every other task
-      if (i % 2 == 0) continue;
+    // Create activities for tasks that are in progress or completed
+    final activeTasks =
+        tasks
+            .where(
+              (t) =>
+                  t.status == TaskStatus.workInProgress ||
+                  t.status == TaskStatus.complete ||
+                  t.status == TaskStatus.started,
+            )
+            .toList();
 
-      final task = tasks[i];
-
-      // Create a completed activity
-      if (task.status.isCompleted) {
+    for (final task in activeTasks.take(10)) {
+      // Limit to 10 activities
+      if (task.status == TaskStatus.complete) {
+        // Create a completed activity
         activities.add(
           ActivityEntity(
             uuid: const Uuid().v4(),
-            title: 'Working on: ${task.title}',
-            startDate: now.subtract(const Duration(hours: 4)),
-            endDate: now.subtract(const Duration(hours: 3)),
+            title: 'Completed: ${task.title}',
+            startDate: task.startDate ?? now.subtract(const Duration(hours: 2)),
+            endDate: task.endDate ?? now.subtract(const Duration(hours: 1)),
             kind: ActivityKind.task,
             status: ActivityStatus.completed,
           )..task.target = task,
         );
-      }
-      // Create an in-progress activity
-      else if (task.status.isPending) {
+      } else {
+        // Create an in-progress or paused activity
         activities.add(
           ActivityEntity(
             uuid: const Uuid().v4(),
             title: 'Working on: ${task.title}',
             startDate: now.subtract(const Duration(minutes: 45)),
             kind: ActivityKind.task,
-            status: ActivityStatus.paused,
+            status:
+                task.status == TaskStatus.workInProgress
+                    ? ActivityStatus.active
+                    : ActivityStatus.paused,
           )..task.target = task,
         );
       }
     }
 
-    // Add some non-task activities
+    // Add some non-task activities for today
     activities.addAll([
       ActivityEntity(
         uuid: const Uuid().v4(),
-        title: 'Morning meditation',
+        title: '🧘 Morning meditation',
         startDate: DateTime(now.year, now.month, now.day, 7, 0),
-        endDate: DateTime(now.year, now.month, now.day, 7, 15),
+        endDate: DateTime(now.year, now.month, now.day, 7, 20),
         kind: ActivityKind.activity,
         status: ActivityStatus.completed,
+        tags: ['wellness', 'routine'],
       ),
       ActivityEntity(
         uuid: const Uuid().v4(),
-        title: 'Team meeting',
+        title: '☕ Coffee break & email check',
+        startDate: DateTime(now.year, now.month, now.day, 9, 0),
+        endDate: DateTime(now.year, now.month, now.day, 9, 15),
+        kind: ActivityKind.activity,
+        status: ActivityStatus.completed,
+        tags: ['break', 'routine'],
+      ),
+      ActivityEntity(
+        uuid: const Uuid().v4(),
+        title: '🏃 Lunch run',
+        startDate: DateTime(now.year, now.month, now.day, 12, 0),
+        endDate: DateTime(now.year, now.month, now.day, 12, 45),
+        kind: ActivityKind.activity,
+        status: ActivityStatus.completed,
+        tags: ['exercise', 'wellness'],
+      ),
+      ActivityEntity(
+        uuid: const Uuid().v4(),
+        title: '📅 Weekly team standup',
         startDate: DateTime(now.year, now.month, now.day, 10, 0),
-        endDate: DateTime(now.year, now.month, now.day, 11, 0),
+        endDate: DateTime(now.year, now.month, now.day, 10, 30),
         kind: ActivityKind.event,
         status: ActivityStatus.completed,
+        tags: ['meeting', 'work'],
       ),
       ActivityEntity(
         uuid: const Uuid().v4(),
-        title: 'Lunch break',
-        startDate: DateTime(now.year, now.month, now.day, 12, 0),
-        endDate: DateTime(now.year, now.month, now.day, 13, 0),
-        kind: ActivityKind.activity,
-        status: ActivityStatus.completed,
-      ),
-      ActivityEntity(
-        uuid: const Uuid().v4(),
-        title: 'Focus session',
-        startDate: DateTime(now.year, now.month, now.day + 1, 9, 0),
-        endDate: DateTime(now.year, now.month, now.day + 1, 10, 30),
+        title: '🎯 Deep work session',
+        startDate: DateTime(now.year, now.month, now.day, 14, 0),
+        endDate: DateTime(now.year, now.month, now.day, 16, 0),
         kind: ActivityKind.intervalWork,
+        status:
+            now.hour >= 16 ? ActivityStatus.completed : ActivityStatus.active,
+        tags: ['focus', 'work'],
+      ),
+    ]);
+
+    // Add some scheduled activities for tomorrow
+    activities.addAll([
+      ActivityEntity(
+        uuid: const Uuid().v4(),
+        title: '💻 Code review session',
+        startDate: DateTime(now.year, now.month, now.day + 1, 9, 30),
+        endDate: DateTime(now.year, now.month, now.day + 1, 10, 30),
+        kind: ActivityKind.event,
         status: ActivityStatus.scheduled,
+        tags: ['work', 'collaboration'],
+      ),
+      ActivityEntity(
+        uuid: const Uuid().v4(),
+        title: '📚 Reading: "Atomic Habits"',
+        startDate: DateTime(now.year, now.month, now.day + 1, 20, 0),
+        endDate: DateTime(now.year, now.month, now.day + 1, 21, 0),
+        kind: ActivityKind.activity,
+        status: ActivityStatus.scheduled,
+        tags: ['learning', 'personal'],
       ),
     ]);
 
@@ -374,4 +825,29 @@ class SeedDataService {
     _hasSeeded = false;
     devtoolsDatabaseLog.fine('All data cleared from database');
   }
+}
+
+/// Template for creating tasks with optional subtasks
+class _TaskTemplate {
+  final String title;
+  final String notes;
+  final TaskStatus status;
+  final DateTime? dueDate;
+  final TaskPriority priority;
+  final TaskTimeEstimate timeEstimate;
+  final TaskEnergyEstimate energyEstimate;
+  final String? recurrence;
+  final List<_TaskTemplate> subtasks;
+
+  _TaskTemplate({
+    required this.title,
+    this.notes = '',
+    this.status = TaskStatus.todo,
+    this.dueDate,
+    this.priority = TaskPriority.M,
+    this.timeEstimate = TaskTimeEstimate.M,
+    this.energyEstimate = TaskEnergyEstimate.M,
+    this.recurrence,
+    this.subtasks = const [],
+  });
 }
