@@ -7,6 +7,8 @@ import 'package:tempo/src/things/_task/components/chips/status.dart';
 import 'package:tempo/src/things/_task/components/chips/progress.dart';
 import 'package:tempo/src/things/_task/components/chips/due_date.dart';
 import 'package:tempo/src/things/_task/components/chips/project.dart';
+import 'package:tempo/main.dart' show obx;
+import 'package:tempo/src/database/objectbox.g.dart';
 
 /// A document component that displays a complete-able task.
 ///
@@ -152,11 +154,48 @@ class TaskComponentState extends State<TaskComponent>
                     underlines: widget.viewModel.createUnderlines(),
                     showDebugPaint: true,
                   ),
+                  // Pills for additional task information
+                  _buildPillsRow(),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPillsRow() {
+    final pills = <Widget>[];
+
+    // Check if task has subtasks
+    final subtasks = obx.getTasks(
+      query: TaskEntity_.parent.equals(node.task.id),
+    );
+
+    if (subtasks.isNotEmpty) {
+      pills.add(TaskProgressPill(parentTask: node.task));
+    }
+
+    // Check if task has due date
+    if (pills.isNotEmpty) pills.add(const SizedBox(width: 8));
+    pills.add(TaskDueDatePill(task: node.task));
+
+    // Check if task has project
+    if (node.task.project.hasValue && node.task.project.target != null) {
+      if (pills.isNotEmpty) pills.add(const SizedBox(width: 8));
+      pills.add(Flexible(child: TaskProjectPill(task: node.task)));
+    }
+
+    // Only show the row if there are pills to display
+    if (pills.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: Row(
+        children: pills,
       ),
     );
   }
