@@ -7,6 +7,8 @@ import 'package:tempo/src/editor/super_editor.dart';
 import 'package:follow_the_leader/follow_the_leader.dart' show FtlLogs;
 
 class LogNames {
+  static const tempo = 'tempo';
+
   static const devtools = 'devtools';
   static const devtoolsDatabase = '${LogNames.devtools}.database';
 
@@ -27,6 +29,8 @@ class LogNames {
   static const codex = 'codex';
   static const codexEditor = '${LogNames.codex}.editor';
 }
+
+final tempoLog = Logger(LogNames.tempo);
 
 final devtoolsLog = Logger(LogNames.devtools);
 final devtoolsDatabaseLog = Logger(LogNames.devtoolsDatabase);
@@ -75,6 +79,8 @@ void deactivateLoggers(Set<Logger> loggers) {
 }
 
 final Set<Logger> tempoLoggers = {
+  tempoLog,
+
   devtoolsLog,
   devtoolsDatabaseLog,
 

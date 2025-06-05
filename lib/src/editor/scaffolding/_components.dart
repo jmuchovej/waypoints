@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 import 'package:tempo/src/editor/super_editor.dart';
-import 'package:tempo/src/infrastructure/_logging.dart';
+import 'package:tempo/src/infrastructure.dart';
 
 import '_manager_link.dart';
 import '_manager_hover.dart';

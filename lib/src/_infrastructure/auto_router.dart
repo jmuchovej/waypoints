@@ -15,32 +15,19 @@ part 'auto_router.gr.dart';
 class AppRouter extends RootStackRouter {
   @override
   List<AutoRoute> get routes => [
-        AutoRoute(
-          path: '/',
-          page: HomeShellRoute.page,
-          children: [
-            AutoRoute(
-              path: 'tasks',
-              page: TasksRoute.page,
-              initial: true,
-            ),
-            AutoRoute(
-              path: 'projects',
-              page: ProjectsRoute.page,
-            ),
-            if (F.appFlavor == Flavor.development)
-              AutoRoute(
-                path: 'devtools',
-                page: DevToolsRoute.page,
-              ),
-          ],
-        ),
-        // Entity route with parameter
-        AutoRoute(
-          path: '/thing/:uuid',
-          page: EntityRoute.page,
-        ),
-      ];
+    AutoRoute(
+      path: '/',
+      page: HomeShellRoute.page,
+      children: [
+        AutoRoute(path: 'tasks', page: TasksRoute.page, initial: true),
+        AutoRoute(path: 'projects', page: ProjectsRoute.page),
+        if (F.appFlavor == Flavor.development)
+          AutoRoute(path: 'devtools', page: DevToolsRoute.page),
+      ],
+    ),
+    // Entity route with parameter
+    AutoRoute(path: '/thing/:uuid', page: EntityRoute.page),
+  ];
 
   @override
   RouteType get defaultRouteType => const RouteType.material();
@@ -53,12 +40,14 @@ class HomeShellPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final routes = <PageRouteInfo>[
+      const TasksRoute(),
+      ProjectsRoute(),
+      if (F.appFlavor == Flavor.development) const DevToolsRoute(),
+    ];
+
     return AutoTabsScaffold(
-      routes: [
-        const TasksRoute(),
-        ProjectsRoute(),
-        if (F.appFlavor == Flavor.development) const DevToolsRoute(),
-      ],
+      routes: routes,
       bottomNavigationBuilder: (_, tabsRouter) {
         final colorScheme = Theme.of(context).colorScheme;
 
@@ -109,10 +98,7 @@ class HomeShellPage extends StatelessWidget {
 
 @RoutePage()
 class EntityPage extends StatelessWidget {
-  const EntityPage({
-    super.key,
-    @PathParam('uuid') required this.uuid,
-  });
+  const EntityPage({super.key, @PathParam('uuid') required this.uuid});
 
   final String uuid;
 
@@ -159,7 +145,11 @@ class EntityPage extends StatelessWidget {
     return _buildEntityNotFoundScreen(context, uuid, registryEntry.entityType);
   }
 
-  Widget _buildEntityNotFoundScreen(BuildContext context, String uuid, [String? entityType]) {
+  Widget _buildEntityNotFoundScreen(
+    BuildContext context,
+    String uuid, [
+    String? entityType,
+  ]) {
     return Scaffold(
       appBar: AppBar(title: const Text('Entity Not Found')),
       body: Center(

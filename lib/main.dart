@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tempo/dev/database/seed.dart';
 import 'package:tempo/flavors.dart';
-import 'package:tempo/src/infrastructure/auto_router.dart';
 import 'package:tempo/theme/theme.dart';
 import 'package:tempo/src/database/objectbox.dart';
 import 'package:tempo/src/infrastructure.dart';
@@ -28,7 +27,7 @@ void main() async {
     // debugPaintLayerBordersEnabled = true; // Shows layer boundaries
   }
   initLoggers(Level.FINEST, tempoLoggers);
-  initLoggers(Level.FINER, superEditorLoggers);
+  initLoggers(Level.FINE, superEditorLoggers);
   deactivateLoggers(FTLLoggers);
 
   runApp(ProviderScope(child: Tempo()));
@@ -42,9 +41,10 @@ class Tempo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = createTextTheme(context, display: "Lato", body: "Lato");
+    final textTheme = createTextTheme(context, display: 'Lato', body: 'Lato');
     final theme = TempoTheme(textTheme);
 
+    tempoLog.info('🚀 Tempo.build() called - creating MaterialApp.router');
     return MaterialApp.router(
       title: F.title,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

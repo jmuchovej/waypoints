@@ -1,4 +1,4 @@
-export './infrastructure/_logging.dart';
-export './infrastructure/extensions.dart';
-export './infrastructure/platform.dart';
-export './infrastructure/router.dart';
+export '_infrastructure/logging.dart';
+export '_infrastructure/extensions.dart';
+export '_infrastructure/platform.dart';
+export '_infrastructure/auto_router.dart';
