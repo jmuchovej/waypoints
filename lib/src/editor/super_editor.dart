@@ -1,5 +1,4 @@
-export 'package:tempo/src/editor/extensions.dart';
-export 'package:tempo/src/editor/inline.dart';
+import 'package:super_editor/super_editor.dart';
 
 export 'package:super_editor/super_editor.dart'
     hide
@@ -32,7 +31,7 @@ export 'package:super_editor/super_editor.dart'
         defaultTaskIndentCalculator,
         UpdateSubTaskIndentAfterTaskDeletionReaction,
         backspaceToConvertTaskToParagraph,
-        // createDefaultDocumentEditor,
+        createDefaultDocumentEditor,
         defaultKeyboardActions,
         defaultComponentBuilders,
         defaultEditorReactions,
@@ -47,19 +46,10 @@ export 'package:super_editor_markdown/super_editor_markdown.dart'
         MarkdownInlineUpstreamSyntaxPlugin,
         MarkdownInlineUpstreamSyntaxReaction,
         MarkdownSyntax;
+export 'package:tempo/src/editor/extensions.dart';
+export 'package:tempo/src/editor/inline.dart';
 
-import 'package:super_editor/super_editor.dart';
-
-final keyboardActions = defaultKeyboardActions.where((action) {
-  final actionsToRemove = <DocumentKeyboardAction>[
-    enterToInsertNewTask,
-    tabToIndentTask,
-    shiftTabToUnIndentTask,
-    backspaceToUnIndentTask,
-    backspaceToConvertTaskToParagraph,
-  ];
-  return !actionsToRemove.contains(action);
-});
+final componentBuilders = <ComponentBuilder>[...defaultComponentBuilders];
 
 final imeKeyboardActions = defaultImeKeyboardActions.where((action) {
   final actionsToRemove = <DocumentKeyboardAction>[
@@ -72,7 +62,23 @@ final imeKeyboardActions = defaultImeKeyboardActions.where((action) {
   return !actionsToRemove.contains(action);
 });
 
-final componentBuilders = <ComponentBuilder>[...defaultComponentBuilders];
+final keyboardActions = defaultKeyboardActions.where((action) {
+  final actionsToRemove = <DocumentKeyboardAction>[
+    enterToInsertNewTask,
+    tabToIndentTask,
+    shiftTabToUnIndentTask,
+    backspaceToUnIndentTask,
+    backspaceToConvertTaskToParagraph,
+  ];
+  return !actionsToRemove.contains(action);
+});
+
+final reactionPipeline = defaultEditorReactions.where((reaction) {
+  final reactionToRemove = <EditReaction>[
+    UpdateSubTaskIndentAfterTaskDeletionReaction(),
+  ];
+  return !reactionToRemove.contains(reaction);
+});
 
 final requestHandlers = <EditRequestHandler>[
   (editor, request) =>
@@ -454,10 +460,3 @@ final requestHandlers = <EditRequestHandler>[
           )
           : null,
 ];
-
-final reactionPipeline = defaultEditorReactions.where((reaction) {
-  final reactionToRemove = <EditReaction>[
-    UpdateSubTaskIndentAfterTaskDeletionReaction(),
-  ];
-  return !reactionToRemove.contains(reaction);
-});

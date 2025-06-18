@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:tempo/src/editor/super_editor.dart';
+
+import 'super_editor.dart';
 
 /// Extension methods for AttributedText JSON serialization
 extension AttributedTextJson on AttributedText {
@@ -141,12 +143,6 @@ extension AttributionJson on Attribution {
   }
 }
 
-/// Extension to provide easy access to MultiAttributionSpan's attributions
-extension MultiAttributionSpanExtensions on MultiAttributionSpan {
-  /// Get the attributions as a List (instead of Set)
-  List<Attribution> get attributionsList => attributions.toList();
-}
-
 extension ColorJson on Color {
   Map<String, double> toJson() {
     return {'r': r, 'g': g, 'b': b, 'a': a};
@@ -160,4 +156,10 @@ extension ColorJson on Color {
       json['b'] as int,
     );
   }
+}
+
+/// Extension to provide easy access to MultiAttributionSpan's attributions
+extension MultiAttributionSpanExtensions on MultiAttributionSpan {
+  /// Get the attributions as a List (instead of Set)
+  List<Attribution> get attributionsList => attributions.toList();
 }

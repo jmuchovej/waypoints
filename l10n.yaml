@@ -1,4 +1,4 @@
-arb-dir: lib/src/l10n
+arb-dir: lib/src/l10n/arbs
 output-dir: lib/src/l10n/generated
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart

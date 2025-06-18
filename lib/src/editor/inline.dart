@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
-import 'package:tempo/src/editor/super_editor.dart';
+
+import 'super_editor.dart';
 
 class InlineIconPlaceholder {
   const InlineIconPlaceholder(this.icon);

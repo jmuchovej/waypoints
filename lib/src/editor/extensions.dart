@@ -1,5 +1,6 @@
 import 'package:flutter/rendering.dart';
-import 'package:tempo/src/editor/super_editor.dart';
+
+import 'super_editor.dart';
 
 SuperEditorAddEmptyNodeTapHandler
 superEditorAddEmptyNodeTapHandlerFactory<N extends TextNode>(

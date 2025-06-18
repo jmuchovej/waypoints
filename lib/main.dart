@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tempo/dev/database/seed.dart';
-import 'package:tempo/flavors.dart';
-import 'package:tempo/theme/theme.dart';
-import 'package:tempo/src/database/objectbox.dart';
-import 'package:tempo/src/infrastructure.dart';
-import 'package:tempo/src/l10n.dart';
 
-late ObjectBox obx;
+import 'src/devtools/database/seed.dart';
+import 'flavors.dart';
+import 'src/infrastructure/logging.dart';
+import 'src/objectbox/objectbox.dart';
+import 'src/objectbox/providers.dart';
+import 'src/l10n/l10n.dart';
+import 'src/router.dart';
+import 'src/theme.dart';
 
 void main() async {
   F.appFlavor = Flavor.values.firstWhere(
@@ -16,10 +17,17 @@ void main() async {
   );
 
   WidgetsFlutterBinding.ensureInitialized();
-  obx = await ObjectBox.create();
+  final obx = await ObjectBox.create();
 
+  // Create a temporary container to get the UUID repository
+  final container = ProviderContainer(
+    overrides: [objectBoxProvider.overrideWithValue(obx)],
+  );
+
+  // Seed with polymorphic relationships in development
   if (F.appFlavor == Flavor.development) {
-    await SeedDataService.seedIfNeeded();
+    final seedService = SeedDataService.fromContainer(container);
+    await seedService.seedIfNeeded();
     // Optional: Enable other debug flags
     // debugPaintSizeEnabled = true;
     // debugPaintBaselinesEnabled = true; // Shows text baselines
@@ -27,20 +35,20 @@ void main() async {
     // debugPaintLayerBordersEnabled = true; // Shows layer boundaries
   }
   initLoggers(Level.FINEST, tempoLoggers);
-  initLoggers(Level.FINE, superEditorLoggers);
+  initLoggers(Level.WARNING, superEditorLoggers);
   deactivateLoggers(FTLLoggers);
 
-  runApp(ProviderScope(child: Tempo()));
+  runApp(UncontrolledProviderScope(container: container, child: Tempo()));
 }
 
-class Tempo extends StatelessWidget {
+class Tempo extends ConsumerWidget {
   Tempo({super.key});
 
   // Create the auto_route router
   final _appRouter = AppRouter();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = createTextTheme(context, display: 'Lato', body: 'Lato');
     final theme = TempoTheme(textTheme);
 

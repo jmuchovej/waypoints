@@ -2,7 +2,9 @@
 "aqua:astral-sh/ruff" = "0.11.2"
 "aqua:numtide/treefmt" = "2.1.1"
 cargo = "0.86.0"
-flutter = "3.29.2"
+# Can't use 3.32 b/c of https://github.com/flutter/flutter/issues/169204
+# Supposedly https://github.com/flutter/flutter/pull/169583 resolves it...
+flutter = "3.29.3-stable"
 java = "24.0.0"
 rust = "1.85.1"
 yamlfmt = "0.16.0"
@@ -16,6 +18,7 @@ yq = "4.45.1"
 android-sdk = "latest"
 ruby = "3.4.2"
 "gem:cocoapods" = "1.16.2"
+"ubi:CQLabs/homebrew-dcm" = { version = "latest", exe = "dcm", matching = "dcm" }
 
 # [hooks]
 # preinstall = "mise install android-sdk@19.0"
@@ -27,8 +30,41 @@ ruby = "3.4.2"
 DATABASE_URL = "sqlite://{{ config_root }}/tempo-flux.db?mode=rwc"
 ANDROID_HOME = "{{ env.HOME }}/Library/Android/sdk"
 
-[tasks.build-runner]
-run = "dart run build_runner watch"
+[tasks.builder]
+usage = '''
+arg "mode" "choose between `build` or `watch`"
+'''
+run = '''
+dart run build_runner {{ arg(name="mode") }} $usage_mode
+'''
+description = "task to support forwarding args to `build_runner`"
+dir = "{{ config_root }}"
+
+[tasks.build]
+run = "mise run builder build"
+
+[tasks.watch]
+run = "mise run builder watch --dev"
 
 [tasks.flavorizr]
 run = "dart run flutter_flavorizr"
+
+[tasks.update-deps-flutter]
+run = "flutter pub upgrade"
+
+[tasks.update-deps-macos]
+run = "pod repo update"
+dir = "{{ config_root }}/macos"
+
+[tasks.update-deps-ios]
+run = "pod repo update"
+dir = "{{ config_root }}/ios"
+
+[tasks.update-deps]
+wait_for = ["update-deps-flutter"]
+depends = ["update-deps-macos", "update-deps-ios"]
+
+[tasks.flutter-clean]
+run = "flutter clean"
+
+# [tasks.de]

@@ -1,23 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:tempo/src/things/task.dart' show taskStyles;
-import 'package:tempo/src/editor/super_editor.dart';
+
+import '../infrastructure/logging.dart';
+import '../things/task.dart' show taskStyles;
+import 'super_editor.dart';
+
+const BlockSelector blockSelectorDocumentHeader = BlockSelector(
+  "documentHeader",
+);
 
 const BlockSelector blockSelectorH1 = BlockSelector("header1");
 const BlockSelector blockSelectorH2 = BlockSelector("header2");
 const BlockSelector blockSelectorH3 = BlockSelector("header3");
-const BlockSelector blockSelectorP = BlockSelector("paragraph");
 const BlockSelector blockSelectorList = BlockSelector("listItem");
+const BlockSelector blockSelectorP = BlockSelector("paragraph");
 const BlockSelector blockSelectorQuote = BlockSelector("blockquote");
+// Document header block attribution
+const documentHeaderAttribution = NamedAttribution('documentHeader');
 
 Stylesheet buildStylesheet(BuildContext context) {
   return Stylesheet(
-    documentPadding: EdgeInsets.symmetric(horizontal: 100.0, vertical: 24.0),
+    documentPadding: EdgeInsets.symmetric(horizontal: 50.0, vertical: 24.0),
     rules: [
       StyleRule(BlockSelector.all, (doc, docNode) {
+        // Log all nodes being styled to understand the pipeline
+        tempoLog.fine(
+          '📋 Stylesheet applying to node: ${docNode.runtimeType}, '
+          'id: ${docNode.id}, '
+          'blockType: ${docNode.getMetadataValue("blockType")}',
+        );
+
         return {
-          Styles.maxWidth: 640.0,
-          Styles.padding: const CascadingPadding.symmetric(horizontal: 24),
-          Styles.textStyle: Theme.of(context).textTheme.bodyLarge,
+          Styles.maxWidth: 800.0, // Content width constraint
+          Styles.textStyle: Theme.of(context).textTheme.bodyMedium,
         };
       }),
       StyleRule(blockSelectorH1, (doc, docNode) {
@@ -36,6 +50,32 @@ Stylesheet buildStylesheet(BuildContext context) {
         return {
           Styles.padding: const CascadingPadding.only(top: 28),
           Styles.textStyle: Theme.of(context).textTheme.displaySmall,
+        };
+      }),
+
+      // Document header styling (uses theme colors and typography)
+      StyleRule(blockSelectorDocumentHeader, (doc, docNode) {
+        final colorScheme = Theme.of(context).colorScheme;
+        final textTheme = Theme.of(context).textTheme;
+
+        // Log when DocumentHeader stylesheet rule is applied
+        tempoLog.info(
+          '📝 DocumentHeader stylesheet rule APPLIED to node: ${docNode.runtimeType}, '
+          'blockType: ${docNode.getMetadataValue("blockType")}',
+        );
+
+        return {
+          Styles.padding: const CascadingPadding.only(bottom: 32, top: 0),
+          Styles.textStyle:
+              textTheme.displayLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ) ??
+              TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
         };
       }),
       StyleRule(blockSelectorP, (doc, docNode) {

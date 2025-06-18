@@ -1,1 +1,2 @@
-export 'package:tempo/src/things/_project/entity.dart';
+export 'project/project_entity.dart';
+export 'project/project_editor.dart';
