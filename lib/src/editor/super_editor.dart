@@ -40,14 +40,13 @@ export 'package:super_editor/super_editor.dart'
         printLog,
         Logger,
         initLoggers,
+        defaultStyleBuilder,
         initAllLogs;
 export 'package:super_editor_markdown/super_editor_markdown.dart'
     show
         MarkdownInlineUpstreamSyntaxPlugin,
         MarkdownInlineUpstreamSyntaxReaction,
         MarkdownSyntax;
-export 'package:tempo/src/editor/extensions.dart';
-export 'package:tempo/src/editor/inline.dart';
 
 final componentBuilders = <ComponentBuilder>[...defaultComponentBuilders];
 

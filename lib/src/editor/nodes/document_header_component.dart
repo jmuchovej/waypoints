@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../editor.dart';
 import '../../infrastructure/logging.dart';
+import '../styling/text_style_builders.dart';
 
 /// Visual component for document headers
 class DocumentHeaderComponent extends StatelessWidget {
@@ -14,8 +15,8 @@ class DocumentHeaderComponent extends StatelessWidget {
   });
 
   final GlobalKey componentKey;
-  final String title;
-  final String? subtitle;
+  final AttributedText title;
+  final AttributedText? subtitle;
   final String? icon;
 
   @override
@@ -24,7 +25,7 @@ class DocumentHeaderComponent extends StatelessWidget {
 
     // Log when DocumentHeader widget builds
     tempoLog.fine(
-      '🖼️ DocumentHeaderComponent building widget with title: "$title"',
+      '🖼️ DocumentHeaderComponent building widget with title: "${title.toPlainText()}"',
     );
 
     return BoxComponent(
@@ -48,22 +49,10 @@ class DocumentHeaderComponent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: theme.textTheme.displayLarge?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                  ),
+                TextComponent(
+                  text: title,
+                  textStyleBuilder: headerTextStyleBuilder(context),
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle!,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

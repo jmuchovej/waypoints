@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 
-import '../../../things/nodes.dart';
 import '../config.dart';
 
 // TODO: actually implement node type switching. LOL.
@@ -22,7 +21,7 @@ class SwitchNodeTypeElement extends ScaffoldElement {
     return Follower.withAligner(
       link: link,
       aligner: const StaticOffsetAligner(
-        offset: Offset(20, 0),
+        offset: Offset(10, 0),
         leaderAnchor: Alignment.centerRight,
         followerAnchor: Alignment.centerLeft,
       ),
@@ -36,24 +35,26 @@ class SwitchNodeTypeState extends State<SwitchNodeType> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.of(context);
+
     return AnimatedOpacity(
       opacity: 1.0,
-      duration: Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 200),
       child: MouseRegion(
         cursor: SystemMouseCursors.grab,
         child: Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: ColorScheme.of(context).surface,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(4.0),
             border: Border.all(
-              color: ColorScheme.of(context).outline.withValues(alpha: 0.2),
+              color: colorScheme.outline.withValues(alpha: 0.2),
             ),
           ),
           child: Icon(
             Icons.drag_indicator,
             size: 16,
-            color: ColorScheme.of(context).onSurface,
+            color: colorScheme.onSurface,
           ),
         ),
       ),

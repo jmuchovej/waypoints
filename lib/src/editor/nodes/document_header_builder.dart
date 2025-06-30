@@ -26,7 +26,6 @@ class DocumentHeaderComponentBuilder implements ComponentBuilder {
     return DocumentHeaderComponent(
       componentKey: componentContext.componentKey,
       title: componentViewModel.title,
-      subtitle: componentViewModel.subtitle,
       icon: componentViewModel.icon,
     );
   }
@@ -50,8 +49,8 @@ class DocumentHeaderComponentBuilder implements ComponentBuilder {
     return DocumentHeaderComponentViewModel(
       nodeId: node.id,
       title: node.title,
-      subtitle: node.subtitle,
       icon: node.icon,
+      createdAt: DateTime.now(),
       // Note: Padding and maxWidth should be applied by the stylesheet through the SingleColumnLayoutViewModel
       // The component system will handle applying styles from the stylesheet
     );
@@ -64,18 +63,17 @@ class DocumentHeaderComponentViewModel
   DocumentHeaderComponentViewModel({
     required super.nodeId,
     required this.title,
-    this.subtitle,
     this.icon,
     super.padding = EdgeInsets.zero,
     super.maxWidth,
+    required super.createdAt,
   });
 
-  final String title;
-  final String? subtitle;
+  final AttributedText title;
   final String? icon;
 
   @override
-  int get hashCode => Object.hash(nodeId, title, subtitle, icon);
+  int get hashCode => Object.hash(nodeId, title, icon);
 
   @override
   bool operator ==(Object other) {
@@ -83,9 +81,7 @@ class DocumentHeaderComponentViewModel
     if (other is! DocumentHeaderComponentViewModel) return false;
     if (nodeId != other.nodeId) return false;
 
-    return title == other.title &&
-        subtitle == other.subtitle &&
-        icon == other.icon;
+    return title == other.title && icon == other.icon;
   }
 
   @override
@@ -93,10 +89,10 @@ class DocumentHeaderComponentViewModel
     super.applyStyles(styles);
 
     // Log when styles are applied to see if padding is coming through
-    tempoLog.info(
-      '📐 DocumentHeader applyStyles called. Padding after applying: $padding, '
-      'styles received: $styles',
-    );
+    // tempoLog.info(
+    //   '📐 DocumentHeader applyStyles called. Padding after applying: $padding, '
+    //   'styles received: $styles',
+    // );
   }
 
   @override
@@ -104,10 +100,10 @@ class DocumentHeaderComponentViewModel
     return DocumentHeaderComponentViewModel(
       nodeId: nodeId,
       title: title,
-      subtitle: subtitle,
       icon: icon,
       padding: padding,
       maxWidth: maxWidth,
+      createdAt: createdAt,
     );
   }
 }

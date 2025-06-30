@@ -1,6 +1,6 @@
 import '../editor.dart';
 import '../../infrastructure/logging.dart';
-import '../stylesheet.dart' show documentHeaderAttribution;
+import '../styling/stylesheet.dart' show documentHeaderAttribution;
 
 /// A document header node that displays metadata from the entity driving the document.
 ///
@@ -30,7 +30,7 @@ class DocumentHeaderNode extends BlockNode {
   final String id;
 
   /// The primary title text
-  final String title;
+  final AttributedText title;
 
   /// Optional subtitle text
   final String? subtitle;
@@ -39,7 +39,7 @@ class DocumentHeaderNode extends BlockNode {
   final String? icon;
 
   @override
-  int get hashCode => Object.hash(id, title, subtitle, icon, metadata);
+  int get hashCode => Object.hash(id, title, icon, metadata);
 
   @override
   bool operator ==(Object other) {
@@ -48,7 +48,6 @@ class DocumentHeaderNode extends BlockNode {
 
     return id == other.id &&
         title == other.title &&
-        subtitle == other.subtitle &&
         icon == other.icon &&
         metadata == other.metadata;
   }
@@ -61,19 +60,17 @@ class DocumentHeaderNode extends BlockNode {
   // BlockNode provides default implementations for position methods
 
   @override
-  String? copyContent(NodeSelection selection) => title;
+  String? copyContent(NodeSelection selection) => title.toPlainText();
 
   DocumentHeaderNode copyWith({
     String? id,
-    String? title,
-    String? subtitle,
+    AttributedText? title,
     String? icon,
     Map<String, dynamic>? metadata,
   }) {
     return DocumentHeaderNode(
       id: id ?? this.id,
       title: title ?? this.title,
-      subtitle: subtitle ?? this.subtitle,
       icon: icon ?? this.icon,
       metadata: metadata ?? this.metadata,
     );
@@ -92,9 +89,7 @@ class DocumentHeaderNode extends BlockNode {
       return false;
     }
 
-    return title == other.title &&
-        subtitle == other.subtitle &&
-        icon == other.icon;
+    return title == other.title && icon == other.icon;
   }
 }
 

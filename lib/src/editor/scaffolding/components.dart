@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 
 import '../../infrastructure/logging.dart';
+import '../../infrastructure/platform.dart';
 import '../super_editor.dart';
 import 'managers/hover.dart';
 import 'managers/link.dart';
@@ -12,17 +13,12 @@ class ScaffoldedComponentBuilder extends ComponentBuilder {
     required this.linkManager,
     required this.hoverManager,
     required this.composer,
-    Color? selectedColor,
-    Color? hoveredColor,
-  }) : selectedColor = selectedColor ?? Colors.blueAccent.shade100,
-       hoveredColor = hoveredColor ?? Colors.blueGrey.shade300;
+  });
 
   final ComponentBuilder innerBuilder;
   final LeaderLinkManager linkManager;
   final HoverManager hoverManager;
   final DocumentComposer composer;
-  final Color selectedColor;
-  final Color hoveredColor;
 
   @override
   Widget? createComponent(
@@ -53,12 +49,15 @@ class ScaffoldedComponentBuilder extends ComponentBuilder {
 
         isHovered = hoverManager.isHovered(nodeId);
 
+        final colorScheme = ColorScheme.of(context);
         // Determine highlight color
         Color? highlightColor;
         if (isSelected) {
-          highlightColor = selectedColor;
+          highlightColor = colorScheme.primaryContainer.withValues(alpha: 0.3);
         } else if (isHovered) {
-          highlightColor = hoveredColor;
+          highlightColor = colorScheme.surfaceContainerHighest;
+        } else {
+          highlightColor = colorScheme.surfaceContainer;
         }
 
         // Wrap with highlight if needed
@@ -108,6 +107,7 @@ class _FullWidthHighlightState extends State<_FullWidthHighlight> {
     }
 
     final width = MediaQuery.of(context).size.width - (2 * widget.padding);
+    final textSize = TextTheme.of(context).bodyLarge!.fontSize!;
 
     return OverflowBox(
       alignment: Alignment.centerLeft,
@@ -120,7 +120,7 @@ class _FullWidthHighlightState extends State<_FullWidthHighlight> {
           width: width,
           decoration: BoxDecoration(
             color: widget.color,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(textSize * 0.5),
           ),
         ),
       ),
@@ -182,7 +182,10 @@ class _HighlightWrapper extends StatelessWidget {
           ),
         ),
         // The actual component content
-        child,
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: CurrentPlatform.isMobile ? 0.0 : padding),
+          child: child,
+        ),
       ],
     );
   }
