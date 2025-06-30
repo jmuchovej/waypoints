@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import '../objectbox.g.dart';
 import '../objectbox.dart';
 import '../../things/thing/thing_entity.dart';
-import '../providers.dart';
 
 /// Provider for ThingService
 final thingServiceProvider = Provider<ThingService>((ref) {

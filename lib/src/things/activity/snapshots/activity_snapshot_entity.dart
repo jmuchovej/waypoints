@@ -7,7 +7,7 @@ import '../../thing/thing_entity.dart';
 // No need for manual resolver configuration!
 
 @Entity()
-class ActivitySnapshotEntity implements Thing {
+class ActivitySnapshotEntity implements BaseThing {
   ActivitySnapshotEntity({
     required this.uuid,
     required this.timestamp,
@@ -99,4 +99,7 @@ class ActivitySnapshotEntity implements Thing {
   /// This creates a 1:1 relationship between this ActivitySnapshot and its registry entry
   @override
   final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
+
+  @override
+  String? getSearchableText() => null;
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:objectbox/objectbox.dart';
+import 'package:super_editor/super_editor.dart';
 
 import '../../editor/super_editor.dart';
 import '../../objectbox/attributed_text_mixin.dart';
+import '../../objectbox/objectbox.dart';
+import '../../objectbox/objectbox.g.dart';
 import '../project/project_entity.dart';
 import '../thing/interface.dart';
 import '../thing/thing_entity.dart';
@@ -12,20 +15,36 @@ export 'task_urgency.dart';
 // Resolver is now auto-registered by TaskRepository
 // No need for manual resolver configuration!
 
-enum TaskEnergyEstimate {
-  XS, // Almost no energy
-  S, // Little energy
-  M, // Medium energy
-  L, // Significant energy
-  XL; // Peak energy required
+enum TaskEnergy {
+  /// Extra small - almost automatic
+  XS(Colors.greenAccent),
+
+  /// Small - Little energy
+  S(Colors.green),
+
+  /// Medium - Average energy
+  M(Colors.amber),
+
+  /// Large - Significant energy
+  L(Colors.orange),
+
+  /// Extra large - Peak energy required
+  XL(Colors.red);
+
+  const TaskEnergy(this.color);
+
+  final Color color;
 
   static void assertStableEnumValues() {
-    assert(0 == TaskEnergyEstimate.XS.index);
-    assert(1 == TaskEnergyEstimate.S.index);
-    assert(2 == TaskEnergyEstimate.M.index);
-    assert(3 == TaskEnergyEstimate.L.index);
-    assert(4 == TaskEnergyEstimate.XL.index);
+    assert(0 == TaskEnergy.XS.index);
+    assert(1 == TaskEnergy.S.index);
+    assert(2 == TaskEnergy.M.index);
+    assert(3 == TaskEnergy.L.index);
+    assert(4 == TaskEnergy.XL.index);
   }
+
+  @override
+  String toString() => name.toUpperCase();
 }
 
 @Entity()
@@ -45,15 +64,15 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
     this.archived = false,
     this.deleted = false,
     TaskStatus status = TaskStatus.todo,
-    TaskTimeEstimate timeEstimate = TaskTimeEstimate.M,
-    TaskEnergyEstimate energyEstimate = TaskEnergyEstimate.M,
+    TaskTime time = TaskTime.M,
+    TaskEnergy energy = TaskEnergy.M,
     TaskPriority priority = TaskPriority.M,
   }) : dueDate = dueDate ?? DateTime.now().add(Duration(days: 1)),
        createDate = createDate ?? DateTime.now(),
        modifyDate = modifyDate ?? DateTime.now(),
        _status = status,
-       _timeEstimate = timeEstimate,
-       _energyEstimate = energyEstimate,
+       _time = time,
+       _energy = energy,
        _priority = priority {
     this.title = title ?? AttributedText('');
   }
@@ -68,11 +87,8 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
   String uuid;
 
   /// Serialized AttributedText JSON
+  @override
   String titleJson = '';
-
-  /// Plain text version of title for querying
-  @Index()
-  String titlePlainText = '';
 
   @Property(type: PropertyType.dateNano)
   @override
@@ -103,10 +119,10 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
   String? recurrence;
 
   TaskStatus _status;
-
-  TaskTimeEstimate _timeEstimate;
-  TaskEnergyEstimate _energyEstimate;
+  TaskTime _time;
+  TaskEnergy _energy;
   TaskPriority _priority;
+
   @override
   bool deleted;
 
@@ -123,17 +139,14 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @override
   final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
 
-  // Keep project relationship for now as it's a categorization
+  /// Keep project relationship for now as it's a categorization
   final project = ToOne<ProjectEntity>();
 
-  // Keep parent for task hierarchy tracking, but relationships
-  // will be managed through polymorphic children
+  /// Keep parent for task hierarchy tracking, but relationships
+  /// will be managed through polymorphic children
   final parent = ToOne<TaskEntity>();
 
   final history = ToMany<TaskSnapshotEntity>();
-
-  @Transient()
-  TaskEnergyEstimate get energyEstimate => _energyEstimate;
 
   @override
   int get hashCode =>
@@ -148,65 +161,40 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
       waitDate.hashCode ^
       untilDate.hashCode ^
       recurrence.hashCode ^
-      status.hashCode ^
-      timeEstimate.hashCode ^
-      energyEstimate.hashCode ^
-      priority.hashCode ^
+      statusOBX.hashCode ^
+      timeOBX.hashCode ^
+      energyOBX.hashCode ^
+      priorityOBX.hashCode ^
       deleted.hashCode ^
       archived.hashCode;
 
-  int get obxEnergyEstimate {
-    TaskEnergyEstimate.assertStableEnumValues();
-    return _energyEstimate.index;
+  TaskEnergy get energy => _energy;
+  set energyOBX(int value) => _energy = TaskEnergy.values[value];
+  int get energyOBX {
+    TaskEnergy.assertStableEnumValues();
+    return _energy.index;
   }
 
-  set obxEnergyEstimate(int value) =>
-      _energyEstimate = TaskEnergyEstimate.values[value];
-
-  int get obxPriority {
+  TaskPriority get priority => _priority;
+  set priorityOBX(int value) => _priority = TaskPriority.values[value];
+  int get priorityOBX {
     TaskPriority.assertStableEnumValues();
     return _priority.index;
   }
 
-  set obxPriority(int value) => _priority = TaskPriority.values[value];
-  // String get obxNotes => jsonEncode(_notes.toJson());
-  // set obxNotes(String value) => _notes = Delta.fromJson(jsonDecode(value));
-  // @Transient()
-  // Delta get notes => _notes;
-
-  int get obxStatus {
+  TaskStatus get status => _status;
+  set statusOBX(int value) => _status = TaskStatus.values[value];
+  int get statusOBX {
     TaskStatus.assertStableEnumValues();
     return _status.index;
   }
 
-  set obxStatus(int value) => _status = TaskStatus.values[value];
-
-  int get obxTimeEstimate {
-    TaskTimeEstimate.assertStableEnumValues();
-    return _timeEstimate.index;
+  TaskTime get time => _time;
+  set timeOBX(int value) => _time = TaskTime.values[value];
+  int get timeOBX {
+    TaskTime.assertStableEnumValues();
+    return _time.index;
   }
-
-  set obxTimeEstimate(int value) =>
-      _timeEstimate = TaskTimeEstimate.values[value];
-
-  @Transient()
-  TaskPriority get priority => _priority;
-
-  @Transient()
-  TaskStatus get status => _status;
-  @Transient()
-  TaskTimeEstimate get timeEstimate => _timeEstimate;
-
-  // String get obxTitle => jsonEncode(_title.toJson());
-  // set obxTitle(String value) => _title = Delta.fromJson(jsonDecode(value));
-  @Transient()
-  AttributedText get title => getAttributedText(titleJson, titlePlainText);
-
-  set title(AttributedText value) => setAttributedText(
-    value,
-    (json) => titleJson = json,
-    (plain) => titlePlainText = plain,
-  );
 
   @override
   String get type => key;
@@ -230,8 +218,8 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
     DateTime? untilDate,
     String? recurrence,
     TaskStatus? status,
-    TaskTimeEstimate? timeEstimate,
-    TaskEnergyEstimate? energyEstimate,
+    TaskTime? time,
+    TaskEnergy? energy,
     TaskPriority? priority,
     bool? deleted,
     bool? archived,
@@ -250,8 +238,8 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
       untilDate: untilDate ?? this.untilDate,
       recurrence: recurrence ?? this.recurrence,
       status: status ?? this.status,
-      timeEstimate: timeEstimate ?? this.timeEstimate,
-      energyEstimate: energyEstimate ?? this.energyEstimate,
+      time: time ?? this.time,
+      energy: energy ?? this.energy,
       priority: priority ?? this.priority,
       deleted: deleted ?? this.deleted,
       archived: archived ?? this.archived,
@@ -260,23 +248,34 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
     task.title = title ?? this.title;
 
     task.parent.target = parent ?? this.parent.target;
-    // Note: children relationships should be copied separately via polymorphic repository
+    // NOTE children relationships should be copied separately via polymorphic repository
     task.project.target = project ?? this.project.target;
 
     return task;
   }
 
   @override
-  String toString() {
-    return 'TaskEntity{id: $id, uuid: $uuid, title: $title, startDate: $startDate, endDate: $endDate, scheduledDate: $scheduledDate, dueDate: $dueDate, waitDate: $waitDate, untilDate: $untilDate, recurrence: $recurrence, status: $status, timeEstimate: $timeEstimate, energyEstimate: $energyEstimate, priority: $priority, deleted: $deleted, archived: $archived}';
+  String getSearchableText() {
+    return title.toPlainText();
   }
+
+  @override
+  String toString() {
+    return 'TaskEntity{id: $id, uuid: $uuid, title: "${title.toPlainText()}", startDate: $startDate, endDate: $endDate, scheduledDate: $scheduledDate, dueDate: $dueDate, waitDate: $waitDate, untilDate: $untilDate, recurrence: $recurrence, status: $status, time: $time, energy: $energy, priority: $priority, deleted: $deleted, archived: $archived}';
+  }
+
+  @Transient()
+  @override
+  AttributedText get title => getAttributedText(titleJson);
+  @override
+  set title(AttributedText value) =>
+      setAttributedText(value, (json) => titleJson = json);
 }
 
 @Entity()
-class TaskSnapshotEntity {
+class TaskSnapshotEntity implements ThingHistory {
   TaskSnapshotEntity({
     this.titleJson,
-    this.titlePlainText,
     this.startDate,
     this.endDate,
     this.scheduledDate,
@@ -285,26 +284,25 @@ class TaskSnapshotEntity {
     this.untilDate,
     this.recurrence,
     this.status,
-    this.timeEstimate,
-    this.energyEstimate,
+    this.time,
+    this.energy,
     this.priority,
     this.deleted,
     this.archived,
   });
+
   @Id()
+  @override
   int id = 0;
 
   final task = ToOne<TaskEntity>();
 
+  @override
   @Property(type: PropertyType.dateNano)
   DateTime timestamp = DateTime.now();
 
   /// Serialized AttributedText JSON
   String? titleJson;
-
-  /// Plain text version of title for querying
-  @Index()
-  String? titlePlainText;
 
   @Property(type: PropertyType.dateNano)
   DateTime? startDate;
@@ -326,35 +324,83 @@ class TaskSnapshotEntity {
 
   String? recurrence;
   int? status;
-  int? timeEstimate;
-  int? energyEstimate;
+  int? time;
+  int? energy;
   int? priority;
+
+  @override
   bool? deleted;
+
+  @override
   bool? archived;
 }
 
 enum TaskPriority {
-  L, // Low priority
-  M, // Medium priority
-  H; // High priority
+  /// Low priority
+  L('Low', Colors.green),
+
+  /// Medium priority
+  M('Medium', Colors.orange),
+
+  /// High priority
+  H('High', Colors.red);
+
+  const TaskPriority(this.displayString, this.color);
+
+  final String displayString;
+  final Color color;
 
   static void assertStableEnumValues() {
     assert(0 == TaskPriority.L.index);
     assert(1 == TaskPriority.M.index);
     assert(2 == TaskPriority.H.index);
   }
+
+  Widget buildIcon(BuildContext context) {
+    return Icon(Icons.flag_circle_rounded, color: color);
+  }
+
+  @override
+  String toString() => displayString;
 }
 
 enum TaskStatus {
-  todo, // Initial state
-  started, // We've started but not focused on it
-  waiting, // Blocked by something
-  paused, // Interrupted but will resume
-  workInProgress, // Parent task with child being worked on
-  scheduled, // Future task
-  stopped, // No longer working on it
-  dropped, // Decided not to complete
-  complete; // Finished! 🎉
+  /// Initial state
+  todo('To Do', Icons.pause_circle_rounded, Colors.grey),
+
+  /// We've started but not focused on it
+  started('Started', Icons.pause_circle_rounded, Colors.blue),
+
+  /// Blocked by something
+  waiting('Waiting', Icons.pause_circle_rounded, Colors.orange),
+
+  /// Interrupted but will resume
+  paused('Paused', Icons.radio_button_unchecked_rounded, Colors.deepPurple),
+
+  /// Parent task with child being worked on
+  workInProgress(
+    'Work in Progress',
+    Icons.radio_button_unchecked_rounded,
+    Colors.amber,
+  ),
+
+  /// Future task
+  scheduled('Scheduled', Icons.radio_button_unchecked_rounded, Colors.teal),
+
+  /// No longer working on it
+  stopped('Stopped', Icons.radio_button_unchecked_rounded, Colors.redAccent),
+
+  /// Decided not to complete
+  dropped('Dropped', Icons.cancel_rounded, Colors.red),
+
+  /// Finished! 🎉
+  complete('Complete', Icons.check_circle_rounded, Colors.green);
+
+  const TaskStatus(this.displayString, this.icon, this.color);
+
+  final IconData icon;
+  final String displayString;
+  final Color color;
 
   static void assertStableEnumValues() {
     assert(0 == TaskStatus.todo.index);
@@ -367,22 +413,51 @@ enum TaskStatus {
     assert(7 == TaskStatus.dropped.index);
     assert(8 == TaskStatus.complete.index);
   }
+
+  @override
+  String toString() => displayString;
+
+  Widget buildIcon(BuildContext context) {
+    final Color color = Theme.of(context).primaryColor;
+    return Icon(
+      icon,
+      color: color,
+      applyTextScaling: true,
+      semanticLabel: toString(),
+    );
+  }
 }
 
-enum TaskTimeEstimate {
-  XS, // Extra small - almost automatic
-  S, // Small - quick task
-  M, // Medium - average task
-  L, // Large - significant time
-  XL; // Extra large - major time commitment
+enum TaskTime {
+  /// Extra small - almost automatic
+  XS(Colors.greenAccent),
+
+  /// Small - quick task
+  S(Colors.green),
+
+  /// Medium - average task
+  M(Colors.amber),
+
+  /// Large - significant time
+  L(Colors.orange),
+
+  /// Extra large - major time commitment
+  XL(Colors.red);
+
+  const TaskTime(this.color);
+
+  final Color color;
 
   static void assertStableEnumValues() {
-    assert(0 == TaskTimeEstimate.XS.index);
-    assert(1 == TaskTimeEstimate.S.index);
-    assert(2 == TaskTimeEstimate.M.index);
-    assert(3 == TaskTimeEstimate.L.index);
-    assert(4 == TaskTimeEstimate.XL.index);
+    assert(0 == TaskTime.XS.index);
+    assert(1 == TaskTime.S.index);
+    assert(2 == TaskTime.M.index);
+    assert(3 == TaskTime.L.index);
+    assert(4 == TaskTime.XL.index);
   }
+
+  @override
+  String toString() => name.toUpperCase();
 }
 
 extension AllowedTransitions on TaskStatus {
@@ -417,173 +492,37 @@ extension AllowedTransitions on TaskStatus {
   }
 }
 
-extension EstimatedEnergyColors on TaskEnergyEstimate {
-  Color get color {
-    switch (this) {
-      case TaskEnergyEstimate.XS:
-        return Colors.green.shade300;
-      case TaskEnergyEstimate.S:
-        return Colors.green;
-      case TaskEnergyEstimate.M:
-        return Colors.amber;
-      case TaskEnergyEstimate.L:
-        return Colors.orange;
-      case TaskEnergyEstimate.XL:
-        return Colors.red;
-    }
+class TaskStatusGroups {
+  static List<TaskStatus> get awaiting => [
+    TaskStatus.todo,
+    TaskStatus.started,
+    TaskStatus.waiting,
+  ];
+
+  static List<TaskStatus> get completing => [
+    TaskStatus.complete,
+    TaskStatus.dropped,
+  ];
+
+  static List<TaskStatus> get pending => [
+    TaskStatus.paused,
+    TaskStatus.workInProgress,
+    TaskStatus.scheduled,
+    TaskStatus.stopped,
+  ];
+
+  static Condition<TaskEntity> _convert(List<TaskStatus> statuses) {
+    final indices = statuses.map((status) => status.index).toList();
+    return TaskOBX.statusOBX.oneOf(indices);
   }
-}
 
-extension EstimatedEnergyDisplayString on TaskEnergyEstimate {
-  String toDisplayString() => name.toUpperCase();
-}
-
-extension EstimatedTimeColors on TaskTimeEstimate {
-  Color get color {
-    switch (this) {
-      case TaskTimeEstimate.XS:
-        return Colors.green.shade300;
-      case TaskTimeEstimate.S:
-        return Colors.green;
-      case TaskTimeEstimate.M:
-        return Colors.amber;
-      case TaskTimeEstimate.L:
-        return Colors.orange;
-      case TaskTimeEstimate.XL:
-        return Colors.red;
-    }
-  }
-}
-
-extension EstimatedTimeDisplayString on TaskTimeEstimate {
-  String toDisplayString() => name.toUpperCase();
-}
-
-extension PriorityColors on TaskPriority {
-  Color get color {
-    switch (this) {
-      case TaskPriority.L:
-        return Colors.green;
-      case TaskPriority.M:
-        return Colors.orange;
-      case TaskPriority.H:
-        return Colors.red;
-    }
-  }
-}
-
-extension PriorityDisplayString on TaskPriority {
-  String toDisplayString() {
-    switch (this) {
-      case TaskPriority.L:
-        return 'Low';
-      case TaskPriority.M:
-        return 'Medium';
-      case TaskPriority.H:
-        return 'High';
-    }
-  }
-}
-
-extension PriorityIcons on TaskPriority {
-  Widget get icon {
-    return Icon(Icons.flag_circle_rounded, color: color);
-  }
-}
-
-extension StatusColors on TaskStatus {
-  Color get color {
-    switch (this) {
-      case TaskStatus.todo:
-        return Colors.grey;
-      case TaskStatus.started:
-        return Colors.blue;
-      case TaskStatus.waiting:
-        return Colors.orange;
-      case TaskStatus.paused:
-        return Colors.deepPurple;
-      case TaskStatus.workInProgress:
-        return Colors.amber;
-      case TaskStatus.scheduled:
-        return Colors.teal;
-      case TaskStatus.stopped:
-        return Colors.red;
-      case TaskStatus.dropped:
-        return Colors.red[900]!;
-      case TaskStatus.complete:
-        return Colors.green;
-      // case Status.archived:
-      //   color = Colors.grey[700]!;
-      // case Status.deleted:
-      //   color = Colors.red[900]!;
-    }
-  }
-}
-
-extension StatusDisplayString on TaskStatus {
-  String toDisplayString() {
-    switch (this) {
-      case TaskStatus.todo:
-        return 'To Do';
-      case TaskStatus.started:
-        return 'Started';
-      case TaskStatus.waiting:
-        return 'Waiting';
-      case TaskStatus.paused:
-        return 'Paused';
-      case TaskStatus.workInProgress:
-        return 'Work in Progress';
-      case TaskStatus.scheduled:
-        return 'Scheduled';
-      case TaskStatus.stopped:
-        return 'Stopped';
-      case TaskStatus.dropped:
-        return 'Dropped';
-      case TaskStatus.complete:
-        return 'Complete';
-    }
-  }
+  static Condition<TaskEntity> get isAwaiting => _convert(awaiting);
+  static Condition<TaskEntity> get isCompleted => _convert(completing);
+  static Condition<TaskEntity> get isPending => _convert(pending);
 }
 
 extension StatusGroups on TaskStatus {
-  bool get isAwaiting {
-    return [
-      TaskStatus.todo,
-      TaskStatus.started,
-      TaskStatus.waiting,
-    ].contains(this);
-  }
-
-  bool get isCompleted {
-    return [TaskStatus.dropped, TaskStatus.complete].contains(this);
-  }
-
-  bool get isPending {
-    return [
-      TaskStatus.paused,
-      TaskStatus.workInProgress,
-      TaskStatus.scheduled,
-      TaskStatus.stopped,
-    ].contains(this);
-  }
-}
-
-extension StatusIcons on TaskStatus {
-  IconData get icon {
-    if (this == TaskStatus.complete) return Icons.check_circle_rounded;
-    if (this == TaskStatus.dropped) return Icons.cancel_rounded;
-    if (isAwaiting) return Icons.pause_circle_rounded;
-
-    return Icons.radio_button_unchecked_rounded;
-  }
-
-  Widget buildIcon(BuildContext context) {
-    final Color color = Theme.of(context).primaryColor;
-    return Icon(
-      icon,
-      color: color,
-      applyTextScaling: true,
-      semanticLabel: toDisplayString(),
-    );
-  }
+  bool get isAwaiting => TaskStatusGroups.awaiting.contains(this);
+  bool get isCompleted => TaskStatusGroups.completing.contains(this);
+  bool get isPending => TaskStatusGroups.pending.contains(this);
 }

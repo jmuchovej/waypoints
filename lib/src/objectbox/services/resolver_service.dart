@@ -4,7 +4,6 @@ import '../../things/thing/interface.dart';
 import '../objectbox.dart';
 import '../objectbox.g.dart';
 import '../../things/thing/thing_entity.dart';
-import '../providers.dart';
 import 'thing_service.dart';
 
 /// Provider for resolver service
@@ -26,7 +25,7 @@ class ResolverService {
 
   /// Register a resolver for a specific Thing type
   /// This is now done automatically by repositories
-  void registerResolver<T extends Thing>(
+  void registerResolver<T extends BaseThing>(
     String type,
     ThingResolver<T> resolver,
   ) {
@@ -34,7 +33,7 @@ class ResolverService {
   }
 
   /// Resolve a single ThingEntity to its concrete type
-  Thing? resolveSingle(ThingEntity entity) {
+  BaseThing? resolveSingle(ThingEntity entity) {
     final resolver = _resolvers[entity.type];
     if (resolver == null) throw UnregisteredEntityTypeException(entity.type);
 
@@ -43,7 +42,7 @@ class ResolverService {
   }
 
   /// Resolve multiple ThingEntities to their concrete types
-  List<Thing> resolveMany(List<ThingEntity> entities) {
+  List<BaseThing> resolveMany(List<ThingEntity> entities) {
     if (entities.isEmpty) return [];
 
     // Group by type for efficient batch resolution
@@ -53,7 +52,7 @@ class ResolverService {
     }
 
     // Resolve each type group
-    final results = <String, Thing>{};
+    final results = <String, BaseThing>{};
     for (final entry in grouped.entries) {
       final type = entry.key;
       final typeEntities = entry.value;
@@ -73,11 +72,11 @@ class ResolverService {
     }
 
     // Return in original order
-    return entities.map((e) => results[e.uuid]).whereType<Thing>().toList();
+    return entities.map((e) => results[e.uuid]).whereType<BaseThing>().toList();
   }
 
   /// Resolve children of a Thing by UUID
-  List<Thing>? resolveChildrenOf(String uuid) {
+  List<BaseThing>? resolveChildrenOf(String uuid) {
     final entity = _thingService.lookup(uuid);
     if (entity == null) return null;
 
@@ -88,7 +87,7 @@ class ResolverService {
   }
 
   /// Resolve typed children (used by repositories)
-  List<T> resolveTypedChildren<T extends Thing>(
+  List<T> resolveTypedChildren<T extends BaseThing>(
     List<ThingEntity> entities,
     String expectedType,
   ) {
@@ -110,12 +109,12 @@ class ResolverService {
 }
 
 /// Base resolver interface
-abstract class ThingResolver<T extends Thing> {
+abstract class ThingResolver<T extends BaseThing> {
   List<T?> resolveMany(ObjectBox obx, List<int> ids);
 }
 
 /// Generic resolver implementation that uses [Box<T>]
-class BoxResolver<T extends Thing> implements ThingResolver<T> {
+class BoxResolver<T extends BaseThing> implements ThingResolver<T> {
   const BoxResolver();
 
   @override

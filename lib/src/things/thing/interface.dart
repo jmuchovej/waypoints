@@ -1,23 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:objectbox/objectbox.dart';
 
 import '../../editor/super_editor.dart';
 import '../../infrastructure/logging.dart';
+import '../../objectbox/attributed_text_mixin.dart';
 import '../../objectbox/objectbox.dart';
 import '../../objectbox/objectbox.g.dart';
-import '../../objectbox/providers.dart';
 import '../../objectbox/services/resolver_service.dart';
 import '../../objectbox/services/thing_service.dart';
+import '../node_factory.dart';
 import 'thing_entity.dart';
 
 /// Base interface that all Thing entities must implement
 /// This allows us to store them in typed lists instead of [List<dynamic>]
-abstract class Thing {
+abstract class BaseThing {
   final children = ToMany<ThingEntity>();
 
   /// Direct reference to the ThingEntity registration
   /// This creates a 1:1 relationship between each Thing and its registry entry
   final thing = ToOne<ThingEntity>();
+
+  static const String key = 'thing';
 
   /// Support non-permanent archival
   bool get archived;
@@ -39,23 +44,62 @@ abstract class Thing {
 
   /// Unique identifier across all Thing types
   String get uuid;
+
+  /// Get searchable text content for this entity
+  /// This content will be stored in the ThingEntity registry for unified search
+  String? getSearchableText();
 }
 
-mixin ThingBehavior implements Thing {
+abstract class Thing extends BaseThing with AttributedTextEntity {
+  String titleJson = "";
+
+  @Transient()
+  AttributedText get title => getAttributedText(titleJson);
+  set title(AttributedText value) {
+    setAttributedText(value, (json) => titleJson = json);
+  }
+
+  @override
+  String getSearchableText() => title.toPlainText();
+}
+
+abstract class ThingHistory {
+  /// Support non-permanent archival
+  bool? get archived;
+
+  /// When this entity was created
+  DateTime timestamp = DateTime.now();
+
+  /// Support non-permanent deletion
+  bool? get deleted;
+
+  /// ObjectBox internal ID
+  int get id;
+}
+
+mixin ThingBehavior implements BaseThing {
   /// Called after the entity is saved to the database
   ThingEntity register(ThingService service) {
-    try {
-      final thingEntity = service.register(uuid, type, id);
-      thing.target = thingEntity; // Set the ToOne relationship
-      dbLog.finest('... registering new `${type}` (uuid=${uuid})');
-      return thingEntity;
-    } catch (e) {
-      // UUID already exists - update the entity ID
-      final thingEntity = service.updateID(uuid, id);
-      thing.target = thingEntity; // Update the ToOne relationship
-      dbLog.finest('... already registered! (uuid=${uuid})');
-      return thingEntity;
-    }
+    final thingBox = service.store.box<ThingEntity>();
+
+    return service.store.runInTransaction(TxMode.write, () {
+      try {
+        final thingEntity = service.register(uuid, type, id);
+        thingEntity.plainText = getSearchableText();
+        thingBox.put(thingEntity);
+        thing.target = thingEntity; // Set the ToOne relationship
+        dbLog.finest('... registering new `${type}` (uuid=${uuid})');
+        return thingEntity;
+      } catch (e) {
+        // UUID already exists - update the entity ID and search text
+        final thingEntity = service.updateID(uuid, id);
+        thingEntity.plainText = getSearchableText();
+        thingBox.put(thingEntity);
+        thing.target = thingEntity; // Update the ToOne relationship
+        dbLog.finest('... already registered! (uuid=${uuid})');
+        return thingEntity;
+      }
+    });
   }
 
   /// Called before the entity is deleted from the database
@@ -96,7 +140,7 @@ abstract class ThingNode implements DocumentNode {
 
 /// Base repository for Thing entities
 /// Provides common query patterns for polymorphic Thing types
-abstract class ThingRepository<T extends Thing> {
+abstract class ThingRepository<T extends BaseThing> {
   ThingRepository(this._ref) {
     // Auto-register resolver for this type
     _registerResolver();
@@ -212,15 +256,122 @@ abstract class ThingRepository<T extends Thing> {
     return _resolver.resolveTypedChildren<T>(childEntities, type);
   }
 
+  List<E> children<E extends Thing>(String uuid, String type) {
+    final parent = _resolveParent(uuid);
+    if (parent == null) return [];
+
+    final childEntities =
+        parent.children.where((entity) => entity.type == type).toList();
+
+    if (childEntities.isEmpty) return [];
+
+    return _resolver.resolveTypedChildren<E>(childEntities, type);
+  }
+
   /// Register this repository's resolver automatically
   void _registerResolver() {
     _resolver.registerResolver<T>(type, BoxResolver<T>());
   }
 
   /// Resolve a parent Thing by UUID
-  Thing? _resolveParent(String uuid) {
+  BaseThing? _resolveParent(String uuid) {
     final entity = _thingService.lookup(uuid);
     if (entity == null) return null;
     return _resolver.resolveSingle(entity);
+  }
+
+  QueryBuilder<T> query(Condition<T> condition) {
+    return box.query(condition);
+  }
+
+  List<T> find(Condition<T> condition) {
+    return build(query(condition)).find();
+  }
+
+  Query<T> build(QueryBuilder<T> q) => q.build();
+
+  /// Subscribe to query changes with a callback
+  StreamSubscription<Query<T>> subscription(
+    QueryBuilder<T> q,
+    void Function(Query<T>) callback,
+  ) => q.watch(triggerImmediately: true).listen(callback);
+
+  /// Get a stream of query results
+  Stream<Query<T>> stream(Condition<T> condition) {
+    return query(condition).watch(triggerImmediately: true);
+  }
+
+  /// Get a stream of query results as individual entities (flattened)
+  Stream<List<T>> streamList(Condition<T> condition) {
+    return stream(condition).map((q) => q.find());
+  }
+
+  /// Get a stream of query results as individual entities (flattened)
+  Stream<T> streamEntities(Condition<T> condition) {
+    return stream(condition).asyncExpand((q) async* {
+      final results = q.find();
+      for (final result in results) {
+        yield result;
+      }
+    });
+  }
+
+  /// Get a stream of an entity by UUID
+  /// Note: This streams all entities and filters in memory. For better performance,
+  /// consider using streamList with a specific condition if available.
+  Stream<T?> streamByUUID(String uuid) {
+    // Create a stream of all entities since we can't query by UUID directly
+    return box.query().watch(triggerImmediately: true).map((query) {
+      final entities = query.find();
+      try {
+        return entities.firstWhere((entity) => entity.uuid == uuid);
+      } catch (e) {
+        return null; // No entity with this UUID found
+      }
+    });
+  }
+
+  /// Get a stream count of entities matching condition
+  Stream<int> streamCount(Condition<T> condition) {
+    return stream(condition).map((entities) => entities.count());
+  }
+
+  Condition<T> dateBetween(
+    QueryDateNanoProperty<T> property, {
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final startMillis = start.millisecondsSinceEpoch;
+    final endMillis = end.millisecondsSinceEpoch;
+
+    return property.between(startMillis, endMillis);
+  }
+
+  // TODO lift `searchTitle` (from `TaskRepo`) into `ThingRepo`
+
+  /// Convert an entity to a DocumentNode using the registered node factory
+  Future<DocumentNode?> toNode(T entity) async {
+    final registry = _ref.read(nodeFactoryRegistryProvider);
+    final factory = registry.getFactory(type);
+
+    if (factory == null) {
+      tempoLog.warning('No node factory registered for entity type: $type');
+      return null;
+    }
+
+    // Convert to ThingEntity for the factory
+    if (entity is ThingBehavior) {
+      final thingEntity = (entity as ThingBehavior).asThingEntity();
+      return factory.toNodeFromThing(thingEntity);
+    }
+
+    tempoLog.warning('Entity does not implement ThingBehavior: $type');
+    return null;
+  }
+
+  /// Convert a ThingEntity to a DocumentNode (for children)
+  Future<DocumentNode?> toNodeFromThingEntity(ThingEntity thingEntity) async {
+    final registry = _ref.read(nodeFactoryRegistryProvider);
+    return registry.toNode(thingEntity);
   }
 }

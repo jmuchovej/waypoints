@@ -25,6 +25,9 @@ class ThingEntity {
   @Property(type: PropertyType.dateNano)
   DateTime createDate;
 
+  @Index()
+  String? plainText;
+
   @override
   String toString() {
     return 'ThingEntity{id: $id, uuid: $uuid, type: $type}';

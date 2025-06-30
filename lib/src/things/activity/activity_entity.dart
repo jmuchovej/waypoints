@@ -1,13 +1,14 @@
 import 'package:objectbox/objectbox.dart';
+import '../../editor/editor.dart';
+import '../../objectbox/attributed_text_mixin.dart';
 import '../task/task_entity.dart';
 import '../thing/interface.dart';
 import '../thing/thing_entity.dart';
 
 @Entity()
-class ActivityEntity with ThingBehavior implements Thing {
+class ActivityEntity with AttributedTextEntity, ThingBehavior implements Thing {
   ActivityEntity({
     required this.uuid,
-    required this.title,
     required this.startDate,
     required this.endDate,
     this.kind = ActivityKind.activity,
@@ -25,7 +26,6 @@ class ActivityEntity with ThingBehavior implements Thing {
 
   @override
   String uuid;
-  String title;
 
   @Property(type: PropertyType.date)
   DateTime startDate;
@@ -103,6 +103,19 @@ class ActivityEntity with ThingBehavior implements Thing {
   /// This creates a 1:1 relationship between this Activity and its registry entry
   @override
   final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
+
+  @override
+  String titleJson = '';
+
+  @Transient()
+  @override
+  AttributedText get title => getAttributedText(titleJson);
+  @override
+  set title(AttributedText value) =>
+      setAttributedText(value, (json) => titleJson = json);
+
+  @override
+  String getSearchableText() => title.toPlainText();
 }
 
 enum ActivityStatus {

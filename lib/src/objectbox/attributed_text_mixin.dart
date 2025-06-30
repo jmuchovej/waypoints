@@ -29,11 +29,7 @@ import '../editor/attributed_text.dart';
 mixin AttributedTextEntity {
   /// Helper to get AttributedText from stored JSON
   @protected
-  AttributedText getAttributedText(
-    String jsonString,
-    String fallbackPlainText,
-  ) {
-    if (jsonString.isEmpty) return AttributedText(fallbackPlainText);
+  AttributedText getAttributedText(String jsonString) {
     return AttributedTextJson.fromJsonString(jsonString);
   }
 
@@ -42,9 +38,7 @@ mixin AttributedTextEntity {
   void setAttributedText(
     AttributedText value,
     void Function(String json) setJson,
-    void Function(String plainText) setPlainText,
   ) {
     setJson(value.toJsonString());
-    setPlainText(value.toPlainText());
   }
 }

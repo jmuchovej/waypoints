@@ -39,8 +39,6 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
   bool deleted;
 
   String titleJson = '';
-  @Index()
-  String titlePlainText = '';
 
   @override
   @Property(type: PropertyType.dateNano)
@@ -65,25 +63,15 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @override
   int get hashCode => uuid.hashCode ^ title.hashCode;
 
-  @Transient()
-  AttributedText get title => getAttributedText(titleJson, titlePlainText);
-
   ProjectStatus _status;
-  int get obxStatus {
-    ProjectStatus.assertStableEnumValues();
-    return _status.index;
-  }
-
-  set obxStatus(int value) => _status = ProjectStatus.values[value];
 
   @Transient()
   ProjectStatus get status => _status;
-
-  set title(AttributedText value) => setAttributedText(
-    value,
-    (json) => titleJson = json,
-    (plain) => titlePlainText = plain,
-  );
+  set statusOBX(int value) => _status = ProjectStatus.values[value];
+  int get statusOBX {
+    ProjectStatus.assertStableEnumValues();
+    return _status.index;
+  }
 
   @override
   String get type => key;
@@ -124,6 +112,16 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
 
     return project;
   }
+
+  @Transient()
+  @override
+  AttributedText get title => getAttributedText(titleJson);
+  @override
+  set title(AttributedText value) =>
+      setAttributedText(value, (json) => titleJson = json);
+
+  @override
+  String getSearchableText() => title.toPlainText();
 }
 
 enum ProjectStatus {
