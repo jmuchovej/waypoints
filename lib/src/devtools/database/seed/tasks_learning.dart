@@ -1,6 +1,6 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project.dart';
+import '../../../things/project/project_entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 import 'tasks_learning_rust.dart';
@@ -15,7 +15,7 @@ class LearningArea extends DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.fine('<seeding area="${area.titlePlainText}">');
+    dbLog.fine('<seeding area="${area.title.toPlainText()}">');
 
     // Use repository which handles registration automatically
     final areaID = s.projectRepo.put(area);
@@ -36,7 +36,7 @@ class LearningArea extends DatabaseSeed {
         rust.project.uuid,
         piano.project.uuid,
         spanish.project.uuid,
-      ].map((u) => s.projectRepo.byUUID(u)!.asThingEntity()),
+      ].map((String u) => s.projectRepo.byUUID(u)!.asThingEntity()),
     );
     s.projectRepo.put(savedArea);
   }

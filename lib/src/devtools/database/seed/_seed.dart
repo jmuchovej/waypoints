@@ -29,8 +29,8 @@ extension DevtoolsTaskDefaults on TaskEntity {
     Duration? dateDelta,
     TaskStatus status = TaskStatus.todo,
     TaskPriority priority = TaskPriority.M,
-    TaskEnergyEstimate energyEstimate = TaskEnergyEstimate.M,
-    TaskTimeEstimate timeEstimate = TaskTimeEstimate.M,
+    TaskEnergy energy = TaskEnergy.M,
+    TaskTime time = TaskTime.M,
     String? recurrence,
   }) {
     final now = DateTime.now();
@@ -48,8 +48,8 @@ extension DevtoolsTaskDefaults on TaskEntity {
       modifyDate: now.subtract(
         Duration(hours: (now.difference(dueDate).inHours.abs() * 0.3).round()),
       ),
-      energyEstimate: energyEstimate,
-      timeEstimate: timeEstimate,
+      energy: energy,
+      time: time,
       recurrence: recurrence,
     );
 

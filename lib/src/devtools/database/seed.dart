@@ -5,6 +5,7 @@ import '../../infrastructure/logging.dart';
 import '../../things/task/task_repository.dart';
 import '../../things/project/project_repository.dart';
 import '../../things/activity/activity_repository.dart';
+import '../../things/block/block_repository.dart';
 import 'seed/tasks_learning.dart';
 import 'seed/tasks_personal.dart';
 import 'seed/tasks_research.dart';
@@ -17,6 +18,8 @@ class SeedDataService {
       ref.read(taskRepositoryProvider),
       ref.read(projectRepositoryProvider),
       ref.read(activityRepositoryProvider),
+      ref.read(blockRepositoryProvider),
+      ref.read(flavorProvider),
     );
   } // Prevent concurrent seeding
 
@@ -26,14 +29,24 @@ class SeedDataService {
       container.read(taskRepositoryProvider),
       container.read(projectRepositoryProvider),
       container.read(activityRepositoryProvider),
+      container.read(blockRepositoryProvider),
+      container.read(flavorProvider),
     );
   }
 
-  SeedDataService._(this.taskRepo, this.projectRepo, this.activityRepo);
+  SeedDataService._(
+    this.taskRepo,
+    this.projectRepo,
+    this.activityRepo,
+    this.blockRepo,
+    this.flavor,
+  );
 
   final TaskRepository taskRepo;
   final ProjectRepository projectRepo;
   final ActivityRepository activityRepo;
+  final BlockRepository blockRepo;
+  final Flavor flavor;
 
   static bool _hasSeeded = false;
   static bool _isSeeding = false;
@@ -45,10 +58,11 @@ class SeedDataService {
     final tasksRemoved = taskRepo.removeAll();
     final projectsRemoved = projectRepo.removeAll();
     final activitiesRemoved = activityRepo.removeAll();
+    final blocksRemoved = blockRepo.removeAll();
 
     _hasSeeded = false;
     dbLog.fine(
-      'All data cleared from database - Tasks: $tasksRemoved, Projects: $projectsRemoved, Activities: $activitiesRemoved',
+      'All data cleared from database - Tasks: $tasksRemoved, Projects: $projectsRemoved, Activities: $activitiesRemoved, Blocks: $blocksRemoved',
     );
   }
 
@@ -68,7 +82,7 @@ class SeedDataService {
     }
 
     // Check if in development mode
-    if (F.appFlavor != Flavor.development && !force) {
+    if (flavor.isDevelopment && !force) {
       dbLog.fine('Not in development mode and not forcing, skipping...');
       return;
     }

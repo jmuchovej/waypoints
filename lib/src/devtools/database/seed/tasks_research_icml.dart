@@ -1,6 +1,6 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project.dart';
+import '../../../things/project/project_entity.dart';
 import '../../../things/task/task_entity.dart';
 import '../seed.dart';
 import '_seed.dart';
@@ -92,7 +92,7 @@ class ICML2025Project implements DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.finer('  <seeding project="${project.titlePlainText}">');
+    dbLog.finer('  <seeding project="${project.title.toPlainText()}">');
     final projectID = s.projectRepo.put(project);
 
     // Literature review task and subtasks

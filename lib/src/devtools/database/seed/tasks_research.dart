@@ -1,6 +1,6 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project.dart';
+import '../../../things/project/project_entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 import 'tasks_research_nsf.dart';
@@ -15,7 +15,7 @@ class ResearchArea extends DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.fine('<seeding area="${area.titlePlainText}">');
+    dbLog.fine('<seeding area="${area.title.toPlainText()}">');
 
     // Use repository which handles registration automatically
     final areaID = s.projectRepo.put(area);
