@@ -1,6 +1,31 @@
 targets:
   $default:
     builders:
+      # Disable source_gen combining_builder for objectbox directory
+      # to avoid conflicts with objectbox_generator
+      source_gen:combining_builder:
+        enabled: true
+        generate_for:
+          exclude:
+            - lib/src/objectbox/**
+            - lib/objectbox/**
+      
+      # Disable freezed for objectbox directory
+      freezed:
+        enabled: true
+        generate_for:
+          exclude:
+            - lib/src/objectbox/**
+            - lib/objectbox/**
+      
+      # Disable json_serializable for objectbox directory
+      json_serializable:
+        enabled: true
+        generate_for:
+          exclude:
+            - lib/src/objectbox/**
+            - lib/objectbox/**
+      
       # TODO WHEN/IF migrating back to Drift, reenable these to support
       #   partial files
       # drift_dev:

@@ -9,6 +9,19 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  errors:
+    avoid_redundant_argument_values: ignore
+    constant_identifier_names: ignore
+    unnecessary_brace_in_string_interps: ignore
+    invalid_annotation_target: ignore
+    unused_import: warning
+    unused_local_variable: warning
+    dead_code: warning
+    avoid_print: error
+
+dart_code_metrics:
+  extends:
+    - recommended
 
 linter:
   # The lint rules applied to this project can be customized in the
@@ -22,9 +35,7 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-  # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-  # prefer_single_quotes: true  # Uncomment to enable the
-  # `prefer_single_quotes` rule
+    # avoid_print: true
     require_trailing_commas: true
 
     prefer_collection_literals: true
@@ -40,7 +51,7 @@ linter:
     unnecessary_raw_strings: true
 
     avoid_unnecessary_containers: true
-    avoid_redundant_argument_values: true
+    avoid_redundant_argument_values: false
     avoid_unused_constructor_parameters: true
 
     always_declare_return_types: true
@@ -48,8 +59,8 @@ linter:
     sort_constructors_first: true
     unawaited_futures: true
 
-errors:
-  invalid_annotation_target: ignore
+    avoid_relative_lib_imports: true
+    prefer_relative_imports: true
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

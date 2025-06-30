@@ -4,7 +4,7 @@
 cargo = "0.86.0"
 # Can't use 3.32 b/c of https://github.com/flutter/flutter/issues/169204
 # Supposedly https://github.com/flutter/flutter/pull/169583 resolves it...
-flutter = "3.29.3-stable"
+flutter = "3.32.0-stable"
 java = "24.0.0"
 rust = "1.85.1"
 yamlfmt = "0.16.0"
@@ -19,6 +19,8 @@ android-sdk = "latest"
 ruby = "3.4.2"
 "gem:cocoapods" = "1.16.2"
 "ubi:CQLabs/homebrew-dcm" = { version = "latest", exe = "dcm", matching = "dcm" }
+"npm:@anthropic-ai/claude-code" = "latest"
+typst = "0.13.1"
 
 # [hooks]
 # preinstall = "mise install android-sdk@19.0"
