@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../editor/operations/thing_cursor_handler.dart';
 import '../../../editor/super_editor.dart';
 import '../../../infrastructure/logging.dart';
+import '../../thing/thing_node_position.dart';
 import '../task_entity.dart';
 import '../task_repository.dart';
 import 'components/due_date_chip.dart';
@@ -10,7 +12,6 @@ import 'components/progress_chip.dart';
 import 'components/project_chip.dart';
 import 'components/status_chip.dart';
 import 'task_builder.dart';
-import 'task_node.dart';
 
 /// A document component that displays a complete-able task.
 ///
@@ -23,14 +24,12 @@ import 'task_node.dart';
 class TaskComponent extends ConsumerStatefulWidget {
   const TaskComponent({
     super.key,
-    required this.editor,
     required this.viewModel,
     this.showDebugPaint = false,
   });
 
   final TaskComponentViewModel viewModel;
   final bool showDebugPaint;
-  final Editor editor;
   bool get isSelected => viewModel.isSelected;
 
   @override
@@ -38,8 +37,16 @@ class TaskComponent extends ConsumerStatefulWidget {
 }
 
 class TaskComponentState extends ConsumerState<TaskComponent>
-    with ProxyDocumentComponent<TaskComponent>, ProxyTextComposable {
+    with
+        ProxyDocumentComponent<TaskComponent>,
+        ProxyTextComposable,
+        ThingCursorProvider {
   final _textKey = GlobalKey();
+
+  // Debug flag - set to true to see detailed gesture logging
+  static const bool _debugGestures = true;
+
+  TaskEntity get task => widget.viewModel.task;
 
   @override
   GlobalKey<State<StatefulWidget>> get childDocumentComponentKey => _textKey;
@@ -48,18 +55,17 @@ class TaskComponentState extends ConsumerState<TaskComponent>
   TextComposable get childTextComposable =>
       childDocumentComponentKey.currentState as TextComposable;
 
-  Document get document => editor.document;
+  // Note: Pointer handling is now managed by ThingTitleComponent
+  // with context-aware interaction patterns from the settings system
 
-  Editor get editor => widget.editor;
-
-  TaskNode get node =>
-      document.getNodeById(widget.viewModel.nodeId) as TaskNode;
   @override
   Widget build(BuildContext context) {
+    final textSize = TextTheme.of(context).bodyMedium!.fontSize!;
+
     return Directionality(
       textDirection: widget.viewModel.textDirection,
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 12.0),
+        padding: EdgeInsets.symmetric(vertical: textSize / 2),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -88,8 +94,10 @@ class TaskComponentState extends ConsumerState<TaskComponent>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Use context-aware ThingTitleComponent for all platforms
                   TextComponent(
                     key: _textKey,
+                    // thing: task,
                     text: widget.viewModel.text,
                     textDirection: widget.viewModel.textDirection,
                     textAlign: widget.viewModel.textAlignment,
@@ -99,7 +107,14 @@ class TaskComponentState extends ConsumerState<TaskComponent>
                     selectionColor: widget.viewModel.selectionColor,
                     highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
                     underlines: widget.viewModel.createUnderlines(),
-                    showDebugPaint: true,
+                    showDebugPaint: widget.showDebugPaint,
+                    // onEdit: () {
+                    //   if (_debugGestures) {
+                    //     tempoLog.info('✏️ ThingTitleComponent edit for task: ${task.uuid}');
+                    //   }
+                    //   // Focus the component for editing
+                    //   // The SuperEditor system will handle the actual editing
+                    // },
                   ),
                   // Pills for additional task information
                   _buildPillsRow(),
@@ -114,6 +129,75 @@ class TaskComponentState extends ConsumerState<TaskComponent>
 
   @override
   NodePosition? getPositionAtOffset(Offset localOffset) {
+    // Determine which cursor zone this offset is in
+    final cursorZone = getCursorZoneForOffset(localOffset);
+
+    if (cursorZone == ThingCursorZone.textEditable) {
+      // For text areas, return the actual text position
+      return _getTextComponentPositionAtOffset(localOffset);
+    } else {
+      // For non-text areas, return a ThingNodePosition with zone metadata
+      // Use -1 offset as convention for non-text positions
+      return ThingNodePosition(offset: -1, zone: cursorZone);
+    }
+  }
+
+  bool _isClickInTextArea(Offset localOffset) {
+    try {
+      // Get the text component that's nested inside our Row layout
+      final textComponentBox =
+          childDocumentComponentKey.currentContext?.findRenderObject()
+              as RenderBox?;
+      if (textComponentBox == null) {
+        if (_debugGestures) {
+          tempoLog.finest('🎯 _isClickInTextArea: No text component box found');
+        }
+        return false;
+      }
+
+      // Get our task component's render box
+      final taskComponentBox = context.findRenderObject() as RenderBox?;
+      if (taskComponentBox == null) {
+        if (_debugGestures) {
+          tempoLog.finest('🎯 _isClickInTextArea: No task component box found');
+        }
+        return false;
+      }
+
+      // Convert the local offset to the text component's coordinate space
+      final textOffset = taskComponentBox.globalToLocal(
+        textComponentBox.localToGlobal(Offset.zero),
+      );
+
+      // Check if the click is within the text component bounds
+      final textBounds = Rect.fromLTWH(
+        textOffset.dx,
+        textOffset.dy,
+        textComponentBox.size.width,
+        textComponentBox.size.height,
+      );
+
+      final isInTextArea = textBounds.contains(localOffset);
+
+      if (_debugGestures) {
+        tempoLog.finest(
+          '🎯 _isClickInTextArea: click=$localOffset, textBounds=$textBounds, result=$isInTextArea',
+        );
+      }
+
+      return isInTextArea;
+    } catch (e) {
+      if (_debugGestures) {
+        tempoLog.warning(
+          '🎯 _isClickInTextArea: Error calculating text area: $e',
+        );
+      }
+      // Default to false (not in text area) on any error
+      return false;
+    }
+  }
+
+  NodePosition? _getTextComponentPositionAtOffset(Offset localOffset) {
     // Get the text component that's nested inside our Row layout
     final textComponentBox =
         childDocumentComponentKey.currentContext?.findRenderObject()
@@ -155,21 +239,21 @@ class TaskComponentState extends ConsumerState<TaskComponent>
 
     // Check if task has subtasks
     final taskRepo = ref.read(taskRepositoryProvider);
-    final subtasks = taskRepo.sameTypedChildren(node.task.uuid);
+    final subtasks = taskRepo.sameTypedChildren(task.uuid);
 
     if (subtasks.isNotEmpty) {
-      pills.add(TaskProgressChip(parentTask: node.task));
+      pills.add(TaskProgressChip(parentTask: task));
     }
 
     // Check if task has due date
     if (pills.isNotEmpty) pills.add(const SizedBox(width: 8));
-    pills.add(TaskDueDateChip(task: node.task));
+    pills.add(TaskDueDateChip(task: task));
 
     // Check if task has project
-    tempoLog.finest('task project=${node.task.project.target}');
-    if (node.task.project.hasValue && node.task.project.target != null) {
+    // tempoLog.finest('task project=${node.task.project.target}');
+    if (task.project.hasValue && task.project.target != null) {
       if (pills.isNotEmpty) pills.add(const SizedBox(width: 8));
-      pills.add(Flexible(child: TaskProjectChip(task: node.task)));
+      pills.add(Flexible(child: TaskProjectChip(task: task)));
     }
 
     // Only show the row if there are pills to display
@@ -198,5 +282,50 @@ class TaskComponentState extends ConsumerState<TaskComponent>
                   ]),
         )
         : style;
+  }
+
+  @override
+  ThingCursorZone getCursorZoneForOffset(Offset localOffset) {
+    try {
+      // Status chip area (left side) - interactive
+      if (localOffset.dx < 40) {
+        if (_debugGestures) {
+          tempoLog.finest('🎯 Cursor zone: status chip area (interactive)');
+        }
+        return ThingCursorZone.interactive;
+      }
+
+      // Check if we're in the text area
+      if (_isClickInTextArea(localOffset)) {
+        if (_debugGestures) {
+          tempoLog.finest('🎯 Cursor zone: text area (editable)');
+        }
+        return ThingCursorZone.textEditable;
+      }
+
+      // Pills/chips area (right side) - interactive
+      final componentBox = context.findRenderObject() as RenderBox?;
+      if (componentBox != null) {
+        final rightZoneStart = componentBox.size.width * 0.7; // Approximate
+        if (localOffset.dx > rightZoneStart) {
+          if (_debugGestures) {
+            tempoLog.finest('🎯 Cursor zone: pills/chips area (interactive)');
+          }
+          return ThingCursorZone.interactive;
+        }
+      }
+
+      // Everything else is clickable (for navigation)
+      if (_debugGestures) {
+        tempoLog.finest('🎯 Cursor zone: general area (clickable)');
+      }
+      return ThingCursorZone.clickable;
+    } catch (e) {
+      if (_debugGestures) {
+        tempoLog.warning('🎯 Error determining cursor zone: $e');
+      }
+      // Default to clickable on any error
+      return ThingCursorZone.clickable;
+    }
   }
 }

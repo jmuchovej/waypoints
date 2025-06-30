@@ -3,98 +3,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_editor/super_editor.dart';
 
 import '../../../router.dart';
+import '../../task/editor/task_builder.dart';
 import '../project_entity.dart';
 import '../../task/task_repository.dart';
 import '../project_repository.dart';
 import '../../../infrastructure/logging.dart';
-import 'project_node.dart';
-
-/// Component builder for ProjectNode
-class ProjectComponentBuilder implements ComponentBuilder {
-  const ProjectComponentBuilder();
-
-  @override
-  SingleColumnLayoutComponentViewModel? createViewModel(
-    Document document,
-    DocumentNode node,
-  ) {
-    if (node is! ProjectNode) {
-      return null;
-    }
-
-    return ProjectComponentViewModel(nodeId: node.id, project: node.project);
-  }
-
-  @override
-  Widget? createComponent(
-    SingleColumnDocumentComponentContext componentContext,
-    SingleColumnLayoutComponentViewModel componentViewModel,
-  ) {
-    if (componentViewModel is! ProjectComponentViewModel) {
-      return null;
-    }
-
-    return ProjectComponent(
-      componentKey: componentContext.componentKey,
-      project: componentViewModel.project,
-      // selection: componentViewModel.selection,
-    );
-  }
-}
-
-/// View model for the project component
-class ProjectComponentViewModel extends SingleColumnLayoutComponentViewModel {
-  ProjectComponentViewModel({
-    required super.nodeId,
-    required this.project,
-    super.maxWidth,
-    super.padding = EdgeInsets.zero,
-  });
-
-  final ProjectEntity project;
-
-  @override
-  ProjectComponentViewModel copy() {
-    return ProjectComponentViewModel(
-      nodeId: nodeId,
-      project: project,
-      maxWidth: maxWidth,
-      padding: padding,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      super == other &&
-          other is ProjectComponentViewModel &&
-          runtimeType == other.runtimeType &&
-          project.uuid == other.project.uuid;
-
-  @override
-  int get hashCode => super.hashCode ^ project.uuid.hashCode;
-}
+import 'project_builder.dart';
 
 /// The visual component for displaying a project in the editor
 class ProjectComponent extends ConsumerStatefulWidget {
-  const ProjectComponent({
-    super.key,
-    required this.componentKey,
-    required this.project,
-    this.selection,
-  });
+  const ProjectComponent({super.key, required this.viewModel});
 
-  final GlobalKey componentKey;
-  final ProjectEntity project;
-  final DocumentSelection? selection;
+  final ProjectComponentViewModel viewModel;
 
   @override
   ConsumerState<ProjectComponent> createState() => _ProjectComponentState();
 }
 
-class _ProjectComponentState extends ConsumerState<ProjectComponent> {
+class _ProjectComponentState extends ConsumerState<ProjectComponent>
+    with ProxyDocumentComponent<ProjectComponent>, ProxyTextComposable {
   bool _isHovered = false;
   int? _taskCount;
+
+  final _textKey = GlobalKey();
+
+  ProjectEntity get project => widget.viewModel.project;
+
+  @override
+  GlobalKey<State<StatefulWidget>> get childDocumentComponentKey => _textKey;
+
+  @override
+  TextComposable get childTextComposable =>
+      childDocumentComponentKey.currentState as TextComposable;
 
   @override
   void initState() {
@@ -105,7 +45,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent> {
   void _loadTaskCount() async {
     try {
       final taskRepo = ref.read(taskRepositoryProvider);
-      final tasks = taskRepo.sameTypedChildren(widget.project.uuid);
+      final tasks = taskRepo.sameTypedChildren(project.uuid);
       setState(() {
         _taskCount = tasks.length;
       });
@@ -120,219 +60,284 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isSelected = widget.selection != null;
+    final textSize = TextTheme.of(context).bodyLarge!.fontSize!;
 
-    return MouseRegion(
-      key: widget.componentKey,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: () => _openProject(context),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                    : _isHovered
-                    ? theme.colorScheme.surfaceContainerHighest
-                    : theme.colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color:
-                  isSelected
-                      ? theme.colorScheme.primary
-                      : _isHovered
-                      ? theme.colorScheme.outline.withValues(alpha: 0.3)
-                      : Colors.transparent,
-              width: isSelected ? 2 : 1,
+    return Directionality(
+      textDirection: widget.viewModel.textDirection,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: textSize / 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: tempoTaskIndentCalculator(
+                widget.viewModel.textStyleBuilder({}),
+                widget.viewModel.indent,
+              ),
             ),
-            boxShadow:
-                _isHovered
-                    ? [
-                      BoxShadow(
-                        color: theme.shadowColor.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header row with title and actions
-              Row(
+            Column(children: [Icon(Icons.folder_rounded)]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Project icon
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.folder,
-                      size: 20,
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Project title
-                  Expanded(
-                    child: Text(
-                      widget.project.title.toPlainText(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                  // Action buttons (visible on hover)
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 150),
-                    opacity: _isHovered ? 1.0 : 0.0,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 16),
-                          onPressed: () => _editProject(context),
-                          tooltip: 'Edit Project',
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.more_vert, size: 16),
-                          onPressed: () => _showProjectMenu(context),
-                          tooltip: 'More Options',
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
-                      ],
-                    ),
+                  TextComponent(
+                    key: _textKey,
+                    text: widget.viewModel.text,
+                    textDirection: widget.viewModel.textDirection,
+                    textAlign: widget.viewModel.textAlignment,
+                    textStyleBuilder: _computeStyles,
+                    inlineWidgetBuilders: widget.viewModel.inlineWidgetBuilders,
+                    textSelection: widget.viewModel.selection,
+                    selectionColor: widget.viewModel.selectionColor,
+                    highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
+                    underlines: widget.viewModel.createUnderlines(),
+                    showDebugPaint: true,
                   ),
                 ],
               ),
-
-              const SizedBox(height: 12),
-
-              // Project metadata
-              Row(
-                children: [
-                  // Task count
-                  if (_taskCount != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.task_alt,
-                            size: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$_taskCount ${_taskCount == 1 ? 'task' : 'tasks'}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-
-                  // Modified date
-                  Text(
-                    _formatDate(widget.project.modifyDate),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // Status indicators
-                  if (widget.project.archived)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Archived',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-
-              // Project description (if available)
-              // if (widget.project.notes != null &&
-              //     widget.project.notes!.toPlainText().trim().isNotEmpty) ...[
-              //   const SizedBox(height: 8),
-              //   Text(
-              //     widget.project.notes!.toPlainText(),
-              //     style: theme.textTheme.bodySmall?.copyWith(
-              //       color: theme.colorScheme.onSurfaceVariant,
-              //     ),
-              //     maxLines: 2,
-              //     overflow: TextOverflow.ellipsis,
-              //   ),
-              // ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+
+    // return MouseRegion(
+    //   key: widget.componentKey,
+    //   onEnter: (_) => setState(() => _isHovered = true),
+    //   onExit: (_) => setState(() => _isHovered = false),
+    //   child: GestureDetector(
+    //     onTap: () => _openProject(context),
+    //     child: AnimatedContainer(
+    //       duration: const Duration(milliseconds: 150),
+    //       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+    //       padding: const EdgeInsets.all(16),
+    //       decoration: BoxDecoration(
+    //         color:
+    //             isSelected
+    //                 ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+    //                 : _isHovered
+    //                 ? theme.colorScheme.surfaceContainerHighest
+    //                 : theme.colorScheme.surfaceContainer,
+    //         borderRadius: BorderRadius.circular(12),
+    //         border: Border.all(
+    //           color:
+    //               isSelected
+    //                   ? theme.colorScheme.primary
+    //                   : _isHovered
+    //                   ? theme.colorScheme.outline.withValues(alpha: 0.3)
+    //                   : Colors.transparent,
+    //           width: isSelected ? 2 : 1,
+    //         ),
+    //         boxShadow:
+    //             _isHovered
+    //                 ? [
+    //                   BoxShadow(
+    //                     color: theme.shadowColor.withValues(alpha: 0.1),
+    //                     blurRadius: 8,
+    //                     offset: const Offset(0, 2),
+    //                   ),
+    //                 ]
+    //                 : null,
+    //       ),
+    //       child: Column(
+    //         crossAxisAlignment: CrossAxisAlignment.start,
+    //         children: [
+    //           // Header row with title and actions
+    //           Row(
+    //             children: [
+    //               // Project icon
+    //               Container(
+    //                 padding: const EdgeInsets.all(8),
+    //                 decoration: BoxDecoration(
+    //                   color: theme.colorScheme.primaryContainer,
+    //                   borderRadius: BorderRadius.circular(8),
+    //                 ),
+    //                 child: Icon(
+    //                   Icons.folder,
+    //                   size: 20,
+    //                   color: theme.colorScheme.onPrimaryContainer,
+    //                 ),
+    //               ),
+    //               const SizedBox(width: 12),
+
+    //               // Project title
+    //               Expanded(
+    //                 child: Text(
+    //                   widget.project.title.toPlainText(),
+    //                   style: theme.textTheme.titleMedium?.copyWith(
+    //                     fontWeight: FontWeight.w600,
+    //                   ),
+    //                   maxLines: 2,
+    //                   overflow: TextOverflow.ellipsis,
+    //                 ),
+    //               ),
+
+    //               // Action buttons (visible on hover)
+    //               AnimatedOpacity(
+    //                 duration: const Duration(milliseconds: 150),
+    //                 opacity: _isHovered ? 1.0 : 0.0,
+    //                 child: Row(
+    //                   mainAxisSize: MainAxisSize.min,
+    //                   children: [
+    //                     IconButton(
+    //                       icon: const Icon(Icons.edit, size: 16),
+    //                       onPressed: () => _editProject(context),
+    //                       tooltip: 'Edit Project',
+    //                       constraints: const BoxConstraints(
+    //                         minWidth: 32,
+    //                         minHeight: 32,
+    //                       ),
+    //                     ),
+    //                     IconButton(
+    //                       icon: const Icon(Icons.more_vert, size: 16),
+    //                       onPressed: () => _showProjectMenu(context),
+    //                       tooltip: 'More Options',
+    //                       constraints: const BoxConstraints(
+    //                         minWidth: 32,
+    //                         minHeight: 32,
+    //                       ),
+    //                     ),
+    //                   ],
+    //                 ),
+    //               ),
+    //             ],
+    //           ),
+
+    //           const SizedBox(height: 12),
+
+    //           // Project metadata
+    //           Row(
+    //             children: [
+    //               // Task count
+    //               if (_taskCount != null) ...[
+    //                 Container(
+    //                   padding: const EdgeInsets.symmetric(
+    //                     horizontal: 8,
+    //                     vertical: 4,
+    //                   ),
+    //                   decoration: BoxDecoration(
+    //                     color: theme.colorScheme.surfaceContainerHighest,
+    //                     borderRadius: BorderRadius.circular(12),
+    //                   ),
+    //                   child: Row(
+    //                     mainAxisSize: MainAxisSize.min,
+    //                     children: [
+    //                       Icon(
+    //                         Icons.task_alt,
+    //                         size: 12,
+    //                         color: theme.colorScheme.onSurfaceVariant,
+    //                       ),
+    //                       const SizedBox(width: 4),
+    //                       Text(
+    //                         '$_taskCount ${_taskCount == 1 ? 'task' : 'tasks'}',
+    //                         style: theme.textTheme.bodySmall?.copyWith(
+    //                           color: theme.colorScheme.onSurfaceVariant,
+    //                         ),
+    //                       ),
+    //                     ],
+    //                   ),
+    //                 ),
+    //                 const SizedBox(width: 8),
+    //               ],
+
+    //               // Modified date
+    //               // Text(
+    //               //   Jiffy.now().diff(Jiffy.parseFromDateTime(widget.project.modifyDate),
+    //               //   style: theme.textTheme.bodySmall?.copyWith(
+    //               //     color: theme.colorScheme.onSurfaceVariant,
+    //               //   ),
+    //               // ),
+    //               const Spacer(),
+
+    //               // Status indicators
+    //               if (widget.project.archived)
+    //                 Container(
+    //                   padding: const EdgeInsets.symmetric(
+    //                     horizontal: 6,
+    //                     vertical: 2,
+    //                   ),
+    //                   decoration: BoxDecoration(
+    //                     color: theme.colorScheme.errorContainer,
+    //                     borderRadius: BorderRadius.circular(8),
+    //                   ),
+    //                   child: Text(
+    //                     'Archived',
+    //                     style: theme.textTheme.labelSmall?.copyWith(
+    //                       color: theme.colorScheme.onErrorContainer,
+    //                     ),
+    //                   ),
+    //                 ),
+    //             ],
+    //           ),
+
+    //           // Project description (if available)
+    //           // if (widget.project.notes != null &&
+    //           //     widget.project.notes!.toPlainText().trim().isNotEmpty) ...[
+    //           //   const SizedBox(height: 8),
+    //           //   Text(
+    //           //     widget.project.notes!.toPlainText(),
+    //           //     style: theme.textTheme.bodySmall?.copyWith(
+    //           //       color: theme.colorScheme.onSurfaceVariant,
+    //           //     ),
+    //           //     maxLines: 2,
+    //           //     overflow: TextOverflow.ellipsis,
+    //           //   ),
+    //           // ],
+    //         ],
+    //       ),
+    //     ),
+    //   ),
+    // );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
+  @override
+  NodePosition? getPositionAtOffset(Offset localOffset) {
+    // Get the text component that's nested inside our Row layout
+    final textComponentBox =
+        childDocumentComponentKey.currentContext?.findRenderObject()
+            as RenderBox?;
+    if (textComponentBox == null) {
+      // Fallback to beginning if we can't find the text component
+      return const TextNodePosition(offset: 0);
+    }
 
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inDays < 30) {
-      final weeks = (difference.inDays / 7).floor();
-      return '$weeks ${weeks == 1 ? 'week' : 'weeks'} ago';
-    } else {
-      final months = (difference.inDays / 30).floor();
-      return '$months ${months == 1 ? 'month' : 'months'} ago';
+    // Get our task component's render box
+    final taskComponentBox = context.findRenderObject() as RenderBox?;
+    if (taskComponentBox == null) {
+      return const TextNodePosition(offset: 0);
+    }
+
+    try {
+      // Convert the click position from task component coordinates to text component coordinates
+      // This accounts for the StatusWidget that appears before the text in the Row
+      final globalClickPosition = taskComponentBox.localToGlobal(localOffset);
+      final textLocalOffset = textComponentBox.globalToLocal(
+        globalClickPosition,
+      );
+
+      // Now get the position within the text using the adjusted coordinates
+      final textComponent =
+          childDocumentComponentKey.currentState as TextComponentState?;
+      final position = textComponent?.getPositionAtOffset(textLocalOffset);
+
+      // Return the calculated position, or beginning if calculation failed
+      return position ?? const TextNodePosition(offset: 0);
+    } catch (e) {
+      // If coordinate conversion fails, place cursor at beginning
+      return const TextNodePosition(offset: 0);
     }
   }
 
+  /// Computes the [TextStyle] for this task's inner [TextComponent].
+  TextStyle _computeStyles(Set<Attribution> attributions) {
+    // Show a strikethrough across the entire task if it's complete.
+    final style = widget.viewModel.textStyleBuilder(attributions);
+    return style;
+  }
+
   void _openProject(BuildContext context) {
-    context.gotoProject(widget.project);
+    context.goProject(project, ref);
   }
 
   void _editProject(BuildContext context) {
@@ -353,7 +358,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.project.title.toPlainText(),
+                  project.title.toPlainText(),
                   style: theme.textTheme.titleMedium,
                 ),
                 const SizedBox(height: 16),
@@ -367,11 +372,9 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent> {
                 ),
                 ListTile(
                   leading: Icon(
-                    widget.project.archived ? Icons.unarchive : Icons.archive,
+                    project.archived ? Icons.unarchive : Icons.archive,
                   ),
-                  title: Text(
-                    widget.project.archived ? 'Unarchive' : 'Archive',
-                  ),
+                  title: Text(project.archived ? 'Unarchive' : 'Archive'),
                   onTap: () {
                     Navigator.pop(context);
                     _toggleArchive();
@@ -397,7 +400,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent> {
 
   void _toggleArchive() {
     final projectRepo = ref.read(projectRepositoryProvider);
-    projectRepo.archive(widget.project.uuid);
+    projectRepo.archive(project.uuid);
     _loadTaskCount(); // Refresh display
   }
 
@@ -408,7 +411,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent> {
           (context) => AlertDialog(
             title: const Text('Delete Project'),
             content: Text(
-              'Are you sure you want to delete "${widget.project.title.toPlainText()}"?\n\n'
+              'Are you sure you want to delete "${project.title.toPlainText()}"?\n\n'
               'Tasks in this project will not be deleted but will no longer be associated with the project.',
             ),
             actions: [
@@ -431,6 +434,6 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent> {
 
   void _deleteProject() {
     final projectRepo = ref.read(projectRepositoryProvider);
-    projectRepo.remove(widget.project.id);
+    projectRepo.remove(project.id);
   }
 }

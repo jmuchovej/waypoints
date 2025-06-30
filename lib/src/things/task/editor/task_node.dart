@@ -8,9 +8,6 @@ import '../task_repository.dart';
 const NamedAttribution taskAttribution = NamedAttribution("task");
 const BlockSelector taskSelector = BlockSelector("task");
 const NamedAttribution taskTitleAttribution = NamedAttribution("taskTitle");
-const NamedAttribution taskDescriptionAttribution = NamedAttribution(
-  "taskDescription",
-);
 
 /// Styles all task components to apply top padding
 final taskStyles = StyleRule(taskSelector, (document, node) {
@@ -22,15 +19,33 @@ final taskStyles = StyleRule(taskSelector, (document, node) {
   return {};
 });
 
+// Cache for indentation values to avoid repeated parent traversal
+final _indentationCache = <int, int>{};
+
+/// Clear the indentation cache (call when tasks are refreshed)
+void clearIndentationCache() {
+  _indentationCache.clear();
+}
+
 int _computeIndentation(TaskEntity? task, int indent) {
   if (indent != -1) return indent;
+  if (task == null) return 0;
+  
+  // Check cache first
+  final cached = _indentationCache[task.id];
+  if (cached != null) return cached;
 
+  // Compute indentation by traversing parents
   indent = 0;
-  while (task != null && task.parent.hasValue) {
+  TaskEntity? currentTask = task;
+  while (currentTask != null && currentTask.parent.hasValue) {
     indent += 1;
-    task = task.parent.target;
+    currentTask = currentTask.parent.target;
   }
-
+  
+  // Cache the result
+  _indentationCache[task.id] = indent;
+  
   return indent;
 }
 
@@ -38,11 +53,11 @@ int _computeIndentation(TaskEntity? task, int indent) {
 class TaskNode extends TextNode implements ThingNode {
   factory TaskNode.fromUUID(
     String uuid,
-    TaskRepository taskRepository, {
+    TaskRepository repo, {
     Map<String, dynamic>? metadata,
     int indent = -1,
   }) {
-    final task = taskRepository.byUUID(uuid);
+    final task = repo.byUUID(uuid);
     if (task == null) {
       throw StateError('Task with UUID $uuid not found');
     }
@@ -69,11 +84,11 @@ class TaskNode extends TextNode implements ThingNode {
   String get id => task.uuid;
 
   AttributedText get title => task.title;
-  TaskStatus get status => task.status;
   DateTime get dueDate => task.dueDate;
+  TaskStatus get status => task.status;
   TaskPriority get priority => task.priority;
-  TaskTimeEstimate get timeEstimate => task.timeEstimate;
-  TaskEnergyEstimate get energyEstimate => task.energyEstimate;
+  TaskTime get time => task.time;
+  TaskEnergy get energy => task.energy;
 
   @override
   ThingEntity get thing =>
@@ -142,32 +157,3 @@ class TaskNode extends TextNode implements ThingNode {
 extension TaskNodeType on DocumentNode {
   TaskNode get asTask => this as TaskNode;
 }
-
-// class TaskNodePosition extends TextPosition implements NodePosition {
-//   TaskNodePosition.fromTaskPosition(TextPosition position)
-//     : super(offset: position.offset, affinity: position.affinity);
-//
-//   TaskNodePosition({
-//     required int offset,
-//     TextAffinity affinity = TextAffinity.downstream,
-//   }) : super(offset: offset, affinity: affinity);
-//
-//   @override
-//   bool isEquivalentTo(NodePosition other) {
-//     if (other is! TaskNodePosition) {
-//       return false;
-//     }
-//
-//     return offset == other.offset;
-//   }
-//
-//   @override
-//   int get hashCode => super.hashCode ^ super.offset.hashCode;
-//
-//   @override
-//   bool operator ==(Object other) {
-//     return identical(this, other);
-//   }
-// }
-//
-// class TaskSelection implements NodeSelection {}

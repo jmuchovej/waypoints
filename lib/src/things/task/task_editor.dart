@@ -7,7 +7,6 @@ import 'package:uuid/uuid.dart';
 import '../../editor/super_editor.dart';
 import '../../editor/super_text.dart';
 import '../../infrastructure/extensions.dart';
-import '../../infrastructure/logging.dart';
 import '../../router.dart';
 import '../project/project_entity.dart';
 import '../project/project_repository.dart';
@@ -15,10 +14,21 @@ import 'task_entity.dart';
 import 'task_repository.dart';
 
 class TaskEditor extends ConsumerStatefulWidget {
-  const TaskEditor({super.key, this.task, this.projectId});
+  const TaskEditor({
+    super.key,
+    this.task,
+    this.projectID,
+    this.showAppBar = true,
+    this.panelInfo,
+  });
+
+  const TaskEditor.forPanel({super.key, required this.task, this.projectID, this.panelInfo})
+    : showAppBar = false;
 
   final TaskEntity? task;
-  final int? projectId; // Pre-selected project for new tasks
+  final int? projectID; // Pre-selected project for new tasks
+  final bool showAppBar; // Whether to show AppBar and Scaffold
+  final dynamic panelInfo; // Panel context information (using dynamic for now to avoid import issues)
 
   @override
   ConsumerState<TaskEditor> createState() => _TaskEditorState();
@@ -31,8 +41,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   late DateTime _dueDate;
   late TaskStatus _status;
   TaskPriority _priority = TaskPriority.M;
-  TaskTimeEstimate _timeEstimate = TaskTimeEstimate.M;
-  TaskEnergyEstimate _energyEstimate = TaskEnergyEstimate.M;
+  TaskTime _time = TaskTime.M;
+  TaskEnergy _energy = TaskEnergy.M;
   ProjectEntity? _selectedProject;
   List<ProjectEntity> _availableProjects = [];
 
@@ -41,16 +51,111 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
+      final loadingWidget = const Center(child: CircularProgressIndicator());
+
+      if (!widget.showAppBar) {
+        return loadingWidget;
+      }
+
       return Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        body: const Center(child: CircularProgressIndicator()),
+        body: loadingWidget,
       );
     }
 
+    // Extract the main content with animation safety
+    final bodyContent = LayoutBuilder(
+      builder: (context, constraints) {
+        // Wait for reasonable width before showing content to prevent overflow during panel opening animation
+        if (constraints.maxWidth < 250) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        
+        // Normal content when width is sufficient
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title row with status checkbox
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Status checkbox
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0, right: 12.0),
+                        child: _buildStatusCheckbox(),
+                      ),
+                      // Title field
+                      Expanded(child: _buildTitleField()),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Properties row (Project, Priority, Time, Energy)
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildPillButton(
+                        label: 'Project',
+                        value: _selectedProject?.title.toPlainText() ?? 'Project',
+                        icon: Icons.folder_outlined,
+                        hasValue: _selectedProject != null,
+                        onTap: () => _showProjectSelector(),
+                      ),
+                      _buildPillButton(
+                        label: 'Priority',
+                        value: _priority.toDisplayString(),
+                        icon: Icons.flag_outlined,
+                        color: _priority.color,
+                        onTap: () => _showPrioritySelector(),
+                      ),
+                      _buildPillButton(
+                        label: 'Time',
+                        value: _time.toDisplayString(),
+                        icon: Icons.timer_outlined,
+                        color: _time.color,
+                        onTap: () => _showTimeEstimateSelector(),
+                      ),
+                      _buildPillButton(
+                        label: 'Energy',
+                        value: _energy.toDisplayString(),
+                        icon: Icons.battery_charging_full_outlined,
+                        color: _energy.color,
+                        onTap: () => _showEnergyEstimateSelector(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Due date
+                  _buildPillButton(
+                    label: 'Due',
+                    value: Jiffy.parseFromDateTime(_dueDate).fromNow(),
+                    icon: Icons.calendar_today_outlined,
+                    onTap: _selectDueDate,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
     return Scaffold(
-      backgroundColor: ColorScheme.of(context).surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: ColorScheme.of(context).surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -71,78 +176,7 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title row with status checkbox
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Status checkbox
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0, right: 12.0),
-                      child: _buildStatusCheckbox(),
-                    ),
-                    // Title field
-                    Expanded(child: _buildTitleField()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Properties row (Project, Priority, Time, Energy)
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildPillButton(
-                      label: 'Project',
-                      value: _selectedProject?.title.toPlainText() ?? 'Project',
-                      icon: Icons.folder_outlined,
-                      hasValue: _selectedProject != null,
-                      onTap: () => _showProjectSelector(),
-                    ),
-                    _buildPillButton(
-                      label: 'Priority',
-                      value: _priority.toDisplayString(),
-                      icon: Icons.flag_outlined,
-                      color: _priority.color,
-                      onTap: () => _showPrioritySelector(),
-                    ),
-                    _buildPillButton(
-                      label: 'Time',
-                      value: _timeEstimate.toDisplayString(),
-                      icon: Icons.timer_outlined,
-                      color: _timeEstimate.color,
-                      onTap: () => _showTimeEstimateSelector(),
-                    ),
-                    _buildPillButton(
-                      label: 'Energy',
-                      value: _energyEstimate.toDisplayString(),
-                      icon: Icons.battery_charging_full_outlined,
-                      color: _energyEstimate.color,
-                      onTap: () => _showEnergyEstimateSelector(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Due date
-                _buildPillButton(
-                  label: 'Due',
-                  value: Jiffy.parseFromDateTime(_dueDate).fromNow(),
-                  icon: Icons.calendar_today_outlined,
-                  onTap: _selectDueDate,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      body: bodyContent,
     );
   }
 
@@ -254,21 +288,21 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       controller: _titleController,
       hintText: AttributedText('Untitled'),
       textStyleBuilder: (attributions) {
-        final theme = Theme.of(context);
+        final theme = ColorScheme.of(context);
         return TextStyle(
           fontSize: 32,
           fontWeight: FontWeight.w600,
           height: 1.2,
-          color: theme.colorScheme.onSurface,
+          color: theme.onSurface,
         );
       },
       hintStyleBuilder: (attributions) {
-        final theme = Theme.of(context);
+        final theme = ColorScheme.of(context);
         return TextStyle(
           fontSize: 32,
           fontWeight: FontWeight.w600,
           height: 1.2,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+          color: theme.onSurface.withValues(alpha: 0.3),
         );
       },
     );
@@ -276,11 +310,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
 
   void _initializeEditor() async {
     // Load projects
-    _availableProjects = ref.read(projectRepositoryProvider).getAll();
-    fluxEditorLog.finest("Loaded projects:");
-    for (final project in _availableProjects) {
-      fluxEditorLog.finest("- ${project.title}");
-    }
+    final projectRepo = ref.read(projectRepositoryProvider);
+    _availableProjects = projectRepo.getAll();
 
     // Initialize with existing task data or defaults
     if (widget.task != null) {
@@ -290,17 +321,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       _dueDate = widget.task!.dueDate;
       _status = widget.task!.status;
       _priority = widget.task!.priority;
-      _timeEstimate = widget.task!.timeEstimate;
-      _energyEstimate = widget.task!.energyEstimate;
-      final currentProject = widget.task!.project.target;
-      for (final project in _availableProjects) {
-        if (currentProject != null && project == currentProject) {
-          fluxEditorLog.finest("${project.id} =?= ${currentProject.id}");
-          fluxEditorLog.finest("${project.uuid} =?= ${currentProject.uuid}");
-          fluxEditorLog.finest("${project.title} =?= ${currentProject.title}");
-          break;
-        }
-      }
+      _time = widget.task!.time;
+      _energy = widget.task!.energy;
       _selectedProject = widget.task!.project.target;
     } else {
       _titleController = AttributedTextEditingController();
@@ -308,9 +330,9 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       _status = TaskStatus.todo;
 
       // If we have a pre-selected project, set it
-      if (widget.projectId != null) {
+      if (widget.projectID != null) {
         _selectedProject = _availableProjects.firstWhere(
-          (p) => p.id == widget.projectId,
+          (p) => p.id == widget.projectID,
         );
       }
     }
@@ -345,8 +367,8 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
         dueDate: _dueDate,
         status: _status,
         priority: _priority,
-        timeEstimate: _timeEstimate,
-        energyEstimate: _energyEstimate,
+        time: _time,
+        energy: _energy,
       );
 
       // Set project if selected
@@ -360,14 +382,10 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
       widget.task!.title = title;
       widget.task!.modifyDate = DateTime.now();
       widget.task!.dueDate = _dueDate;
-      widget.task!.obxStatus = TaskStatus.values.indexOf(_status);
-      widget.task!.obxPriority = TaskPriority.values.indexOf(_priority);
-      widget.task!.obxTimeEstimate = TaskTimeEstimate.values.indexOf(
-        _timeEstimate,
-      );
-      widget.task!.obxEnergyEstimate = TaskEnergyEstimate.values.indexOf(
-        _energyEstimate,
-      );
+      widget.task!.statusOBX = TaskStatus.values.indexOf(_status);
+      widget.task!.priorityOBX = TaskPriority.values.indexOf(_priority);
+      widget.task!.timeOBX = TaskTime.values.indexOf(_time);
+      widget.task!.energyOBX = TaskEnergy.values.indexOf(_energy);
 
       // Update project association
       widget.task!.project.target = _selectedProject;
@@ -399,15 +417,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   }
 
   void _showEnergyEstimateSelector() {
-    _showEnumSelector<TaskEnergyEstimate>(
+    _showEnumSelector<TaskEnergy>(
       title: 'Select Energy Estimate',
-      values: TaskEnergyEstimate.values,
-      currentValue: _energyEstimate,
+      values: TaskEnergy.values,
+      currentValue: _energy,
       getIcon: (energy) => Icons.battery_charging_full_outlined,
       getColor: (energy) => energy.color,
       onSelected: (energy) {
         setState(() {
-          _energyEstimate = energy;
+          _energy = energy;
         });
       },
     );
@@ -430,12 +448,12 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleLarge),
+                Text(title, style: TextTheme.of(context).titleLarge),
                 const SizedBox(height: 16),
                 ...values.map(
                   (value) => ListTile(
                     leading: Icon(getIcon(value), color: getColor?.call(value)),
-                    title: Text(value.toDisplayString()),
+                    title: Text(value.toString()),
                     selected: currentValue == value,
                     onTap: () {
                       onSelected(value);
@@ -572,15 +590,15 @@ class _TaskEditorState extends ConsumerState<TaskEditor> {
   }
 
   void _showTimeEstimateSelector() {
-    _showEnumSelector<TaskTimeEstimate>(
+    _showEnumSelector<TaskTime>(
       title: 'Select Time Estimate',
-      values: TaskTimeEstimate.values,
-      currentValue: _timeEstimate,
+      values: TaskTime.values,
+      currentValue: _time,
       getIcon: (time) => Icons.timer_outlined,
       getColor: (time) => time.color,
       onSelected: (time) {
         setState(() {
-          _timeEstimate = time;
+          _time = time;
         });
       },
     );

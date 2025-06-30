@@ -1,4 +1,4 @@
-import 'package:auto_route/auto_route.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jiffy/jiffy.dart';
@@ -14,9 +14,15 @@ import 'project_repository.dart';
 
 /// Project editor similar to TaskEditor but for project management
 class ProjectEditor extends ConsumerStatefulWidget {
-  const ProjectEditor({super.key, this.project});
+  const ProjectEditor({super.key, this.project, this.showAppBar = true, this.panelInfo});
+
+  const ProjectEditor.forPanel({super.key, required ProjectEntity project, this.panelInfo})
+    : project = project,
+      showAppBar = false;
 
   final ProjectEntity? project;
+  final bool showAppBar; // Whether to show AppBar and Scaffold
+  final dynamic panelInfo; // Panel context information (using dynamic for now to avoid import issues)
 
   @override
   ConsumerState<ProjectEditor> createState() => _ProjectEditorState();
@@ -36,10 +42,106 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
+      final loadingWidget = const Center(child: CircularProgressIndicator());
+
+      if (!widget.showAppBar) {
+        return loadingWidget;
+      }
+
       return Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        body: const Center(child: CircularProgressIndicator()),
+        body: loadingWidget,
       );
+    }
+
+    // Extract the main content
+    final bodyContent = SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title field with project icon
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Project icon
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, right: 12.0),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.folder,
+                        size: 24,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                  // Title field
+                  Expanded(child: _buildTitleField()),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Properties row
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _buildPillButton(
+                    label: 'Parent Project',
+                    value: _parentProject?.title.toPlainText() ?? 'None',
+                    icon: Icons.folder_outlined,
+                    hasValue: _parentProject != null,
+                    onTap: () => _showParentProjectSelector(),
+                  ),
+                  _buildInfoPill(
+                    label: 'Tasks',
+                    value: '${_projectTasks.length}',
+                    icon: Icons.task_alt,
+                  ),
+                  if (widget.project != null) ...[
+                    _buildInfoPill(
+                      label: 'Created',
+                      value:
+                          Jiffy.parseFromDateTime(
+                            widget.project!.createDate,
+                          ).fromNow(),
+                      icon: Icons.access_time,
+                    ),
+                    _buildInfoPill(
+                      label: 'Modified',
+                      value:
+                          Jiffy.parseFromDateTime(
+                            widget.project!.modifyDate,
+                          ).fromNow(),
+                      icon: Icons.edit,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // Tasks section (if editing existing project)
+              if (widget.project != null) ...[
+                const SizedBox(height: 32),
+                _buildTasksSection(),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Return content with or without scaffold based on showAppBar
+    if (!widget.showAppBar) {
+      return bodyContent;
     }
 
     return Scaffold(
@@ -50,8 +152,8 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            if (context.router.canNavigateBack) {
-              context.router.maybePop();
+            if (context.canPop()) {
+              context.pop();
             } else {
               context.gotoProjects();
             }
@@ -65,100 +167,7 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title field with project icon
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Project icon
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0, right: 12.0),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.folder,
-                          size: 24,
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                    // Title field
-                    Expanded(child: _buildTitleField()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Properties row
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildPillButton(
-                      label: 'Parent Project',
-                      value: _parentProject?.title.toPlainText() ?? 'None',
-                      icon: Icons.folder_outlined,
-                      hasValue: _parentProject != null,
-                      onTap: () => _showParentProjectSelector(),
-                    ),
-                    _buildInfoPill(
-                      label: 'Tasks',
-                      value: '${_projectTasks.length}',
-                      icon: Icons.task_alt,
-                    ),
-                    if (widget.project != null) ...[
-                      _buildInfoPill(
-                        label: 'Created',
-                        value:
-                            Jiffy.parseFromDateTime(
-                              widget.project!.createDate,
-                            ).fromNow(),
-                        icon: Icons.access_time,
-                      ),
-                      _buildInfoPill(
-                        label: 'Modified',
-                        value:
-                            Jiffy.parseFromDateTime(
-                              widget.project!.modifyDate,
-                            ).fromNow(),
-                        icon: Icons.edit,
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 32),
-
-                // Notes section
-                Text(
-                  'Notes',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildNotesField(),
-
-                // Tasks section (if editing existing project)
-                if (widget.project != null) ...[
-                  const SizedBox(height: 32),
-                  _buildTasksSection(),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
+      body: bodyContent,
     );
   }
 
@@ -223,40 +232,6 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
     );
   }
 
-  Widget _buildNotesField() {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color:
-              _notesFocusNode.hasFocus
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.2),
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TempoTextField(
-        focusNode: _notesFocusNode,
-        controller: _notesController,
-        hintText: AttributedText('Add project notes...'),
-        minLines: 4,
-        maxLines: 10,
-        padding: const EdgeInsets.all(16),
-        textStyleBuilder: (attributions) {
-          return Theme.of(context).textTheme.bodyMedium!;
-        },
-        hintStyleBuilder: (attributions) {
-          return Theme.of(context).textTheme.bodyMedium!.copyWith(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.5),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildPillButton({
     required String label,
     required String value,
@@ -313,6 +288,9 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
 
   Widget _buildTaskItem(TaskEntity task) {
     final theme = Theme.of(context);
+    final textTheme = TextTheme.of(context);
+    final colorScheme = ColorScheme.of(context);
+    final status = task.status;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -326,12 +304,12 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
       ),
       child: Row(
         children: [
-          Icon(task.status.icon, size: 16, color: task.status.color),
+          Icon(status.icon, size: 16, color: status.color),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               task.title.toPlainText(),
-              style: theme.textTheme.bodyMedium,
+              style: textTheme.bodyMedium,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -339,8 +317,8 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
           const SizedBox(width: 8),
           Text(
             Jiffy.parseFromDateTime(task.dueDate).fromNow(),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -460,13 +438,13 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
 
   void _createTaskInProject() {
     // Navigate to task creation with pre-selected project
-    context.router.push(CreateTaskRoute(projectId: widget.project?.id));
+    context.go('/create/task');
   }
 
   void _initializeEditor() async {
     // Load available parent projects
     final projectRepo = ref.read(projectRepositoryProvider);
-    _availableParents = projectRepo.active();
+    // _availableParents = projectRepo.active();
 
     // Remove current project from available parents (can't be parent of itself)
     if (widget.project != null) {
@@ -535,8 +513,8 @@ class _ProjectEditorState extends ConsumerState<ProjectEditor> {
       ref.read(projectRepositoryProvider).put(widget.project!);
     }
 
-    if (context.router.canNavigateBack) {
-      context.router.maybePop();
+    if (context.canPop()) {
+      context.pop();
     } else {
       context.gotoProjects();
     }

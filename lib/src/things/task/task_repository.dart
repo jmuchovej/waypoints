@@ -1,7 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../objectbox/objectbox.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../thing/interface.dart';
+import '../thing/thing_entity.dart';
 import 'task_entity.dart';
 
 /// Provider for TaskRepository
@@ -20,29 +23,29 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   String get type => TaskEntity.key;
 
   /// Archive a task and its subtasks
-  void archive(String taskUuid) {
-    final task = getByUUID(taskUuid);
+  void archive(String uuid) {
+    final task = getByUUID(uuid);
     if (task == null) return;
 
     final updatedTask = task.copyWith(archived: true);
     put(updatedTask);
 
-    final subtasks = sameTypedChildren(taskUuid);
+    final subtasks = sameTypedChildren(uuid);
     for (final subtask in subtasks) {
       archive(subtask.uuid);
     }
   }
 
   /// Complete a task and optionally complete its subtasks
-  void complete(String taskUuid, {bool includeSubtasks = false}) {
-    final task = getByUUID(taskUuid);
+  void complete(String uuid, {bool includeSubtasks = false}) {
+    final task = getByUUID(uuid);
     if (task == null) return;
 
     final updatedTask = task.copyWith(status: TaskStatus.complete);
     put(updatedTask);
 
     if (includeSubtasks) {
-      final subtasks = sameTypedChildren(taskUuid);
+      final subtasks = sameTypedChildren(uuid);
       for (final subtask in subtasks) {
         complete(subtask.uuid, includeSubtasks: false);
       }
@@ -50,26 +53,22 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   }
 
   /// Get all tasks due today
-  List<TaskEntity> dueToday() {
-    final today = DateTime.now();
-    final startOfDay =
-        DateTime(today.year, today.month, today.day).millisecondsSinceEpoch;
-    final endOfDay =
-        DateTime(today.year, today.month, today.day + 1).millisecondsSinceEpoch;
+  Condition<TaskEntity> dueToday() {
+    final t = DateTime.now();
+    final s = DateTime(t.year, t.month, t.day);
+    final e = DateTime(t.year, t.month, t.day + 1);
 
-    final query = box.query(TaskEntity_.dueDate.between(startOfDay, endOfDay));
-    return query.build().find();
+    return dateBetween(TaskOBX.dueDate, start: s, end: e);
   }
 
   /// Get all incomplete tasks (application-layer filtering)
-  List<TaskEntity> incomplete() {
-    // Use application logic for the isCompleted business rule
-    return getAll().where((task) => !task.status.isCompleted).toList();
+  Condition<TaskEntity> incomplete() {
+    return TaskStatusGroups.isCompleted;
   }
 
   /// Get all tasks in a specific project (including nested in subtasks)
-  List<TaskEntity> inProjectDeep(String projectUuid) {
-    final directTasks = sameTypedChildren(projectUuid);
+  List<TaskEntity> inProjectDeep(String uuid) {
+    final directTasks = sameTypedChildren(uuid);
     final allTasks = <TaskEntity>[...directTasks];
 
     // Recursively get tasks from subtasks
@@ -89,33 +88,21 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   }
 
   /// Get all overdue tasks (application-layer filtering for business logic)
-  List<TaskEntity> overdue() {
+  Condition<TaskEntity> overdue() {
     final now = DateTime.now();
-    // Use ObjectBox for date filtering, then application logic for status
-    final query = box.query(
-      TaskEntity_.dueDate.lessThan(now.millisecondsSinceEpoch),
-    );
-    return query
-        .build()
-        .find()
-        .where((task) => !task.status.isCompleted)
-        .toList();
+    return TaskOBX.dueDate
+        .lessThan(now.millisecondsSinceEpoch)
+        .and(TaskStatusGroups.isCompleted.or(TaskStatusGroups.isAwaiting));
   }
 
   /// Get tasks scheduled for a specific date range
-  List<TaskEntity> scheduledBetween(DateTime start, DateTime end) {
-    final query = box.query(
-      TaskEntity_.scheduledDate.between(
-        start.millisecondsSinceEpoch,
-        end.millisecondsSinceEpoch,
-      ),
-    );
-    return query.build().find();
+  Condition<TaskEntity> scheduledBetween(DateTime start, DateTime end) {
+    return dateBetween(TaskOBX.scheduledDate, start: start, end: end);
   }
 
   /// Unarchive a task
-  void unarchive(String taskUuid) {
-    final task = getByUUID(taskUuid);
+  void unarchive(String uuid) {
+    final task = getByUUID(uuid);
     if (task == null) return;
 
     final updatedTask = task.copyWith(archived: false);
@@ -123,8 +110,8 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   }
 
   /// Update task priority
-  void updatePriority(String taskUuid, TaskPriority priority) {
-    final task = getByUUID(taskUuid);
+  void updatePriority(String uuid, TaskPriority priority) {
+    final task = getByUUID(uuid);
     if (task == null) return;
 
     final updatedTask = task.copyWith(priority: priority);
@@ -132,8 +119,8 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   }
 
   /// Update task status
-  void updateStatus(String taskUuid, TaskStatus status) {
-    final task = getByUUID(taskUuid);
+  void updateStatus(String uuid, TaskStatus status) {
+    final task = getByUUID(uuid);
     if (task == null) return;
 
     final updatedTask = task.copyWith(status: status);
@@ -141,22 +128,77 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   }
 
   /// Get tasks waiting until a specific date
-  List<TaskEntity> waitingUntil(DateTime date) {
-    final query = box.query(
-      TaskEntity_.waitDate.lessThan(date.millisecondsSinceEpoch),
-    );
-    return query.build().find();
-  }
-
-  /// Get tasks by priority
-  List<TaskEntity> withPriority(TaskPriority priority) {
-    final query = box.query(TaskEntity_.obxPriority.equals(priority.index));
-    return query.build().find();
+  Condition<TaskEntity> waitingUntil(DateTime date) {
+    return TaskOBX.waitDate.lessThan(date.millisecondsSinceEpoch);
   }
 
   /// Get all tasks with a specific status
-  List<TaskEntity> withStatus(TaskStatus status) {
-    final query = box.query(TaskEntity_.obxStatus.equals(status.index));
-    return query.build().find();
+  Condition<TaskEntity> withStatus(TaskStatus status) {
+    return TaskOBX.statusOBX.equals(status.index);
+  }
+
+  /// Build a [Condition<TaskEntity>] based on the [TaskPriority].
+  Condition<TaskEntity> withPriority(TaskPriority priority) {
+    return TaskOBX.priorityOBX.equals(priority.index);
+  }
+
+  Condition<TaskEntity> archived(bool archived) {
+    return TaskOBX.archived.equals(archived);
+  }
+
+  Condition<TaskEntity> deleted(bool archived) {
+    return TaskOBX.deleted.equals(archived);
+  }
+
+  Condition<TaskEntity> active() {
+    return archived(false).and(deleted(false));
+  }
+
+  // ---- Streaming Extensions ----
+
+  /// Stream all tasks due today
+  Stream<List<TaskEntity>> streamDueToday() {
+    return streamList(dueToday());
+  }
+
+  /// Stream all incomplete tasks
+  Stream<List<TaskEntity>> streamIncomplete() {
+    return streamList(incomplete());
+  }
+
+  /// Stream all overdue tasks
+  Stream<List<TaskEntity>> streamOverdue() {
+    return streamList(overdue());
+  }
+
+  /// Stream all active (non-archived, non-deleted) tasks
+  Stream<List<TaskEntity>> streamActive() {
+    return streamList(active());
+  }
+
+  /// Stream tasks with a specific status
+  Stream<List<TaskEntity>> streamWithStatus(TaskStatus status) {
+    return streamList(withStatus(status));
+  }
+
+  /// Stream tasks with a specific priority
+  Stream<List<TaskEntity>> streamWithPriority(TaskPriority priority) {
+    return streamList(withPriority(priority));
+  }
+
+  /// Stream task count for a condition (useful for badges/counters)
+  Stream<int> streamCountDueToday() => streamCount(dueToday());
+  Stream<int> streamCountOverdue() => streamCount(overdue());
+  Stream<int> streamCountIncomplete() => streamCount(incomplete());
+
+  Condition<ThingEntity> searchTitle(String query) {
+    return ThingOBX.type
+        .equals(TaskEntity.key)
+        .and(
+          ThingOBX.plainText.contains(
+            query.toLowerCase(),
+            caseSensitive: false,
+          ),
+        );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../../../editor/super_editor.dart';
+import '../../../editor/operations/task_requests.dart';
 
 // No entity imports needed - uses only nodes
 import '../task_entity.dart';
@@ -26,7 +27,11 @@ class TaskComponentBuilder extends ComponentBuilder {
       nodeId: node.id,
       padding: EdgeInsets.all(4),
       status: node.task.status,
-      changeStatus: (TaskStatus status) {},
+      task: node.task,
+      changeStatus: (TaskStatus status) {
+        // Dispatch request through SuperEditor's request system
+        editor?.execute([ToggleTaskStatusRequest(nodeId: node.id)]);
+      },
       text: node.title,
       textDirection: textDirection,
       textAlignment:
@@ -34,6 +39,7 @@ class TaskComponentBuilder extends ComponentBuilder {
       textStyleBuilder: noStyleBuilder,
       indent: node.indent,
       selectionColor: Colors.blue.shade300,
+      createdAt: node.task.createDate,
     );
   }
 
@@ -49,7 +55,6 @@ class TaskComponentBuilder extends ComponentBuilder {
     return TaskComponent(
       key: componentContext.componentKey,
       viewModel: componentViewModel,
-      editor: editor as Editor,
       showDebugPaint: true,
     );
   }
@@ -59,6 +64,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
     with TextComponentViewModel {
   TaskComponentViewModel({
     required super.nodeId,
+    required this.task,
     super.maxWidth,
     required super.padding,
     required this.status,
@@ -83,6 +89,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
       color: Colors.blue,
     ),
     List<TextRange> grammarErrors = const <TextRange>[],
+    required super.createdAt,
   }) {
     this.composingRegion = composingRegion;
     this.showComposingRegionUnderline = showComposingRegionUnderline;
@@ -93,6 +100,8 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
     this.grammarErrorUnderlineStyle = grammarErrorUnderlineStyle;
     this.grammarErrors = grammarErrors;
   }
+
+  TaskEntity task;
 
   TaskStatus status;
   void Function(TaskStatus) changeStatus;
@@ -122,6 +131,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
   TaskComponentViewModel copy() {
     return TaskComponentViewModel(
       nodeId: nodeId,
+      task: task,
       maxWidth: maxWidth,
       padding: padding,
       status: status,
@@ -141,6 +151,7 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
       grammarErrors: List.from(grammarErrors),
       composingRegion: composingRegion,
       showComposingRegionUnderline: showComposingRegionUnderline,
+      createdAt: createdAt,
     );
   }
 

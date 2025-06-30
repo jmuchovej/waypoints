@@ -2,68 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../task_entity.dart';
 
-// class TaskStatusChip extends StatefulWidget {
-//   const TaskStatusChip({
-//     super.key,
-//     required this.status,
-//     required this.onChange,
-//   });
-
-//   final TaskStatus status;
-//   final Function(TaskStatus status) onChange;
-
-//   @override
-//   State<TaskStatusChip> createState() => _TaskStatusChipState();
-// }
-
-// class _TaskStatusChipState extends State<TaskStatusChip>
-//     with SingleTickerProviderStateMixin {
-//   @override
-//   void initState() {
-//     super.initState();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return GestureDetector(
-//       behavior: HitTestBehavior.translucent,
-//       onTap: () => _statusChanger(context),
-//       child: Padding(
-//         padding: EdgeInsets.symmetric(horizontal: 4.0),
-//         child: Icon(
-//           widget.status.icon,
-//           color: ColorScheme.of(context).primary,
-//           applyTextScaling: true,
-//           semanticLabel: widget.status.toDisplayString(),
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _statusChanger(BuildContext context) {
-//     return SingleChildScrollView(
-//       scrollDirection: Axis.horizontal,
-//       child: Row(
-//         children: [
-//           for (final option in widget.status.eligibleTransitions)
-//             Padding(
-//               padding: const EdgeInsets.only(right: 8.0),
-//               child: ActionChip(
-//                 avatar: option.buildIcon(context),
-//                 label: Text(option.toDisplayString()),
-//                 backgroundColor:
-//                     widget.status == option
-//                         ? Theme.of(context).colorScheme.primaryContainer
-//                         : null,
-//                 onPressed: () => widget.onChange(option),
-//               ),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 /// This widget replaces the original TaskStatusWidget with precise baseline alignment.
 /// It calculates exact positioning based on font metrics to align the status icon
 /// with the text baseline rather than just centering it vertically.
@@ -112,7 +50,7 @@ class TaskStatusChip extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => _showStatusChanger(context),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 0.0),
         child: SizedBox(
           width: lineHeight, // Icon size plus some padding
           height: lineHeight, // Match the text line height exactly
@@ -125,7 +63,7 @@ class TaskStatusChip extends StatelessWidget {
                   status.icon,
                   color: Theme.of(context).colorScheme.primary,
                   size: lineHeight,
-                  semanticLabel: status.toDisplayString(),
+                  semanticLabel: status.toString(),
                 ),
               ),
             ],

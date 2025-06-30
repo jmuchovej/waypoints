@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../objectbox/objectbox.dart';
 import 'project_entity.dart';
 import '../task/task_entity.dart';
 import '../../objectbox/objectbox.g.dart';
@@ -21,10 +22,16 @@ class ProjectRepository extends ThingRepository<ProjectEntity> {
   @override
   String get type => ProjectEntity.key;
 
-  /// Get all active (non-archived) projects
-  List<ProjectEntity> active() {
-    final query = box.query(ProjectEntity_.archived.equals(false));
-    return query.build().find();
+  Condition<ProjectEntity> archived(bool archived) {
+    return ProjectOBX.archived.equals(archived);
+  }
+
+  Condition<ProjectEntity> deleted(bool archived) {
+    return ProjectOBX.deleted.equals(archived);
+  }
+
+  Condition<ProjectEntity> active() {
+    return archived(false).and(deleted(false));
   }
 
   /// Archive a project and all its contents
@@ -49,12 +56,6 @@ class ProjectRepository extends ThingRepository<ProjectEntity> {
     }
   }
 
-  /// Get all archived projects
-  List<ProjectEntity> archived() {
-    final query = box.query(ProjectEntity_.archived.equals(true));
-    return query.build().find();
-  }
-
   /// Complete a project (marks all tasks as done)
   void complete(String uuid) {
     updateStatus(uuid, ProjectStatus.complete);
@@ -70,33 +71,12 @@ class ProjectRepository extends ThingRepository<ProjectEntity> {
   /// Get projects created within a date range
   List<ProjectEntity> createdBetween(DateTime start, DateTime end) {
     final query = box.query(
-      ProjectEntity_.createDate.between(
+      ProjectOBX.createDate.between(
         start.millisecondsSinceEpoch,
         end.millisecondsSinceEpoch,
       ),
     );
     return query.build().find();
-  }
-
-  /// Get project statistics
-  ProjectStats getStats(String projectUuid) {
-    final taskRepo = ref.read(taskRepositoryProvider);
-    final tasks = taskRepo.inProjectDeep(projectUuid);
-
-    return ProjectStats(
-      totalTasks: tasks.length,
-      completedTasks: tasks.where((t) => t.status.isCompleted).length,
-      inProgressTasks: tasks.where((t) => t.status.isPending).length,
-      blockedTasks: tasks.where((t) => t.status.isAwaiting).length,
-      todoTasks: tasks.where((t) => t.status.isPending).length,
-      overdueTasks:
-          tasks
-              .where(
-                (t) =>
-                    t.dueDate.isBefore(DateTime.now()) && !t.status.isCompleted,
-              )
-              .length,
-    );
   }
 
   /// Get all top-level projects (no parent)
@@ -116,7 +96,7 @@ class ProjectRepository extends ThingRepository<ProjectEntity> {
   /// Get projects updated within a date range
   List<ProjectEntity> updatedBetween(DateTime start, DateTime end) {
     final query = box.query(
-      ProjectEntity_.modifyDate.between(
+      ProjectOBX.modifyDate.between(
         start.millisecondsSinceEpoch,
         end.millisecondsSinceEpoch,
       ),
@@ -133,10 +113,9 @@ class ProjectRepository extends ThingRepository<ProjectEntity> {
     put(updatedProject);
   }
 
-  /// Get projects by status
-  List<ProjectEntity> withStatus(ProjectStatus status) {
-    final query = box.query(ProjectEntity_.obxStatus.equals(status.index));
-    return query.build().find();
+  /// Get all projects with a specific status
+  Condition<ProjectEntity> withStatus(ProjectStatus status) {
+    return ProjectOBX.statusOBX.equals(status.index);
   }
 }
 
