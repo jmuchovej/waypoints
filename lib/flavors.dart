@@ -1,18 +1,44 @@
-enum Flavor { development, staging, production }
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class F {
-  static late final Flavor appFlavor;
+final flavorProvider = Provider<Flavor>((ref) {
+  throw UnimplementedError("Flavor must be initialized before use");
+});
 
-  static String get name => appFlavor.name;
+enum AppFlavor { development, staging, production }
 
-  static String get title {
-    switch (appFlavor) {
-      case Flavor.development:
+class Flavor {
+  Flavor(String? appFlavor) {
+    appFlavor ??= AppFlavor.development.name;
+    _appFlavor = AppFlavor.values.firstWhere((e) => e.name == appFlavor);
+  }
+  late final AppFlavor _appFlavor;
+
+  String get name => _appFlavor.name;
+
+  String get title {
+    switch (_appFlavor) {
+      case AppFlavor.development:
         return 'Tempo (Dev)';
-      case Flavor.staging:
+      case AppFlavor.staging:
         return 'Tempo (Staging)';
-      case Flavor.production:
+      case AppFlavor.production:
         return 'Tempo';
     }
   }
+
+  Future<String> dataDirectory() async {
+    final base = await getApplicationDocumentsDirectory();
+    final name = switch (_appFlavor) {
+      AppFlavor.development => 'dev.tempo',
+      AppFlavor.staging => 'dev.tempo',
+      AppFlavor.production => 'do.tempo',
+    };
+    return p.join(base.path, name);
+  }
+
+  bool get isDevelopment => _appFlavor == AppFlavor.development;
+  bool get isStaging => _appFlavor == AppFlavor.staging;
+  bool get isProduction => _appFlavor == AppFlavor.production;
 }

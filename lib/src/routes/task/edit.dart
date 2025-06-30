@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../things/task.dart';
+import '../../things/task/task_editor.dart';
 import '../../things/task/task_repository.dart';
 
 @RoutePage(name: 'TaskEditorRoute')
@@ -18,7 +18,7 @@ class TaskEditorScreen extends ConsumerWidget {
       try {
         final task = ref.read(taskRepositoryProvider).byUUID(uuid!);
         if (task != null) {
-          return TaskEditor(task: task);
+          return TaskEditor(task: task, projectID: task.project.targetId);
         } else {
           // Task not found
           return Scaffold(

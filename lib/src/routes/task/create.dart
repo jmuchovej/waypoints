@@ -1,18 +1,16 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jiffy/jiffy.dart';
 import 'package:uuid/uuid.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../editor/editor.dart';
 import '../../infrastructure/extensions.dart';
-import '../../router.dart';
 import '../../things/project/project_entity.dart';
 import '../../things/project/project_repository.dart';
 import '../../things/task/task_entity.dart';
 import '../../things/task/task_repository.dart';
 
-@RoutePage()
 class CreateTaskScreen extends ConsumerStatefulWidget {
   const CreateTaskScreen({super.key, this.projectId});
 
@@ -28,8 +26,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   late DateTime _dueDate;
   TaskStatus _status = TaskStatus.todo;
   TaskPriority _priority = TaskPriority.M;
-  TaskTimeEstimate _timeEstimate = TaskTimeEstimate.M;
-  TaskEnergyEstimate _energyEstimate = TaskEnergyEstimate.M;
+  TaskTime _time = TaskTime.M;
+  TaskEnergy _energy = TaskEnergy.M;
   ProjectEntity? _selectedProject;
   List<ProjectEntity> _availableProjects = [];
   bool _isInitialized = false;
@@ -50,10 +48,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () {
-            if (context.router.canPop()) {
-              context.router.pop();
+            if (context.canPop()) {
+              context.pop();
             } else {
-              context.gotoTasks();
+              context.go('/tasks');
             }
           },
         ),
@@ -202,16 +200,16 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
             ),
             _buildPillButton(
               label: 'Time',
-              value: _timeEstimate.toDisplayString(),
+              value: _time.toDisplayString(),
               icon: Icons.timer_outlined,
-              color: _timeEstimate.color,
+              color: _time.color,
               onTap: () => _showTimeEstimateSelector(),
             ),
             _buildPillButton(
               label: 'Energy',
-              value: _energyEstimate.toDisplayString(),
+              value: _energy.toDisplayString(),
               icon: Icons.battery_charging_full_outlined,
-              color: _energyEstimate.color,
+              color: _energy.color,
               onTap: () => _showEnergyEstimateSelector(),
             ),
           ],
@@ -277,8 +275,8 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       dueDate: _dueDate,
       status: _status,
       priority: _priority,
-      timeEstimate: _timeEstimate,
-      energyEstimate: _energyEstimate,
+      time: _time,
+      energy: _energy,
     );
 
     // Set project if selected
@@ -289,10 +287,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     ref.read(taskRepositoryProvider).put(newTask);
 
     // Navigate back
-    if (context.router.canPop()) {
-      context.router.pop();
+    if (context.canPop()) {
+      context.pop();
     } else {
-      context.gotoTasks();
+      context.go('/tasks');
     }
   }
 
@@ -329,15 +327,15 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   }
 
   void _showEnergyEstimateSelector() {
-    _showEnumSelector<TaskEnergyEstimate>(
+    _showEnumSelector<TaskEnergy>(
       title: 'Select Energy Estimate',
-      values: TaskEnergyEstimate.values,
-      currentValue: _energyEstimate,
+      values: TaskEnergy.values,
+      currentValue: _energy,
       getIcon: (energy) => Icons.battery_charging_full_outlined,
       getColor: (energy) => energy.color,
       onSelected: (energy) {
         setState(() {
-          _energyEstimate = energy;
+          _energy = energy;
         });
       },
     );
@@ -443,15 +441,15 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   }
 
   void _showTimeEstimateSelector() {
-    _showEnumSelector<TaskTimeEstimate>(
+    _showEnumSelector<TaskTime>(
       title: 'Select Time Estimate',
-      values: TaskTimeEstimate.values,
-      currentValue: _timeEstimate,
+      values: TaskTime.values,
+      currentValue: _time,
       getIcon: (time) => Icons.timer_outlined,
       getColor: (time) => time.color,
       onSelected: (time) {
         setState(() {
-          _timeEstimate = time;
+          _time = time;
         });
       },
     );

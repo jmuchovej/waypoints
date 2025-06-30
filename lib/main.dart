@@ -2,30 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'src/devtools/database/seed.dart';
 import 'flavors.dart';
+import 'src/devtools/database/seed.dart';
 import 'src/infrastructure/logging.dart';
-import 'src/objectbox/objectbox.dart';
-import 'src/objectbox/providers.dart';
 import 'src/l10n/l10n.dart';
-import 'src/router.dart';
+import 'src/objectbox/objectbox.dart';
+import 'src/router_go.dart';
 import 'src/theme.dart';
 
 void main() async {
-  F.appFlavor = Flavor.values.firstWhere(
-    (element) => element.name == appFlavor,
-  );
-
   WidgetsFlutterBinding.ensureInitialized();
-  final obx = await ObjectBox.create();
+  final flavor = Flavor(appFlavor);
+  final obx = await ObjectBox.create(flavor);
 
   // Create a temporary container to get the UUID repository
   final container = ProviderContainer(
-    overrides: [objectBoxProvider.overrideWithValue(obx)],
+    overrides: [
+      objectBoxProvider.overrideWithValue(obx),
+      flavorProvider.overrideWithValue(flavor),
+    ],
   );
 
   // Seed with polymorphic relationships in development
-  if (F.appFlavor == Flavor.development) {
+  if (flavor.isDevelopment) {
     final seedService = SeedDataService.fromContainer(container);
     await seedService.seedIfNeeded();
     // Optional: Enable other debug flags
@@ -44,23 +43,23 @@ void main() async {
 class Tempo extends ConsumerWidget {
   Tempo({super.key});
 
-  // Create the auto_route router
-  final _appRouter = AppRouter();
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = createTextTheme(context, display: 'Lato', body: 'Lato');
     final theme = TempoTheme(textTheme);
 
+    final flavor = ref.read(flavorProvider);
+    final router = ref.read(routerProvider);
+
     tempoLog.info('🚀 Tempo.build() called - creating MaterialApp.router');
     return MaterialApp.router(
-      title: F.title,
+      title: flavor.title,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: theme.light(),
       darkTheme: theme.dark(),
       themeMode: ThemeMode.system,
-      routerConfig: _appRouter.config(),
+      routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
   }
