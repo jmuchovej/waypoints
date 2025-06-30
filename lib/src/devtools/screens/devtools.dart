@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../objectbox/providers.dart';
+import '../../objectbox/objectbox.dart';
 import '../../things/task/task_entity.dart';
 import '../../things/project/project_entity.dart';
 import '../../things/activity/activity_entity.dart';
+import '../../things/block/block_entity.dart';
 import '../database/seed.dart';
 
 @RoutePage()
@@ -21,6 +22,7 @@ class _DevToolsScreenState extends ConsumerState<DevToolsScreen> {
   int _taskCount = 0;
   int _projectCount = 0;
   int _activityCount = 0;
+  int _blockCount = 0;
   bool _isLoading = false;
 
   @override
@@ -72,9 +74,10 @@ class _DevToolsScreenState extends ConsumerState<DevToolsScreen> {
             _buildStatRow('Tasks', _taskCount),
             _buildStatRow('Projects', _projectCount),
             _buildStatRow('Activities', _activityCount),
+            _buildStatRow('Blocks', _blockCount),
             _buildStatRow(
               'Total Items',
-              _taskCount + _projectCount + _activityCount,
+              _taskCount + _projectCount + _activityCount + _blockCount,
             ),
           ],
         ),
@@ -275,11 +278,13 @@ class _DevToolsScreenState extends ConsumerState<DevToolsScreen> {
     final taskCount = obx.store.box<TaskEntity>().count();
     final projectCount = obx.store.box<ProjectEntity>().count();
     final activityCount = obx.store.box<ActivityEntity>().count();
+    final blockCount = obx.store.box<BlockEntity>().count();
 
     setState(() {
       _taskCount = taskCount;
       _projectCount = projectCount;
       _activityCount = activityCount;
+      _blockCount = blockCount;
       _isLoading = false;
     });
   }
