@@ -6,7 +6,7 @@ import '../../things/project/project_editor.dart';
 import '../../things/task/task_editor.dart';
 import '../../things/thing/interface.dart';
 import '../../things/thing/thing_entity.dart';
-import '../../things/node_factory.dart';
+import '../../things/thing_factories.dart';
 import '../panel_content_registry.dart';
 import '../panel_request.dart';
 import '../panel_manager.dart';

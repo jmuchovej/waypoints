@@ -1,26 +1,17 @@
 import 'dart:async';
 
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/super_editor.dart';
-import '../../editor/nodes/editable_text_node.dart';
+import '../../ui/widgets/panel/panel_header.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../things/task/task_entity.dart';
 import '../../things/task/task_repository.dart';
-import '../../ui/panel/panel_preconfigured.dart';
-import '../../ui/panel/panel_preconfigured_sliver.dart';
+import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/buttons/filter_button.dart';
 import '../../ui/widgets/panel/empty_state.dart';
 
-final EditableTextNode header = EditableTextNode.documentHeader(
-  id: 'tasks-header',
-  title: AttributedText('Tasks'),
-  isEditable: false,
-);
-
-@RoutePage(name: 'TasksRoute')
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
 
@@ -29,9 +20,6 @@ class TasksScreen extends ConsumerStatefulWidget {
 }
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
-  // Temporary flag to test Sliver version - change this to test!
-  static const bool useSliverVersion = true;
-
   @override
   void initState() {
     super.initState();
@@ -52,16 +40,11 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       onPressed: () {},
     );
 
-    if (useSliverVersion) {
-      return PreconfiguredPanelSliver<TaskEntity>(
-        header: header,
-        stream: getTasks(),
-        emptyWidget: emptyWidget,
-        actions: const [],
-      );
-    }
+    final header = PanelHeader.readonly(
+      title: AttributedText('Tasks'),
+    );
 
-    return PreconfiguredPanel<TaskEntity>(
+    return PanelWrapper<TaskEntity>(
       header: header,
       stream: getTasks(),
       emptyWidget: emptyWidget,

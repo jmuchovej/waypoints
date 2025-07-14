@@ -1,112 +1,120 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PanelAppBar extends ConsumerStatefulWidget
-    implements PreferredSizeWidget {
+import '../../../infrastructure/logging.dart';
+import '../../../styling/text_styles.dart';
+
+/// Public interface for controlling the app bar's scroll state
+abstract class PanelAppBarController {
+  void updateScrollPosition(double pixels, [double? headerHeight]);
+}
+
+/// Sliver version of PanelAppBar that integrates with CustomScrollView
+/// Reuses the core animation logic from the original PanelAppBar
+class PanelAppBar extends ConsumerStatefulWidget {
   const PanelAppBar({
     super.key,
     required this.title,
     this.actions = const [],
-    required double size,
-    required this.scrollController,
     this.padding = const EdgeInsets.all(8.0),
-  }) : _size = size;
+    this.scrollThreshold = 100.0, // When to show title animation
+  });
 
   final String title;
   final List<Widget> actions;
-  final double _size;
   final EdgeInsetsGeometry padding;
-  final ScrollController? scrollController;
+  final double scrollThreshold; // Reusable threshold from original
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _PanelHeaderState();
+  ConsumerState<PanelAppBar> createState() => PanelAppBarSliverState();
 
-  @override
-  // TODO: implement preferredSize
-  Size get preferredSize => Size.fromHeight(_size + padding.vertical);
-
-  static double computePreferredSize(BuildContext context) {
-    final fontSize = TextTheme.of(context).bodyMedium?.fontSize ?? 12;
+  /// Compute the app bar height using the same logic as the original
+  static double computeHeight(BuildContext context) {
+    final textStyles = TempoTextStyles.fromContext(context);
+    final fontSize = textStyles.bodyMedium.fontSize!;
     final appBarHeight = fontSize * 4;
     return appBarHeight + 1;
   }
 }
 
-class _PanelHeaderState extends ConsumerState<PanelAppBar> {
-  bool _showAppBarTitle = false;
-  late ScrollController _scrollController;
+class PanelAppBarSliverState extends ConsumerState<PanelAppBar>
+    implements PanelAppBarController {
+  // 📋 REUSED: Same animation state logic as original PanelAppBar
+  double _titleOpacity = 0.0;
+  double _borderOpacity = 0.0;
 
+  // 🎯 NEW: Dynamic scroll-based transition using header height
   @override
-  void initState() {
-    super.initState();
-    _scrollController = widget.scrollController ?? ScrollController();
-    _scrollController.addListener(_onScroll);
-  }
+  void updateScrollPosition(double pixels, [double? headerHeight]) {
+    final threshold = headerHeight ?? widget.scrollThreshold;
 
-  @override
-  void didUpdateWidget(PanelAppBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.scrollController != widget.scrollController) {
-      oldWidget.scrollController?.removeListener(_onScroll);
-      _scrollController = widget.scrollController ?? ScrollController();
-      _scrollController.addListener(_onScroll);
-    }
-  }
+    // 🎯 NEW: Calculate gradual opacity based on scroll progress through header
+    final scrollProgress = (pixels / threshold).clamp(0.0, 1.0);
 
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
+    tempoLog.finest('Scroll: ${pixels}px / ${threshold}px = ${scrollProgress} opacity');
 
-  void _onScroll() {
-    final shouldShowTitle = _scrollController.offset > 100;
-    if (shouldShowTitle != _showAppBarTitle) {
+    // 🎯 NEW: Update opacity values for smooth transition
+    final newTitleOpacity = scrollProgress;
+    final newBorderOpacity = scrollProgress;
+
+    if (newTitleOpacity != _titleOpacity || newBorderOpacity != _borderOpacity) {
       setState(() {
-        _showAppBarTitle = shouldShowTitle;
+        _titleOpacity = newTitleOpacity;
+        _borderOpacity = newBorderOpacity;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // if (MediaQuery.of(context).size.width <= 768) {
-    //   return const SizedBox.shrink();
-    // }
+    // 🎯 NEW: Return SliverAppBar without NotificationListener
+    // The listener needs to be at the CustomScrollView level, not here
+    return SliverAppBar(
+      pinned: true, // 🎯 NEW: Sticky behavior for sliver
+      backgroundColor: ColorScheme.of(context).surfaceContainer,
+      elevation: 0,
+      scrolledUnderElevation: 0,
 
-    return SafeArea(
-      child: Column(
-        children: [
-          AppBar(
-            backgroundColor: ColorScheme.of(context).surfaceContainer,
-            // clipBehavior: Clip.none,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            toolbarHeight: widget.preferredSize.height - 1,
-            automaticallyImplyLeading: false,
-            title: AnimatedSlide(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              offset: Offset(0, _showAppBarTitle ? 0 : 1),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: _showAppBarTitle ? 1 : 0,
-                child: Text(widget.title),
-              ),
-            ),
-            actions: widget.actions,
-            actionsPadding: widget.padding,
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 1,
-            color:
-                _showAppBarTitle
-                    ? ColorScheme.of(context).outlineVariant
-                    : ColorScheme.of(context).surfaceContainer,
-          ),
-        ],
+      // 🎯 NEW: Smooth title transition based on scroll progress
+      title: Transform.translate(
+        offset: Offset(0, (1.0 - _titleOpacity) * 20), // Slide up as it fades in
+        child: Opacity(
+          opacity: _titleOpacity,
+          child: Text(widget.title),
+        ),
+      ),
+
+      // 📋 REUSED: Same actions and padding from original
+      actions: widget.actions,
+
+      // 🎯 NEW: Use bottom property for the animated border (SliverAppBar-compatible)
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1.0),
+        child: _AnimatedBorder(
+          opacity: _borderOpacity, // 🎯 NEW: Use dynamic opacity
+        ),
+      ),
+    );
+  }
+
+}
+
+/// 📋 REUSED: Same animated border logic from original PanelAppBar
+/// 🎯 FIXED: Removed Positioned wrapper for SliverAppBar compatibility
+/// 🎯 NEW: Uses dynamic opacity for smooth transitions
+class _AnimatedBorder extends StatelessWidget {
+  const _AnimatedBorder({required this.opacity});
+
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      color: Color.lerp(
+        ColorScheme.of(context).surfaceContainer,
+        ColorScheme.of(context).outlineVariant,
+        opacity, // 🎯 NEW: Smoothly interpolate between colors based on scroll
       ),
     );
   }

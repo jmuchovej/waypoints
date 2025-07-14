@@ -1,22 +1,14 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../editor/nodes/editable_text_node.dart';
 import '../../editor/super_editor.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../things/project/project_entity.dart';
 import '../../things/project/project_repository.dart';
-import '../../ui/panel/panel_preconfigured.dart';
+import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/panel/empty_state.dart';
+import '../../ui/widgets/panel/panel_header.dart';
 
-final EditableTextNode header = EditableTextNode.documentHeader(
-  id: "projects-header",
-  title: AttributedText("Projects"),
-  isEditable: false,
-);
-
-@RoutePage(name: 'ProjectsRoute')
 class ProjectsScreen extends ConsumerStatefulWidget {
   const ProjectsScreen({super.key});
 
@@ -37,7 +29,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PreconfiguredPanel<ProjectEntity>(
+    final header = PanelHeader.readonly(
+      title: AttributedText("Projects"),
+    );
+
+    return PanelWrapper<ProjectEntity>(
       header: header,
       stream: getProjects(),
       emptyWidget: EmptyState(

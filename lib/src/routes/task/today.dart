@@ -9,9 +9,10 @@ import '../../editor/nodes/editable_text_node.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../things/task/task_entity.dart';
 import '../../things/task/task_repository.dart';
-import '../../ui/panel/panel_preconfigured.dart';
+import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/buttons/filter_button.dart';
 import '../../ui/widgets/panel/empty_state.dart';
+import '../../ui/widgets/panel/panel_header.dart';
 
 final EditableTextNode header = EditableTextNode.documentHeader(
   id: 'tasks-header',
@@ -19,7 +20,6 @@ final EditableTextNode header = EditableTextNode.documentHeader(
   isEditable: false,
 );
 
-@RoutePage(name: 'TasksTodayRoute')
 class TasksTodayScreen extends ConsumerStatefulWidget {
   const TasksTodayScreen({super.key});
 
@@ -40,7 +40,10 @@ class _TasksTodayScreenState extends ConsumerState<TasksTodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PreconfiguredPanel<TaskEntity>(
+    final header = PanelHeader.readonly(
+      title: AttributedText("Today's Tasks"),
+    );
+    return PanelWrapper<TaskEntity>(
       header: header,
       stream: getTasks(),
       emptyWidget: EmptyState(

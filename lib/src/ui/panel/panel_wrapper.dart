@@ -6,18 +6,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../editor/editor.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/objectbox.g.dart';
-import '../../things/node_factory.dart';
+import '../../styling/tempo_stylesheet.dart';
+import '../../things/thing_factories.dart';
 import '../../things/task/task_entity.dart';
 import '../../things/task/task_repository.dart';
 import '../../things/thing/interface.dart';
-import '../widgets/buttons/filter_button.dart';
-import '../widgets/panel/panel_appbar_sliver.dart';
+import '../widgets/panel/panel_appbar.dart';
 import '../widgets/panel/panel_header.dart';
 
 /// Sliver-based panel for displaying tasks list using SuperEditor
 /// This version uses CustomScrollView with SuperEditor as a Sliver
-class PreconfiguredPanelSliver<T extends Thing> extends ConsumerStatefulWidget {
-  const PreconfiguredPanelSliver({
+class PanelWrapper<T extends Thing> extends ConsumerStatefulWidget {
+  const PanelWrapper({
     super.key,
     required this.header,
     required this.stream,
@@ -25,18 +25,18 @@ class PreconfiguredPanelSliver<T extends Thing> extends ConsumerStatefulWidget {
     this.actions = const [],
   });
 
-  final EditableTextNode header;
+  final PanelHeader header;
   final Stream<T> stream;
   final Widget emptyWidget;
   final List<Widget> actions;
 
   @override
-  ConsumerState<PreconfiguredPanelSliver<T>> createState() =>
-      _PreconfiguredPanelSliverState<T>();
+  ConsumerState<PanelWrapper<T>> createState() =>
+      _PanelWrapperState<T>();
 }
 
-class _PreconfiguredPanelSliverState<T extends Thing>
-    extends ConsumerState<PreconfiguredPanelSliver<T>> {
+class _PanelWrapperState<T extends Thing>
+    extends ConsumerState<PanelWrapper<T>> {
   late MutableDocument _document;
   late MutableDocumentComposer _composer;
   late HoverManager _hoverManager;
@@ -50,9 +50,8 @@ class _PreconfiguredPanelSliverState<T extends Thing>
   // 🎯 NEW: Key to access the app bar for scroll updates
   final GlobalKey<PanelAppBarSliverState> _appBarKey = GlobalKey<PanelAppBarSliverState>();
 
-  // 📋 REUSED: Controller and focus node for PanelHeader
-  late AttributedTextEditingController _titleController;
-  late FocusNode _titleFocusNode;
+  // Header title for app bar - extracted from PanelHeader
+  String? _headerTitle;
 
   // 🎯 NEW: Key to measure the PanelHeader height for scroll calculations
   final GlobalKey _headerKey = GlobalKey();
@@ -64,11 +63,8 @@ class _PreconfiguredPanelSliverState<T extends Thing>
     _hoverManager = HoverManager();
     _linkManager = LeaderLinkManager();
 
-    // 📋 REUSED: Initialize title controller and focus node for PanelHeader
-    _titleController = AttributedTextEditingController(
-      text: widget.header.text,
-    );
-    _titleFocusNode = FocusNode();
+    // Extract title from PanelHeader for app bar
+    _headerTitle = widget.header.titleController.text.toPlainText();
 
     // 🎯 NEW: Create empty document without header since SliverAppBar displays title
     // The header is redundant when we have a sticky app bar showing the same title
@@ -92,11 +88,9 @@ class _PreconfiguredPanelSliverState<T extends Thing>
     _isDisposed = true;
     _subscription?.cancel();
     _subscription = null;
-    
-    // 📋 REUSED: Clean up title controller and focus node
-    _titleController.dispose();
-    _titleFocusNode.dispose();
-    
+
+    // No need to dispose title controller/focus node - managed by PanelHeader
+
     super.dispose();
   }
 
@@ -128,16 +122,16 @@ class _PreconfiguredPanelSliverState<T extends Thing>
     if (notification is ScrollUpdateNotification) {
       final scrollPixels = notification.metrics.pixels;
       fluxLog.finest('ScrollNotification: ${scrollPixels}px');
-      
+
       // 🎯 NEW: Calculate header height dynamically for transition threshold
       double headerHeight = 100.0; // Default fallback
-      
+
       final headerRenderBox = _headerKey.currentContext?.findRenderObject() as RenderBox?;
       if (headerRenderBox != null) {
         headerHeight = headerRenderBox.size.height;
         fluxLog.finest('PanelHeader height: ${headerHeight}px');
       }
-      
+
       // 🎯 NEW: Pass both scroll position and header height to app bar
       _appBarKey.currentState?.updateScrollPosition(scrollPixels, headerHeight);
     }
@@ -153,12 +147,11 @@ class _PreconfiguredPanelSliverState<T extends Thing>
     }
 
     // 🎯 UPDATED: Check for empty document (no header node now)
-    if (_initialLoad && _document.length == 0) {
+    if (_initialLoad && _document.isEmpty) {
       return Scaffold(body: widget.emptyWidget);
     }
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth <= 768;
+    final stylesheet = TempoStylesheet.of(ref);
 
     fluxLog.finest("Currently loading ${_document.length} nodes");
 
@@ -206,30 +199,26 @@ class _PreconfiguredPanelSliverState<T extends Thing>
         child: CustomScrollView(
           slivers: [
             // 📋 REUSED: Custom app bar with scroll-based animations from PanelAppBar
-            PanelAppBarSliver(
+            PanelAppBar(
               key: _appBarKey,
-              title: widget.header.text.toPlainText(),
+              title: _headerTitle ?? 'Untitled',
               actions: widget.actions,
             ),
 
-            // 📋 REUSED: Page header using the existing PanelHeader widget
+            // 📋 REUSED: Page header using the provided PanelHeader widget
+            // 🎯 FIXED: Uses TempoStylesheet spacing to match SuperEditor's content area
             SliverToBoxAdapter(
-              child: PanelHeader(
-                key: _headerKey, // 🎯 NEW: Key to measure height for scroll calculations
-                titleController: _titleController,
-                titleFocusNode: _titleFocusNode,
-                hintText: AttributedText('Page Title'),
-                children: widget.actions.isNotEmpty 
-                  ? [
-                      // Add action buttons below the title if any
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Row(
-                          children: widget.actions,
-                        ),
-                      ),
-                    ]
-                  : [],
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: stylesheet.spacing.maxContentWidth),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: stylesheet.spacing.contentHorizontal),
+                    child: Container(
+                      key: _headerKey, // 🎯 NEW: Key to measure height for scroll calculations
+                      child: widget.header,
+                    ),
+                  ),
+                ),
               ),
             ),
 
