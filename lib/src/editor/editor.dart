@@ -9,7 +9,8 @@ import '../things/task/editor/task_builder.dart';
 import 'nodes.dart';
 import 'operations/thing_cursor_handler.dart';
 import 'scaffolding.dart';
-import 'styling/stylesheet.dart';
+import '../styling/super_editor.dart';
+import '../styling/tempo_stylesheet.dart';
 import 'super_editor.dart';
 import 'operations/task_request_handlers.dart';
 import 'operations/panel_request_handlers.dart';
@@ -31,7 +32,7 @@ export 'operations/panel_requests.dart';
 enum SuperEditorRenderMode {
   /// Standard render box with its own scroll controller
   renderBox,
-  
+
   /// Sliver mode for embedding in CustomScrollView
   sliver,
 }
@@ -66,6 +67,11 @@ SuperEditor createSuperEditor(
   dynamic panelInfo,
   SuperEditorRenderMode renderMode = SuperEditorRenderMode.renderBox,
 }) {
+  // TODO: Fix FollowerLayer null check error when document is empty
+  // If document is empty, inject a placeholder node with hint text like:
+  // "Start typing to add content..." or "Click here to add your first note"
+  // This prevents SuperEditor + FollowerLayer crashes on empty documents
+  // and provides better UX guidance for users.
   final editor = Editor(
     requestHandlers: List.from(
       createTempoRequestHandlers(taskRepository, context, ref),
@@ -79,8 +85,8 @@ SuperEditor createSuperEditor(
   editor.context.put(HoverManager.key, hoverManager);
 
   // Detect mobile to disable autofocus and prevent keyboard issues
-  final screenWidth = MediaQuery.of(context).size.width;
-  final isMobile = screenWidth <= 768;
+  final stylesheet = ref.read(tempoStylesheetProvider);
+  final isMobile = stylesheet.isMobile;
 
   final flavor = ref.read(flavorProvider);
 
@@ -194,7 +200,7 @@ SuperEditor createSuperEditor(
 
     inputSource: TextInputSource.ime,
 
-    stylesheet: buildStylesheet(context),
+    stylesheet: buildStylesheet(ref),
 
     // SELECTION BEHAVIOR: How the editor handles focus and selection changes
     selectionPolicies: SuperEditorSelectionPolicies(
