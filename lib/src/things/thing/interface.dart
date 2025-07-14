@@ -10,7 +10,7 @@ import '../../objectbox/objectbox.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../objectbox/services/resolver_service.dart';
 import '../../objectbox/services/thing_service.dart';
-import '../node_factory.dart';
+import '../thing_factories.dart';
 import 'thing_entity.dart';
 
 /// Base interface that all Thing entities must implement
