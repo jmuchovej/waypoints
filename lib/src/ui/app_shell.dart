@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../infrastructure/logging.dart';
-import '../router_go.dart';
+import '../router.dart';
+import '../styling/tempo_stylesheet.dart';
 import 'panel_manager.dart';
 import 'panel/animated_sidebar.dart';
 import 'panel/mobile_bottom_nav.dart';
@@ -11,7 +12,7 @@ import 'panel/mobile_bottom_nav.dart';
 /// Main application shell with responsive layout and panel management
 class AppShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
-  
+
   const AppShell({super.key, required this.navigationShell});
 
   @override
@@ -26,11 +27,12 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth <= 768;
+    final stylesheet = TempoStylesheet.of(ref);
+    final isMobile = stylesheet.isMobile;
 
     tempoLog.fine(
-      'AppShell building with screen width: $screenWidth, isMobile: $isMobile',
+      'AppShell building with breakpoint: ${stylesheet.breakpoint}, '
+      'screen: ${stylesheet.screenWidth}x${stylesheet.screenHeight}, isMobile: $isMobile',
     );
 
     // Get active navigation index from StatefulNavigationShell
@@ -44,6 +46,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   /// Mobile layout with bottom navigation
+  /// Index 0: Home, Index 1: Add (handled by button), Index 2: Timers (placeholder)
   Widget _buildMobileLayout(int activeIndex) {
     return Scaffold(
       body: Column(
@@ -52,7 +55,15 @@ class _AppShellState extends ConsumerState<AppShell> {
           MobileBottomNav(
             activeIndex: activeIndex,
             onIndexChanged: (index) {
-              widget.navigationShell.goBranch(index);
+              // Handle navigation based on the new mobile structure
+              if (index == 0) {
+                // Go to mobile home
+                widget.navigationShell.goBranch(0);
+              } else if (index == 2) {
+                // Timers - currently just shows snackbar
+                // The actual navigation is handled in MobileBottomNav
+              }
+              // Add button (index 1) navigation is handled directly in _ProminentAddButton
             },
           ),
         ],
@@ -95,14 +106,24 @@ class _AppShellState extends ConsumerState<AppShell> {
 
           // Animated sidebar overlay
           AnimatedSidebar(
-            activeIndex: activeIndex,
+            activeIndex: _adjustDesktopIndex(activeIndex), // Adjust for desktop navigation
             onIndexChanged: (index) {
-              widget.navigationShell.goBranch(index);
+              // Adjust index for desktop (skip mobile home branch)
+              final adjustedIndex = index + 1; // Skip mobile home branch (index 0)
+              widget.navigationShell.goBranch(adjustedIndex);
             },
           ),
         ],
       ),
     );
+  }
+
+  /// Adjust active index for desktop sidebar (mobile home is not shown on desktop)
+  int _adjustDesktopIndex(int shellIndex) {
+    // Desktop sidebar shows: Tasks (0), Projects (1), Demo (2), DevTools (3)
+    // Shell branches are: Home (0), Tasks (1), Projects (2), Demo (3), DevTools (4)
+    // So desktop index 0 = shell index 1, desktop index 1 = shell index 2, etc.
+    return shellIndex > 0 ? shellIndex - 1 : 0;
   }
 
   /// Main content area with consistent padding and styling

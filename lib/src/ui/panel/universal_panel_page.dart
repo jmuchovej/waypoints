@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../routes/thing/entity_page.dart';
+import '../../routes/thing/uuid.dart';
 import '../../infrastructure/logging.dart';
 import '../panel_manager.dart';
 
@@ -81,7 +80,7 @@ class _UniversalPanelPageState extends ConsumerState<UniversalPanelPage> with Ti
           break;
         }
       }
-      
+
       if (contentChanged) {
         tempoLog.info('UniversalPanelPage: Panel content changed, refreshing without animation');
         // Just reset animation state - no need for setState since panels prop changed
@@ -124,7 +123,7 @@ class _UniversalPanelPageState extends ConsumerState<UniversalPanelPage> with Ti
         // Get sidebar state for width calculations
         final shellState = ref.watch(panelManagerProvider);
         final showSidebar = shellState.showSidebar;
-        
+
         // Calculate widths based on available space minus sidebar
         _calculateWidths(MediaQuery.of(context).size.width, showSidebar);
 
@@ -176,7 +175,7 @@ class _UniversalPanelPageState extends ConsumerState<UniversalPanelPage> with Ti
           left: BorderSide(color: Colors.grey.shade300, width: 2),
         ),
       ),
-      child: EntityPage(
+      child: ThingPage(
         uuid: uuid,
         panelInfo: PanelInfo.panel(index + 1, uuid), // Panel 1, 2, 3, etc.
       ),
