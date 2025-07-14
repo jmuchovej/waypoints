@@ -7,11 +7,6 @@ import '../infrastructure/logging.dart';
 import '../things/task/editor/task_node.dart' show taskStyles;
 import 'tempo_stylesheet.dart';
 
-const BlockSelector blockSelectorDocumentHeader = BlockSelector(
-  "documentHeader",
-);
-
-const BlockSelector blockSelectorEditableText = BlockSelector("editable_text");
 const BlockSelector blockSelectorH1 = BlockSelector("header1");
 const BlockSelector blockSelectorH2 = BlockSelector("header2");
 const BlockSelector blockSelectorH3 = BlockSelector("header3");
@@ -77,60 +72,6 @@ Stylesheet buildStylesheet(WidgetRef ref) {
         };
       }),
 
-      // Document header styling (uses theme colors and typography)
-      StyleRule(blockSelectorDocumentHeader, (doc, docNode) {
-        final textStyle = textStyles.documentHeader;
-        final padding = textStyles.paddingFor(textStyle);
-
-        return {
-          Styles.padding: CascadingPadding.only(
-            top: padding.top,
-            bottom: padding.top, // Use top padding for bottom too (symmetric)
-          ),
-          Styles.textStyle: textStyle.copyWith(
-            fontWeight: FontWeight.bold,
-            // Color will be handled by the theme system
-          ),
-        };
-      }),
-
-      // Editable text styling - handles EditableTextNode
-      StyleRule(blockSelectorEditableText, (doc, docNode) {
-        // Get the text style key from the node metadata
-        final textStyleKey =
-            docNode.getMetadataValue("textStyleKey") as String? ?? "header1";
-
-        // Map text style keys to unified text styles
-        TextStyle baseStyle;
-        switch (textStyleKey) {
-          case "documentHeader":
-            baseStyle = textStyles.documentHeader;
-            break;
-          case "pageTitle":
-            baseStyle = textStyles.pageTitle;
-            break;
-          case "header1":
-            baseStyle = textStyles.sectionHeader;
-            break;
-          case "header2":
-            baseStyle = textStyles.subsectionHeader;
-            break;
-          case "header3":
-            baseStyle = textStyles.cardTitle;
-            break;
-          default:
-            baseStyle = textStyles.contentBody;
-        }
-
-        final padding = textStyles.paddingFor(baseStyle);
-        return {
-          Styles.padding: CascadingPadding.only(
-            top: padding.top,
-            bottom: padding.bottom,
-          ),
-          Styles.textStyle: baseStyle,
-        };
-      }),
       StyleRule(blockSelectorP, (doc, docNode) {
         return {Styles.padding: CascadingPadding.only(top: spacing.paragraphSpacing)};
       }),

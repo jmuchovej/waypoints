@@ -6,7 +6,6 @@ import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 
 import '../things/project/editor/project_builder.dart';
 import '../things/task/editor/task_builder.dart';
-import 'nodes.dart';
 import 'operations/thing_cursor_handler.dart';
 import 'scaffolding.dart';
 import '../styling/super_editor.dart';
@@ -20,7 +19,6 @@ import '../things/task/task_repository.dart';
 export 'extensions.dart';
 export 'inline.dart';
 export 'attributed_text.dart';
-export 'nodes.dart';
 export 'scaffolding.dart';
 export 'super_editor.dart';
 export 'super_text.dart';
@@ -115,12 +113,6 @@ SuperEditor createSuperEditor(
     },
 
     componentBuilders: [
-      // Document header is NOT scaffolded - no drag handles, editing, etc.
-      const DocumentHeaderComponentBuilder(),
-
-      // Editable text is NOT scaffolded - no drag handles, editing, etc.
-      const EditableTextComponentBuilder(),
-
       ScaffoldedComponentBuilder(
         innerBuilder: TaskComponentBuilder(editor),
         linkManager: linkManager,
