@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_editor/super_editor.dart';
 
-import '../node_factory.dart';
+import '../thing_factories.dart';
 import 'block_entity.dart';
 import 'block_repository.dart';
 
