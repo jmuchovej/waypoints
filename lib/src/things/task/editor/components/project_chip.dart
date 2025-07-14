@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../styling/text_styles.dart';
 import '../../task_entity.dart';
 
 /// A pill-shaped widget that displays the project association of a task
 /// with consistent styling to match the progress pill.
-class TaskProjectChip extends StatelessWidget {
+class TaskProjectChip extends ConsumerWidget {
   const TaskProjectChip({
     super.key,
     required this.task,
@@ -12,7 +15,7 @@ class TaskProjectChip extends StatelessWidget {
   final TaskEntity task;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // If no project, don't show the pill
     if (!task.project.hasValue) {
       return const SizedBox.shrink();
@@ -23,7 +26,8 @@ class TaskProjectChip extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final fontSize = Theme.of(context).textTheme.labelMedium!.fontSize!;
+    final textStyles = TempoTextStyles.of(ref);
+    final fontSize = textStyles.chipText.fontSize!;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -38,7 +42,7 @@ class TaskProjectChip extends StatelessWidget {
           child: Text(
             // TODO convert this to a `TempoTextField`
             project.title.toPlainText(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            style: textStyles.chipText.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: fontSize,
               fontWeight: FontWeight.w500,

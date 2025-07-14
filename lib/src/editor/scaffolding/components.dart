@@ -57,7 +57,7 @@ class ScaffoldedComponentBuilder extends ComponentBuilder {
         } else if (isHovered) {
           highlightColor = colorScheme.surfaceContainerHighest;
         } else {
-          highlightColor = colorScheme.surfaceContainer;
+          highlightColor = null; // Transparent when not selected or hovered
         }
 
         // Wrap with highlight if needed
@@ -170,7 +170,13 @@ class _HighlightWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (color == null) return child;
+    // Always apply padding, but only show background if color is provided
+    final paddedChild = Padding(
+      padding: EdgeInsets.symmetric(horizontal: CurrentPlatform.isMobile ? 0.0 : padding),
+      child: child,
+    );
+
+    if (color == null) return paddedChild;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -181,11 +187,8 @@ class _HighlightWrapper extends StatelessWidget {
             child: _FullWidthHighlight(color: color!, padding: padding),
           ),
         ),
-        // The actual component content
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: CurrentPlatform.isMobile ? 0.0 : padding),
-          child: child,
-        ),
+        // The actual component content with padding
+        paddedChild,
       ],
     );
   }

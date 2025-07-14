@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/editor.dart';
-import '../../editor/super_editor.dart';
-import '../../styling/tempo_stylesheet.dart';
 import '../../ui/widgets/buttons/pill_button.dart';
 import '../../ui/widgets/panel/panel_header.dart';
 import '../project/project_entity.dart';

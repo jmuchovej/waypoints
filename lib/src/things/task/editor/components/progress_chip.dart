@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../styling/text_styles.dart';
 import '../../task_entity.dart';
 import '../../../../objectbox/services/resolver_service.dart';
 
@@ -30,7 +32,8 @@ class TaskProgressChip extends ConsumerWidget {
     final totalCount = subtasks.length;
     final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
 
-    final fontSize = TextTheme.of(context).labelMedium!.fontSize!;
+    final textStyles = TempoTextStyles.of(ref);
+    final fontSize = textStyles.chipText.fontSize!;
 
     return Row(
       children: [

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jiffy/jiffy.dart';
+
+import '../../../../styling/text_styles.dart';
 import '../../task_entity.dart';
 
 /// A pill-shaped widget that displays the due date of a task
 /// with consistent styling to match the progress pill.
-class TaskDueDateChip extends StatelessWidget {
+class TaskDueDateChip extends ConsumerWidget {
   const TaskDueDateChip({
     super.key,
     required this.task,
@@ -13,7 +16,7 @@ class TaskDueDateChip extends StatelessWidget {
   final TaskEntity task;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dueDate = task.dueDate;
     final now = DateTime.now();
     final isOverdue = dueDate.isBefore(now);
@@ -21,7 +24,8 @@ class TaskDueDateChip extends StatelessWidget {
                    dueDate.month == now.month &&
                    dueDate.day == now.day;
 
-    final fontSize = Theme.of(context).textTheme.labelMedium!.fontSize!;
+    final textStyles = TempoTextStyles.of(ref);
+    final fontSize = textStyles.chipText.fontSize!;
 
     // Determine colors based on due date status
     Color iconColor;
@@ -44,7 +48,7 @@ class TaskDueDateChip extends StatelessWidget {
         SizedBox(width: 0.5 * fontSize),
         Text(
           _formatDueDate(dueDate),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          style: textStyles.chipText.copyWith(
             color: iconColor,
             fontSize: fontSize,
             fontWeight: FontWeight.w500,

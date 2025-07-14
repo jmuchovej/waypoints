@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/super_editor.dart';
-import '../../editor/nodes/editable_text_node.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../things/task/task_entity.dart';
 import '../../things/task/task_repository.dart';
@@ -13,12 +12,6 @@ import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/buttons/filter_button.dart';
 import '../../ui/widgets/panel/empty_state.dart';
 import '../../ui/widgets/panel/panel_header.dart';
-
-final EditableTextNode header = EditableTextNode.documentHeader(
-  id: 'tasks-header',
-  title: AttributedText("Today's Tasks"),
-  isEditable: false,
-);
 
 class TasksTodayScreen extends ConsumerStatefulWidget {
   const TasksTodayScreen({super.key});

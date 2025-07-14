@@ -7,8 +7,10 @@ import 'src/devtools/database/seed.dart';
 import 'src/infrastructure/logging.dart';
 import 'src/l10n/l10n.dart';
 import 'src/objectbox/objectbox.dart';
-import 'src/router_go.dart';
-import 'src/theme.dart';
+import 'src/router.dart';
+import 'src/styling/theme.dart';
+import 'src/styling/tempo_stylesheet.dart';
+import 'src/styling/text_styles.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +63,20 @@ class Tempo extends ConsumerWidget {
       themeMode: ThemeMode.system,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        // Provide TempoTextStyles to all widgets via ProviderScope override
+        return ProviderScope(
+          overrides: [
+            tempoTextStylesProvider.overrideWithValue(
+              TempoTextStyles.fromContext(context),
+            ),
+            tempoStylesheetProvider.overrideWithValue(
+              TempoStylesheet.fromContext(context),
+            ),
+          ],
+          child: child!,
+        );
+      },
     );
   }
 }
