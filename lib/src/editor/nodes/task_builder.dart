@@ -1,10 +1,10 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import '../../../editor/super_editor.dart';
-import '../../../editor/operations/task_requests.dart';
+import '../super_editor.dart';
+import '../operations/task_requests.dart';
 
 // No entity imports needed - uses only nodes
-import '../task_entity.dart';
+import '../../things/task/task_entity.dart';
 import 'task_node.dart';
 import 'task_component.dart';
 

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../infrastructure/logging.dart';
-import '../router.dart';
 import '../styling/tempo_stylesheet.dart';
 import 'panel_manager.dart';
 import 'panel/animated_sidebar.dart';

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../editor/operations/thing_cursor_handler.dart';
-import '../../../editor/super_editor.dart';
-import '../../../infrastructure/logging.dart';
-import '../../thing/thing_node_position.dart';
-import '../task_entity.dart';
-import '../task_repository.dart';
-import 'components/due_date_chip.dart';
-import 'components/progress_chip.dart';
-import 'components/project_chip.dart';
-import 'components/status_chip.dart';
+import '../operations/thing_cursor_handler.dart';
+import '../super_editor.dart';
+import '../../infrastructure/logging.dart';
+import '../operations/thing_node_position.dart';
+import '../../things/task/task_entity.dart';
+import '../../things/task/task_repository.dart';
+import 'components/task_due_date_chip.dart';
+import 'components/task_progress_chip.dart';
+import 'components/task_project_chip.dart';
+import 'components/task_status_chip.dart';
 import 'task_builder.dart';
 
 /// A document component that displays a complete-able task.

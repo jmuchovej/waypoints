@@ -1,7 +1,7 @@
 import 'dart:ui' show TextAffinity;
 
-import '../../editor/super_editor.dart';
-import '../../editor/operations/thing_cursor_handler.dart';
+import '../super_editor.dart';
+import 'thing_cursor_handler.dart';
 
 /// A specialized TextNodePosition for ThingNodes that includes metadata
 /// about the cursor zone and interaction behavior.

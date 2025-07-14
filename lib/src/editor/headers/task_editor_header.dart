@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../editor/editor.dart';
+import '../editor.dart';
 import '../../ui/widgets/buttons/pill_button.dart';
 import '../../ui/widgets/panel/panel_header.dart';
-import '../project/project_entity.dart';
-import 'task_entity.dart';
+import '../../things/project/project_entity.dart';
+import '../../things/task/task_entity.dart';
 
 class TaskEditorHeader extends ConsumerStatefulWidget {
   const TaskEditorHeader(

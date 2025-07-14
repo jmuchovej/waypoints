@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../super_editor.dart';
 import '../../things/thing/interface.dart';
-import '../../things/thing/thing_node_position.dart';
+import 'thing_node_position.dart';
 import '../../infrastructure/logging.dart';
 
 /// Defines different cursor zones within a ThingNode component
@@ -111,7 +111,7 @@ class ThingCursorHandler extends ContentTapDelegate {
       tempoLog.info(
         '🚀 Tap in ${nodePosition.zone} zone, navigating to thing: ${node.thing.uuid}',
       );
-      
+
       // Traditional navigation - push new page onto stack
       _navigateToThing(node.thing.uuid);
 

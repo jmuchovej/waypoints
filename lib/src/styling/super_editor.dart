@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../editor/inline.dart';
 import '../editor/super_editor.dart';
 import '../infrastructure/logging.dart';
-import '../things/task/editor/task_node.dart' show taskStyles;
+import '../editor/nodes/task_node.dart' show taskStyles;
 import 'tempo_stylesheet.dart';
 
 const BlockSelector blockSelectorH1 = BlockSelector("header1");

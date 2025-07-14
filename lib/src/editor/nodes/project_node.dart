@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/super_editor.dart';
-import '../../thing/interface.dart';
-import '../../thing/thing_entity.dart';
-import '../project_entity.dart';
-import '../project_repository.dart';
+import '../../things/thing/interface.dart';
+import '../../things/thing/thing_entity.dart';
+import '../../things/project/project_entity.dart';
+import '../../things/project/project_repository.dart';
 
 const NamedAttribution projectAttribution = NamedAttribution("project");
 const BlockSelector projectSelector = BlockSelector("project");

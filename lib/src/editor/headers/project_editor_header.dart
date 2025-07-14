@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../editor/super_editor.dart';
+import '../super_editor.dart';
 import '../../ui/widgets/panel/panel_header.dart';
-import 'project_entity.dart';
+import '../../things/project/project_entity.dart';
 
 class ProjectEditorHeader extends ConsumerStatefulWidget {
   const ProjectEditorHeader(this.project, {

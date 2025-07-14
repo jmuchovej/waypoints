@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jiffy/jiffy.dart';
 
-import '../../../../styling/text_styles.dart';
-import '../../task_entity.dart';
+import '../../../styling/text_styles.dart';
+import '../../../things/task/task_entity.dart';
 
 /// A pill-shaped widget that displays the due date of a task
 /// with consistent styling to match the progress pill.

@@ -1,35 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../styling/text_styles.dart';
-import '../../task_entity.dart';
-import '../../../../objectbox/services/resolver_service.dart';
+import '../../../styling/text_styles.dart';
+import '../../../things/project/project_entity.dart';
+import '../../../things/task/task_entity.dart';
+import '../../../objectbox/services/resolver_service.dart';
 
-/// A pill-shaped widget that displays the completion progress of subtasks
+/// A pill-shaped widget that displays the completion progress of subprojects
 /// in a Things 3-like style with a circular progress indicator and text.
-class TaskProgressChip extends ConsumerWidget {
-  const TaskProgressChip({super.key, required this.parentTask});
+class ProjectProgressChip extends ConsumerWidget {
+  const ProjectProgressChip({super.key, required this.parentProject});
 
-  final TaskEntity parentTask;
+  final ProjectEntity parentProject;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Get all subtasks for this parent task
+    // Get all subprojects for this parent project
     final resolver = ref.read(resolverServiceProvider);
-    final subtasks = resolver.resolveTypedChildren<TaskEntity>(
-      parentTask.children.toList(),
+    final tasks = resolver.resolveTypedChildren<TaskEntity>(
+      parentProject.children.toList(),
       TaskEntity.key,
     );
 
-    // If no subtasks, don't show the pill
-    if (subtasks.isEmpty) {
+    // If no subprojects, don't show the pill
+    if (tasks.isEmpty) {
       return const SizedBox.shrink();
     }
 
     // Calculate completion statistics
     final completedCount =
-        subtasks.where((task) => task.status.isCompleted).length;
-    final totalCount = subtasks.length;
+        tasks.where((project) => project.status.isCompleted).length;
+    final totalCount = tasks.length;
     final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
 
     final textStyles = TempoTextStyles.of(ref);

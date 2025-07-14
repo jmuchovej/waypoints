@@ -99,7 +99,7 @@ class PillButton extends ConsumerWidget {
     final effectiveStyle = style ?? _defaultStyle(context);
 
     if (_icon != null && _label != null) {
-      if (_isTonal ?? false) {
+      if (_isTonal) {
         return FilledButton.tonalIcon(
           onPressed: onPressed,
           onLongPress: onLongPress,
@@ -129,7 +129,7 @@ class PillButton extends ConsumerWidget {
       );
     }
 
-    if (_isTonal ?? false) {
+    if (_isTonal) {
       return FilledButton.tonal(
         onPressed: onPressed,
         onLongPress: onLongPress,

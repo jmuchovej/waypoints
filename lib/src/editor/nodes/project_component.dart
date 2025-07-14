@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_editor/super_editor.dart';
 
-import '../../../router.dart';
-import '../../task/editor/task_builder.dart';
-import '../project_entity.dart';
-import '../../task/task_repository.dart';
-import '../project_repository.dart';
-import '../../../infrastructure/logging.dart';
+import '../../router.dart';
+import 'task_builder.dart';
+import '../../things/project/project_entity.dart';
+import '../../things/task/task_repository.dart';
+import '../../things/project/project_repository.dart';
+import '../../infrastructure/logging.dart';
 import 'project_builder.dart';
 
 /// The visual component for displaying a project in the editor

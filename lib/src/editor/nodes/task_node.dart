@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../editor/editor.dart';
-import '../../thing/interface.dart';
-import '../../thing/thing_entity.dart';
-import '../task_entity.dart';
-import '../task_repository.dart';
+import '../editor.dart';
+import '../../things/thing/interface.dart';
+import '../../things/thing/thing_entity.dart';
+import '../../things/task/task_entity.dart';
+import '../../things/task/task_repository.dart';
 
 const NamedAttribution taskAttribution = NamedAttribution("task");
 const BlockSelector taskSelector = BlockSelector("task");
@@ -30,7 +30,7 @@ void clearIndentationCache() {
 int _computeIndentation(TaskEntity? task, int indent) {
   if (indent != -1) return indent;
   if (task == null) return 0;
-  
+
   // Check cache first
   final cached = _indentationCache[task.id];
   if (cached != null) return cached;
@@ -42,10 +42,10 @@ int _computeIndentation(TaskEntity? task, int indent) {
     indent += 1;
     currentTask = currentTask.parent.target;
   }
-  
+
   // Cache the result
   _indentationCache[task.id] = indent;
-  
+
   return indent;
 }
 

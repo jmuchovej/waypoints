@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // TODO once `MotionPlugin` properly works, drop this!
 import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 
-import '../things/project/editor/project_builder.dart';
-import '../things/task/editor/task_builder.dart';
+import 'nodes/project_builder.dart';
+import 'nodes/task_builder.dart';
 import 'operations/thing_cursor_handler.dart';
 import 'scaffolding.dart';
 import '../styling/super_editor.dart';
@@ -15,6 +15,7 @@ import 'operations/task_request_handlers.dart';
 import 'operations/panel_request_handlers.dart';
 import '../../flavors.dart';
 import '../things/task/task_repository.dart';
+import 'operations/task_instructions.dart';
 
 export 'extensions.dart';
 export 'inline.dart';

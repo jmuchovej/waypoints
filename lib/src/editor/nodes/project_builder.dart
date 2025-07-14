@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 
-import '../../../infrastructure/logging.dart';
-import '../project_entity.dart';
+import '../../infrastructure/logging.dart';
+import '../../things/project/project_entity.dart';
 import 'project_component.dart';
 import 'project_node.dart';
 

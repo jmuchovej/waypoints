@@ -1,6 +1,6 @@
 import '../super_editor.dart';
 import '../../infrastructure/logging.dart';
-import '../../things/task/editor/task_node.dart';
+import '../nodes/task_node.dart';
 import '../../things/task/task_entity.dart';
 import '../../things/task/task_repository.dart';
 
@@ -36,8 +36,8 @@ class ToggleTaskStatusCommand implements EditCommand {
 
     // Toggle the task status
     final currentStatus = node.task.status;
-    final newStatus = currentStatus == TaskStatus.complete 
-        ? TaskStatus.todo 
+    final newStatus = currentStatus == TaskStatus.complete
+        ? TaskStatus.todo
         : TaskStatus.complete;
 
     fluxLog.info('ToggleTaskStatusCommand: Optimistically updating task ${node.task.uuid} from $currentStatus to $newStatus');
@@ -54,8 +54,8 @@ class ToggleTaskStatusCommand implements EditCommand {
 
   /// Updates the database asynchronously and handles rollback on failure
   void _updateDatabaseAsync(
-    String taskUuid, 
-    TaskStatus originalStatus, 
+    String taskUuid,
+    TaskStatus originalStatus,
     TaskStatus newStatus,
     MutableDocument document,
     TaskNode originalNode,
@@ -64,7 +64,7 @@ class ToggleTaskStatusCommand implements EditCommand {
       // Update the database
       taskRepository.updateStatus(taskUuid, newStatus);
       fluxLog.info('ToggleTaskStatusCommand: Database successfully updated for task $taskUuid');
-      
+
       // Verify the update worked
       final verifiedTask = taskRepository.byUUID(taskUuid);
       if (verifiedTask?.status != newStatus) {
@@ -72,7 +72,7 @@ class ToggleTaskStatusCommand implements EditCommand {
       }
     } catch (error, stackTrace) {
       fluxLog.severe('ToggleTaskStatusCommand: Database update failed for task $taskUuid', error, stackTrace);
-      
+
       // ROLLBACK: Revert the optimistic update
       final rollbackTask = originalNode.task.copyWith(status: originalStatus);
       final rollbackNode = originalNode.copyTaskWith(task: rollbackTask);
