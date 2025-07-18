@@ -21,6 +21,7 @@ ruby = "3.4.2"
 "ubi:CQLabs/homebrew-dcm" = { version = "latest", exe = "dcm", matching = "dcm" }
 "npm:@anthropic-ai/claude-code" = "latest"
 typst = "0.13.1"
+cocoapods = "1.16.2"
 
 # [hooks]
 # preinstall = "mise install android-sdk@19.0"
@@ -31,42 +32,3 @@ typst = "0.13.1"
 [env]
 DATABASE_URL = "sqlite://{{ config_root }}/tempo-flux.db?mode=rwc"
 ANDROID_HOME = "{{ env.HOME }}/Library/Android/sdk"
-
-[tasks.builder]
-usage = '''
-arg "mode" "choose between `build` or `watch`"
-'''
-run = '''
-dart run build_runner {{ arg(name="mode") }} $usage_mode
-'''
-description = "task to support forwarding args to `build_runner`"
-dir = "{{ config_root }}"
-
-[tasks.build]
-run = "mise run builder build"
-
-[tasks.watch]
-run = "mise run builder watch --dev"
-
-[tasks.flavorizr]
-run = "dart run flutter_flavorizr"
-
-[tasks.update-deps-flutter]
-run = "flutter pub upgrade"
-
-[tasks.update-deps-macos]
-run = "pod repo update"
-dir = "{{ config_root }}/macos"
-
-[tasks.update-deps-ios]
-run = "pod repo update"
-dir = "{{ config_root }}/ios"
-
-[tasks.update-deps]
-wait_for = ["update-deps-flutter"]
-depends = ["update-deps-macos", "update-deps-ios"]
-
-[tasks.flutter-clean]
-run = "flutter clean"
-
-# [tasks.de]
