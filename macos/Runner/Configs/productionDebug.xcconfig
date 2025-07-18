@@ -1,7 +1,8 @@
 #include "../../Flutter/productionDebug.xcconfig"
-#include "../../Pods/Target Support Files/Pods-Runner/Pods-Runner.debug-production.xcconfig"
 #include "Warnings.xcconfig"
 
 ASSET_PREFIX=production
 BUNDLE_NAME=Tempo
 BUNDLE_DISPLAY_NAME=Tempo
+PRODUCT_NAME=Tempo
+TARGET_NAME=Tempo

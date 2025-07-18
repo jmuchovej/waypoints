@@ -7,7 +7,7 @@ flavors:
     app:
       name: "Tempo (Dev)"
       # TODO add Tempo's development icon
-      # icon:
+      icon: assets/app-icon-dev.png
 
     android:
       applicationId: "com.tempo.app.dev"
@@ -17,6 +17,11 @@ flavors:
 
     macos:
       bundleId: "com.tempo.app.dev"
+      variables:
+        PRODUCT_NAME:
+          value: "Tempo (Dev)"
+        TARGET_NAME:
+          value: "Tempo (Dev)"
 
   staging:
     app:
@@ -32,12 +37,17 @@ flavors:
 
     macos:
       bundleId: "com.tempo.app.staging"
+      variables:
+        PRODUCT_NAME:
+          value: "Tempo (Staging)"
+        TARGET_NAME:
+          value: "Tempo (Staging)"
 
   production:
     app:
       name: "Tempo"
       # TODO add Tempo's production icon
-      # icon:
+      icon: assets/app-icon.png
 
     android:
       applicationId: "com.tempo.app.prod"
@@ -47,6 +57,11 @@ flavors:
 
     macos:
       bundleId: "com.tempo.app.prod"
+      variables:
+        PRODUCT_NAME:
+          value: "Tempo"
+        TARGET_NAME:
+          value: "Tempo"
 
 instructions:
   - assets:download
@@ -56,7 +71,9 @@ instructions:
   - android:buildGradle
   - android:dummyAssets
   - android:icons
-  - flutter:flavors
+  # TODO figure out how to allow Flavorizr to control `flavors.dart` without
+  #   without borking customizations
+  # - flutter:flavors
   # - flutter:app
   # - flutter:pages
   # - flutter:main

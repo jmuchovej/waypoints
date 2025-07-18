@@ -1,7 +1,8 @@
 #include "../../Flutter/stagingRelease.xcconfig"
-#include "../../Pods/Target Support Files/Pods-Runner/Pods-Runner.release-staging.xcconfig"
 #include "Warnings.xcconfig"
 
 ASSET_PREFIX=staging
 BUNDLE_NAME=Tempo (Staging)
 BUNDLE_DISPLAY_NAME=Tempo (Staging)
+PRODUCT_NAME=Tempo (Staging)
+TARGET_NAME=Tempo (Staging)
