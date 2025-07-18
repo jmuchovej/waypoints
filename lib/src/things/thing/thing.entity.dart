@@ -28,6 +28,15 @@ class ThingEntity {
   @Index()
   String? plainText;
 
+  /// Polymorphic parent-child relationships for hierarchical structures
+  /// This enables task hierarchies, nested projects, etc. at the ThingEntity level
+  @Backlink()
+  final children = ToMany<ThingEntity>();
+
+  /// Parent relationships with @Backlink annotation for automatic maintenance
+  /// For hierarchical relationships, a ThingEntity can have multiple parents
+  final parent = ToOne<ThingEntity>();
+
   @override
   String toString() {
     return 'ThingEntity{id: $id, uuid: $uuid, type: $type}';

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ProjectTabBar extends StatelessWidget {
-  const ProjectTabBar({
-    super.key,
-    required this.tabController,
-  });
+  const ProjectTabBar({super.key, required this.tabController});
 
   final TabController tabController;
 
@@ -18,10 +15,7 @@ class ProjectTabBar extends StatelessWidget {
           controller: tabController,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          tabs: const [
-            Tab(text: 'Notes'),
-            Tab(text: 'Tasks'),
-          ],
+          tabs: const [Tab(text: 'Notes'), Tab(text: 'Tasks')],
         ),
       ),
     );

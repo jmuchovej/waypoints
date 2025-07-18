@@ -50,7 +50,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       body: Column(
         children: [
-          Expanded(child: SafeArea(bottom: false, child: widget.navigationShell)),
+          Expanded(
+            child: SafeArea(bottom: false, child: widget.navigationShell),
+          ),
           MobileBottomNav(
             activeIndex: activeIndex,
             onIndexChanged: (index) {
@@ -105,10 +107,13 @@ class _AppShellState extends ConsumerState<AppShell> {
 
           // Animated sidebar overlay
           AnimatedSidebar(
-            activeIndex: _adjustDesktopIndex(activeIndex), // Adjust for desktop navigation
+            activeIndex: _adjustDesktopIndex(
+              activeIndex,
+            ), // Adjust for desktop navigation
             onIndexChanged: (index) {
               // Adjust index for desktop (skip mobile home branch)
-              final adjustedIndex = index + 1; // Skip mobile home branch (index 0)
+              final adjustedIndex =
+                  index + 1; // Skip mobile home branch (index 0)
               widget.navigationShell.goBranch(adjustedIndex);
             },
           ),
@@ -144,5 +149,4 @@ class _AppShellState extends ConsumerState<AppShell> {
       ),
     );
   }
-
 }

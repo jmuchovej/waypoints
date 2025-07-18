@@ -27,7 +27,7 @@ Stylesheet buildStylesheet(WidgetRef ref) {
     rules: [
       StyleRule(BlockSelector.all, (doc, docNode) {
         // Log all nodes being styled to understand the pipeline
-        tempoLog.finest(
+        tempoStyleLog.finest(
           '📋 Stylesheet applying to node: ${docNode.runtimeType}, '
           'id: ${docNode.id}, '
           'blockType: ${docNode.getMetadataValue("blockType")}',
@@ -73,7 +73,9 @@ Stylesheet buildStylesheet(WidgetRef ref) {
       }),
 
       StyleRule(blockSelectorP, (doc, docNode) {
-        return {Styles.padding: CascadingPadding.only(top: spacing.paragraphSpacing)};
+        return {
+          Styles.padding: CascadingPadding.only(top: spacing.paragraphSpacing),
+        };
       }),
       StyleRule(blockSelectorP.after("header1"), (doc, docNode) {
         return {Styles.padding: const CascadingPadding.only(top: 0)};
@@ -85,7 +87,9 @@ Stylesheet buildStylesheet(WidgetRef ref) {
         return {Styles.padding: const CascadingPadding.only(top: 0)};
       }),
       StyleRule(blockSelectorList, (doc, docNode) {
-        return {Styles.padding: CascadingPadding.only(top: spacing.paragraphSpacing)};
+        return {
+          Styles.padding: CascadingPadding.only(top: spacing.paragraphSpacing),
+        };
       }),
       StyleRule(blockSelectorQuote, (doc, docNode) {
         return {

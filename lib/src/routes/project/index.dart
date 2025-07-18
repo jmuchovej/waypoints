@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/super_editor.dart';
 import '../../objectbox/objectbox.g.dart';
-import '../../things/project/project_entity.dart';
+import '../../things/project/project.entity.dart';
 import '../../things/project/project_repository.dart';
 import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/panel/empty_state.dart';
@@ -29,9 +29,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final header = PanelHeader.readonly(
-      title: AttributedText("Projects"),
-    );
+    final header = PanelHeader.readonly(title: AttributedText("Projects"));
 
     return PanelWrapper<ProjectEntity>(
       header: header,
@@ -43,6 +41,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         label: "Create Project",
         onPressed: () {},
       ),
+      routePath: '/projects',
       actions: const [],
     );
   }

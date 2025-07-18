@@ -4,10 +4,12 @@ import 'package:super_editor/super_editor.dart';
 
 import '../../router.dart';
 import 'task_builder.dart';
-import '../../things/project/project_entity.dart';
+import '../../things/project/project.entity.dart';
 import '../../things/task/task_repository.dart';
 import '../../things/project/project_repository.dart';
 import '../../infrastructure/logging.dart';
+import '../operations/thing_cursor_handler.dart';
+import '../operations/thing_node_position.dart';
 import 'project_builder.dart';
 
 /// The visual component for displaying a project in the editor
@@ -21,11 +23,17 @@ class ProjectComponent extends ConsumerStatefulWidget {
 }
 
 class _ProjectComponentState extends ConsumerState<ProjectComponent>
-    with ProxyDocumentComponent<ProjectComponent>, ProxyTextComposable {
+    with
+        ProxyDocumentComponent<ProjectComponent>,
+        ProxyTextComposable,
+        ThingCursorProvider {
   bool _isHovered = false;
   int? _taskCount;
 
   final _textKey = GlobalKey();
+
+  // Debug flag - set to true to see detailed gesture logging
+  static const bool _debugGestures = true;
 
   ProjectEntity get project => widget.viewModel.project;
 
@@ -50,7 +58,9 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
         _taskCount = tasks.length;
       });
     } catch (e) {
-      fluxLog.warning('Failed to load task count for project: $e');
+      tempoProjectEditorLog.warning(
+        'Failed to load task count for project: $e',
+      );
       setState(() {
         _taskCount = 0;
       });
@@ -293,6 +303,75 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
 
   @override
   NodePosition? getPositionAtOffset(Offset localOffset) {
+    // Determine which cursor zone this offset is in
+    final cursorZone = getCursorZoneForOffset(localOffset);
+
+    if (cursorZone == ThingCursorZone.textEditable) {
+      // For text areas, return the actual text position
+      return _getTextComponentPositionAtOffset(localOffset);
+    } else {
+      // For non-text areas, return a ThingNodePosition with zone metadata
+      // Use -1 offset as convention for non-text positions
+      return ThingNodePosition(offset: -1, zone: cursorZone);
+    }
+  }
+
+  bool _isClickInTextArea(Offset localOffset) {
+    try {
+      // Get the text component that's nested inside our Row layout
+      final textComponentBox =
+          childDocumentComponentKey.currentContext?.findRenderObject()
+              as RenderBox?;
+      if (textComponentBox == null) {
+        tempoThingTapDelegateLog.finest(
+          '🎯 _isClickInTextArea: No text component box found',
+        );
+        return false;
+      }
+
+      // Get our project component's render box
+      final projectComponentBox = context.findRenderObject() as RenderBox?;
+      if (projectComponentBox == null) {
+        tempoThingTapDelegateLog.finest(
+          '🎯 _isClickInTextArea: No project component box found',
+        );
+        return false;
+      }
+
+      // Convert the local offset to the text component's coordinate space
+      final textOffset = projectComponentBox.globalToLocal(
+        textComponentBox.localToGlobal(Offset.zero),
+      );
+
+      // Check if the click is within the text component bounds
+      final textBounds = Rect.fromLTWH(
+        textOffset.dx,
+        textOffset.dy,
+        textComponentBox.size.width,
+        textComponentBox.size.height,
+      );
+
+      final isInTextArea = textBounds.contains(localOffset);
+
+      if (_debugGestures) {
+        tempoProjectEditorLog.finest(
+          '🎯 _isClickInTextArea: click=$localOffset, textBounds=$textBounds, result=$isInTextArea',
+        );
+      }
+
+      return isInTextArea;
+    } catch (e) {
+      if (_debugGestures) {
+        tempoProjectEditorLog.warning(
+          '🎯 _isClickInTextArea: Error calculating text area: $e',
+        );
+      }
+      // Default to false (not in text area) on any error
+      return false;
+    }
+  }
+
+  NodePosition? _getTextComponentPositionAtOffset(Offset localOffset) {
     // Get the text component that's nested inside our Row layout
     final textComponentBox =
         childDocumentComponentKey.currentContext?.findRenderObject()
@@ -302,16 +381,18 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
       return const TextNodePosition(offset: 0);
     }
 
-    // Get our task component's render box
-    final taskComponentBox = context.findRenderObject() as RenderBox?;
-    if (taskComponentBox == null) {
+    // Get our project component's render box
+    final projectComponentBox = context.findRenderObject() as RenderBox?;
+    if (projectComponentBox == null) {
       return const TextNodePosition(offset: 0);
     }
 
     try {
-      // Convert the click position from task component coordinates to text component coordinates
-      // This accounts for the StatusWidget that appears before the text in the Row
-      final globalClickPosition = taskComponentBox.localToGlobal(localOffset);
+      // Convert the click position from project component coordinates to text component coordinates
+      // This accounts for the folder icon that appears before the text in the Row
+      final globalClickPosition = projectComponentBox.localToGlobal(
+        localOffset,
+      );
       final textLocalOffset = textComponentBox.globalToLocal(
         globalClickPosition,
       );
@@ -435,5 +516,46 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
   void _deleteProject() {
     final projectRepo = ref.read(projectRepositoryProvider);
     projectRepo.remove(project.id);
+  }
+
+  @override
+  ThingCursorZone getCursorZoneForOffset(Offset localOffset) {
+    try {
+      // Folder icon area (left side) - interactive/clickable for navigation
+      if (localOffset.dx < 40) {
+        tempoThingTapDelegateLog.finest(
+          '🎯 Cursor zone: folder icon area (clickable)',
+        );
+        return ThingCursorZone.clickable;
+      }
+
+      // Check if we're in the text area
+      if (_isClickInTextArea(localOffset)) {
+        tempoThingTapDelegateLog.finest('🎯 Cursor zone: text area (editable)');
+        return ThingCursorZone.textEditable;
+      }
+
+      // Task count/metadata area (right side) - could be interactive if we add chips
+      final componentBox = context.findRenderObject() as RenderBox?;
+      if (componentBox != null) {
+        final rightZoneStart = componentBox.size.width * 0.7; // Approximate
+        if (localOffset.dx > rightZoneStart) {
+          tempoThingTapDelegateLog.finest(
+            '🎯 Cursor zone: metadata area (clickable)',
+          );
+          return ThingCursorZone.clickable;
+        }
+      }
+
+      // Everything else is clickable (for navigation)
+      tempoThingTapDelegateLog.finest(
+        '🎯 Cursor zone: general area (clickable)',
+      );
+      return ThingCursorZone.clickable;
+    } catch (e) {
+      tempoThingTapDelegateLog.warning('🎯 Error determining cursor zone: $e');
+      // Default to clickable on any error
+      return ThingCursorZone.clickable;
+    }
   }
 }

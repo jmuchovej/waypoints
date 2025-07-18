@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 /// Features: Home, Add (prominent), and Timers
 class MobileBottomNav extends ConsumerWidget {
   const MobileBottomNav({
-    super.key, 
+    super.key,
     required this.activeIndex,
     required this.onIndexChanged,
   });
@@ -17,7 +17,7 @@ class MobileBottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -43,12 +43,10 @@ class MobileBottomNav extends ConsumerWidget {
                 isSelected: activeIndex == 0,
                 onTap: () => onIndexChanged(0),
               ),
-              
+
               // Add button (prominent/fat)
-              _ProminentAddButton(
-                onTap: () => context.go('/create/task'),
-              ),
-              
+              _ProminentAddButton(onTap: () => context.go('/create/task')),
+
               // Timers button (placeholder for now)
               _NavButton(
                 icon: Icons.timer_outlined,
@@ -89,7 +87,7 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -100,9 +98,10 @@ class _NavButton extends StatelessWidget {
           children: [
             Icon(
               isSelected ? activeIcon : icon,
-              color: isSelected 
-                ? colorScheme.primary 
-                : colorScheme.onSurfaceVariant,
+              color:
+                  isSelected
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -110,9 +109,10 @@ class _NavButton extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected 
-                  ? colorScheme.primary 
-                  : colorScheme.onSurfaceVariant,
+                color:
+                    isSelected
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -132,7 +132,7 @@ class _ProminentAddButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.primary,

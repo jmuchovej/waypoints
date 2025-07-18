@@ -16,9 +16,9 @@ class DragHandleElement extends ScaffoldElement {
     return Follower.withOffset(
       link: link,
       // aligner: const StaticOffsetAligner(
-        offset: Offset(-10, 0),
-        leaderAnchor: Alignment.centerLeft,
-        followerAnchor: Alignment.centerRight,
+      offset: Offset(-10, 0),
+      leaderAnchor: Alignment.centerLeft,
+      followerAnchor: Alignment.centerRight,
       // ),
       repaintWhenLeaderChanges: true,
       // showDebugPaint: true,

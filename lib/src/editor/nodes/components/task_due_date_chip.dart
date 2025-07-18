@@ -3,15 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jiffy/jiffy.dart';
 
 import '../../../styling/text_styles.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/task/task.entity.dart';
 
 /// A pill-shaped widget that displays the due date of a task
 /// with consistent styling to match the progress pill.
 class TaskDueDateChip extends ConsumerWidget {
-  const TaskDueDateChip({
-    super.key,
-    required this.task,
-  });
+  const TaskDueDateChip({super.key, required this.task});
 
   final TaskEntity task;
 
@@ -20,9 +17,10 @@ class TaskDueDateChip extends ConsumerWidget {
     final dueDate = task.dueDate;
     final now = DateTime.now();
     final isOverdue = dueDate.isBefore(now);
-    final isToday = dueDate.year == now.year &&
-                   dueDate.month == now.month &&
-                   dueDate.day == now.day;
+    final isToday =
+        dueDate.year == now.year &&
+        dueDate.month == now.month &&
+        dueDate.day == now.day;
 
     final textStyles = TempoTextStyles.of(ref);
     final fontSize = textStyles.chipText.fontSize!;
@@ -47,7 +45,7 @@ class TaskDueDateChip extends ConsumerWidget {
         ),
         SizedBox(width: 0.5 * fontSize),
         Text(
-          _formatDueDate(dueDate),
+          Jiffy.parseFromDateTime(dueDate).fromNow(),
           style: textStyles.chipText.copyWith(
             color: iconColor,
             fontSize: fontSize,
@@ -56,9 +54,5 @@ class TaskDueDateChip extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  String _formatDueDate(DateTime dueDate) {
-    return Jiffy.parseFromDateTime(dueDate).fromNow();
   }
 }

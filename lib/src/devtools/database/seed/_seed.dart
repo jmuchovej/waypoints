@@ -1,7 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../../../editor/editor.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/task/task.entity.dart';
 import '../seed.dart';
 
 abstract class DatabaseSeed {

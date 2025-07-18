@@ -66,7 +66,9 @@ class _AnimatedSidebarState extends ConsumerState<AnimatedSidebar>
     if (!shellState.showSidebar) {
       setState(() => _isHovering = false);
       Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted && !_isHovering && !ref.read(panelManagerProvider).showSidebar) {
+        if (mounted &&
+            !_isHovering &&
+            !ref.read(panelManagerProvider).showSidebar) {
           _animationController.reverse();
         }
       });

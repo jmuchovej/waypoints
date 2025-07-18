@@ -7,17 +7,14 @@ import '../../editor/super_editor.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/attributed_text_mixin.dart';
 import '../../objectbox/objectbox.dart';
-import '../../objectbox/objectbox.g.dart';
 import '../../objectbox/services/resolver_service.dart';
 import '../../objectbox/services/thing_service.dart';
 import '../thing_factories.dart';
-import 'thing_entity.dart';
+import 'thing.entity.dart';
 
 /// Base interface that all Thing entities must implement
 /// This allows us to store them in typed lists instead of [List<dynamic>]
 abstract class BaseThing {
-  final children = ToMany<ThingEntity>();
-
   /// Direct reference to the ThingEntity registration
   /// This creates a 1:1 relationship between each Thing and its registry entry
   final thing = ToOne<ThingEntity>();
@@ -88,7 +85,7 @@ mixin ThingBehavior implements BaseThing {
         thingEntity.plainText = getSearchableText();
         thingBox.put(thingEntity);
         thing.target = thingEntity; // Set the ToOne relationship
-        dbLog.finest('... registering new `${type}` (uuid=${uuid})');
+        tempoDBLog.finest('... registering new `${type}` (uuid=${uuid})');
         return thingEntity;
       } catch (e) {
         // UUID already exists - update the entity ID and search text
@@ -96,7 +93,7 @@ mixin ThingBehavior implements BaseThing {
         thingEntity.plainText = getSearchableText();
         thingBox.put(thingEntity);
         thing.target = thingEntity; // Update the ToOne relationship
-        dbLog.finest('... already registered! (uuid=${uuid})');
+        tempoDBLog.finest('... already registered! (uuid=${uuid})');
         return thingEntity;
       }
     });
@@ -104,7 +101,7 @@ mixin ThingBehavior implements BaseThing {
 
   /// Called before the entity is deleted from the database
   void unregister(ThingService service) {
-    dbLog.finest('... unregistering! (type=${type}, uuid=${uuid})');
+    tempoDBLog.finest('... unregistering! (type=${type}, uuid=${uuid})');
     service.unregister(uuid);
     thing.target = null; // Clear the ToOne relationship
   }
@@ -112,7 +109,7 @@ mixin ThingBehavior implements BaseThing {
   /// Generates a unique UUID for this entity type
   String generateUniqueUUID(ThingService service) {
     final uniqUUID = service.generateUniqueUUID();
-    dbLog.finest('... generated uniq UUID (uuid=${uniqUUID})');
+    tempoDBLog.finest('... generated uniq UUID (uuid=${uniqUUID})');
     return uniqUUID;
   }
 
@@ -249,7 +246,9 @@ abstract class ThingRepository<T extends BaseThing> {
     if (parent == null) return [];
 
     final childEntities =
-        parent.children.where((entity) => entity.type == type).toList();
+        parent.thing.target!.children
+            .where((entity) => entity.type == type)
+            .toList();
 
     if (childEntities.isEmpty) return [];
 
@@ -261,7 +260,9 @@ abstract class ThingRepository<T extends BaseThing> {
     if (parent == null) return [];
 
     final childEntities =
-        parent.children.where((entity) => entity.type == type).toList();
+        parent.thing.target!.children
+            .where((entity) => entity.type == type)
+            .toList();
 
     if (childEntities.isEmpty) return [];
 

@@ -1,11 +1,12 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project/project_entity.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/task/task.entity.dart';
+import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
-class RustProgrammingCoursePoject implements DatabaseSeed {
+class RustProgrammingCoursePoject extends DatabaseSeed {
   final project = ProjectEntity(
     title: AttributedText("Rust Programming Course"),
     uuid: "266006cb-a740-430f-8eee-83d68719b5bf",
@@ -69,7 +70,9 @@ class RustProgrammingCoursePoject implements DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.finer('  <seeding project="${project.title.toPlainText()}">');
+    tempoDBSeedLog.finer(
+      '  <seeding project="${project.title.toPlainText()}">',
+    );
     final projectID = s.projectRepo.put(project);
 
     // Read book task (and subtasks)
@@ -87,8 +90,29 @@ class RustProgrammingCoursePoject implements DatabaseSeed {
       readCh10to12Task,
     ]);
 
+    // Set project relationships for all tasks
+    final savedProject = s.projectRepo.get(projectID)!;
+    tempoDBSeedLog.fine(
+      'Setting project relationships for ${savedProject.title.toPlainText()}',
+    );
+    for (final taskID in [
+      readBookID,
+      readCh01to03ID,
+      readCh04to06ID,
+      readCh07to09ID,
+      readCh10to12ID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedReadBookTask = s.taskRepo.get(readBookID)!;
-    savedReadBookTask.children.addAll(
+    final savedReadBookTaskThingEntity = savedReadBookTask.thing.target!;
+    savedReadBookTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([
             readCh01to03ID,
@@ -96,8 +120,10 @@ class RustProgrammingCoursePoject implements DatabaseSeed {
             readCh07to09ID,
             readCh10to12ID,
           ])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedReadBookTaskThingEntity);
     s.taskRepo.put(savedReadBookTask);
 
     // Practice CLI task (and subtasks)
@@ -111,19 +137,24 @@ class RustProgrammingCoursePoject implements DatabaseSeed {
         ]);
 
     final savedPracticeCLITask = s.taskRepo.get(practiceCLIID)!;
-    savedPracticeCLITask.children.addAll(
+    final savedPracticeCLITaskThingEntity = savedPracticeCLITask.thing.target!;
+    savedPracticeCLITaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([designID, crudID, sqliteID, clapID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedPracticeCLITaskThingEntity);
     s.taskRepo.put(savedPracticeCLITask);
 
-    final savedProject = s.projectRepo.get(projectID)!;
-    savedProject.children.addAll(
+    final savedProjectThingEntity = savedProject.thing.target!;
+    savedProjectThingEntity.children.addAll(
       s.taskRepo
           .getMany([readBookID, practiceCLIID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
     s.projectRepo.put(savedProject);
   }
 }

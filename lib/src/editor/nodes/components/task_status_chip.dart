@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../things/task/task_entity.dart';
+import '../../../things/task/task.entity.dart';
 
 /// This widget replaces the original TaskStatusWidget with precise baseline alignment.
 /// It calculates exact positioning based on font metrics to align the status icon

@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'devtools/screens/demo_panel_system_v5.dart';
-import 'devtools/screens/demo_panel_system_v6.dart';
-import 'devtools/screens/demo_panel_system_v7.dart';
 import 'devtools/screens/devtools.dart';
 import 'infrastructure/logging.dart';
+import 'infrastructure/route_visibility.dart';
 import 'routes/index.dart';
 import 'routes/mobile_home.dart';
 import 'routes/project/index.dart';
@@ -16,8 +14,10 @@ import 'routes/thing/uuid.dart';
 // go_router configuration
 final routerProvider = Provider<GoRouter>((ref) {
   // Determine initial location based on platform
-  final screenWidth = WidgetsBinding.instance.platformDispatcher.views.first.physicalSize.width;
-  final pixelRatio = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+  final screenWidth =
+      WidgetsBinding.instance.platformDispatcher.views.first.physicalSize.width;
+  final pixelRatio =
+      WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
   final logicalWidth = screenWidth / pixelRatio;
   final isMobile = logicalWidth <= 768;
 
@@ -27,7 +27,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Main shell route with navigation
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return IndexPage(navigationShell: navigationShell);
+          return RouteTracker(
+            child: IndexPage(navigationShell: navigationShell),
+          );
         },
         branches: [
           // Mobile Home branch - main navigation hub
@@ -35,10 +37,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/home',
-                pageBuilder: (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const MobileHomeScreen(),
-                ),
+                pageBuilder:
+                    (context, state) => NoTransitionPage(
+                      key: state.pageKey,
+                      child: const MobileHomeScreen(),
+                    ),
               ),
             ],
           ),
@@ -47,10 +50,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/tasks',
-                pageBuilder: (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const TasksScreen(),
-                ),
+                pageBuilder:
+                    (context, state) => NoTransitionPage(
+                      key: state.pageKey,
+                      child: const TasksScreen(),
+                    ),
               ),
             ],
           ),
@@ -59,22 +63,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/projects',
-                pageBuilder: (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const ProjectsScreen(),
-                ),
-              ),
-            ],
-          ),
-          // Demo branch - simple navigation
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/demo',
-                pageBuilder: (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const DemoHomePage(),
-                ),
+                pageBuilder:
+                    (context, state) => NoTransitionPage(
+                      key: state.pageKey,
+                      child: const ProjectsScreen(),
+                    ),
               ),
             ],
           ),
@@ -83,10 +76,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/devtools',
-                pageBuilder: (context, state) => NoTransitionPage(
-                  key: state.pageKey,
-                  child: const DevToolsScreen(),
-                ),
+                pageBuilder:
+                    (context, state) => NoTransitionPage(
+                      key: state.pageKey,
+                      child: const DevToolsScreen(),
+                    ),
               ),
             ],
           ),
@@ -101,18 +95,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           return ThingPage(uuid: uuid);
         },
       ),
-      GoRoute(
-        path: '/demo-v6',
-        builder: (context, state) => const DemoPanelSystemV6(),
-      ),
-      GoRoute(
-        path: '/demo-v7',
-        builder: (context, state) => const DemoPanelSystemV7(),
-      ),
     ],
   );
 });
-
 
 // Custom page transition with no animation
 class NoTransitionPage<T> extends Page<T> {

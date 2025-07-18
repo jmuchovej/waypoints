@@ -5,7 +5,7 @@ import 'package:super_editor/super_editor.dart';
 
 import '../../objectbox/attributed_text_mixin.dart';
 import '../thing/interface.dart';
-import '../thing/thing_entity.dart';
+import '../thing/thing.entity.dart';
 
 /// Generic content block that can store any type of SuperEditor node.
 /// Follows the Thing architecture for polymorphic relationships and UUID resolution.
@@ -72,10 +72,6 @@ class BlockEntity
 
   @override
   bool deleted;
-
-  /// Polymorphic children relationship - blocks can contain other blocks
-  @override
-  final children = ToMany<ThingEntity>();
 
   /// Direct reference to the ThingEntity registration
   @override

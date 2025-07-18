@@ -1,12 +1,11 @@
 import 'dart:async';
 
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/super_editor.dart';
 import '../../objectbox/objectbox.g.dart';
-import '../../things/task/task_entity.dart';
+import '../../things/task/task.entity.dart';
 import '../../things/task/task_repository.dart';
 import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/buttons/filter_button.dart';
@@ -33,9 +32,7 @@ class _TasksTodayScreenState extends ConsumerState<TasksTodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final header = PanelHeader.readonly(
-      title: AttributedText("Today's Tasks"),
-    );
+    final header = PanelHeader.readonly(title: AttributedText("Today's Tasks"));
     return PanelWrapper<TaskEntity>(
       header: header,
       stream: getTasks(),
@@ -46,7 +43,7 @@ class _TasksTodayScreenState extends ConsumerState<TasksTodayScreen> {
         label: "Create Task",
         onPressed: () {},
       ),
-      actions: const [],
+      actions: [filterButton()],
     );
   }
 

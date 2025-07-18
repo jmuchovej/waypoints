@@ -51,13 +51,16 @@ class PanelAppBarSliverState extends ConsumerState<PanelAppBar>
     // 🎯 NEW: Calculate gradual opacity based on scroll progress through header
     final scrollProgress = (pixels / threshold).clamp(0.0, 1.0);
 
-    tempoLog.finest('Scroll: ${pixels}px / ${threshold}px = ${scrollProgress} opacity');
+    tempoPanelLog.finest(
+      'Scroll: ${pixels}px / ${threshold}px = ${scrollProgress} opacity',
+    );
 
     // 🎯 NEW: Update opacity values for smooth transition
     final newTitleOpacity = scrollProgress;
     final newBorderOpacity = scrollProgress;
 
-    if (newTitleOpacity != _titleOpacity || newBorderOpacity != _borderOpacity) {
+    if (newTitleOpacity != _titleOpacity ||
+        newBorderOpacity != _borderOpacity) {
       setState(() {
         _titleOpacity = newTitleOpacity;
         _borderOpacity = newBorderOpacity;
@@ -67,6 +70,7 @@ class PanelAppBarSliverState extends ConsumerState<PanelAppBar>
 
   @override
   Widget build(BuildContext context) {
+    final textStyles = TempoTextStyles.of(ref);
     // 🎯 NEW: Return SliverAppBar without NotificationListener
     // The listener needs to be at the CustomScrollView level, not here
     return SliverAppBar(
@@ -77,15 +81,21 @@ class PanelAppBarSliverState extends ConsumerState<PanelAppBar>
 
       // 🎯 NEW: Smooth title transition based on scroll progress
       title: Transform.translate(
-        offset: Offset(0, (1.0 - _titleOpacity) * 20), // Slide up as it fades in
-        child: Opacity(
-          opacity: _titleOpacity,
-          child: Text(widget.title),
-        ),
+        offset: Offset(
+          0,
+          (1.0 - _titleOpacity) * 20,
+        ), // Slide up as it fades in
+        child: Opacity(opacity: _titleOpacity, child: Text(widget.title)),
       ),
 
       // 📋 REUSED: Same actions and padding from original
       actions: widget.actions,
+      actionsPadding:
+          widget.actions.isEmpty
+              ? EdgeInsets.all(0)
+              : EdgeInsets.symmetric(
+                horizontal: textStyles.bodyLarge.fontSize!,
+              ),
 
       // 🎯 NEW: Use bottom property for the animated border (SliverAppBar-compatible)
       bottom: PreferredSize(
@@ -96,7 +106,6 @@ class PanelAppBarSliverState extends ConsumerState<PanelAppBar>
       ),
     );
   }
-
 }
 
 /// 📋 REUSED: Same animated border logic from original PanelAppBar

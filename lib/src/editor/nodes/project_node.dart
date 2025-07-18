@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/super_editor.dart';
 import '../../things/thing/interface.dart';
-import '../../things/thing/thing_entity.dart';
-import '../../things/project/project_entity.dart';
+import '../../things/thing/thing.entity.dart';
+import '../../things/project/project.entity.dart';
 import '../../things/project/project_repository.dart';
 
 const NamedAttribution projectAttribution = NamedAttribution("project");

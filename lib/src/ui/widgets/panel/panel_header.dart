@@ -5,31 +5,51 @@ import '../../../editor/editor.dart';
 import '../../../editor/styling/text_style_builders.dart';
 import '../../../styling/tempo_stylesheet.dart';
 
-class PanelHeader extends ConsumerStatefulWidget {
-  const PanelHeader({
+mixin PanelHeaderMixin on ConsumerStatefulWidget {
+  AttributedTextEditingController get controller;
+}
+
+class PanelHeader extends ConsumerStatefulWidget with PanelHeaderMixin {
+  PanelHeader({
     super.key,
     required this.titleController,
     required this.titleFocusNode,
-    required this.hintText,
+    AttributedText? text,
+    this.hintText,
     this.children = const [],
     this.readonly = false,
-  });
+  }) {
+    if (text != null) {
+      titleController.update(text: text);
+    }
+    if (!readonly) {
+      assert(hintText != null);
+    }
+  }
 
   /// Constructor for read-only titles
-  PanelHeader.readonly({
-    super.key,
+  factory PanelHeader.readonly({
     required AttributedText title,
-    this.children = const [],
-  }) : titleController = AttributedTextEditingController(text: title),
-       titleFocusNode = FocusNode(),
-       hintText = title,
-       readonly = true;
+    List<Widget> children = const [],
+  }) {
+    final titleController = AttributedTextEditingController(text: title);
+    final titleFocusNode = FocusNode();
+    return PanelHeader(
+      titleController: titleController,
+      titleFocusNode: titleFocusNode,
+      readonly: true,
+      children: children,
+    );
+  }
 
   final AttributedTextEditingController titleController;
   final FocusNode titleFocusNode;
-  final AttributedText hintText;
+  final AttributedText? hintText;
   final List<Widget> children;
   final bool readonly;
+
+  @override
+  AttributedTextEditingController get controller => titleController;
 
   @override
   ConsumerState<PanelHeader> createState() => _PanelHeaderState();
@@ -45,9 +65,13 @@ class _PanelHeaderState extends ConsumerState<PanelHeader> {
     final styleBuilder = headerTextStyleBuilder(context);
     final headerText =
         widget.readonly
-            ? TempoText.fromAttributedText(widget.hintText, textStyleBuilder: styleBuilder, sizeMode: TempoTextFieldSizeMode.max,)
+            ? TempoText.fromAttributedText(
+              widget.controller.text,
+              textStyleBuilder: styleBuilder,
+              sizeMode: TempoTextFieldSizeMode.max,
+            )
             : TempoTextField.fromAttributedText(
-              widget.hintText,
+              widget.hintText!,
               textStyleBuilder: styleBuilder,
               controller: widget.titleController,
               focusNode: widget.titleFocusNode,
@@ -73,7 +97,10 @@ class _PanelHeaderState extends ConsumerState<PanelHeader> {
           children: [
             Padding(
               padding: EdgeInsetsGeometry.only(
-                bottom: widget.children.isNotEmpty ?  textStyles.documentHeader.fontSize! / 2 : 0,
+                bottom:
+                    widget.children.isNotEmpty
+                        ? textStyles.documentHeader.fontSize! / 2
+                        : 0,
               ),
               child: headerText,
             ),

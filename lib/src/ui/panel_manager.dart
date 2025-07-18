@@ -131,7 +131,9 @@ class PanelManager extends StateNotifier<PanelSystemState> {
         tempoLog.finest('🖥️ Desktop detected - using panel system');
       }
     } else {
-      tempoLog.warning('❌ No context available for mobile detection - defaulting to panel system');
+      tempoLog.warning(
+        '❌ No context available for mobile detection - defaulting to panel system',
+      );
     }
 
     // Desktop: open in panel
@@ -204,7 +206,9 @@ class PanelManager extends StateNotifier<PanelSystemState> {
   }
 
   void _navigateToFullScreen(OpenThingRequest request, BuildContext context) {
-    tempoLog.info('🚀 PanelManager routing to full-screen for ${request.type}: ${request.uuid}');
+    tempoLog.info(
+      '🚀 PanelManager routing to full-screen for ${request.type}: ${request.uuid}',
+    );
 
     try {
       // Use AutoRoute to navigate to full-screen entity view

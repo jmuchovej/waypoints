@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../styling/text_styles.dart';
-import '../../../things/project/project_entity.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/task/task.entity.dart';
 import '../../../objectbox/services/resolver_service.dart';
 
 /// A pill-shaped widget that displays the completion progress of subprojects
@@ -18,7 +18,7 @@ class ProjectProgressChip extends ConsumerWidget {
     // Get all subprojects for this parent project
     final resolver = ref.read(resolverServiceProvider);
     final tasks = resolver.resolveTypedChildren<TaskEntity>(
-      parentProject.children.toList(),
+      parentProject.thing.target!.children.toList(),
       TaskEntity.key,
     );
 

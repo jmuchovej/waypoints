@@ -1,11 +1,12 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project/project_entity.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/task/task.entity.dart';
+import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
-class ICML2025Project implements DatabaseSeed {
+class ICML2025Project extends DatabaseSeed {
   final project = ProjectEntity(
     title: AttributedText("ML Paper Submission: ICML 2025"),
     uuid: "2a162804-05e2-4875-99dc-559bb6ac48c6",
@@ -92,7 +93,9 @@ class ICML2025Project implements DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.finer('  <seeding project="${project.title.toPlainText()}">');
+    tempoDBSeedLog.finer(
+      '  <seeding project="${project.title.toPlainText()}">',
+    );
     final projectID = s.projectRepo.put(project);
 
     // Literature review task and subtasks
@@ -110,8 +113,29 @@ class ICML2025Project implements DatabaseSeed {
       litBiliographyTask,
     ]);
 
+    // Set project relationships for literature review tasks
+    final savedProject = s.projectRepo.get(projectID)!;
+    tempoDBSeedLog.fine(
+      'Setting project relationships for ${savedProject.title.toPlainText()}',
+    );
+    for (final taskID in [
+      litReviewID,
+      litReviewAttnID,
+      litReviewSparseAttnID,
+      litReviewEfficientTransformersID,
+      litBiliographyID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedLitReviewTask = s.taskRepo.get(litReviewID)!;
-    savedLitReviewTask.children.addAll(
+    final savedLitReviewTaskThingEntity = savedLitReviewTask.thing.target!;
+    savedLitReviewTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([
             litReviewAttnID,
@@ -119,8 +143,10 @@ class ICML2025Project implements DatabaseSeed {
             litReviewEfficientTransformersID,
             litBiliographyID,
           ])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedLitReviewTaskThingEntity);
     s.taskRepo.put(savedLitReviewTask);
 
     // Experiment task and subtasks
@@ -136,12 +162,30 @@ class ICML2025Project implements DatabaseSeed {
       deployOnGPUTask,
     ]);
 
+    // Set project relationships for experiment tasks
+    for (final taskID in [
+      experimentID,
+      prepareDatasetsID,
+      implementBaselinesID,
+      deployOnGPUID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedExperimentTask = s.taskRepo.get(experimentID)!;
-    savedExperimentTask.children.addAll(
+    final savedExperimentTaskThingEntity = savedExperimentTask.thing.target!;
+    savedExperimentTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([prepareDatasetsID, implementBaselinesID, deployOnGPUID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedExperimentTaskThingEntity);
     s.taskRepo.put(savedExperimentTask);
 
     // Paper draft task and subtasks
@@ -159,8 +203,25 @@ class ICML2025Project implements DatabaseSeed {
       writeResultsTask,
     ]);
 
+    // Set project relationships for paper draft tasks
+    for (final taskID in [
+      paperDraftID,
+      writeAbstractID,
+      writeRelatedWorksID,
+      writeMethodsID,
+      writeResultsID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedPaperDraftTask = s.taskRepo.get(paperDraftID)!;
-    savedPaperDraftTask.children.addAll(
+    final savedPaperDraftTaskThingEntity = savedPaperDraftTask.thing.target!;
+    savedPaperDraftTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([
             writeAbstractID,
@@ -168,16 +229,20 @@ class ICML2025Project implements DatabaseSeed {
             writeMethodsID,
             writeResultsID,
           ])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedPaperDraftTaskThingEntity);
     s.taskRepo.put(savedPaperDraftTask);
 
-    final savedProject = s.projectRepo.get(projectID)!;
-    savedProject.children.addAll(
+    final savedProjectThingEntity = savedProject.thing.target!;
+    savedProjectThingEntity.children.addAll(
       s.taskRepo
           .getMany([litReviewID, experimentID, paperDraftID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
     s.projectRepo.put(savedProject);
   }
 }

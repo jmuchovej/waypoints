@@ -1,16 +1,14 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../objectbox/objectbox.dart';
-import '../../things/task/task_entity.dart';
-import '../../things/project/project_entity.dart';
-import '../../things/activity/activity_entity.dart';
-import '../../things/block/block_entity.dart';
+import '../../things/task/task.entity.dart';
+import '../../things/project/project.entity.dart';
+import '../../things/activity/activity.entity.dart';
+import '../../things/block/block.entity.dart';
 import '../database/seed.dart';
 
-@RoutePage()
 class DevToolsScreen extends ConsumerStatefulWidget {
   const DevToolsScreen({super.key});
 

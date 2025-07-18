@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../editor/editor.dart';
 import '../infrastructure/logging.dart';
+import '../ui/widgets/panel/panel_header.dart';
 import 'thing/interface.dart';
-import 'thing/thing_entity.dart';
+import 'thing/thing.entity.dart';
 import 'task/task_factories.dart';
 import 'project/project_factories.dart';
 import 'block/block_factories.dart';
@@ -51,9 +52,11 @@ class ThingNodeFactoryRegistry {
   final Map<String, ThingNodeFactory> _factories = {};
 
   /// Register a factory for a specific entity type
-  void register<T extends BaseThing, R extends ThingRepository, N extends DocumentNode>(
-    ThingNodeFactory<T, R, N> factory,
-  ) {
+  void register<
+    T extends BaseThing,
+    R extends ThingRepository,
+    N extends DocumentNode
+  >(ThingNodeFactory<T, R, N> factory) {
     _factories[factory.type] = factory;
     tempoLog.info('Registered node factory for ${factory.type}');
   }
@@ -119,18 +122,18 @@ abstract class ThingPanelHeaderFactory<
 
   final Ref _ref;
   final Provider<R> _provider;
-  final Widget Function(T thing) _factory;
+  final PanelHeaderMixin Function(T thing) _factory;
 
   /// The entity type this factory handles
   String get type;
 
   /// Convert a BaseThing entity to a DocumentNode
   /// Returns null if the entity cannot be converted
-  Widget buildPanelHeaderFromEntity(T entity) => _factory(entity);
+  PanelHeaderMixin buildPanelHeaderFromEntity(T entity) => _factory(entity);
 
   /// Convert a ThingEntity (generic) to a DocumentNode
   /// This allows factories to work with the generic ThingEntity type
-  Widget buildPanelHeader(ThingEntity thing) {
+  PanelHeaderMixin buildPanelHeader(ThingEntity thing) {
     if (thing.type != type) {
       throw TypeError();
     }
@@ -164,7 +167,7 @@ class PanelHeaderFactoryRegistry {
   }
 
   /// Convert a ThingEntity to a DocumentNode using the appropriate factory
-  Widget fromThingEntity(ThingEntity entity) {
+  PanelHeaderMixin fromThingEntity(ThingEntity entity) {
     final factory = getFactory(entity.type);
     if (factory == null) {
       throw MissingHeaderFactoryException(entity.type);
@@ -173,7 +176,7 @@ class PanelHeaderFactoryRegistry {
     return factory.buildPanelHeader(entity);
   }
 
-  Widget fromThing(Thing thing) {
+  PanelHeaderMixin fromThing(Thing thing) {
     final factory = getFactory(thing.type);
     if (factory == null) {
       throw MissingHeaderFactoryException(thing.type);
@@ -200,11 +203,13 @@ class MissingHeaderFactoryException implements Exception {
   String toString() => 'MissingHeaderFactoryException: $type';
 }
 
-final panelHeaderFactoryRegistryProvider = Provider<PanelHeaderFactoryRegistry>((ref) {
-  final registry = PanelHeaderFactoryRegistry();
+final panelHeaderFactoryRegistryProvider = Provider<PanelHeaderFactoryRegistry>(
+  (ref) {
+    final registry = PanelHeaderFactoryRegistry();
 
-  registry.register(TaskHeaderFactory(ref));
-  registry.register(ProjectHeaderFactory(ref));
+    registry.register(TaskHeaderFactory(ref));
+    registry.register(ProjectHeaderFactory(ref));
 
-  return registry;
-});
+    return registry;
+  },
+);

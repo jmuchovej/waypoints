@@ -1,12 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/super_editor.dart';
+import '../../infrastructure/logging.dart';
 import '../../ui/widgets/panel/panel_header.dart';
-import '../../objectbox/objectbox.g.dart';
-import '../../things/task/task_entity.dart';
+import '../../things/task/task.entity.dart';
 import '../../things/task/task_repository.dart';
 import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/buttons/filter_button.dart';
@@ -40,24 +42,42 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       onPressed: () {},
     );
 
-    final header = PanelHeader.readonly(
-      title: AttributedText('Tasks'),
-    );
+    final header = PanelHeader.readonly(title: AttributedText('Tasks'));
 
     return PanelWrapper<TaskEntity>(
       header: header,
       stream: getTasks(),
       emptyWidget: emptyWidget,
-      actions: const [],
+      routePath: '/tasks',
+      actions: [filterButton()],
     );
   }
 
   Stream<TaskEntity> getTasks() {
     final repo = ref.read(taskRepositoryProvider);
 
-    final Condition<TaskEntity> filter = repo.active();
+    final before = ProcessInfo.currentRss;
+    final tasks = repo.getAll();
 
-    return repo.streamEntities(filter);
+    final after = ProcessInfo.currentRss;
+    final perTask = (after - before) / tasks.length;
+    tempoTaskRouteLog.finer("Average memory per task: ${perTask} bytes");
+
+    // Stream top-level active tasks and flatten to individual entities
+    return repo
+        .streamTopLevel()
+        .map((tasks) {
+          tempoTaskRouteLog.info('received ${tasks.length} top-level tasks');
+          return tasks;
+        })
+        .asyncExpand((tasks) async* {
+          for (final task in tasks) {
+            tempoTaskRouteLog.info(
+              'yielding task: ${task.uuid} - ${task.title.toPlainText()}',
+            );
+            yield task;
+          }
+        });
   }
 
   FilterButton filterButton() {

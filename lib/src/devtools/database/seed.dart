@@ -53,7 +53,7 @@ class SeedDataService {
 
   /// Clears all sample data from the database
   Future<void> clearAllData() async {
-    dbLog.fine('Clearing all data from database...');
+    tempoDBSeedLog.fine('Clearing all data from database...');
     // Remove all entities using repositories
     final tasksRemoved = taskRepo.removeAll();
     final projectsRemoved = projectRepo.removeAll();
@@ -61,29 +61,39 @@ class SeedDataService {
     final blocksRemoved = blockRepo.removeAll();
 
     _hasSeeded = false;
-    dbLog.fine(
+    tempoDBSeedLog.fine(
       'All data cleared from database - Tasks: $tasksRemoved, Projects: $projectsRemoved, Activities: $activitiesRemoved, Blocks: $blocksRemoved',
     );
   }
 
   /// Seeds the database with sample data if in development mode
   /// and if the database is empty
+  ///
+  /// TODO: PERFORMANCE - Seeding currently blocks the UI thread
+  /// This may be due to excessive tempoDBSeedLog.ging or synchronous database operations.
+  /// Consider:
+  /// 1. Running seeding in an isolate
+  /// 2. Reducing tempoDBSeedLog.ging verbosity during seeding
+  /// 3. Using batch operations where possible
+  /// 4. Adding progress indicators for long-running seeds
   Future<void> seedIfNeeded({bool force = false}) async {
     // Prevent concurrent seeding
     if (_isSeeding) {
-      dbLog.warning('Seeding already in progress, skipping...');
+      tempoDBSeedLog.warning('Seeding already in progress, skipping...');
       return;
     }
 
     // Skip if already seeded and not forced
     if (_hasSeeded && !force) {
-      dbLog.fine('Data already seeded and not forcing, skipping...');
+      tempoDBSeedLog.fine('Data already seeded and not forcing, skipping...');
       return;
     }
 
     // Check if in development mode
     if (flavor.isDevelopment && !force) {
-      dbLog.fine('Not in development mode and not forcing, skipping...');
+      tempoDBSeedLog.fine(
+        'Not in development mode and not forcing, skipping...',
+      );
       return;
     }
 
@@ -92,24 +102,26 @@ class SeedDataService {
       // Check if database is empty
       final taskCount = taskRepo.count();
       final projectCount = projectRepo.count();
-      dbLog.fine('Current counts - Tasks: $taskCount, Projects: $projectCount');
+      tempoDBSeedLog.fine(
+        'Current counts - Tasks: $taskCount, Projects: $projectCount',
+      );
 
       if ((taskCount == 0 && projectCount == 0) || force) {
         // Clear existing data if forcing re-seed
         if (force && (taskCount > 0 || projectCount > 0)) {
-          dbLog.fine('Force re-seed: clearing existing data first');
+          tempoDBSeedLog.fine('Force re-seed: clearing existing data first');
           await clearAllData();
         }
 
-        dbLog.fine('Starting to seed sample data...');
+        tempoDBSeedLog.info('Starting to seed sample data...');
         await _seedSampleData();
         _hasSeeded = true;
-        dbLog.fine('All data seeded to database successfully');
+        tempoDBSeedLog.info('All data seeded to database successfully');
       } else {
-        dbLog.fine('Database already contains data, skipping seed');
+        tempoDBSeedLog.fine('Database already contains data, skipping seed');
       }
     } catch (e, stackTrace) {
-      dbLog.severe('Error during seeding: $e', e, stackTrace);
+      tempoDBSeedLog.severe('Error during seeding: $e', e, stackTrace);
       rethrow;
     } finally {
       _isSeeding = false;

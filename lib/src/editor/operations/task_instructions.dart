@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../super_editor.dart';
 import '../nodes/task_node.dart';
 
-
 /// region: Esc ////////////////////////////////////////////////////////////////
 ExecutionInstruction escToDeselectTask({
   required SuperEditorContext editContext,
@@ -72,6 +71,7 @@ class TaskSelectionCommand extends EditCommand {
     executor.logChanges([DocumentEdit(NodeChangeEvent(task.id))]);
   }
 }
+
 /// endregion //////////////////////////////////////////////////////////////////
 
 /// region: Spacebar ///////////////////////////////////////////////////////////
@@ -120,4 +120,5 @@ class ToggleTaskEditModeCommand extends EditCommand {
     executor.logChanges([DocumentEdit(NodeChangeEvent(taskID))]);
   }
 }
+
 /// endregion //////////////////////////////////////////////////////////////////

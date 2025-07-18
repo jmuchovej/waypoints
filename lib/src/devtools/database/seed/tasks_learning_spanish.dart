@@ -1,11 +1,12 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project/project_entity.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/task/task.entity.dart';
+import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
-class B2SpanishCertificationProject implements DatabaseSeed {
+class B2SpanishCertificationProject extends DatabaseSeed {
   final project = ProjectEntity(
     title: AttributedText("B2 Spanish Certification"),
     uuid: "824ef3b9-ca9a-4dee-9395-3f2cdd3faad0",
@@ -60,7 +61,9 @@ class B2SpanishCertificationProject implements DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.finer('  <seeding project="${project.title.toPlainText()}">');
+    tempoDBSeedLog.finer(
+      '  <seeding project="${project.title.toPlainText()}">',
+    );
     final projectID = s.projectRepo.put(project);
 
     // Weekly practice task and subtasks
@@ -68,11 +71,15 @@ class B2SpanishCertificationProject implements DatabaseSeed {
         .putMany([weeklyPracticeTask, italkiLessonTask, conversationTask]);
 
     final savedWeeklyPracticeTask = s.taskRepo.get(weeklyPracticeID)!;
-    savedWeeklyPracticeTask.children.addAll(
+    final savedWeeklyPracticeTaskThingEntity =
+        savedWeeklyPracticeTask.thing.target!;
+    savedWeeklyPracticeTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([italkiLessonID, conversationID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedWeeklyPracticeTaskThingEntity);
     s.taskRepo.put(savedWeeklyPracticeTask);
 
     // Complete practice exam task and subtasks
@@ -90,21 +97,49 @@ class B2SpanishCertificationProject implements DatabaseSeed {
       oralCompTask,
     ]);
 
+    // Set project relationships for all tasks
+    final savedProject = s.projectRepo.get(projectID)!;
+    tempoDBSeedLog.fine(
+      'Setting project relationships for ${savedProject.title.toPlainText()}',
+    );
+    for (final taskID in [
+      completePracticeExamID,
+      readingCompID,
+      listeningCompID,
+      writtenCompID,
+      oralCompID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedCompletePracticeExamTask =
         s.taskRepo.get(completePracticeExamID)!;
-    savedCompletePracticeExamTask.children.addAll(
+    final savedCompletePracticeExamTaskThingEntity =
+        savedCompletePracticeExamTask.thing.target!;
+    savedCompletePracticeExamTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([readingCompID, listeningCompID, writtenCompID, oralCompID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
+    );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(
+      savedCompletePracticeExamTaskThingEntity,
     );
     s.taskRepo.put(savedCompletePracticeExamTask);
 
-    final savedProject = s.projectRepo.get(projectID)!;
-    savedProject.children.addAll(
+    final savedProjectThingEntity = savedProject.thing.target!;
+    savedProjectThingEntity.children.addAll(
       s.taskRepo
           .getMany([weeklyPracticeID, completePracticeExamID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
     s.projectRepo.put(savedProject);
   }
 }

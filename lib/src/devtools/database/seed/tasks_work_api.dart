@@ -1,12 +1,13 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project/project_entity.dart';
-import '../../../things/task/task_entity.dart';
-import '../../../things/block/block_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/task/task.entity.dart';
+import '../../../things/block/block.entity.dart';
+import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
-class APIv2MigrationProject implements DatabaseSeed {
+class APIv2MigrationProject extends DatabaseSeed {
   final project = ProjectEntity(
     title: AttributedText("API v2 Migration"),
     uuid: "b837b01d-9a4f-43c5-ac95-3ff454be411d",
@@ -20,33 +21,39 @@ class APIv2MigrationProject implements DatabaseSeed {
   );
 
   final projectDescBlock = BlockEntity(
-    uuid: "api-overview-block-002", 
+    uuid: "api-overview-block-002",
     nodeType: "paragraph",
-    content: AttributedText("Migration from our legacy v1 API to the new GraphQL-based v2 architecture. This involves updating all endpoints, client libraries, and ensuring backward compatibility during the transition period."),
+    content: AttributedText(
+      "Migration from our legacy v1 API to the new GraphQL-based v2 architecture. This involves updating all endpoints, client libraries, and ensuring backward compatibility during the transition period.",
+    ),
   );
 
   final objectivesHeaderBlock = BlockEntity(
     uuid: "api-overview-block-003",
-    nodeType: "header2", 
+    nodeType: "header2",
     content: AttributedText("Key Objectives"),
   );
 
   final objectivesListBlock = BlockEntity(
     uuid: "api-overview-block-004",
     nodeType: "list_item",
-    content: AttributedText("Migrate 47 v1 REST endpoints to GraphQL\nUpdate client SDKs for JavaScript, Python, iOS, and Android\nMaintain 6-month backward compatibility\nImprove API response times by 40%"),
+    content: AttributedText(
+      "Migrate 47 v1 REST endpoints to GraphQL\nUpdate client SDKs for JavaScript, Python, iOS, and Android\nMaintain 6-month backward compatibility\nImprove API response times by 40%",
+    ),
   );
 
   final successHeaderBlock = BlockEntity(
     uuid: "api-overview-block-005",
     nodeType: "header2",
-    content: AttributedText("Success Criteria"), 
+    content: AttributedText("Success Criteria"),
   );
 
   final successListBlock = BlockEntity(
     uuid: "api-overview-block-006",
     nodeType: "list_item",
-    content: AttributedText("All critical endpoints migrated and tested\nZero breaking changes for existing clients\nPerformance benchmarks met\nDocumentation updated with migration guides"),
+    content: AttributedText(
+      "All critical endpoints migrated and tested\nZero breaking changes for existing clients\nPerformance benchmarks met\nDocumentation updated with migration guides",
+    ),
   );
 
   final apiEndpointTask = DevtoolsTaskDefaults.withDefaults(
@@ -64,15 +71,19 @@ class APIv2MigrationProject implements DatabaseSeed {
   );
 
   final apiEndpointDetailsBlock = BlockEntity(
-    uuid: "api-endpoint-desc-002", 
+    uuid: "api-endpoint-desc-002",
     nodeType: "paragraph",
-    content: AttributedText("Create detailed documentation of all current REST endpoints including HTTP methods, URL patterns, request/response schemas, authentication requirements, rate limiting rules, and usage metrics from past 6 months."),
+    content: AttributedText(
+      "Create detailed documentation of all current REST endpoints including HTTP methods, URL patterns, request/response schemas, authentication requirements, rate limiting rules, and usage metrics from past 6 months.",
+    ),
   );
 
   final apiEndpointImportanceBlock = BlockEntity(
     uuid: "api-endpoint-desc-003",
-    nodeType: "paragraph", 
-    content: AttributedText("This foundation is critical for planning the GraphQL migration strategy."),
+    nodeType: "paragraph",
+    content: AttributedText(
+      "This foundation is critical for planning the GraphQL migration strategy.",
+    ),
   );
 
   final listV1EndpointsTask = DevtoolsTaskDefaults.withDefaults(
@@ -91,37 +102,49 @@ class APIv2MigrationProject implements DatabaseSeed {
   final v1EndpointsListBlock1 = BlockEntity(
     uuid: "api-v1-list-008",
     nodeType: "list_item",
-    content: AttributedText("/api/v1/users - User management (GET, POST, PUT, DELETE)"),
+    content: AttributedText(
+      "/api/v1/users - User management (GET, POST, PUT, DELETE)",
+    ),
   );
 
   final v1EndpointsListBlock2 = BlockEntity(
     uuid: "api-v1-list-009",
-    nodeType: "list_item", 
-    content: AttributedText("/api/v1/organizations - Org management with nested resources"),
+    nodeType: "list_item",
+    content: AttributedText(
+      "/api/v1/organizations - Org management with nested resources",
+    ),
   );
 
   final v1EndpointsListBlock3 = BlockEntity(
     uuid: "api-v1-list-010",
     nodeType: "list_item",
-    content: AttributedText("/api/v1/projects/{id}/tasks - Project task aggregations"),
+    content: AttributedText(
+      "/api/v1/projects/{id}/tasks - Project task aggregations",
+    ),
   );
 
   final v1EndpointsListBlock4 = BlockEntity(
-    uuid: "api-v1-list-011", 
+    uuid: "api-v1-list-011",
     nodeType: "list_item",
-    content: AttributedText("/api/v1/analytics/* - 23 analytics endpoints with complex filters"),
+    content: AttributedText(
+      "/api/v1/analytics/* - 23 analytics endpoints with complex filters",
+    ),
   );
 
   final v1EndpointsListBlock5 = BlockEntity(
     uuid: "api-v1-list-012",
     nodeType: "list_item",
-    content: AttributedText("/api/v1/integrations/* - Webhook and OAuth endpoints"),
+    content: AttributedText(
+      "/api/v1/integrations/* - Webhook and OAuth endpoints",
+    ),
   );
 
   final v1EndpointsStatusBlock = BlockEntity(
     uuid: "api-v1-status-013",
     nodeType: "paragraph",
-    content: AttributedText("Status: Complete inventory of 47 endpoints documented in Confluence."),
+    content: AttributedText(
+      "Status: Complete inventory of 47 endpoints documented in Confluence.",
+    ),
   );
 
   final listDeprecatedEndpointsTask = DevtoolsTaskDefaults.withDefaults(
@@ -140,7 +163,9 @@ class APIv2MigrationProject implements DatabaseSeed {
   final deprecatedListBlock1 = BlockEntity(
     uuid: "api-deprecated-list-015",
     nodeType: "list_item",
-    content: AttributedText("/api/v1/legacy/reports - Replaced by new analytics"),
+    content: AttributedText(
+      "/api/v1/legacy/reports - Replaced by new analytics",
+    ),
   );
 
   final deprecatedListBlock2 = BlockEntity(
@@ -152,13 +177,17 @@ class APIv2MigrationProject implements DatabaseSeed {
   final deprecatedListBlock3 = BlockEntity(
     uuid: "api-deprecated-list-017",
     nodeType: "list_item",
-    content: AttributedText("/api/v1/temp/* - Experimental endpoints from 2022"),
+    content: AttributedText(
+      "/api/v1/temp/* - Experimental endpoints from 2022",
+    ),
   );
 
   final deprecatedAnalysisBlock = BlockEntity(
     uuid: "api-deprecated-analysis-018",
     nodeType: "paragraph",
-    content: AttributedText("Usage Analysis: 3 endpoints still have active traffic (<0.1% of total), deprecation notices sent to affected clients, final sunset date Q2 2025."),
+    content: AttributedText(
+      "Usage Analysis: 3 endpoints still have active traffic (<0.1% of total), deprecation notices sent to affected clients, final sunset date Q2 2025.",
+    ),
   );
 
   final mapEndpointUpgradesTask = DevtoolsTaskDefaults.withDefaults(
@@ -177,25 +206,33 @@ class APIv2MigrationProject implements DatabaseSeed {
   final migrationConsolidationBlock = BlockEntity(
     uuid: "api-migration-consolidation-020",
     nodeType: "paragraph",
-    content: AttributedText("Query Consolidation: Multiple GET endpoints become single GraphQL queries. Example: /api/v1/users/{id} + /api/v1/users/{id}/profile → user(id: ID) { profile }"),
+    content: AttributedText(
+      "Query Consolidation: Multiple GET endpoints become single GraphQL queries. Example: /api/v1/users/{id} + /api/v1/users/{id}/profile → user(id: ID) { profile }",
+    ),
   );
 
   final migrationPatternsBlock = BlockEntity(
     uuid: "api-migration-patterns-021",
     nodeType: "paragraph",
-    content: AttributedText("Mutation Patterns: CRUD operations become GraphQL mutations with consistent naming, batch operations now possible with single request."),
+    content: AttributedText(
+      "Mutation Patterns: CRUD operations become GraphQL mutations with consistent naming, batch operations now possible with single request.",
+    ),
   );
 
   final migrationBreakingBlock = BlockEntity(
     uuid: "api-migration-breaking-022",
     nodeType: "paragraph",
-    content: AttributedText("Breaking Changes: Date format standardized to ISO 8601, error responses restructured for GraphQL spec, pagination uses cursor-based approach."),
+    content: AttributedText(
+      "Breaking Changes: Date format standardized to ISO 8601, error responses restructured for GraphQL spec, pagination uses cursor-based approach.",
+    ),
   );
 
   final migrationGuideBlock = BlockEntity(
     uuid: "api-migration-guide-023",
     nodeType: "paragraph",
-    content: AttributedText("Migration guide drafted with before/after examples."),
+    content: AttributedText(
+      "Migration guide drafted with before/after examples.",
+    ),
   );
 
   final updateClientLibrariesTask = DevtoolsTaskDefaults.withDefaults(
@@ -215,7 +252,9 @@ class APIv2MigrationProject implements DatabaseSeed {
   final clientLibsOverviewBlock = BlockEntity(
     uuid: "api-clientlibs-overview-025",
     nodeType: "paragraph",
-    content: AttributedText("Update all official client libraries to support GraphQL v2 API while maintaining backward compatibility with v1."),
+    content: AttributedText(
+      "Update all official client libraries to support GraphQL v2 API while maintaining backward compatibility with v1.",
+    ),
   );
 
   final clientLibsScopeHeaderBlock = BlockEntity(
@@ -305,7 +344,9 @@ class APIv2MigrationProject implements DatabaseSeed {
   final jsSDKChangesBlock1 = BlockEntity(
     uuid: "api-jssdk-changes-039",
     nodeType: "list_item",
-    content: AttributedText("GraphQL client using Apollo Client under the hood"),
+    content: AttributedText(
+      "GraphQL client using Apollo Client under the hood",
+    ),
   );
 
   final jsSDKChangesBlock2 = BlockEntity(
@@ -323,7 +364,9 @@ class APIv2MigrationProject implements DatabaseSeed {
   final jsSDKChangesBlock4 = BlockEntity(
     uuid: "api-jssdk-changes-042",
     nodeType: "list_item",
-    content: AttributedText("Backwards compatibility adapter for v1 REST calls"),
+    content: AttributedText(
+      "Backwards compatibility adapter for v1 REST calls",
+    ),
   );
 
   final jsSDKImplHeaderBlock = BlockEntity(
@@ -574,7 +617,9 @@ class APIv2MigrationProject implements DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.finer('  <seeding project="${project.title.toPlainText()}">');
+    tempoDBSeedLog.finer(
+      '  <seeding project="${project.title.toPlainText()}">',
+    );
     final projectID = s.projectRepo.put(project);
 
     // Seed project description blocks
@@ -703,41 +748,72 @@ class APIv2MigrationProject implements DatabaseSeed {
       mapEndpointUpgradesTask,
     ]);
 
+    // Set project relationships for all tasks
+    final savedProject = s.projectRepo.get(projectID)!;
+    tempoDBSeedLog.fine(
+      'Setting project relationships for ${savedProject.title.toPlainText()}',
+    );
+    for (final taskID in [
+      apiEndpointID,
+      listV1EndpointsID,
+      listDeprecatedEndpointsID,
+      mapEndpointUpgradesID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     // Add blocks as children to specific tasks
     final savedApiEndpointTask = s.taskRepo.get(apiEndpointID)!;
-    savedApiEndpointTask.children.addAll(
-      s.blockRepo.getMany(apiEndpointBlockIDs).map((b) => b!.asThingEntity())
+    final savedApiEndpointTaskThingEntity = savedApiEndpointTask.thing.target!;
+    savedApiEndpointTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(apiEndpointBlockIDs).map((b) => b!.thing.target!),
     );
-    savedApiEndpointTask.children.addAll(
+    savedApiEndpointTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([
             listV1EndpointsID,
             listDeprecatedEndpointsID,
             mapEndpointUpgradesID,
           ])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedApiEndpointTaskThingEntity);
     s.taskRepo.put(savedApiEndpointTask);
 
     // Add blocks to V1 endpoints task
     final savedV1EndpointsTask = s.taskRepo.get(listV1EndpointsID)!;
-    savedV1EndpointsTask.children.addAll(
-      s.blockRepo.getMany(v1EndpointsBlockIDs).map((b) => b!.asThingEntity())
+    final savedV1EndpointsTaskThingEntity = savedV1EndpointsTask.thing.target!;
+    savedV1EndpointsTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(v1EndpointsBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedV1EndpointsTaskThingEntity);
     s.taskRepo.put(savedV1EndpointsTask);
 
     // Add blocks to deprecated endpoints task
     final savedDeprecatedTask = s.taskRepo.get(listDeprecatedEndpointsID)!;
-    savedDeprecatedTask.children.addAll(
-      s.blockRepo.getMany(deprecatedBlockIDs).map((b) => b!.asThingEntity())
+    final savedDeprecatedTaskThingEntity = savedDeprecatedTask.thing.target!;
+    savedDeprecatedTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(deprecatedBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedDeprecatedTaskThingEntity);
     s.taskRepo.put(savedDeprecatedTask);
 
     // Add blocks to migration mapping task
     final savedMigrationTask = s.taskRepo.get(mapEndpointUpgradesID)!;
-    savedMigrationTask.children.addAll(
-      s.blockRepo.getMany(migrationBlockIDs).map((b) => b!.asThingEntity())
+    final savedMigrationTaskThingEntity = savedMigrationTask.thing.target!;
+    savedMigrationTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(migrationBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedMigrationTaskThingEntity);
     s.taskRepo.put(savedMigrationTask);
 
     // Update client libraries task and subtasks
@@ -749,46 +825,76 @@ class APIv2MigrationProject implements DatabaseSeed {
           mobileSDKsTask,
         ]);
 
+    // Set project relationships for client library tasks
+    for (final taskID in [
+      updateClientLibrariesID,
+      jsSDKID,
+      pySDKID,
+      mobileSDKsID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+    }
+
     final savedUpdateClientLibrariesTask =
         s.taskRepo.get(updateClientLibrariesID)!;
-    savedUpdateClientLibrariesTask.children.addAll(
-      s.blockRepo.getMany(clientLibsBlockIDs).map((b) => b!.asThingEntity())
+    final savedUpdateClientLibrariesTaskThingEntity =
+        savedUpdateClientLibrariesTask.thing.target!;
+    savedUpdateClientLibrariesTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(clientLibsBlockIDs).map((b) => b!.thing.target!),
     );
-    savedUpdateClientLibrariesTask.children.addAll(
+    savedUpdateClientLibrariesTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([jsSDKID, pySDKID, mobileSDKsID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
+    );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(
+      savedUpdateClientLibrariesTaskThingEntity,
     );
     s.taskRepo.put(savedUpdateClientLibrariesTask);
 
     // Add blocks to SDK subtasks
     final savedJsSDKTask = s.taskRepo.get(jsSDKID)!;
-    savedJsSDKTask.children.addAll(
-      s.blockRepo.getMany(jsSDKBlockIDs).map((b) => b!.asThingEntity())
+    final savedJsSDKTaskThingEntity = savedJsSDKTask.thing.target!;
+    savedJsSDKTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(jsSDKBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedJsSDKTaskThingEntity);
     s.taskRepo.put(savedJsSDKTask);
 
     final savedPySDKTask = s.taskRepo.get(pySDKID)!;
-    savedPySDKTask.children.addAll(
-      s.blockRepo.getMany(pySDKBlockIDs).map((b) => b!.asThingEntity())
+    final savedPySDKTaskThingEntity = savedPySDKTask.thing.target!;
+    savedPySDKTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(pySDKBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedPySDKTaskThingEntity);
     s.taskRepo.put(savedPySDKTask);
 
     final savedMobileSDKsTask = s.taskRepo.get(mobileSDKsID)!;
-    savedMobileSDKsTask.children.addAll(
-      s.blockRepo.getMany(mobileSDKsBlockIDs).map((b) => b!.asThingEntity())
+    final savedMobileSDKsTaskThingEntity = savedMobileSDKsTask.thing.target!;
+    savedMobileSDKsTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(mobileSDKsBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedMobileSDKsTaskThingEntity);
     s.taskRepo.put(savedMobileSDKsTask);
 
-    final savedProject = s.projectRepo.get(projectID)!;
-    savedProject.children.addAll(
-      s.blockRepo.getMany(projectBlockIDs).map((b) => b!.asThingEntity())
+    // Update project with children (project already loaded above)
+    final savedProjectThingEntity = savedProject.thing.target!;
+    savedProjectThingEntity.children.addAll(
+      s.blockRepo.getMany(projectBlockIDs).map((b) => b!.thing.target!),
     );
-    savedProject.children.addAll(
+    savedProjectThingEntity.children.addAll(
       s.taskRepo
           .getMany([apiEndpointID, updateClientLibrariesID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
     s.projectRepo.put(savedProject);
   }
 }

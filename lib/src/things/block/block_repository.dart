@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../thing/interface.dart';
-import 'block_entity.dart';
+import 'block.entity.dart';
 
 /// Repository for managing BlockEntity persistence and auto-save
 class BlockRepository extends ThingRepository<BlockEntity> {

@@ -1,12 +1,13 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project/project_entity.dart';
-import '../../../things/task/task_entity.dart';
-import '../../../things/block/block_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/task/task.entity.dart';
+import '../../../things/block/block.entity.dart';
+import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
-class Q1LaunchProject implements DatabaseSeed {
+class Q1LaunchProject extends DatabaseSeed {
   final project = ProjectEntity(
     title: AttributedText("Q1 Product Launch"),
     uuid: "ad8fd8d8-974c-49ff-bbfc-b474ccca3467",
@@ -22,7 +23,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final projectDetailsBlock = BlockEntity(
     uuid: "launch-proj-details-002",
     nodeType: "paragraph",
-    content: AttributedText("Launch Date: March 15, 2025 | Product: Tempo Analytics Pro - Advanced analytics dashboard with AI insights"),
+    content: AttributedText(
+      "Launch Date: March 15, 2025 | Product: Tempo Analytics Pro - Advanced analytics dashboard with AI insights",
+    ),
   );
 
   final strategyHeaderBlock = BlockEntity(
@@ -34,37 +37,47 @@ class Q1LaunchProject implements DatabaseSeed {
   final strategyBlock = BlockEntity(
     uuid: "launch-proj-strategy-004",
     nodeType: "paragraph",
-    content: AttributedText("Coordinated product and marketing launch targeting enterprise customers. Focus on demonstrating ROI through automated insights and custom reporting capabilities."),
+    content: AttributedText(
+      "Coordinated product and marketing launch targeting enterprise customers. Focus on demonstrating ROI through automated insights and custom reporting capabilities.",
+    ),
   );
 
   final featuresHeaderBlock = BlockEntity(
     uuid: "launch-proj-features-005",
-    nodeType: "header2", 
+    nodeType: "header2",
     content: AttributedText("Key Features"),
   );
 
   final featuresListBlock1 = BlockEntity(
     uuid: "launch-proj-features-006",
     nodeType: "list_item",
-    content: AttributedText("Real-time Dashboard: Live metrics with customizable widgets"),
+    content: AttributedText(
+      "Real-time Dashboard: Live metrics with customizable widgets",
+    ),
   );
 
   final featuresListBlock2 = BlockEntity(
     uuid: "launch-proj-features-007",
     nodeType: "list_item",
-    content: AttributedText("AI Insights: Automated anomaly detection and recommendations"),
+    content: AttributedText(
+      "AI Insights: Automated anomaly detection and recommendations",
+    ),
   );
 
   final featuresListBlock3 = BlockEntity(
     uuid: "launch-proj-features-008",
     nodeType: "list_item",
-    content: AttributedText("Export Engine: Support for PDF, Excel, and API integrations"),
+    content: AttributedText(
+      "Export Engine: Support for PDF, Excel, and API integrations",
+    ),
   );
 
   final featuresListBlock4 = BlockEntity(
     uuid: "launch-proj-features-009",
     nodeType: "list_item",
-    content: AttributedText("Enterprise Auth: SSO, RBAC, and audit logging"),
+    content: AttributedText(
+      "Enterprise Auth: SSO, RBAC, and audit tempoDBSeedLog.ging",
+    ),
   );
 
   final metricsHeaderBlock = BlockEntity(
@@ -139,19 +152,25 @@ class Q1LaunchProject implements DatabaseSeed {
   final featureDevWorkBlock3 = BlockEntity(
     uuid: "launch-featuredev-work-020",
     nodeType: "list_item",
-    content: AttributedText("Polish dashboard performance for 1000+ concurrent users"),
+    content: AttributedText(
+      "Polish dashboard performance for 1000+ concurrent users",
+    ),
   );
 
   final featureDevBlockersBlock = BlockEntity(
     uuid: "launch-featuredev-blockers-021",
     nodeType: "paragraph",
-    content: AttributedText("Blockers: AWS infrastructure scaling approval pending, security audit findings need resolution."),
+    content: AttributedText(
+      "Blockers: AWS infrastructure scaling approval pending, security audit findings need resolution.",
+    ),
   );
 
   final featureDevMeetingsBlock = BlockEntity(
     uuid: "launch-featuredev-meetings-022",
     nodeType: "paragraph",
-    content: AttributedText("Daily standups at 9:00 AM, all-hands demo Friday."),
+    content: AttributedText(
+      "Daily standups at 9:00 AM, all-hands demo Friday.",
+    ),
   );
 
   final userAuthTask = DevtoolsTaskDefaults.withDefaults(
@@ -200,7 +219,7 @@ class Q1LaunchProject implements DatabaseSeed {
   final userAuthFeaturesBlock5 = BlockEntity(
     uuid: "launch-userauth-features-029",
     nodeType: "list_item",
-    content: AttributedText("Audit logging for compliance"),
+    content: AttributedText("Audit tempoDBSeedLog.ging for compliance"),
   );
 
   final userAuthSecurityHeaderBlock = BlockEntity(
@@ -236,7 +255,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final userAuthTestingBlock = BlockEntity(
     uuid: "launch-userauth-testing-035",
     nodeType: "paragraph",
-    content: AttributedText("Testing: Passed penetration testing and SOC 2 Type II requirements."),
+    content: AttributedText(
+      "Testing: Passed penetration testing and SOC 2 Type II requirements.",
+    ),
   );
 
   final analyticsDashboardTask = DevtoolsTaskDefaults.withDefaults(
@@ -405,7 +426,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final exportProgressBlock2 = BlockEntity(
     uuid: "launch-export-progress-061",
     nodeType: "list_item",
-    content: AttributedText("Excel export: 60% done (working on chart embedding)"),
+    content: AttributedText(
+      "Excel export: 60% done (working on chart embedding)",
+    ),
   );
 
   final exportProgressBlock3 = BlockEntity(
@@ -459,7 +482,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final paymentFeaturesBlock1 = BlockEntity(
     uuid: "launch-payment-features-069",
     nodeType: "list_item",
-    content: AttributedText("Tiered subscription plans (Starter, Pro, Enterprise)"),
+    content: AttributedText(
+      "Tiered subscription plans (Starter, Pro, Enterprise)",
+    ),
   );
 
   final paymentFeaturesBlock2 = BlockEntity(
@@ -525,7 +550,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final paymentTestingBlock1 = BlockEntity(
     uuid: "launch-payment-testing-080",
     nodeType: "list_item",
-    content: AttributedText("Sandbox environment with realistic test scenarios"),
+    content: AttributedText(
+      "Sandbox environment with realistic test scenarios",
+    ),
   );
 
   final paymentTestingBlock2 = BlockEntity(
@@ -558,13 +585,17 @@ class Q1LaunchProject implements DatabaseSeed {
   final marketingStrategyBlock1 = BlockEntity(
     uuid: "launch-marketing-strategy-084",
     nodeType: "list_item",
-    content: AttributedText("Multi-channel approach: Email, LinkedIn, Twitter, Product Hunt"),
+    content: AttributedText(
+      "Multi-channel approach: Email, LinkedIn, Twitter, Product Hunt",
+    ),
   );
 
   final marketingStrategyBlock2 = BlockEntity(
     uuid: "launch-marketing-strategy-085",
     nodeType: "list_item",
-    content: AttributedText("Influencer partnerships with data science community"),
+    content: AttributedText(
+      "Influencer partnerships with data science community",
+    ),
   );
 
   final marketingStrategyBlock3 = BlockEntity(
@@ -588,7 +619,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final marketingContentBlock1 = BlockEntity(
     uuid: "launch-marketing-content-089",
     nodeType: "list_item",
-    content: AttributedText("Product announcement blog post (in draft)"),
+    content: AttributedText(
+      "Product announcement btempoDBSeedLog. post (in draft)",
+    ),
   );
 
   final marketingContentBlock2 = BlockEntity(
@@ -641,7 +674,7 @@ class Q1LaunchProject implements DatabaseSeed {
 
   final productTask = DevtoolsTaskDefaults.withDefaults(
     "e2f6b210-00f3-4fee-8a01-5aaf553bb633",
-    AttributedText("Write product announcement blog post"),
+    AttributedText("Write product announcement btempoDBSeedLog. post"),
     status: TaskStatus.started,
   );
 
@@ -649,13 +682,15 @@ class Q1LaunchProject implements DatabaseSeed {
   final productHeaderBlock = BlockEntity(
     uuid: "launch-product-header-098",
     nodeType: "header3",
-    content: AttributedText("Launch Announcement Blog Post ✍️"),
+    content: AttributedText("Launch Announcement BtempoDBSeedLog. Post ✍️"),
   );
 
   final productTargetBlock = BlockEntity(
     uuid: "launch-product-target-099",
     nodeType: "paragraph",
-    content: AttributedText("Target: 2,000 words, SEO-optimized for \"analytics dashboard\" keywords"),
+    content: AttributedText(
+      "Target: 2,000 words, SEO-optimized for \"analytics dashboard\" keywords",
+    ),
   );
 
   final productOutlineHeaderBlock = BlockEntity(
@@ -673,13 +708,17 @@ class Q1LaunchProject implements DatabaseSeed {
   final productOutlineBlock2 = BlockEntity(
     uuid: "launch-product-outline-102",
     nodeType: "list_item",
-    content: AttributedText("Solution: How Tempo Analytics Pro solves it differently"),
+    content: AttributedText(
+      "Solution: How Tempo Analytics Pro solves it differently",
+    ),
   );
 
   final productOutlineBlock3 = BlockEntity(
     uuid: "launch-product-outline-103",
     nodeType: "list_item",
-    content: AttributedText("Features Deep Dive: AI insights, real-time dashboards, exports"),
+    content: AttributedText(
+      "Features Deep Dive: AI insights, real-time dashboards, exports",
+    ),
   );
 
   final productOutlineBlock4 = BlockEntity(
@@ -691,13 +730,17 @@ class Q1LaunchProject implements DatabaseSeed {
   final productOutlineBlock5 = BlockEntity(
     uuid: "launch-product-outline-105",
     nodeType: "list_item",
-    content: AttributedText("Technical Innovation: What makes our approach unique"),
+    content: AttributedText(
+      "Technical Innovation: What makes our approach unique",
+    ),
   );
 
   final productOutlineBlock6 = BlockEntity(
     uuid: "launch-product-outline-106",
     nodeType: "list_item",
-    content: AttributedText("Call to Action: Free trial with onboarding support"),
+    content: AttributedText(
+      "Call to Action: Free trial with onboarding support",
+    ),
   );
 
   final productStatusHeaderBlock = BlockEntity(
@@ -733,7 +776,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final productDistributionBlock = BlockEntity(
     uuid: "launch-product-distribution-112",
     nodeType: "paragraph",
-    content: AttributedText("Distribution: Company blog, Medium, LinkedIn, dev.to"),
+    content: AttributedText(
+      "Distribution: Company btempoDBSeedLog., Medium, LinkedIn, dev.to",
+    ),
   );
 
   final demoTask = DevtoolsTaskDefaults.withDefaults(
@@ -751,7 +796,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final demoConceptBlock = BlockEntity(
     uuid: "launch-demo-concept-114",
     nodeType: "paragraph",
-    content: AttributedText("Video Concept: \"From Data Chaos to Insights in 3 Minutes\""),
+    content: AttributedText(
+      "Video Concept: \"From Data Chaos to Insights in 3 Minutes\"",
+    ),
   );
 
   final demoScriptHeaderBlock = BlockEntity(
@@ -763,25 +810,33 @@ class Q1LaunchProject implements DatabaseSeed {
   final demoScriptBlock1 = BlockEntity(
     uuid: "launch-demo-script-116",
     nodeType: "list_item",
-    content: AttributedText("Problem Setup (30s): Scattered dashboards, manual reporting"),
+    content: AttributedText(
+      "Problem Setup (30s): Scattered dashboards, manual reporting",
+    ),
   );
 
   final demoScriptBlock2 = BlockEntity(
     uuid: "launch-demo-script-117",
     nodeType: "list_item",
-    content: AttributedText("Solution Intro (45s): Tempo Analytics Pro overview"),
+    content: AttributedText(
+      "Solution Intro (45s): Tempo Analytics Pro overview",
+    ),
   );
 
   final demoScriptBlock3 = BlockEntity(
     uuid: "launch-demo-script-118",
     nodeType: "list_item",
-    content: AttributedText("Feature Walkthrough (2m): Live demo of key features"),
+    content: AttributedText(
+      "Feature Walkthrough (2m): Live demo of key features",
+    ),
   );
 
   final demoScriptSubBlock1 = BlockEntity(
     uuid: "launch-demo-script-119",
     nodeType: "paragraph",
-    content: AttributedText("  - Dashboard customization\n  - AI insights in action\n  - One-click export to stakeholders"),
+    content: AttributedText(
+      "  - Dashboard customization\n  - AI insights in action\n  - One-click export to stakeholders",
+    ),
   );
 
   final demoScriptBlock4 = BlockEntity(
@@ -805,7 +860,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final demoProductionBlock1 = BlockEntity(
     uuid: "launch-demo-production-123",
     nodeType: "list_item",
-    content: AttributedText("Screen recording with realistic (but anonymized) data"),
+    content: AttributedText(
+      "Screen recording with realistic (but anonymized) data",
+    ),
   );
 
   final demoProductionBlock2 = BlockEntity(
@@ -823,7 +880,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final demoProductionBlock4 = BlockEntity(
     uuid: "launch-demo-production-126",
     nodeType: "list_item",
-    content: AttributedText("Multiple versions: 30s (social), 60s (ads), 3m (product page)"),
+    content: AttributedText(
+      "Multiple versions: 30s (social), 60s (ads), 3m (product page)",
+    ),
   );
 
   final emailTask = DevtoolsTaskDefaults.withDefaults(
@@ -847,7 +906,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final emailSequenceBlock1 = BlockEntity(
     uuid: "launch-email-sequence-129",
     nodeType: "list_item",
-    content: AttributedText("Welcome & Setup - Get started guide with quick wins"),
+    content: AttributedText(
+      "Welcome & Setup - Get started guide with quick wins",
+    ),
   );
 
   final emailSequenceBlock2 = BlockEntity(
@@ -859,19 +920,25 @@ class Q1LaunchProject implements DatabaseSeed {
   final emailSequenceBlock3 = BlockEntity(
     uuid: "launch-email-sequence-131",
     nodeType: "list_item",
-    content: AttributedText("AI Insights Explained - How machine learning finds patterns"),
+    content: AttributedText(
+      "AI Insights Explained - How machine learning finds patterns",
+    ),
   );
 
   final emailSequenceBlock4 = BlockEntity(
     uuid: "launch-email-sequence-132",
     nodeType: "list_item",
-    content: AttributedText("Export Mastery - Professional reporting workflows"),
+    content: AttributedText(
+      "Export Mastery - Professional reporting workflows",
+    ),
   );
 
   final emailSequenceBlock5 = BlockEntity(
     uuid: "launch-email-sequence-133",
     nodeType: "list_item",
-    content: AttributedText("Customer Success Story - Case study with concrete ROI"),
+    content: AttributedText(
+      "Customer Success Story - Case study with concrete ROI",
+    ),
   );
 
   final emailSequenceBlock6 = BlockEntity(
@@ -883,7 +950,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final emailSequenceBlock7 = BlockEntity(
     uuid: "launch-email-sequence-135",
     nodeType: "list_item",
-    content: AttributedText("Upgrade Prompt - Trial expiring, upgrade benefits"),
+    content: AttributedText(
+      "Upgrade Prompt - Trial expiring, upgrade benefits",
+    ),
   );
 
   final emailDesignHeaderBlock = BlockEntity(
@@ -913,7 +982,9 @@ class Q1LaunchProject implements DatabaseSeed {
   final emailDesignBlock4 = BlockEntity(
     uuid: "launch-email-design-140",
     nodeType: "list_item",
-    content: AttributedText("Personalization tokens (name, company, trial status)"),
+    content: AttributedText(
+      "Personalization tokens (name, company, trial status)",
+    ),
   );
 
   final emailTechHeaderBlock = BlockEntity(
@@ -942,7 +1013,9 @@ class Q1LaunchProject implements DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.finer('  <seeding project="${project.title.toPlainText()}">');
+    tempoDBSeedLog.finer(
+      '  <seeding project="${project.title.toPlainText()}">',
+    );
     final projectID = s.projectRepo.put(project);
 
     // Seed project description blocks
@@ -1136,40 +1209,74 @@ class Q1LaunchProject implements DatabaseSeed {
       paymentTask,
     ]);
 
-    final savedFeatureDevTask = s.taskRepo.get(featureDevID)!;
-    savedFeatureDevTask.children.addAll(
-      s.blockRepo.getMany(featureDevBlockIDs).map((b) => b!.asThingEntity())
+    // Set project relationships for all tasks
+    tempoDBSeedLog.fine(
+      'Setting project relationships for ${project.title.toPlainText()}',
     );
-    savedFeatureDevTask.children.addAll(
+    for (final taskID in [
+      featureDevID,
+      userAuthID,
+      analyticsDashboardID,
+      exportID,
+      paymentID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = project;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
+    final savedFeatureDevTask = s.taskRepo.get(featureDevID)!;
+    final savedFeatureDevTaskThingEntity = savedFeatureDevTask.thing.target!;
+    savedFeatureDevTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(featureDevBlockIDs).map((b) => b!.thing.target!),
+    );
+    savedFeatureDevTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([userAuthID, analyticsDashboardID, exportID, paymentID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedFeatureDevTaskThingEntity);
     s.taskRepo.put(savedFeatureDevTask);
 
     // Add blocks to individual subtasks
     final savedUserAuthTask = s.taskRepo.get(userAuthID)!;
-    savedUserAuthTask.children.addAll(
-      s.blockRepo.getMany(userAuthBlockIDs).map((b) => b!.asThingEntity())
+    final savedUserAuthTaskThingEntity = savedUserAuthTask.thing.target!;
+    savedUserAuthTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(userAuthBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedUserAuthTaskThingEntity);
     s.taskRepo.put(savedUserAuthTask);
 
     final savedAnalyticsTask = s.taskRepo.get(analyticsDashboardID)!;
-    savedAnalyticsTask.children.addAll(
-      s.blockRepo.getMany(analyticsBlockIDs).map((b) => b!.asThingEntity())
+    final savedAnalyticsTaskThingEntity = savedAnalyticsTask.thing.target!;
+    savedAnalyticsTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(analyticsBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedAnalyticsTaskThingEntity);
     s.taskRepo.put(savedAnalyticsTask);
 
     final savedExportTask = s.taskRepo.get(exportID)!;
-    savedExportTask.children.addAll(
-      s.blockRepo.getMany(exportBlockIDs).map((b) => b!.asThingEntity())
+    final savedExportTaskThingEntity = savedExportTask.thing.target!;
+    savedExportTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(exportBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedExportTaskThingEntity);
     s.taskRepo.put(savedExportTask);
 
     final savedPaymentTask = s.taskRepo.get(paymentID)!;
-    savedPaymentTask.children.addAll(
-      s.blockRepo.getMany(paymentBlockIDs).map((b) => b!.asThingEntity())
+    final savedPaymentTaskThingEntity = savedPaymentTask.thing.target!;
+    savedPaymentTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(paymentBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedPaymentTaskThingEntity);
     s.taskRepo.put(savedPaymentTask);
 
     // Marketing task and subtasks
@@ -1180,45 +1287,70 @@ class Q1LaunchProject implements DatabaseSeed {
       emailTask,
     ]);
 
+    // Set project relationships for marketing tasks
+    for (final taskID in [marketingID, productID, demoID, emailID]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = project;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedMarketingTask = s.taskRepo.get(marketingID)!;
-    savedMarketingTask.children.addAll(
-      s.blockRepo.getMany(marketingBlockIDs).map((b) => b!.asThingEntity())
+    final savedMarketingTaskThingEntity = savedMarketingTask.thing.target!;
+    savedMarketingTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(marketingBlockIDs).map((b) => b!.thing.target!),
     );
-    savedMarketingTask.children.addAll(
+    savedMarketingTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([productID, demoID, emailID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedMarketingTaskThingEntity);
     s.taskRepo.put(savedMarketingTask);
 
     // Add blocks to marketing subtasks
     final savedProductTask = s.taskRepo.get(productID)!;
-    savedProductTask.children.addAll(
-      s.blockRepo.getMany(productBlockIDs).map((b) => b!.asThingEntity())
+    final savedProductTaskThingEntity = savedProductTask.thing.target!;
+    savedProductTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(productBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedProductTaskThingEntity);
     s.taskRepo.put(savedProductTask);
 
     final savedDemoTask = s.taskRepo.get(demoID)!;
-    savedDemoTask.children.addAll(
-      s.blockRepo.getMany(demoBlockIDs).map((b) => b!.asThingEntity())
+    final savedDemoTaskThingEntity = savedDemoTask.thing.target!;
+    savedDemoTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(demoBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedDemoTaskThingEntity);
     s.taskRepo.put(savedDemoTask);
 
     final savedEmailTask = s.taskRepo.get(emailID)!;
-    savedEmailTask.children.addAll(
-      s.blockRepo.getMany(emailBlockIDs).map((b) => b!.asThingEntity())
+    final savedEmailTaskThingEntity = savedEmailTask.thing.target!;
+    savedEmailTaskThingEntity.children.addAll(
+      s.blockRepo.getMany(emailBlockIDs).map((b) => b!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedEmailTaskThingEntity);
     s.taskRepo.put(savedEmailTask);
 
     final savedProject = s.projectRepo.get(projectID)!;
-    savedProject.children.addAll(
-      s.blockRepo.getMany(projectBlockIDs).map((b) => b!.asThingEntity())
+    final savedProjectThingEntity = savedProject.thing.target!;
+    savedProjectThingEntity.children.addAll(
+      s.blockRepo.getMany(projectBlockIDs).map((b) => b!.thing.target!),
     );
-    savedProject.children.addAll(
+    savedProjectThingEntity.children.addAll(
       s.taskRepo
           .getMany([featureDevID, marketingID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
     s.projectRepo.put(savedProject);
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:follow_the_leader/follow_the_leader.dart';
+import 'package:follow_the_leader/follow_the_leader.dart' hide LogNames;
 
 import '../../../infrastructure/logging.dart';
 import '../../../objectbox/services/thing_service.dart';
@@ -40,7 +40,7 @@ class _OpenThingState extends ConsumerState<OpenThing> {
   _OpenThingState();
 
   void _handleTap() {
-    tempoLog.finest('tap-up!');
+    tempoThingTapDelegateLog.finest('tap-up!');
 
     // Try to determine the entity type from the UUID
     final thingService = ref.read(thingServiceProvider);

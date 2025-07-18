@@ -3,7 +3,7 @@ import 'package:objectbox/objectbox.dart';
 import '../../editor/super_editor.dart';
 import '../../objectbox/attributed_text_mixin.dart';
 import '../thing/interface.dart';
-import '../thing/thing_entity.dart';
+import '../thing/thing.entity.dart';
 
 // Resolver is now auto-registered by ProjectRepository
 // No need for manual resolver configuration!
@@ -15,6 +15,8 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
     AttributedText? title,
     DateTime? createDate,
     DateTime? modifyDate,
+    this.startDate,
+    this.endDate,
     this.archived = false,
     this.deleted = false,
     ProjectStatus status = ProjectStatus.todo,
@@ -48,10 +50,12 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @Property(type: PropertyType.dateNano)
   DateTime modifyDate;
 
-  /// Polymorphic children relationship - can contain any entity type
-  /// When viewing a project, these are the document nodes shown in order
-  @override
-  final children = ToMany<ThingEntity>();
+  /// PARA methodology: Projects are time-bound efforts with clear completion criteria
+  @Property(type: PropertyType.dateNano)
+  DateTime? startDate;
+
+  @Property(type: PropertyType.dateNano)
+  DateTime? endDate;
 
   /// Direct reference to the ThingEntity registration
   /// This creates a 1:1 relationship between this Project and its registry entry
@@ -88,11 +92,6 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
     DateTime? createDate,
     DateTime? startDate,
     DateTime? endDate,
-    DateTime? scheduledDate,
-    DateTime? dueDate,
-    DateTime? waitDate,
-    DateTime? untilDate,
-    String? recurrence,
     ProjectStatus? status,
     bool? deleted,
     bool? archived,
@@ -102,6 +101,8 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
       uuid: uuid ?? this.uuid,
       createDate: createDate ?? this.createDate,
       modifyDate: DateTime.now(),
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
       status: status ?? this.status,
       deleted: deleted ?? this.deleted,
       archived: archived ?? this.archived,

@@ -140,7 +140,7 @@ class _FullWidthHighlightState extends State<_FullWidthHighlight> {
   void _calculateOffset() {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) {
-      pluginScaffoldLog.warning('RenderBox not available for highlight');
+      tempoScaffoldingLog.warning('RenderBox not available for highlight');
       return;
     }
 
@@ -149,7 +149,7 @@ class _FullWidthHighlightState extends State<_FullWidthHighlight> {
       _leftOffset = -offset.dx;
     });
 
-    pluginScaffoldLog.finest('Calculated highlight offset: $_leftOffset');
+    tempoScaffoldingLog.finest('Calculated highlight offset: $_leftOffset');
   }
 }
 
@@ -172,7 +172,9 @@ class _HighlightWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     // Always apply padding, but only show background if color is provided
     final paddedChild = Padding(
-      padding: EdgeInsets.symmetric(horizontal: CurrentPlatform.isMobile ? 0.0 : padding),
+      padding: EdgeInsets.symmetric(
+        horizontal: CurrentPlatform.isMobile ? 0.0 : padding,
+      ),
       child: child,
     );
 

@@ -3,14 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_editor/super_editor.dart';
 
 import '../thing_factories.dart';
-import 'block_entity.dart';
+import 'block.entity.dart';
 import 'block_repository.dart';
 
 /// Factory to convert BlockEntity to appropriate SuperEditor DocumentNode
 class BlockNodeFactory
     extends ThingNodeFactory<BlockEntity, BlockRepository, DocumentNode> {
-  BlockNodeFactory(Ref ref)
-    : super(ref, blockRepositoryProvider, fromBlock);
+  BlockNodeFactory(Ref ref) : super(ref, blockRepositoryProvider, fromBlock);
 
   @override
   String get type => BlockEntity.key;
@@ -40,70 +39,49 @@ class BlockNodeFactory
         return ParagraphNode(
           id: block.uuid,
           text: block.content,
-          metadata: {
-            ...?metadata,
-            'blockType': header1Attribution,
-          },
+          metadata: {...?metadata, 'blockType': header1Attribution},
         );
 
       case 'header2':
         return ParagraphNode(
           id: block.uuid,
           text: block.content,
-          metadata: {
-            ...?metadata,
-            'blockType': header2Attribution,
-          },
+          metadata: {...?metadata, 'blockType': header2Attribution},
         );
 
       case 'header3':
         return ParagraphNode(
           id: block.uuid,
           text: block.content,
-          metadata: {
-            ...?metadata,
-            'blockType': header3Attribution,
-          },
+          metadata: {...?metadata, 'blockType': header3Attribution},
         );
 
       case 'header4':
         return ParagraphNode(
           id: block.uuid,
           text: block.content,
-          metadata: {
-            ...?metadata,
-            'blockType': header4Attribution,
-          },
+          metadata: {...?metadata, 'blockType': header4Attribution},
         );
 
       case 'header5':
         return ParagraphNode(
           id: block.uuid,
           text: block.content,
-          metadata: {
-            ...?metadata,
-            'blockType': header5Attribution,
-          },
+          metadata: {...?metadata, 'blockType': header5Attribution},
         );
 
       case 'header6':
         return ParagraphNode(
           id: block.uuid,
           text: block.content,
-          metadata: {
-            ...?metadata,
-            'blockType': header6Attribution,
-          },
+          metadata: {...?metadata, 'blockType': header6Attribution},
         );
 
       case 'blockquote':
         return ParagraphNode(
           id: block.uuid,
           text: block.content,
-          metadata: {
-            ...?metadata,
-            'blockType': blockquoteAttribution,
-          },
+          metadata: {...?metadata, 'blockType': blockquoteAttribution},
         );
 
       case 'list_item':
@@ -123,14 +101,12 @@ class BlockNodeFactory
         );
 
       case 'horizontal_rule':
-        return HorizontalRuleNode(
-          id: block.uuid,
-          metadata: metadata,
-        );
+        return HorizontalRuleNode(id: block.uuid, metadata: metadata);
 
       case 'image':
         // Extract image URL from metadata or content
-        final imageUrl = metadata?['url'] as String? ?? block.content.toPlainText();
+        final imageUrl =
+            metadata?['url'] as String? ?? block.content.toPlainText();
         final altText = metadata?['altText'] as String?;
         return ImageNode(
           id: block.uuid,

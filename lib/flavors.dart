@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,7 +39,7 @@ class Flavor {
     return p.join(base.path, name);
   }
 
-  bool get isDevelopment => _appFlavor == AppFlavor.development;
+  bool get isDevelopment => _appFlavor == AppFlavor.development && kDebugMode;
   bool get isStaging => _appFlavor == AppFlavor.staging;
   bool get isProduction => _appFlavor == AppFlavor.production;
 }

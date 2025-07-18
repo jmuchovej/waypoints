@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'task_entity.dart';
+import 'task.entity.dart';
 
 /// Represents the urgency calculation result for a task with detailed breakdown.
 ///

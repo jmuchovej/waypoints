@@ -7,23 +7,25 @@ import 'text_styles.dart';
 /// Riverpod provider for the unified Tempo stylesheet
 /// This provides all styling configuration including responsive context
 final tempoStylesheetProvider = Provider<TempoStylesheet>((ref) {
-  throw UnimplementedError('tempoStylesheetProvider must be overridden in widget tree');
+  throw UnimplementedError(
+    'tempoStylesheetProvider must be overridden in widget tree',
+  );
 });
 
 /// Responsive breakpoints for different screen sizes
 enum TempoBreakpoint {
   /// Phone: < 600px
   mobile(maxWidth: 600),
-  
-  /// Tablet: 600px - 1024px  
+
+  /// Tablet: 600px - 1024px
   tablet(maxWidth: 1024),
-  
+
   /// Desktop: > 1024px
   desktop(maxWidth: double.infinity);
 
   const TempoBreakpoint({required this.maxWidth});
   final double maxWidth;
-  
+
   /// Get breakpoint from screen width
   static TempoBreakpoint fromWidth(double width) {
     if (width < mobile.maxWidth) return mobile;
@@ -46,15 +48,15 @@ class TempoStyleContext {
 
   /// Convenience getters for breakpoint checks
   bool get isMobile => breakpoint == TempoBreakpoint.mobile;
-  bool get isTablet => breakpoint == TempoBreakpoint.tablet; 
+  bool get isTablet => breakpoint == TempoBreakpoint.tablet;
   bool get isDesktop => breakpoint == TempoBreakpoint.desktop;
-  
+
   /// Screen width
   double get width => screenSize.width;
-  
-  /// Screen height  
+
+  /// Screen height
   double get height => screenSize.height;
-  
+
   /// Is this a high-DPI display?
   bool get isHighDPI => devicePixelRatio > 2.0;
 
@@ -63,7 +65,7 @@ class TempoStyleContext {
     final mediaQuery = MediaQuery.of(context);
     final screenSize = mediaQuery.size;
     final breakpoint = TempoBreakpoint.fromWidth(screenSize.width);
-    
+
     return TempoStyleContext(
       screenSize: screenSize,
       breakpoint: breakpoint,
@@ -73,7 +75,7 @@ class TempoStyleContext {
 }
 
 /// Unified styling system for Tempo
-/// 
+///
 /// Similar to Flutter's Theme, this provides a single source of truth
 /// for all styling decisions across SuperEditor and Flutter widgets.
 class TempoStylesheet {
@@ -86,13 +88,13 @@ class TempoStylesheet {
 
   /// Text styles for all text in the app
   final TempoTextStyleSet textStyles;
-  
+
   /// Spacing and padding values (responsive based on context)
   final TempoSpacing spacing;
-  
+
   /// Color extensions beyond Material theme
   final TempoColors colors;
-  
+
   /// Style context with breakpoint and device information
   final TempoStyleContext context;
 
@@ -108,7 +110,7 @@ class TempoStylesheet {
   static TempoStylesheet of(WidgetRef ref) {
     return ref.read(tempoStylesheetProvider);
   }
-  
+
   /// Get stylesheet from BuildContext (for functions/static methods)
   static TempoStylesheet fromContext(BuildContext context) {
     return _createFromContext(context);
@@ -119,7 +121,7 @@ class TempoStylesheet {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final styleContext = TempoStyleContext.fromContext(context);
-    
+
     return TempoStylesheet(
       textStyles: TempoTextStyles.fromContext(context),
       spacing: TempoSpacing.responsive(styleContext),
@@ -142,19 +144,19 @@ class TempoSpacing {
 
   /// Padding around the entire document
   final EdgeInsets documentPadding;
-  
+
   /// Horizontal padding for content (matches SuperEditor hover highlights)
   final double contentHorizontal;
-  
+
   /// Maximum width for content
   final double maxContentWidth;
-  
+
   /// Spacing between paragraphs
   final double paragraphSpacing;
-  
+
   /// Spacing between sections
   final double sectionSpacing;
-  
+
   /// Internal padding for chip components
   final EdgeInsets chipPadding;
 
@@ -176,8 +178,8 @@ class TempoSpacing {
     sectionSpacing: 32.0,
     chipPadding: EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
   );
-  
-  /// Tablet spacing (600px - 1024px)  
+
+  /// Tablet spacing (600px - 1024px)
   static const tablet = TempoSpacing(
     documentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
     contentHorizontal: 16.0,
@@ -186,7 +188,7 @@ class TempoSpacing {
     sectionSpacing: 40.0,
     chipPadding: EdgeInsets.symmetric(horizontal: 7.0, vertical: 3.5),
   );
-  
+
   /// Desktop spacing (> 1024px)
   static const desktop = TempoSpacing(
     documentPadding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),

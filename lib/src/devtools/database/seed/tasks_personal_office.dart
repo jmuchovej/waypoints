@@ -1,11 +1,12 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project/project_entity.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/task/task.entity.dart';
+import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
-class HomeOfficeRenovationProject implements DatabaseSeed {
+class HomeOfficeRenovationProject extends DatabaseSeed {
   final project = ProjectEntity(
     uuid: "1deb860f-e324-439c-b478-89e16b140373",
     title: AttributedText("Home Office Renovation"),
@@ -65,7 +66,9 @@ class HomeOfficeRenovationProject implements DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.finer('  <seeding project="${project.title.toPlainText()}">');
+    tempoDBSeedLog.finer(
+      '  <seeding project="${project.title.toPlainText()}">',
+    );
     final projectID = s.projectRepo.put(project);
 
     // Design task and subtasks
@@ -76,12 +79,29 @@ class HomeOfficeRenovationProject implements DatabaseSeed {
       layoutTask,
     ]);
 
+    // Set project relationships for design tasks
+    final savedProject = s.projectRepo.get(projectID)!;
+    tempoDBSeedLog.fine(
+      'Setting project relationships for ${savedProject.title.toPlainText()}',
+    );
+    for (final taskID in [designID, measureID, moodboardID, layoutID]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedDesignTask = s.taskRepo.get(designID)!;
-    savedDesignTask.children.addAll(
+    final savedDesignTaskThingEntity = savedDesignTask.thing.target!;
+    savedDesignTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([measureID, moodboardID, layoutID])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedDesignTaskThingEntity);
     s.taskRepo.put(savedDesignTask);
 
     // Furniture task and subtasks
@@ -99,8 +119,25 @@ class HomeOfficeRenovationProject implements DatabaseSeed {
       cableManagementTask,
     ]);
 
+    // Set project relationships for furniture tasks
+    for (final taskID in [
+      furnitureID,
+      standingDeskID,
+      ergonomicChairID,
+      monitorArmID,
+      cableManagementID,
+    ]) {
+      final task = s.taskRepo.get(taskID)!;
+      task.project.target = savedProject;
+      s.taskRepo.put(task);
+      tempoDBSeedLog.fine(
+        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
+      );
+    }
+
     final savedFurnitureTask = s.taskRepo.get(furnitureID)!;
-    savedFurnitureTask.children.addAll(
+    final savedFurnitureTaskThingEntity = savedFurnitureTask.thing.target!;
+    savedFurnitureTaskThingEntity.children.addAll(
       s.taskRepo
           .getMany([
             standingDeskID,
@@ -108,16 +145,18 @@ class HomeOfficeRenovationProject implements DatabaseSeed {
             monitorArmID,
             cableManagementID,
           ])
-          .map((t) => t!.asThingEntity()),
+          .map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.taskRepo.store.box<ThingEntity>().put(savedFurnitureTaskThingEntity);
     s.taskRepo.put(savedFurnitureTask);
 
-    final savedProject = s.projectRepo.get(projectID)!;
-    savedProject.children.addAll(
-      s.taskRepo
-          .getMany([designID, furnitureID])
-          .map((t) => t!.asThingEntity()),
+    final savedProjectThingEntity = savedProject.thing.target!;
+    savedProjectThingEntity.children.addAll(
+      s.taskRepo.getMany([designID, furnitureID]).map((t) => t!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
     s.projectRepo.put(savedProject);
   }
 }

@@ -1,28 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../infrastructure/logging.dart';
 import '../../../styling/text_styles.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/task/task.entity.dart';
 
 /// A pill-shaped widget that displays the project association of a task
 /// with consistent styling to match the progress pill.
 class TaskProjectChip extends ConsumerWidget {
-  const TaskProjectChip({
-    super.key,
-    required this.task,
-  });
+  const TaskProjectChip({super.key, required this.task});
 
   final TaskEntity task;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Debug logging to understand project relationship state
+    tempoTaskEditorLog.finest('🔍 TaskProjectChip for task ${task.uuid}:');
+    tempoTaskEditorLog.finest('  - hasValue: ${task.project.hasValue}');
+    tempoTaskEditorLog.finest('  - target: ${task.project.target}');
+    tempoTaskEditorLog.finest(
+      '  - target title: ${task.project.target?.title.toPlainText()}',
+    );
+
     // If no project, don't show the pill
     if (!task.project.hasValue) {
+      tempoTaskEditorLog.finest('  - No project association (hasValue=false)');
       return const SizedBox.shrink();
     }
 
     final project = task.project.target;
     if (project == null) {
+      tempoTaskEditorLog.finest('  - Project target is null');
       return const SizedBox.shrink();
     }
 

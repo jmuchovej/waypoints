@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../infrastructure/logging.dart';
 import '../../objectbox/objectbox.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../thing/interface.dart';
-import '../thing/thing_entity.dart';
-import 'task_entity.dart';
+import '../thing/thing.entity.dart';
+import 'task.entity.dart';
 
 /// Provider for TaskRepository
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
@@ -153,6 +154,44 @@ class TaskRepository extends ThingRepository<TaskEntity> {
     return archived(false).and(deleted(false));
   }
 
+  /// Wrap any TaskEntity stream to filter for top-level tasks only
+  /// This applies parent filtering after database-level filtering for efficiency
+  Stream<List<TaskEntity>> topLevel(Stream<List<TaskEntity>> taskStream) {
+    return taskStream.map((tasks) {
+      tempoDBLog.info('topLevel: Filtering ${tasks.length} active tasks');
+      final topLevelTasks =
+          tasks.where((task) {
+            final thingEntity = task.thing.target;
+            if (thingEntity == null) return false;
+
+            final parent = thingEntity.parent.target;
+            if (parent == null) {
+              // No parent = top-level task
+              return true;
+            }
+
+            // Has parent - check if parent is a task (child task) or project (top-level task)
+            final isChildOfTask = parent.type == TaskEntity.key;
+            if (isChildOfTask) {
+              tempoDBQueryLog.finer(
+                'Filtering out subtask: ${task.title.toPlainText()} (parent task: ${parent.uuid})',
+              );
+              return false;
+            }
+
+            // Parent is project/other = top-level task
+            tempoDBQueryLog.finest(
+              'Top-level task: ${task.title.toPlainText()} (parent ${parent.type}: ${parent.uuid})',
+            );
+            return true;
+          }).toList();
+      tempoDBQueryLog.fine(
+        'topLevel: Found ${topLevelTasks.length} top-level tasks',
+      );
+      return topLevelTasks;
+    });
+  }
+
   // ---- Streaming Extensions ----
 
   /// Stream all tasks due today
@@ -175,6 +214,12 @@ class TaskRepository extends ThingRepository<TaskEntity> {
     return streamList(active());
   }
 
+  /// Stream all top-level active tasks
+  Stream<List<TaskEntity>> streamTopLevel() {
+    tempoDBLog.info('streamTopLevel: Starting top-level task stream');
+    return topLevel(streamActive());
+  }
+
   /// Stream tasks with a specific status
   Stream<List<TaskEntity>> streamWithStatus(TaskStatus status) {
     return streamList(withStatus(status));
@@ -189,6 +234,8 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   Stream<int> streamCountDueToday() => streamCount(dueToday());
   Stream<int> streamCountOverdue() => streamCount(overdue());
   Stream<int> streamCountIncomplete() => streamCount(incomplete());
+  Stream<int> streamCountTopLevel() =>
+      streamTopLevel().map((tasks) => tasks.length);
 
   Condition<ThingEntity> searchTitle(String query) {
     return ThingOBX.type

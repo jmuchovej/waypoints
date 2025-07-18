@@ -1,7 +1,7 @@
 import 'package:objectbox/objectbox.dart';
 import '../../thing/interface.dart';
-import '../activity_entity.dart';
-import '../../thing/thing_entity.dart';
+import '../activity.entity.dart';
+import '../../thing/thing.entity.dart';
 
 // Resolver is now auto-registered by ActivitySnapshotRepository (when created)
 // No need for manual resolver configuration!
@@ -80,9 +80,6 @@ class ActivitySnapshotEntity implements BaseThing {
 
   @override
   bool archived;
-
-  @override
-  final ToMany<ThingEntity> children = ToMany<ThingEntity>();
 
   @Property(type: PropertyType.dateNano)
   @override

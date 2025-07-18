@@ -1,7 +1,7 @@
 import '../super_editor.dart';
 import '../../infrastructure/logging.dart';
 import '../nodes/task_node.dart';
-import '../../things/task/task_entity.dart';
+import '../../things/task/task.entity.dart';
 import '../../things/task/task_repository.dart';
 
 /// Command to toggle a task's completion status in the document
@@ -24,32 +24,47 @@ class ToggleTaskStatusCommand implements EditCommand {
   void execute(EditContext editContext, CommandExecutor executor) {
     final document = editContext.find<MutableDocument>(Editor.documentKey);
     if (document == null) {
-      fluxLog.warning('ToggleTaskStatusCommand: No document found in edit context');
+      tempoTaskEditorLog.warning(
+        'ToggleTaskStatusCommand: No document found in edit context',
+      );
       return;
     }
 
     final node = document.getNodeById(nodeId);
     if (node is! TaskNode) {
-      fluxLog.warning('ToggleTaskStatusCommand: Node $nodeId is not a TaskNode');
+      tempoTaskEditorLog.warning(
+        'ToggleTaskStatusCommand: Node $nodeId is not a TaskNode',
+      );
       return;
     }
 
     // Toggle the task status
     final currentStatus = node.task.status;
-    final newStatus = currentStatus == TaskStatus.complete
-        ? TaskStatus.todo
-        : TaskStatus.complete;
+    final newStatus =
+        currentStatus == TaskStatus.complete
+            ? TaskStatus.todo
+            : TaskStatus.complete;
 
-    fluxLog.info('ToggleTaskStatusCommand: Optimistically updating task ${node.task.uuid} from $currentStatus to $newStatus');
+    tempoTaskEditorLog.info(
+      'ToggleTaskStatusCommand: Optimistically updating task ${node.task.uuid} from $currentStatus to $newStatus',
+    );
 
     // OPTIMISTIC UPDATE: Update UI immediately
     final optimisticTask = node.task.copyWith(status: newStatus);
     final optimisticNode = node.copyTaskWith(task: optimisticTask);
     document.replaceNodeById(node.id, optimisticNode);
-    fluxLog.info('ToggleTaskStatusCommand: UI updated optimistically for task ${node.task.uuid}');
+    tempoTaskEditorLog.info(
+      'ToggleTaskStatusCommand: UI updated optimistically for task ${node.task.uuid}',
+    );
 
     // ASYNC DATABASE UPDATE: Update database in background
-    _updateDatabaseAsync(node.task.uuid, currentStatus, newStatus, document, node);
+    _updateDatabaseAsync(
+      node.task.uuid,
+      currentStatus,
+      newStatus,
+      document,
+      node,
+    );
   }
 
   /// Updates the database asynchronously and handles rollback on failure
@@ -63,21 +78,31 @@ class ToggleTaskStatusCommand implements EditCommand {
     try {
       // Update the database
       taskRepository.updateStatus(taskUuid, newStatus);
-      fluxLog.info('ToggleTaskStatusCommand: Database successfully updated for task $taskUuid');
+      tempoTaskEditorLog.info(
+        'ToggleTaskStatusCommand: Database successfully updated for task $taskUuid',
+      );
 
       // Verify the update worked
       final verifiedTask = taskRepository.byUUID(taskUuid);
       if (verifiedTask?.status != newStatus) {
-        throw Exception('Database update verification failed: expected $newStatus, got ${verifiedTask?.status}');
+        throw Exception(
+          'Database update verification failed: expected $newStatus, got ${verifiedTask?.status}',
+        );
       }
     } catch (error, stackTrace) {
-      fluxLog.severe('ToggleTaskStatusCommand: Database update failed for task $taskUuid', error, stackTrace);
+      tempoTaskEditorLog.severe(
+        'ToggleTaskStatusCommand: Database update failed for task $taskUuid',
+        error,
+        stackTrace,
+      );
 
       // ROLLBACK: Revert the optimistic update
       final rollbackTask = originalNode.task.copyWith(status: originalStatus);
       final rollbackNode = originalNode.copyTaskWith(task: rollbackTask);
       document.replaceNodeById(originalNode.id, rollbackNode);
-      fluxLog.warning('ToggleTaskStatusCommand: Rolled back optimistic update for task $taskUuid');
+      tempoTaskEditorLog.warning(
+        'ToggleTaskStatusCommand: Rolled back optimistic update for task $taskUuid',
+      );
     }
   }
 

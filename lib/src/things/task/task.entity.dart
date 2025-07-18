@@ -6,9 +6,9 @@ import '../../editor/super_editor.dart';
 import '../../objectbox/attributed_text_mixin.dart';
 import '../../objectbox/objectbox.dart';
 import '../../objectbox/objectbox.g.dart';
-import '../project/project_entity.dart';
+import '../project/project.entity.dart';
 import '../thing/interface.dart';
-import '../thing/thing_entity.dart';
+import '../thing/thing.entity.dart';
 
 export 'task_urgency.dart';
 
@@ -129,11 +129,6 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @override
   bool archived;
 
-  /// Polymorphic children relationship - can contain any entity type
-  /// When viewing a task, these are the document nodes shown in order
-  @override
-  final children = ToMany<ThingEntity>();
-
   /// Direct reference to the ThingEntity registration
   /// This creates a 1:1 relationship between this Task and its registry entry
   @override
@@ -141,10 +136,6 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
 
   /// Keep project relationship for now as it's a categorization
   final project = ToOne<ProjectEntity>();
-
-  /// Keep parent for task hierarchy tracking, but relationships
-  /// will be managed through polymorphic children
-  final parent = ToOne<TaskEntity>();
 
   final history = ToMany<TaskSnapshotEntity>();
 
@@ -223,7 +214,6 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
     TaskPriority? priority,
     bool? deleted,
     bool? archived,
-    TaskEntity? parent,
     ProjectEntity? project,
   }) {
     final task = TaskEntity(
@@ -247,8 +237,8 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
     task.id = id;
     task.title = title ?? this.title;
 
-    task.parent.target = parent ?? this.parent.target;
-    // NOTE children relationships should be copied separately via polymorphic repository
+    // NOTE: parent relationships are automatically maintained by ObjectBox as backlinks
+    // NOTE: children relationships should be copied separately via polymorphic repository
     task.project.target = project ?? this.project.target;
 
     return task;

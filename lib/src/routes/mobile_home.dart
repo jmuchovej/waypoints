@@ -10,7 +10,7 @@ class MobileHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
       body: SafeArea(
@@ -62,7 +62,7 @@ class MobileHomeScreen extends ConsumerWidget {
                     onTap: () => context.go('/projects'),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Development section header
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -130,11 +130,7 @@ class _MobileNavCard extends StatelessWidget {
                   color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  size: 32,
-                  color: color,
-                ),
+                child: Icon(icon, size: 32, color: color),
               ),
               const SizedBox(width: 16),
               Expanded(

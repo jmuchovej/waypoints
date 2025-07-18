@@ -4,7 +4,7 @@ import '../super_editor.dart';
 import '../operations/task_requests.dart';
 
 // No entity imports needed - uses only nodes
-import '../../things/task/task_entity.dart';
+import '../../things/task/task.entity.dart';
 import 'task_node.dart';
 import 'task_component.dart';
 

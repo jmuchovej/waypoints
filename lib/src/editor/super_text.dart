@@ -11,8 +11,10 @@ export 'package:super_text_layout/super_text_layout.dart';
 enum TempoTextFieldSizeMode {
   /// Expands to fill available width (default behavior)
   adaptive,
+
   /// Sizes to minimum required width for content
   min,
+
   /// Sizes to maximum available width
   max,
 }
@@ -59,19 +61,16 @@ class TempoText extends TempoTextBase {
     TextDirection textDirection = TextDirection.ltr,
     TempoTextFieldSizeMode sizeMode = TempoTextFieldSizeMode.adaptive,
   }) : super(
-          text: text,
-          textStyleBuilder: textStyleBuilder,
-          textAlign: textAlign,
-          textDirection: textDirection,
-          sizeMode: sizeMode,
-        );
+         text: text,
+         textStyleBuilder: textStyleBuilder,
+         textAlign: textAlign,
+         textDirection: textDirection,
+         sizeMode: sizeMode,
+       );
 
   AttributionStyleBuilder get _defaultStyleBuilder {
     return (Set<Attribution> attributions) {
-      TextStyle style = const TextStyle(
-        fontSize: 16,
-        color: Colors.black,
-      );
+      TextStyle style = const TextStyle(fontSize: 16, color: Colors.black);
 
       // Apply attributions
       for (final attribution in attributions) {
@@ -116,7 +115,11 @@ class TempoText extends TempoTextBase {
   @override
   Widget build(BuildContext context) {
     final styleBuilder = textStyleBuilder ?? _defaultStyleBuilder;
-    final richText = text.computeInlineSpan(context, styleBuilder, defaultInlineWidgetBuilderChain);
+    final richText = text.computeInlineSpan(
+      context,
+      styleBuilder,
+      defaultInlineWidgetBuilderChain,
+    );
 
     final superText = SuperText(
       richText: richText,

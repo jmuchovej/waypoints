@@ -5,7 +5,7 @@ import '../operations/thing_cursor_handler.dart';
 import '../super_editor.dart';
 import '../../infrastructure/logging.dart';
 import '../operations/thing_node_position.dart';
-import '../../things/task/task_entity.dart';
+import '../../things/task/task.entity.dart';
 import '../../things/task/task_repository.dart';
 import 'components/task_due_date_chip.dart';
 import 'components/task_progress_chip.dart';
@@ -42,9 +42,6 @@ class TaskComponentState extends ConsumerState<TaskComponent>
         ProxyTextComposable,
         ThingCursorProvider {
   final _textKey = GlobalKey();
-
-  // Debug flag - set to true to see detailed gesture logging
-  static const bool _debugGestures = true;
 
   TaskEntity get task => widget.viewModel.task;
 
@@ -110,7 +107,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
                     showDebugPaint: widget.showDebugPaint,
                     // onEdit: () {
                     //   if (_debugGestures) {
-                    //     tempoLog.info('✏️ ThingTitleComponent edit for task: ${task.uuid}');
+                    //     LogTempo.base.info('✏️ ThingTitleComponent edit for task: ${task.uuid}');
                     //   }
                     //   // Focus the component for editing
                     //   // The SuperEditor system will handle the actual editing
@@ -149,18 +146,18 @@ class TaskComponentState extends ConsumerState<TaskComponent>
           childDocumentComponentKey.currentContext?.findRenderObject()
               as RenderBox?;
       if (textComponentBox == null) {
-        if (_debugGestures) {
-          tempoLog.finest('🎯 _isClickInTextArea: No text component box found');
-        }
+        tempoThingTapDelegateLog.finest(
+          '🎯 _isClickInTextArea: No text component box found',
+        );
         return false;
       }
 
       // Get our task component's render box
       final taskComponentBox = context.findRenderObject() as RenderBox?;
       if (taskComponentBox == null) {
-        if (_debugGestures) {
-          tempoLog.finest('🎯 _isClickInTextArea: No task component box found');
-        }
+        tempoThingTapDelegateLog.finest(
+          '🎯 _isClickInTextArea: No task component box found',
+        );
         return false;
       }
 
@@ -179,19 +176,15 @@ class TaskComponentState extends ConsumerState<TaskComponent>
 
       final isInTextArea = textBounds.contains(localOffset);
 
-      if (_debugGestures) {
-        tempoLog.finest(
-          '🎯 _isClickInTextArea: click=$localOffset, textBounds=$textBounds, result=$isInTextArea',
-        );
-      }
+      tempoThingTapDelegateLog.finest(
+        '🎯 _isClickInTextArea: click=$localOffset, textBounds=$textBounds, result=$isInTextArea',
+      );
 
       return isInTextArea;
     } catch (e) {
-      if (_debugGestures) {
-        tempoLog.warning(
-          '🎯 _isClickInTextArea: Error calculating text area: $e',
-        );
-      }
+      tempoThingTapDelegateLog.warning(
+        '🎯 _isClickInTextArea: Error calculating text area: $e',
+      );
       // Default to false (not in text area) on any error
       return false;
     }
@@ -250,7 +243,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
     pills.add(TaskDueDateChip(task: task));
 
     // Check if task has project
-    // tempoLog.finest('task project=${node.task.project.target}');
+    // LogTempo.base.finest('task project=${node.task.project.target}');
     if (task.project.hasValue && task.project.target != null) {
       if (pills.isNotEmpty) pills.add(const SizedBox(width: 8));
       pills.add(Flexible(child: TaskProjectChip(task: task)));
@@ -289,17 +282,15 @@ class TaskComponentState extends ConsumerState<TaskComponent>
     try {
       // Status chip area (left side) - interactive
       if (localOffset.dx < 40) {
-        if (_debugGestures) {
-          tempoLog.finest('🎯 Cursor zone: status chip area (interactive)');
-        }
+        tempoThingTapDelegateLog.finest(
+          '🎯 Cursor zone: status chip area (interactive)',
+        );
         return ThingCursorZone.interactive;
       }
 
       // Check if we're in the text area
       if (_isClickInTextArea(localOffset)) {
-        if (_debugGestures) {
-          tempoLog.finest('🎯 Cursor zone: text area (editable)');
-        }
+        tempoThingTapDelegateLog.finest('🎯 Cursor zone: text area (editable)');
         return ThingCursorZone.textEditable;
       }
 
@@ -308,22 +299,20 @@ class TaskComponentState extends ConsumerState<TaskComponent>
       if (componentBox != null) {
         final rightZoneStart = componentBox.size.width * 0.7; // Approximate
         if (localOffset.dx > rightZoneStart) {
-          if (_debugGestures) {
-            tempoLog.finest('🎯 Cursor zone: pills/chips area (interactive)');
-          }
+          tempoThingTapDelegateLog.finest(
+            '🎯 Cursor zone: pills/chips area (interactive)',
+          );
           return ThingCursorZone.interactive;
         }
       }
 
       // Everything else is clickable (for navigation)
-      if (_debugGestures) {
-        tempoLog.finest('🎯 Cursor zone: general area (clickable)');
-      }
+      tempoThingTapDelegateLog.finest(
+        '🎯 Cursor zone: general area (clickable)',
+      );
       return ThingCursorZone.clickable;
     } catch (e) {
-      if (_debugGestures) {
-        tempoLog.warning('🎯 Error determining cursor zone: $e');
-      }
+      tempoThingTapDelegateLog.warning('🎯 Error determining cursor zone: $e');
       // Default to clickable on any error
       return ThingCursorZone.clickable;
     }

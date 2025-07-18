@@ -14,6 +14,10 @@ import 'src/styling/text_styles.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize logging configuration
+  LoggerConfig.initialize();
+
   final flavor = Flavor(appFlavor);
   final obx = await ObjectBox.create(flavor);
 
@@ -35,15 +39,12 @@ void main() async {
     // debugPaintPointersEnabled = true; // Shows pointer hit testing
     // debugPaintLayerBordersEnabled = true; // Shows layer boundaries
   }
-  initLoggers(Level.FINEST, tempoLoggers);
-  initLoggers(Level.WARNING, superEditorLoggers);
-  deactivateLoggers(FTLLoggers);
 
   runApp(UncontrolledProviderScope(container: container, child: Tempo()));
 }
 
 class Tempo extends ConsumerWidget {
-  Tempo({super.key});
+  const Tempo({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,7 +54,6 @@ class Tempo extends ConsumerWidget {
     final flavor = ref.read(flavorProvider);
     final router = ref.read(routerProvider);
 
-    tempoLog.info('🚀 Tempo.build() called - creating MaterialApp.router');
     return MaterialApp.router(
       title: flavor.title,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

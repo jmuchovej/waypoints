@@ -8,24 +8,24 @@ targets:
         generate_for:
           exclude:
             - lib/src/objectbox/**
-            - lib/objectbox/**
-      
+            - lib/**/*.entity.dart
+
       # Disable freezed for objectbox directory
-      freezed:
-        enabled: true
-        generate_for:
-          exclude:
-            - lib/src/objectbox/**
-            - lib/objectbox/**
-      
+      # freezed:
+      #   enabled: true
+      #   generate_for:
+      #     exclude:
+      #       - lib/src/objectbox/**
+      #       - lib/**/*.entity.dart
+
       # Disable json_serializable for objectbox directory
-      json_serializable:
-        enabled: true
-        generate_for:
-          exclude:
-            - lib/src/objectbox/**
-            - lib/objectbox/**
-      
+      # json_serializable:
+      #   enabled: true
+      #   generate_for:
+      #     exclude:
+      #       - lib/src/objectbox/**
+      #       - lib/**/*.entity.dart
+
       # TODO WHEN/IF migrating back to Drift, reenable these to support
       #   partial files
       # drift_dev:
@@ -45,3 +45,14 @@ targets:
       # drift_dev:modular:
       #   enabled: true
       #   options: *options
+
+      # Configure ObjectBox to only process entity files
+      objectbox_generator|resolver:
+        enabled: true
+        generate_for:
+          include:
+            - lib/src/objectbox/**
+            - lib/**/*.entity.dart
+
+      objectbox_generator|generator:
+        enabled: true

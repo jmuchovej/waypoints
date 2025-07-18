@@ -1,9 +1,9 @@
 import 'package:objectbox/objectbox.dart';
 import '../../editor/editor.dart';
 import '../../objectbox/attributed_text_mixin.dart';
-import '../task/task_entity.dart';
+import '../task/task.entity.dart';
 import '../thing/interface.dart';
-import '../thing/thing_entity.dart';
+import '../thing/thing.entity.dart';
 
 @Entity()
 class ActivityEntity with AttributedTextEntity, ThingBehavior implements Thing {
@@ -95,9 +95,6 @@ class ActivityEntity with AttributedTextEntity, ThingBehavior implements Thing {
 
   @override
   DateTime get modifyDate => endDate;
-
-  @override
-  final ToMany<ThingEntity> children = ToMany<ThingEntity>();
 
   /// Direct reference to the ThingEntity registration
   /// This creates a 1:1 relationship between this Activity and its registry entry

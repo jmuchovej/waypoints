@@ -14,9 +14,9 @@ class PillButton extends ConsumerWidget {
     this.clipBehavior = Clip.none,
     this.statesController,
     super.key,
-  })  : _icon = null,
-        _label = null,
-        _isTonal = false;
+  }) : _icon = null,
+       _label = null,
+       _isTonal = false;
 
   const PillButton.icon({
     required this.onPressed,
@@ -31,10 +31,10 @@ class PillButton extends ConsumerWidget {
     this.clipBehavior = Clip.none,
     this.statesController,
     super.key,
-  })  : _icon = icon,
-        _label = label,
-        child = null,
-        _isTonal = false;
+  }) : _icon = icon,
+       _label = label,
+       child = null,
+       _isTonal = false;
 
   const PillButton.tonal({
     required this.onPressed,
@@ -48,9 +48,9 @@ class PillButton extends ConsumerWidget {
     this.clipBehavior = Clip.none,
     this.statesController,
     super.key,
-  })  : _icon = null,
-        _label = null,
-        _isTonal = true;
+  }) : _icon = null,
+       _label = null,
+       _isTonal = true;
 
   const PillButton.tonalIcon({
     required this.onPressed,
@@ -65,10 +65,10 @@ class PillButton extends ConsumerWidget {
     this.clipBehavior = Clip.none,
     this.statesController,
     super.key,
-  })  : _icon = icon,
-        _label = label,
-        child = null,
-        _isTonal = true;
+  }) : _icon = icon,
+       _label = label,
+       child = null,
+       _isTonal = true;
 
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -87,9 +87,7 @@ class PillButton extends ConsumerWidget {
   ButtonStyle _defaultStyle(BuildContext context) {
     final theme = Theme.of(context);
     return FilledButton.styleFrom(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }

@@ -31,7 +31,10 @@ class PanelContentRegistry {
       _builders['Project'] = builder;
     } else {
       // For other builders, try to infer from class name
-      _builders[typeName.replaceAll('PanelBuilder', '').replaceAll('Builder', '')] = builder;
+      _builders[typeName
+              .replaceAll('PanelBuilder', '')
+              .replaceAll('Builder', '')] =
+          builder;
     }
   }
 
@@ -47,20 +50,20 @@ class PanelContentRegistry {
     if (specificBuilder != null && specificBuilder.canBuild(type)) {
       return specificBuilder;
     }
-    
+
     // Then check universal builder
     final universalBuilder = _builders['_universal'];
     if (universalBuilder != null && universalBuilder.canBuild(type)) {
       return universalBuilder;
     }
-    
+
     // Finally check all builders
     for (final builder in _builders.values) {
       if (builder.canBuild(type)) {
         return builder;
       }
     }
-    
+
     return null;
   }
 
@@ -70,7 +73,12 @@ class PanelContentRegistry {
   }
 
   /// Build content for a specific entity
-  Widget buildContent(BuildContext context, String entityType, String uuid, WidgetRef ref) {
+  Widget buildContent(
+    BuildContext context,
+    String entityType,
+    String uuid,
+    WidgetRef ref,
+  ) {
     final builder = getBuilder(entityType);
     if (builder == null) {
       return Center(
@@ -85,4 +93,3 @@ class PanelContentRegistry {
 final panelContentRegistryProvider = Provider<PanelContentRegistry>((ref) {
   return PanelContentRegistry();
 });
-

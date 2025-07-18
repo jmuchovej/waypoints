@@ -1,6 +1,7 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
-import '../../../things/project/project_entity.dart';
+import '../../../things/project/project.entity.dart';
+import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 import 'tasks_personal_japan.dart';
@@ -15,7 +16,7 @@ class PersonalArea extends DatabaseSeed {
 
   @override
   void seed(SeedDataService s) {
-    dbLog.fine('<seeding area="${area.title.toPlainText()}">');
+    tempoDBSeedLog.fine('<seeding area="${area.title.toPlainText()}">');
 
     // Use repository which handles registration automatically
     final areaID = s.projectRepo.put(area);
@@ -31,13 +32,16 @@ class PersonalArea extends DatabaseSeed {
 
     // Get the area again with proper ID and add children
     final savedArea = s.projectRepo.get(areaID)!;
-    savedArea.children.addAll(
+    final savedAreaThingEntity = savedArea.thing.target!;
+    savedAreaThingEntity.children.addAll(
       [
         japanTrip.project.uuid,
         homeOffice.project.uuid,
         photos.project.uuid,
-      ].map((u) => s.projectRepo.byUUID(u)!.asThingEntity()),
+      ].map((u) => s.projectRepo.byUUID(u)!.thing.target!),
     );
+    // Save the ThingEntity to persist the children relationships
+    s.projectRepo.store.box<ThingEntity>().put(savedAreaThingEntity);
     s.projectRepo.put(savedArea);
   }
 }

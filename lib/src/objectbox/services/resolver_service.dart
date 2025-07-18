@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../things/thing/interface.dart';
 import '../objectbox.dart';
 import '../objectbox.g.dart';
-import '../../things/thing/thing_entity.dart';
+import '../../things/thing/thing.entity.dart';
 import 'thing_service.dart';
 
 /// Provider for resolver service
@@ -83,7 +83,7 @@ class ResolverService {
     final parent = resolveSingle(entity);
     if (parent == null) return null;
 
-    return resolveMany(parent.children.toList());
+    return resolveMany(parent.thing.target!.children.toList());
   }
 
   /// Resolve typed children (used by repositories)

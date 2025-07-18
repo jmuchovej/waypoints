@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../styling/text_styles.dart';
-import '../../../things/task/task_entity.dart';
+import '../../../things/task/task.entity.dart';
 import '../../../objectbox/services/resolver_service.dart';
 
 /// A pill-shaped widget that displays the completion progress of subtasks
@@ -17,7 +17,7 @@ class TaskProgressChip extends ConsumerWidget {
     // Get all subtasks for this parent task
     final resolver = ref.read(resolverServiceProvider);
     final subtasks = resolver.resolveTypedChildren<TaskEntity>(
-      parentTask.children.toList(),
+      parentTask.thing.target!.children.toList(),
       TaskEntity.key,
     );
 

@@ -27,15 +27,6 @@ export 'documents/ordered_set.dart';
 export 'operations/task_requests.dart';
 export 'operations/panel_requests.dart';
 
-/// Defines how SuperEditor should render in different scrolling contexts
-enum SuperEditorRenderMode {
-  /// Standard render box with its own scroll controller
-  renderBox,
-
-  /// Sliver mode for embedding in CustomScrollView
-  sliver,
-}
-
 /// Creates request handlers that include both default SuperEditor handlers
 /// and Tempo-specific task and panel handlers
 List<EditRequestHandler> createTempoRequestHandlers(
@@ -61,10 +52,8 @@ SuperEditor createSuperEditor(
   required LeaderLinkManager linkManager,
   required TaskRepository taskRepository,
   required WidgetRef ref,
-  ScrollController? scrollController,
   bool? autofocus,
   dynamic panelInfo,
-  SuperEditorRenderMode renderMode = SuperEditorRenderMode.renderBox,
 }) {
   // TODO: Fix FollowerLayer null check error when document is empty
   // If document is empty, inject a placeholder node with hint text like:
@@ -92,10 +81,8 @@ SuperEditor createSuperEditor(
   final superEditor = SuperEditor(
     editor: editor,
     autofocus: autofocus ?? !isMobile, // Disable autofocus on mobile by default
-    // Only use scrollController for renderBox mode
-    scrollController: renderMode == SuperEditorRenderMode.renderBox ? scrollController : null,
-    // Configure shrinkWrap based on render mode
-    shrinkWrap: renderMode == SuperEditorRenderMode.sliver ? false : false,
+    scrollController: null,
+    shrinkWrap: false,
 
     debugPaint:
         flavor.isDevelopment

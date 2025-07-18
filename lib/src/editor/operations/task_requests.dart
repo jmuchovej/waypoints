@@ -2,9 +2,7 @@ import '../super_editor.dart';
 
 /// Request to toggle a task's completion status
 class ToggleTaskStatusRequest implements EditRequest {
-  const ToggleTaskStatusRequest({
-    required this.nodeId,
-  });
+  const ToggleTaskStatusRequest({required this.nodeId});
 
   /// The ID of the TaskNode to toggle
   final String nodeId;

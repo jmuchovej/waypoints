@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'activity_entity.dart';
+import 'activity.entity.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../thing/interface.dart';
 

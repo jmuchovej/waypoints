@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 import '../editor.dart';
 import '../../things/thing/interface.dart';
-import '../../things/thing/thing_entity.dart';
-import '../../things/task/task_entity.dart';
+import '../../things/thing/thing.entity.dart';
+import '../../things/task/task.entity.dart';
 import '../../things/task/task_repository.dart';
 
 const NamedAttribution taskAttribution = NamedAttribution("task");
@@ -36,11 +37,12 @@ int _computeIndentation(TaskEntity? task, int indent) {
   if (cached != null) return cached;
 
   // Compute indentation by traversing parents
-  indent = 0;
-  TaskEntity? currentTask = task;
-  while (currentTask != null && currentTask.parent.hasValue) {
+  ThingEntity? ref = task.thing.target;
+  while (ref != null &&
+      ref.parent.target != null &&
+      ref.type == TaskEntity.key) {
     indent += 1;
-    currentTask = currentTask.parent.target;
+    ref = ref.parent.target;
   }
 
   // Cache the result

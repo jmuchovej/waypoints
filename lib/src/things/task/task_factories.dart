@@ -3,17 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../thing_factories.dart';
 import '../../editor/nodes/task_node.dart';
 import '../../editor/headers/task_editor_header.dart';
-import 'task_entity.dart';
+import 'task.entity.dart';
 import 'task_repository.dart';
 
 /// Node factory for converting Task entities to TaskNodes
-class TaskHeaderFactory extends ThingPanelHeaderFactory<TaskEntity, TaskRepository> {
-  TaskHeaderFactory(Ref ref) : super(ref, taskRepositoryProvider, TaskEditorHeader.fromTask);
+class TaskHeaderFactory
+    extends ThingPanelHeaderFactory<TaskEntity, TaskRepository> {
+  TaskHeaderFactory(Ref ref)
+    : super(ref, taskRepositoryProvider, TaskEditorHeader.fromTask);
 
   @override
   String get type => TaskEntity.key;
 }
-
 
 /// Node factory for converting Task entities to TaskNodes
 class TaskNodeFactory

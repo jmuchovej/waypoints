@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:auto_route/auto_route.dart';
 
 import '../super_editor.dart';
 import '../../infrastructure/logging.dart';
@@ -26,7 +25,9 @@ class OpenTaskPanelCommand implements EditCommand {
 
   @override
   void execute(EditContext editContext, CommandExecutor executor) {
-    tempoLog.info('OpenTaskPanelCommand: Opening panel for task $taskUuid');
+    tempoEditorLog.info(
+      'OpenTaskPanelCommand: Opening panel for task $taskUuid',
+    );
 
     // Navigate to the task using panel navigation
     context.pushThing(taskUuid);
@@ -56,7 +57,9 @@ class OpenProjectPanelCommand implements EditCommand {
 
   @override
   void execute(EditContext editContext, CommandExecutor executor) {
-    tempoLog.info('OpenProjectPanelCommand: Opening panel for project $projectUuid');
+    tempoEditorLog.info(
+      'OpenProjectPanelCommand: Opening panel for project $projectUuid',
+    );
 
     // Navigate to the project using panel navigation
     context.pushThing(projectUuid);
@@ -86,11 +89,13 @@ class NavigateToRouteCommand implements EditCommand {
 
   @override
   void execute(EditContext editContext, CommandExecutor executor) {
-    tempoLog.info('NavigateToRouteCommand: Navigating to $routePath');
+    tempoEditorLog.info('NavigateToRouteCommand: Navigating to $routePath');
 
     // TODO: Implement navigation - this is a proof of concept
     // The navigation would go here, but needs proper route handling
-    tempoLog.info('NavigateToRouteCommand: Would navigate to $routePath with params $parameters');
+    tempoEditorLog.info(
+      'NavigateToRouteCommand: Would navigate to $routePath with params $parameters',
+    );
   }
 
   @override
