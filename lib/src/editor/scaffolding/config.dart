@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:follow_the_leader/follow_the_leader.dart';
 
-import '../../things/thing/interface.dart';
+import '../../things/foundation.dart';
 import '../../infrastructure/platform.dart';
 import '../super_editor.dart';
 import 'elements/drag_handle.dart';

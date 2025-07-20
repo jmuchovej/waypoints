@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
+import '../../things/foundation.dart';
 import '../editor.dart';
-import '../../things/thing/interface.dart';
-import '../../things/thing/thing.entity.dart';
+import '../../things/thing.entity.dart';
 import '../../things/task/task.entity.dart';
 import '../../things/task/task_repository.dart';
 
@@ -37,12 +36,12 @@ int _computeIndentation(TaskEntity? task, int indent) {
   if (cached != null) return cached;
 
   // Compute indentation by traversing parents
-  ThingEntity? ref = task.thing.target;
+  ThingEntity? ref = task.thing;
   while (ref != null &&
-      ref.parent.target != null &&
+      ref.parent != null &&
       ref.type == TaskEntity.key) {
     indent += 1;
-    ref = ref.parent.target;
+    ref = ref.parent;
   }
 
   // Cache the result
@@ -70,10 +69,9 @@ class TaskNode extends TextNode implements ThingNode {
   TaskNode.fromTask(
     this.task, {
     super.metadata,
-    int indent = -1,
+    this.indent = 0,
     this.inEditMode = false,
-  }) : indent = _computeIndentation(task, indent),
-       super(id: task.uuid, text: task.title) {
+  }) : super(id: task.uuid, text: task.title) {
     // TODO determine how to impute the indentation on-creation
     initAddToMetadata({"blockType": taskAttribution, "inEditMode": inEditMode});
   }

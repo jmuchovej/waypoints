@@ -27,10 +27,10 @@ class ObjectBox {
 
   /// Create an instance of ObjectBox to use throughout the app.
   static Future<ObjectBox> create(Flavor flavor) async {
-    final directory = await flavor.dataDirectory();
+    final directory = await TempoData(flavor).database;
     // Future<Store> openStore() {...} is defined in the generated objectbox.g.dart
     final store = await openStore(
-      directory: directory,
+      directory: directory.path,
       macosApplicationGroup: "group.do.tempo",
     );
     return ObjectBox._create(store, flavor);

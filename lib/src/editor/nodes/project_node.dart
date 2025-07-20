@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:super_editor/super_editor.dart';
-import '../../things/thing/interface.dart';
-import '../../things/thing/thing.entity.dart';
+import '../../things/foundation.dart';
+import '../../things/thing.entity.dart';
 import '../../things/project/project.entity.dart';
 import '../../things/project/project_repository.dart';
 
@@ -24,10 +24,8 @@ final projectStyles = StyleRule(projectSelector, (document, node) {
 int _computeIndentation(ProjectEntity? project, int indent) {
   if (indent != -1) return indent;
 
-  indent = 0;
-  while (project != null && project.parent.hasValue) {
+  while (project != null) {
     indent += 1;
-    project = project.parent.target;
   }
 
   return indent;

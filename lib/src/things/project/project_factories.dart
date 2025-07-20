@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../thing_factories.dart';
+import '../factory.docheaders.dart';
+import '../factory.node.dart';
 import 'project.entity.dart';
 import 'project_repository.dart';
 import '../../editor/nodes/project_node.dart';

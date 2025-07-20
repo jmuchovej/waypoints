@@ -248,19 +248,11 @@ class _SidebarContent extends ConsumerWidget {
                     ),
                   ),
                   _NavItem(
-                    icon: Icons.science,
-                    label: 'Demo',
+                    icon: Icons.developer_board,
+                    label: 'DevTools',
                     isSelected: activeIndex == 2,
                     onTap: () {
                       onIndexChanged(2);
-                    },
-                  ),
-                  _NavItem(
-                    icon: Icons.developer_board,
-                    label: 'DevTools',
-                    isSelected: activeIndex == 3,
-                    onTap: () {
-                      onIndexChanged(3);
                     },
                   ),
                 ],

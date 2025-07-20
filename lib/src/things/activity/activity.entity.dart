@@ -1,9 +1,9 @@
 import 'package:objectbox/objectbox.dart';
 import '../../editor/editor.dart';
 import '../../objectbox/attributed_text_mixin.dart';
+import '../foundation.dart';
 import '../task/task.entity.dart';
-import '../thing/interface.dart';
-import '../thing/thing.entity.dart';
+import '../thing.entity.dart';
 
 @Entity()
 class ActivityEntity with AttributedTextEntity, ThingBehavior implements Thing {
@@ -99,7 +99,7 @@ class ActivityEntity with AttributedTextEntity, ThingBehavior implements Thing {
   /// Direct reference to the ThingEntity registration
   /// This creates a 1:1 relationship between this Activity and its registry entry
   @override
-  final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
+  final ToOne<ThingEntity> thingRef = ToOne<ThingEntity>();
 
   @override
   String titleJson = '';

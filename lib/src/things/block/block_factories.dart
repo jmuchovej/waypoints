@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_editor/super_editor.dart';
 
-import '../thing_factories.dart';
+import '../factory.node.dart';
 import 'block.entity.dart';
 import 'block_repository.dart';
 

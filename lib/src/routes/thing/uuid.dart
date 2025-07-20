@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../editor/editor.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/services/resolver_service.dart';
 import '../../objectbox/services/thing_service.dart';
-import '../../things/thing/interface.dart';
-import '../../things/thing/thing.entity.dart';
-import '../../things/thing_factories.dart';
-import '../../ui/panel/panel_wrapper.dart';
-import '../../editor/editor.dart';
+import '../../things/factory.docheaders.dart';
+import '../../things/foundation.dart';
 import '../../things/task/task_repository.dart';
+import '../../things/thing.entity.dart';
+import '../../ui/panel/panel_wrapper.dart';
 import '404.dart';
 
 /// 🎯 PURPOSE: Dynamic entity detail page router
@@ -51,6 +51,39 @@ class ThingPage extends ConsumerWidget {
       header: header,
       stream: stream,
       emptyWidget: const SizedBox.shrink(),
+    );
+  }
+
+  /// 🎯 PURPOSE: Create editable SuperEditor for entities with no children
+  /// ARCHITECTURE: Empty document → SuperEditor with placeholder text
+  Widget _buildEmptyEditor(BuildContext context, WidgetRef ref) {
+    // Create empty document with placeholder paragraph
+    final document = MutableDocument(
+      nodes: [
+        ParagraphNode(
+          id: Editor.createNodeId(),
+          text: AttributedText('Start typing to add content...'),
+        ),
+      ],
+    );
+
+    final composer = MutableDocumentComposer();
+    final hoverManager = HoverManager();
+    final linkManager = LeaderLinkManager();
+    final taskRepository = ref.read(taskRepositoryProvider);
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: createSuperEditor(
+        context,
+        document,
+        composer,
+        hoverManager: hoverManager,
+        linkManager: linkManager,
+        taskRepository: taskRepository,
+        ref: ref,
+        autofocus: true,
+      ),
     );
   }
 
@@ -108,38 +141,5 @@ class ThingPage extends ConsumerWidget {
     });
 
     return controller.stream;
-  }
-
-  /// 🎯 PURPOSE: Create editable SuperEditor for entities with no children
-  /// ARCHITECTURE: Empty document → SuperEditor with placeholder text
-  Widget _buildEmptyEditor(BuildContext context, WidgetRef ref) {
-    // Create empty document with placeholder paragraph
-    final document = MutableDocument(
-      nodes: [
-        ParagraphNode(
-          id: Editor.createNodeId(),
-          text: AttributedText('Start typing to add content...'),
-        ),
-      ],
-    );
-
-    final composer = MutableDocumentComposer();
-    final hoverManager = HoverManager();
-    final linkManager = LeaderLinkManager();
-    final taskRepository = ref.read(taskRepositoryProvider);
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: createSuperEditor(
-        context,
-        document,
-        composer,
-        hoverManager: hoverManager,
-        linkManager: linkManager,
-        taskRepository: taskRepository,
-        ref: ref,
-        autofocus: true,
-      ),
-    );
   }
 }

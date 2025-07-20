@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../editor/super_editor.dart';
 import '../../infrastructure/logging.dart';
@@ -21,14 +21,86 @@ class TasksScreen extends ConsumerStatefulWidget {
   ConsumerState<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _TasksScreenState extends ConsumerState<TasksScreen> {
+class _TasksScreenState extends ConsumerState<TasksScreen> with RouteAware {
+  StreamController<TaskEntity>? _streamController;
+  StreamSubscription<TaskEntity>? _sourceSubscription;
+  bool _isPaused = false;
+
   @override
   void initState() {
     super.initState();
+    _initializeStream();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Listen to route changes
+    final router = GoRouter.of(context);
+    router.routerDelegate.addListener(_onRouteChanged);
+  }
+
+  void _onRouteChanged() {
+    final router = GoRouter.of(context);
+    final location = router.routerDelegate.currentConfiguration.fullPath;
+    final isActive = location == '/tasks';
+
+    if (isActive && _isPaused) {
+      _resumeStream();
+    } else if (!isActive && !_isPaused) {
+      _pauseStream();
+    }
+  }
+
+  void _initializeStream() {
+    _streamController = StreamController<TaskEntity>.broadcast();
+
+    // Start paused if not on /tasks
+    final router = GoRouter.of(context);
+    final isActive = router.routerDelegate.currentConfiguration.fullPath == '/tasks';
+    _isPaused = !isActive;
+
+    if (!_isPaused) {
+      _startSourceSubscription();
+    }
+  }
+
+  void _startSourceSubscription() {
+    _sourceSubscription?.cancel();
+    _sourceSubscription = _getTasksSource().listen(
+      (task) {
+        if (!_isPaused) {
+          _streamController?.add(task);
+        }
+      },
+      onError: (error) => _streamController?.addError(error),
+      onDone: () => _streamController?.close(),
+    );
+  }
+
+  void _pauseStream() {
+    _isPaused = true;
+    _sourceSubscription?.pause();
+    tempoTaskRouteLog.fine('Paused task stream');
+  }
+
+  void _resumeStream() {
+    _isPaused = false;
+    if (_sourceSubscription?.isPaused ?? false) {
+      _sourceSubscription?.resume();
+    } else {
+      // Restart if needed
+      _startSourceSubscription();
+    }
+    tempoTaskRouteLog.fine('Resumed task stream');
   }
 
   @override
   void dispose() {
+    final router = GoRouter.of(context);
+    router.routerDelegate.removeListener(_onRouteChanged);
+    _sourceSubscription?.cancel();
+    _streamController?.close();
     super.dispose();
   }
 
@@ -46,14 +118,14 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
     return PanelWrapper<TaskEntity>(
       header: header,
-      stream: getTasks(),
+      stream: _streamController?.stream ?? Stream.empty(),
       emptyWidget: emptyWidget,
       routePath: '/tasks',
       actions: [filterButton()],
     );
   }
 
-  Stream<TaskEntity> getTasks() {
+  Stream<TaskEntity> _getTasksSource() {
     final repo = ref.read(taskRepositoryProvider);
 
     final before = ProcessInfo.currentRss;

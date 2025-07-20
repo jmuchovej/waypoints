@@ -4,8 +4,8 @@ import 'package:objectbox/objectbox.dart';
 import 'package:super_editor/super_editor.dart';
 
 import '../../objectbox/attributed_text_mixin.dart';
-import '../thing/interface.dart';
-import '../thing/thing.entity.dart';
+import '../foundation.dart';
+import '../thing.entity.dart';
 
 /// Generic content block that can store any type of SuperEditor node.
 /// Follows the Thing architecture for polymorphic relationships and UUID resolution.
@@ -75,7 +75,7 @@ class BlockEntity
 
   /// Direct reference to the ThingEntity registration
   @override
-  final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
+  final ToOne<ThingEntity> thingRef = ToOne<ThingEntity>();
 
   /// History snapshots for this block
   final history = ToMany<BlockSnapshotEntity>();

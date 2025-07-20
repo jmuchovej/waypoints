@@ -1,4 +1,4 @@
-import '../things/thing/thing.entity.dart';
+import '../things/thing.entity.dart';
 
 /// Base class for all panel requests
 abstract class PanelRequest {

@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../objectbox/objectbox.dart';
+import '../repository.dart';
 import 'project.entity.dart';
 import '../task/task.entity.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../task/task_repository.dart';
-import '../thing/interface.dart';
 
 /// Provider for ProjectRepository
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
@@ -81,7 +81,7 @@ class ProjectRepository extends ThingRepository<ProjectEntity> {
 
   /// Get all top-level projects (no parent)
   List<ProjectEntity> topLevel() {
-    return getAll().where((project) => !project.parent.hasValue).toList();
+    return getAll().where((project) => project.parent != null).toList();
   }
 
   /// Unarchive a project

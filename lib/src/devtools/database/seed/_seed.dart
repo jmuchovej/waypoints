@@ -5,7 +5,7 @@ import '../../../things/task/task.entity.dart';
 import '../seed.dart';
 
 abstract class DatabaseSeed {
-  void seed(SeedDataService service);
+  Future<void> seed(SeedDataService service);
 }
 
 TaskEntity buildProjectScopeTask() => DevtoolsTaskDefaults.withDefaults(

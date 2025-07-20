@@ -1,7 +1,6 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
 import '../../../things/project/project.entity.dart';
-import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 import 'tasks_personal_japan.dart';
@@ -9,39 +8,36 @@ import 'tasks_personal_office.dart';
 import 'tasks_personal_photo.dart';
 
 class PersonalArea extends DatabaseSeed {
-  final area = ProjectEntity(
+  final seedArea = ProjectEntity(
     title: AttributedText("🏠 Personal"),
     uuid: "76c14776-3c11-4e67-a7da-46c039737aa3",
   );
 
   @override
-  void seed(SeedDataService s) {
-    tempoDBSeedLog.fine('<seeding area="${area.title.toPlainText()}">');
+  Future<void> seed(SeedDataService s) async {
+    tempoDBSeedLog.fine('<seeding area="${seedArea.title.toPlainText()}">');
 
     // Use repository which handles registration automatically
-    final areaID = s.projectRepo.put(area);
+    final area = await s.projectRepo.putAsync(seedArea);
 
     final japanTrip = JapanTripProject();
-    japanTrip.seed(s);
+    await japanTrip.seed(s);
 
     final homeOffice = HomeOfficeRenovationProject();
-    homeOffice.seed(s);
+    await homeOffice.seed(s);
 
     final photos = DigitalPhotoArchiveProject();
-    photos.seed(s);
+    await photos.seed(s);
 
     // Get the area again with proper ID and add children
-    final savedArea = s.projectRepo.get(areaID)!;
-    final savedAreaThingEntity = savedArea.thing.target!;
-    savedAreaThingEntity.children.addAll(
+    area.thing.childrenRef.addAll(
       [
-        japanTrip.project.uuid,
-        homeOffice.project.uuid,
-        photos.project.uuid,
-      ].map((u) => s.projectRepo.byUUID(u)!.thing.target!),
+        japanTrip.seedProject.uuid,
+        homeOffice.seedProject.uuid,
+        photos.seedProject.uuid,
+      ].map((u) => s.projectRepo.byUUID(u)!.thing),
     );
     // Save the ThingEntity to persist the children relationships
-    s.projectRepo.store.box<ThingEntity>().put(savedAreaThingEntity);
-    s.projectRepo.put(savedArea);
+    await s.projectRepo.putAsync(area);
   }
 }

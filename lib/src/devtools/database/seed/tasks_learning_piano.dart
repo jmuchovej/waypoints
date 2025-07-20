@@ -1,26 +1,26 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
 import '../../../things/block/block.entity.dart';
+import '../../../things/foundation.dart';
 import '../../../things/project/project.entity.dart';
 import '../../../things/task/task.entity.dart';
-import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
 class PianoChopinEduteOp10No4Project extends DatabaseSeed {
-  final project = ProjectEntity(
+  final seedProject = ProjectEntity(
     title: AttributedText("Piano: Chopin Étude Op.10 No.4"),
     uuid: "49b1f46f-5152-419b-b7d5-eeffdcb048af",
   );
 
   // Project description blocks
-  final projectHeaderBlock = BlockEntity(
+  final seedProjectHeaderBlock = BlockEntity(
     uuid: "piano-proj-header-001",
     nodeType: "header1",
     content: AttributedText("Chopin Étude Op.10 No.4 in C# minor"),
   );
 
-  final projectDetailsBlock = BlockEntity(
+  final seedProjectDetailsBlock = BlockEntity(
     uuid: "piano-proj-details-002",
     nodeType: "paragraph",
     content: AttributedText(
@@ -28,13 +28,13 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
     ),
   );
 
-  final analysisHeaderBlock = BlockEntity(
+  final seedAnalysisHeaderBlock = BlockEntity(
     uuid: "piano-proj-analysis-003",
     nodeType: "header2",
     content: AttributedText("Musical Analysis"),
   );
 
-  final analysisBlock = BlockEntity(
+  final seedAnalysisBlock = BlockEntity(
     uuid: "piano-proj-analysis-004",
     nodeType: "paragraph",
     content: AttributedText(
@@ -42,37 +42,37 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
     ),
   );
 
-  final objectivesHeaderBlock = BlockEntity(
+  final seedObjectivesHeaderBlock = BlockEntity(
     uuid: "piano-proj-objectives-005",
     nodeType: "header2",
     content: AttributedText("Learning Objectives"),
   );
 
-  final objectivesListBlock = BlockEntity(
+  final seedObjectivesListBlock = BlockEntity(
     uuid: "piano-proj-objectives-006",
     nodeType: "list_item",
     content: AttributedText("Master chromatic scale technique at speed"),
   );
 
-  final objectivesListBlock2 = BlockEntity(
+  final seedObjectivesListBlock2 = BlockEntity(
     uuid: "piano-proj-objectives-007",
     nodeType: "list_item",
     content: AttributedText("Develop independence between hands"),
   );
 
-  final objectivesListBlock3 = BlockEntity(
+  final seedObjectivesListBlock3 = BlockEntity(
     uuid: "piano-proj-objectives-008",
     nodeType: "list_item",
     content: AttributedText("Build stamina for sustained rapid passages"),
   );
 
-  final scheduleHeaderBlock = BlockEntity(
+  final seedScheduleHeaderBlock = BlockEntity(
     uuid: "piano-proj-schedule-009",
     nodeType: "header2",
     content: AttributedText("Practice Schedule"),
   );
 
-  final scheduleBlock = BlockEntity(
+  final seedScheduleBlock = BlockEntity(
     uuid: "piano-proj-schedule-010",
     nodeType: "paragraph",
     content: AttributedText(
@@ -81,7 +81,7 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
   );
 
   // Task definitions
-  final techniqueTask = DevtoolsTaskDefaults.withDefaults(
+  final seedTechniqueTask = DevtoolsTaskDefaults.withDefaults(
     "piano-technique-01",
     AttributedText("Master chromatic scale technique"),
     priority: TaskPriority.H,
@@ -89,13 +89,13 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
   );
 
   // Technique task description blocks
-  final techniqueHeaderBlock = BlockEntity(
+  final seedTechniqueHeaderBlock = BlockEntity(
     uuid: "piano-tech-header-011",
     nodeType: "header3",
     content: AttributedText("Chromatic Scale Foundation Work"),
   );
 
-  final techniqueExerciseBlock = BlockEntity(
+  final seedTechniqueExerciseBlock = BlockEntity(
     uuid: "piano-tech-exercise-012",
     nodeType: "paragraph",
     content: AttributedText(
@@ -103,7 +103,7 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
     ),
   );
 
-  final techniqueGoalsBlock = BlockEntity(
+  final seedTechniqueGoalsBlock = BlockEntity(
     uuid: "piano-tech-goals-013",
     nodeType: "paragraph",
     content: AttributedText(
@@ -111,20 +111,20 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
     ),
   );
 
-  final memorizeTask = DevtoolsTaskDefaults.withDefaults(
+  final seedMemorizeTask = DevtoolsTaskDefaults.withDefaults(
     "piano-memorize-01",
     AttributedText("Memorize first 16 measures"),
     dateDelta: const Duration(days: 21),
   );
 
   // Memorization task description blocks
-  final memorizeApproachBlock = BlockEntity(
+  final seedMemorizeApproachBlock = BlockEntity(
     uuid: "piano-mem-approach-014",
     nodeType: "header3",
     content: AttributedText("Systematic Memorization Approach"),
   );
 
-  final memoryTypesBlock = BlockEntity(
+  final seedMemoryTypesBlock = BlockEntity(
     uuid: "piano-mem-types-015",
     nodeType: "paragraph",
     content: AttributedText(
@@ -132,7 +132,7 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
     ),
   );
 
-  final performanceTask = DevtoolsTaskDefaults.withDefaults(
+  final seedPerformanceTask = DevtoolsTaskDefaults.withDefaults(
     "piano-performance-01",
     AttributedText("Record performance video"),
     dateDelta: const Duration(days: 60),
@@ -140,7 +140,7 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
   );
 
   // Performance task description blocks
-  final performanceStandardsBlock = BlockEntity(
+  final seedPerformanceStandardsBlock = BlockEntity(
     uuid: "piano-perf-standards-016",
     nodeType: "paragraph",
     content: AttributedText(
@@ -148,7 +148,7 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
     ),
   );
 
-  final recordingSetupBlock = BlockEntity(
+  final seedRecordingSetupBlock = BlockEntity(
     uuid: "piano-perf-recording-017",
     nodeType: "paragraph",
     content: AttributedText(
@@ -157,124 +157,80 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
   );
 
   @override
-  void seed(SeedDataService s) {
+  Future<void> seed(SeedDataService s) async {
     tempoDBSeedLog.finer(
-      '  <seeding project="${project.title.toPlainText()}">',
+      '  <seedIng project="${seedProject.title.toPlainText()}">',
     );
-    final projectID = s.projectRepo.put(project);
+    final project = await s.projectRepo.putAsync(seedProject);
 
     // Seed all block entities first
-    final projectBlockIDs = s.blockRepo.putMany([
-      projectHeaderBlock,
-      projectDetailsBlock,
-      analysisHeaderBlock,
-      analysisBlock,
-      objectivesHeaderBlock,
-      objectivesListBlock,
-      objectivesListBlock2,
-      objectivesListBlock3,
-      scheduleHeaderBlock,
-      scheduleBlock,
-    ]);
-
-    final techniqueBlockIDs = s.blockRepo.putMany([
-      techniqueHeaderBlock,
-      techniqueExerciseBlock,
-      techniqueGoalsBlock,
-    ]);
-
-    final memorizeBlockIDs = s.blockRepo.putMany([
-      memorizeApproachBlock,
-      memoryTypesBlock,
-    ]);
-
-    final performanceBlockIDs = s.blockRepo.putMany([
-      performanceStandardsBlock,
-      recordingSetupBlock,
-    ]);
-
-    // Seed tasks
-    final scopeTask = buildProjectScopeTask();
-    final timelineTask = buildProjectTimelineTask();
-
-    final [scopeID, timelineID, techniqueID, memorizeID, performanceID] = s
-        .taskRepo
-        .putMany([
-          scopeTask,
-          timelineTask,
-          techniqueTask,
-          memorizeTask,
-          performanceTask,
-        ]);
-
-    // Set project relationships for all tasks
-    final savedProject = s.projectRepo.get(projectID)!;
-    tempoDBSeedLog.fine(
-      'Setting project relationships for ${savedProject.title.toPlainText()}',
-    );
-    for (final taskID in [
-      scopeID,
-      timelineID,
-      techniqueID,
-      memorizeID,
-      performanceID,
-    ]) {
-      final task = s.taskRepo.get(taskID)!;
-      task.project.target = savedProject;
-      s.taskRepo.put(task);
-      tempoDBSeedLog.fine(
-        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
-      );
+    final projectBlocks = [
+      seedProjectHeaderBlock,
+      seedProjectDetailsBlock,
+      seedAnalysisHeaderBlock,
+      seedAnalysisBlock,
+      seedObjectivesHeaderBlock,
+      seedObjectivesListBlock,
+      seedObjectivesListBlock2,
+      seedObjectivesListBlock3,
+      seedScheduleHeaderBlock,
+      seedScheduleBlock,
+    ];
+    for (var index = 0; index < projectBlocks.length; index++) {
+      projectBlocks[index] = await s.blockRepo.putAsync(projectBlocks[index]);
     }
 
+    final techniqueBlocks = [
+      seedTechniqueHeaderBlock,
+      seedTechniqueExerciseBlock,
+      seedTechniqueGoalsBlock,
+    ];
+    for (var index = 0; index < techniqueBlocks.length; index++) {
+      techniqueBlocks[index] = await s.blockRepo.putAsync(techniqueBlocks[index]);
+    }
+
+    final memorizeBlocks = [ seedMemorizeApproachBlock, seedMemoryTypesBlock, ];
+    for (var index = 0; index < memorizeBlocks.length; index++) {
+      memorizeBlocks[index] = await s.blockRepo.putAsync(memorizeBlocks[index]);
+    }
+
+    final performanceBlocks = [ seedPerformanceStandardsBlock, seedRecordingSetupBlock, ];
+    for (var index = 0; index < performanceBlocks.length; index++) {
+      performanceBlocks[index] = await s.blockRepo.putAsync(performanceBlocks[index]);
+    }
+
+    // Seed tasks
+    final scopeTask = await s.taskRepo.putAsync(buildProjectScopeTask());
+    final timelineTask = await s.taskRepo.putAsync(buildProjectTimelineTask());
+
+    final techniqueTask = await s.taskRepo.putAsync(seedTechniqueTask);
+    final memorizeTask = await s.taskRepo.putAsync(seedMemorizeTask);
+    final performanceTask = await s.taskRepo.putAsync(seedPerformanceTask);
+
+    // Set project relationships for all tasks
+    tempoDBSeedLog.fine(
+      'Setting project relationships for ${project.title.toPlainText()}',
+    );
+
     // Add block children to project
-    final savedProjectThingEntity = savedProject.thing.target!;
-    savedProjectThingEntity.children.addAll(
-      s.blockRepo.getMany(projectBlockIDs).map((b) => b!.thing.target!),
-    );
-    savedProjectThingEntity.children.addAll(
-      s.taskRepo
-          .getMany([
-            scopeID,
-            timelineID,
-            techniqueID,
-            memorizeID,
-            performanceID,
-          ])
-          .map((t) => t!.thing.target!),
-    );
+    project.thing.childrenRef.addAll(projectBlocks.things);
+    project.thing.childrenRef.addAll([scopeTask, timelineTask, techniqueTask, memorizeTask, performanceTask].things);
     // Save the ThingEntity to persist the children relationships
-    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
-    s.projectRepo.put(savedProject);
+    await s.projectRepo.putAsync(project);
 
     // Add block children to technique task
-    final savedTechniqueTask = s.taskRepo.get(techniqueID)!;
-    final savedTechniqueTaskThingEntity = savedTechniqueTask.thing.target!;
-    savedTechniqueTaskThingEntity.children.addAll(
-      s.blockRepo.getMany(techniqueBlockIDs).map((b) => b!.thing.target!),
-    );
+    techniqueTask.thing.childrenRef.addAll(techniqueBlocks.things);
     // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedTechniqueTaskThingEntity);
-    s.taskRepo.put(savedTechniqueTask);
+    await s.taskRepo.putAsync(techniqueTask);
 
     // Add block children to memorize task
-    final savedMemorizeTask = s.taskRepo.get(memorizeID)!;
-    final savedMemorizeTaskThingEntity = savedMemorizeTask.thing.target!;
-    savedMemorizeTaskThingEntity.children.addAll(
-      s.blockRepo.getMany(memorizeBlockIDs).map((b) => b!.thing.target!),
-    );
+    memorizeTask.thing.childrenRef.addAll(memorizeBlocks.things);
     // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedMemorizeTaskThingEntity);
-    s.taskRepo.put(savedMemorizeTask);
+    await s.taskRepo.putAsync(memorizeTask);
 
     // Add block children to performance task
-    final savedPerformanceTask = s.taskRepo.get(performanceID)!;
-    final savedPerformanceTaskThingEntity = savedPerformanceTask.thing.target!;
-    savedPerformanceTaskThingEntity.children.addAll(
-      s.blockRepo.getMany(performanceBlockIDs).map((b) => b!.thing.target!),
-    );
+    performanceTask.thing.childrenRef.addAll(performanceBlocks.things);
     // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedPerformanceTaskThingEntity);
-    s.taskRepo.put(savedPerformanceTask);
+    await s.taskRepo.putAsync(performanceTask);
   }
 }

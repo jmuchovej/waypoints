@@ -2,8 +2,8 @@ import 'package:objectbox/objectbox.dart';
 
 import '../../editor/super_editor.dart';
 import '../../objectbox/attributed_text_mixin.dart';
-import '../thing/interface.dart';
-import '../thing/thing.entity.dart';
+import '../foundation.dart';
+import '../thing.entity.dart';
 
 // Resolver is now auto-registered by ProjectRepository
 // No need for manual resolver configuration!
@@ -40,6 +40,7 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @override
   bool deleted;
 
+  @override
   String titleJson = '';
 
   @override
@@ -57,12 +58,8 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @Property(type: PropertyType.dateNano)
   DateTime? endDate;
 
-  /// Direct reference to the ThingEntity registration
-  /// This creates a 1:1 relationship between this Project and its registry entry
   @override
-  final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
-
-  final parent = ToOne<ProjectEntity>();
+  final ToOne<ThingEntity> thingRef = ToOne<ThingEntity>();
 
   @override
   int get hashCode => uuid.hashCode ^ title.hashCode;
@@ -108,8 +105,6 @@ class ProjectEntity with AttributedTextEntity, ThingBehavior implements Thing {
       archived: archived ?? this.archived,
     );
     project.title = title ?? this.title;
-
-    project.parent.target = parent ?? this.parent.target;
 
     return project;
   }

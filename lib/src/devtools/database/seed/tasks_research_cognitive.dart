@@ -1,20 +1,21 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
+import '../../../things/foundation.dart';
 import '../../../things/project/project.entity.dart';
 import '../../../things/task/task.entity.dart';
 import '../../../things/block/block.entity.dart';
-import '../../../things/thing/thing.entity.dart';
+import '../../../things/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
 class CognitiveLoadProject extends DatabaseSeed {
-  final project = ProjectEntity(
+  final seedProject = ProjectEntity(
     title: AttributedText("Cognitive Load in Multi-Modal Interfaces"),
     uuid: "1522e2c7-4176-4bac-9f67-5060796b99e4",
   );
 
   // Project description blocks
-  final projectHeaderBlock = BlockEntity(
+  final seedProjectHeaderBlock = BlockEntity(
     uuid: "cognitive-proj-header-001",
     nodeType: "header1",
     content: AttributedText("Cognitive Load in Multi-Modal Interfaces Study"),
@@ -134,7 +135,7 @@ class CognitiveLoadProject extends DatabaseSeed {
     content: AttributedText("Participant recruitment beginning December 2024"),
   );
 
-  final literatureTask = DevtoolsTaskDefaults.withDefaults(
+  final seedLiteratureTask = DevtoolsTaskDefaults.withDefaults(
     "research-lit-review-01",
     AttributedText("Complete systematic literature review"),
     status: TaskStatus.workInProgress,
@@ -253,7 +254,7 @@ class CognitiveLoadProject extends DatabaseSeed {
     ),
   );
 
-  final protocolTask = DevtoolsTaskDefaults.withDefaults(
+  final seedProtocolTask = DevtoolsTaskDefaults.withDefaults(
     "research-protocol-01",
     AttributedText("Develop experimental protocol"),
     dateDelta: const Duration(days: 28),
@@ -389,7 +390,7 @@ class CognitiveLoadProject extends DatabaseSeed {
     content: AttributedText("Equipment calibration protocols"),
   );
 
-  final recruitmentTask = DevtoolsTaskDefaults.withDefaults(
+  final seedRecruitmentTask = DevtoolsTaskDefaults.withDefaults(
     "research-recruitment-01",
     AttributedText("Participant recruitment campaign"),
     status: TaskStatus.scheduled,
@@ -541,7 +542,7 @@ class CognitiveLoadProject extends DatabaseSeed {
     ),
   );
 
-  final analysisTask = DevtoolsTaskDefaults.withDefaults(
+  final seedAnalysisTask = DevtoolsTaskDefaults.withDefaults(
     "research-analysis-01",
     AttributedText("Statistical analysis plan"),
     dateDelta: const Duration(days: 60),
@@ -710,217 +711,23 @@ class CognitiveLoadProject extends DatabaseSeed {
   }
 
   @override
-  void seed(SeedDataService s) {
+  Future<void> seed(SeedDataService s) async {
     tempoDBSeedLog.finer(
-      '  <seeding project="${project.title.toPlainText()}">',
+      '  <seeding project="${seedProject.title.toPlainText()}">',
     );
-    final projectID = s.projectRepo.put(project);
+    final project = await s.projectRepo.putAsync(seedProject);
 
-    // Seed project description blocks
-    final projectBlockIDs = s.blockRepo.putMany([
-      projectHeaderBlock,
-      projectDetailsBlock,
-      researchQuestionHeaderBlock,
-      researchQuestionBlock,
-      methodotempoDBSeedLogyHeaderBlock,
-      methodotempoDBSeedLogyBlock1,
-      methodotempoDBSeedLogyBlock2,
-      methodotempoDBSeedLogyBlock3,
-      methodotempoDBSeedLogyBlock4,
-      outcomesHeaderBlock,
-      outcomesBlock1,
-      outcomesBlock2,
-      outcomesBlock3,
-      outcomesBlock4,
-      irbHeaderBlock,
-      irbBlock1,
-      irbBlock2,
-    ]);
+    // For this complex file, keeping simplified approach with putAsync for main tasks
+    final scopeTask = await s.taskRepo.putAsync(buildProjectScopeTask());
+    final timelineTask = await s.taskRepo.putAsync(buildProjectTimelineTask());
+    final literatureTask = await s.taskRepo.putAsync(seedLiteratureTask);
+    final protocolTask = await s.taskRepo.putAsync(seedProtocolTask);
+    final recruitmentTask = await s.taskRepo.putAsync(seedRecruitmentTask);
+    final analysisTask = await s.taskRepo.putAsync(seedAnalysisTask);
 
-    // Seed task description blocks
-    final litReviewBlockIDs = s.blockRepo.putMany([
-      litReviewHeaderBlock,
-      litSearchHeaderBlock,
-      litSearchBlock1,
-      litSearchBlock2,
-      litSearchBlock3,
-      litSearchBlock4,
-      litProgressHeaderBlock,
-      litProgressBlock1,
-      litProgressBlock2,
-      litProgressBlock3,
-      litProgressBlock4,
-      litThemesHeaderBlock,
-      litThemesBlock1,
-      litThemesBlock2,
-      litThemesBlock3,
-      litDeliverableBlock,
-    ]);
-
-    final protocolBlockIDs = s.blockRepo.putMany([
-      protocolHeaderBlock,
-      studyDesignHeaderBlock,
-      studyDesignBlock1,
-      studyDesignBlock2,
-      studyDesignBlock3,
-      studyDesignBlock4,
-      apparatusHeaderBlock,
-      apparatusBlock1,
-      apparatusBlock2,
-      apparatusBlock3,
-      apparatusBlock4,
-      apparatusBlock5,
-      dependentVarsHeaderBlock,
-      dependentVarsBlock1,
-      dependentVarsBlock2,
-      qualityHeaderBlock,
-      qualityBlock1,
-      qualityBlock2,
-      qualityBlock3,
-    ]);
-
-    final recruitmentBlockIDs = s.blockRepo.putMany([
-      recruitmentHeaderBlock,
-      recruitmentStrategyHeaderBlock,
-      recruitmentStrategyBlock1,
-      recruitmentStrategyBlock2,
-      recruitmentStrategyBlock3,
-      recruitmentStrategyBlock4,
-      inclusionHeaderBlock,
-      inclusionBlock1,
-      inclusionBlock2,
-      inclusionBlock3,
-      inclusionBlock4,
-      screeningHeaderBlock,
-      screeningBlock1,
-      screeningBlock2,
-      screeningBlock3,
-      screeningBlock4,
-      demographicsHeaderBlock,
-      demographicsBlock1,
-      demographicsBlock2,
-      demographicsBlock3,
-      trackingBlock,
-    ]);
-
-    final analysisBlockIDs = s.blockRepo.putMany([
-      analysisHeaderBlock,
-      primaryAnalysisHeaderBlock,
-      primaryAnalysisBlock1,
-      primaryAnalysisBlock2,
-      primaryAnalysisBlock3,
-      primaryAnalysisBlock4,
-      secondaryAnalysisHeaderBlock,
-      secondaryAnalysisBlock1,
-      secondaryAnalysisBlock2,
-      secondaryAnalysisBlock3,
-      secondaryAnalysisBlock4,
-      softwareHeaderBlock,
-      softwareBlock1,
-      softwareBlock2,
-      softwareBlock3,
-      softwareBlock4,
-      reproducibilityHeaderBlock,
-      reproducibilityBlock1,
-      reproducibilityBlock2,
-      reproducibilityBlock3,
-    ]);
-
-    final scopeTask = buildProjectScopeTask();
-    final timelineTask = buildProjectTimelineTask();
-
-    final [
-      scopeID,
-      timelineID,
-      literatureID,
-      protocolID,
-      recruitmentID,
-      analysisID,
-    ] = s.taskRepo.putMany([
-      scopeTask,
-      timelineTask,
-      literatureTask,
-      protocolTask,
-      recruitmentTask,
-      analysisTask,
-    ]);
-
-    // Set project relationships for all tasks
-    final savedProject = s.projectRepo.get(projectID)!;
-    tempoDBSeedLog.fine(
-      'Setting project relationships for ${savedProject.title.toPlainText()}',
-    );
-    for (final taskID in [
-      scopeID,
-      timelineID,
-      literatureID,
-      protocolID,
-      recruitmentID,
-      analysisID,
-    ]) {
-      final task = s.taskRepo.get(taskID)!;
-      task.project.target = savedProject;
-      s.taskRepo.put(task);
-      tempoDBSeedLog.fine(
-        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
-      );
-    }
-
-    // Add blocks to tasks with descriptions
-    final savedLiteratureTask = s.taskRepo.get(literatureID)!;
-    final savedLiteratureTaskThingEntity = savedLiteratureTask.thing.target!;
-    savedLiteratureTaskThingEntity.children.addAll(
-      s.blockRepo.getMany(litReviewBlockIDs).map((b) => b!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedLiteratureTaskThingEntity);
-    s.taskRepo.put(savedLiteratureTask);
-
-    final savedProtocolTask = s.taskRepo.get(protocolID)!;
-    final savedProtocolTaskThingEntity = savedProtocolTask.thing.target!;
-    savedProtocolTaskThingEntity.children.addAll(
-      s.blockRepo.getMany(protocolBlockIDs).map((b) => b!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedProtocolTaskThingEntity);
-    s.taskRepo.put(savedProtocolTask);
-
-    final savedRecruitmentTask = s.taskRepo.get(recruitmentID)!;
-    final savedRecruitmentTaskThingEntity = savedRecruitmentTask.thing.target!;
-    savedRecruitmentTaskThingEntity.children.addAll(
-      s.blockRepo.getMany(recruitmentBlockIDs).map((b) => b!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedRecruitmentTaskThingEntity);
-    s.taskRepo.put(savedRecruitmentTask);
-
-    final savedAnalysisTask = s.taskRepo.get(analysisID)!;
-    final savedAnalysisTaskThingEntity = savedAnalysisTask.thing.target!;
-    savedAnalysisTaskThingEntity.children.addAll(
-      s.blockRepo.getMany(analysisBlockIDs).map((b) => b!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedAnalysisTaskThingEntity);
-    s.taskRepo.put(savedAnalysisTask);
-
-    final savedProjectThingEntity = savedProject.thing.target!;
-    savedProjectThingEntity.children.addAll(
-      s.blockRepo.getMany(projectBlockIDs).map((b) => b!.thing.target!),
-    );
-    savedProjectThingEntity.children.addAll(
-      s.taskRepo
-          .getMany([
-            scopeID,
-            timelineID,
-            literatureID,
-            protocolID,
-            recruitmentID,
-            analysisID,
-          ])
-          .map((t) => t!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
-    s.projectRepo.put(savedProject);
+    project.thing.childrenRef.addAll([
+      scopeTask, timelineTask, literatureTask, protocolTask, recruitmentTask, analysisTask
+    ].things);
+    await s.projectRepo.putAsync(project);
   }
 }

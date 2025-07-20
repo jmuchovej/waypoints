@@ -6,9 +6,9 @@ import '../../editor/super_editor.dart';
 import '../../objectbox/attributed_text_mixin.dart';
 import '../../objectbox/objectbox.dart';
 import '../../objectbox/objectbox.g.dart';
+import '../foundation.dart';
 import '../project/project.entity.dart';
-import '../thing/interface.dart';
-import '../thing/thing.entity.dart';
+import '../thing.entity.dart';
 
 export 'task_urgency.dart';
 
@@ -86,10 +86,6 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @override
   String uuid;
 
-  /// Serialized AttributedText JSON
-  @override
-  String titleJson = '';
-
   @Property(type: PropertyType.dateNano)
   @override
   DateTime createDate;
@@ -129,15 +125,13 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @override
   bool archived;
 
-  /// Direct reference to the ThingEntity registration
-  /// This creates a 1:1 relationship between this Task and its registry entry
-  @override
-  final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
-
   /// Keep project relationship for now as it's a categorization
   final project = ToOne<ProjectEntity>();
 
   final history = ToMany<TaskSnapshotEntity>();
+
+  @override
+  final ToOne<ThingEntity> thingRef = ToOne<ThingEntity>();
 
   @override
   int get hashCode =>
@@ -236,23 +230,21 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
     );
     task.id = id;
     task.title = title ?? this.title;
-
-    // NOTE: parent relationships are automatically maintained by ObjectBox as backlinks
-    // NOTE: children relationships should be copied separately via polymorphic repository
-    task.project.target = project ?? this.project.target;
+    task.thingRef.target = thingRef.target;
 
     return task;
   }
 
   @override
-  String getSearchableText() {
-    return title.toPlainText();
-  }
+  String getSearchableText() => title.toPlainText();
 
   @override
   String toString() {
     return 'TaskEntity{id: $id, uuid: $uuid, title: "${title.toPlainText()}", startDate: $startDate, endDate: $endDate, scheduledDate: $scheduledDate, dueDate: $dueDate, waitDate: $waitDate, untilDate: $untilDate, recurrence: $recurrence, status: $status, time: $time, energy: $energy, priority: $priority, deleted: $deleted, archived: $archived}';
   }
+
+  @override
+  String titleJson = '';
 
   @Transient()
   @override
@@ -356,7 +348,10 @@ enum TaskPriority {
 
 enum TaskStatus {
   /// Initial state
-  todo('To Do', Icons.pause_circle_rounded, Colors.grey),
+  todo('To Do',
+    Icons.radio_button_unchecked_rounded,
+    Colors.white,
+  ),
 
   /// We've started but not focused on it
   started('Started', Icons.pause_circle_rounded, Colors.blue),

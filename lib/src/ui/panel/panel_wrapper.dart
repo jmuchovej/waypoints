@@ -7,10 +7,10 @@ import '../../editor/editor.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../styling/tempo_stylesheet.dart';
-import '../../things/thing_factories.dart';
+import '../../things/factory.node.dart';
+import '../../things/foundation.dart';
 import '../../things/task/task.entity.dart';
 import '../../things/task/task_repository.dart';
-import '../../things/thing/interface.dart';
 import '../widgets/panel/panel_appbar.dart';
 import '../widgets/panel/panel_header.dart';
 
@@ -36,6 +36,38 @@ class PanelWrapper<BT extends BaseThing> extends ConsumerStatefulWidget {
   ConsumerState<PanelWrapper<BT>> createState() => _PanelWrapperState<BT>();
 }
 
+/// Task filter options for the tasks panel
+enum TaskFilter {
+  all(
+    Icons.checklist_rounded,
+    'No tasks yet',
+    'Create your first task to get started',
+  ),
+  incomplete(
+    Icons.radio_button_unchecked_rounded,
+    'No active tasks',
+    'All tasks are completed or you need to create new ones',
+  ),
+  completed(
+    Icons.check_circle_rounded,
+    'No completed tasks',
+    'Complete some tasks to see them here',
+  ),
+  today(Icons.today_rounded, 'No tasks are due today', null),
+  overdue(
+    Icons.av_timer_rounded,
+    'No overdue tasks',
+    'Great! No tasks are overdue',
+  ),
+  highPriority(Icons.flag_rounded, 'No high priority tasks', null);
+
+  const TaskFilter(this.icon, this.title, this.subtitle);
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+}
+
 class _PanelWrapperState<BT extends BaseThing>
     extends ConsumerState<PanelWrapper<BT>> {
   late MutableDocument _document;
@@ -55,88 +87,6 @@ class _PanelWrapperState<BT extends BaseThing>
 
   // Extract header title dynamically in build method
   String get _headerTitle => widget.header.controller.text.toPlainText();
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Initialize GlobalKeys to ensure uniqueness per instance
-    _appBarKey = GlobalKey<PanelAppBarSliverState>();
-    _headerKey = GlobalKey();
-
-    _hoverManager = HoverManager();
-    _linkManager = LeaderLinkManager();
-
-    // 🎯 NEW: Create empty document without header since SliverAppBar displays title
-    // The header is redundant when we have a sticky app bar showing the same title
-    _document = OrderedSetDocument(nodes: []);
-    // Initialize composer
-    _composer = MutableDocumentComposer();
-
-    try {
-      _loadContents();
-    } catch (e) {
-      tempoPanelLog.severe('Error initializing panel: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    _subscription = null;
-
-    super.dispose();
-  }
-
-  void _loadContents() {
-    // Set up task stream for reactive updates
-    final nodeFactory = ref.read(nodeFactoryRegistryProvider);
-    _subscription = widget.stream.listen((BT thing) {
-      final node = nodeFactory.toNodeFromEntity(thing);
-      tempoPanelLog.finest("Adding ${node.id}");
-      _document.add(node);
-
-      if (!_initialLoad) {
-        _initialLoad = true; // Set immediately to prevent multiple callbacks
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        });
-      }
-    });
-  }
-
-  // 🎯 NEW: Handle scroll notifications and update app bar
-  bool _onScrollNotification(ScrollNotification notification) {
-    // Don't consume the notification
-    if (notification is! ScrollUpdateNotification) {
-      return false;
-    }
-
-    final scrollPixels = notification.metrics.pixels;
-    tempoPanelLog.finest('ScrollNotification: ${scrollPixels}px');
-
-    // 🎯 NEW: Calculate header height dynamically for transition threshold
-    double headerHeight = 100.0; // Default fallback
-
-    final headerRenderBox =
-        _headerKey.currentContext?.findRenderObject() as RenderBox?;
-    if (headerRenderBox != null) {
-      headerHeight = headerRenderBox.size.height;
-      tempoPanelLog.finest('PanelHeader height: ${headerHeight}px');
-    }
-
-    // 🎯 NEW: Pass both scroll position and header height to app bar
-    _appBarKey.currentState?.updateScrollPosition(scrollPixels, headerHeight);
-    return true;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -230,38 +180,88 @@ class _PanelWrapperState<BT extends BaseThing>
       ),
     );
   }
-}
 
-/// Task filter options for the tasks panel
-enum TaskFilter {
-  all(
-    Icons.checklist_rounded,
-    'No tasks yet',
-    'Create your first task to get started',
-  ),
-  incomplete(
-    Icons.radio_button_unchecked_rounded,
-    'No active tasks',
-    'All tasks are completed or you need to create new ones',
-  ),
-  completed(
-    Icons.check_circle_rounded,
-    'No completed tasks',
-    'Complete some tasks to see them here',
-  ),
-  today(Icons.today_rounded, 'No tasks are due today', null),
-  overdue(
-    Icons.av_timer_rounded,
-    'No overdue tasks',
-    'Great! No tasks are overdue',
-  ),
-  highPriority(Icons.flag_rounded, 'No high priority tasks', null);
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _subscription = null;
 
-  const TaskFilter(this.icon, this.title, this.subtitle);
+    super.dispose();
+  }
 
-  final IconData icon;
-  final String title;
-  final String? subtitle;
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize GlobalKeys to ensure uniqueness per instance
+    _appBarKey = GlobalKey<PanelAppBarSliverState>();
+    _headerKey = GlobalKey();
+
+    _hoverManager = HoverManager();
+    _linkManager = LeaderLinkManager();
+
+    // 🎯 NEW: Create empty document without header since SliverAppBar displays title
+    // The header is redundant when we have a sticky app bar showing the same title
+    _document = OrderedSetDocument(nodes: []);
+    // Initialize composer
+    _composer = MutableDocumentComposer();
+
+    try {
+      _loadContents();
+    } catch (e) {
+      tempoPanelLog.severe('Error initializing panel: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _loadContents() {
+    // Set up task stream for reactive updates
+    final nodeFactory = ref.read(nodeFactoryRegistryProvider);
+    _subscription = widget.stream.listen((BT thing) {
+      final node = nodeFactory.toNodeFromEntity(thing);
+      tempoPanelLog.finest("Adding ${node.id}");
+      _document.add(node);
+
+      if (!_initialLoad) {
+        _initialLoad = true; // Set immediately to prevent multiple callbacks
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        });
+      }
+    });
+  }
+
+  // 🎯 NEW: Handle scroll notifications and update app bar
+  bool _onScrollNotification(ScrollNotification notification) {
+    // Don't consume the notification
+    if (notification is! ScrollUpdateNotification) {
+      return false;
+    }
+
+    final scrollPixels = notification.metrics.pixels;
+    tempoPanelLog.finest('ScrollNotification: ${scrollPixels}px');
+
+    // 🎯 NEW: Calculate header height dynamically for transition threshold
+    double headerHeight = 100.0; // Default fallback
+
+    final headerRenderBox =
+        _headerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (headerRenderBox != null) {
+      headerHeight = headerRenderBox.size.height;
+      tempoPanelLog.finest('PanelHeader height: ${headerHeight}px');
+    }
+
+    // 🎯 NEW: Pass both scroll position and header height to app bar
+    _appBarKey.currentState?.updateScrollPosition(scrollPixels, headerHeight);
+    return true;
+  }
 }
 
 extension TaskFilterExtension on TaskFilter {

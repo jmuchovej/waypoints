@@ -31,11 +31,13 @@ class ThingEntity {
   /// Polymorphic parent-child relationships for hierarchical structures
   /// This enables task hierarchies, nested projects, etc. at the ThingEntity level
   @Backlink()
-  final children = ToMany<ThingEntity>();
+  final childrenRef = ToMany<ThingEntity>();
+  List<ThingEntity> get children => childrenRef.isEmpty ? [] : childrenRef.toList();
 
   /// Parent relationships with @Backlink annotation for automatic maintenance
   /// For hierarchical relationships, a ThingEntity can have multiple parents
-  final parent = ToOne<ThingEntity>();
+  final parentRef = ToOne<ThingEntity>();
+  ThingEntity? get parent => parentRef.target;
 
   @override
   String toString() {

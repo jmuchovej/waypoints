@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../things/foundation.dart';
 import '../super_editor.dart';
-import '../../things/thing/interface.dart';
 import 'thing_node_position.dart';
 import '../../infrastructure/logging.dart';
 

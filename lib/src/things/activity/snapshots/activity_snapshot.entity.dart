@@ -1,7 +1,7 @@
 import 'package:objectbox/objectbox.dart';
-import '../../thing/interface.dart';
+import '../../foundation.dart';
 import '../activity.entity.dart';
-import '../../thing/thing.entity.dart';
+import '../../thing.entity.dart';
 
 // Resolver is now auto-registered by ActivitySnapshotRepository (when created)
 // No need for manual resolver configuration!
@@ -95,7 +95,7 @@ class ActivitySnapshotEntity implements BaseThing {
   /// Direct reference to the ThingEntity registration
   /// This creates a 1:1 relationship between this ActivitySnapshot and its registry entry
   @override
-  final ToOne<ThingEntity> thing = ToOne<ThingEntity>();
+  final ToOne<ThingEntity> thingRef = ToOne<ThingEntity>();
 
   @override
   String? getSearchableText() => null;

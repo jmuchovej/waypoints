@@ -1,162 +1,98 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
+import '../../../things/foundation.dart';
 import '../../../things/project/project.entity.dart';
 import '../../../things/task/task.entity.dart';
-import '../../../things/thing/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
 class HomeOfficeRenovationProject extends DatabaseSeed {
-  final project = ProjectEntity(
+  final seedProject = ProjectEntity(
     uuid: "1deb860f-e324-439c-b478-89e16b140373",
     title: AttributedText("Home Office Renovation"),
   );
 
-  final designTask = DevtoolsTaskDefaults.withDefaults(
+  final seedDesignTask = DevtoolsTaskDefaults.withDefaults(
     'cf73752b-3d54-4a9b-b463-79b8127fda5a',
     AttributedText('Design and planning'),
     dateDelta: const Duration(days: 14),
   );
 
-  final measureTask = DevtoolsTaskDefaults.withDefaults(
+  final seedMeasureTask = DevtoolsTaskDefaults.withDefaults(
     '92fc187b-5600-4e07-9578-e2d17f64e686',
     AttributedText('Measure room dimensions'),
     status: TaskStatus.complete,
   );
 
-  final moodboardTask = DevtoolsTaskDefaults.withDefaults(
+  final seedMoodboardTask = DevtoolsTaskDefaults.withDefaults(
     'e44b6c08-0784-4feb-9ed7-71b308cd70db',
     AttributedText('Create mood board on Pinterest'),
     status: TaskStatus.workInProgress,
   );
 
-  final layoutTask = DevtoolsTaskDefaults.withDefaults(
+  final seedLayoutTask = DevtoolsTaskDefaults.withDefaults(
     'a4dc450b-adb7-4cb4-b3ac-7238cf1f948b',
     AttributedText('Sketch layout options'),
     status: TaskStatus.started,
   );
 
-  final furnitureTask = DevtoolsTaskDefaults.withDefaults(
+  final seedFurnitureTask = DevtoolsTaskDefaults.withDefaults(
     '4b7690fb-025e-448a-bd7d-28695582b92b',
     AttributedText('Purchase furniture and equipment'),
     dateDelta: const Duration(days: 30),
   );
 
-  final standingDeskTask = DevtoolsTaskDefaults.withDefaults(
+  final seedStandingDeskTask = DevtoolsTaskDefaults.withDefaults(
     '4b6bc533-741c-4861-9608-9ad636ea0d79',
     AttributedText('Standing desk: Compare Uplift vs Fully vs Flexispot'),
   );
 
-  final ergonomicChairTask = DevtoolsTaskDefaults.withDefaults(
+  final seedErgonomicChairTask = DevtoolsTaskDefaults.withDefaults(
     'bb11f065-11fb-4ffc-b25c-1ed2970fbaf2',
     AttributedText(
       'Ergonomic chair: Test Herman Miller Aeron vs Steelcase Leap',
     ),
   );
 
-  final monitorArmTask = DevtoolsTaskDefaults.withDefaults(
+  final seedMonitorArmTask = DevtoolsTaskDefaults.withDefaults(
     '0b8508c6-222d-47ff-9257-ce22d4105ebe',
     AttributedText('Monitor arm for dual 27" displays'),
   );
 
-  final cableManagementTask = DevtoolsTaskDefaults.withDefaults(
+  final seedCableManagementTask = DevtoolsTaskDefaults.withDefaults(
     'de6d607a-dbe4-448a-9032-20d5d4791ad8',
     AttributedText('Cable management system'),
   );
 
   @override
-  void seed(SeedDataService s) {
+  Future<void> seed(SeedDataService s) async {
     tempoDBSeedLog.finer(
-      '  <seeding project="${project.title.toPlainText()}">',
+      '  <seeding project="${seedProject.title.toPlainText()}">',
     );
-    final projectID = s.projectRepo.put(project);
+    final project = await s.projectRepo.putAsync(seedProject);
 
     // Design task and subtasks
-    final [designID, measureID, moodboardID, layoutID] = s.taskRepo.putMany([
-      designTask,
-      measureTask,
-      moodboardTask,
-      layoutTask,
-    ]);
+    final designTask = await s.taskRepo.putAsync(seedDesignTask);
+    final measureTask = await s.taskRepo.putAsync(seedMeasureTask);
+    final moodboardTask = await s.taskRepo.putAsync(seedMoodboardTask);
+    final layoutTask = await s.taskRepo.putAsync(seedLayoutTask);
 
-    // Set project relationships for design tasks
-    final savedProject = s.projectRepo.get(projectID)!;
-    tempoDBSeedLog.fine(
-      'Setting project relationships for ${savedProject.title.toPlainText()}',
-    );
-    for (final taskID in [designID, measureID, moodboardID, layoutID]) {
-      final task = s.taskRepo.get(taskID)!;
-      task.project.target = savedProject;
-      s.taskRepo.put(task);
-      tempoDBSeedLog.fine(
-        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
-      );
-    }
-
-    final savedDesignTask = s.taskRepo.get(designID)!;
-    final savedDesignTaskThingEntity = savedDesignTask.thing.target!;
-    savedDesignTaskThingEntity.children.addAll(
-      s.taskRepo
-          .getMany([measureID, moodboardID, layoutID])
-          .map((t) => t!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedDesignTaskThingEntity);
-    s.taskRepo.put(savedDesignTask);
+    designTask.thing.childrenRef.addAll([measureTask, moodboardTask, layoutTask].things);
+    await s.taskRepo.putAsync(designTask);
 
     // Furniture task and subtasks
-    final [
-      furnitureID,
-      standingDeskID,
-      ergonomicChairID,
-      monitorArmID,
-      cableManagementID,
-    ] = s.taskRepo.putMany([
-      furnitureTask,
-      standingDeskTask,
-      ergonomicChairTask,
-      monitorArmTask,
-      cableManagementTask,
-    ]);
+    final furnitureTask = await s.taskRepo.putAsync(seedFurnitureTask);
+    final standingDeskTask = await s.taskRepo.putAsync(seedStandingDeskTask);
+    final ergonomicChairTask = await s.taskRepo.putAsync(seedErgonomicChairTask);
+    final monitorArmTask = await s.taskRepo.putAsync(seedMonitorArmTask);
+    final cableManagementTask = await s.taskRepo.putAsync(seedCableManagementTask);
 
-    // Set project relationships for furniture tasks
-    for (final taskID in [
-      furnitureID,
-      standingDeskID,
-      ergonomicChairID,
-      monitorArmID,
-      cableManagementID,
-    ]) {
-      final task = s.taskRepo.get(taskID)!;
-      task.project.target = savedProject;
-      s.taskRepo.put(task);
-      tempoDBSeedLog.fine(
-        'Set project for task ${task.uuid}: ${task.title.toPlainText()} -> ${task.project.target?.title.toPlainText()}',
-      );
-    }
+    furnitureTask.thing.childrenRef.addAll([
+      standingDeskTask, ergonomicChairTask, monitorArmTask, cableManagementTask,
+    ].things);
+    await s.taskRepo.putAsync(furnitureTask);
 
-    final savedFurnitureTask = s.taskRepo.get(furnitureID)!;
-    final savedFurnitureTaskThingEntity = savedFurnitureTask.thing.target!;
-    savedFurnitureTaskThingEntity.children.addAll(
-      s.taskRepo
-          .getMany([
-            standingDeskID,
-            ergonomicChairID,
-            monitorArmID,
-            cableManagementID,
-          ])
-          .map((t) => t!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.taskRepo.store.box<ThingEntity>().put(savedFurnitureTaskThingEntity);
-    s.taskRepo.put(savedFurnitureTask);
-
-    final savedProjectThingEntity = savedProject.thing.target!;
-    savedProjectThingEntity.children.addAll(
-      s.taskRepo.getMany([designID, furnitureID]).map((t) => t!.thing.target!),
-    );
-    // Save the ThingEntity to persist the children relationships
-    s.projectRepo.store.box<ThingEntity>().put(savedProjectThingEntity);
-    s.projectRepo.put(savedProject);
+    project.thing.childrenRef.addAll([designTask, furnitureTask].things);
+    await s.projectRepo.putAsync(project);
   }
 }

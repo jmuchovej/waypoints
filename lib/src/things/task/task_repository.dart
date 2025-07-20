@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/objectbox.dart';
 import '../../objectbox/objectbox.g.dart';
-import '../thing/interface.dart';
-import '../thing/thing.entity.dart';
+import '../repository.dart';
+import '../project/project.entity.dart';
+import '../thing.entity.dart';
 import 'task.entity.dart';
 
 /// Provider for TaskRepository
@@ -87,6 +88,22 @@ class TaskRepository extends ThingRepository<TaskEntity> {
     return allTasks;
   }
 
+  List<TaskEntity> immediateSubtasks(TaskEntity task) {
+    final childThings = task.thing.children.where((e) => e.type == type);
+    tempoDBLog.finest('... for `task=${task.uuid}`, found n-children=${childThings.length}');
+    final childIDs = childThings.map((c) => c.id).toList();
+    final results = box.getMany(childIDs);
+    return results.where((subtask) => subtask != null).toList().cast<TaskEntity>();
+  }
+
+  ProjectEntity? immediateProject(TaskEntity task) {
+    final parentThing = task.thing.parent;
+    if (parentThing == null) return null;
+    if (parentThing.type != ProjectEntity.key) return null;
+
+    return store.box<ProjectEntity>().get(parentThing.id)!;
+  }
+
   /// Get all overdue tasks (application-layer filtering for business logic)
   Condition<TaskEntity> overdue() {
     final now = DateTime.now();
@@ -161,15 +178,12 @@ class TaskRepository extends ThingRepository<TaskEntity> {
       tempoDBLog.info('topLevel: Filtering ${tasks.length} active tasks');
       final topLevelTasks =
           tasks.where((task) {
-            final thingEntity = task.thing.target;
-            if (thingEntity == null) return false;
-
-            final parent = thingEntity.parent.target;
-            if (parent == null) {
+            if (task.parent == null) {
               // No parent = top-level task
               return true;
             }
 
+            final parent = task.parent!;
             // Has parent - check if parent is a task (child task) or project (top-level task)
             final isChildOfTask = parent.type == TaskEntity.key;
             if (isChildOfTask) {
@@ -185,6 +199,7 @@ class TaskRepository extends ThingRepository<TaskEntity> {
             );
             return true;
           }).toList();
+
       tempoDBQueryLog.fine(
         'topLevel: Found ${topLevelTasks.length} top-level tasks',
       );

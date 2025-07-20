@@ -19,89 +19,89 @@ import '../../src/things/activity/snapshots/activity_snapshot.entity.dart';
 import '../../src/things/block/block.entity.dart';
 import '../../src/things/project/project.entity.dart';
 import '../../src/things/task/task.entity.dart';
-import '../../src/things/thing/thing.entity.dart';
+import '../../src/things/thing.entity.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 
 final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
-    id: const obx_int.IdUid(1, 4341942014546232350),
+    id: const obx_int.IdUid(1, 7807428358857287883),
     name: 'ActivityEntity',
-    lastPropertyId: const obx_int.IdUid(12, 7874218212457256228),
+    lastPropertyId: const obx_int.IdUid(12, 5217443799006882591),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 8308878316138549077),
+        id: const obx_int.IdUid(1, 453935476289601409),
         name: 'id',
         type: 6,
         flags: 1,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 3954204718561290395),
+        id: const obx_int.IdUid(2, 6085825355630430897),
         name: 'uuid',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 7046592918602405250),
+        id: const obx_int.IdUid(3, 537383243474057956),
         name: 'startDate',
         type: 10,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 5354845943059508734),
+        id: const obx_int.IdUid(4, 4400176945640656036),
         name: 'endDate',
         type: 10,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 1745662132811240633),
+        id: const obx_int.IdUid(5, 5425275018442490189),
         name: 'tags',
         type: 30,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 5569075010704347431),
+        id: const obx_int.IdUid(6, 5338378386901209804),
         name: 'taskId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(1, 3521682238705228963),
+        indexId: const obx_int.IdUid(1, 1379143951155950510),
         relationTarget: 'TaskEntity',
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(7, 4469590906188364680),
+        id: const obx_int.IdUid(7, 6742287656690380393),
         name: 'archived',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(8, 4839385272287418744),
+        id: const obx_int.IdUid(8, 5157265638897098846),
         name: 'deleted',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(9, 4467343200996968489),
-        name: 'thingId',
+        id: const obx_int.IdUid(9, 7507447636399388318),
+        name: 'thingRefId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(2, 5494846531438904069),
+        indexId: const obx_int.IdUid(2, 7537076249646916618),
         relationTarget: 'ThingEntity',
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(10, 3935172954150621512),
+        id: const obx_int.IdUid(10, 4441166011866994323),
         name: 'titleJson',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(11, 616551492118944740),
+        id: const obx_int.IdUid(11, 4055688653585853432),
         name: 'dbKind',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(12, 7874218212457256228),
+        id: const obx_int.IdUid(12, 5217443799006882591),
         name: 'dbStatus',
         type: 6,
         flags: 0,
@@ -111,267 +111,267 @@ final _entities = <obx_int.ModelEntity>[
     backlinks: <obx_int.ModelBacklink>[],
   ),
   obx_int.ModelEntity(
-    id: const obx_int.IdUid(2, 427143330727581499),
+    id: const obx_int.IdUid(2, 4348180423947760682),
     name: 'ActivitySnapshotEntity',
-    lastPropertyId: const obx_int.IdUid(21, 4183948859125625786),
+    lastPropertyId: const obx_int.IdUid(21, 5384111080510395640),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 7601229112176644226),
+        id: const obx_int.IdUid(1, 9019587944695166566),
         name: 'id',
         type: 6,
         flags: 1,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 3948196087491080705),
+        id: const obx_int.IdUid(2, 9009164308156424960),
         name: 'uuid',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 3072552516406894094),
+        id: const obx_int.IdUid(3, 7144549258032725615),
         name: 'timestamp',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 6801574589753783052),
+        id: const obx_int.IdUid(4, 6201323101816085709),
         name: 'latitude',
         type: 8,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 7493201890972736560),
+        id: const obx_int.IdUid(5, 4995467975235558260),
         name: 'longitude',
         type: 8,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 8835835268726941007),
+        id: const obx_int.IdUid(6, 403325177257822514),
         name: 'accuracyH',
         type: 8,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(7, 250386415849655229),
+        id: const obx_int.IdUid(7, 5823489831778641624),
         name: 'accuracyV',
         type: 8,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(8, 4515052147888627467),
+        id: const obx_int.IdUid(8, 369687648138884202),
         name: 'locationSource',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(9, 318551355648614754),
+        id: const obx_int.IdUid(9, 5102726047145375030),
         name: 'satelliteCount',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(10, 4960784893539260890),
+        id: const obx_int.IdUid(10, 5859306008700771201),
         name: 'speed',
         type: 8,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(11, 6092385595295724701),
+        id: const obx_int.IdUid(11, 6946891624084681986),
         name: 'heading',
         type: 8,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(12, 5363216704224608776),
+        id: const obx_int.IdUid(12, 3162416452862119635),
         name: 'deviceID',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(13, 7600302240658849485),
+        id: const obx_int.IdUid(13, 5548257704817111492),
         name: 'platform',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(14, 8005211941995612062),
+        id: const obx_int.IdUid(14, 380697555580263012),
         name: 'nearbyNetworks',
         type: 30,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(15, 23271305860759219),
+        id: const obx_int.IdUid(15, 3755056903855657591),
         name: 'nearbyDevices',
         type: 30,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(16, 7710476343933975141),
+        id: const obx_int.IdUid(16, 3286712937746492926),
         name: 'activeApplications',
         type: 30,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(17, 7991840935918346566),
+        id: const obx_int.IdUid(17, 6046373648637248588),
         name: 'archived',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(18, 5272725071913981207),
+        id: const obx_int.IdUid(18, 4630694776548725241),
         name: 'createDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(19, 826366213961194022),
+        id: const obx_int.IdUid(19, 5074080106117117714),
         name: 'deleted',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(20, 8627627448981778504),
+        id: const obx_int.IdUid(20, 2926104420175451837),
         name: 'modifyDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(21, 4183948859125625786),
-        name: 'thingId',
+        id: const obx_int.IdUid(21, 5384111080510395640),
+        name: 'thingRefId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(3, 3799073095805442899),
+        indexId: const obx_int.IdUid(3, 9071146119202285293),
         relationTarget: 'ThingEntity',
       ),
     ],
     relations: <obx_int.ModelRelation>[
       obx_int.ModelRelation(
-        id: const obx_int.IdUid(1, 3429030010673778550),
+        id: const obx_int.IdUid(1, 1471543038794964268),
         name: 'activity',
-        targetId: const obx_int.IdUid(1, 4341942014546232350),
+        targetId: const obx_int.IdUid(1, 7807428358857287883),
       ),
     ],
     backlinks: <obx_int.ModelBacklink>[],
   ),
   obx_int.ModelEntity(
-    id: const obx_int.IdUid(3, 8231855066708066520),
+    id: const obx_int.IdUid(3, 6508924324945291925),
     name: 'BlockEntity',
-    lastPropertyId: const obx_int.IdUid(10, 3018139857451947328),
+    lastPropertyId: const obx_int.IdUid(10, 8382723856414866951),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 2976892720327001454),
+        id: const obx_int.IdUid(1, 8186514208030495768),
         name: 'id',
         type: 6,
         flags: 1,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 711429330252886244),
+        id: const obx_int.IdUid(2, 3308277654392226668),
         name: 'uuid',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 4253159360016533154),
+        id: const obx_int.IdUid(3, 1332583885392992239),
         name: 'nodeType',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 4737082527674270739),
+        id: const obx_int.IdUid(4, 5948454967520608092),
         name: 'contentJson',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 8479622377186726597),
+        id: const obx_int.IdUid(5, 6581176162624465899),
         name: 'metadataJson',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 6641431704419975689),
+        id: const obx_int.IdUid(6, 2727258658115042617),
         name: 'createDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(7, 8212304818271471866),
+        id: const obx_int.IdUid(7, 8931289062421538780),
         name: 'modifyDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(8, 5982799866328941354),
+        id: const obx_int.IdUid(8, 6209557631881689797),
         name: 'archived',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(9, 5517288263094509021),
+        id: const obx_int.IdUid(9, 568330710068774362),
         name: 'deleted',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(10, 3018139857451947328),
-        name: 'thingId',
+        id: const obx_int.IdUid(10, 8382723856414866951),
+        name: 'thingRefId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(4, 5530477845504638437),
+        indexId: const obx_int.IdUid(4, 6899741881084797526),
         relationTarget: 'ThingEntity',
       ),
     ],
     relations: <obx_int.ModelRelation>[
       obx_int.ModelRelation(
-        id: const obx_int.IdUid(2, 9041209980271828163),
+        id: const obx_int.IdUid(2, 3233954485279714584),
         name: 'history',
-        targetId: const obx_int.IdUid(4, 6338404952725750927),
+        targetId: const obx_int.IdUid(4, 4086946760838222129),
       ),
     ],
     backlinks: <obx_int.ModelBacklink>[],
   ),
   obx_int.ModelEntity(
-    id: const obx_int.IdUid(4, 6338404952725750927),
+    id: const obx_int.IdUid(4, 4086946760838222129),
     name: 'BlockSnapshotEntity',
-    lastPropertyId: const obx_int.IdUid(6, 5871319930768810040),
+    lastPropertyId: const obx_int.IdUid(6, 6286300754281873001),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 4215552969653288483),
+        id: const obx_int.IdUid(1, 3049597700154643721),
         name: 'id',
         type: 6,
         flags: 1,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 3549184356132328323),
+        id: const obx_int.IdUid(2, 2977182946884410045),
         name: 'blockId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(5, 8240402249292248396),
+        indexId: const obx_int.IdUid(5, 5122600473265898885),
         relationTarget: 'BlockEntity',
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 387007655053419066),
+        id: const obx_int.IdUid(3, 8767574342157602167),
         name: 'timestamp',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 410692903891706106),
+        id: const obx_int.IdUid(4, 4516407325386691535),
         name: 'type',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 7669395954633545848),
+        id: const obx_int.IdUid(5, 9104911317208023726),
         name: 'contentJson',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 5871319930768810040),
+        id: const obx_int.IdUid(6, 6286300754281873001),
         name: 'metadataJson',
         type: 9,
         flags: 0,
@@ -381,83 +381,75 @@ final _entities = <obx_int.ModelEntity>[
     backlinks: <obx_int.ModelBacklink>[],
   ),
   obx_int.ModelEntity(
-    id: const obx_int.IdUid(5, 2055697150384465623),
+    id: const obx_int.IdUid(5, 4710333732107807820),
     name: 'ProjectEntity',
-    lastPropertyId: const obx_int.IdUid(12, 426827211459091753),
+    lastPropertyId: const obx_int.IdUid(11, 925703463491890894),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 7956178939203927449),
+        id: const obx_int.IdUid(1, 7719840963203101254),
         name: 'id',
         type: 6,
         flags: 1,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 8588624439211094798),
+        id: const obx_int.IdUid(2, 1654915501395978893),
         name: 'uuid',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 7492458950107495776),
+        id: const obx_int.IdUid(3, 8032557313791643927),
         name: 'archived',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 5709497060736979060),
+        id: const obx_int.IdUid(4, 1921760001656149828),
         name: 'deleted',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 8319105169230521238),
+        id: const obx_int.IdUid(5, 8704510674377817768),
         name: 'titleJson',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 5708096558518123169),
+        id: const obx_int.IdUid(6, 2456884707465462427),
         name: 'createDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(7, 4015832140237880914),
+        id: const obx_int.IdUid(7, 1356471184831897271),
         name: 'modifyDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(8, 5747816382655972809),
+        id: const obx_int.IdUid(8, 397417647990152942),
         name: 'startDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(9, 5578072732457464715),
+        id: const obx_int.IdUid(9, 6663183004969749729),
         name: 'endDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(10, 4495886447550488636),
-        name: 'thingId',
+        id: const obx_int.IdUid(10, 467433929812061530),
+        name: 'thingRefId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(6, 8277445181749307482),
+        indexId: const obx_int.IdUid(6, 2994956678146420030),
         relationTarget: 'ThingEntity',
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(11, 6732958576071193139),
-        name: 'parentId',
-        type: 11,
-        flags: 520,
-        indexId: const obx_int.IdUid(7, 4523532418521438719),
-        relationTarget: 'ProjectEntity',
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(12, 426827211459091753),
+        id: const obx_int.IdUid(11, 925703463491890894),
         name: 'statusOBX',
         type: 6,
         flags: 0,
@@ -467,131 +459,194 @@ final _entities = <obx_int.ModelEntity>[
     backlinks: <obx_int.ModelBacklink>[],
   ),
   obx_int.ModelEntity(
-    id: const obx_int.IdUid(6, 7022926562036199736),
-    name: 'TaskEntity',
-    lastPropertyId: const obx_int.IdUid(20, 1049382920334542796),
+    id: const obx_int.IdUid(6, 3871660598643240928),
+    name: 'ThingEntity',
+    lastPropertyId: const obx_int.IdUid(7, 5459064491511526460),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 7524246638983795322),
-        name: 'id',
+        id: const obx_int.IdUid(1, 3551857059030644220),
+        name: 'registryID',
         type: 6,
         flags: 1,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 596971907112421120),
+        id: const obx_int.IdUid(2, 4638164401403486107),
         name: 'uuid',
         type: 9,
-        flags: 0,
+        flags: 2080,
+        indexId: const obx_int.IdUid(7, 5690829327296348569),
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 9160706644337866941),
-        name: 'titleJson',
+        id: const obx_int.IdUid(3, 6799916017978707345),
+        name: 'type',
         type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(8, 503237516050225744),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 3796275771442219234),
+        name: 'id',
+        type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 1119217338488543836),
+        id: const obx_int.IdUid(5, 687695648373753667),
         name: 'createDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 2738561714437983239),
+        id: const obx_int.IdUid(6, 4859051310264147791),
+        name: 'plainText',
+        type: 9,
+        flags: 2048,
+        indexId: const obx_int.IdUid(9, 3812389458669224448),
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(7, 5459064491511526460),
+        name: 'parentRefId',
+        type: 11,
+        flags: 520,
+        indexId: const obx_int.IdUid(10, 7207618305009430338),
+        relationTarget: 'ThingEntity',
+      ),
+    ],
+    relations: <obx_int.ModelRelation>[],
+    backlinks: <obx_int.ModelBacklink>[
+      obx_int.ModelBacklink(
+        name: 'childrenRef',
+        srcEntity: 'ThingEntity',
+        srcField: '',
+      ),
+    ],
+  ),
+  obx_int.ModelEntity(
+    id: const obx_int.IdUid(7, 6250114256374030935),
+    name: 'TaskEntity',
+    lastPropertyId: const obx_int.IdUid(20, 5023103572188852847),
+    flags: 0,
+    properties: <obx_int.ModelProperty>[
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(1, 5774322164816364745),
+        name: 'id',
+        type: 6,
+        flags: 1,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(2, 3724503686924109258),
+        name: 'uuid',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(3, 3409317719670655555),
+        name: 'createDate',
+        type: 12,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(4, 3454075370832215338),
         name: 'modifyDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 6615582642610179340),
+        id: const obx_int.IdUid(5, 8113556373994463581),
         name: 'startDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(7, 2784415814826584042),
+        id: const obx_int.IdUid(6, 5610676904852341309),
         name: 'endDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(8, 9149873698525630836),
+        id: const obx_int.IdUid(7, 4038173831300734052),
         name: 'scheduledDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(9, 312727464405871510),
+        id: const obx_int.IdUid(8, 5637232707734037518),
         name: 'dueDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(10, 1067489879020050221),
+        id: const obx_int.IdUid(9, 8197091772815231536),
         name: 'waitDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(11, 447200448376395867),
+        id: const obx_int.IdUid(10, 172153640600326072),
         name: 'untilDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(12, 7913005359241404453),
+        id: const obx_int.IdUid(11, 3864941675758150972),
         name: 'recurrence',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(13, 5711643747153713546),
+        id: const obx_int.IdUid(12, 230825725344827029),
         name: 'deleted',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(14, 1502428998825519017),
+        id: const obx_int.IdUid(13, 4370493675438616443),
         name: 'archived',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(15, 6618683135393977232),
-        name: 'thingId',
-        type: 11,
-        flags: 520,
-        indexId: const obx_int.IdUid(8, 7902838825712772290),
-        relationTarget: 'ThingEntity',
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(16, 1387463278095091696),
+        id: const obx_int.IdUid(14, 158709853852535117),
         name: 'projectId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(9, 3930839496220608185),
+        indexId: const obx_int.IdUid(11, 6564849629998658801),
         relationTarget: 'ProjectEntity',
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(17, 5814288694067381962),
+        id: const obx_int.IdUid(15, 2142970269555080048),
+        name: 'thingRefId',
+        type: 11,
+        flags: 520,
+        indexId: const obx_int.IdUid(12, 6279485210336715551),
+        relationTarget: 'ThingEntity',
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(16, 5828059923590225539),
+        name: 'titleJson',
+        type: 9,
+        flags: 0,
+      ),
+      obx_int.ModelProperty(
+        id: const obx_int.IdUid(17, 4733362333667473672),
         name: 'energyOBX',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(18, 7165622939846630127),
+        id: const obx_int.IdUid(18, 8788782782738420791),
         name: 'priorityOBX',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(19, 1826086412151752390),
+        id: const obx_int.IdUid(19, 8621035965758937335),
         name: 'statusOBX',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(20, 1049382920334542796),
+        id: const obx_int.IdUid(20, 5023103572188852847),
         name: 'timeOBX',
         type: 6,
         flags: 0,
@@ -599,119 +654,119 @@ final _entities = <obx_int.ModelEntity>[
     ],
     relations: <obx_int.ModelRelation>[
       obx_int.ModelRelation(
-        id: const obx_int.IdUid(3, 7515472022629523218),
+        id: const obx_int.IdUid(3, 4685230349534464168),
         name: 'history',
-        targetId: const obx_int.IdUid(7, 1741029805757486048),
+        targetId: const obx_int.IdUid(8, 1164906598664247180),
       ),
     ],
     backlinks: <obx_int.ModelBacklink>[],
   ),
   obx_int.ModelEntity(
-    id: const obx_int.IdUid(7, 1741029805757486048),
+    id: const obx_int.IdUid(8, 1164906598664247180),
     name: 'TaskSnapshotEntity',
-    lastPropertyId: const obx_int.IdUid(17, 6245961442475503152),
+    lastPropertyId: const obx_int.IdUid(17, 5729242039740166086),
     flags: 0,
     properties: <obx_int.ModelProperty>[
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 125777418775977148),
+        id: const obx_int.IdUid(1, 7019839279713940705),
         name: 'id',
         type: 6,
         flags: 1,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 8669934375262623506),
+        id: const obx_int.IdUid(2, 6661279897295253964),
         name: 'taskId',
         type: 11,
         flags: 520,
-        indexId: const obx_int.IdUid(10, 5444775474161112672),
+        indexId: const obx_int.IdUid(13, 1598269752727965637),
         relationTarget: 'TaskEntity',
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 5524392390854507558),
+        id: const obx_int.IdUid(3, 1816112843016134890),
         name: 'timestamp',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 7375735562782471147),
+        id: const obx_int.IdUid(4, 6686431989502406071),
         name: 'titleJson',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 7249727256075595207),
+        id: const obx_int.IdUid(5, 5789878554869426403),
         name: 'startDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 4508440097709059020),
+        id: const obx_int.IdUid(6, 6682370559072023105),
         name: 'endDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(7, 4195274559634232266),
+        id: const obx_int.IdUid(7, 9029543899785164952),
         name: 'scheduledDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(8, 16035198290608125),
+        id: const obx_int.IdUid(8, 6531468638991284298),
         name: 'dueDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(9, 5034338225425929381),
+        id: const obx_int.IdUid(9, 5029847012559843066),
         name: 'waitDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(10, 3682154307058847842),
+        id: const obx_int.IdUid(10, 7391424044577712432),
         name: 'untilDate',
         type: 12,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(11, 6635468273210042336),
+        id: const obx_int.IdUid(11, 1769298287474952080),
         name: 'recurrence',
         type: 9,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(12, 82286041122307531),
+        id: const obx_int.IdUid(12, 5354073645131022699),
         name: 'status',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(13, 1027726487930045639),
+        id: const obx_int.IdUid(13, 932889616064330185),
         name: 'time',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(14, 4884483125705817160),
+        id: const obx_int.IdUid(14, 1351625158458315361),
         name: 'energy',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(15, 8595114401076120297),
+        id: const obx_int.IdUid(15, 5554214029745910780),
         name: 'priority',
         type: 6,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(16, 502998160837479026),
+        id: const obx_int.IdUid(16, 7505562933709919642),
         name: 'deleted',
         type: 1,
         flags: 0,
       ),
       obx_int.ModelProperty(
-        id: const obx_int.IdUid(17, 6245961442475503152),
+        id: const obx_int.IdUid(17, 5729242039740166086),
         name: 'archived',
         type: 1,
         flags: 0,
@@ -719,69 +774,6 @@ final _entities = <obx_int.ModelEntity>[
     ],
     relations: <obx_int.ModelRelation>[],
     backlinks: <obx_int.ModelBacklink>[],
-  ),
-  obx_int.ModelEntity(
-    id: const obx_int.IdUid(8, 8741047073665398907),
-    name: 'ThingEntity',
-    lastPropertyId: const obx_int.IdUid(7, 6411923735732369731),
-    flags: 0,
-    properties: <obx_int.ModelProperty>[
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(1, 1020317357375000083),
-        name: 'registryID',
-        type: 6,
-        flags: 1,
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(2, 2668712602527214938),
-        name: 'uuid',
-        type: 9,
-        flags: 2080,
-        indexId: const obx_int.IdUid(11, 4460803307835416385),
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(3, 2558775300076423646),
-        name: 'type',
-        type: 9,
-        flags: 2048,
-        indexId: const obx_int.IdUid(12, 8811476674282039469),
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(4, 7590885992724247840),
-        name: 'id',
-        type: 6,
-        flags: 0,
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(5, 4551031705444600722),
-        name: 'createDate',
-        type: 12,
-        flags: 0,
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(6, 1777100755241302869),
-        name: 'plainText',
-        type: 9,
-        flags: 2048,
-        indexId: const obx_int.IdUid(13, 3473562881219521132),
-      ),
-      obx_int.ModelProperty(
-        id: const obx_int.IdUid(7, 6411923735732369731),
-        name: 'parentId',
-        type: 11,
-        flags: 520,
-        indexId: const obx_int.IdUid(14, 3854289379979869066),
-        relationTarget: 'ThingEntity',
-      ),
-    ],
-    relations: <obx_int.ModelRelation>[],
-    backlinks: <obx_int.ModelBacklink>[
-      obx_int.ModelBacklink(
-        name: 'children',
-        srcEntity: 'ThingEntity',
-        srcField: '',
-      ),
-    ],
   ),
 ];
 
@@ -823,9 +815,9 @@ Future<obx.Store> openStore({
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
     entities: _entities,
-    lastEntityId: const obx_int.IdUid(8, 8741047073665398907),
-    lastIndexId: const obx_int.IdUid(14, 3854289379979869066),
-    lastRelationId: const obx_int.IdUid(3, 7515472022629523218),
+    lastEntityId: const obx_int.IdUid(8, 1164906598664247180),
+    lastIndexId: const obx_int.IdUid(13, 1598269752727965637),
+    lastRelationId: const obx_int.IdUid(3, 4685230349534464168),
     lastSequenceId: const obx_int.IdUid(0, 0),
     retiredEntityUids: const [],
     retiredIndexUids: const [],
@@ -839,7 +831,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
   final bindings = <Type, obx_int.EntityDefinition>{
     ActivityEntity: obx_int.EntityDefinition<ActivityEntity>(
       model: _entities[0],
-      toOneRelations: (ActivityEntity object) => [object.task, object.thing],
+      toOneRelations: (ActivityEntity object) => [object.task, object.thingRef],
       toManyRelations: (ActivityEntity object) => {},
       getId: (ActivityEntity object) => object.id,
       setId: (ActivityEntity object, int id) {
@@ -847,12 +839,11 @@ obx_int.ModelDefinition getObjectBoxModel() {
       },
       objectToFB: (ActivityEntity object, fb.Builder fbb) {
         final uuidOffset = fbb.writeString(object.uuid);
-        final tagsOffset =
-            object.tags == null
-                ? null
-                : fbb.writeList(
-                  object.tags!.map(fbb.writeString).toList(growable: false),
-                );
+        final tagsOffset = object.tags == null
+            ? null
+            : fbb.writeList(
+                object.tags!.map(fbb.writeString).toList(growable: false),
+              );
         final titleJsonOffset = fbb.writeString(object.titleJson);
         fbb.startTable(13);
         fbb.addInt64(0, object.id);
@@ -863,7 +854,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addInt64(5, object.task.targetId);
         fbb.addBool(6, object.archived);
         fbb.addBool(7, object.deleted);
-        fbb.addInt64(8, object.thing.targetId);
+        fbb.addInt64(8, object.thingRef.targetId);
         fbb.addOffset(9, titleJsonOffset);
         fbb.addInt64(10, object.dbKind);
         fbb.addInt64(11, object.dbStatus);
@@ -930,38 +921,38 @@ obx_int.ModelDefinition getObjectBoxModel() {
           0,
         );
         object.task.attach(store);
-        object.thing.targetId = const fb.Int64Reader().vTableGet(
+        object.thingRef.targetId = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
           20,
           0,
         );
-        object.thing.attach(store);
+        object.thingRef.attach(store);
         return object;
       },
     ),
     ActivitySnapshotEntity: obx_int.EntityDefinition<ActivitySnapshotEntity>(
       model: _entities[1],
-      toOneRelations: (ActivitySnapshotEntity object) => [object.thing],
-      toManyRelations:
-          (ActivitySnapshotEntity object) => {
-            obx_int.RelInfo<ActivitySnapshotEntity>.toMany(1, object.id):
-                object.activity,
-          },
+      toOneRelations: (ActivitySnapshotEntity object) => [object.thingRef],
+      toManyRelations: (ActivitySnapshotEntity object) => {
+        obx_int.RelInfo<ActivitySnapshotEntity>.toMany(1, object.id):
+            object.activity,
+      },
       getId: (ActivitySnapshotEntity object) => object.id,
       setId: (ActivitySnapshotEntity object, int id) {
         object.id = id;
       },
       objectToFB: (ActivitySnapshotEntity object, fb.Builder fbb) {
         final uuidOffset = fbb.writeString(object.uuid);
-        final locationSourceOffset =
-            object.locationSource == null
-                ? null
-                : fbb.writeString(object.locationSource!);
-        final deviceIDOffset =
-            object.deviceID == null ? null : fbb.writeString(object.deviceID!);
-        final platformOffset =
-            object.platform == null ? null : fbb.writeString(object.platform!);
+        final locationSourceOffset = object.locationSource == null
+            ? null
+            : fbb.writeString(object.locationSource!);
+        final deviceIDOffset = object.deviceID == null
+            ? null
+            : fbb.writeString(object.deviceID!);
+        final platformOffset = object.platform == null
+            ? null
+            : fbb.writeString(object.platform!);
         final nearbyNetworksOffset = fbb.writeList(
           object.nearbyNetworks.map(fbb.writeString).toList(growable: false),
         );
@@ -994,7 +985,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addInt64(17, object.createDate.microsecondsSinceEpoch * 1000);
         fbb.addBool(18, object.deleted);
         fbb.addInt64(19, object.modifyDate.microsecondsSinceEpoch * 1000);
-        fbb.addInt64(20, object.thing.targetId);
+        fbb.addInt64(20, object.thingRef.targetId);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1105,13 +1096,13 @@ obx_int.ModelDefinition getObjectBoxModel() {
           archived: archivedParam,
           deleted: deletedParam,
         )..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
-        object.thing.targetId = const fb.Int64Reader().vTableGet(
+        object.thingRef.targetId = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
           44,
           0,
         );
-        object.thing.attach(store);
+        object.thingRef.attach(store);
         obx_int.InternalToManyAccess.setRelInfo<ActivitySnapshotEntity>(
           object.activity,
           store,
@@ -1122,11 +1113,10 @@ obx_int.ModelDefinition getObjectBoxModel() {
     ),
     BlockEntity: obx_int.EntityDefinition<BlockEntity>(
       model: _entities[2],
-      toOneRelations: (BlockEntity object) => [object.thing],
-      toManyRelations:
-          (BlockEntity object) => {
-            obx_int.RelInfo<BlockEntity>.toMany(2, object.id): object.history,
-          },
+      toOneRelations: (BlockEntity object) => [object.thingRef],
+      toManyRelations: (BlockEntity object) => {
+        obx_int.RelInfo<BlockEntity>.toMany(2, object.id): object.history,
+      },
       getId: (BlockEntity object) => object.id,
       setId: (BlockEntity object, int id) {
         object.id = id;
@@ -1135,10 +1125,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final uuidOffset = fbb.writeString(object.uuid);
         final nodeTypeOffset = fbb.writeString(object.nodeType);
         final contentJsonOffset = fbb.writeString(object.contentJson);
-        final metadataJsonOffset =
-            object.metadataJson == null
-                ? null
-                : fbb.writeString(object.metadataJson!);
+        final metadataJsonOffset = object.metadataJson == null
+            ? null
+            : fbb.writeString(object.metadataJson!);
         fbb.startTable(11);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
@@ -1149,7 +1138,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
         fbb.addInt64(6, object.modifyDate.microsecondsSinceEpoch * 1000);
         fbb.addBool(7, object.archived);
         fbb.addBool(8, object.deleted);
-        fbb.addInt64(9, object.thing.targetId);
+        fbb.addInt64(9, object.thingRef.targetId);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1199,13 +1188,13 @@ obx_int.ModelDefinition getObjectBoxModel() {
               ..contentJson = const fb.StringReader(
                 asciiOptimization: true,
               ).vTableGet(buffer, rootOffset, 10, '');
-        object.thing.targetId = const fb.Int64Reader().vTableGet(
+        object.thingRef.targetId = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
           22,
           0,
         );
-        object.thing.attach(store);
+        object.thingRef.attach(store);
         obx_int.InternalToManyAccess.setRelInfo<BlockEntity>(
           object.history,
           store,
@@ -1225,10 +1214,9 @@ obx_int.ModelDefinition getObjectBoxModel() {
       objectToFB: (BlockSnapshotEntity object, fb.Builder fbb) {
         final typeOffset = fbb.writeString(object.type);
         final contentJsonOffset = fbb.writeString(object.contentJson);
-        final metadataJsonOffset =
-            object.metadataJson == null
-                ? null
-                : fbb.writeString(object.metadataJson!);
+        final metadataJsonOffset = object.metadataJson == null
+            ? null
+            : fbb.writeString(object.metadataJson!);
         fbb.startTable(7);
         fbb.addInt64(0, object.id);
         fbb.addInt64(1, object.block.targetId);
@@ -1275,7 +1263,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
     ),
     ProjectEntity: obx_int.EntityDefinition<ProjectEntity>(
       model: _entities[4],
-      toOneRelations: (ProjectEntity object) => [object.thing, object.parent],
+      toOneRelations: (ProjectEntity object) => [object.thingRef],
       toManyRelations: (ProjectEntity object) => {},
       getId: (ProjectEntity object) => object.id,
       setId: (ProjectEntity object, int id) {
@@ -1284,7 +1272,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
       objectToFB: (ProjectEntity object, fb.Builder fbb) {
         final uuidOffset = fbb.writeString(object.uuid);
         final titleJsonOffset = fbb.writeString(object.titleJson);
-        fbb.startTable(13);
+        fbb.startTable(12);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
         fbb.addBool(2, object.archived);
@@ -1304,9 +1292,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               ? null
               : object.endDate!.microsecondsSinceEpoch * 1000,
         );
-        fbb.addInt64(9, object.thing.targetId);
-        fbb.addInt64(10, object.parent.targetId);
-        fbb.addInt64(11, object.statusOBX);
+        fbb.addInt64(9, object.thingRef.targetId);
+        fbb.addInt64(10, object.statusOBX);
         fbb.finish(fbb.endTable());
         return object.id;
       },
@@ -1334,18 +1321,16 @@ obx_int.ModelDefinition getObjectBoxModel() {
           (const fb.Int64Reader().vTableGet(buffer, rootOffset, 16, 0) / 1000)
               .round(),
         );
-        final startDateParam =
-            startDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (startDateValue / 1000).round(),
-                );
-        final endDateParam =
-            endDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (endDateValue / 1000).round(),
-                );
+        final startDateParam = startDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (startDateValue / 1000).round(),
+              );
+        final endDateParam = endDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (endDateValue / 1000).round(),
+              );
         final archivedParam = const fb.BoolReader().vTableGet(
           buffer,
           rootOffset,
@@ -1375,86 +1360,162 @@ obx_int.ModelDefinition getObjectBoxModel() {
               ..statusOBX = const fb.Int64Reader().vTableGet(
                 buffer,
                 rootOffset,
-                26,
+                24,
                 0,
               );
-        object.thing.targetId = const fb.Int64Reader().vTableGet(
+        object.thingRef.targetId = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
           22,
           0,
         );
-        object.thing.attach(store);
-        object.parent.targetId = const fb.Int64Reader().vTableGet(
+        object.thingRef.attach(store);
+        return object;
+      },
+    ),
+    ThingEntity: obx_int.EntityDefinition<ThingEntity>(
+      model: _entities[5],
+      toOneRelations: (ThingEntity object) => [object.parentRef],
+      toManyRelations: (ThingEntity object) => {
+        obx_int.RelInfo<ThingEntity>.toOneBacklink(
+          7,
+          object.registryID,
+          (ThingEntity srcObject) => srcObject.parentRef,
+        ): object.childrenRef,
+      },
+      getId: (ThingEntity object) => object.registryID,
+      setId: (ThingEntity object, int id) {
+        object.registryID = id;
+      },
+      objectToFB: (ThingEntity object, fb.Builder fbb) {
+        final uuidOffset = fbb.writeString(object.uuid);
+        final typeOffset = fbb.writeString(object.type);
+        final plainTextOffset = object.plainText == null
+            ? null
+            : fbb.writeString(object.plainText!);
+        fbb.startTable(8);
+        fbb.addInt64(0, object.registryID);
+        fbb.addOffset(1, uuidOffset);
+        fbb.addOffset(2, typeOffset);
+        fbb.addInt64(3, object.id);
+        fbb.addInt64(4, object.createDate.microsecondsSinceEpoch * 1000);
+        fbb.addOffset(5, plainTextOffset);
+        fbb.addInt64(6, object.parentRef.targetId);
+        fbb.finish(fbb.endTable());
+        return object.registryID;
+      },
+      objectFromFB: (obx.Store store, ByteData fbData) {
+        final buffer = fb.BufferContext(fbData);
+        final rootOffset = buffer.derefObject(0);
+        final uuidParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 6, '');
+        final typeParam = const fb.StringReader(
+          asciiOptimization: true,
+        ).vTableGet(buffer, rootOffset, 8, '');
+        final idParam = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
-          24,
+          10,
           0,
         );
-        object.parent.attach(store);
+        final createDateParam = DateTime.fromMicrosecondsSinceEpoch(
+          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0) / 1000)
+              .round(),
+        );
+        final object =
+            ThingEntity(
+                uuid: uuidParam,
+                type: typeParam,
+                id: idParam,
+                createDate: createDateParam,
+              )
+              ..registryID = const fb.Int64Reader().vTableGet(
+                buffer,
+                rootOffset,
+                4,
+                0,
+              )
+              ..plainText = const fb.StringReader(
+                asciiOptimization: true,
+              ).vTableGetNullable(buffer, rootOffset, 14);
+        object.parentRef.targetId = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          16,
+          0,
+        );
+        object.parentRef.attach(store);
+        obx_int.InternalToManyAccess.setRelInfo<ThingEntity>(
+          object.childrenRef,
+          store,
+          obx_int.RelInfo<ThingEntity>.toOneBacklink(
+            7,
+            object.registryID,
+            (ThingEntity srcObject) => srcObject.parentRef,
+          ),
+        );
         return object;
       },
     ),
     TaskEntity: obx_int.EntityDefinition<TaskEntity>(
-      model: _entities[5],
-      toOneRelations: (TaskEntity object) => [object.thing, object.project],
-      toManyRelations:
-          (TaskEntity object) => {
-            obx_int.RelInfo<TaskEntity>.toMany(3, object.id): object.history,
-          },
+      model: _entities[6],
+      toOneRelations: (TaskEntity object) => [object.project, object.thingRef],
+      toManyRelations: (TaskEntity object) => {
+        obx_int.RelInfo<TaskEntity>.toMany(3, object.id): object.history,
+      },
       getId: (TaskEntity object) => object.id,
       setId: (TaskEntity object, int id) {
         object.id = id;
       },
       objectToFB: (TaskEntity object, fb.Builder fbb) {
         final uuidOffset = fbb.writeString(object.uuid);
+        final recurrenceOffset = object.recurrence == null
+            ? null
+            : fbb.writeString(object.recurrence!);
         final titleJsonOffset = fbb.writeString(object.titleJson);
-        final recurrenceOffset =
-            object.recurrence == null
-                ? null
-                : fbb.writeString(object.recurrence!);
         fbb.startTable(21);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, uuidOffset);
-        fbb.addOffset(2, titleJsonOffset);
-        fbb.addInt64(3, object.createDate.microsecondsSinceEpoch * 1000);
-        fbb.addInt64(4, object.modifyDate.microsecondsSinceEpoch * 1000);
+        fbb.addInt64(2, object.createDate.microsecondsSinceEpoch * 1000);
+        fbb.addInt64(3, object.modifyDate.microsecondsSinceEpoch * 1000);
         fbb.addInt64(
-          5,
+          4,
           object.startDate == null
               ? null
               : object.startDate!.microsecondsSinceEpoch * 1000,
         );
         fbb.addInt64(
-          6,
+          5,
           object.endDate == null
               ? null
               : object.endDate!.microsecondsSinceEpoch * 1000,
         );
         fbb.addInt64(
-          7,
+          6,
           object.scheduledDate == null
               ? null
               : object.scheduledDate!.microsecondsSinceEpoch * 1000,
         );
-        fbb.addInt64(8, object.dueDate.microsecondsSinceEpoch * 1000);
+        fbb.addInt64(7, object.dueDate.microsecondsSinceEpoch * 1000);
         fbb.addInt64(
-          9,
+          8,
           object.waitDate == null
               ? null
               : object.waitDate!.microsecondsSinceEpoch * 1000,
         );
         fbb.addInt64(
-          10,
+          9,
           object.untilDate == null
               ? null
               : object.untilDate!.microsecondsSinceEpoch * 1000,
         );
-        fbb.addOffset(11, recurrenceOffset);
-        fbb.addBool(12, object.deleted);
-        fbb.addBool(13, object.archived);
-        fbb.addInt64(14, object.thing.targetId);
-        fbb.addInt64(15, object.project.targetId);
+        fbb.addOffset(10, recurrenceOffset);
+        fbb.addBool(11, object.deleted);
+        fbb.addBool(12, object.archived);
+        fbb.addInt64(13, object.project.targetId);
+        fbb.addInt64(14, object.thingRef.targetId);
+        fbb.addOffset(15, titleJsonOffset);
         fbb.addInt64(16, object.energyOBX);
         fbb.addInt64(17, object.priorityOBX);
         fbb.addInt64(18, object.statusOBX);
@@ -1468,86 +1529,81 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final startDateValue = const fb.Int64Reader().vTableGetNullable(
           buffer,
           rootOffset,
-          14,
+          12,
         );
         final endDateValue = const fb.Int64Reader().vTableGetNullable(
           buffer,
           rootOffset,
-          16,
+          14,
         );
         final scheduledDateValue = const fb.Int64Reader().vTableGetNullable(
           buffer,
           rootOffset,
-          18,
+          16,
         );
         final waitDateValue = const fb.Int64Reader().vTableGetNullable(
           buffer,
           rootOffset,
-          22,
+          20,
         );
         final untilDateValue = const fb.Int64Reader().vTableGetNullable(
           buffer,
           rootOffset,
-          24,
+          22,
         );
         final uuidParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGet(buffer, rootOffset, 6, '');
         final createDateParam = DateTime.fromMicrosecondsSinceEpoch(
-          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 10, 0) / 1000)
+          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 8, 0) / 1000)
               .round(),
         );
         final modifyDateParam = DateTime.fromMicrosecondsSinceEpoch(
-          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0) / 1000)
+          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 10, 0) / 1000)
               .round(),
         );
         final dueDateParam = DateTime.fromMicrosecondsSinceEpoch(
-          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 20, 0) / 1000)
+          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 18, 0) / 1000)
               .round(),
         );
-        final startDateParam =
-            startDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (startDateValue / 1000).round(),
-                );
-        final endDateParam =
-            endDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (endDateValue / 1000).round(),
-                );
-        final scheduledDateParam =
-            scheduledDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (scheduledDateValue / 1000).round(),
-                );
-        final waitDateParam =
-            waitDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (waitDateValue / 1000).round(),
-                );
-        final untilDateParam =
-            untilDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (untilDateValue / 1000).round(),
-                );
+        final startDateParam = startDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (startDateValue / 1000).round(),
+              );
+        final endDateParam = endDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (endDateValue / 1000).round(),
+              );
+        final scheduledDateParam = scheduledDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (scheduledDateValue / 1000).round(),
+              );
+        final waitDateParam = waitDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (waitDateValue / 1000).round(),
+              );
+        final untilDateParam = untilDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (untilDateValue / 1000).round(),
+              );
         final recurrenceParam = const fb.StringReader(
           asciiOptimization: true,
-        ).vTableGetNullable(buffer, rootOffset, 26);
+        ).vTableGetNullable(buffer, rootOffset, 24);
         final archivedParam = const fb.BoolReader().vTableGet(
           buffer,
           rootOffset,
-          30,
+          28,
           false,
         );
         final deletedParam = const fb.BoolReader().vTableGet(
           buffer,
           rootOffset,
-          28,
+          26,
           false,
         );
         final object =
@@ -1568,7 +1624,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
               ..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0)
               ..titleJson = const fb.StringReader(
                 asciiOptimization: true,
-              ).vTableGet(buffer, rootOffset, 8, '')
+              ).vTableGet(buffer, rootOffset, 34, '')
               ..energyOBX = const fb.Int64Reader().vTableGet(
                 buffer,
                 rootOffset,
@@ -1593,20 +1649,20 @@ obx_int.ModelDefinition getObjectBoxModel() {
                 42,
                 0,
               );
-        object.thing.targetId = const fb.Int64Reader().vTableGet(
+        object.project.targetId = const fb.Int64Reader().vTableGet(
+          buffer,
+          rootOffset,
+          30,
+          0,
+        );
+        object.project.attach(store);
+        object.thingRef.targetId = const fb.Int64Reader().vTableGet(
           buffer,
           rootOffset,
           32,
           0,
         );
-        object.thing.attach(store);
-        object.project.targetId = const fb.Int64Reader().vTableGet(
-          buffer,
-          rootOffset,
-          34,
-          0,
-        );
-        object.project.attach(store);
+        object.thingRef.attach(store);
         obx_int.InternalToManyAccess.setRelInfo<TaskEntity>(
           object.history,
           store,
@@ -1616,7 +1672,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
       },
     ),
     TaskSnapshotEntity: obx_int.EntityDefinition<TaskSnapshotEntity>(
-      model: _entities[6],
+      model: _entities[7],
       toOneRelations: (TaskSnapshotEntity object) => [object.task],
       toManyRelations: (TaskSnapshotEntity object) => {},
       getId: (TaskSnapshotEntity object) => object.id,
@@ -1624,14 +1680,12 @@ obx_int.ModelDefinition getObjectBoxModel() {
         object.id = id;
       },
       objectToFB: (TaskSnapshotEntity object, fb.Builder fbb) {
-        final titleJsonOffset =
-            object.titleJson == null
-                ? null
-                : fbb.writeString(object.titleJson!);
-        final recurrenceOffset =
-            object.recurrence == null
-                ? null
-                : fbb.writeString(object.recurrence!);
+        final titleJsonOffset = object.titleJson == null
+            ? null
+            : fbb.writeString(object.titleJson!);
+        final recurrenceOffset = object.recurrence == null
+            ? null
+            : fbb.writeString(object.recurrence!);
         fbb.startTable(18);
         fbb.addInt64(0, object.id);
         fbb.addInt64(1, object.task.targetId);
@@ -1719,42 +1773,36 @@ obx_int.ModelDefinition getObjectBoxModel() {
         final titleJsonParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGetNullable(buffer, rootOffset, 10);
-        final startDateParam =
-            startDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (startDateValue / 1000).round(),
-                );
-        final endDateParam =
-            endDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (endDateValue / 1000).round(),
-                );
-        final scheduledDateParam =
-            scheduledDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (scheduledDateValue / 1000).round(),
-                );
-        final dueDateParam =
-            dueDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (dueDateValue / 1000).round(),
-                );
-        final waitDateParam =
-            waitDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (waitDateValue / 1000).round(),
-                );
-        final untilDateParam =
-            untilDateValue == null
-                ? null
-                : DateTime.fromMicrosecondsSinceEpoch(
-                  (untilDateValue / 1000).round(),
-                );
+        final startDateParam = startDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (startDateValue / 1000).round(),
+              );
+        final endDateParam = endDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (endDateValue / 1000).round(),
+              );
+        final scheduledDateParam = scheduledDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (scheduledDateValue / 1000).round(),
+              );
+        final dueDateParam = dueDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (dueDateValue / 1000).round(),
+              );
+        final waitDateParam = waitDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (waitDateValue / 1000).round(),
+              );
+        final untilDateParam = untilDateValue == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch(
+                (untilDateValue / 1000).round(),
+              );
         final recurrenceParam = const fb.StringReader(
           asciiOptimization: true,
         ).vTableGetNullable(buffer, rootOffset, 24);
@@ -1821,94 +1869,6 @@ obx_int.ModelDefinition getObjectBoxModel() {
         return object;
       },
     ),
-    ThingEntity: obx_int.EntityDefinition<ThingEntity>(
-      model: _entities[7],
-      toOneRelations: (ThingEntity object) => [object.parent],
-      toManyRelations:
-          (ThingEntity object) => {
-            obx_int.RelInfo<ThingEntity>.toOneBacklink(
-                  7,
-                  object.registryID,
-                  (ThingEntity srcObject) => srcObject.parent,
-                ):
-                object.children,
-          },
-      getId: (ThingEntity object) => object.registryID,
-      setId: (ThingEntity object, int id) {
-        object.registryID = id;
-      },
-      objectToFB: (ThingEntity object, fb.Builder fbb) {
-        final uuidOffset = fbb.writeString(object.uuid);
-        final typeOffset = fbb.writeString(object.type);
-        final plainTextOffset =
-            object.plainText == null
-                ? null
-                : fbb.writeString(object.plainText!);
-        fbb.startTable(8);
-        fbb.addInt64(0, object.registryID);
-        fbb.addOffset(1, uuidOffset);
-        fbb.addOffset(2, typeOffset);
-        fbb.addInt64(3, object.id);
-        fbb.addInt64(4, object.createDate.microsecondsSinceEpoch * 1000);
-        fbb.addOffset(5, plainTextOffset);
-        fbb.addInt64(6, object.parent.targetId);
-        fbb.finish(fbb.endTable());
-        return object.registryID;
-      },
-      objectFromFB: (obx.Store store, ByteData fbData) {
-        final buffer = fb.BufferContext(fbData);
-        final rootOffset = buffer.derefObject(0);
-        final uuidParam = const fb.StringReader(
-          asciiOptimization: true,
-        ).vTableGet(buffer, rootOffset, 6, '');
-        final typeParam = const fb.StringReader(
-          asciiOptimization: true,
-        ).vTableGet(buffer, rootOffset, 8, '');
-        final idParam = const fb.Int64Reader().vTableGet(
-          buffer,
-          rootOffset,
-          10,
-          0,
-        );
-        final createDateParam = DateTime.fromMicrosecondsSinceEpoch(
-          (const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0) / 1000)
-              .round(),
-        );
-        final object =
-            ThingEntity(
-                uuid: uuidParam,
-                type: typeParam,
-                id: idParam,
-                createDate: createDateParam,
-              )
-              ..registryID = const fb.Int64Reader().vTableGet(
-                buffer,
-                rootOffset,
-                4,
-                0,
-              )
-              ..plainText = const fb.StringReader(
-                asciiOptimization: true,
-              ).vTableGetNullable(buffer, rootOffset, 14);
-        object.parent.targetId = const fb.Int64Reader().vTableGet(
-          buffer,
-          rootOffset,
-          16,
-          0,
-        );
-        object.parent.attach(store);
-        obx_int.InternalToManyAccess.setRelInfo<ThingEntity>(
-          object.children,
-          store,
-          obx_int.RelInfo<ThingEntity>.toOneBacklink(
-            7,
-            object.registryID,
-            (ThingEntity srcObject) => srcObject.parent,
-          ),
-        );
-        return object;
-      },
-    ),
   };
 
   return obx_int.ModelDefinition(model, bindings);
@@ -1956,8 +1916,8 @@ class ActivityEntity_ {
     _entities[0].properties[7],
   );
 
-  /// See [ActivityEntity.thing].
-  static final thing = obx.QueryRelationToOne<ActivityEntity, ThingEntity>(
+  /// See [ActivityEntity.thingRef].
+  static final thingRef = obx.QueryRelationToOne<ActivityEntity, ThingEntity>(
     _entities[0].properties[8],
   );
 
@@ -2083,8 +2043,8 @@ class ActivitySnapshotEntity_ {
     _entities[1].properties[19],
   );
 
-  /// See [ActivitySnapshotEntity.thing].
-  static final thing =
+  /// See [ActivitySnapshotEntity.thingRef].
+  static final thingRef =
       obx.QueryRelationToOne<ActivitySnapshotEntity, ThingEntity>(
         _entities[1].properties[20],
       );
@@ -2143,8 +2103,8 @@ class BlockEntity_ {
     _entities[2].properties[8],
   );
 
-  /// See [BlockEntity.thing].
-  static final thing = obx.QueryRelationToOne<BlockEntity, ThingEntity>(
+  /// See [BlockEntity.thingRef].
+  static final thingRef = obx.QueryRelationToOne<BlockEntity, ThingEntity>(
     _entities[2].properties[9],
   );
 
@@ -2235,216 +2195,14 @@ class ProjectEntity_ {
     _entities[4].properties[8],
   );
 
-  /// See [ProjectEntity.thing].
-  static final thing = obx.QueryRelationToOne<ProjectEntity, ThingEntity>(
+  /// See [ProjectEntity.thingRef].
+  static final thingRef = obx.QueryRelationToOne<ProjectEntity, ThingEntity>(
     _entities[4].properties[9],
-  );
-
-  /// See [ProjectEntity.parent].
-  static final parent = obx.QueryRelationToOne<ProjectEntity, ProjectEntity>(
-    _entities[4].properties[10],
   );
 
   /// See [ProjectEntity.statusOBX].
   static final statusOBX = obx.QueryIntegerProperty<ProjectEntity>(
-    _entities[4].properties[11],
-  );
-}
-
-/// [TaskEntity] entity fields to define ObjectBox queries.
-class TaskEntity_ {
-  /// See [TaskEntity.id].
-  static final id = obx.QueryIntegerProperty<TaskEntity>(
-    _entities[5].properties[0],
-  );
-
-  /// See [TaskEntity.uuid].
-  static final uuid = obx.QueryStringProperty<TaskEntity>(
-    _entities[5].properties[1],
-  );
-
-  /// See [TaskEntity.titleJson].
-  static final titleJson = obx.QueryStringProperty<TaskEntity>(
-    _entities[5].properties[2],
-  );
-
-  /// See [TaskEntity.createDate].
-  static final createDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[3],
-  );
-
-  /// See [TaskEntity.modifyDate].
-  static final modifyDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[4],
-  );
-
-  /// See [TaskEntity.startDate].
-  static final startDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[5],
-  );
-
-  /// See [TaskEntity.endDate].
-  static final endDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[6],
-  );
-
-  /// See [TaskEntity.scheduledDate].
-  static final scheduledDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[7],
-  );
-
-  /// See [TaskEntity.dueDate].
-  static final dueDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[8],
-  );
-
-  /// See [TaskEntity.waitDate].
-  static final waitDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[9],
-  );
-
-  /// See [TaskEntity.untilDate].
-  static final untilDate = obx.QueryDateNanoProperty<TaskEntity>(
-    _entities[5].properties[10],
-  );
-
-  /// See [TaskEntity.recurrence].
-  static final recurrence = obx.QueryStringProperty<TaskEntity>(
-    _entities[5].properties[11],
-  );
-
-  /// See [TaskEntity.deleted].
-  static final deleted = obx.QueryBooleanProperty<TaskEntity>(
-    _entities[5].properties[12],
-  );
-
-  /// See [TaskEntity.archived].
-  static final archived = obx.QueryBooleanProperty<TaskEntity>(
-    _entities[5].properties[13],
-  );
-
-  /// See [TaskEntity.thing].
-  static final thing = obx.QueryRelationToOne<TaskEntity, ThingEntity>(
-    _entities[5].properties[14],
-  );
-
-  /// See [TaskEntity.project].
-  static final project = obx.QueryRelationToOne<TaskEntity, ProjectEntity>(
-    _entities[5].properties[15],
-  );
-
-  /// See [TaskEntity.energyOBX].
-  static final energyOBX = obx.QueryIntegerProperty<TaskEntity>(
-    _entities[5].properties[16],
-  );
-
-  /// See [TaskEntity.priorityOBX].
-  static final priorityOBX = obx.QueryIntegerProperty<TaskEntity>(
-    _entities[5].properties[17],
-  );
-
-  /// See [TaskEntity.statusOBX].
-  static final statusOBX = obx.QueryIntegerProperty<TaskEntity>(
-    _entities[5].properties[18],
-  );
-
-  /// See [TaskEntity.timeOBX].
-  static final timeOBX = obx.QueryIntegerProperty<TaskEntity>(
-    _entities[5].properties[19],
-  );
-
-  /// see [TaskEntity.history]
-  static final history =
-      obx.QueryRelationToMany<TaskEntity, TaskSnapshotEntity>(
-        _entities[5].relations[0],
-      );
-}
-
-/// [TaskSnapshotEntity] entity fields to define ObjectBox queries.
-class TaskSnapshotEntity_ {
-  /// See [TaskSnapshotEntity.id].
-  static final id = obx.QueryIntegerProperty<TaskSnapshotEntity>(
-    _entities[6].properties[0],
-  );
-
-  /// See [TaskSnapshotEntity.task].
-  static final task = obx.QueryRelationToOne<TaskSnapshotEntity, TaskEntity>(
-    _entities[6].properties[1],
-  );
-
-  /// See [TaskSnapshotEntity.timestamp].
-  static final timestamp = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
-    _entities[6].properties[2],
-  );
-
-  /// See [TaskSnapshotEntity.titleJson].
-  static final titleJson = obx.QueryStringProperty<TaskSnapshotEntity>(
-    _entities[6].properties[3],
-  );
-
-  /// See [TaskSnapshotEntity.startDate].
-  static final startDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
-    _entities[6].properties[4],
-  );
-
-  /// See [TaskSnapshotEntity.endDate].
-  static final endDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
-    _entities[6].properties[5],
-  );
-
-  /// See [TaskSnapshotEntity.scheduledDate].
-  static final scheduledDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
-    _entities[6].properties[6],
-  );
-
-  /// See [TaskSnapshotEntity.dueDate].
-  static final dueDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
-    _entities[6].properties[7],
-  );
-
-  /// See [TaskSnapshotEntity.waitDate].
-  static final waitDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
-    _entities[6].properties[8],
-  );
-
-  /// See [TaskSnapshotEntity.untilDate].
-  static final untilDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
-    _entities[6].properties[9],
-  );
-
-  /// See [TaskSnapshotEntity.recurrence].
-  static final recurrence = obx.QueryStringProperty<TaskSnapshotEntity>(
-    _entities[6].properties[10],
-  );
-
-  /// See [TaskSnapshotEntity.status].
-  static final status = obx.QueryIntegerProperty<TaskSnapshotEntity>(
-    _entities[6].properties[11],
-  );
-
-  /// See [TaskSnapshotEntity.time].
-  static final time = obx.QueryIntegerProperty<TaskSnapshotEntity>(
-    _entities[6].properties[12],
-  );
-
-  /// See [TaskSnapshotEntity.energy].
-  static final energy = obx.QueryIntegerProperty<TaskSnapshotEntity>(
-    _entities[6].properties[13],
-  );
-
-  /// See [TaskSnapshotEntity.priority].
-  static final priority = obx.QueryIntegerProperty<TaskSnapshotEntity>(
-    _entities[6].properties[14],
-  );
-
-  /// See [TaskSnapshotEntity.deleted].
-  static final deleted = obx.QueryBooleanProperty<TaskSnapshotEntity>(
-    _entities[6].properties[15],
-  );
-
-  /// See [TaskSnapshotEntity.archived].
-  static final archived = obx.QueryBooleanProperty<TaskSnapshotEntity>(
-    _entities[6].properties[16],
+    _entities[4].properties[10],
   );
 }
 
@@ -2452,41 +2210,238 @@ class TaskSnapshotEntity_ {
 class ThingEntity_ {
   /// See [ThingEntity.registryID].
   static final registryID = obx.QueryIntegerProperty<ThingEntity>(
-    _entities[7].properties[0],
+    _entities[5].properties[0],
   );
 
   /// See [ThingEntity.uuid].
   static final uuid = obx.QueryStringProperty<ThingEntity>(
-    _entities[7].properties[1],
+    _entities[5].properties[1],
   );
 
   /// See [ThingEntity.type].
   static final type = obx.QueryStringProperty<ThingEntity>(
-    _entities[7].properties[2],
+    _entities[5].properties[2],
   );
 
   /// See [ThingEntity.id].
   static final id = obx.QueryIntegerProperty<ThingEntity>(
-    _entities[7].properties[3],
+    _entities[5].properties[3],
   );
 
   /// See [ThingEntity.createDate].
   static final createDate = obx.QueryDateNanoProperty<ThingEntity>(
-    _entities[7].properties[4],
+    _entities[5].properties[4],
   );
 
   /// See [ThingEntity.plainText].
   static final plainText = obx.QueryStringProperty<ThingEntity>(
+    _entities[5].properties[5],
+  );
+
+  /// See [ThingEntity.parentRef].
+  static final parentRef = obx.QueryRelationToOne<ThingEntity, ThingEntity>(
+    _entities[5].properties[6],
+  );
+
+  /// see [ThingEntity.childrenRef]
+  static final childrenRef = obx.QueryBacklinkToMany<ThingEntity, ThingEntity>(
+    ThingEntity_.parentRef,
+  );
+}
+
+/// [TaskEntity] entity fields to define ObjectBox queries.
+class TaskEntity_ {
+  /// See [TaskEntity.id].
+  static final id = obx.QueryIntegerProperty<TaskEntity>(
+    _entities[6].properties[0],
+  );
+
+  /// See [TaskEntity.uuid].
+  static final uuid = obx.QueryStringProperty<TaskEntity>(
+    _entities[6].properties[1],
+  );
+
+  /// See [TaskEntity.createDate].
+  static final createDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[2],
+  );
+
+  /// See [TaskEntity.modifyDate].
+  static final modifyDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[3],
+  );
+
+  /// See [TaskEntity.startDate].
+  static final startDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[4],
+  );
+
+  /// See [TaskEntity.endDate].
+  static final endDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[5],
+  );
+
+  /// See [TaskEntity.scheduledDate].
+  static final scheduledDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[6],
+  );
+
+  /// See [TaskEntity.dueDate].
+  static final dueDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[7],
+  );
+
+  /// See [TaskEntity.waitDate].
+  static final waitDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[8],
+  );
+
+  /// See [TaskEntity.untilDate].
+  static final untilDate = obx.QueryDateNanoProperty<TaskEntity>(
+    _entities[6].properties[9],
+  );
+
+  /// See [TaskEntity.recurrence].
+  static final recurrence = obx.QueryStringProperty<TaskEntity>(
+    _entities[6].properties[10],
+  );
+
+  /// See [TaskEntity.deleted].
+  static final deleted = obx.QueryBooleanProperty<TaskEntity>(
+    _entities[6].properties[11],
+  );
+
+  /// See [TaskEntity.archived].
+  static final archived = obx.QueryBooleanProperty<TaskEntity>(
+    _entities[6].properties[12],
+  );
+
+  /// See [TaskEntity.project].
+  static final project = obx.QueryRelationToOne<TaskEntity, ProjectEntity>(
+    _entities[6].properties[13],
+  );
+
+  /// See [TaskEntity.thingRef].
+  static final thingRef = obx.QueryRelationToOne<TaskEntity, ThingEntity>(
+    _entities[6].properties[14],
+  );
+
+  /// See [TaskEntity.titleJson].
+  static final titleJson = obx.QueryStringProperty<TaskEntity>(
+    _entities[6].properties[15],
+  );
+
+  /// See [TaskEntity.energyOBX].
+  static final energyOBX = obx.QueryIntegerProperty<TaskEntity>(
+    _entities[6].properties[16],
+  );
+
+  /// See [TaskEntity.priorityOBX].
+  static final priorityOBX = obx.QueryIntegerProperty<TaskEntity>(
+    _entities[6].properties[17],
+  );
+
+  /// See [TaskEntity.statusOBX].
+  static final statusOBX = obx.QueryIntegerProperty<TaskEntity>(
+    _entities[6].properties[18],
+  );
+
+  /// See [TaskEntity.timeOBX].
+  static final timeOBX = obx.QueryIntegerProperty<TaskEntity>(
+    _entities[6].properties[19],
+  );
+
+  /// see [TaskEntity.history]
+  static final history =
+      obx.QueryRelationToMany<TaskEntity, TaskSnapshotEntity>(
+        _entities[6].relations[0],
+      );
+}
+
+/// [TaskSnapshotEntity] entity fields to define ObjectBox queries.
+class TaskSnapshotEntity_ {
+  /// See [TaskSnapshotEntity.id].
+  static final id = obx.QueryIntegerProperty<TaskSnapshotEntity>(
+    _entities[7].properties[0],
+  );
+
+  /// See [TaskSnapshotEntity.task].
+  static final task = obx.QueryRelationToOne<TaskSnapshotEntity, TaskEntity>(
+    _entities[7].properties[1],
+  );
+
+  /// See [TaskSnapshotEntity.timestamp].
+  static final timestamp = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
+    _entities[7].properties[2],
+  );
+
+  /// See [TaskSnapshotEntity.titleJson].
+  static final titleJson = obx.QueryStringProperty<TaskSnapshotEntity>(
+    _entities[7].properties[3],
+  );
+
+  /// See [TaskSnapshotEntity.startDate].
+  static final startDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
+    _entities[7].properties[4],
+  );
+
+  /// See [TaskSnapshotEntity.endDate].
+  static final endDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
     _entities[7].properties[5],
   );
 
-  /// See [ThingEntity.parent].
-  static final parent = obx.QueryRelationToOne<ThingEntity, ThingEntity>(
+  /// See [TaskSnapshotEntity.scheduledDate].
+  static final scheduledDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
     _entities[7].properties[6],
   );
 
-  /// see [ThingEntity.children]
-  static final children = obx.QueryBacklinkToMany<ThingEntity, ThingEntity>(
-    ThingEntity_.parent,
+  /// See [TaskSnapshotEntity.dueDate].
+  static final dueDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
+    _entities[7].properties[7],
+  );
+
+  /// See [TaskSnapshotEntity.waitDate].
+  static final waitDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
+    _entities[7].properties[8],
+  );
+
+  /// See [TaskSnapshotEntity.untilDate].
+  static final untilDate = obx.QueryDateNanoProperty<TaskSnapshotEntity>(
+    _entities[7].properties[9],
+  );
+
+  /// See [TaskSnapshotEntity.recurrence].
+  static final recurrence = obx.QueryStringProperty<TaskSnapshotEntity>(
+    _entities[7].properties[10],
+  );
+
+  /// See [TaskSnapshotEntity.status].
+  static final status = obx.QueryIntegerProperty<TaskSnapshotEntity>(
+    _entities[7].properties[11],
+  );
+
+  /// See [TaskSnapshotEntity.time].
+  static final time = obx.QueryIntegerProperty<TaskSnapshotEntity>(
+    _entities[7].properties[12],
+  );
+
+  /// See [TaskSnapshotEntity.energy].
+  static final energy = obx.QueryIntegerProperty<TaskSnapshotEntity>(
+    _entities[7].properties[13],
+  );
+
+  /// See [TaskSnapshotEntity.priority].
+  static final priority = obx.QueryIntegerProperty<TaskSnapshotEntity>(
+    _entities[7].properties[14],
+  );
+
+  /// See [TaskSnapshotEntity.deleted].
+  static final deleted = obx.QueryBooleanProperty<TaskSnapshotEntity>(
+    _entities[7].properties[15],
+  );
+
+  /// See [TaskSnapshotEntity.archived].
+  static final archived = obx.QueryBooleanProperty<TaskSnapshotEntity>(
+    _entities[7].properties[16],
   );
 }

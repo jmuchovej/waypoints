@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../things/foundation.dart';
 import '../objectbox.g.dart';
 import '../objectbox.dart';
-import '../../things/thing/thing.entity.dart';
+import '../../things/thing.entity.dart';
 
 /// Provider for ThingService
 final thingServiceProvider = Provider<ThingService>((ref) {
@@ -26,8 +27,6 @@ class ThingService {
     return _box.query(ThingEntity_.uuid.equals(uuid)).build().findFirst();
   }
 
-  ThingEntity? get(int id) => _box.get(id);
-
   /// Generate a unique UUID that doesn't exist in the registry
   String generateUniqueUUID() {
     String uuid;
@@ -36,6 +35,8 @@ class ThingService {
     } while (lookup(uuid) != null);
     return uuid;
   }
+
+  ThingEntity? get(int id) => _box.get(id);
 
   /// Register a new Thing in the registry
   /// Ensures UUID uniqueness
@@ -47,6 +48,28 @@ class ThingService {
 
     final entity = ThingEntity(uuid: uuid, type: type, id: id);
     _box.put(entity);
+    return entity;
+  }
+
+  BT link<BT extends BaseThing>(BT entity) {
+    final BaseThing(uuid: uuid, type: type, id: id) = entity;
+    final existing = lookup(uuid);
+    if (existing != null) {
+      throw UUIDAlreadyExistsException(uuid, existing.type, type);
+    }
+
+    final thing = ThingEntity(uuid: uuid, type: type, id: id);
+    entity.thingRef.target = thing;
+    return entity;
+  }
+
+  BT unlink<BT extends BaseThing>(BT entity) {
+    final BaseThing(uuid: uuid) = entity;
+    final existing = lookup(uuid);
+    if (existing != null) {
+      _box.remove(existing.registryID);
+    }
+    entity.thingRef.target = null;
     return entity;
   }
 
