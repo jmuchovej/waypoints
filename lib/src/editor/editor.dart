@@ -6,16 +6,14 @@ import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 
 import 'nodes/project_builder.dart';
 import 'nodes/task_builder.dart';
+import 'operations/task_status.dart';
 import 'operations/thing_cursor_handler.dart';
 import 'scaffolding.dart';
 import '../styling/super_editor.dart';
 import '../styling/tempo_stylesheet.dart';
 import 'super_editor.dart';
-import 'operations/task_request_handlers.dart';
-import 'operations/panel_request_handlers.dart';
 import '../../flavors.dart';
 import '../things/task/task_repository.dart';
-import 'operations/task_instructions.dart';
 
 export 'extensions.dart';
 export 'inline.dart';
@@ -24,8 +22,7 @@ export 'scaffolding.dart';
 export 'super_editor.dart';
 export 'super_text.dart';
 export 'documents/ordered_set.dart';
-export 'operations/task_requests.dart';
-export 'operations/panel_requests.dart';
+export 'operations/task_status.dart';
 
 /// Creates request handlers that include both default SuperEditor handlers
 /// and Tempo-specific task and panel handlers
@@ -35,13 +32,7 @@ List<EditRequestHandler> createTempoRequestHandlers(
   WidgetRef ref,
 ) => [
   ...requestHandlers,
-  createTaskRequestHandler(
-    taskRepository,
-  ), // Add our custom task request handler
-  createPanelRequestHandler(
-    context,
-    ref,
-  ), // Add our custom panel request handler
+  changeTaskStatusHandler,
 ];
 
 SuperEditor createSuperEditor(

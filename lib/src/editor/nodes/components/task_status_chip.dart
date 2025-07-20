@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../infrastructure/logging.dart';
 import '../../../things/task/task.entity.dart';
 
 /// This widget replaces the original TaskStatusWidget with precise baseline alignment.
@@ -35,6 +36,7 @@ class TaskStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    tempoEditorLog.finest('TaskStatusChip building with status: ${status.name} @ ${DateTime.now()}');
     // Calculate dimensions based on text style
     final fontSize = textStyle.fontSize ?? 14.0;
     final lineHeight =
@@ -46,37 +48,47 @@ class TaskStatusChip extends StatelessWidget {
     final iconTopOffset =
         (lineHeight - iconSize) / 2; // Center icon in line height
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _showStatusChanger(context),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 0.0),
-        child: SizedBox(
-          width: lineHeight, // Icon size plus some padding
-          height: lineHeight, // Match the text line height exactly
-          child: Stack(
-            children: [
-              Positioned(
-                top: iconTopOffset,
-                // left: 4,
-                child: Icon(
-                  status.icon,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: lineHeight,
-                  semanticLabel: status.toString(),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (status == TaskStatus.complete) {
+            onChange(TaskStatus.todo);
+          } else {
+            onChange(TaskStatus.complete);
+          }
+          tempoEditorLog.finest('TaskStatusChip onChange ended @ ${DateTime.now()}');
+        },
+        onDoubleTap: () {
+          if (status == TaskStatus.dropped) {
+            onChange(TaskStatus.todo);
+          } else {
+            onChange(TaskStatus.dropped);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 0.0),
+          child: SizedBox(
+            width: lineHeight, // Icon size plus some padding
+            height: lineHeight, // Match the text line height exactly
+            child: Stack(
+              children: [
+                Positioned(
+                  top: iconTopOffset,
+                  // left: 4,
+                  child: Icon(
+                    status.icon,
+                    color: status.color,
+                    size: lineHeight,
+                    semanticLabel: status.toString(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
-  }
-
-  void _showStatusChanger(BuildContext context) {
-    // For now, just cycle through states - could implement a proper picker later
-    final currentIndex = TaskStatus.values.indexOf(status);
-    final nextIndex = (currentIndex + 1) % TaskStatus.values.length;
-    onChange(TaskStatus.values[nextIndex]);
   }
 }
