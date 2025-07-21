@@ -172,14 +172,6 @@ TextStyle defaultStyleBuilder(Set<Attribution> attributions) {
         color: Colors.lightBlue,
         decoration: TextDecoration.underline,
       );
-    } else if (attribution == documentHeaderAttribution) {
-      // final colorScheme = ColorScheme.of(context);
-      // final textStyle = TextTheme.of(context).displayLarge!;
-      // newStyle = newStyle.copyWith(
-      //   fontSize: textStyle.fontSize,
-      //   fontWeight: FontWeight.bold,
-      //   color: colorScheme.onSurface,
-      // ),
     }
   }
   return newStyle;
