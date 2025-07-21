@@ -1,16 +1,40 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import '../super_editor.dart';
-import '../operations/task_requests.dart';
 
-// No entity imports needed - uses only nodes
 import '../../things/task/task.entity.dart';
-import 'task_node.dart';
+import '../operations/task_status.dart';
+import '../super_editor.dart';
 import 'task_component.dart';
+import 'task_node.dart';
+
+/// Calculates the indentation width for Tempo tasks.
+///
+/// This uses a spacing of approximately 24 pixels per indent level,
+/// which provides good visual hierarchy for nested tasks.
+double tempoTaskIndentCalculator(TextStyle textStyle, int indent) {
+  return 24.0 * indent;
+}
 
 class TaskComponentBuilder extends ComponentBuilder {
-  TaskComponentBuilder([this.editor]);
-  Editor? editor;
+  TaskComponentBuilder(this._editor);
+
+  final Editor _editor;
+
+  @override
+  Widget? createComponent(
+    SingleColumnDocumentComponentContext componentContext,
+    SingleColumnLayoutComponentViewModel componentViewModel,
+  ) {
+    if (componentViewModel is! TaskComponentViewModel) {
+      return null;
+    }
+
+    return TaskComponent(
+      key: componentContext.componentKey,
+      viewModel: componentViewModel,
+      showDebugPaint: true,
+    );
+  }
 
   @override
   TaskComponentViewModel? createViewModel(
@@ -30,7 +54,7 @@ class TaskComponentBuilder extends ComponentBuilder {
       task: node.task,
       changeStatus: (TaskStatus status) {
         // Dispatch request through SuperEditor's request system
-        editor?.execute([ToggleTaskStatusRequest(nodeId: node.id)]);
+        _editor.execute([ChangeTaskStatusRequest(nodeID: node.id, status: status)]);
       },
       text: node.title,
       textDirection: textDirection,
@@ -40,22 +64,6 @@ class TaskComponentBuilder extends ComponentBuilder {
       indent: node.indent,
       selectionColor: Colors.blue.shade300,
       createdAt: node.task.createDate,
-    );
-  }
-
-  @override
-  Widget? createComponent(
-    SingleColumnDocumentComponentContext componentContext,
-    SingleColumnLayoutComponentViewModel componentViewModel,
-  ) {
-    if (componentViewModel is! TaskComponentViewModel || editor == null) {
-      return null;
-    }
-
-    return TaskComponent(
-      key: componentContext.componentKey,
-      viewModel: componentViewModel,
-      showDebugPaint: true,
     );
   }
 }
@@ -128,32 +136,21 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
   bool highlightWhenEmpty;
 
   @override
-  TaskComponentViewModel copy() {
-    return TaskComponentViewModel(
-      nodeId: nodeId,
-      task: task,
-      maxWidth: maxWidth,
-      padding: padding,
-      status: status,
-      changeStatus: changeStatus,
-      text: text,
-      textStyleBuilder: textStyleBuilder,
-      indent: indent,
-      inlineWidgetBuilders: inlineWidgetBuilders,
-      textDirection: textDirection,
-      textAlignment: textAlignment,
-      selection: selection,
-      selectionColor: selectionColor,
-      highlightWhenEmpty: highlightWhenEmpty,
-      spellingErrorUnderlineStyle: spellingErrorUnderlineStyle,
-      spellingErrors: List.from(spellingErrors),
-      grammarErrorUnderlineStyle: grammarErrorUnderlineStyle,
-      grammarErrors: List.from(grammarErrors),
-      composingRegion: composingRegion,
-      showComposingRegionUnderline: showComposingRegionUnderline,
-      createdAt: createdAt,
-    );
-  }
+  int get hashCode =>
+      super.hashCode ^
+      status.hashCode ^
+      text.hashCode ^
+      textDirection.hashCode ^
+      textAlignment.hashCode ^
+      selection.hashCode ^
+      selectionColor.hashCode ^
+      highlightWhenEmpty.hashCode ^
+      spellingErrorUnderlineStyle.hashCode ^
+      spellingErrors.hashCode ^
+      grammarErrorUnderlineStyle.hashCode ^
+      grammarErrors.hashCode ^
+      composingRegion.hashCode ^
+      showComposingRegionUnderline.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -182,27 +179,30 @@ class TaskComponentViewModel extends SingleColumnLayoutComponentViewModel
           showComposingRegionUnderline == other.showComposingRegionUnderline;
 
   @override
-  int get hashCode =>
-      super.hashCode ^
-      status.hashCode ^
-      text.hashCode ^
-      textDirection.hashCode ^
-      textAlignment.hashCode ^
-      selection.hashCode ^
-      selectionColor.hashCode ^
-      highlightWhenEmpty.hashCode ^
-      spellingErrorUnderlineStyle.hashCode ^
-      spellingErrors.hashCode ^
-      grammarErrorUnderlineStyle.hashCode ^
-      grammarErrors.hashCode ^
-      composingRegion.hashCode ^
-      showComposingRegionUnderline.hashCode;
-}
-
-/// Calculates the indentation width for Tempo tasks.
-///
-/// This uses a spacing of approximately 24 pixels per indent level,
-/// which provides good visual hierarchy for nested tasks.
-double tempoTaskIndentCalculator(TextStyle textStyle, int indent) {
-  return 24.0 * indent;
+  TaskComponentViewModel copy() {
+    return TaskComponentViewModel(
+      nodeId: nodeId,
+      task: task,
+      maxWidth: maxWidth,
+      padding: padding,
+      status: status,
+      changeStatus: changeStatus,
+      text: text,
+      textStyleBuilder: textStyleBuilder,
+      indent: indent,
+      inlineWidgetBuilders: inlineWidgetBuilders,
+      textDirection: textDirection,
+      textAlignment: textAlignment,
+      selection: selection,
+      selectionColor: selectionColor,
+      highlightWhenEmpty: highlightWhenEmpty,
+      spellingErrorUnderlineStyle: spellingErrorUnderlineStyle,
+      spellingErrors: List.from(spellingErrors),
+      grammarErrorUnderlineStyle: grammarErrorUnderlineStyle,
+      grammarErrors: List.from(grammarErrors),
+      composingRegion: composingRegion,
+      showComposingRegionUnderline: showComposingRegionUnderline,
+      createdAt: createdAt,
+    );
+  }
 }

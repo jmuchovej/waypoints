@@ -7,36 +7,39 @@ import '../editor/editor.dart';
 import '../infrastructure/logging.dart';
 import '../objectbox/objectbox.dart';
 import '../objectbox/objectbox.g.dart';
-import '../objectbox/services/resolver_service.dart';
-import '../objectbox/services/thing_service.dart';
+import '../objectbox/services/repository_router.dart';
+import '../objectbox/services/thing_registry.dart';
 import 'factory.node.dart';
 import 'foundation.dart';
 import 'thing.entity.dart';
 
-/// Base repository for Thing entities
-/// Provides common query patterns for polymorphic Thing types
+/// Foundational repository for each [BaseThing]. This provides common query
+/// patterns shared by each [BaseThing] implementer.
+///
+/// **Each [BaseThing] implementer should extend [ThingRepository]!**
 abstract class ThingRepository<T extends BaseThing> {
+  /// Using the incoming [Ref], register this [ThingRepository] with [RepositoryRouter].
   ThingRepository(this._ref) {
-    // Auto-register resolver for this type
-    _registerResolver();
+    // Auto-register this repository for dynamic routing
+    _repoRouter.registerRepository<T>(type, this);
   }
 
   final Ref _ref;
 
-  /// Get the ObjectBox box for the specific entity type
-  Box<T> get box;
-  ObjectBox get obx => _ref.read(objectBoxProvider);
   Ref get ref => _ref;
 
+  ObjectBox get obx => _ref.read(objectBoxProvider);
   Store get store => obx.store;
+  /// Get the ObjectBox box for the specific entity type
+  Box<T> get box => Box<T>(store);
 
-  ThingService get ts => _thingService;
+  ThingRegistry get ts => _registry;
 
   /// Get the entity type key for this repository
   String get type;
 
-  ResolverService get _resolver => _ref.read(resolverServiceProvider);
-  ThingService get _thingService => _ref.read(thingServiceProvider);
+  RepositoryRouter get _repoRouter => _ref.read(repositoryRouterProvider);
+  ThingRegistry get _registry => _ref.read(thingRegistryProvider);
 
   Query<T> build(QueryBuilder<T> q) => q.build();
 
@@ -54,7 +57,7 @@ abstract class ThingRepository<T extends BaseThing> {
 
     if (childEntities.isEmpty) return [];
 
-    return _resolver.resolveTypedChildren<E>(childEntities, type);
+    return _repoRouter.resolveTypedChildren<E>(childEntities, type);
   }
 
   /// Count entities of this type
@@ -159,7 +162,7 @@ abstract class ThingRepository<T extends BaseThing> {
   int removeMany(List<int> ids) {
     final entities = getMany(ids);
     for (final entity in entities) {
-      (entity as ThingBehavior).unregister(_thingService);
+      (entity as ThingBehavior).unregister(_registry);
     }
     return box.removeMany(ids);
   }
@@ -176,7 +179,7 @@ abstract class ThingRepository<T extends BaseThing> {
 
     if (childEntities.isEmpty) return [];
 
-    return _resolver.resolveTypedChildren<T>(childEntities, type);
+    return _repoRouter.resolveTypedChildren<T>(childEntities, type);
   }
 
   /// Get a stream of query results
@@ -253,15 +256,10 @@ abstract class ThingRepository<T extends BaseThing> {
 
   // TODO lift `searchTitle` (from `TaskRepo`) into `ThingRepo`
 
-  /// Register this repository's resolver automatically
-  void _registerResolver() {
-    _resolver.registerResolver<T>(type, BoxResolver<T>());
-  }
-
   /// Resolve a parent Thing by UUID
   BaseThing? _resolveParent(String uuid) {
-    final entity = _thingService.lookup(uuid);
+    final entity = _registry.lookup(uuid);
     if (entity == null) return null;
-    return _resolver.resolveSingle(entity);
+    return _repoRouter.resolve(entity);
   }
 }

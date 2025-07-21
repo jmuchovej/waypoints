@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/editor.dart';
 import '../../infrastructure/logging.dart';
-import '../../objectbox/services/resolver_service.dart';
-import '../../objectbox/services/thing_service.dart';
+import '../../objectbox/services/repository_router.dart';
+import '../../objectbox/services/thing_registry.dart';
 import '../../things/factory.docheaders.dart';
 import '../../things/foundation.dart';
 import '../../things/task/task_repository.dart';
@@ -30,7 +30,7 @@ class ThingPage extends ConsumerWidget {
     // 🔍 STEP 1: UUID Resolution
     // Look up the entity from the thing service registry
     // ThingService contains lightweight metadata for all entities
-    final thingService = ref.read(thingServiceProvider);
+    final thingService = ref.read(thingRegistryProvider);
     final entity = thingService.lookup(uuid);
     tempoThingRouteLog.fine('EntityPage.build: uuid=$uuid');
 
@@ -39,8 +39,8 @@ class ThingPage extends ConsumerWidget {
       return ThingNotFoundScreen(uuid: uuid);
     }
 
-    final resolver = ref.read(resolverServiceProvider);
-    final thing = resolver.resolveSingle(entity) as Thing;
+    final resolver = ref.read(repositoryRouterProvider);
+    final thing = resolver.resolve(entity) as Thing;
 
     final headerFactory = ref.read(panelHeaderFactoryRegistryProvider);
     final header = headerFactory.fromThing(thing);
@@ -95,7 +95,7 @@ class ThingPage extends ConsumerWidget {
   /// 3. Resolve all children to their concrete types
   /// 4. Convert to Stream<BaseThing>
   Stream<BaseThing> _getChildren(WidgetRef ref, ThingEntity thing) {
-    final resolver = ref.read(resolverServiceProvider);
+    final resolver = ref.read(repositoryRouterProvider);
     tempoThingRouteLog.fine(
       'Loading children for ${thing.uuid} (${thing.type}):',
     );

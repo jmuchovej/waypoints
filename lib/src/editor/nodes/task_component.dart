@@ -6,7 +6,6 @@ import '../super_editor.dart';
 import '../../infrastructure/logging.dart';
 import '../operations/thing_node_position.dart';
 import '../../things/task/task.entity.dart';
-import '../../things/task/task_repository.dart';
 import 'components/task_due_date_chip.dart';
 import 'components/task_progress_chip.dart';
 import 'components/task_project_chip.dart';
@@ -62,7 +61,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
     return Directionality(
       textDirection: widget.viewModel.textDirection,
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: textSize / 2),
+        padding: EdgeInsets.zero, // symmetric(vertical: textSize / 2),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -79,7 +78,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
                 TaskStatusChip(
                   status: widget.viewModel.status,
                   textStyle: widget.viewModel.textStyleBuilder({}),
-                  onChange: (status) {
+                  onChange: (TaskStatus status) {
                     widget.viewModel.changeStatus(status);
                   },
                 ),
@@ -91,10 +90,8 @@ class TaskComponentState extends ConsumerState<TaskComponent>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Use context-aware ThingTitleComponent for all platforms
                   TextComponent(
                     key: _textKey,
-                    // thing: task,
                     text: widget.viewModel.text,
                     textDirection: widget.viewModel.textDirection,
                     textAlign: widget.viewModel.textAlignment,
@@ -105,13 +102,6 @@ class TaskComponentState extends ConsumerState<TaskComponent>
                     highlightWhenEmpty: widget.viewModel.highlightWhenEmpty,
                     underlines: widget.viewModel.createUnderlines(),
                     showDebugPaint: widget.showDebugPaint,
-                    // onEdit: () {
-                    //   if (_debugGestures) {
-                    //     LogTempo.base.info('✏️ ThingTitleComponent edit for task: ${task.uuid}');
-                    //   }
-                    //   // Focus the component for editing
-                    //   // The SuperEditor system will handle the actual editing
-                    // },
                   ),
                   // Pills for additional task information
                   _buildPillsRow(),
@@ -228,36 +218,22 @@ class TaskComponentState extends ConsumerState<TaskComponent>
   }
 
   Widget _buildPillsRow() {
-    final pills = <Widget>[];
+    tempoEditorLog.finest(
+      'TaskComponent.buildPillsRow: creating for task=${task.uuid}',
+    );
 
-    // Check if task has subtasks
-    final taskRepo = ref.read(taskRepositoryProvider);
-    final subtasks = taskRepo.sameTypedChildren(task.uuid);
-
-    if (subtasks.isNotEmpty) {
-      pills.add(TaskProgressChip(parentTask: task));
-    }
-
-    // Check if task has due date
-    if (pills.isNotEmpty) pills.add(const SizedBox(width: 8));
-    pills.add(TaskDueDateChip(task: task));
-
-    // Check if task has project
-    // LogTempo.base.finest('task project=${node.task.project.target}');
-    if (task.project.hasValue && task.project.target != null) {
-      if (pills.isNotEmpty) pills.add(const SizedBox(width: 8));
-      pills.add(Flexible(child: TaskProjectChip(task: task)));
-    }
+    final pills = <Widget>[
+      TaskProgressChip(task: task),
+      TaskDueDateChip(task: task),
+      TaskProjectChip(task: task),
+    ].where((widget) => widget.runtimeType != SizedBox).toList();
 
     // Only show the row if there are pills to display
     if (pills.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 4.0),
-      child: Row(children: pills),
-    );
+    return Row(children: pills);
   }
 
   /// Computes the [TextStyle] for this task's inner [TextComponent].
