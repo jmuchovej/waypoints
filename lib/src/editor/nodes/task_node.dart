@@ -3,7 +3,7 @@ import '../../things/foundation.dart';
 import '../editor.dart';
 import '../../things/thing.entity.dart';
 import '../../things/task/task.entity.dart';
-import '../../things/task/task_repository.dart';
+import '../../objectbox/repositories/task_repository.dart';
 
 const NamedAttribution taskAttribution = NamedAttribution("task");
 const BlockSelector taskSelector = BlockSelector("task");

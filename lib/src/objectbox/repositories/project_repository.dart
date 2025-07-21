@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../objectbox/objectbox.dart';
-import '../repository.dart';
-import 'project.entity.dart';
-import '../task/task.entity.dart';
-import '../../objectbox/objectbox.g.dart';
-import '../task/task_repository.dart';
+import '../objectbox.dart';
+import 'thing_repository.dart';
+import '../../things/project/project.entity.dart';
+import '../../things/task/task.entity.dart';
+import '../objectbox.g.dart';
+import 'task_repository.dart';
 
 /// Provider for ProjectRepository
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {

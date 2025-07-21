@@ -5,7 +5,7 @@ import '../factory.node.dart';
 import '../../editor/nodes/task_node.dart';
 import '../../editor/headers/task_editor_header.dart';
 import 'task.entity.dart';
-import 'task_repository.dart';
+import '../../objectbox/repositories/task_repository.dart';
 
 /// Node factory for converting Task entities to TaskNodes
 class TaskHeaderFactory

@@ -4,7 +4,7 @@ import 'package:super_editor/super_editor.dart';
 
 import '../factory.node.dart';
 import 'block.entity.dart';
-import 'block_repository.dart';
+import '../../objectbox/repositories/block_repository.dart';
 
 /// Factory to convert BlockEntity to appropriate SuperEditor DocumentNode
 class BlockNodeFactory

@@ -10,7 +10,6 @@ import '../../styling/tempo_stylesheet.dart';
 import '../../things/factory.node.dart';
 import '../../things/foundation.dart';
 import '../../things/task/task.entity.dart';
-import '../../things/task/task_repository.dart';
 import '../widgets/panel/panel_appbar.dart';
 import '../widgets/panel/panel_header.dart';
 
@@ -103,7 +102,6 @@ class _PanelWrapperState<BT extends BaseThing>
         _composer,
         hoverManager: _hoverManager,
         linkManager: _linkManager,
-        taskRepository: ref.read(taskRepositoryProvider),
         ref: ref,
         autofocus: false,
       );
@@ -261,49 +259,5 @@ class _PanelWrapperState<BT extends BaseThing>
     // 🎯 NEW: Pass both scroll position and header height to app bar
     _appBarKey.currentState?.updateScrollPosition(scrollPixels, headerHeight);
     return true;
-  }
-}
-
-extension TaskFilterExtension on TaskFilter {
-  String get displayName {
-    switch (this) {
-      case TaskFilter.all:
-        return 'All';
-      case TaskFilter.incomplete:
-        return 'Active';
-      case TaskFilter.completed:
-        return 'Completed';
-      case TaskFilter.today:
-        return 'Due Today';
-      case TaskFilter.overdue:
-        return 'Overdue';
-      case TaskFilter.highPriority:
-        return 'High Priority';
-    }
-  }
-
-  Condition<TaskEntity> filterTasks(TaskRepository repo) {
-    Condition<TaskEntity> filter = repo.active();
-    switch (this) {
-      case TaskFilter.all:
-        break;
-      case TaskFilter.incomplete:
-        filter = filter.and(repo.incomplete());
-        break;
-      case TaskFilter.completed:
-        filter = filter.and(TaskStatusGroups.isCompleted);
-        break;
-      case TaskFilter.today:
-        filter = filter.and(repo.dueToday());
-        break;
-      case TaskFilter.overdue:
-        filter = filter.and(repo.overdue());
-        break;
-      case TaskFilter.highPriority:
-        filter = filter.and(repo.withPriority(TaskPriority.H));
-        break;
-    }
-
-    return filter;
   }
 }

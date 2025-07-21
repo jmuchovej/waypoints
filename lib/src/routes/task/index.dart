@@ -9,7 +9,7 @@ import '../../editor/super_editor.dart';
 import '../../infrastructure/logging.dart';
 import '../../ui/widgets/panel/panel_header.dart';
 import '../../things/task/task.entity.dart';
-import '../../things/task/task_repository.dart';
+import '../../objectbox/repositories/task_repository.dart';
 import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/buttons/filter_button.dart';
 import '../../ui/widgets/panel/empty_state.dart';

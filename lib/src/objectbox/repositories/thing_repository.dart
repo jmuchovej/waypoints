@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../editor/editor.dart';
-import '../infrastructure/logging.dart';
-import '../objectbox/objectbox.dart';
-import '../objectbox/objectbox.g.dart';
-import '../objectbox/services/repository_router.dart';
-import '../objectbox/services/thing_registry.dart';
-import 'factory.node.dart';
-import 'foundation.dart';
-import 'thing.entity.dart';
+import '../../editor/editor.dart';
+import '../../infrastructure/logging.dart';
+import '../objectbox.dart';
+import '../objectbox.g.dart';
+import '../services/repository_router.dart';
+import '../services/thing_registry.dart';
+import '../../things/factory.node.dart';
+import '../../things/foundation.dart';
+import '../../things/thing.entity.dart';
 
 /// Foundational repository for each [BaseThing]. This provides common query
 /// patterns shared by each [BaseThing] implementer.

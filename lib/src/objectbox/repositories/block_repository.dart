@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../infrastructure/logging.dart';
-import '../../objectbox/objectbox.g.dart';
-import '../repository.dart';
-import 'block.entity.dart';
+import '../objectbox.g.dart';
+import 'thing_repository.dart';
+import '../../things/block/block.entity.dart';
 
 /// Repository for managing BlockEntity persistence and auto-save
 class BlockRepository extends ThingRepository<BlockEntity> {

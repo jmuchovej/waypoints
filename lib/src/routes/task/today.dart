@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../editor/super_editor.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../things/task/task.entity.dart';
-import '../../things/task/task_repository.dart';
+import '../../objectbox/repositories/task_repository.dart';
 import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/buttons/filter_button.dart';
 import '../../ui/widgets/panel/empty_state.dart';
@@ -77,5 +77,49 @@ class _TasksTodayScreenState extends ConsumerState<TasksTodayScreen> {
       label: 'Filter',
       options: const [], // options,
     );
+  }
+}
+
+extension TaskFilterExtension on TaskFilter {
+  String get displayName {
+    switch (this) {
+      case TaskFilter.all:
+        return 'All';
+      case TaskFilter.incomplete:
+        return 'Active';
+      case TaskFilter.completed:
+        return 'Completed';
+      case TaskFilter.today:
+        return 'Due Today';
+      case TaskFilter.overdue:
+        return 'Overdue';
+      case TaskFilter.highPriority:
+        return 'High Priority';
+    }
+  }
+
+  Condition<TaskEntity> filterTasks(TaskRepository repo) {
+    Condition<TaskEntity> filter = repo.active();
+    switch (this) {
+      case TaskFilter.all:
+        break;
+      case TaskFilter.incomplete:
+        filter = filter.and(repo.incomplete());
+        break;
+      case TaskFilter.completed:
+        filter = filter.and(TaskStatusGroups.isCompleted);
+        break;
+      case TaskFilter.today:
+        filter = filter.and(repo.dueToday());
+        break;
+      case TaskFilter.overdue:
+        filter = filter.and(repo.overdue());
+        break;
+      case TaskFilter.highPriority:
+        filter = filter.and(repo.withPriority(TaskPriority.H));
+        break;
+    }
+
+    return filter;
   }
 }

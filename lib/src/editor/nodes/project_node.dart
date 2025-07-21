@@ -3,7 +3,7 @@ import 'package:super_editor/super_editor.dart';
 import '../../things/foundation.dart';
 import '../../things/thing.entity.dart';
 import '../../things/project/project.entity.dart';
-import '../../things/project/project_repository.dart';
+import '../../objectbox/repositories/project_repository.dart';
 
 const NamedAttribution projectAttribution = NamedAttribution("project");
 const BlockSelector projectSelector = BlockSelector("project");

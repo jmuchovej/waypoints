@@ -9,7 +9,7 @@ import '../../objectbox/services/repository_router.dart';
 import '../../objectbox/services/thing_registry.dart';
 import '../../things/factory.docheaders.dart';
 import '../../things/foundation.dart';
-import '../../things/task/task_repository.dart';
+import '../../objectbox/repositories/task_repository.dart';
 import '../../things/thing.entity.dart';
 import '../../ui/panel/panel_wrapper.dart';
 import '404.dart';

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../editor/super_editor.dart';
 import '../../objectbox/objectbox.g.dart';
 import '../../things/project/project.entity.dart';
-import '../../things/project/project_repository.dart';
+import '../../objectbox/repositories/project_repository.dart';
 import '../../ui/panel/panel_wrapper.dart';
 import '../../ui/widgets/panel/empty_state.dart';
 import '../../ui/widgets/panel/panel_header.dart';

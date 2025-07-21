@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../things/foundation.dart';
-import '../../things/repository.dart';
+import '../repositories/thing_repository.dart';
 import '../../things/thing.entity.dart';
 import 'thing_registry.dart';
 

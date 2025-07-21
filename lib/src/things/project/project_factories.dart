@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../factory.docheaders.dart';
 import '../factory.node.dart';
 import 'project.entity.dart';
-import 'project_repository.dart';
+import '../../objectbox/repositories/project_repository.dart';
 import '../../editor/nodes/project_node.dart';
 import '../../editor/headers/project_editor_header.dart';
 

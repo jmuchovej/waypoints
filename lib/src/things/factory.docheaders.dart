@@ -6,7 +6,7 @@ import 'project/project_factories.dart';
 import 'task/task_factories.dart';
 import 'thing.entity.dart';
 import 'foundation.dart';
-import 'repository.dart';
+import '../objectbox/repositories/thing_repository.dart';
 
 final panelHeaderFactoryRegistryProvider = Provider<PanelHeaderFactoryRegistry>(
   (ref) {

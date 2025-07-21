@@ -6,7 +6,7 @@ import 'block/block_factories.dart';
 import 'project/project_factories.dart';
 import 'task/task_factories.dart';
 import 'foundation.dart';
-import 'repository.dart';
+import '../objectbox/repositories/thing_repository.dart';
 import 'thing.entity.dart';
 
 /// Provider for the node factory registry with auto-registration

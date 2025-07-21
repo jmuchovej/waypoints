@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../repository.dart';
-import 'activity.entity.dart';
-import '../../objectbox/objectbox.g.dart';
+import 'thing_repository.dart';
+import '../../things/activity/activity.entity.dart';
+import '../objectbox.g.dart';
 
 /// Provider for the Activity repository
 final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
