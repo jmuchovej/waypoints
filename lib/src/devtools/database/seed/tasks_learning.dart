@@ -1,7 +1,6 @@
 import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
 import '../../../things/project/project.entity.dart';
-import '../../../things/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 import 'tasks_learning_piano.dart';

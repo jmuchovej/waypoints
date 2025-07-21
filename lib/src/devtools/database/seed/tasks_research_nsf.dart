@@ -2,7 +2,6 @@ import '../../../editor/editor.dart';
 import '../../../infrastructure/logging.dart';
 import '../../../things/foundation.dart';
 import '../../../things/project/project.entity.dart';
-import '../../../things/thing.entity.dart';
 import '../seed.dart';
 import '_seed.dart';
 
