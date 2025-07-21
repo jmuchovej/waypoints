@@ -7,7 +7,6 @@ import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 import '../../flavors.dart';
 import '../styling/super_editor.dart';
 import '../styling/tempo_stylesheet.dart';
-import '../things/task/task_repository.dart';
 import 'listeners/autosave_listener.dart';
 import 'nodes/project_builder.dart';
 import 'nodes/task_builder.dart';
@@ -31,7 +30,6 @@ SuperEditor createSuperEditor(
   MutableDocumentComposer composer, {
   required HoverManager hoverManager,
   required LeaderLinkManager linkManager,
-  required TaskRepository taskRepository,
   required WidgetRef ref,
   bool? autofocus,
   dynamic panelInfo,
@@ -43,7 +41,7 @@ SuperEditor createSuperEditor(
   // and provides better UX guidance for users.
   final editor = Editor(
     requestHandlers: List.from(
-      createTempoRequestHandlers(taskRepository, context, ref),
+      createTempoRequestHandlers(context, ref),
     ),
     reactionPipeline: List.from(reactionPipeline),
     historyGroupingPolicy: defaultMergePolicy,
@@ -187,7 +185,6 @@ SuperEditor createSuperEditor(
 /// Creates request handlers that include both default SuperEditor handlers
 /// and Tempo-specific task and panel handlers
 List<EditRequestHandler> createTempoRequestHandlers(
-  TaskRepository taskRepository,
   BuildContext context,
   WidgetRef ref,
 ) => [...requestHandlers, changeTaskStatusHandler];

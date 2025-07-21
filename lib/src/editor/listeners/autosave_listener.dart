@@ -4,9 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/services/repository_router.dart';
 import '../../objectbox/services/thing_registry.dart';
+import '../../services/autosave_service.dart';
 import '../../things/foundation.dart';
 import '../editor.dart';
-import '../../things/repository.dart';
+import '../../objectbox/repositories/thing_repository.dart';
 
 /// Tracks changes to [Thing] entities in a [Document].
 ///
@@ -50,9 +51,6 @@ class AutoSaveListener implements EditListener {
 
   final WidgetRef _ref;
 
-  RepositoryRouter get _resolver => _ref.read(repositoryRouterProvider);
-  ThingRegistry get _thing => _ref.read(thingRegistryProvider);
-
   /// Filters incoming `changeList` for [ThingChangeEvent]s to persist them
   /// using the [RepositoryRouter] for type-driven [ThingRepository] routing.
   @override
@@ -70,8 +68,10 @@ class AutoSaveListener implements EditListener {
     );
     if (thingChangeEvents.isEmpty) return;
 
+    final saveService = _ref.read(autosaveServiceProvider);
+
     for (final change in thingChangeEvents) {
-      _resolver.put(change.currThing);
+      saveService.saveChange(ThingChangedSaveEvent.fromSuperEditor(change));
       tempoEditorLog.finer('Saving change:: ${change.describe()}');
     }
   }
