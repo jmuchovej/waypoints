@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:objectbox/objectbox.dart';
 import 'package:super_editor/super_editor.dart';
@@ -48,7 +49,10 @@ enum TaskEnergy {
 }
 
 @Entity()
-class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
+class TaskEntity
+    extends ComparableThing
+    with AttributedTextEntity, ThingBehavior
+    implements Thing {
   TaskEntity({
     required this.uuid,
     AttributedText? title,
@@ -252,6 +256,25 @@ class TaskEntity with AttributedTextEntity, ThingBehavior implements Thing {
   @override
   set title(AttributedText value) =>
       setAttributedText(value, (json) => titleJson = json);
+
+  @override
+  Map<String, Object?> get propsMap => {
+    "uuid": uuid,
+    "title": title.toPlainText(),
+    "startDate": startDate,
+    "endDate": endDate,
+    "scheduledDate": scheduledDate,
+    "dueDate": dueDate,
+    "waitDate": waitDate,
+    "untilDate": untilDate,
+    "recurrence": recurrence,
+    "status": status,
+    "time": time,
+    "energy": energy,
+    "priority": priority,
+    "deleted": deleted,
+    "archived": archived,
+  };
 }
 
 @Entity()
@@ -348,10 +371,7 @@ enum TaskPriority {
 
 enum TaskStatus {
   /// Initial state
-  todo('To Do',
-    Icons.radio_button_unchecked_rounded,
-    Colors.white,
-  ),
+  todo('To Do', Icons.radio_button_unchecked_rounded, Colors.white),
 
   /// We've started but not focused on it
   started('Started', Icons.pause_circle_rounded, Colors.blue),

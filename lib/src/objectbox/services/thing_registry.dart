@@ -6,16 +6,16 @@ import '../objectbox.g.dart';
 import '../objectbox.dart';
 import '../../things/thing.entity.dart';
 
-/// Provider for ThingService
-final thingServiceProvider = Provider<ThingService>((ref) {
+/// Provider for [ThingRegistry]
+final thingRegistryProvider = Provider<ThingRegistry>((ref) {
   final obx = ref.watch(objectBoxProvider);
-  return ThingService(obx);
+  return ThingRegistry(obx);
 });
 
 /// Service that coordinates Thing operations
 /// Now uses providers instead of static methods
-class ThingService {
-  ThingService(this._obx);
+class ThingRegistry {
+  ThingRegistry(this._obx);
 
   final ObjectBox _obx;
 

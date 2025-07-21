@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../flavors.dart';
 import '../../infrastructure/logging.dart';
-import '../../objectbox/services/thing_service.dart';
+import '../../objectbox/services/thing_registry.dart';
 import '../../things/task/task_repository.dart';
 import '../../things/project/project_repository.dart';
 import '../../things/activity/activity_repository.dart';
@@ -16,7 +16,7 @@ class SeedDataService {
   /// Create from WidgetRef (for devtools.dart)
   factory SeedDataService.fromRef(WidgetRef ref) {
     return SeedDataService._(
-      ref.read(thingServiceProvider),
+      ref.read(thingRegistryProvider),
       ref.read(taskRepositoryProvider),
       ref.read(projectRepositoryProvider),
       ref.read(activityRepositoryProvider),
@@ -28,7 +28,7 @@ class SeedDataService {
   /// Create from ProviderContainer (for main.dart)
   factory SeedDataService.fromContainer(ProviderContainer container) {
     return SeedDataService._(
-      container.read(thingServiceProvider),
+      container.read(thingRegistryProvider),
       container.read(taskRepositoryProvider),
       container.read(projectRepositoryProvider),
       container.read(activityRepositoryProvider),
@@ -46,7 +46,7 @@ class SeedDataService {
     this.flavor,
   );
 
-  final ThingService thingService;
+  final ThingRegistry thingService;
   final TaskRepository taskRepo;
   final ProjectRepository projectRepo;
   final ActivityRepository activityRepo;

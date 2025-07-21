@@ -64,6 +64,7 @@ dependencies:
   super_text_layout: any
   super_editor_markdown: any
   super_keyboard: any
+  equatable: ^2.0.7
   # freezed_annotation: ^2.4.4
   # json_annotation: ^4.9.0
 

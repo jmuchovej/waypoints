@@ -4,36 +4,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // TODO once `MotionPlugin` properly works, drop this!
 import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 
+import '../../flavors.dart';
+import '../styling/super_editor.dart';
+import '../styling/tempo_stylesheet.dart';
+import '../things/task/task_repository.dart';
 import 'nodes/project_builder.dart';
 import 'nodes/task_builder.dart';
 import 'operations/task_status.dart';
 import 'operations/thing_cursor_handler.dart';
 import 'scaffolding.dart';
-import '../styling/super_editor.dart';
-import '../styling/tempo_stylesheet.dart';
 import 'super_editor.dart';
-import '../../flavors.dart';
-import '../things/task/task_repository.dart';
 
+export 'attributed_text.dart';
+export 'documents/ordered_set.dart';
 export 'extensions.dart';
 export 'inline.dart';
-export 'attributed_text.dart';
+export 'operations/task_status.dart';
 export 'scaffolding.dart';
 export 'super_editor.dart';
 export 'super_text.dart';
-export 'documents/ordered_set.dart';
-export 'operations/task_status.dart';
-
-/// Creates request handlers that include both default SuperEditor handlers
-/// and Tempo-specific task and panel handlers
-List<EditRequestHandler> createTempoRequestHandlers(
-  TaskRepository taskRepository,
-  BuildContext context,
-  WidgetRef ref,
-) => [
-  ...requestHandlers,
-  changeTaskStatusHandler,
-];
 
 SuperEditor createSuperEditor(
   BuildContext context,
@@ -192,6 +181,14 @@ SuperEditor createSuperEditor(
 
   return superEditor;
 }
+
+/// Creates request handlers that include both default SuperEditor handlers
+/// and Tempo-specific task and panel handlers
+List<EditRequestHandler> createTempoRequestHandlers(
+  TaskRepository taskRepository,
+  BuildContext context,
+  WidgetRef ref,
+) => [...requestHandlers, changeTaskStatusHandler];
 
 extension DocumentChanges on MutableDocument {
   void deleteAllButHeader() {

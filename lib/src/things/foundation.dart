@@ -1,10 +1,11 @@
 import 'package:collection/collection.dart';
+import 'package:equatable/equatable.dart';
 
 import '../editor/editor.dart';
 import '../infrastructure/logging.dart';
 import '../objectbox/attributed_text_mixin.dart';
 import '../objectbox/objectbox.g.dart';
-import '../objectbox/services/thing_service.dart';
+import '../objectbox/services/thing_registry.dart';
 import 'thing.entity.dart';
 
 /// Base interface that all Thing entities must implement
@@ -71,6 +72,29 @@ abstract class ThingHistory {
   int get id;
 }
 
+abstract class ComparableThing extends Equatable implements BaseThing {
+  Map<String, Object?> get propsMap;
+
+  @override
+  List<Object?> get props => propsMap.values.toList();
+
+  @override
+  bool get stringify => true;
+
+  Map<String, dynamic> diff(covariant ComparableThing other) {
+    final differences = <String, dynamic>{};
+
+    propsMap.forEach((key, prev) {
+      final curr = other.propsMap[key];
+      if (prev != curr) {
+        differences[key] = {'prev': prev, 'curr': curr};
+      }
+    });
+
+    return differences;
+  }
+}
+
 mixin ThingBehavior implements BaseThing {
   ThingEntity get thing {
     final target = thingRef.target;
@@ -85,7 +109,7 @@ mixin ThingBehavior implements BaseThing {
   ThingEntity? get parent => thing.parent;
 
   /// Called after the entity is saved to the database
-  ThingEntity register(ThingService service) {
+  ThingEntity register(ThingRegistry service) {
     final thingBox = service.store.box<ThingEntity>();
 
     return service.store.runInTransaction(TxMode.write, () {
@@ -109,14 +133,14 @@ mixin ThingBehavior implements BaseThing {
   }
 
   /// Called before the entity is deleted from the database
-  void unregister(ThingService service) {
+  void unregister(ThingRegistry service) {
     tempoDBLog.finest('... unregistering! (type=${type}, uuid=${uuid})');
     service.unregister(uuid);
     thingRef.target = null; // Clear the ToOne relationship
   }
 
   /// Generates a unique UUID for this entity type
-  String generateUniqueUUID(ThingService service) {
+  String generateUniqueUUID(ThingRegistry service) {
     final uniqUUID = service.generateUniqueUUID();
     tempoDBLog.finest('... generated uniq UUID (uuid=${uniqUUID})');
     return uniqUUID;
