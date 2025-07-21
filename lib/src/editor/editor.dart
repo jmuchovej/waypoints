@@ -8,6 +8,7 @@ import '../../flavors.dart';
 import '../styling/super_editor.dart';
 import '../styling/tempo_stylesheet.dart';
 import '../things/task/task_repository.dart';
+import 'listeners/autosave_listener.dart';
 import 'nodes/project_builder.dart';
 import 'nodes/task_builder.dart';
 import 'operations/task_status.dart';
@@ -48,6 +49,7 @@ SuperEditor createSuperEditor(
     historyGroupingPolicy: defaultMergePolicy,
     isHistoryEnabled: true,
     editables: {Editor.documentKey: document, Editor.composerKey: composer},
+    listeners: [AutoSaveListener(ref)],
   );
 
   editor.context.put(HoverManager.key, hoverManager);
