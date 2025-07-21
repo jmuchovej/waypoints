@@ -1,3 +1,4 @@
+import '../listeners/autosave_listener.dart';
 import '../super_editor.dart';
 import '../../infrastructure/logging.dart';
 import '../nodes/task_node.dart';
@@ -50,17 +51,15 @@ class ChangeTaskStatusCommand implements EditCommand {
     }
 
     // Toggle the task status
-    final currentStatus = node.task.status;
+    final currTask = node.task;
+    final nextTask = currTask.copyWith(status: status);
 
     editContext.document.replaceNodeById(
       nodeID,
-      node.copyTaskWith(task: node.task.copyWith(status: status)),
-    );
-    tempoTaskEditorLog.finest(
-      'ToggleTaskStatusCommand: Updated ${nodeID} from ${currentStatus} -> ${status}'
+      node.copyTaskWith(task: nextTask),
     );
 
-    executor.logChanges([DocumentEdit(NodeChangeEvent(nodeID))]);
+    executor.logChanges([DocumentEdit(ThingChangeEvent(currTask, nextTask))]);
   }
 
   @override
