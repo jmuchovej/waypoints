@@ -40,15 +40,17 @@ class _TaskEditorHeaderState extends ConsumerState<TaskEditorHeader> {
   @override
   Widget build(BuildContext context) {
     // Debug logging to understand project relationship state
-    tempoTaskEditorLog.finest(
+    waypointsTaskEditorLog.finest(
       '🔍 TaskEditorHeader for task ${widget.task.uuid}:',
     );
-    tempoTaskEditorLog.finest('  - hasValue: ${widget.task.project.hasValue}');
-    tempoTaskEditorLog.finest('  - target: ${widget.task.project.target}');
-    tempoTaskEditorLog.finest(
+    waypointsTaskEditorLog.finest(
+      '  - hasValue: ${widget.task.project.hasValue}',
+    );
+    waypointsTaskEditorLog.finest('  - target: ${widget.task.project.target}');
+    waypointsTaskEditorLog.finest(
       '  - target title: ${widget.task.project.target?.title.toPlainText()}',
     );
-    tempoTaskEditorLog.finest('  - widget.project: ${widget.project}');
+    waypointsTaskEditorLog.finest('  - widget.project: ${widget.project}');
 
     return PanelHeader(
       titleController: widget._controller,
@@ -68,9 +70,9 @@ class _TaskEditorHeaderState extends ConsumerState<TaskEditorHeader> {
                 }
               },
               icon: Icon(Icons.folder_outlined),
-              label: TempoText.fromAttributedText(
+              label: WaypointsText.fromAttributedText(
                 widget.project?.title ?? AttributedText('No Project'),
-                sizeMode: TempoTextFieldSizeMode.min,
+                sizeMode: WaypointsTextFieldSizeMode.min,
                 textStyleBuilder: (attributions) {
                   final theme = Theme.of(context);
                   return TextStyle(
@@ -86,9 +88,9 @@ class _TaskEditorHeaderState extends ConsumerState<TaskEditorHeader> {
             PillButton.icon(
               onPressed: () => {},
               icon: Icon(Icons.flag_outlined),
-              label: TempoText.fromAttributedText(
+              label: WaypointsText.fromAttributedText(
                 AttributedText("Priority"),
-                sizeMode: TempoTextFieldSizeMode.min,
+                sizeMode: WaypointsTextFieldSizeMode.min,
                 textStyleBuilder: (attributions) {
                   final theme = Theme.of(context);
                   return TextStyle(
@@ -104,9 +106,9 @@ class _TaskEditorHeaderState extends ConsumerState<TaskEditorHeader> {
             PillButton.icon(
               onPressed: () => {},
               icon: Icon(Icons.timer_outlined),
-              label: TempoText.fromAttributedText(
+              label: WaypointsText.fromAttributedText(
                 AttributedText("Time"),
-                sizeMode: TempoTextFieldSizeMode.min,
+                sizeMode: WaypointsTextFieldSizeMode.min,
                 textStyleBuilder: (attributions) {
                   final theme = Theme.of(context);
                   return TextStyle(
@@ -122,9 +124,9 @@ class _TaskEditorHeaderState extends ConsumerState<TaskEditorHeader> {
             PillButton.icon(
               onPressed: () => {},
               icon: Icon(Icons.battery_charging_full_outlined),
-              label: TempoText.fromAttributedText(
+              label: WaypointsText.fromAttributedText(
                 AttributedText("Energy"),
-                sizeMode: TempoTextFieldSizeMode.min,
+                sizeMode: WaypointsTextFieldSizeMode.min,
                 textStyleBuilder: (attributions) {
                   final theme = Theme.of(context);
                   return TextStyle(

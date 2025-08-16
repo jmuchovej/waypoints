@@ -42,38 +42,38 @@ class CognitiveLoadProject extends DatabaseSeed {
     ),
   );
 
-  final methodotempoDBSeedLogyHeaderBlock = BlockEntity(
-    uuid: "cognitive-proj-methodotempoDBSeedLog.y-005",
+  final methodowaypointsDBSeedLogyHeaderBlock = BlockEntity(
+    uuid: "cognitive-proj-methodowaypointsDBSeedLog.y-005",
     nodeType: "header2",
-    content: AttributedText("MethodotempoDBSeedLog.y"),
+    content: AttributedText("MethodowaypointsDBSeedLog.y"),
   );
 
-  final methodotempoDBSeedLogyBlock1 = BlockEntity(
-    uuid: "cognitive-proj-methodotempoDBSeedLog.y-006",
+  final methodowaypointsDBSeedLogyBlock1 = BlockEntity(
+    uuid: "cognitive-proj-methodowaypointsDBSeedLog.y-006",
     nodeType: "list_item",
     content: AttributedText(
       "Participants: 120 subjects across 3 age groups (18-30, 31-50, 51-70)",
     ),
   );
 
-  final methodotempoDBSeedLogyBlock2 = BlockEntity(
-    uuid: "cognitive-proj-methodotempoDBSeedLog.y-007",
+  final methodowaypointsDBSeedLogyBlock2 = BlockEntity(
+    uuid: "cognitive-proj-methodowaypointsDBSeedLog.y-007",
     nodeType: "list_item",
     content: AttributedText(
       "Tasks: Complex information retrieval using various interface modalities",
     ),
   );
 
-  final methodotempoDBSeedLogyBlock3 = BlockEntity(
-    uuid: "cognitive-proj-methodotempoDBSeedLog.y-008",
+  final methodowaypointsDBSeedLogyBlock3 = BlockEntity(
+    uuid: "cognitive-proj-methodowaypointsDBSeedLog.y-008",
     nodeType: "list_item",
     content: AttributedText(
       "Measurements: EEG, eye tracking, task completion time, accuracy",
     ),
   );
 
-  final methodotempoDBSeedLogyBlock4 = BlockEntity(
-    uuid: "cognitive-proj-methodotempoDBSeedLog.y-009",
+  final methodowaypointsDBSeedLogyBlock4 = BlockEntity(
+    uuid: "cognitive-proj-methodowaypointsDBSeedLog.y-009",
     nodeType: "list_item",
     content: AttributedText(
       "Control Variables: Prior experience, domain expertise, interface familiarity",
@@ -464,7 +464,9 @@ class CognitiveLoadProject extends DatabaseSeed {
   final inclusionBlock3 = BlockEntity(
     uuid: "cognitive-recruitment-inclusion-062",
     nodeType: "list_item",
-    content: AttributedText("No history of neurotempoDBSeedLog.ical disorders"),
+    content: AttributedText(
+      "No history of neurowaypointsDBSeedLog.ical disorders",
+    ),
   );
 
   final inclusionBlock4 = BlockEntity(
@@ -488,7 +490,7 @@ class CognitiveLoadProject extends DatabaseSeed {
   final screeningBlock2 = BlockEntity(
     uuid: "cognitive-recruitment-screening-066",
     nodeType: "list_item",
-    content: AttributedText("TechnotempoDBSeedLogy familiarity assessment"),
+    content: AttributedText("TechnowaypointsDBSeedLogy familiarity assessment"),
   );
 
   final screeningBlock3 = BlockEntity(
@@ -711,7 +713,7 @@ class CognitiveLoadProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
@@ -724,9 +726,16 @@ class CognitiveLoadProject extends DatabaseSeed {
     final recruitmentTask = await s.taskRepo.putAsync(seedRecruitmentTask);
     final analysisTask = await s.taskRepo.putAsync(seedAnalysisTask);
 
-    project.thing.childrenRef.addAll([
-      scopeTask, timelineTask, literatureTask, protocolTask, recruitmentTask, analysisTask
-    ].things);
+    project.thing.childrenRef.addAll(
+      [
+        scopeTask,
+        timelineTask,
+        literatureTask,
+        protocolTask,
+        recruitmentTask,
+        analysisTask,
+      ].things,
+    );
     await s.projectRepo.putAsync(project);
   }
 }

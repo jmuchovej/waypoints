@@ -130,7 +130,7 @@ class _FullWidthHighlightState extends State<_FullWidthHighlight> {
   @override
   void initState() {
     super.initState();
-    // NOTE: 06/03/2025 – This could cause unnecessary perf issues. IF it
+    // NOTE: 06/03/2025 – This could cause unnecessary perf issues. IF it
     // does, refactor this.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _calculateOffset();
@@ -140,7 +140,7 @@ class _FullWidthHighlightState extends State<_FullWidthHighlight> {
   void _calculateOffset() {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) {
-      tempoScaffoldingLog.warning('RenderBox not available for highlight');
+      waypointsScaffoldingLog.warning('RenderBox not available for highlight');
       return;
     }
 
@@ -149,7 +149,7 @@ class _FullWidthHighlightState extends State<_FullWidthHighlight> {
       _leftOffset = -offset.dx;
     });
 
-    tempoScaffoldingLog.finest('Calculated highlight offset: $_leftOffset');
+    waypointsScaffoldingLog.finest('Calculated highlight offset: $_leftOffset');
   }
 }
 

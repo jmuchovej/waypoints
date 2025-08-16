@@ -66,7 +66,7 @@ class HomeOfficeRenovationProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
@@ -77,19 +77,30 @@ class HomeOfficeRenovationProject extends DatabaseSeed {
     final moodboardTask = await s.taskRepo.putAsync(seedMoodboardTask);
     final layoutTask = await s.taskRepo.putAsync(seedLayoutTask);
 
-    designTask.thing.childrenRef.addAll([measureTask, moodboardTask, layoutTask].things);
+    designTask.thing.childrenRef.addAll(
+      [measureTask, moodboardTask, layoutTask].things,
+    );
     await s.taskRepo.putAsync(designTask);
 
     // Furniture task and subtasks
     final furnitureTask = await s.taskRepo.putAsync(seedFurnitureTask);
     final standingDeskTask = await s.taskRepo.putAsync(seedStandingDeskTask);
-    final ergonomicChairTask = await s.taskRepo.putAsync(seedErgonomicChairTask);
+    final ergonomicChairTask = await s.taskRepo.putAsync(
+      seedErgonomicChairTask,
+    );
     final monitorArmTask = await s.taskRepo.putAsync(seedMonitorArmTask);
-    final cableManagementTask = await s.taskRepo.putAsync(seedCableManagementTask);
+    final cableManagementTask = await s.taskRepo.putAsync(
+      seedCableManagementTask,
+    );
 
-    furnitureTask.thing.childrenRef.addAll([
-      standingDeskTask, ergonomicChairTask, monitorArmTask, cableManagementTask,
-    ].things);
+    furnitureTask.thing.childrenRef.addAll(
+      [
+        standingDeskTask,
+        ergonomicChairTask,
+        monitorArmTask,
+        cableManagementTask,
+      ].things,
+    );
     await s.taskRepo.putAsync(furnitureTask);
 
     project.thing.childrenRef.addAll([designTask, furnitureTask].things);

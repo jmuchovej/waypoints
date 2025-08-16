@@ -90,7 +90,7 @@ class ThingNodeFactoryRegistry {
     N extends DocumentNode
   >(ThingNodeFactory<T, R, N> factory) {
     _factories[factory.type] = factory;
-    tempoLog.info('Registered node factory for ${factory.type}');
+    waypointsLog.info('Registered node factory for ${factory.type}');
   }
 
   /// Convert a ThingEntity to a DocumentNode using the appropriate factory

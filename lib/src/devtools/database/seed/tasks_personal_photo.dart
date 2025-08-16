@@ -13,7 +13,7 @@ class DigitalPhotoArchiveProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);

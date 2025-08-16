@@ -43,7 +43,7 @@ class ResizeController {
     // Disable animations during resize for immediate feedback
     panelManager.setResizing(true);
 
-    tempoLog.finest('Resize started - performance monitoring enabled');
+    waypointsLog.finest('Resize started - performance monitoring enabled');
   }
 
   /// Update resize values with immediate visual feedback and debounced persistence
@@ -88,11 +88,11 @@ class ResizeController {
       _updateCount++;
       // Direct width update for immediate visual feedback
       panelManager.updatePanelWidth(panelWidth);
-      tempoLog.finest(
+      waypointsLog.finest(
         'Visual update applied (count: $_updateCount) - width: $panelWidth',
       );
     } catch (e, stack) {
-      tempoLog.warning('Error applying visual resize update', e, stack);
+      waypointsLog.warning('Error applying visual resize update', e, stack);
     }
   }
 
@@ -102,11 +102,11 @@ class ResizeController {
       _persistCount++;
       // Final width is already set by visual update, just log for monitoring
       // Could add additional persistence logic here (e.g., save to file, analytics, etc.)
-      tempoLog.finest(
+      waypointsLog.finest(
         'Resize state persist trigger (count: $_persistCount): width=$panelWidth',
       );
     } catch (e, stack) {
-      tempoLog.warning('Error in resize state persistence', e, stack);
+      waypointsLog.warning('Error in resize state persistence', e, stack);
     }
   }
 
@@ -133,7 +133,7 @@ class ResizeController {
     // Performance reporting
     if (_resizeStartTime != null) {
       final duration = DateTime.now().difference(_resizeStartTime!);
-      tempoLog.info(
+      waypointsLog.info(
         'Resize completed - Duration: ${duration.inMilliseconds}ms, '
         'Visual updates: $_updateCount, Persist operations: $_persistCount',
       );
@@ -143,7 +143,7 @@ class ResizeController {
     _pendingPanelWidth = null;
     _resizeStartTime = null;
 
-    tempoLog.finest('Resize ended');
+    waypointsLog.finest('Resize ended');
   }
 
   /// Get current local panel width (for immediate visual feedback)

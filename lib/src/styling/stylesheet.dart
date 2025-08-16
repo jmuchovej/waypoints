@@ -4,16 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'content_padding.dart';
 import 'text_styles.dart';
 
-/// Riverpod provider for the unified Tempo stylesheet
+/// Riverpod provider for the unified Waypoints stylesheet
 /// This provides all styling configuration including responsive context
-final tempoStylesheetProvider = Provider<TempoStylesheet>((ref) {
+final stylesheetProvider = Provider<WaypointsStylesheet>((ref) {
   throw UnimplementedError(
-    'tempoStylesheetProvider must be overridden in widget tree',
+    'stylesheetProvider must be overridden in widget tree',
   );
 });
 
 /// Responsive breakpoints for different screen sizes
-enum TempoBreakpoint {
+enum WaypointsBreakpoint {
   /// Phone: < 600px
   mobile(maxWidth: 600),
 
@@ -23,11 +23,11 @@ enum TempoBreakpoint {
   /// Desktop: > 1024px
   desktop(maxWidth: double.infinity);
 
-  const TempoBreakpoint({required this.maxWidth});
+  const WaypointsBreakpoint({required this.maxWidth});
   final double maxWidth;
 
   /// Get breakpoint from screen width
-  static TempoBreakpoint fromWidth(double width) {
+  static WaypointsBreakpoint fromWidth(double width) {
     if (width < mobile.maxWidth) return mobile;
     if (width < tablet.maxWidth) return tablet;
     return desktop;
@@ -35,21 +35,21 @@ enum TempoBreakpoint {
 }
 
 /// Style context that provides responsive information and device characteristics
-class TempoStyleContext {
-  const TempoStyleContext({
+class WaypointsStyleContext {
+  const WaypointsStyleContext({
     required this.screenSize,
     required this.breakpoint,
     required this.devicePixelRatio,
   });
 
   final Size screenSize;
-  final TempoBreakpoint breakpoint;
+  final WaypointsBreakpoint breakpoint;
   final double devicePixelRatio;
 
   /// Convenience getters for breakpoint checks
-  bool get isMobile => breakpoint == TempoBreakpoint.mobile;
-  bool get isTablet => breakpoint == TempoBreakpoint.tablet;
-  bool get isDesktop => breakpoint == TempoBreakpoint.desktop;
+  bool get isMobile => breakpoint == WaypointsBreakpoint.mobile;
+  bool get isTablet => breakpoint == WaypointsBreakpoint.tablet;
+  bool get isDesktop => breakpoint == WaypointsBreakpoint.desktop;
 
   /// Screen width
   double get width => screenSize.width;
@@ -61,12 +61,12 @@ class TempoStyleContext {
   bool get isHighDPI => devicePixelRatio > 2.0;
 
   /// Get style context from BuildContext
-  static TempoStyleContext fromContext(BuildContext context) {
+  static WaypointsStyleContext fromContext(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final screenSize = mediaQuery.size;
-    final breakpoint = TempoBreakpoint.fromWidth(screenSize.width);
+    final breakpoint = WaypointsBreakpoint.fromWidth(screenSize.width);
 
-    return TempoStyleContext(
+    return WaypointsStyleContext(
       screenSize: screenSize,
       breakpoint: breakpoint,
       devicePixelRatio: mediaQuery.devicePixelRatio,
@@ -74,12 +74,12 @@ class TempoStyleContext {
   }
 }
 
-/// Unified styling system for Tempo
+/// Unified styling system for Waypoints
 ///
 /// Similar to Flutter's Theme, this provides a single source of truth
 /// for all styling decisions across SuperEditor and Flutter widgets.
-class TempoStylesheet {
-  const TempoStylesheet({
+class WaypointsStylesheet {
+  const WaypointsStylesheet({
     required this.textStyles,
     required this.spacing,
     required this.colors,
@@ -87,53 +87,53 @@ class TempoStylesheet {
   });
 
   /// Text styles for all text in the app
-  final TempoTextStyleSet textStyles;
+  final WaypointsTextStyleSet textStyles;
 
   /// Spacing and padding values (responsive based on context)
-  final TempoSpacing spacing;
+  final WaypointsSpacing spacing;
 
   /// Color extensions beyond Material theme
-  final TempoColors colors;
+  final WaypointsColors colors;
 
   /// Style context with breakpoint and device information
-  final TempoStyleContext context;
+  final WaypointsStyleContext context;
 
   // Convenience getters for responsive checks (delegates to context)
   bool get isMobile => context.isMobile;
   bool get isTablet => context.isTablet;
   bool get isDesktop => context.isDesktop;
-  TempoBreakpoint get breakpoint => context.breakpoint;
+  WaypointsBreakpoint get breakpoint => context.breakpoint;
   double get screenWidth => context.width;
   double get screenHeight => context.height;
 
   /// Get stylesheet from Riverpod provider (preferred)
-  static TempoStylesheet of(WidgetRef ref) {
-    return ref.read(tempoStylesheetProvider);
+  static WaypointsStylesheet of(WidgetRef ref) {
+    return ref.read(stylesheetProvider);
   }
 
   /// Get stylesheet from BuildContext (for functions/static methods)
-  static TempoStylesheet fromContext(BuildContext context) {
+  static WaypointsStylesheet fromContext(BuildContext context) {
     return _createFromContext(context);
   }
 
   /// Create stylesheet from BuildContext with theme integration
-  static TempoStylesheet _createFromContext(BuildContext context) {
+  static WaypointsStylesheet _createFromContext(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final styleContext = TempoStyleContext.fromContext(context);
+    final styleContext = WaypointsStyleContext.fromContext(context);
 
-    return TempoStylesheet(
-      textStyles: TempoTextStyles.fromContext(context),
-      spacing: TempoSpacing.responsive(styleContext),
-      colors: TempoColors._fromColorScheme(colorScheme),
+    return WaypointsStylesheet(
+      textStyles: WaypointsTextStyles.fromContext(context),
+      spacing: WaypointsSpacing.responsive(styleContext),
+      colors: WaypointsColors._fromColorScheme(colorScheme),
       context: styleContext,
     );
   }
 }
 
 /// Spacing and padding configuration
-class TempoSpacing {
-  const TempoSpacing({
+class WaypointsSpacing {
+  const WaypointsSpacing({
     required this.documentPadding,
     required this.contentHorizontal,
     required this.maxContentWidth,
@@ -161,16 +161,16 @@ class TempoSpacing {
   final EdgeInsets chipPadding;
 
   /// Create responsive spacing based on style context
-  factory TempoSpacing.responsive(TempoStyleContext context) {
+  factory WaypointsSpacing.responsive(WaypointsStyleContext context) {
     return switch (context.breakpoint) {
-      TempoBreakpoint.mobile => mobile,
-      TempoBreakpoint.tablet => tablet,
-      TempoBreakpoint.desktop => desktop,
+      WaypointsBreakpoint.mobile => mobile,
+      WaypointsBreakpoint.tablet => tablet,
+      WaypointsBreakpoint.desktop => desktop,
     };
   }
 
   /// Mobile spacing (< 600px)
-  static const mobile = TempoSpacing(
+  static const mobile = WaypointsSpacing(
     documentPadding: EdgeInsets.symmetric(horizontal: 0.0, vertical: 16.0),
     contentHorizontal: 0.0,
     maxContentWidth: double.infinity,
@@ -180,7 +180,7 @@ class TempoSpacing {
   );
 
   /// Tablet spacing (600px - 1024px)
-  static const tablet = TempoSpacing(
+  static const tablet = WaypointsSpacing(
     documentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
     contentHorizontal: 16.0,
     maxContentWidth: 800.0,
@@ -190,7 +190,7 @@ class TempoSpacing {
   );
 
   /// Desktop spacing (> 1024px)
-  static const desktop = TempoSpacing(
+  static const desktop = WaypointsSpacing(
     documentPadding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
     contentHorizontal: 24.0,
     maxContentWidth: 800.0,
@@ -200,9 +200,9 @@ class TempoSpacing {
   );
 }
 
-/// Color extensions for Tempo-specific needs
-class TempoColors {
-  const TempoColors({
+/// Color extensions for Waypoints-specific needs
+class WaypointsColors {
+  const WaypointsColors({
     required this.taskOverdue,
     required this.taskToday,
     required this.taskHighPriority,
@@ -221,8 +221,8 @@ class TempoColors {
   final Color editorSelection;
 
   /// Create colors from Material ColorScheme
-  factory TempoColors._fromColorScheme(ColorScheme scheme) {
-    return TempoColors(
+  factory WaypointsColors._fromColorScheme(ColorScheme scheme) {
+    return WaypointsColors(
       taskOverdue: scheme.error,
       taskToday: scheme.tertiary,
       taskHighPriority: scheme.primary,

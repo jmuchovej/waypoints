@@ -64,10 +64,10 @@ class _FilterButtonState extends ConsumerState<FilterButton> {
       builder: _menuBuilder,
       menuChildren: menuButtons,
       onOpen: () {
-        tempoLog.finest('opening `FilterButton`');
+        waypointsLog.finest('opening `FilterButton`');
       },
       onClose: () {
-        tempoLog.finest('closing `FilterButton`');
+        waypointsLog.finest('closing `FilterButton`');
       },
       alignmentOffset: Offset(24, textSize.fontSize! * 0.5),
     );

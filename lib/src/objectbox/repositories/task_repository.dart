@@ -90,10 +90,15 @@ class TaskRepository extends ThingRepository<TaskEntity> {
 
   List<TaskEntity> immediateSubtasks(TaskEntity task) {
     final childThings = task.thing.children.where((e) => e.type == type);
-    tempoDBLog.finest('... for `task=${task.uuid}`, found n-children=${childThings.length}');
+    waypointsDBLog.finest(
+      '... for `task=${task.uuid}`, found n-children=${childThings.length}',
+    );
     final childIDs = childThings.map((c) => c.id).toList();
     final results = box.getMany(childIDs);
-    return results.where((subtask) => subtask != null).toList().cast<TaskEntity>();
+    return results
+        .where((subtask) => subtask != null)
+        .toList()
+        .cast<TaskEntity>();
   }
 
   ProjectEntity? immediateProject(TaskEntity task) {
@@ -175,7 +180,7 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   /// This applies parent filtering after database-level filtering for efficiency
   Stream<List<TaskEntity>> topLevel(Stream<List<TaskEntity>> taskStream) {
     return taskStream.map((tasks) {
-      tempoDBLog.info('topLevel: Filtering ${tasks.length} active tasks');
+      waypointsDBLog.info('topLevel: Filtering ${tasks.length} active tasks');
       final topLevelTasks =
           tasks.where((task) {
             if (task.parent == null) {
@@ -187,20 +192,20 @@ class TaskRepository extends ThingRepository<TaskEntity> {
             // Has parent - check if parent is a task (child task) or project (top-level task)
             final isChildOfTask = parent.type == TaskEntity.key;
             if (isChildOfTask) {
-              tempoDBQueryLog.finer(
+              waypointsDBQueryLog.finer(
                 'Filtering out subtask: ${task.title.toPlainText()} (parent task: ${parent.uuid})',
               );
               return false;
             }
 
             // Parent is project/other = top-level task
-            tempoDBQueryLog.finest(
+            waypointsDBQueryLog.finest(
               'Top-level task: ${task.title.toPlainText()} (parent ${parent.type}: ${parent.uuid})',
             );
             return true;
           }).toList();
 
-      tempoDBQueryLog.fine(
+      waypointsDBQueryLog.fine(
         'topLevel: Found ${topLevelTasks.length} top-level tasks',
       );
       return topLevelTasks;
@@ -231,7 +236,7 @@ class TaskRepository extends ThingRepository<TaskEntity> {
 
   /// Stream all top-level active tasks
   Stream<List<TaskEntity>> streamTopLevel() {
-    tempoDBLog.info('streamTopLevel: Starting top-level task stream');
+    waypointsDBLog.info('streamTopLevel: Starting top-level task stream');
     return topLevel(streamActive());
   }
 

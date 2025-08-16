@@ -76,7 +76,7 @@ class Q1LaunchProject extends DatabaseSeed {
     uuid: "launch-proj-features-009",
     nodeType: "list_item",
     content: AttributedText(
-      "Enterprise Auth: SSO, RBAC, and audit tempoDBSeedLog.ging",
+      "Enterprise Auth: SSO, RBAC, and audit waypointsDBSeedLog.ging",
     ),
   );
 
@@ -219,7 +219,7 @@ class Q1LaunchProject extends DatabaseSeed {
   final seedUserAuthFeaturesBlock5 = BlockEntity(
     uuid: "launch-userauth-features-029",
     nodeType: "list_item",
-    content: AttributedText("Audit tempoDBSeedLog.ging for compliance"),
+    content: AttributedText("Audit waypointsDBSeedLog.ging for compliance"),
   );
 
   final seedUserAuthSecurityHeaderBlock = BlockEntity(
@@ -620,7 +620,7 @@ class Q1LaunchProject extends DatabaseSeed {
     uuid: "launch-marketing-content-089",
     nodeType: "list_item",
     content: AttributedText(
-      "Product announcement btempoDBSeedLog. post (in draft)",
+      "Product announcement bwaypointsDBSeedLog. post (in draft)",
     ),
   );
 
@@ -674,7 +674,7 @@ class Q1LaunchProject extends DatabaseSeed {
 
   final seedProductTask = DevtoolsTaskDefaults.withDefaults(
     "e2f6b210-00f3-4fee-8a01-5aaf553bb633",
-    AttributedText("Write product announcement btempoDBSeedLog. post"),
+    AttributedText("Write product announcement bwaypointsDBSeedLog. post"),
     status: TaskStatus.started,
   );
 
@@ -682,7 +682,7 @@ class Q1LaunchProject extends DatabaseSeed {
   final seedProductHeaderBlock = BlockEntity(
     uuid: "launch-product-header-098",
     nodeType: "header3",
-    content: AttributedText("Launch Announcement BtempoDBSeedLog. Post ✍️"),
+    content: AttributedText("Launch Announcement BwaypointsDBSeedLog. Post ✍️"),
   );
 
   final seedProductTargetBlock = BlockEntity(
@@ -777,7 +777,7 @@ class Q1LaunchProject extends DatabaseSeed {
     uuid: "launch-product-distribution-112",
     nodeType: "paragraph",
     content: AttributedText(
-      "Distribution: Company btempoDBSeedLog., Medium, LinkedIn, dev.to",
+      "Distribution: Company bwaypointsDBSeedLog., Medium, LinkedIn, dev.to",
     ),
   );
 
@@ -1013,7 +1013,7 @@ class Q1LaunchProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);

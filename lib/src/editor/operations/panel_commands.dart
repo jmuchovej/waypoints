@@ -25,7 +25,7 @@ class OpenTaskPanelCommand implements EditCommand {
 
   @override
   void execute(EditContext editContext, CommandExecutor executor) {
-    tempoEditorLog.info(
+    waypointsEditorLog.info(
       'OpenTaskPanelCommand: Opening panel for task $taskUuid',
     );
 
@@ -57,7 +57,7 @@ class OpenProjectPanelCommand implements EditCommand {
 
   @override
   void execute(EditContext editContext, CommandExecutor executor) {
-    tempoEditorLog.info(
+    waypointsEditorLog.info(
       'OpenProjectPanelCommand: Opening panel for project $projectUuid',
     );
 
@@ -89,11 +89,11 @@ class NavigateToRouteCommand implements EditCommand {
 
   @override
   void execute(EditContext editContext, CommandExecutor executor) {
-    tempoEditorLog.info('NavigateToRouteCommand: Navigating to $routePath');
+    waypointsEditorLog.info('NavigateToRouteCommand: Navigating to $routePath');
 
     // TODO: Implement navigation - this is a proof of concept
     // The navigation would go here, but needs proper route handling
-    tempoEditorLog.info(
+    waypointsEditorLog.info(
       'NavigateToRouteCommand: Would navigate to $routePath with params $parameters',
     );
   }

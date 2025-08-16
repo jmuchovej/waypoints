@@ -9,7 +9,7 @@ import 'src/l10n/l10n.dart';
 import 'src/objectbox/objectbox.dart';
 import 'src/router.dart';
 import 'src/styling/theme.dart';
-import 'src/styling/tempo_stylesheet.dart';
+import 'src/styling/stylesheet.dart';
 import 'src/styling/text_styles.dart';
 
 void main() async {
@@ -40,16 +40,16 @@ void main() async {
     // debugPaintLayerBordersEnabled = true; // Shows layer boundaries
   }
 
-  runApp(UncontrolledProviderScope(container: container, child: Tempo()));
+  runApp(UncontrolledProviderScope(container: container, child: Waypoints()));
 }
 
-class Tempo extends ConsumerWidget {
-  const Tempo({super.key});
+class Waypoints extends ConsumerWidget {
+  const Waypoints({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = createTextTheme(context, display: 'Lato', body: 'Lato');
-    final theme = TempoTheme(textTheme);
+    final theme = WaypointsTheme(textTheme);
 
     final flavor = ref.read(flavorProvider);
     final router = ref.read(routerProvider);
@@ -64,14 +64,14 @@ class Tempo extends ConsumerWidget {
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        // Provide TempoTextStyles to all widgets via ProviderScope override
+        // Provide WaypointsTextStyles to all widgets via ProviderScope override
         return ProviderScope(
           overrides: [
-            tempoTextStylesProvider.overrideWithValue(
-              TempoTextStyles.fromContext(context),
+            textStylesProvider.overrideWithValue(
+              WaypointsTextStyles.fromContext(context),
             ),
-            tempoStylesheetProvider.overrideWithValue(
-              TempoStylesheet.fromContext(context),
+            stylesheetProvider.overrideWithValue(
+              WaypointsStylesheet.fromContext(context),
             ),
           ],
           child: child!,

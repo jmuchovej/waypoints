@@ -12,9 +12,9 @@ import 'package:follow_the_leader/follow_the_leader.dart' show FtlLogs;
 import 'package:super_editor/super_editor.dart' as SE hide Logger;
 
 class LogNames {
-  static const tempo = 'tempo';
+  static const waypoints = 'waypoints';
 
-  static const editor = '${LogNames.tempo}.editor';
+  static const editor = '${LogNames.waypoints}.editor';
   static const taskEditor = '${LogNames.editor}.task';
   static const projectEditor = '${LogNames.editor}.project';
 
@@ -31,33 +31,33 @@ class LogNames {
       '${LogNames.editorTapDelegate}.tapDelegate.thing';
 
   // Styling
-  static const style = '${LogNames.tempo}.style';
+  static const style = '${LogNames.waypoints}.style';
 
   // Paneling
-  static const ui = '${LogNames.tempo}.ui';
+  static const ui = '${LogNames.waypoints}.ui';
   static const uiPanel = '${LogNames.ui}.panel';
 
   // Routing
-  static const route = '${LogNames.tempo}.route';
+  static const route = '${LogNames.waypoints}.route';
   static const taskRoute = '${LogNames.route}.task';
   static const thingRoute = '${LogNames.route}.thing';
 
   // Database subsystem
-  static const db = '${LogNames.tempo}.db';
+  static const db = '${LogNames.waypoints}.db';
   static const dbSeed = '${LogNames.db}.seed';
   static const dbQuery = '${LogNames.db}.query';
   static const dbSchema = '${LogNames.db}.schema';
 
   // Development tools
-  static const devtools = '${LogNames.tempo}.devtools';
+  static const devtools = '${LogNames.waypoints}.devtools';
 
-  static const state = '${LogNames.tempo}.state';
-  static const config = '${LogNames.tempo}.config';
+  static const state = '${LogNames.waypoints}.state';
+  static const config = '${LogNames.waypoints}.config';
 
   // Vox, Flux, Codex subsystems
-  static const vox = '${LogNames.tempo}.vox';
-  static const flux = '${LogNames.tempo}.flux';
-  static const codex = '${LogNames.tempo}.codex';
+  static const vox = '${LogNames.waypoints}.vox';
+  static const flux = '${LogNames.waypoints}.flux';
+  static const codex = '${LogNames.waypoints}.codex';
 }
 
 final Map<String, int> _loggerAccessCounter = {};
@@ -72,38 +72,38 @@ Logger _trackLoggerAccess(String name, Logger logger) {
   return logger;
 }
 
-final tempoLog = _trackLoggerAccess(LogNames.tempo, Logger(LogNames.tempo));
-final tempoEditorLog = Logger(LogNames.editor);
-final tempoTaskEditorLog = Logger(LogNames.taskEditor);
-final tempoProjectEditorLog = Logger(LogNames.projectEditor);
-final tempoMotionLog = Logger(LogNames.motionPlugin);
-final tempoScaffoldingLog = Logger(LogNames.scaffoldingPlugin);
-final tempoLayerLog = Logger(LogNames.editorLayer);
-final tempoBlockHighlighterLog = Logger(LogNames.blockHighlighterLayer);
-final tempoTapDelegateLog = Logger(LogNames.editorTapDelegate);
-final tempoThingTapDelegateLog = Logger(LogNames.thingTapDelegate);
-final tempoStyleLog = Logger(LogNames.style);
-final tempoUILog = Logger(LogNames.ui);
-final tempoPanelLog = _trackLoggerAccess(
+final waypointsLog = _trackLoggerAccess(LogNames.waypoints, Logger(LogNames.waypoints));
+final waypointsEditorLog = Logger(LogNames.editor);
+final waypointsTaskEditorLog = Logger(LogNames.taskEditor);
+final waypointsProjectEditorLog = Logger(LogNames.projectEditor);
+final waypointsMotionLog = Logger(LogNames.motionPlugin);
+final waypointsScaffoldingLog = Logger(LogNames.scaffoldingPlugin);
+final waypointsLayerLog = Logger(LogNames.editorLayer);
+final waypointsBlockHighlighterLog = Logger(LogNames.blockHighlighterLayer);
+final waypointsTapDelegateLog = Logger(LogNames.editorTapDelegate);
+final waypointsThingTapDelegateLog = Logger(LogNames.thingTapDelegate);
+final waypointsStyleLog = Logger(LogNames.style);
+final waypointsUILog = Logger(LogNames.ui);
+final waypointsPanelLog = _trackLoggerAccess(
   LogNames.uiPanel,
   Logger(LogNames.uiPanel),
 );
-final tempoRouteLog = Logger(LogNames.route);
-final tempoTaskRouteLog = Logger(LogNames.taskRoute);
-final tempoThingRouteLog = _trackLoggerAccess(
+final waypointsRouteLog = Logger(LogNames.route);
+final waypointsTaskRouteLog = Logger(LogNames.taskRoute);
+final waypointsThingRouteLog = _trackLoggerAccess(
   LogNames.thingRoute,
   Logger(LogNames.thingRoute),
 );
-final tempoDBLog = _trackLoggerAccess(LogNames.db, Logger(LogNames.db));
-final tempoDBSeedLog = Logger(LogNames.dbSeed);
-final tempoDBQueryLog = Logger(LogNames.dbQuery);
-final tempoDBSchemaLog = Logger(LogNames.dbSchema);
-final tempoDevtoolsLog = Logger(LogNames.devtools);
-final tempoStateLog = Logger(LogNames.state);
-final tempoConfigLog = Logger(LogNames.config);
-final tempoVoxLog = Logger(LogNames.vox);
-final tempoFluxLog = Logger(LogNames.flux);
-final tempoCodexLog = Logger(LogNames.codex);
+final waypointsDBLog = _trackLoggerAccess(LogNames.db, Logger(LogNames.db));
+final waypointsDBSeedLog = Logger(LogNames.dbSeed);
+final waypointsDBQueryLog = Logger(LogNames.dbQuery);
+final waypointsDBSchemaLog = Logger(LogNames.dbSchema);
+final waypointsDevtoolsLog = Logger(LogNames.devtools);
+final waypointsStateLog = Logger(LogNames.state);
+final waypointsConfigLog = Logger(LogNames.config);
+final waypointsVoxLog = Logger(LogNames.vox);
+final waypointsFluxLog = Logger(LogNames.flux);
+final waypointsCodexLog = Logger(LogNames.codex);
 
 // Re-export SuperEditor and FTL loggers for convenience
 // SuperEditor
@@ -186,7 +186,6 @@ void _showLogMessage(LogRecord record) {
 
 class LoggerConfig {
   static final Set<String> _configuredLoggers = {};
-  static final Set<String> _listenersAttached = {};
   static bool _isInitialized = false;
   static Level _globalLevel = Level.FINEST;
 
@@ -226,54 +225,54 @@ class LoggerConfig {
     hierarchicalLoggingEnabled = true;
     Logger.root.level = Level.ALL;
 
-    // Configure Tempo loggers
-    _configureLogger(tempoLog, Level.FINEST, attach: true);
-    _configureLogger(tempoEditorLog, Level.FINEST);
-    _configureLogger(tempoTaskEditorLog, Level.FINER);
-    _configureLogger(tempoProjectEditorLog, Level.FINEST);
+    // Configure Waypoints loggers
+    _configureLogger(waypointsLog, Level.FINEST, attach: true);
+    _configureLogger(waypointsEditorLog, Level.FINEST);
+    _configureLogger(waypointsTaskEditorLog, Level.FINER);
+    _configureLogger(waypointsProjectEditorLog, Level.FINEST);
 
     // SuperEditor plugins
-    _configureLogger(tempoMotionLog, Level.INFO);
-    _configureLogger(tempoScaffoldingLog, Level.INFO);
+    _configureLogger(waypointsMotionLog, Level.INFO);
+    _configureLogger(waypointsScaffoldingLog, Level.INFO);
 
     // Custom SuperEditor layers
-    _configureLogger(tempoLayerLog, Level.FINEST);
-    _configureLogger(tempoBlockHighlighterLog, Level.FINEST);
-    _configureLogger(tempoTapDelegateLog, Level.FINEST);
-    _configureLogger(tempoThingTapDelegateLog, Level.FINER);
+    _configureLogger(waypointsLayerLog, Level.FINEST);
+    _configureLogger(waypointsBlockHighlighterLog, Level.FINEST);
+    _configureLogger(waypointsTapDelegateLog, Level.FINEST);
+    _configureLogger(waypointsThingTapDelegateLog, Level.FINER);
 
     // Styling
-    _configureLogger(tempoStyleLog, Level.FINER);
+    _configureLogger(waypointsStyleLog, Level.FINER);
 
     // Paneling
-    _configureLogger(tempoUILog, Level.FINER);
-    _configureLogger(tempoPanelLog, Level.FINER);
+    _configureLogger(waypointsUILog, Level.FINER);
+    _configureLogger(waypointsPanelLog, Level.FINER);
 
     // Routing
-    _configureLogger(tempoRouteLog, Level.FINEST);
-    _configureLogger(tempoTaskRouteLog, Level.FINER);
-    _configureLogger(tempoThingRouteLog, Level.FINER);
+    _configureLogger(waypointsRouteLog, Level.FINEST);
+    _configureLogger(waypointsTaskRouteLog, Level.FINER);
+    _configureLogger(waypointsThingRouteLog, Level.FINER);
 
     // Database
-    _configureLogger(tempoDBLog, Level.INFO);
-    _configureLogger(tempoDBSeedLog, Level.WARNING);
-    _configureLogger(tempoDBQueryLog, Level.INFO);
-    _configureLogger(tempoDBSchemaLog, Level.INFO);
+    _configureLogger(waypointsDBLog, Level.FINEST);
+    _configureLogger(waypointsDBSeedLog, Level.FINEST);
+    _configureLogger(waypointsDBQueryLog, Level.INFO);
+    _configureLogger(waypointsDBSchemaLog, Level.INFO);
 
     // Development tools
-    _configureLogger(tempoDevtoolsLog, Level.INFO);
-    _configureLogger(tempoStateLog, Level.FINEST);
-    _configureLogger(tempoConfigLog, Level.FINEST);
+    _configureLogger(waypointsDevtoolsLog, Level.INFO);
+    _configureLogger(waypointsStateLog, Level.FINEST);
+    _configureLogger(waypointsConfigLog, Level.FINEST);
 
     // Subsystems
-    _configureLogger(tempoVoxLog, Level.INFO);
-    _configureLogger(tempoFluxLog, Level.FINEST);
-    _configureLogger(tempoCodexLog, Level.INFO);
+    _configureLogger(waypointsVoxLog, Level.INFO);
+    _configureLogger(waypointsFluxLog, Level.FINEST);
+    _configureLogger(waypointsCodexLog, Level.INFO);
 
     // Configure third-party loggers (use existing instances from packages)
     // SuperEditor
     _configureLogger(superEditorLog, Level.WARNING, attach: true);
-    _configureLogger(superEditorEditsLog, Level.WARNING);
+    _configureLogger(superEditorEditsLog, Level.FINEST);
     _configureLogger(superEditorPoliciesLog, Level.WARNING);
     _configureLogger(superEditorScrollingLog, Level.WARNING);
     _configureLogger(superEditorGesturesLog, Level.WARNING);
@@ -284,8 +283,8 @@ class LoggerConfig {
     _configureLogger(superEditoriOSFloatingCursorLog, Level.WARNING);
     _configureLogger(superEditorLayoutLog, Level.WARNING);
     _configureLogger(superEditorStyleLog, Level.WARNING);
-    _configureLogger(superEditorDocLog, Level.WARNING);
-    _configureLogger(superEditorOpsLog, Level.WARNING);
+    _configureLogger(superEditorDocLog, Level.FINEST);
+    _configureLogger(superEditorOpsLog, Level.FINEST);
     _configureLogger(superEditorTokensLog, Level.WARNING);
     _configureLogger(superEditorTagsLog, Level.WARNING);
     _configureLogger(superEditorStableTagsLog, Level.WARNING);

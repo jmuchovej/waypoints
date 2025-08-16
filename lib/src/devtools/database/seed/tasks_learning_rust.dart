@@ -70,7 +70,7 @@ class RustProgrammingCoursePoject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
@@ -83,32 +83,37 @@ class RustProgrammingCoursePoject extends DatabaseSeed {
     final readCh10to12Task = await s.taskRepo.putAsync(seedReadCh10to12Task);
 
     final practiceCLITask = await s.taskRepo.putAsync(seedPracticeCLITask);
-    final designDataStructuresTask = await s.taskRepo.putAsync(seedDesignDataStructuresTask);
+    final designDataStructuresTask = await s.taskRepo.putAsync(
+      seedDesignDataStructuresTask,
+    );
     final implementCRUDTask = await s.taskRepo.putAsync(seedImplementCRUDTask);
     final addSQLiteTask = await s.taskRepo.putAsync(seedAddSQLiteTask);
-    final createCLIWithClapTask = await s.taskRepo.putAsync(seedCreateCLIWithClapTask);
+    final createCLIWithClapTask = await s.taskRepo.putAsync(
+      seedCreateCLIWithClapTask,
+    );
 
     // Set up relationships
-    readBookTask.thing.childrenRef.addAll([
-      readCh01to03Task,
-      readCh04to06Task,
-      readCh07to09Task,
-      readCh10to12Task,
-    ].things);
+    readBookTask.thing.childrenRef.addAll(
+      [
+        readCh01to03Task,
+        readCh04to06Task,
+        readCh07to09Task,
+        readCh10to12Task,
+      ].things,
+    );
     await s.taskRepo.putAsync(readBookTask);
 
-    practiceCLITask.thing.childrenRef.addAll([
-      designDataStructuresTask,
-      implementCRUDTask,
-      addSQLiteTask,
-      createCLIWithClapTask,
-    ].things);
+    practiceCLITask.thing.childrenRef.addAll(
+      [
+        designDataStructuresTask,
+        implementCRUDTask,
+        addSQLiteTask,
+        createCLIWithClapTask,
+      ].things,
+    );
     await s.taskRepo.putAsync(practiceCLITask);
 
-    project.thing.childrenRef.addAll([
-      readBookTask,
-      practiceCLITask,
-    ].things);
+    project.thing.childrenRef.addAll([readBookTask, practiceCLITask].things);
     await s.projectRepo.putAsync(project);
   }
 }

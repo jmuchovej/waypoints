@@ -15,26 +15,26 @@ class TaskProjectChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Debug logging to understand project relationship state
-    tempoTaskEditorLog.finest('🔍 TaskProjectChip for task ${task.uuid}:');
-    tempoTaskEditorLog.finest('  - hasValue: ${task.project.hasValue}');
-    tempoTaskEditorLog.finest('  - target: ${task.project.target}');
-    tempoTaskEditorLog.finest(
+    waypointsTaskEditorLog.finest('🔍 TaskProjectChip for task ${task.uuid}:');
+    waypointsTaskEditorLog.finest('  - hasValue: ${task.project.hasValue}');
+    waypointsTaskEditorLog.finest('  - target: ${task.project.target}');
+    waypointsTaskEditorLog.finest(
       '  - target title: ${task.project.target?.title.toPlainText()}',
     );
 
     // If no project, don't show the pill
     if (!task.project.hasValue) {
-      tempoTaskEditorLog.finest('  - No project association (hasValue=false)');
+      waypointsTaskEditorLog.finest('  - No project association (hasValue=false)');
       return const SizedBox.shrink();
     }
 
     final project = task.project.target;
     if (project == null) {
-      tempoTaskEditorLog.finest('  - Project target is null');
+      waypointsTaskEditorLog.finest('  - Project target is null');
       return const SizedBox.shrink();
     }
 
-    final textStyles = TempoTextStyles.of(ref);
+    final textStyles = WaypointsTextStyles.of(ref);
     final fontSize = textStyles.chipText.fontSize!;
 
     return Row(
@@ -48,7 +48,7 @@ class TaskProjectChip extends ConsumerWidget {
         SizedBox(width: 0.5 * fontSize),
         Flexible(
           child: Text(
-            // TODO convert this to a `TempoTextField`
+            // TODO convert this to a `WaypointsTextField`
             project.title.toPlainText(),
             style: textStyles.chipText.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,

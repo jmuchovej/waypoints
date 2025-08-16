@@ -32,11 +32,12 @@ class ICML2025Project extends DatabaseSeed {
     status: TaskStatus.workInProgress,
   );
 
-  final seedLitReviewEfficientTransformersTask = DevtoolsTaskDefaults.withDefaults(
-    "334f0b41-f62f-4f04-a6c0-2af9cb85dcd4",
-    AttributedText("Review: 'Efficient transformers survey' (Tay et al.)"),
-    status: TaskStatus.started,
-  );
+  final seedLitReviewEfficientTransformersTask =
+      DevtoolsTaskDefaults.withDefaults(
+        "334f0b41-f62f-4f04-a6c0-2af9cb85dcd4",
+        AttributedText("Review: 'Efficient transformers survey' (Tay et al.)"),
+        status: TaskStatus.started,
+      );
 
   final seedLitBiliographyTask = DevtoolsTaskDefaults.withDefaults(
     "67ba259a-2201-4614-a0ad-17544d5a9330",
@@ -93,7 +94,7 @@ class ICML2025Project extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
@@ -101,47 +102,63 @@ class ICML2025Project extends DatabaseSeed {
     // Literature review task and subtasks
     final litReviewTask = await s.taskRepo.putAsync(seedLitReviewTask);
     final litReviewAttnTask = await s.taskRepo.putAsync(seedLitReviewAttnTask);
-    final litReviewSparseAttnTask = await s.taskRepo.putAsync(seedLitReviewSparseAttnTask);
-    final litReviewEfficientTransformersTask = await s.taskRepo.putAsync(seedLitReviewEfficientTransformersTask);
-    final litBiliographyTask = await s.taskRepo.putAsync(seedLitBiliographyTask);
+    final litReviewSparseAttnTask = await s.taskRepo.putAsync(
+      seedLitReviewSparseAttnTask,
+    );
+    final litReviewEfficientTransformersTask = await s.taskRepo.putAsync(
+      seedLitReviewEfficientTransformersTask,
+    );
+    final litBiliographyTask = await s.taskRepo.putAsync(
+      seedLitBiliographyTask,
+    );
 
-    litReviewTask.thing.childrenRef.addAll([
-      litReviewAttnTask,
-      litReviewSparseAttnTask,
-      litReviewEfficientTransformersTask,
-      litBiliographyTask,
-    ].things);
+    litReviewTask.thing.childrenRef.addAll(
+      [
+        litReviewAttnTask,
+        litReviewSparseAttnTask,
+        litReviewEfficientTransformersTask,
+        litBiliographyTask,
+      ].things,
+    );
     await s.taskRepo.putAsync(litReviewTask);
 
     // Experiment task and subtasks
     final experimentTask = await s.taskRepo.putAsync(seedExperimentTask);
-    final prepareDatasetsTask = await s.taskRepo.putAsync(seedPrepareDatasetsTask);
-    final implementBaselinesTask = await s.taskRepo.putAsync(seedImplementBaselinesTask);
+    final prepareDatasetsTask = await s.taskRepo.putAsync(
+      seedPrepareDatasetsTask,
+    );
+    final implementBaselinesTask = await s.taskRepo.putAsync(
+      seedImplementBaselinesTask,
+    );
     final deployOnGPUTask = await s.taskRepo.putAsync(seedDeployOnGPUTask);
 
-    experimentTask.thing.childrenRef.addAll([
-      prepareDatasetsTask,
-      implementBaselinesTask,
-      deployOnGPUTask,
-    ].things);
+    experimentTask.thing.childrenRef.addAll(
+      [prepareDatasetsTask, implementBaselinesTask, deployOnGPUTask].things,
+    );
     await s.taskRepo.putAsync(experimentTask);
 
     // Paper draft task and subtasks
     final paperDraftTask = await s.taskRepo.putAsync(seedPaperDraftTask);
     final writeAbstractTask = await s.taskRepo.putAsync(seedWriteAbstractTask);
-    final writeRelatedWorksTask = await s.taskRepo.putAsync(seedWriteRelatedWorksTask);
+    final writeRelatedWorksTask = await s.taskRepo.putAsync(
+      seedWriteRelatedWorksTask,
+    );
     final writeMethodsTask = await s.taskRepo.putAsync(seedWriteMethodsTask);
     final writeResultsTask = await s.taskRepo.putAsync(seedWriteResultsTask);
 
-    paperDraftTask.thing.childrenRef.addAll([
-      writeAbstractTask,
-      writeRelatedWorksTask,
-      writeMethodsTask,
-      writeResultsTask,
-    ].things);
+    paperDraftTask.thing.childrenRef.addAll(
+      [
+        writeAbstractTask,
+        writeRelatedWorksTask,
+        writeMethodsTask,
+        writeResultsTask,
+      ].things,
+    );
     await s.taskRepo.putAsync(paperDraftTask);
 
-    project.thing.childrenRef.addAll([litReviewTask, experimentTask, paperDraftTask].things);
+    project.thing.childrenRef.addAll(
+      [litReviewTask, experimentTask, paperDraftTask].things,
+    );
     await s.projectRepo.putAsync(project);
   }
 }

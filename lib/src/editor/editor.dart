@@ -6,7 +6,7 @@ import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 
 import '../../flavors.dart';
 import '../styling/super_editor.dart';
-import '../styling/tempo_stylesheet.dart';
+import '../styling/stylesheet.dart';
 import 'listeners/autosave_listener.dart';
 import 'nodes/project_builder.dart';
 import 'nodes/task_builder.dart';
@@ -40,9 +40,7 @@ SuperEditor createSuperEditor(
   // This prevents SuperEditor + FollowerLayer crashes on empty documents
   // and provides better UX guidance for users.
   final editor = Editor(
-    requestHandlers: List.from(
-      createTempoRequestHandlers(context, ref),
-    ),
+    requestHandlers: List.from(createTempoRequestHandlers(context, ref)),
     reactionPipeline: List.from(reactionPipeline),
     historyGroupingPolicy: defaultMergePolicy,
     isHistoryEnabled: true,
@@ -53,7 +51,7 @@ SuperEditor createSuperEditor(
   editor.context.put(HoverManager.key, hoverManager);
 
   // Detect mobile to disable autofocus and prevent keyboard issues
-  final stylesheet = ref.read(tempoStylesheetProvider);
+  final stylesheet = ref.read(stylesheetProvider);
   final isMobile = stylesheet.isMobile;
 
   final flavor = ref.read(flavorProvider);

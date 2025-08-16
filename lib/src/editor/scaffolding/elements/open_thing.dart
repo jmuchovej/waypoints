@@ -40,7 +40,7 @@ class _OpenThingState extends ConsumerState<OpenThing> {
   _OpenThingState();
 
   void _handleTap() {
-    tempoThingTapDelegateLog.finest('tap-up!');
+    waypointsThingTapDelegateLog.finest('tap-up!');
 
     // Try to determine the entity type from the UUID
     final thingService = ref.read(thingServiceProvider);

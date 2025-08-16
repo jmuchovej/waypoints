@@ -61,32 +61,45 @@ class B2SpanishCertificationProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
 
     // Weekly practice task and subtasks
-    final weeklyPracticeTask = await s.taskRepo.putAsync(seedWeeklyPracticeTask);
+    final weeklyPracticeTask = await s.taskRepo.putAsync(
+      seedWeeklyPracticeTask,
+    );
     final italkiLessonTask = await s.taskRepo.putAsync(seedItalkiLessonTask);
     final conversationTask = await s.taskRepo.putAsync(seedConversationTask);
 
-    weeklyPracticeTask.thing.childrenRef.addAll([italkiLessonTask, conversationTask].things);
+    weeklyPracticeTask.thing.childrenRef.addAll(
+      [italkiLessonTask, conversationTask].things,
+    );
     await s.taskRepo.putAsync(weeklyPracticeTask);
 
     // Complete practice exam task and subtasks
-    final completePracticeExamTask = await s.taskRepo.putAsync(seedCompletePracticeExamTask);
+    final completePracticeExamTask = await s.taskRepo.putAsync(
+      seedCompletePracticeExamTask,
+    );
     final readingCompTask = await s.taskRepo.putAsync(seedReadingCompTask);
     final listeningCompTask = await s.taskRepo.putAsync(seedListeningCompTask);
     final writtenCompTask = await s.taskRepo.putAsync(seedWrittenCompTask);
     final oralCompTask = await s.taskRepo.putAsync(seedOralCompTask);
 
-    completePracticeExamTask.thing.childrenRef.addAll([
-      readingCompTask, listeningCompTask, writtenCompTask, oralCompTask
-    ].things);
+    completePracticeExamTask.thing.childrenRef.addAll(
+      [
+        readingCompTask,
+        listeningCompTask,
+        writtenCompTask,
+        oralCompTask,
+      ].things,
+    );
     await s.taskRepo.putAsync(completePracticeExamTask);
 
-    project.thing.childrenRef.addAll([weeklyPracticeTask, completePracticeExamTask].things);
+    project.thing.childrenRef.addAll(
+      [weeklyPracticeTask, completePracticeExamTask].things,
+    );
     await s.projectRepo.putAsync(project);
   }
 }

@@ -200,9 +200,7 @@ class JapanTripProject extends DatabaseSeed {
   final seedTokyoHeaderBlock = BlockEntity(
     uuid: "japan-tokyo-header-010",
     nodeType: "header3",
-    content: AttributedText(
-      "Tokyo Itinerary: Modern Culture & Technology",
-    ),
+    content: AttributedText("Tokyo Itinerary: Modern Culture & Technology"),
   );
 
   final seedTokyoDay1Block = BlockEntity(
@@ -239,7 +237,7 @@ class JapanTripProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
@@ -283,8 +281,12 @@ class JapanTripProject extends DatabaseSeed {
     final lodgingTask = await s.taskRepo.putAsync(seedLodgingTask);
     final railpassTask = await s.taskRepo.putAsync(seedRailpassTask);
 
-    flightTask.thing.childrenRef.addAll([flightOptionsTask, lodgingTask, railpassTask].things);
-    tempoDBSeedLog.finest('flightTask.children => ${flightTask.thing.children}');
+    flightTask.thing.childrenRef.addAll(
+      [flightOptionsTask, lodgingTask, railpassTask].things,
+    );
+    waypointsDBSeedLog.finest(
+      'flightTask.children => ${flightTask.thing.children}',
+    );
     await s.taskRepo.putAsync(flightTask);
 
     // Plan itinerary (and subtasks)
@@ -293,7 +295,9 @@ class JapanTripProject extends DatabaseSeed {
     final osakaTask = await s.taskRepo.putAsync(seedOsakaTask);
     final kyotoTask = await s.taskRepo.putAsync(seedKyotoTask);
 
-    itineraryTask.thing.childrenRef.addAll([tokyoTask, osakaTask, kyotoTask].things);
+    itineraryTask.thing.childrenRef.addAll(
+      [tokyoTask, osakaTask, kyotoTask].things,
+    );
     await s.taskRepo.putAsync(itineraryTask);
 
     // Add block children to Tokyo task
@@ -301,7 +305,9 @@ class JapanTripProject extends DatabaseSeed {
     await s.taskRepo.putAsync(tokyoTask);
 
     // Add blocks and tasks to project
-    project.thing.childrenRef.addAll([...projectBlocks, flightTask, itineraryTask].things);
+    project.thing.childrenRef.addAll(
+      [...projectBlocks, flightTask, itineraryTask].things,
+    );
     await s.projectRepo.putAsync(project);
   }
 }

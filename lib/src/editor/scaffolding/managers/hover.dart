@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tempo/src/editor/super_editor.dart';
+import '../../super_editor.dart';
 
 class HoverManager extends ChangeNotifier implements Editable {
   static final String key = 'HoverManager';

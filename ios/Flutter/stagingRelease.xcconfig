@@ -2,5 +2,5 @@
 #include "Generated.xcconfig"
 
 ASSET_PREFIX=staging
-BUNDLE_NAME=Tempo (Staging)
-BUNDLE_DISPLAY_NAME=Tempo (Staging)
+BUNDLE_NAME=Waypoints (Staging)
+BUNDLE_DISPLAY_NAME=Waypoints (Staging)

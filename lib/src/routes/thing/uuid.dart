@@ -32,7 +32,7 @@ class ThingPage extends ConsumerWidget {
     // ThingService contains lightweight metadata for all entities
     final thingService = ref.read(thingRegistryProvider);
     final entity = thingService.lookup(uuid);
-    tempoThingRouteLog.fine('EntityPage.build: uuid=$uuid');
+    waypointsThingRouteLog.fine('EntityPage.build: uuid=$uuid');
 
     if (entity == null) {
       // UUID not found in registry - entity doesn't exist or not loaded
@@ -80,7 +80,6 @@ class ThingPage extends ConsumerWidget {
         composer,
         hoverManager: hoverManager,
         linkManager: linkManager,
-        taskRepository: taskRepository,
         ref: ref,
         autofocus: true,
       ),
@@ -96,28 +95,28 @@ class ThingPage extends ConsumerWidget {
   /// 4. Convert to Stream<BaseThing>
   Stream<BaseThing> _getChildren(WidgetRef ref, ThingEntity thing) {
     final resolver = ref.read(repositoryRouterProvider);
-    tempoThingRouteLog.fine(
+    waypointsThingRouteLog.fine(
       'Loading children for ${thing.uuid} (${thing.type}):',
     );
 
     final asThings = thing.children.toList();
-    tempoThingRouteLog.finer(
+    waypointsThingRouteLog.finer(
       '  Found ${asThings.length} children on `uuid=${thing.uuid}`',
     );
 
     final children = resolver.resolveMany(asThings);
     for (final child in children) {
-      tempoThingRouteLog.finest('  - ${child.type}: ${child.uuid}');
+      waypointsThingRouteLog.finest('  - ${child.type}: ${child.uuid}');
     }
 
-    tempoThingRouteLog.finer(
+    waypointsThingRouteLog.finer(
       'Creating stream with ${children.length} children',
     );
 
     // For empty entities, return empty stream immediately
     // This allows PanelWrapper to transition to empty state and show editable SuperEditor
     if (children.isEmpty) {
-      tempoThingRouteLog.fine(
+      waypointsThingRouteLog.fine(
         'No children - returning empty stream for SuperEditor display',
       );
       return const Stream.empty();
@@ -129,12 +128,12 @@ class ThingPage extends ConsumerWidget {
     // Add all children and close
     Future.microtask(() {
       for (final child in children) {
-        tempoThingRouteLog.finer(
+        waypointsThingRouteLog.finer(
           'Stream emitting: ${child.type} ${child.uuid}',
         );
         controller.add(child);
       }
-      tempoThingRouteLog.fine(
+      waypointsThingRouteLog.fine(
         'Stream closing (${children.length} children emitted)',
       );
       controller.close();

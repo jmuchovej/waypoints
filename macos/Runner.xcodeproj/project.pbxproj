@@ -21,24 +21,15 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		32F2E150C3CAE0EED8A55C2E /* productionProfile.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = EA23EF5EDAC8DC06B937A8E0 /* productionProfile.xcconfig */; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
 		33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC10F02044A3C60003C045 /* AppDelegate.swift */; };
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
-		5783279404CE0C7CD61AA0CF /* stagingProfile.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 1E145B193A24452DE7964404 /* stagingProfile.xcconfig */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
-		7E15C4F5C8618E8EE103E0A2 /* productionRelease.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 04BD941308C4BD7F4EBA4B8A /* productionRelease.xcconfig */; };
 		8F5F392DEDFAAFAEADCA30C0 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E689C7F414944A0FC06CBFC6 /* Pods_RunnerTests.framework */; };
-		9549943FDF412440A5F0C849 /* stagingDebug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 6C6731A2454445E21EB7B8FA /* stagingDebug.xcconfig */; };
-		B221F3059BCAADD73DB0F0DE /* developmentDebug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 10DCB4F825C6EDE178AD78CC /* developmentDebug.xcconfig */; };
 		B98F09B69548C7C0372B4689 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B5549FFA2B1893C1F0C3C694 /* Pods_Runner.framework */; };
-		D20D48B4C089BBD9D8E5DE86 /* productionDebug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 6E7EAE03AD8E289A08E8B919 /* productionDebug.xcconfig */; };
-		E5C9F9D5BB24CD6566A7E0AD /* developmentProfile.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = EDF9D31FC362DEAE4D3554B3 /* developmentProfile.xcconfig */; };
-		F39CB8B2CCA8E6A7EC33E042 /* stagingRelease.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 44A1880AFAF300B27304BE0F /* stagingRelease.xcconfig */; };
-		F94A48582953241700DA8F4A /* developmentRelease.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 584F24822B80F2F00EDEDDA5 /* developmentRelease.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -387,15 +378,6 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
-				B221F3059BCAADD73DB0F0DE /* developmentDebug.xcconfig in Resources */,
-				E5C9F9D5BB24CD6566A7E0AD /* developmentProfile.xcconfig in Resources */,
-				F94A48582953241700DA8F4A /* developmentRelease.xcconfig in Resources */,
-				9549943FDF412440A5F0C849 /* stagingDebug.xcconfig in Resources */,
-				5783279404CE0C7CD61AA0CF /* stagingProfile.xcconfig in Resources */,
-				F39CB8B2CCA8E6A7EC33E042 /* stagingRelease.xcconfig in Resources */,
-				D20D48B4C089BBD9D8E5DE86 /* productionDebug.xcconfig in Resources */,
-				32F2E150C3CAE0EED8A55C2E /* productionProfile.xcconfig in Resources */,
-				7E15C4F5C8618E8EE103E0A2 /* productionRelease.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -607,7 +589,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.dev;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -619,6 +601,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 6C6731A2454445E21EB7B8FA /* stagingDebug.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "Waypoints (Staging)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Debug-staging";
@@ -680,7 +665,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.staging;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.staging;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -692,6 +677,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 10DCB4F825C6EDE178AD78CC /* developmentDebug.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "Waypoints (Dev)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Debug-development";
@@ -703,6 +691,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.flux.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -718,6 +707,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.flux.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -733,6 +723,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.flux.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -799,11 +790,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
@@ -813,6 +806,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Manual;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Profile;
@@ -930,11 +924,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -951,11 +947,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
@@ -965,6 +963,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Manual;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -973,6 +972,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -981,6 +981,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 6E7EAE03AD8E289A08E8B919 /* productionDebug.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = Waypoints;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Debug-production";
@@ -989,6 +992,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 44A1880AFAF300B27304BE0F /* stagingRelease.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "Waypoints (Staging)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Release-staging";
@@ -1057,7 +1063,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.staging;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.staging;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1069,6 +1075,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1A6DF09B776ECBB9FDA4F35F /* Pods-RunnerTests.debug-development.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Debug-development";
@@ -1077,6 +1084,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A910A48AA0CB37EADE413BA5 /* Pods-RunnerTests.profile-development.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Profile-development";
@@ -1085,6 +1093,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 89D2F70F290B3A6E88830476 /* Pods-RunnerTests.release-development.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Release-development";
@@ -1093,6 +1102,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A3BE3254224D4DD9904FF26E /* Pods-RunnerTests.debug-staging.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Debug-staging";
@@ -1101,6 +1111,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7E6B2CAF5CA7026A93D5ECCF /* Pods-RunnerTests.profile-staging.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Profile-staging";
@@ -1109,6 +1120,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = AB3091F4129888E30900836F /* Pods-RunnerTests.release-staging.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Release-staging";
@@ -1117,6 +1129,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 757C7A0308ABAA2146B82A65 /* Pods-RunnerTests.debug-production.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Debug-production";
@@ -1125,6 +1138,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = FD98CE4C5803BFD6713FE72E /* Pods-RunnerTests.profile-production.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Profile-production";
@@ -1133,6 +1147,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D232845E2B6380ABFBE05DC5 /* Pods-RunnerTests.release-production.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = RunnerTests;
 			};
 			name = "Release-production";
@@ -1140,6 +1155,7 @@
 		52B8D2222DD8F0A7001F3DDD /* Debug-development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Debug-development";
@@ -1147,6 +1163,7 @@
 		52B8D2232DD8F0A7001F3DDD /* Profile-development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Profile-development";
@@ -1154,6 +1171,7 @@
 		52B8D2242DD8F0A7001F3DDD /* Release-development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Release-development";
@@ -1161,6 +1179,7 @@
 		52B8D2252DD8F0A7001F3DDD /* Debug-staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Debug-staging";
@@ -1168,6 +1187,7 @@
 		52B8D2262DD8F0A7001F3DDD /* Profile-staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Profile-staging";
@@ -1175,6 +1195,7 @@
 		52B8D2272DD8F0A7001F3DDD /* Release-staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Release-staging";
@@ -1182,6 +1203,7 @@
 		52B8D2282DD8F0A7001F3DDD /* Debug-production */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Debug-production";
@@ -1189,6 +1211,7 @@
 		52B8D2292DD8F0A7001F3DDD /* Profile-production */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Profile-production";
@@ -1196,6 +1219,7 @@
 		52B8D22A2DD8F0A7001F3DDD /* Release-production */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = FLX;
 			};
 			name = "Release-production";
@@ -1257,7 +1281,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.prod;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.prod;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1269,6 +1293,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 584F24822B80F2F00EDEDDA5 /* developmentRelease.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "Waypoints (Dev)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Release-development";
@@ -1330,7 +1357,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.staging;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.staging;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1395,7 +1422,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.dev;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1407,6 +1434,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EA23EF5EDAC8DC06B937A8E0 /* productionProfile.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = Waypoints;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Profile-production";
@@ -1415,6 +1445,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1E145B193A24452DE7964404 /* stagingProfile.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "Waypoints (Staging)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Profile-staging";
@@ -1483,7 +1516,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.prod;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.prod;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1548,7 +1581,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.prod;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.prod;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1620,7 +1653,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tempo.app.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = com.waypoints.app.dev;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1632,6 +1665,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 04BD941308C4BD7F4EBA4B8A /* productionRelease.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = Waypoints;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Release-production";
@@ -1640,6 +1676,9 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EDF9D31FC362DEAE4D3554B3 /* developmentProfile.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = "Waypoints (Dev)";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Profile-development";

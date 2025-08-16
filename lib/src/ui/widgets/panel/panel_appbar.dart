@@ -30,7 +30,7 @@ class PanelAppBar extends ConsumerStatefulWidget {
 
   /// Compute the app bar height using the same logic as the original
   static double computeHeight(BuildContext context) {
-    final textStyles = TempoTextStyles.fromContext(context);
+    final textStyles = WaypointsTextStyles.fromContext(context);
     final fontSize = textStyles.bodyMedium.fontSize!;
     final appBarHeight = fontSize * 4;
     return appBarHeight + 1;
@@ -51,7 +51,7 @@ class PanelAppBarSliverState extends ConsumerState<PanelAppBar>
     // 🎯 NEW: Calculate gradual opacity based on scroll progress through header
     final scrollProgress = (pixels / threshold).clamp(0.0, 1.0);
 
-    tempoPanelLog.finest(
+    waypointsPanelLog.finest(
       'Scroll: ${pixels}px / ${threshold}px = ${scrollProgress} opacity',
     );
 
@@ -70,7 +70,7 @@ class PanelAppBarSliverState extends ConsumerState<PanelAppBar>
 
   @override
   Widget build(BuildContext context) {
-    final textStyles = TempoTextStyles.of(ref);
+    final textStyles = WaypointsTextStyles.of(ref);
     // 🎯 NEW: Return SliverAppBar without NotificationListener
     // The listener needs to be at the CustomScrollView level, not here
     return SliverAppBar(

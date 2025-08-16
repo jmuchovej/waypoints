@@ -2,5 +2,5 @@
 #include "Generated.xcconfig"
 
 ASSET_PREFIX=production
-BUNDLE_NAME=Tempo
-BUNDLE_DISPLAY_NAME=Tempo
+BUNDLE_NAME=Waypoints
+BUNDLE_DISPLAY_NAME=Waypoints

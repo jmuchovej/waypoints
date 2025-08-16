@@ -617,16 +617,20 @@ class APIv2MigrationProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
 
     // For this complex file, keeping simplified approach with putAsync for main tasks
     final apiEndpointTask = await s.taskRepo.putAsync(seedApiEndpointTask);
-    final updateClientLibrariesTask = await s.taskRepo.putAsync(seedUpdateClientLibrariesTask);
+    final updateClientLibrariesTask = await s.taskRepo.putAsync(
+      seedUpdateClientLibrariesTask,
+    );
 
-    project.thing.childrenRef.addAll([apiEndpointTask, updateClientLibrariesTask].things);
+    project.thing.childrenRef.addAll(
+      [apiEndpointTask, updateClientLibrariesTask].things,
+    );
     await s.projectRepo.putAsync(project);
   }
 }

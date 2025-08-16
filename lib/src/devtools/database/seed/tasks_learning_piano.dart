@@ -158,7 +158,7 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seedIng project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
@@ -186,17 +186,24 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
       seedTechniqueGoalsBlock,
     ];
     for (var index = 0; index < techniqueBlocks.length; index++) {
-      techniqueBlocks[index] = await s.blockRepo.putAsync(techniqueBlocks[index]);
+      techniqueBlocks[index] = await s.blockRepo.putAsync(
+        techniqueBlocks[index],
+      );
     }
 
-    final memorizeBlocks = [ seedMemorizeApproachBlock, seedMemoryTypesBlock, ];
+    final memorizeBlocks = [seedMemorizeApproachBlock, seedMemoryTypesBlock];
     for (var index = 0; index < memorizeBlocks.length; index++) {
       memorizeBlocks[index] = await s.blockRepo.putAsync(memorizeBlocks[index]);
     }
 
-    final performanceBlocks = [ seedPerformanceStandardsBlock, seedRecordingSetupBlock, ];
+    final performanceBlocks = [
+      seedPerformanceStandardsBlock,
+      seedRecordingSetupBlock,
+    ];
     for (var index = 0; index < performanceBlocks.length; index++) {
-      performanceBlocks[index] = await s.blockRepo.putAsync(performanceBlocks[index]);
+      performanceBlocks[index] = await s.blockRepo.putAsync(
+        performanceBlocks[index],
+      );
     }
 
     // Seed tasks
@@ -208,13 +215,21 @@ class PianoChopinEduteOp10No4Project extends DatabaseSeed {
     final performanceTask = await s.taskRepo.putAsync(seedPerformanceTask);
 
     // Set project relationships for all tasks
-    tempoDBSeedLog.fine(
+    waypointsDBSeedLog.fine(
       'Setting project relationships for ${project.title.toPlainText()}',
     );
 
     // Add block children to project
     project.thing.childrenRef.addAll(projectBlocks.things);
-    project.thing.childrenRef.addAll([scopeTask, timelineTask, techniqueTask, memorizeTask, performanceTask].things);
+    project.thing.childrenRef.addAll(
+      [
+        scopeTask,
+        timelineTask,
+        techniqueTask,
+        memorizeTask,
+        performanceTask,
+      ].things,
+    );
     // Save the ThingEntity to persist the children relationships
     await s.projectRepo.putAsync(project);
 

@@ -36,7 +36,9 @@ class TaskStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    tempoEditorLog.finest('TaskStatusChip building with status: ${status.name} @ ${DateTime.now()}');
+    waypointsEditorLog.finest(
+      'TaskStatusChip building with status: ${status.name} @ ${DateTime.now()}',
+    );
     // Calculate dimensions based on text style
     final fontSize = textStyle.fontSize ?? 14.0;
     final lineHeight =
@@ -58,7 +60,9 @@ class TaskStatusChip extends StatelessWidget {
           } else {
             onChange(TaskStatus.complete);
           }
-          tempoEditorLog.finest('TaskStatusChip onChange ended @ ${DateTime.now()}');
+          waypointsEditorLog.finest(
+            'TaskStatusChip onChange ended @ ${DateTime.now()}',
+          );
         },
         onDoubleTap: () {
           if (status == TaskStatus.dropped) {
