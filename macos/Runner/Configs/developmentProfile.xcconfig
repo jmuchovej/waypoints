@@ -2,7 +2,7 @@
 #include "Warnings.xcconfig"
 
 ASSET_PREFIX=development
-BUNDLE_NAME=Tempo (Dev)
-BUNDLE_DISPLAY_NAME=Tempo (Dev)
-PRODUCT_NAME=Tempo (Dev)
-TARGET_NAME=Tempo (Dev)
+BUNDLE_NAME=Waypoints (Dev)
+BUNDLE_DISPLAY_NAME=Waypoints (Dev)
+PRODUCT_NAME=Waypoints (Dev)
+TARGET_NAME=Waypoints (Dev)

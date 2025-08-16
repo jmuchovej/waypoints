@@ -32,7 +32,7 @@ class TaskProgressChip extends ConsumerWidget {
     final totalCount = subtasks.length;
     final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
 
-    final textStyles = TempoTextStyles.of(ref);
+    final textStyles = WaypointsTextStyles.of(ref);
     final fontSize = textStyles.chipText.fontSize!;
 
     return Row(

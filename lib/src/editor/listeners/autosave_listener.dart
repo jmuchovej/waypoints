@@ -55,7 +55,7 @@ class AutoSaveListener implements EditListener {
   /// using the [RepositoryRouter] for type-driven [ThingRepository] routing.
   @override
   void onEdit(List<EditEvent> changeList) {
-    tempoEditorLog.info('Received ${changeList.length} changes');
+    waypointsEditorLog.info('Received ${changeList.length} changes');
     final thingChangeEvents =
         changeList
             .whereType<DocumentEdit>()
@@ -63,7 +63,7 @@ class AutoSaveListener implements EditListener {
             .map((edit) => edit.change as ThingChangeEvent)
             .toList();
 
-    tempoEditorLog.info(
+    waypointsEditorLog.info(
       'Found ${thingChangeEvents.length} `ThingChangeEvent` changes',
     );
     if (thingChangeEvents.isEmpty) return;
@@ -72,7 +72,7 @@ class AutoSaveListener implements EditListener {
 
     for (final change in thingChangeEvents) {
       saveService.saveChange(ThingChangedSaveEvent.fromSuperEditor(change));
-      tempoEditorLog.finer('Saving change:: ${change.describe()}');
+      waypointsEditorLog.finer('Saving change:: ${change.describe()}');
     }
   }
 }

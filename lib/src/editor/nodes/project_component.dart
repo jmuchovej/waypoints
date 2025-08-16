@@ -58,7 +58,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
         _taskCount = tasks.length;
       });
     } catch (e) {
-      tempoProjectEditorLog.warning(
+      waypointsProjectEditorLog.warning(
         'Failed to load task count for project: $e',
       );
       setState(() {
@@ -323,7 +323,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
           childDocumentComponentKey.currentContext?.findRenderObject()
               as RenderBox?;
       if (textComponentBox == null) {
-        tempoThingTapDelegateLog.finest(
+        waypointsThingTapDelegateLog.finest(
           '🎯 _isClickInTextArea: No text component box found',
         );
         return false;
@@ -332,7 +332,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
       // Get our project component's render box
       final projectComponentBox = context.findRenderObject() as RenderBox?;
       if (projectComponentBox == null) {
-        tempoThingTapDelegateLog.finest(
+        waypointsThingTapDelegateLog.finest(
           '🎯 _isClickInTextArea: No project component box found',
         );
         return false;
@@ -354,7 +354,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
       final isInTextArea = textBounds.contains(localOffset);
 
       if (_debugGestures) {
-        tempoProjectEditorLog.finest(
+        waypointsProjectEditorLog.finest(
           '🎯 _isClickInTextArea: click=$localOffset, textBounds=$textBounds, result=$isInTextArea',
         );
       }
@@ -362,7 +362,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
       return isInTextArea;
     } catch (e) {
       if (_debugGestures) {
-        tempoProjectEditorLog.warning(
+        waypointsProjectEditorLog.warning(
           '🎯 _isClickInTextArea: Error calculating text area: $e',
         );
       }
@@ -523,7 +523,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
     try {
       // Folder icon area (left side) - interactive/clickable for navigation
       if (localOffset.dx < 40) {
-        tempoThingTapDelegateLog.finest(
+        waypointsThingTapDelegateLog.finest(
           '🎯 Cursor zone: folder icon area (clickable)',
         );
         return ThingCursorZone.clickable;
@@ -531,7 +531,9 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
 
       // Check if we're in the text area
       if (_isClickInTextArea(localOffset)) {
-        tempoThingTapDelegateLog.finest('🎯 Cursor zone: text area (editable)');
+        waypointsThingTapDelegateLog.finest(
+          '🎯 Cursor zone: text area (editable)',
+        );
         return ThingCursorZone.textEditable;
       }
 
@@ -540,7 +542,7 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
       if (componentBox != null) {
         final rightZoneStart = componentBox.size.width * 0.7; // Approximate
         if (localOffset.dx > rightZoneStart) {
-          tempoThingTapDelegateLog.finest(
+          waypointsThingTapDelegateLog.finest(
             '🎯 Cursor zone: metadata area (clickable)',
           );
           return ThingCursorZone.clickable;
@@ -548,12 +550,14 @@ class _ProjectComponentState extends ConsumerState<ProjectComponent>
       }
 
       // Everything else is clickable (for navigation)
-      tempoThingTapDelegateLog.finest(
+      waypointsThingTapDelegateLog.finest(
         '🎯 Cursor zone: general area (clickable)',
       );
       return ThingCursorZone.clickable;
     } catch (e) {
-      tempoThingTapDelegateLog.warning('🎯 Error determining cursor zone: $e');
+      waypointsThingTapDelegateLog.warning(
+        '🎯 Error determining cursor zone: $e',
+      );
       // Default to clickable on any error
       return ThingCursorZone.clickable;
     }

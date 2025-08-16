@@ -23,8 +23,8 @@ TextTheme createTextTheme(
   return textTheme;
 }
 
-class TempoTheme {
-  const TempoTheme(this.textTheme);
+class WaypointsTheme {
+  const WaypointsTheme(this.textTheme);
 
   final TextTheme textTheme;
 

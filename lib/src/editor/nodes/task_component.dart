@@ -136,7 +136,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
           childDocumentComponentKey.currentContext?.findRenderObject()
               as RenderBox?;
       if (textComponentBox == null) {
-        tempoThingTapDelegateLog.finest(
+        waypointsThingTapDelegateLog.finest(
           '🎯 _isClickInTextArea: No text component box found',
         );
         return false;
@@ -145,7 +145,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
       // Get our task component's render box
       final taskComponentBox = context.findRenderObject() as RenderBox?;
       if (taskComponentBox == null) {
-        tempoThingTapDelegateLog.finest(
+        waypointsThingTapDelegateLog.finest(
           '🎯 _isClickInTextArea: No task component box found',
         );
         return false;
@@ -166,13 +166,13 @@ class TaskComponentState extends ConsumerState<TaskComponent>
 
       final isInTextArea = textBounds.contains(localOffset);
 
-      tempoThingTapDelegateLog.finest(
+      waypointsThingTapDelegateLog.finest(
         '🎯 _isClickInTextArea: click=$localOffset, textBounds=$textBounds, result=$isInTextArea',
       );
 
       return isInTextArea;
     } catch (e) {
-      tempoThingTapDelegateLog.warning(
+      waypointsThingTapDelegateLog.warning(
         '🎯 _isClickInTextArea: Error calculating text area: $e',
       );
       // Default to false (not in text area) on any error
@@ -218,15 +218,16 @@ class TaskComponentState extends ConsumerState<TaskComponent>
   }
 
   Widget _buildPillsRow() {
-    tempoEditorLog.finest(
+    waypointsEditorLog.finest(
       'TaskComponent.buildPillsRow: creating for task=${task.uuid}',
     );
 
-    final pills = <Widget>[
-      TaskProgressChip(task: task),
-      TaskDueDateChip(task: task),
-      TaskProjectChip(task: task),
-    ].where((widget) => widget.runtimeType != SizedBox).toList();
+    final pills =
+        <Widget>[
+          TaskProgressChip(task: task),
+          TaskDueDateChip(task: task),
+          TaskProjectChip(task: task),
+        ].where((widget) => widget.runtimeType != SizedBox).toList();
 
     // Only show the row if there are pills to display
     if (pills.isEmpty) {
@@ -258,7 +259,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
     try {
       // Status chip area (left side) - interactive
       if (localOffset.dx < 40) {
-        tempoThingTapDelegateLog.finest(
+        waypointsThingTapDelegateLog.finest(
           '🎯 Cursor zone: status chip area (interactive)',
         );
         return ThingCursorZone.interactive;
@@ -266,7 +267,9 @@ class TaskComponentState extends ConsumerState<TaskComponent>
 
       // Check if we're in the text area
       if (_isClickInTextArea(localOffset)) {
-        tempoThingTapDelegateLog.finest('🎯 Cursor zone: text area (editable)');
+        waypointsThingTapDelegateLog.finest(
+          '🎯 Cursor zone: text area (editable)',
+        );
         return ThingCursorZone.textEditable;
       }
 
@@ -275,7 +278,7 @@ class TaskComponentState extends ConsumerState<TaskComponent>
       if (componentBox != null) {
         final rightZoneStart = componentBox.size.width * 0.7; // Approximate
         if (localOffset.dx > rightZoneStart) {
-          tempoThingTapDelegateLog.finest(
+          waypointsThingTapDelegateLog.finest(
             '🎯 Cursor zone: pills/chips area (interactive)',
           );
           return ThingCursorZone.interactive;
@@ -283,12 +286,14 @@ class TaskComponentState extends ConsumerState<TaskComponent>
       }
 
       // Everything else is clickable (for navigation)
-      tempoThingTapDelegateLog.finest(
+      waypointsThingTapDelegateLog.finest(
         '🎯 Cursor zone: general area (clickable)',
       );
       return ThingCursorZone.clickable;
     } catch (e) {
-      tempoThingTapDelegateLog.warning('🎯 Error determining cursor zone: $e');
+      waypointsThingTapDelegateLog.warning(
+        '🎯 Error determining cursor zone: $e',
+      );
       // Default to clickable on any error
       return ThingCursorZone.clickable;
     }

@@ -44,7 +44,7 @@ class ChangeTaskStatusCommand implements EditCommand {
     final node = editContext.document.getNodeById(nodeID);
 
     if (node is! TaskNode) {
-      tempoTaskEditorLog.warning(
+      waypointsTaskEditorLog.warning(
         'ToggleTaskStatusCommand: Node $nodeID is not a TaskNode',
       );
       return;
@@ -71,5 +71,8 @@ EditCommand? changeTaskStatusHandler(Editor editor, EditRequest request) {
     return null;
   }
 
-  return ChangeTaskStatusCommand(nodeID: request.nodeID, status: request.status);
+  return ChangeTaskStatusCommand(
+    nodeID: request.nodeID,
+    status: request.status,
+  );
 }

@@ -79,13 +79,13 @@ class PanelManager extends StateNotifier<PanelSystemState> {
 
   /// Emit a panel request
   void emit(PanelRequest request) {
-    tempoLog.fine('PanelManager: Emitting request: $request');
+    waypointsLog.fine('PanelManager: Emitting request: $request');
     _requestController.add(request);
   }
 
   /// Handle different request types
   void _handleRequest(PanelRequest request) {
-    tempoLog.finest('Received: $request');
+    waypointsLog.finest('Received: $request');
     switch (request) {
       case OpenThingRequest():
         _handleOpenThing(request);
@@ -103,7 +103,7 @@ class PanelManager extends StateNotifier<PanelSystemState> {
 
     // Check if we have a builder for this entity type
     if (!registry.hasBuilder(request.type)) {
-      tempoLog.warning(
+      waypointsLog.warning(
         'No panel builder registered for entity type: ${request.type}',
       );
       return;
@@ -120,18 +120,18 @@ class PanelManager extends StateNotifier<PanelSystemState> {
     if (detectionContext != null) {
       final screenWidth = MediaQuery.of(detectionContext).size.width;
       final isMobile = screenWidth < 768;
-      tempoLog.finest('📱 Screen width: ${screenWidth}px, isMobile: $isMobile');
+      waypointsLog.finest('📱 Screen width: ${screenWidth}px, isMobile: $isMobile');
 
       if (isMobile) {
-        tempoLog.info('📱 Mobile detected - routing to full screen navigation');
+        waypointsLog.info('📱 Mobile detected - routing to full screen navigation');
         // On mobile, navigate to full screen instead
         _navigateToFullScreen(request, detectionContext);
         return;
       } else {
-        tempoLog.finest('🖥️ Desktop detected - using panel system');
+        waypointsLog.finest('🖥️ Desktop detected - using panel system');
       }
     } else {
-      tempoLog.warning(
+      waypointsLog.warning(
         '❌ No context available for mobile detection - defaulting to panel system',
       );
     }
@@ -183,7 +183,7 @@ class PanelManager extends StateNotifier<PanelSystemState> {
       }
     }
 
-    tempoLog.fine('Opened panel for ${request.type}: ${request.uuid}');
+    waypointsLog.fine('Opened panel for ${request.type}: ${request.uuid}');
   }
 
   void _handleClosePanel(ClosePanelRequest request) {
@@ -206,16 +206,16 @@ class PanelManager extends StateNotifier<PanelSystemState> {
   }
 
   void _navigateToFullScreen(OpenThingRequest request, BuildContext context) {
-    tempoLog.info(
+    waypointsLog.info(
       '🚀 PanelManager routing to full-screen for ${request.type}: ${request.uuid}',
     );
 
     try {
       // Use AutoRoute to navigate to full-screen entity view
       context.go('/thing/${request.uuid}');
-      tempoLog.info('✅ Full-screen navigation completed successfully');
+      waypointsLog.info('✅ Full-screen navigation completed successfully');
     } catch (e, stack) {
-      tempoLog.severe('❌ Full-screen navigation failed: $e', e, stack);
+      waypointsLog.severe('❌ Full-screen navigation failed: $e', e, stack);
     }
   }
 
@@ -223,7 +223,7 @@ class PanelManager extends StateNotifier<PanelSystemState> {
   void _handleToggleSidebar(ToggleSidebarRequest request) {
     final newState = !state.showSidebar;
     state = state.copyWith(showSidebar: newState);
-    tempoLog.fine('Sidebar toggled: $newState');
+    waypointsLog.fine('Sidebar toggled: $newState');
     _saveSidebarState(newState);
   }
 
@@ -258,7 +258,7 @@ class PanelManager extends StateNotifier<PanelSystemState> {
   void setSidebarVisible(bool visible) {
     if (state.showSidebar != visible) {
       state = state.copyWith(showSidebar: visible);
-      tempoLog.fine('Sidebar visibility set to: $visible');
+      waypointsLog.fine('Sidebar visibility set to: $visible');
       _saveSidebarState(visible);
     }
   }
@@ -276,9 +276,9 @@ class PanelManager extends StateNotifier<PanelSystemState> {
     try {
       final persistedState = await SidebarPersistence.loadSidebarState();
       state = state.copyWith(showSidebar: persistedState);
-      tempoLog.fine('Loaded persisted sidebar state: $persistedState');
+      waypointsLog.fine('Loaded persisted sidebar state: $persistedState');
     } catch (e, stack) {
-      tempoLog.warning('Failed to load persisted sidebar state', e, stack);
+      waypointsLog.warning('Failed to load persisted sidebar state', e, stack);
     }
   }
 
@@ -286,7 +286,7 @@ class PanelManager extends StateNotifier<PanelSystemState> {
   void _saveSidebarState(bool showSidebar) {
     // Save asynchronously without blocking UI
     SidebarPersistence.saveSidebarState(showSidebar).catchError((e, stack) {
-      tempoLog.warning('Failed to save sidebar state', e, stack);
+      waypointsLog.warning('Failed to save sidebar state', e, stack);
     });
   }
 

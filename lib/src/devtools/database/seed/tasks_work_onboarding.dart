@@ -13,7 +13,7 @@ class TeamOnboardingProject extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.finer(
+    waypointsDBSeedLog.finer(
       '  <seeding project="${seedProject.title.toPlainText()}">',
     );
     final project = await s.projectRepo.putAsync(seedProject);
@@ -22,7 +22,7 @@ class TeamOnboardingProject extends DatabaseSeed {
     final timelineTask = await s.taskRepo.putAsync(buildProjectTimelineTask());
 
     // Set project relationships for all tasks
-    tempoDBSeedLog.fine(
+    waypointsDBSeedLog.fine(
       'Setting project relationships for ${project.title.toPlainText()}',
     );
     project.thing.childrenRef.addAll([scopeTask, timelineTask].things);

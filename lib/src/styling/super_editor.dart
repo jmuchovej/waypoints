@@ -5,7 +5,7 @@ import '../editor/inline.dart';
 import '../editor/super_editor.dart';
 import '../infrastructure/logging.dart';
 import '../editor/nodes/task_node.dart' show taskStyles;
-import 'tempo_stylesheet.dart';
+import 'waypoints_stylesheet.dart';
 
 const BlockSelector blockSelectorH1 = BlockSelector("header1");
 const BlockSelector blockSelectorH2 = BlockSelector("header2");
@@ -17,7 +17,7 @@ const BlockSelector blockSelectorQuote = BlockSelector("blockquote");
 const documentHeaderAttribution = NamedAttribution('documentHeader');
 
 Stylesheet buildStylesheet(WidgetRef ref) {
-  final stylesheet = ref.read(tempoStylesheetProvider);
+  final stylesheet = ref.read(stylesheetProvider);
   final textStyles = stylesheet.textStyles;
   final spacing = stylesheet.spacing;
   final colors = stylesheet.colors;
@@ -27,7 +27,7 @@ Stylesheet buildStylesheet(WidgetRef ref) {
     rules: [
       StyleRule(BlockSelector.all, (doc, docNode) {
         // Log all nodes being styled to understand the pipeline
-        tempoStyleLog.finest(
+        waypointsStyleLog.finest(
           '📋 Stylesheet applying to node: ${docNode.runtimeType}, '
           'id: ${docNode.id}, '
           'blockType: ${docNode.getMetadataValue("blockType")}',

@@ -7,8 +7,8 @@ import 'super_editor.dart';
 
 export 'package:super_text_layout/super_text_layout.dart';
 
-/// Sizing behavior for TempoTextField
-enum TempoTextFieldSizeMode {
+/// Sizing behavior for WaypointsTextField
+enum WaypointsTextFieldSizeMode {
   /// Expands to fill available width (default behavior)
   adaptive,
 
@@ -19,47 +19,47 @@ enum TempoTextFieldSizeMode {
   max,
 }
 
-/// Base class for all Tempo text widgets providing common interface
-abstract class TempoTextBase extends StatelessWidget {
-  const TempoTextBase({
+/// Base class for all Waypoints text widgets providing common interface
+abstract class WaypointsTextBase extends StatelessWidget {
+  const WaypointsTextBase({
     super.key,
     required this.text,
     this.textStyleBuilder,
     this.textAlign = TextAlign.left,
     this.textDirection = TextDirection.ltr,
-    this.sizeMode = TempoTextFieldSizeMode.adaptive,
+    this.sizeMode = WaypointsTextFieldSizeMode.adaptive,
   });
 
   final AttributedText text;
   final AttributionStyleBuilder? textStyleBuilder;
   final TextAlign textAlign;
   final TextDirection textDirection;
-  final TempoTextFieldSizeMode sizeMode;
+  final WaypointsTextFieldSizeMode sizeMode;
 }
 
 /// A display-only widget for AttributedText using SuperText
-/// This is much more efficient than TempoTextField for read-only text
+/// This is much more efficient than WaypointsTextField for read-only text
 ///
 /// TODO: Eventually mask Flutter's built-in Text widget to enforce
 /// consistent AttributedText usage throughout the app. This will ensure
 /// all text rendering goes through SuperText for unified rich text support.
-class TempoText extends TempoTextBase {
-  const TempoText({
+class WaypointsText extends WaypointsTextBase {
+  const WaypointsText({
     super.key,
     required super.text,
     super.textStyleBuilder,
     super.textAlign = TextAlign.left,
     super.textDirection = TextDirection.ltr,
-    super.sizeMode = TempoTextFieldSizeMode.adaptive,
+    super.sizeMode = WaypointsTextFieldSizeMode.adaptive,
   });
 
-  const TempoText.fromAttributedText(
+  const WaypointsText.fromAttributedText(
     AttributedText text, {
     super.key,
     AttributionStyleBuilder? textStyleBuilder,
     TextAlign textAlign = TextAlign.left,
     TextDirection textDirection = TextDirection.ltr,
-    TempoTextFieldSizeMode sizeMode = TempoTextFieldSizeMode.adaptive,
+    WaypointsTextFieldSizeMode sizeMode = WaypointsTextFieldSizeMode.adaptive,
   }) : super(
          text: text,
          textStyleBuilder: textStyleBuilder,
@@ -129,11 +129,11 @@ class TempoText extends TempoTextBase {
 
     // Apply sizing wrapper based on sizeMode
     switch (sizeMode) {
-      case TempoTextFieldSizeMode.min:
+      case WaypointsTextFieldSizeMode.min:
         return IntrinsicWidth(child: superText);
-      case TempoTextFieldSizeMode.max:
+      case WaypointsTextFieldSizeMode.max:
         return SizedBox(width: double.infinity, child: superText);
-      case TempoTextFieldSizeMode.adaptive:
+      case WaypointsTextFieldSizeMode.adaptive:
         return superText;
     }
   }
@@ -142,8 +142,8 @@ class TempoText extends TempoTextBase {
 /// TODO: Eventually mask Flutter's built-in TextField widget to enforce
 /// consistent AttributedText usage throughout the app. This will ensure
 /// all text input goes through SuperTextField for unified rich text editing.
-class TempoTextField extends StatefulWidget {
-  const TempoTextField({
+class WaypointsTextField extends StatefulWidget {
+  const WaypointsTextField({
     super.key,
     required this.controller,
     this.hintText,
@@ -155,12 +155,12 @@ class TempoTextField extends StatefulWidget {
     this.maxLines,
     this.padding,
     this.focusNode,
-    this.sizeMode = TempoTextFieldSizeMode.adaptive,
+    this.sizeMode = WaypointsTextFieldSizeMode.adaptive,
     this.textAlign = TextAlign.left,
     this.textDirection = TextDirection.ltr,
   });
 
-  TempoTextField.fromAttributedText(
+  WaypointsTextField.fromAttributedText(
     AttributedText text, {
     super.key,
     this.hintText,
@@ -173,7 +173,7 @@ class TempoTextField extends StatefulWidget {
     this.padding,
     this.focusNode,
     AttributedTextEditingController? controller,
-    this.sizeMode = TempoTextFieldSizeMode.adaptive,
+    this.sizeMode = WaypointsTextFieldSizeMode.adaptive,
     this.textAlign = TextAlign.left,
     this.textDirection = TextDirection.ltr,
   }) : controller = controller ?? AttributedTextEditingController(text: text);
@@ -188,11 +188,11 @@ class TempoTextField extends StatefulWidget {
   final int? maxLines;
   final EdgeInsets? padding;
   final FocusNode? focusNode;
-  final TempoTextFieldSizeMode sizeMode;
+  final WaypointsTextFieldSizeMode sizeMode;
   final TextAlign textAlign;
   final TextDirection textDirection;
 
-  // Computed properties that match TempoTextBase interface
+  // Computed properties that match WaypointsTextBase interface
   AttributedText get text => controller.text;
 
   /// Access to the controller - useful for external management
@@ -202,10 +202,10 @@ class TempoTextField extends StatefulWidget {
   FocusNode? get textFocusNode => focusNode;
 
   @override
-  State<TempoTextField> createState() => _TempoTextFieldState();
+  State<WaypointsTextField> createState() => _WaypointsTextFieldState();
 }
 
-class _TempoTextFieldState extends State<TempoTextField> {
+class _WaypointsTextFieldState extends State<WaypointsTextField> {
   late FocusNode _focusNode;
   String? _previousPlainText;
 
@@ -304,11 +304,11 @@ class _TempoTextFieldState extends State<TempoTextField> {
 
     // Apply sizing wrapper based on sizeMode
     switch (widget.sizeMode) {
-      case TempoTextFieldSizeMode.min:
+      case WaypointsTextFieldSizeMode.min:
         return IntrinsicWidth(child: textField);
-      case TempoTextFieldSizeMode.max:
+      case WaypointsTextFieldSizeMode.max:
         return SizedBox(width: double.infinity, child: textField);
-      case TempoTextFieldSizeMode.adaptive:
+      case WaypointsTextFieldSizeMode.adaptive:
         return textField;
     }
   }

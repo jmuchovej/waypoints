@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../editor/editor.dart';
 import '../../../editor/styling/text_style_builders.dart';
-import '../../../styling/tempo_stylesheet.dart';
+import '../../../styling/waypoints_stylesheet.dart';
 
 mixin PanelHeaderMixin on ConsumerStatefulWidget {
   AttributedTextEditingController get controller;
@@ -58,19 +58,19 @@ class PanelHeader extends ConsumerStatefulWidget with PanelHeaderMixin {
 class _PanelHeaderState extends ConsumerState<PanelHeader> {
   @override
   Widget build(BuildContext context) {
-    final stylesheet = TempoStylesheet.of(ref);
+    final stylesheet = WaypointsStylesheet.of(ref);
     final textStyles = stylesheet.textStyles;
     final spacing = stylesheet.spacing;
 
     final styleBuilder = headerTextStyleBuilder(context);
     final headerText =
         widget.readonly
-            ? TempoText.fromAttributedText(
+            ? WaypointsText.fromAttributedText(
               widget.controller.text,
               textStyleBuilder: styleBuilder,
-              sizeMode: TempoTextFieldSizeMode.max,
+              sizeMode: WaypointsTextFieldSizeMode.max,
             )
-            : TempoTextField.fromAttributedText(
+            : WaypointsTextField.fromAttributedText(
               widget.hintText!,
               textStyleBuilder: styleBuilder,
               controller: widget.titleController,

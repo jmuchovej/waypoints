@@ -30,6 +30,7 @@ abstract class ThingRepository<T extends BaseThing> {
 
   ObjectBox get obx => _ref.read(objectBoxProvider);
   Store get store => obx.store;
+
   /// Get the ObjectBox box for the specific entity type
   Box<T> get box => Box<T>(store);
 
@@ -117,7 +118,7 @@ abstract class ThingRepository<T extends BaseThing> {
     final thing = thingBox.get(thingID)!;
     saved.thingRef.target = thing;
 
-    tempoDBLog.finest(
+    waypointsDBLog.finest(
       "... `thing` =?= ${(saved as ThingBehavior).thing == thing}",
     );
 
@@ -142,7 +143,7 @@ abstract class ThingRepository<T extends BaseThing> {
       (saved as ThingBehavior).thing,
     );
     saved.thingRef.target = thing;
-    tempoDBLog.finest(
+    waypointsDBLog.finest(
       "... `thing` =?= ${(saved as ThingBehavior).thing == thing}",
     );
     return box.putAndGetAsync(saved);
@@ -234,7 +235,7 @@ abstract class ThingRepository<T extends BaseThing> {
     final factory = registry.getFactory(type);
 
     if (factory == null) {
-      tempoLog.warning('No node factory registered for entity type: $type');
+      waypointsLog.warning('No node factory registered for entity type: $type');
       return null;
     }
 
@@ -244,7 +245,7 @@ abstract class ThingRepository<T extends BaseThing> {
       return factory.toNodeFromThing(thingEntity);
     }
 
-    tempoLog.warning('Entity does not implement ThingBehavior: $type');
+    waypointsLog.warning('Entity does not implement ThingBehavior: $type');
     return null;
   }
 

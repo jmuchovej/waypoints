@@ -15,7 +15,7 @@ class PersonalArea extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.fine('<seeding area="${seedArea.title.toPlainText()}">');
+    waypointsDBSeedLog.fine('<seeding area="${seedArea.title.toPlainText()}">');
 
     // Use repository which handles registration automatically
     final area = await s.projectRepo.putAsync(seedArea);

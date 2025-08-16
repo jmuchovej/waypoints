@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Riverpod provider for guaranteed non-nullable text styles
 /// This ensures all fontSize, height, and other critical properties are never null
-final tempoTextStylesProvider = Provider<TempoTextStyleSet>((ref) {
+final waypointsTextStylesProvider = Provider<WaypointsTextStyleSet>((ref) {
   throw UnimplementedError(
-    'tempoTextStylesProvider must be overridden in widget tree',
+    'waypointsTextStylesProvider must be overridden in widget tree',
   );
 });
 
@@ -13,28 +13,28 @@ final tempoTextStylesProvider = Provider<TempoTextStyleSet>((ref) {
 ///
 /// Provides non-nullable text styles with consistent values across the app.
 /// SuperEditor stylesheet and regular widgets both use these styles for consistency.
-class TempoTextStyles {
-  TempoTextStyles._();
+class WaypointsTextStyles {
+  WaypointsTextStyles._();
 
   /// Get non-nullable text styles from Riverpod provider
-  /// This is the preferred method - use TempoTextStyles.of(ref) with WidgetRef
-  static TempoTextStyleSet of(WidgetRef ref) {
-    return ref.read(tempoTextStylesProvider);
+  /// This is the preferred method - use WaypointsTextStyles.of(ref) with WidgetRef
+  static WaypointsTextStyleSet of(WidgetRef ref) {
+    return ref.read(waypointsTextStylesProvider);
   }
 
   /// Get non-nullable text styles from BuildContext (legacy support)
   /// Prefer using of(ref) with WidgetRef when possible
-  static TempoTextStyleSet fromContext(BuildContext context) {
+  static WaypointsTextStyleSet fromContext(BuildContext context) {
     return _createFromContext(context);
   }
 
-  /// Helper to create TempoTextStyleSet from BuildContext
+  /// Helper to create WaypointsTextStyleSet from BuildContext
   /// This handles the actual theme merging and null-safety guarantees
-  static TempoTextStyleSet _createFromContext(BuildContext context) {
+  static WaypointsTextStyleSet _createFromContext(BuildContext context) {
     final theme = Theme.of(context).textTheme;
 
     // Merge theme styles with our fallbacks, ensuring non-null critical properties
-    return TempoTextStyleSet(
+    return WaypointsTextStyleSet(
       // Display styles (largest text)
       displayLarge: _mergeWithFallback(
         theme.displayLarge,
@@ -163,8 +163,8 @@ class TempoTextStyles {
 }
 
 /// Non-nullable text style set for guaranteed access
-class TempoTextStyleSet {
-  const TempoTextStyleSet({
+class WaypointsTextStyleSet {
+  const WaypointsTextStyleSet({
     required this.displayLarge,
     required this.displayMedium,
     required this.displaySmall,
@@ -209,13 +209,13 @@ class TempoTextStyleSet {
 
   /// Get consistent padding based on text style
   /// Uses the same calculation pattern as SuperEditor
-  /// No null checks needed - TempoTextStyles guarantees non-null values
+  /// No null checks needed - WaypointsTextStyles guarantees non-null values
   EdgeInsets paddingFor(TextStyle style) {
     final height =
         style.height ??
         1.0; // height can legitimately be null (means default line height)
     final fontSize =
-        style.fontSize!; // fontSize is guaranteed non-null by TempoTextStyles
+        style.fontSize!; // fontSize is guaranteed non-null by WaypointsTextStyles
     final lineHeight = fontSize * height;
 
     return EdgeInsets.only(top: lineHeight / 2, bottom: lineHeight / 4);

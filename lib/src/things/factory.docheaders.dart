@@ -69,7 +69,7 @@ class PanelHeaderFactoryRegistry {
     ThingPanelHeaderFactory<T, R> factory,
   ) {
     _factories[factory.type] = factory;
-    tempoLog.info('Registered node factory for ${factory.type}');
+    waypointsLog.info('Registered node factory for ${factory.type}');
   }
 }
 

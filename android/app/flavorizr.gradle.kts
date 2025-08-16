@@ -8,18 +8,18 @@ android.apply {
     productFlavors {
         create("development") {
             dimension = "environment"
-            applicationId = "com.tempo.app.dev"
-            resValue(type = "string", name = "app_name", value = "Tempo (Dev)")
+            applicationId = "com.waypoints.app.dev"
+            resValue(type = "string", name = "app_name", value = "Waypoints (Dev)")
         }
         create("staging") {
             dimension = "environment"
-            applicationId = "com.tempo.app.staging"
-            resValue(type = "string", name = "app_name", value = "Tempo (Staging)")
+            applicationId = "com.waypoints.app.staging"
+            resValue(type = "string", name = "app_name", value = "Waypoints (Staging)")
         }
         create("production") {
             dimension = "environment"
-            applicationId = "com.tempo.app.prod"
-            resValue(type = "string", name = "app_name", value = "Tempo")
+            applicationId = "com.waypoints.app.prod"
+            resValue(type = "string", name = "app_name", value = "Waypoints")
         }
     }
 }

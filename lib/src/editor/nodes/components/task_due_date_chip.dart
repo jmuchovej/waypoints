@@ -22,7 +22,7 @@ class TaskDueDateChip extends ConsumerWidget {
         dueDate.month == now.month &&
         dueDate.day == now.day;
 
-    final textStyles = TempoTextStyles.of(ref);
+    final textStyles = WaypointsTextStyles.of(ref);
     final fontSize = textStyles.chipText.fontSize!;
 
     // Determine colors based on due date status

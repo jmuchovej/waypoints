@@ -6,7 +6,7 @@ import 'package:super_editor/super_editor.dart' show DefaultCaretOverlayBuilder;
 
 import '../../flavors.dart';
 import '../styling/super_editor.dart';
-import '../styling/tempo_stylesheet.dart';
+import '../styling/waypoints_stylesheet.dart';
 import 'listeners/autosave_listener.dart';
 import 'nodes/project_builder.dart';
 import 'nodes/task_builder.dart';
@@ -53,7 +53,7 @@ SuperEditor createSuperEditor(
   editor.context.put(HoverManager.key, hoverManager);
 
   // Detect mobile to disable autofocus and prevent keyboard issues
-  final stylesheet = ref.read(tempoStylesheetProvider);
+  final stylesheet = ref.read(waypointsStylesheetProvider);
   final isMobile = stylesheet.isMobile;
 
   final flavor = ref.read(flavorProvider);

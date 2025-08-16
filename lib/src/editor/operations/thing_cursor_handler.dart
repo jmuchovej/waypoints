@@ -56,7 +56,7 @@ class ThingCursorHandler extends ContentTapDelegate {
     final document = editContext.document;
     final node = document.getNodeById(nodeId);
 
-    tempoThingTapDelegateLog.finest(
+    waypointsThingTapDelegateLog.finest(
       '${node.runtimeType} is a `ThingNode`? ${node is ThingNode}!',
     );
     if (node is! ThingNode) {
@@ -69,7 +69,7 @@ class ThingCursorHandler extends ContentTapDelegate {
 
     if (nodePosition is ThingNodePosition) {
       // We have explicit zone information, use it
-      tempoThingTapDelegateLog.finest(
+      waypointsThingTapDelegateLog.finest(
         'ThingNodePosition with zone: ${nodePosition.zone}',
       );
       return nodePosition.zone.cursor;
@@ -77,14 +77,14 @@ class ThingCursorHandler extends ContentTapDelegate {
 
     // Fallback: regular TextNodePosition means it's in text area
     if (nodePosition is TextNodePosition) {
-      tempoThingTapDelegateLog.finest(
+      waypointsThingTapDelegateLog.finest(
         'Regular TextNodePosition, returning text cursor',
       );
       return SystemMouseCursors.text;
     }
 
     // Shouldn't reach here, but default to click cursor
-    tempoThingTapDelegateLog.warning(
+    waypointsThingTapDelegateLog.warning(
       'Unexpected node position type: ${nodePosition.runtimeType}',
     );
     return SystemMouseCursors.click;
@@ -113,7 +113,7 @@ class ThingCursorHandler extends ContentTapDelegate {
     final nodePosition = tapPosition.nodePosition;
     if (nodePosition is ThingNodePosition && !nodePosition.isTextEditable) {
       // This is a non-text area, handle navigation
-      tempoThingTapDelegateLog.info(
+      waypointsThingTapDelegateLog.info(
         '🚀 Tap in ${nodePosition.zone} zone, navigating to thing: ${node.thing.uuid}',
       );
 
@@ -125,7 +125,7 @@ class ThingCursorHandler extends ContentTapDelegate {
     }
 
     // This is a text area or regular TextNodePosition, let SuperEditor handle it
-    tempoThingTapDelegateLog.info(
+    waypointsThingTapDelegateLog.info(
       '🎯 Tap in text area, letting SuperEditor handle',
     );
     return TapHandlingInstruction.continueHandling;
@@ -136,7 +136,7 @@ class ThingCursorHandler extends ContentTapDelegate {
     // Traditional navigation - always navigate to standalone entity page
     // This creates a proper navigation stack where back button works naturally
     context.push('/thing/$uuid');
-    tempoThingTapDelegateLog.info(
+    waypointsThingTapDelegateLog.info(
       'Traditional navigation push to: /thing/$uuid',
     );
   }

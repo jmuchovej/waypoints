@@ -117,24 +117,24 @@ mixin ThingBehavior implements BaseThing {
 
       try {
         thingEntity = service.register(uuid, type, id);
-        tempoDBLog.finest('... registering new `${type}` (uuid=${uuid})');
+        waypointsDBLog.finest('... registering new `${type}` (uuid=${uuid})');
       } catch (e) {
-        tempoDBLog.finest('... already registered! (uuid=${uuid})');
+        waypointsDBLog.finest('... already registered! (uuid=${uuid})');
         thingEntity = service.updateID(uuid, id);
-        tempoDBLog.finest('...... ${e}');
+        waypointsDBLog.finest('...... ${e}');
       }
 
       thingEntity.plainText = getSearchableText();
       thingRef.target = thingEntity; // Set the ToOne relationship
       thingBox.put(thingEntity);
-      tempoDBLog.finest('... `thingRef.target` =?= ${thingRef.target}');
+      waypointsDBLog.finest('... `thingRef.target` =?= ${thingRef.target}');
       return thingEntity;
     });
   }
 
   /// Called before the entity is deleted from the database
   void unregister(ThingRegistry service) {
-    tempoDBLog.finest('... unregistering! (type=${type}, uuid=${uuid})');
+    waypointsDBLog.finest('... unregistering! (type=${type}, uuid=${uuid})');
     service.unregister(uuid);
     thingRef.target = null; // Clear the ToOne relationship
   }
@@ -142,7 +142,7 @@ mixin ThingBehavior implements BaseThing {
   /// Generates a unique UUID for this entity type
   String generateUniqueUUID(ThingRegistry service) {
     final uniqUUID = service.generateUniqueUUID();
-    tempoDBLog.finest('... generated uniq UUID (uuid=${uniqUUID})');
+    waypointsDBLog.finest('... generated uniq UUID (uuid=${uniqUUID})');
     return uniqUUID;
   }
 }
@@ -155,12 +155,12 @@ abstract class ThingNode implements DocumentNode {
   ThingEntity get thing;
 }
 
-extension BaseThingListExtensions on List<BaseThing> {
-}
+extension BaseThingListExtensions on List<BaseThing> {}
 
 extension BaseThingIterableExtensions on Iterable<BaseThing> {
   Iterable<ThingEntity> get things => map((t) => (t as ThingBehavior).thing);
 
   Iterable<ThingEntity?> get parents => map((t) => (t as ThingBehavior).parent);
-  Iterable<ThingEntity> get children => map((t) => (t as ThingBehavior).children).flattened;
+  Iterable<ThingEntity> get children =>
+      map((t) => (t as ThingBehavior).children).flattened;
 }

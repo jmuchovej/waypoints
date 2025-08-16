@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../editor/editor.dart';
 import '../../infrastructure/logging.dart';
 import '../../objectbox/objectbox.g.dart';
-import '../../styling/tempo_stylesheet.dart';
+import '../../styling/waypoints_stylesheet.dart';
 import '../../things/factory.node.dart';
 import '../../things/foundation.dart';
 import '../../things/task/task.entity.dart';
@@ -89,9 +89,9 @@ class _PanelWrapperState<BT extends BaseThing>
 
   @override
   Widget build(BuildContext context) {
-    final stylesheet = TempoStylesheet.of(ref);
+    final stylesheet = WaypointsStylesheet.of(ref);
 
-    tempoPanelLog.finer("Currently loading ${_document.length} nodes");
+    waypointsPanelLog.finer("Currently loading ${_document.length} nodes");
 
     // Create SuperEditor as a Sliver using the centralized factory
     Widget superEditorSliver;
@@ -106,7 +106,7 @@ class _PanelWrapperState<BT extends BaseThing>
         autofocus: false,
       );
     } catch (e) {
-      tempoPanelLog.severe('Error creating SuperEditor: $e');
+      waypointsPanelLog.severe('Error creating SuperEditor: $e');
       superEditorSliver = SliverToBoxAdapter(
         child: Center(
           child: Column(
@@ -144,7 +144,7 @@ class _PanelWrapperState<BT extends BaseThing>
                 ),
 
                 // 📋 REUSED: Page header using the provided PanelHeader widget
-                // 🎯 FIXED: Uses TempoStylesheet spacing to match SuperEditor's content area
+                // 🎯 FIXED: Uses WaypointsStylesheet spacing to match SuperEditor's content area
                 SliverToBoxAdapter(
                   child: Center(
                     child: ConstrainedBox(
@@ -207,7 +207,7 @@ class _PanelWrapperState<BT extends BaseThing>
     try {
       _loadContents();
     } catch (e) {
-      tempoPanelLog.severe('Error initializing panel: $e');
+      waypointsPanelLog.severe('Error initializing panel: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -220,7 +220,7 @@ class _PanelWrapperState<BT extends BaseThing>
     final nodeFactory = ref.read(nodeFactoryRegistryProvider);
     _subscription = widget.stream.listen((BT thing) {
       final node = nodeFactory.toNodeFromEntity(thing);
-      tempoPanelLog.finest("Adding ${node.id}");
+      waypointsPanelLog.finest("Adding ${node.id}");
       _document.add(node);
 
       if (!_initialLoad) {
@@ -244,7 +244,7 @@ class _PanelWrapperState<BT extends BaseThing>
     }
 
     final scrollPixels = notification.metrics.pixels;
-    tempoPanelLog.finest('ScrollNotification: ${scrollPixels}px');
+    waypointsPanelLog.finest('ScrollNotification: ${scrollPixels}px');
 
     // 🎯 NEW: Calculate header height dynamically for transition threshold
     double headerHeight = 100.0; // Default fallback
@@ -253,7 +253,7 @@ class _PanelWrapperState<BT extends BaseThing>
         _headerKey.currentContext?.findRenderObject() as RenderBox?;
     if (headerRenderBox != null) {
       headerHeight = headerRenderBox.size.height;
-      tempoPanelLog.finest('PanelHeader height: ${headerHeight}px');
+      waypointsPanelLog.finest('PanelHeader height: ${headerHeight}px');
     }
 
     // 🎯 NEW: Pass both scroll position and header height to app bar

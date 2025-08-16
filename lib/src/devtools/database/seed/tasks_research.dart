@@ -15,7 +15,7 @@ class ResearchArea extends DatabaseSeed {
 
   @override
   Future<void> seed(SeedDataService s) async {
-    tempoDBSeedLog.fine('<seeding area="${seedArea.title.toPlainText()}">');
+    waypointsDBSeedLog.fine('<seeding area="${seedArea.title.toPlainText()}">');
 
     final area = await s.projectRepo.putAsync(seedArea);
 

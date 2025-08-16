@@ -1,8 +1,8 @@
-name: tempo
+name: waypoints
 description: "Insights into how you spend your energy and time."
 publish_to: "none"
-homepage: "https://tempo.do/"
-documentation: "https://tempo.do/docs/"
+homepage: "https://waypoints.so/"
+documentation: "https://waypoints.so/docs/"
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43

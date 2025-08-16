@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../infrastructure/logging.dart';
-import '../styling/tempo_stylesheet.dart';
+import '../styling/waypoints_stylesheet.dart';
 import 'panel_manager.dart';
 import 'panel/animated_sidebar.dart';
 import 'panel/mobile_bottom_nav.dart';
@@ -26,10 +26,10 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final stylesheet = TempoStylesheet.of(ref);
+    final stylesheet = WaypointsStylesheet.of(ref);
     final isMobile = stylesheet.isMobile;
 
-    tempoLog.fine(
+    waypointsLog.fine(
       'AppShell building with breakpoint: ${stylesheet.breakpoint}, '
       'screen: ${stylesheet.screenWidth}x${stylesheet.screenHeight}, isMobile: $isMobile',
     );

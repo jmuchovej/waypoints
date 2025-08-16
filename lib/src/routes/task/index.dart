@@ -57,7 +57,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> with RouteAware {
 
     // Start paused if not on /tasks
     final router = GoRouter.of(context);
-    final isActive = router.routerDelegate.currentConfiguration.fullPath == '/tasks';
+    final isActive =
+        router.routerDelegate.currentConfiguration.fullPath == '/tasks';
     _isPaused = !isActive;
 
     if (!_isPaused) {
@@ -81,7 +82,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> with RouteAware {
   void _pauseStream() {
     _isPaused = true;
     _sourceSubscription?.pause();
-    tempoTaskRouteLog.fine('Paused task stream');
+    waypointsTaskRouteLog.fine('Paused task stream');
   }
 
   void _resumeStream() {
@@ -92,7 +93,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> with RouteAware {
       // Restart if needed
       _startSourceSubscription();
     }
-    tempoTaskRouteLog.fine('Resumed task stream');
+    waypointsTaskRouteLog.fine('Resumed task stream');
   }
 
   @override
@@ -133,18 +134,20 @@ class _TasksScreenState extends ConsumerState<TasksScreen> with RouteAware {
 
     final after = ProcessInfo.currentRss;
     final perTask = (after - before) / tasks.length;
-    tempoTaskRouteLog.finer("Average memory per task: ${perTask} bytes");
+    waypointsTaskRouteLog.finer("Average memory per task: ${perTask} bytes");
 
     // Stream top-level active tasks and flatten to individual entities
     return repo
         .streamTopLevel()
         .map((tasks) {
-          tempoTaskRouteLog.info('received ${tasks.length} top-level tasks');
+          waypointsTaskRouteLog.info(
+            'received ${tasks.length} top-level tasks',
+          );
           return tasks;
         })
         .asyncExpand((tasks) async* {
           for (final task in tasks) {
-            tempoTaskRouteLog.info(
+            waypointsTaskRouteLog.info(
               'yielding task: ${task.uuid} - ${task.title.toPlainText()}',
             );
             yield task;
