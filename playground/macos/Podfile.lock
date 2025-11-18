@@ -1,0 +1,35 @@
+PODS:
+  - cartograph (0.0.1):
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+  - ObjectBox (5.0.0)
+  - objectbox_flutter_libs (0.0.1):
+    - FlutterMacOS
+    - ObjectBox (= 5.0.0)
+
+DEPENDENCIES:
+  - cartograph (from `Flutter/ephemeral/.symlinks/plugins/cartograph/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - objectbox_flutter_libs (from `Flutter/ephemeral/.symlinks/plugins/objectbox_flutter_libs/macos`)
+
+SPEC REPOS:
+  trunk:
+    - ObjectBox
+
+EXTERNAL SOURCES:
+  cartograph:
+    :path: Flutter/ephemeral/.symlinks/plugins/cartograph/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+  objectbox_flutter_libs:
+    :path: Flutter/ephemeral/.symlinks/plugins/objectbox_flutter_libs/macos
+
+SPEC CHECKSUMS:
+  cartograph: 517e6baa03d7afab4b7255a1cc76826c81f50ba7
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  ObjectBox: a60820ec1c903702350585d8cc99c1268c99e688
+  objectbox_flutter_libs: 013bbc27a57c5120e1408c0b33386c78cd0b5847
+
+PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
+
+COCOAPODS: 1.16.2
