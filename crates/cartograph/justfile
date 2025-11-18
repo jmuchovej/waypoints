@@ -1,0 +1,4 @@
+# All tasks related to FFI/codegen
+[private]
+default:
+    @just --list

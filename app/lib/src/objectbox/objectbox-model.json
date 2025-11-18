@@ -1,0 +1,664 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:7807428358857287883",
+      "lastPropertyId": "12:5217443799006882591",
+      "name": "ActivityEntity",
+      "properties": [
+        {
+          "id": "1:453935476289601409",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6085825355630430897",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:537383243474057956",
+          "name": "startDate",
+          "type": 10
+        },
+        {
+          "id": "4:4400176945640656036",
+          "name": "endDate",
+          "type": 10
+        },
+        {
+          "id": "5:5425275018442490189",
+          "name": "tags",
+          "type": 30
+        },
+        {
+          "id": "6:5338378386901209804",
+          "name": "taskId",
+          "indexId": "1:1379143951155950510",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "TaskEntity"
+        },
+        {
+          "id": "7:6742287656690380393",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "8:5157265638897098846",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "9:7507447636399388318",
+          "name": "thingRefId",
+          "indexId": "2:7537076249646916618",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "ThingEntity"
+        },
+        {
+          "id": "10:4441166011866994323",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "11:4055688653585853432",
+          "name": "dbKind",
+          "type": 6
+        },
+        {
+          "id": "12:5217443799006882591",
+          "name": "dbStatus",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:4348180423947760682",
+      "lastPropertyId": "21:5384111080510395640",
+      "name": "ActivitySnapshotEntity",
+      "properties": [
+        {
+          "id": "1:9019587944695166566",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:9009164308156424960",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:7144549258032725615",
+          "name": "timestamp",
+          "type": 12
+        },
+        {
+          "id": "4:6201323101816085709",
+          "name": "latitude",
+          "type": 8
+        },
+        {
+          "id": "5:4995467975235558260",
+          "name": "longitude",
+          "type": 8
+        },
+        {
+          "id": "6:403325177257822514",
+          "name": "accuracyH",
+          "type": 8
+        },
+        {
+          "id": "7:5823489831778641624",
+          "name": "accuracyV",
+          "type": 8
+        },
+        {
+          "id": "8:369687648138884202",
+          "name": "locationSource",
+          "type": 9
+        },
+        {
+          "id": "9:5102726047145375030",
+          "name": "satelliteCount",
+          "type": 6
+        },
+        {
+          "id": "10:5859306008700771201",
+          "name": "speed",
+          "type": 8
+        },
+        {
+          "id": "11:6946891624084681986",
+          "name": "heading",
+          "type": 8
+        },
+        {
+          "id": "12:3162416452862119635",
+          "name": "deviceID",
+          "type": 9
+        },
+        {
+          "id": "13:5548257704817111492",
+          "name": "platform",
+          "type": 9
+        },
+        {
+          "id": "14:380697555580263012",
+          "name": "nearbyNetworks",
+          "type": 30
+        },
+        {
+          "id": "15:3755056903855657591",
+          "name": "nearbyDevices",
+          "type": 30
+        },
+        {
+          "id": "16:3286712937746492926",
+          "name": "activeApplications",
+          "type": 30
+        },
+        {
+          "id": "17:6046373648637248588",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "18:4630694776548725241",
+          "name": "createDate",
+          "type": 12
+        },
+        {
+          "id": "19:5074080106117117714",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "20:2926104420175451837",
+          "name": "modifyDate",
+          "type": 12
+        },
+        {
+          "id": "21:5384111080510395640",
+          "name": "thingRefId",
+          "indexId": "3:9071146119202285293",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "ThingEntity"
+        }
+      ],
+      "relations": [
+        {
+          "id": "1:1471543038794964268",
+          "name": "activity",
+          "targetId": "1:7807428358857287883"
+        }
+      ]
+    },
+    {
+      "id": "3:6508924324945291925",
+      "lastPropertyId": "10:8382723856414866951",
+      "name": "BlockEntity",
+      "properties": [
+        {
+          "id": "1:8186514208030495768",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3308277654392226668",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:1332583885392992239",
+          "name": "nodeType",
+          "type": 9
+        },
+        {
+          "id": "4:5948454967520608092",
+          "name": "contentJson",
+          "type": 9
+        },
+        {
+          "id": "5:6581176162624465899",
+          "name": "metadataJson",
+          "type": 9
+        },
+        {
+          "id": "6:2727258658115042617",
+          "name": "createDate",
+          "type": 12
+        },
+        {
+          "id": "7:8931289062421538780",
+          "name": "modifyDate",
+          "type": 12
+        },
+        {
+          "id": "8:6209557631881689797",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "9:568330710068774362",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "10:8382723856414866951",
+          "name": "thingRefId",
+          "indexId": "4:6899741881084797526",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "ThingEntity"
+        }
+      ],
+      "relations": [
+        {
+          "id": "2:3233954485279714584",
+          "name": "history",
+          "targetId": "4:4086946760838222129"
+        }
+      ]
+    },
+    {
+      "id": "4:4086946760838222129",
+      "lastPropertyId": "6:6286300754281873001",
+      "name": "BlockSnapshotEntity",
+      "properties": [
+        {
+          "id": "1:3049597700154643721",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2977182946884410045",
+          "name": "blockId",
+          "indexId": "5:5122600473265898885",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "BlockEntity"
+        },
+        {
+          "id": "3:8767574342157602167",
+          "name": "timestamp",
+          "type": 12
+        },
+        {
+          "id": "4:4516407325386691535",
+          "name": "type",
+          "type": 9
+        },
+        {
+          "id": "5:9104911317208023726",
+          "name": "contentJson",
+          "type": 9
+        },
+        {
+          "id": "6:6286300754281873001",
+          "name": "metadataJson",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "5:4710333732107807820",
+      "lastPropertyId": "11:925703463491890894",
+      "name": "ProjectEntity",
+      "properties": [
+        {
+          "id": "1:7719840963203101254",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:1654915501395978893",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:8032557313791643927",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "4:1921760001656149828",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "5:8704510674377817768",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "6:2456884707465462427",
+          "name": "createDate",
+          "type": 12
+        },
+        {
+          "id": "7:1356471184831897271",
+          "name": "modifyDate",
+          "type": 12
+        },
+        {
+          "id": "8:397417647990152942",
+          "name": "startDate",
+          "type": 12
+        },
+        {
+          "id": "9:6663183004969749729",
+          "name": "endDate",
+          "type": 12
+        },
+        {
+          "id": "10:467433929812061530",
+          "name": "thingRefId",
+          "indexId": "6:2994956678146420030",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "ThingEntity"
+        },
+        {
+          "id": "11:925703463491890894",
+          "name": "statusOBX",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "6:3871660598643240928",
+      "lastPropertyId": "7:5459064491511526460",
+      "name": "ThingEntity",
+      "properties": [
+        {
+          "id": "1:3551857059030644220",
+          "name": "registryID",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4638164401403486107",
+          "name": "uuid",
+          "indexId": "7:5690829327296348569",
+          "type": 9,
+          "flags": 2080
+        },
+        {
+          "id": "3:6799916017978707345",
+          "name": "type",
+          "indexId": "8:503237516050225744",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "4:3796275771442219234",
+          "name": "id",
+          "type": 6
+        },
+        {
+          "id": "5:687695648373753667",
+          "name": "createDate",
+          "type": 12
+        },
+        {
+          "id": "6:4859051310264147791",
+          "name": "plainText",
+          "indexId": "9:3812389458669224448",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "7:5459064491511526460",
+          "name": "parentRefId",
+          "indexId": "10:7207618305009430338",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "ThingEntity"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "7:6250114256374030935",
+      "lastPropertyId": "20:5023103572188852847",
+      "name": "TaskEntity",
+      "properties": [
+        {
+          "id": "1:5774322164816364745",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3724503686924109258",
+          "name": "uuid",
+          "type": 9
+        },
+        {
+          "id": "3:3409317719670655555",
+          "name": "createDate",
+          "type": 12
+        },
+        {
+          "id": "4:3454075370832215338",
+          "name": "modifyDate",
+          "type": 12
+        },
+        {
+          "id": "5:8113556373994463581",
+          "name": "startDate",
+          "type": 12
+        },
+        {
+          "id": "6:5610676904852341309",
+          "name": "endDate",
+          "type": 12
+        },
+        {
+          "id": "7:4038173831300734052",
+          "name": "scheduledDate",
+          "type": 12
+        },
+        {
+          "id": "8:5637232707734037518",
+          "name": "dueDate",
+          "type": 12
+        },
+        {
+          "id": "9:8197091772815231536",
+          "name": "waitDate",
+          "type": 12
+        },
+        {
+          "id": "10:172153640600326072",
+          "name": "untilDate",
+          "type": 12
+        },
+        {
+          "id": "11:3864941675758150972",
+          "name": "recurrence",
+          "type": 9
+        },
+        {
+          "id": "12:230825725344827029",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "13:4370493675438616443",
+          "name": "archived",
+          "type": 1
+        },
+        {
+          "id": "14:158709853852535117",
+          "name": "projectId",
+          "indexId": "11:6564849629998658801",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "ProjectEntity"
+        },
+        {
+          "id": "15:2142970269555080048",
+          "name": "thingRefId",
+          "indexId": "12:6279485210336715551",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "ThingEntity"
+        },
+        {
+          "id": "16:5828059923590225539",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "17:4733362333667473672",
+          "name": "energyOBX",
+          "type": 6
+        },
+        {
+          "id": "18:8788782782738420791",
+          "name": "priorityOBX",
+          "type": 6
+        },
+        {
+          "id": "19:8621035965758937335",
+          "name": "statusOBX",
+          "type": 6
+        },
+        {
+          "id": "20:5023103572188852847",
+          "name": "timeOBX",
+          "type": 6
+        }
+      ],
+      "relations": [
+        {
+          "id": "3:4685230349534464168",
+          "name": "history",
+          "targetId": "8:1164906598664247180"
+        }
+      ]
+    },
+    {
+      "id": "8:1164906598664247180",
+      "lastPropertyId": "17:5729242039740166086",
+      "name": "TaskSnapshotEntity",
+      "properties": [
+        {
+          "id": "1:7019839279713940705",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6661279897295253964",
+          "name": "taskId",
+          "indexId": "13:1598269752727965637",
+          "type": 11,
+          "flags": 520,
+          "relationTarget": "TaskEntity"
+        },
+        {
+          "id": "3:1816112843016134890",
+          "name": "timestamp",
+          "type": 12
+        },
+        {
+          "id": "4:6686431989502406071",
+          "name": "titleJson",
+          "type": 9
+        },
+        {
+          "id": "5:5789878554869426403",
+          "name": "startDate",
+          "type": 12
+        },
+        {
+          "id": "6:6682370559072023105",
+          "name": "endDate",
+          "type": 12
+        },
+        {
+          "id": "7:9029543899785164952",
+          "name": "scheduledDate",
+          "type": 12
+        },
+        {
+          "id": "8:6531468638991284298",
+          "name": "dueDate",
+          "type": 12
+        },
+        {
+          "id": "9:5029847012559843066",
+          "name": "waitDate",
+          "type": 12
+        },
+        {
+          "id": "10:7391424044577712432",
+          "name": "untilDate",
+          "type": 12
+        },
+        {
+          "id": "11:1769298287474952080",
+          "name": "recurrence",
+          "type": 9
+        },
+        {
+          "id": "12:5354073645131022699",
+          "name": "status",
+          "type": 6
+        },
+        {
+          "id": "13:932889616064330185",
+          "name": "time",
+          "type": 6
+        },
+        {
+          "id": "14:1351625158458315361",
+          "name": "energy",
+          "type": 6
+        },
+        {
+          "id": "15:5554214029745910780",
+          "name": "priority",
+          "type": 6
+        },
+        {
+          "id": "16:7505562933709919642",
+          "name": "deleted",
+          "type": 1
+        },
+        {
+          "id": "17:5729242039740166086",
+          "name": "archived",
+          "type": 1
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "8:1164906598664247180",
+  "lastIndexId": "13:1598269752727965637",
+  "lastRelationId": "3:4685230349534464168",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

@@ -1,0 +1,50 @@
+# All tasks related to the actual app!
+[private]
+default:
+    @just --list
+
+[doc("Refresh flutter dependencies")]
+[group("dependencies")]
+refresh-deps:
+    flutter pub get
+
+[doc("Add a dependency -- currently this only supports one argument.")]
+[group("dependencies")]
+add-dep dependency:
+    flutter pub add "{{ dependency }}"
+
+[doc("Start a development run of flutter on `device`!")]
+[group("development")]
+dev device:
+    clear
+    # flutter run --flavor development -d "{{ device }}"
+    flutter run \
+      --no-pub \
+      --enable-experiment=dot-shorthands \
+      --flavor development \
+      -d "{{ device }}"
+
+[doc("Start a development run on `chrome`!")]
+[group("development")]
+dev-web:
+    clear
+    flutter run \
+      --no-pub \
+      --enable-experiment=dot-shorthands \
+      -d chrome \
+      --web-port=28526 \
+      --web-header=Cross-Origin-Opener-Policy=same-origin \
+      --web-header=Cross-Origin-Embedder-Policy=require-corp
+
+[doc("Synchronize Rust FFI bindings with Dart (via FRB)")]
+[group("development")]
+frb-codegen:
+    flutter_rust_bridge_codegen generate --watch
+
+[doc("Run `build-runner`")]
+[group("development")]
+build-runner:
+    dart run \
+      build_runner watch \
+      --enable-experiment=dot-shorthands \
+      -d

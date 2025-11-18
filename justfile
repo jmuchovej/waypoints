@@ -95,13 +95,6 @@ check-android:
 doctor:
   flutter doctor -v
 
-# FVM-specific commands (assuming fvm is installed)
-fvm-install:
-  fvm install 3.32.0
-
-fvm-use:
-  fvm use 3.32.0
-
 # Database tasks
 db-reset:
   rm -f tempo-flux.db
@@ -127,6 +120,8 @@ ci: clean
   just build-android
   just build-ios
 
+
+
 # Setup commands for new developers
 setup:
   just fvm-install
@@ -134,3 +129,8 @@ setup:
   just update-deps
   just install-pods
   just doctor
+
+mod waypoints "crates/waypoints"
+mod ffi "crates/cartograph"
+mod app "app"
+mod playground "playground"
