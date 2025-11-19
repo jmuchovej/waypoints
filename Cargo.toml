@@ -1,0 +1,109 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/waypoints-domain",
+  # "crates/waypoints-entities",
+  # "crates/waypoints-migrations",
+  # "crates/waypoints-store"
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+description = "Oh the places we'll go on this non-linear thought journey!"
+documentation = "https://docs.waypoints.so"
+readme = ".github/README.md"
+homepage = "https://waypoints.so"
+repository = "https://github.com/waypoints-hq/waypoints"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+anyhow = "1.0.99"
+async-trait = "0.1.89"
+chrono = { version = "0.4.42", default-features = false, features = ["serde"] }
+chrono-tz = { version = "0.10.4", default-features = false, features = ["serde"] }
+derive_more = "2.0.1"
+eyre = "0.6.12"
+fake = { version = "4.4.0", default-features = false }
+flutter_rust_bridge = { version = "=2.11.1", default-features = false, features = [
+  "backtrace",
+  "chrono",
+  "console_error_panic_hook",
+  "dart-opaque",
+  "log",
+  "portable-atomic",
+  "rust-async",
+  "thread-pool",
+  "user-utils",
+  "uuid",
+  "wasm-start",
+] }
+geo = { version = "0.30.0", features = ["use-serde"] }
+iana-time-zone = "0.1.64"
+indexmap = { version = "2.0", features = ["serde"] }
+open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
+paste = "1.0.15"
+pest = "2.8.3"
+pest_derive = "2.8.3"
+pretty_assertions = "1.4.1"
+rand = "0.8"
+regex = "1.11.1"
+rstest = "0.26.1"
+sea-orm = { version = "1.1.16", default-features = false, features = [
+  "macros",
+  "runtime-tokio",
+  "sqlx-sqlite",
+  "with-chrono",
+  "with-json",
+  "with-uuid",
+] }
+sea-orm-migration = { version = "1.1.16", default-features = false, features = [
+  "cli",
+  "runtime-tokio",
+  "sqlx-sqlite",
+  "with-chrono",
+  "with-json",
+  "with-uuid",
+] }
+sea-query = { version = "0.32.7", default-features = false, features = [
+  "backend-sqlite",
+  "derive",
+  "sea-query-derive",
+  "with-chrono",
+  "with-json",
+  "with-uuid",
+] }
+serde = { version = "1.0.224", features = ["derive"] }
+serde_json = { version = "1.0.145", features = [
+  "indexmap",
+  "preserve_order",
+  "raw_value"
+] }
+thiserror = "2.0.15"
+tokio = { version = "1.47.1", features = ["sync"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+typed-builder = "0.23.2"
+uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
+waypoints-domain = { path = "crates/waypoints-domain" }
+waypoints-entities = { path = "crates/waypoints-entities" }
+waypoints-migrations = { path = "crates/waypoints-migrations" }
+waypoints-store = { path = "crates/waypoints-store" }
+
+[workspace.lints.clippy]
+blocks_in_conditions = "allow"
+comparison_chain = "allow"
+dbg_macro = "deny"
+iter_over_hash_type = "warn"
+manual_range_contains = "allow"
+mutable_key_type = "allow"
+todo = "deny"
+uninlined_format_args = "warn"
+wildcard_in_or_patterns = "allow"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(frb_expand)"] }
+# TODO: figure out how to _only_ allow this in development!
+unused = { level = "allow", priority = -1 }

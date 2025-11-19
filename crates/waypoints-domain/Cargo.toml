@@ -1,0 +1,36 @@
+[package]
+name = "waypoints-domain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Core data structures for block-based thought tools"
+documentation.workspace = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+chrono.workspace = true
+derive_more = { workspace = true, features = [
+  "as_ref",
+  "debug",
+  "display",
+  "from_str",
+  "is_variant",
+  "try_unwrap",
+  "unwrap"
+] }
+flutter_rust_bridge.workspace = true
+indexmap.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+typed-builder.workspace = true
+uuid.workspace = true
+validator = { version = "0.20.0", features = ["derive", "indexmap"] }
+
+[lints]
+workspace = true
