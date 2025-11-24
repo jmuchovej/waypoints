@@ -36,3 +36,6 @@ impl Default for MarkID {
         Self::new()
     }
 }
+
+pub mod rich_text;
+pub use rich_text::{RichText, TextMark, TextMarkKind};
