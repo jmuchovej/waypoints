@@ -37,8 +37,12 @@ impl Default for MarkID {
     }
 }
 
+pub mod reading;
 pub mod rich_reference;
 pub mod rich_text;
 
+pub use reading::Reading;
 pub use rich_reference::{ReferenceDisplayMode, RichReference};
 pub use rich_text::{RichText, TextMark, TextMarkKind};
+
+pub mod reading_validators;
