@@ -37,12 +37,22 @@ impl Default for MarkID {
     }
 }
 
+#[allow(clippy::module_inception)]
+pub mod mark;
+pub mod mark_data;
 pub mod reading;
 pub mod rich_reference;
 pub mod rich_text;
 
+pub use mark::Mark;
+pub use mark_data::{Content, Landmark, MarkData};
 pub use reading::Reading;
 pub use rich_reference::{ReferenceDisplayMode, RichReference};
 pub use rich_text::{RichText, TextMark, TextMarkKind};
 
 pub mod reading_validators;
+
+pub mod builders {
+    use super::mark;
+    pub use mark::MarkBuilder;
+}
