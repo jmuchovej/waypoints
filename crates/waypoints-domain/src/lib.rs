@@ -42,5 +42,6 @@
 pub mod _shared;
 pub mod chart;
 pub mod mark;
+pub mod terrain;
 
 pub use _shared::*;
