@@ -2,7 +2,7 @@
 resolver = "3"
 members = [
   "crates/waypoints-domain",
-  # "crates/waypoints-entities",
+  "crates/waypoints-entities",
   # "crates/waypoints-migrations",
   # "crates/waypoints-store"
 ]
