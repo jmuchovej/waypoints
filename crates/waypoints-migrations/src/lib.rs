@@ -1,3 +1,4 @@
+mod m20251118_203548_create_marks_table;
 mod utils;
 
 pub use sea_orm_migration::MigratorTrait;
@@ -15,8 +16,6 @@ impl MigratorTrait for Migrator {
     }
 
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![
-            // Migrations will be added incrementally
-        ]
+        vec![Box::new(m20251118_203548_create_marks_table::Migration)]
     }
 }
