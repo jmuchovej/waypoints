@@ -1,4 +1,5 @@
 mod m20251118_203548_create_marks_table;
+mod m20251118_203608_create_charts_table;
 mod utils;
 
 pub use sea_orm_migration::MigratorTrait;
@@ -16,6 +17,9 @@ impl MigratorTrait for Migrator {
     }
 
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![Box::new(m20251118_203548_create_marks_table::Migration)]
+        vec![
+            Box::new(m20251118_203548_create_marks_table::Migration),
+            Box::new(m20251118_203608_create_charts_table::Migration),
+        ]
     }
 }
