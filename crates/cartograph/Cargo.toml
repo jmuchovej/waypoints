@@ -19,7 +19,7 @@ derive_more = { workspace = true, features = [
   "debug",
   "display",
   "error",
-  "from"
+  "from",
 ] }
 fake = { workspace = true, features = [
   "chrono",
@@ -27,19 +27,22 @@ fake = { workspace = true, features = [
   "indexmap",
   "random_color",
   "serde_json",
-  "uuid"
+  "uuid",
 ] }
 flutter_rust_bridge = { workspace = true, features = ["anyhow", "log"] }
+indexmap.workspace = true
 paste.workspace = true
 rstest.workspace = true
 sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+typed-builder.workspace = true
 uuid.workspace = true
-waypoints.workspace = true
+waypoints-domain.workspace = true
 
 [lints]
 workspace = true

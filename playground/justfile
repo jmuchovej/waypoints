@@ -18,7 +18,6 @@ add-dep dependency:
 dev device:
     flutter run \
       --no-pub \
-      --enable-experiment=dot-shorthands \
       -d "{{ device }}"
 
 [doc("Start a development run on `chrome`!")]
@@ -26,7 +25,6 @@ dev device:
 dev-web:
     flutter run \
       --no-pub \
-      --enable-experiment=dot-shorthands \
       -d chrome \
       --web-port=28526 \
       --web-header=Cross-Origin-Opener-Policy=same-origin \
@@ -37,5 +35,4 @@ dev-web:
 build-runner:
     dart run \
       build_runner watch \
-      --enable-experiment=dot-shorthands \
       -d

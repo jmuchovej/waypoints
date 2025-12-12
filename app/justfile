@@ -20,7 +20,6 @@ dev device:
     # flutter run --flavor development -d "{{ device }}"
     flutter run \
       --no-pub \
-      --enable-experiment=dot-shorthands \
       --flavor development \
       -d "{{ device }}"
 
@@ -30,7 +29,6 @@ dev-web:
     clear
     flutter run \
       --no-pub \
-      --enable-experiment=dot-shorthands \
       -d chrome \
       --web-port=28526 \
       --web-header=Cross-Origin-Opener-Policy=same-origin \
@@ -39,12 +37,12 @@ dev-web:
 [doc("Synchronize Rust FFI bindings with Dart (via FRB)")]
 [group("development")]
 frb-codegen:
-    flutter_rust_bridge_codegen generate --watch
+    FRB_DEBUG_SKIP_SANITY_CHECK_CLASS_NAME_DUPLICATES=1 \
+      flutter_rust_bridge_codegen generate --watch
 
 [doc("Run `build-runner`")]
 [group("development")]
 build-runner:
     dart run \
       build_runner watch \
-      --enable-experiment=dot-shorthands \
       -d

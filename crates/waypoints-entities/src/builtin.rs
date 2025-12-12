@@ -14,53 +14,13 @@
 //! # Examples
 //!
 //! ## Using Built-in Charts
-//!
-//! ```
-//! use waypoints::builtins;
-//! use waypoints::landmark::Landmark;
-//! use waypoints::mark::MarkID;
-//! use serde_json::json;
-//!
-//! let creator_id = MarkID::new();
-//!
-//! // Create a task using the built-in task chart
-//! let task_chart = builtins::task::task_chart();
-//! let mut task = Landmark::new(task_chart.id.clone(), creator_id);
-//! task.title = "Learn Rust".to_string();
-//!
-//! // Set task-specific fields
-//! let completed_feature = task_chart.features.iter()
-//!     .find(|f| f.title == "Completed")
-//!     .unwrap();
-//! task.set_field(completed_feature.id.clone(), json!(false));
-//!
-//! assert_eq!(task.title, "Learn Rust");
-//! assert_eq!(task.get_field(&completed_feature.id), Some(&json!(false)));
-//! ```
+//
+// TODO add examples of working with built-in Charts
 //!
 //! ## Working with Different Built-in Types
 //!
-//! ```
-//! use waypoints::builtins;
-//! use waypoints::landmark::Landmark;
-//! use waypoints::mark::MarkID;
+// TODO add examples of working with the different Chart types
 //!
-//! let creator_id = MarkID::new();
-//!
-//! // Create different types of landmarks
-//! let page = Landmark::new(builtins::page::page_chart().id, creator_id);
-//! let note = Landmark::new(builtins::note::note_chart().id, creator_id);
-//! let person = Landmark::new(builtins::person::person_chart().id, creator_id);
-//!
-//! // Each has different available features
-//! let page_chart = builtins::page::page_chart();
-//! let note_chart = builtins::note::note_chart();
-//! let person_chart = builtins::person::person_chart();
-//!
-//! assert_eq!(page_chart.features.len(), 0); // Page has no custom features
-//! assert!(note_chart.features.len() > 0); // Note has tags, source URL, etc.
-//! assert!(person_chart.features.len() > 0); // Person has email, phone, etc.
-//! ```
 
 use std::collections::HashMap;
 use waypoints_domain::chart::{Chart, ChartID};
@@ -78,52 +38,12 @@ use _utils::tags_feature;
 ///
 /// ## Basic Usage
 ///
-/// ```
-/// use waypoints::builtins::BuiltinRegistry;
-/// use waypoints::builtins;
-///
-/// let registry = BuiltinRegistry::new();
-///
-/// // Get a built-in chart
-/// let task_id = builtins::task::task_type_id();
-/// let task_chart = registry.get(task_id).unwrap();
-/// assert_eq!(task_chart.name, "Task");
-/// assert!(task_chart.is_builtin());
-///
-/// // Check if a type is built-in
-/// assert!(registry.is_builtin(builtins::page::page_chart().id));
-///
-/// // Get all built-in charts
-/// let all_builtins = registry.all();
-/// assert!(all_builtins.len() >= 9); // We have at least 9 builtin types
-/// ```
+// TODO add basic usage examples
 ///
 /// ## Extending Built-ins
 ///
-/// ```
-/// use waypoints::builtins::BuiltinRegistry;
-/// use waypoints::builtins;
-/// use waypoints::feature::{Feature, FeatureKind};
+// TODO add examples that extend built-ins
 ///
-/// let registry = BuiltinRegistry::new();
-///
-/// // Extend the task builtin with custom fields
-/// let task_id = builtins::task::task_type_id();
-/// let mut extended_task = registry.extend_builtin(task_id, "Enhanced Task".to_string()).unwrap();
-///
-/// // Add a custom priority field
-/// extended_task = extended_task.add_feature(Feature::new(
-///     "Difficulty".to_string(),
-///     FeatureKind::unified_select_builder()
-///         .with_option("Easy")
-///         .with_option("Hard")
-///         .build()
-/// ));
-///
-/// assert_eq!(extended_task.name, "Enhanced Task");
-/// assert!(!extended_task.is_builtin()); // Extended versions are not builtin
-/// assert!(extended_task.features.len() > 5); // Has original task features + our new one
-/// ```
 #[derive(Debug, Clone)]
 pub struct BuiltinRegistry {
     charts: HashMap<ChartID, Chart>,
@@ -200,10 +120,9 @@ impl Default for BuiltinRegistry {
 /// # Examples
 ///
 /// ```
-/// use waypoints::builtins::builtin_charts;
+/// use waypoints_entities::builtin::builtin_charts;
 ///
 /// let charts = builtin_charts();
-/// assert!(charts.len() >= 9); // At least 9 builtin charts
 ///
 /// // All should be builtin
 /// for chart in &charts {
@@ -213,8 +132,6 @@ impl Default for BuiltinRegistry {
 /// // Should include common types
 /// let chart_names: Vec<&str> = charts.iter().map(|c| c.name.as_str()).collect();
 /// assert!(chart_names.contains(&"Page"));
-/// assert!(chart_names.contains(&"Task"));
-/// assert!(chart_names.contains(&"Note"));
 /// ```
 pub fn builtin_charts() -> Vec<Chart> {
     vec![

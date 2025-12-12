@@ -23,7 +23,9 @@ publish = false
 anyhow = "1.0.99"
 async-trait = "0.1.89"
 chrono = { version = "0.4.42", default-features = false, features = ["serde"] }
-chrono-tz = { version = "0.10.4", default-features = false, features = ["serde"] }
+chrono-tz = { version = "0.10.4", default-features = false, features = [
+  "serde",
+] }
 derive_more = "2.0.1"
 eyre = "0.6.12"
 fake = { version = "4.4.0", default-features = false }
@@ -79,7 +81,7 @@ serde = { version = "1.0.224", features = ["derive"] }
 serde_json = { version = "1.0.145", features = [
   "indexmap",
   "preserve_order",
-  "raw_value"
+  "raw_value",
 ] }
 thiserror = "2.0.15"
 tokio = { version = "1.47.1", features = ["sync"] }

@@ -20,7 +20,7 @@ derive_more = { workspace = true, features = [
   "from_str",
   "is_variant",
   "try_unwrap",
-  "unwrap"
+  "unwrap",
 ] }
 flutter_rust_bridge.workspace = true
 indexmap.workspace = true

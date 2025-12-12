@@ -10,7 +10,6 @@ pub fn chart() -> Chart {
         .with_name("Page")
         .with_description("The plainest document you could ever have!")
         .with_icon(icon_presets::charts::page())
-        .add_feature(tags_feature())
         .build();
 
     Chart {

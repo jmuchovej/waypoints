@@ -1,20 +1,16 @@
 app:
   android:
     flavorDimensions: "environment"
-
 flavors:
   development:
     app:
       name: "Waypoints (Dev)"
       # TODO add Waypoints's development icon
       icon: assets/app-icon-dev.png
-
     android:
       applicationId: "com.waypoints.app.dev"
-
     ios:
       bundleId: "com.waypoints.app.dev"
-
     macos:
       bundleId: "com.waypoints.app.dev"
       variables:
@@ -22,19 +18,15 @@ flavors:
           value: "Waypoints (Dev)"
         TARGET_NAME:
           value: "Waypoints (Dev)"
-
   staging:
     app:
       name: "Waypoints (Staging)"
       # TODO add Waypoints's staging icon
       # icon:
-
     android:
       applicationId: "com.waypoints.app.staging"
-
     ios:
       bundleId: "com.waypoints.app.staging"
-
     macos:
       bundleId: "com.waypoints.app.staging"
       variables:
@@ -42,19 +34,15 @@ flavors:
           value: "Waypoints (Staging)"
         TARGET_NAME:
           value: "Waypoints (Staging)"
-
   production:
     app:
       name: "Waypoints"
       # TODO add Waypoints's production icon
       icon: assets/app-icon.png
-
     android:
       applicationId: "com.waypoints.app.prod"
-
     ios:
       bundleId: "com.waypoints.app.prod"
-
     macos:
       bundleId: "com.waypoints.app.prod"
       variables:
@@ -62,7 +50,6 @@ flavors:
           value: "Waypoints"
         TARGET_NAME:
           value: "Waypoints"
-
 instructions:
   - assets:download
   - assets:extract
@@ -97,5 +84,4 @@ instructions:
   - huawei:agconnect
   - assets:clean
   - ide:config
-
 ide: "vscode"

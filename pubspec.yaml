@@ -1,13 +1,10 @@
 name: _
 publish_to: "none"
-
 environment:
   sdk: ^3.9.0
-
 workspace:
   - "app/"
   - "playground/"
-
 dependencies:
   flutter:
     sdk: flutter
@@ -48,7 +45,6 @@ dependencies:
   flutter_riverpod: ^3.0.3
   # freezed_annotation: ^2.4.4
   # json_annotation: ^4.9.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -7,7 +7,31 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
+import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
+import 'package:uuid/uuid.dart';
+import 'third_party/waypoints_domain/models/chart.dart';
+import 'third_party/waypoints_domain/models/mark.dart';
+import 'third_party/waypoints_domain/models/terrain.dart';
+import 'third_party/waypoints_domain/support.dart';
+import 'third_party/waypoints_domain/support/icon.dart';
+import 'third_party/waypoints_domain/support/icon/presets/actions.dart';
+import 'third_party/waypoints_domain/support/icon/presets/charts.dart';
+import 'third_party/waypoints_domain/support/icon/presets/status.dart';
+import 'third_party/waypoints_domain/types/feature.dart';
+import 'third_party/waypoints_domain/types/feature_kind.dart';
+import 'third_party/waypoints_domain/types/feature_kind/date_builder.dart';
+import 'third_party/waypoints_domain/types/feature_kind/number_builder.dart';
+import 'third_party/waypoints_domain/types/feature_kind/reference_builder.dart';
+import 'third_party/waypoints_domain/types/feature_kind/select_builder.dart';
+import 'third_party/waypoints_domain/types/ids.dart';
+import 'third_party/waypoints_domain/types/marks.dart';
+import 'third_party/waypoints_domain/types/reading.dart';
+import 'third_party/waypoints_domain/types/rich_reference.dart';
+import 'third_party/waypoints_domain/types/rich_text.dart';
+import 'transfer/chart_dto.dart';
+import 'transfer/mark_dto.dart';
+import 'transfer/terrain_dto.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -17,17 +41,2089 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ChartBuilderStringOptionStringOptionIconIndexMapFeatureIdFeaturePtr =>
+      wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeaturePtr;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DatePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDatePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_DateBuilderPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilderPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FeatureBuilderStringFeatureKindOptionStringBoolPtr =>
+      wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringboolPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_IndexMapFeatureIdFeaturePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeaturePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_IndexMapFeatureIdReadingPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReadingPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_IndexMapGlyphIdGlyphIdPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphIDPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_IndexMapGlyphIdSelectGroupPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroupPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_IndexMapGlyphIdSelectOptionPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOptionPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_LandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIdReadingPtr =>
+      wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReadingPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_MarkBuilderMarkDataOptionJsonPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJsonPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_NaiveDatePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDatePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_NaiveTimePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTimePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_NumberPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_NumberBuilderPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilderPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ReferencePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferencePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ReferenceBuilderOptionVecChartIdOptionUsizeStringReferenceDisplayModeOptionJsonPtr =>
+      wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJsonPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SelectBuilderHashMapGlyphIdSelectGroupOptionUsizeOptionGlyphIdPtr =>
+      wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphIDPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SelectGroupBuilderStringOptionStringIndexMapGlyphIdSelectOptionOptionUsizeVecGlyphIdPtr =>
+      wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphIDPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SelectOptionBuilderStringPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderStringPtr;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_SizePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSizePtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_TerrainBuilderOptionJsonPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJsonPtr;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ValuePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValuePtr;
+
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
+  ChartBuilderStringOptionStringOptionIconIndexMapFeatureIdFeature
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    dynamic raw,
+  );
+
+  @protected
+  Date
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    dynamic raw,
+  );
+
+  @protected
+  DateBuilder
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    dynamic raw,
+  );
+
+  @protected
+  FeatureBuilderStringFeatureKindOptionStringBool
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapFeatureIdFeature
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapFeatureIdReading
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapGlyphIdGlyphId
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectGroup
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectOption
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    dynamic raw,
+  );
+
+  @protected
+  LandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIdReading
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    dynamic raw,
+  );
+
+  @protected
+  MarkBuilderMarkDataOptionJson
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    dynamic raw,
+  );
+
+  @protected
+  NaiveDate
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    dynamic raw,
+  );
+
+  @protected
+  NaiveTime
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    dynamic raw,
+  );
+
+  @protected
+  Number
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    dynamic raw,
+  );
+
+  @protected
+  NumberBuilder
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    dynamic raw,
+  );
+
+  @protected
+  Reference
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    dynamic raw,
+  );
+
+  @protected
+  ReferenceBuilderOptionVecChartIdOptionUsizeStringReferenceDisplayModeOptionJson
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    dynamic raw,
+  );
+
+  @protected
+  SelectBuilderHashMapGlyphIdSelectGroupOptionUsizeOptionGlyphId
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    dynamic raw,
+  );
+
+  @protected
+  SelectGroupBuilderStringOptionStringIndexMapGlyphIdSelectOptionOptionUsizeVecGlyphId
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    dynamic raw,
+  );
+
+  @protected
+  SelectOptionBuilderString
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    dynamic raw,
+  );
+
+  @protected
+  Size
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    dynamic raw,
+  );
+
+  @protected
+  TerrainBuilderOptionJson
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    dynamic raw,
+  );
+
+  @protected
+  Value
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    dynamic raw,
+  );
+
+  @protected
+  int dco_decode_CastedPrimitive_u_64(dynamic raw);
+
+  @protected
+  int dco_decode_CastedPrimitive_usize(dynamic raw);
+
+  @protected
+  DateTime dco_decode_Chrono_Naive(dynamic raw);
+
+  @protected
+  Map<GlyphID, List<GlyphID>> dco_decode_Map_glyph_id_list_glyph_id_None(
+    dynamic raw,
+  );
+
+  @protected
+  Map<GlyphID, SelectGroup> dco_decode_Map_glyph_id_select_group_None(
+    dynamic raw,
+  );
+
+  @protected
+  ChartBuilderStringOptionStringOptionIconIndexMapFeatureIdFeature
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    dynamic raw,
+  );
+
+  @protected
+  Date
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    dynamic raw,
+  );
+
+  @protected
+  DateBuilder
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    dynamic raw,
+  );
+
+  @protected
+  FeatureBuilderStringFeatureKindOptionStringBool
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapFeatureIdFeature
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapFeatureIdReading
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapGlyphIdGlyphId
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectGroup
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    dynamic raw,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectOption
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    dynamic raw,
+  );
+
+  @protected
+  LandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIdReading
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    dynamic raw,
+  );
+
+  @protected
+  MarkBuilderMarkDataOptionJson
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    dynamic raw,
+  );
+
+  @protected
+  NaiveDate
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    dynamic raw,
+  );
+
+  @protected
+  NaiveTime
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    dynamic raw,
+  );
+
+  @protected
+  Number
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    dynamic raw,
+  );
+
+  @protected
+  NumberBuilder
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    dynamic raw,
+  );
+
+  @protected
+  Reference
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    dynamic raw,
+  );
+
+  @protected
+  ReferenceBuilderOptionVecChartIdOptionUsizeStringReferenceDisplayModeOptionJson
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    dynamic raw,
+  );
+
+  @protected
+  SelectBuilderHashMapGlyphIdSelectGroupOptionUsizeOptionGlyphId
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    dynamic raw,
+  );
+
+  @protected
+  SelectGroupBuilderStringOptionStringIndexMapGlyphIdSelectOptionOptionUsizeVecGlyphId
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    dynamic raw,
+  );
+
+  @protected
+  SelectOptionBuilderString
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    dynamic raw,
+  );
+
+  @protected
+  Size
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    dynamic raw,
+  );
+
+  @protected
+  TerrainBuilderOptionJson
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    dynamic raw,
+  );
+
+  @protected
+  Value
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    dynamic raw,
+  );
+
+  @protected
+  String dco_decode_String(dynamic raw);
+
+  @protected
+  HasIcon dco_decode_TraitDef_HasIcon(dynamic raw);
+
+  @protected
+  UuidValue dco_decode_Uuid(dynamic raw);
+
+  @protected
+  Base36ID dco_decode_base_36_id(dynamic raw);
+
+  @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  NaiveDate
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    dynamic raw,
+  );
+
+  @protected
+  NaiveTime
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    dynamic raw,
+  );
+
+  @protected
+  Size
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    dynamic raw,
+  );
+
+  @protected
+  Value
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    dynamic raw,
+  );
+
+  @protected
+  Base36ID dco_decode_box_autoadd_base_36_id(dynamic raw);
+
+  @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw);
+
+  @protected
+  Chart dco_decode_box_autoadd_chart(dynamic raw);
+
+  @protected
+  ChartID dco_decode_box_autoadd_chart_id(dynamic raw);
+
+  @protected
+  Color dco_decode_box_autoadd_color(dynamic raw);
+
+  @protected
+  Content dco_decode_box_autoadd_content(dynamic raw);
+
+  @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw);
+
+  @protected
+  Feature dco_decode_box_autoadd_feature(dynamic raw);
+
+  @protected
+  FeatureID dco_decode_box_autoadd_feature_id(dynamic raw);
+
+  @protected
+  GlyphID dco_decode_box_autoadd_glyph_id(dynamic raw);
+
+  @protected
+  Icon dco_decode_box_autoadd_icon(dynamic raw);
+
+  @protected
+  IconNamespace dco_decode_box_autoadd_icon_namespace(dynamic raw);
+
+  @protected
+  Landmark dco_decode_box_autoadd_landmark(dynamic raw);
+
+  @protected
+  Mark dco_decode_box_autoadd_mark(dynamic raw);
+
+  @protected
+  MarkData dco_decode_box_autoadd_mark_data(dynamic raw);
+
+  @protected
+  MarkID dco_decode_box_autoadd_mark_id(dynamic raw);
+
+  @protected
+  RichText dco_decode_box_autoadd_rich_text(dynamic raw);
+
+  @protected
+  TextMark dco_decode_box_autoadd_text_mark(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_8(dynamic raw);
+
+  @protected
+  Chart dco_decode_chart(dynamic raw);
+
+  @protected
+  ChartDTO dco_decode_chart_dto(dynamic raw);
+
+  @protected
+  ChartID dco_decode_chart_id(dynamic raw);
+
+  @protected
+  Color dco_decode_color(dynamic raw);
+
+  @protected
+  Content dco_decode_content(dynamic raw);
+
+  @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
+  Feature dco_decode_feature(dynamic raw);
+
+  @protected
+  FeatureID dco_decode_feature_id(dynamic raw);
+
+  @protected
+  FeatureKind dco_decode_feature_kind(dynamic raw);
+
+  @protected
+  GlyphID dco_decode_glyph_id(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  Icon dco_decode_icon(dynamic raw);
+
+  @protected
+  IconNamespace dco_decode_icon_namespace(dynamic raw);
+
+  @protected
+  Landmark dco_decode_landmark(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<ChartID> dco_decode_list_chart_id(dynamic raw);
+
+  @protected
+  List<Content> dco_decode_list_content(dynamic raw);
+
+  @protected
+  List<Feature> dco_decode_list_feature(dynamic raw);
+
+  @protected
+  List<GlyphID> dco_decode_list_glyph_id(dynamic raw);
+
+  @protected
+  List<List<RichText>> dco_decode_list_list_rich_text(dynamic raw);
+
+  @protected
+  List<MarkID> dco_decode_list_mark_id(dynamic raw);
+
+  @protected
+  List<Size?>
+  dco_decode_list_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    dynamic raw,
+  );
+
+  @protected
+  List<Color?> dco_decode_list_opt_box_autoadd_color(dynamic raw);
+
+  @protected
+  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<(GlyphID, List<GlyphID>)> dco_decode_list_record_glyph_id_list_glyph_id(
+    dynamic raw,
+  );
+
+  @protected
+  List<(GlyphID, SelectGroup)> dco_decode_list_record_glyph_id_select_group(
+    dynamic raw,
+  );
+
+  @protected
+  List<RichReference> dco_decode_list_rich_reference(dynamic raw);
+
+  @protected
+  List<RichText> dco_decode_list_rich_text(dynamic raw);
+
+  @protected
+  List<TextMark> dco_decode_list_text_mark(dynamic raw);
+
+  @protected
+  Mark dco_decode_mark(dynamic raw);
+
+  @protected
+  MarkData dco_decode_mark_data(dynamic raw);
+
+  @protected
+  MarkDTO dco_decode_mark_dto(dynamic raw);
+
+  @protected
+  MarkID dco_decode_mark_id(dynamic raw);
+
+  @protected
+  MathEngine dco_decode_math_engine(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_CastedPrimitive_usize(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  NaiveDate?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    dynamic raw,
+  );
+
+  @protected
+  NaiveTime?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    dynamic raw,
+  );
+
+  @protected
+  Size?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    dynamic raw,
+  );
+
+  @protected
+  Value?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    dynamic raw,
+  );
+
+  @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
+
+  @protected
+  Color? dco_decode_opt_box_autoadd_color(dynamic raw);
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
+
+  @protected
+  Feature? dco_decode_opt_box_autoadd_feature(dynamic raw);
+
+  @protected
+  GlyphID? dco_decode_opt_box_autoadd_glyph_id(dynamic raw);
+
+  @protected
+  Icon? dco_decode_opt_box_autoadd_icon(dynamic raw);
+
+  @protected
+  IconNamespace? dco_decode_opt_box_autoadd_icon_namespace(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_8(dynamic raw);
+
+  @protected
+  List<ChartID>? dco_decode_opt_list_chart_id(dynamic raw);
+
+  @protected
+  List<Size?>?
+  dco_decode_opt_list_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    dynamic raw,
+  );
+
+  @protected
+  List<Color?>? dco_decode_opt_list_opt_box_autoadd_color(dynamic raw);
+
+  @protected
+  Reading dco_decode_reading(dynamic raw);
+
+  @protected
+  (GlyphID, List<GlyphID>) dco_decode_record_glyph_id_list_glyph_id(
+    dynamic raw,
+  );
+
+  @protected
+  (GlyphID, SelectGroup) dco_decode_record_glyph_id_select_group(dynamic raw);
+
+  @protected
+  ReferenceDisplayMode dco_decode_reference_display_mode(dynamic raw);
+
+  @protected
+  RichReference dco_decode_rich_reference(dynamic raw);
+
+  @protected
+  RichText dco_decode_rich_text(dynamic raw);
+
+  @protected
+  Select dco_decode_select(dynamic raw);
+
+  @protected
+  SelectGroup dco_decode_select_group(dynamic raw);
+
+  @protected
+  SelectOption dco_decode_select_option(dynamic raw);
+
+  @protected
+  Terrain dco_decode_terrain(dynamic raw);
+
+  @protected
+  TerrainDTO dco_decode_terrain_dto(dynamic raw);
+
+  @protected
+  TextMark dco_decode_text_mark(dynamic raw);
+
+  @protected
+  TextMarkKind dco_decode_text_mark_kind(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
+
+  @protected
+  int dco_decode_u_8(dynamic raw);
+
+  @protected
+  void dco_decode_unit(dynamic raw);
+
+  @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  ChartBuilderStringOptionStringOptionIconIndexMapFeatureIdFeature
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Date
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  DateBuilder
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FeatureBuilderStringFeatureKindOptionStringBool
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapFeatureIdFeature
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapFeatureIdReading
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapGlyphIdGlyphId
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectGroup
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectOption
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIdReading
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MarkBuilderMarkDataOptionJson
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NaiveDate
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NaiveTime
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Number
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NumberBuilder
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Reference
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReferenceBuilderOptionVecChartIdOptionUsizeStringReferenceDisplayModeOptionJson
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SelectBuilderHashMapGlyphIdSelectGroupOptionUsizeOptionGlyphId
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SelectGroupBuilderStringOptionStringIndexMapGlyphIdSelectOptionOptionUsizeVecGlyphId
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SelectOptionBuilderString
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Size
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  TerrainBuilderOptionJson
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Value
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int sse_decode_CastedPrimitive_u_64(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_CastedPrimitive_usize(SseDeserializer deserializer);
+
+  @protected
+  DateTime sse_decode_Chrono_Naive(SseDeserializer deserializer);
+
+  @protected
+  Map<GlyphID, List<GlyphID>> sse_decode_Map_glyph_id_list_glyph_id_None(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Map<GlyphID, SelectGroup> sse_decode_Map_glyph_id_select_group_None(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ChartBuilderStringOptionStringOptionIconIndexMapFeatureIdFeature
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Date
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  DateBuilder
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FeatureBuilderStringFeatureKindOptionStringBool
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapFeatureIdFeature
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapFeatureIdReading
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapGlyphIdGlyphId
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectGroup
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  IndexMapGlyphIdSelectOption
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIdReading
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MarkBuilderMarkDataOptionJson
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NaiveDate
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NaiveTime
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Number
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NumberBuilder
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Reference
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReferenceBuilderOptionVecChartIdOptionUsizeStringReferenceDisplayModeOptionJson
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SelectBuilderHashMapGlyphIdSelectGroupOptionUsizeOptionGlyphId
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SelectGroupBuilderStringOptionStringIndexMapGlyphIdSelectOptionOptionUsizeVecGlyphId
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SelectOptionBuilderString
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Size
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  TerrainBuilderOptionJson
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Value
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  UuidValue sse_decode_Uuid(SseDeserializer deserializer);
+
+  @protected
+  Base36ID sse_decode_base_36_id(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
+  NaiveDate
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NaiveTime
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Size
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Value
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Base36ID sse_decode_box_autoadd_base_36_id(SseDeserializer deserializer);
+
+  @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  Chart sse_decode_box_autoadd_chart(SseDeserializer deserializer);
+
+  @protected
+  ChartID sse_decode_box_autoadd_chart_id(SseDeserializer deserializer);
+
+  @protected
+  Color sse_decode_box_autoadd_color(SseDeserializer deserializer);
+
+  @protected
+  Content sse_decode_box_autoadd_content(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
+  Feature sse_decode_box_autoadd_feature(SseDeserializer deserializer);
+
+  @protected
+  FeatureID sse_decode_box_autoadd_feature_id(SseDeserializer deserializer);
+
+  @protected
+  GlyphID sse_decode_box_autoadd_glyph_id(SseDeserializer deserializer);
+
+  @protected
+  Icon sse_decode_box_autoadd_icon(SseDeserializer deserializer);
+
+  @protected
+  IconNamespace sse_decode_box_autoadd_icon_namespace(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Landmark sse_decode_box_autoadd_landmark(SseDeserializer deserializer);
+
+  @protected
+  Mark sse_decode_box_autoadd_mark(SseDeserializer deserializer);
+
+  @protected
+  MarkData sse_decode_box_autoadd_mark_data(SseDeserializer deserializer);
+
+  @protected
+  MarkID sse_decode_box_autoadd_mark_id(SseDeserializer deserializer);
+
+  @protected
+  RichText sse_decode_box_autoadd_rich_text(SseDeserializer deserializer);
+
+  @protected
+  TextMark sse_decode_box_autoadd_text_mark(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_u_8(SseDeserializer deserializer);
+
+  @protected
+  Chart sse_decode_chart(SseDeserializer deserializer);
+
+  @protected
+  ChartDTO sse_decode_chart_dto(SseDeserializer deserializer);
+
+  @protected
+  ChartID sse_decode_chart_id(SseDeserializer deserializer);
+
+  @protected
+  Color sse_decode_color(SseDeserializer deserializer);
+
+  @protected
+  Content sse_decode_content(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  Feature sse_decode_feature(SseDeserializer deserializer);
+
+  @protected
+  FeatureID sse_decode_feature_id(SseDeserializer deserializer);
+
+  @protected
+  FeatureKind sse_decode_feature_kind(SseDeserializer deserializer);
+
+  @protected
+  GlyphID sse_decode_glyph_id(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  Icon sse_decode_icon(SseDeserializer deserializer);
+
+  @protected
+  IconNamespace sse_decode_icon_namespace(SseDeserializer deserializer);
+
+  @protected
+  Landmark sse_decode_landmark(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<ChartID> sse_decode_list_chart_id(SseDeserializer deserializer);
+
+  @protected
+  List<Content> sse_decode_list_content(SseDeserializer deserializer);
+
+  @protected
+  List<Feature> sse_decode_list_feature(SseDeserializer deserializer);
+
+  @protected
+  List<GlyphID> sse_decode_list_glyph_id(SseDeserializer deserializer);
+
+  @protected
+  List<List<RichText>> sse_decode_list_list_rich_text(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<MarkID> sse_decode_list_mark_id(SseDeserializer deserializer);
+
+  @protected
+  List<Size?>
+  sse_decode_list_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<Color?> sse_decode_list_opt_box_autoadd_color(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<(GlyphID, List<GlyphID>)> sse_decode_list_record_glyph_id_list_glyph_id(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<(GlyphID, SelectGroup)> sse_decode_list_record_glyph_id_select_group(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RichReference> sse_decode_list_rich_reference(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RichText> sse_decode_list_rich_text(SseDeserializer deserializer);
+
+  @protected
+  List<TextMark> sse_decode_list_text_mark(SseDeserializer deserializer);
+
+  @protected
+  Mark sse_decode_mark(SseDeserializer deserializer);
+
+  @protected
+  MarkData sse_decode_mark_data(SseDeserializer deserializer);
+
+  @protected
+  MarkDTO sse_decode_mark_dto(SseDeserializer deserializer);
+
+  @protected
+  MarkID sse_decode_mark_id(SseDeserializer deserializer);
+
+  @protected
+  MathEngine sse_decode_math_engine(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_CastedPrimitive_usize(SseDeserializer deserializer);
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  NaiveDate?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  NaiveTime?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Size?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Value?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  Color? sse_decode_opt_box_autoadd_color(SseDeserializer deserializer);
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
+  Feature? sse_decode_opt_box_autoadd_feature(SseDeserializer deserializer);
+
+  @protected
+  GlyphID? sse_decode_opt_box_autoadd_glyph_id(SseDeserializer deserializer);
+
+  @protected
+  Icon? sse_decode_opt_box_autoadd_icon(SseDeserializer deserializer);
+
+  @protected
+  IconNamespace? sse_decode_opt_box_autoadd_icon_namespace(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_8(SseDeserializer deserializer);
+
+  @protected
+  List<ChartID>? sse_decode_opt_list_chart_id(SseDeserializer deserializer);
+
+  @protected
+  List<Size?>?
+  sse_decode_opt_list_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<Color?>? sse_decode_opt_list_opt_box_autoadd_color(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Reading sse_decode_reading(SseDeserializer deserializer);
+
+  @protected
+  (GlyphID, List<GlyphID>) sse_decode_record_glyph_id_list_glyph_id(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  (GlyphID, SelectGroup) sse_decode_record_glyph_id_select_group(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReferenceDisplayMode sse_decode_reference_display_mode(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RichReference sse_decode_rich_reference(SseDeserializer deserializer);
+
+  @protected
+  RichText sse_decode_rich_text(SseDeserializer deserializer);
+
+  @protected
+  Select sse_decode_select(SseDeserializer deserializer);
+
+  @protected
+  SelectGroup sse_decode_select_group(SseDeserializer deserializer);
+
+  @protected
+  SelectOption sse_decode_select_option(SseDeserializer deserializer);
+
+  @protected
+  Terrain sse_decode_terrain(SseDeserializer deserializer);
+
+  @protected
+  TerrainDTO sse_decode_terrain_dto(SseDeserializer deserializer);
+
+  @protected
+  TextMark sse_decode_text_mark(SseDeserializer deserializer);
+
+  @protected
+  TextMarkKind sse_decode_text_mark_kind(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_8(SseDeserializer deserializer);
+
+  @protected
+  void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    ChartBuilderStringOptionStringOptionIconIndexMapFeatureIdFeature self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    Date self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    DateBuilder self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    FeatureBuilderStringFeatureKindOptionStringBool self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    IndexMapFeatureIdFeature self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    IndexMapFeatureIdReading self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    IndexMapGlyphIdGlyphId self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    IndexMapGlyphIdSelectGroup self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    IndexMapGlyphIdSelectOption self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    LandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIdReading self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    MarkBuilderMarkDataOptionJson self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    NaiveDate self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    NaiveTime self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    Number self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    NumberBuilder self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    Reference self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    ReferenceBuilderOptionVecChartIdOptionUsizeStringReferenceDisplayModeOptionJson
+    self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    SelectBuilderHashMapGlyphIdSelectGroupOptionUsizeOptionGlyphId self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    SelectGroupBuilderStringOptionStringIndexMapGlyphIdSelectOptionOptionUsizeVecGlyphId
+    self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    SelectOptionBuilderString self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    Size self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    TerrainBuilderOptionJson self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    Value self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_CastedPrimitive_u_64(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_CastedPrimitive_usize(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_Chrono_Naive(DateTime self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_Map_glyph_id_list_glyph_id_None(
+    Map<GlyphID, List<GlyphID>> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Map_glyph_id_select_group_None(
+    Map<GlyphID, SelectGroup> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    ChartBuilderStringOptionStringOptionIconIndexMapFeatureIdFeature self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    Date self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    DateBuilder self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    FeatureBuilderStringFeatureKindOptionStringBool self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    IndexMapFeatureIdFeature self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    IndexMapFeatureIdReading self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    IndexMapGlyphIdGlyphId self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    IndexMapGlyphIdSelectGroup self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    IndexMapGlyphIdSelectOption self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    LandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIdReading self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    MarkBuilderMarkDataOptionJson self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    NaiveDate self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    NaiveTime self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    Number self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    NumberBuilder self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    Reference self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    ReferenceBuilderOptionVecChartIdOptionUsizeStringReferenceDisplayModeOptionJson
+    self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    SelectBuilderHashMapGlyphIdSelectGroupOptionUsizeOptionGlyphId self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    SelectGroupBuilderStringOptionStringIndexMapGlyphIdSelectOptionOptionUsizeVecGlyphId
+    self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    SelectOptionBuilderString self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    Size self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    TerrainBuilderOptionJson self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    Value self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_Uuid(UuidValue self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_base_36_id(Base36ID self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    NaiveDate self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    NaiveTime self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    Size self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    Value self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_base_36_id(
+    Base36ID self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_chart(Chart self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_chart_id(ChartID self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_color(Color self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_content(Content self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_feature(Feature self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_feature_id(
+    FeatureID self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_glyph_id(GlyphID self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_icon(Icon self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_icon_namespace(
+    IconNamespace self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_landmark(Landmark self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_mark(Mark self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_mark_data(
+    MarkData self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_mark_id(MarkID self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_rich_text(
+    RichText self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_text_mark(
+    TextMark self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_u_8(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chart(Chart self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chart_dto(ChartDTO self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chart_id(ChartID self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_color(Color self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_content(Content self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_feature(Feature self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_feature_id(FeatureID self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_feature_kind(FeatureKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_glyph_id(GlyphID self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_icon(Icon self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_icon_namespace(IconNamespace self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_landmark(Landmark self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_chart_id(List<ChartID> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_content(List<Content> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_feature(List<Feature> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_glyph_id(List<GlyphID> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_list_rich_text(
+    List<List<RichText>> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_mark_id(List<MarkID> self, SseSerializer serializer);
+
+  @protected
+  void
+  sse_encode_list_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    List<Size?> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_opt_box_autoadd_color(
+    List<Color?> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_prim_u_8_strict(
+    Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_record_glyph_id_list_glyph_id(
+    List<(GlyphID, List<GlyphID>)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_record_glyph_id_select_group(
+    List<(GlyphID, SelectGroup)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_rich_reference(
+    List<RichReference> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_rich_text(List<RichText> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_text_mark(List<TextMark> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_mark(Mark self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_mark_data(MarkData self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_mark_dto(MarkDTO self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_mark_id(MarkID self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_math_engine(MathEngine self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_CastedPrimitive_usize(
+    int? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    NaiveDate? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    NaiveTime? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    Size? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    Value? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_color(Color? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_feature(
+    Feature? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_glyph_id(
+    GlyphID? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_icon(Icon? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_icon_namespace(
+    IconNamespace? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_8(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_chart_id(
+    List<ChartID>? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_list_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    List<Size?>? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_list_opt_box_autoadd_color(
+    List<Color?>? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reading(Reading self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_record_glyph_id_list_glyph_id(
+    (GlyphID, List<GlyphID>) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_record_glyph_id_select_group(
+    (GlyphID, SelectGroup) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reference_display_mode(
+    ReferenceDisplayMode self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_rich_reference(RichReference self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rich_text(RichText self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_select(Select self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_select_group(SelectGroup self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_select_option(SelectOption self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_terrain(Terrain self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_terrain_dto(TerrainDTO self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_text_mark(TextMark self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_text_mark_kind(TextMarkKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_8(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
 }
 
 // Section: wire_class
@@ -43,4 +2139,786 @@ class RustLibWire implements BaseWire {
   /// Holds the symbol lookup function.
   final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
   _lookup;
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeaturePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeaturePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeaturePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeaturePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDatePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDatePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDatePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDatePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilderPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilderPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilderPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilderPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringboolPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringboolPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringboolPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringboolPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeaturePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeaturePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeaturePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeaturePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReadingPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReadingPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReadingPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReadingPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphIDPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphIDPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphIDPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphIDPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroupPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroupPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroupPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroupPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOptionPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOptionPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOptionPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOptionPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReadingPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReadingPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReadingPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReadingPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJsonPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJsonPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJsonPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJsonPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDatePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDatePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDatePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDatePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTimePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTimePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTimePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTimePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilderPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilderPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilderPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilderPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferencePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferencePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferencePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferencePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJsonPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJsonPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJsonPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJsonPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphIDPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphIDPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphIDPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphIDPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphIDPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphIDPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphIDPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphIDPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderStringPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderStringPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderStringPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderStringPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSizePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSizePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSizePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSizePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJsonPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJsonPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJsonPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJsonPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValuePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValuePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValuePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValuePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 }

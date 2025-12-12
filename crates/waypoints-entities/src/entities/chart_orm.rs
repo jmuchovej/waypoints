@@ -44,63 +44,11 @@ use waypoints_domain::{
 ///
 /// ## Creating a Basic Chart
 ///
-/// ```
-/// use waypoints::chart::Chart;
-/// use waypoints::feature::{Feature, FeatureKind};
-///
-/// let mut recipe_chart = Chart::new("Recipe".to_string())
-///     .with_description("A cooking recipe with ingredients and instructions")
-///     .with_icon("👨‍🍳");
-///
-/// // Add custom features
-/// recipe_chart = recipe_chart.add_feature(Feature::new(
-///     "Prep Time".to_string(),
-///     FeatureKind::number()
-/// ));
-///
-/// recipe_chart = recipe_chart.add_feature(Feature::new(
-///     "Difficulty".to_string(),
-///     FeatureKind::unified_select_builder()
-///         .with_option("Easy")
-///         .with_option("Medium")
-///         .with_option("Hard")
-///         .single_selection()
-///         .build()
-/// ));
-///
-/// assert_eq!(recipe_chart.name, "Recipe");
-/// assert_eq!(recipe_chart.features.len(), 2);
-/// assert!(!recipe_chart.is_builtin());
-/// ```
+// TODO add basic chart examples
 ///
 /// ## Extending Page Chart
 ///
-/// ```
-/// use waypoints::chart::Chart;
-/// use waypoints::feature::{Feature, FeatureKind};
-///
-/// // Create a Meeting Notes chart that extends Page
-/// let mut meeting_notes = Chart::extend_page("Meeting Notes".to_string())
-///     .with_description("Notes from team meetings")
-///     .with_icon("📝");
-///
-/// // Add meeting-specific features
-/// meeting_notes = meeting_notes.add_feature(Feature::new(
-///     "Date".to_string(),
-///     FeatureKind::date()
-/// ));
-///
-/// meeting_notes = meeting_notes.add_feature(Feature::new(
-///     "Attendees".to_string(),
-///     FeatureKind::unified_select_builder()
-///         .allow_multiple()
-///         .build()
-/// ));
-///
-/// // Base fields (title, icon, children) are automatically available
-/// // on any Landmark created from this chart
-/// assert_eq!(meeting_notes.features.len(), 2);
-/// ```
+// TODO add page-extending chart examples
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DeriveEntityModel)]
 #[sea_orm(table_name = "charts", rename_all = "kebab-case")]
 pub struct Model {

@@ -1,6 +1,6 @@
 # The Flutter tooling requires that developers have CMake 3.10 or later
-# installed. You should not increase this version, as doing so will cause
-# the plugin to fail to compile for some customers of the plugin.
+# installed. You should not increase this version, as doing so will cause the
+# plugin to fail to compile for some customers of the plugin.
 cmake_minimum_required(VERSION 3.10)
 
 # Project-level configuration.
@@ -14,6 +14,5 @@ apply_cargokit(${PROJECT_NAME} ../../../crates/cartograph cartograph "")
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
 set(cartograph_bundled_libraries
-  "${${PROJECT_NAME}_cargokit_lib}"
-  PARENT_SCOPE
-)
+    "${${PROJECT_NAME}_cargokit_lib}"
+    PARENT_SCOPE)

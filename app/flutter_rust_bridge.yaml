@@ -1,6 +1,6 @@
 # See [link] for more details:
 # https://cjycode.com/flutter_rust_bridge/guides/custom/codegen/full-list#flutter_rust_bridge_codegen
-rust_input: crate::api,crate::transfer,waypoints::types,
+rust_input: crate::api,crate::transfer,waypoints-domain,
 rust_root: ../crates/cartograph
 dart_output: lib/src/generated/rust
 type_64bit_int: true

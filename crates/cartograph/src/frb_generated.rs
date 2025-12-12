@@ -25,9 +25,19 @@
 
 // Section: imports
 
+use crate::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
-use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
+use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
+use waypoints_domain::models::chart::*;
+use waypoints_domain::models::mark::*;
+use waypoints_domain::models::terrain::*;
+use waypoints_domain::types::feature::*;
+use waypoints_domain::types::feature_kind::date_builder::*;
+use waypoints_domain::types::feature_kind::number_builder::*;
+use waypoints_domain::types::feature_kind::reference_builder::*;
+use waypoints_domain::types::feature_kind::select_builder::*;
+use waypoints_domain::types::marks::*;
 
 // Section: boilerplate
 
@@ -37,13 +47,4116 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -291292710;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1993846077;
 
 // Section: executor
 
 flutter_rust_bridge::frb_generated_default_handler!();
 
+// Section: wire_funcs
+
+fn wire__waypoints_domain__types__feature_kind__date_builder__Date_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "Date_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::types::feature_kind::date_builder::Date::builder(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__feature_kind__number_builder__Number_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "Number_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::types::feature_kind::number_builder::Number::builder(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__feature_kind__reference_builder__Reference_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec,_,_>(flutter_rust_bridge::for_generated::TaskInfo{ debug_name: "Reference_builder", port: Some(port_), mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal }, move || {
+            let message = unsafe { flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_) };
+            let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end(); move |context|  {
+                    transform_result_sse::<_, ()>((move ||  {
+                         let output_ok = Result::<_,()>::Ok(waypoints_domain::types::feature_kind::reference_builder::Reference::builder())?;   Ok(output_ok)
+                    })())
+                } })
+}
+fn wire__waypoints_domain__types__marks__Size_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "Size_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::types::marks::Size::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__add_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "add",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::add(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__base_36_id_as_str_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "base_36_id_as_str",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::types::ids::Base36ID>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok({
+                        waypoints_domain::types::ids::Base36ID::as_str(&api_that);
+                    })?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__base_36_id_new_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "base_36_id_new",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(waypoints_domain::types::ids::Base36ID::new())?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__bookmark_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "bookmark",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::bookmark(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__cancel_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cancel",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::cancel(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__models__chart__chart_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chart_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::models::chart::Chart::builder())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__models__chart__chart_get_feature_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chart_get_feature",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::models::chart::Chart>::sse_decode(&mut deserializer);
+            let api_feature_id =
+                <waypoints_domain::types::ids::FeatureID>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::models::chart::Chart::get_feature(&api_that, &api_feature_id),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__chart_id_builtin_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chart_id_builtin",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_name = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok =
+                    Result::<_, ()>::Ok(waypoints_domain::types::ids::ChartID::builtin(&api_name))?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__chart_id_is_builtin_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chart_id_is_builtin",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::types::ids::ChartID>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::ids::ChartID::is_builtin(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__chart_id_name_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chart_id_name",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::types::ids::ChartID>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok({
+                    waypoints_domain::types::ids::ChartID::name(&api_that);
+                })?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__chart_id_new_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chart_id_new",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(waypoints_domain::types::ids::ChartID::new())?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__models__chart__chart_is_builtin_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chart_is_builtin",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::models::chart::Chart>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::models::chart::Chart::is_builtin(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__charter_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "charter",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::charter(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__close_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "close",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::close(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__color_sample_from_string_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "color_sample_from_string",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_input = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::Color::sample_from_string(&api_input),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__color_sample_with_seed_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "color_sample_with_seed",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_seed = <u64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::Color::sample_with_seed(api_seed),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__color_to_hex_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "color_to_hex",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::support::Color>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok({
+                        waypoints_domain::support::Color::to_hex(&api_that);
+                    })?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__content_type_name_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "content_type_name",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::types::marks::Content>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok({
+                    waypoints_domain::types::marks::Content::type_name(&api_that);
+                })?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__delete_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "delete",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::delete(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__edit_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "edit",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::edit(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__status__error_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "error",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::status::error(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__event_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "event",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::event(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__feature__feature_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "feature_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::types::feature::Feature::builder())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__feature_id_new_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "feature_id_new",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok =
+                    Result::<_, ()>::Ok(waypoints_domain::types::ids::FeatureID::new())?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__filter_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "filter",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::filter(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__for_chart_name_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "for_chart_name",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_name = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::for_chart_name(&api_name),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__glyph_id_new_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "glyph_id_new",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(waypoints_domain::types::ids::GlyphID::new())?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::support::icon::Icon::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_iconify_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_iconify",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_set = <String>::sse_decode(&mut deserializer);
+            let api_name = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::support::icon::Icon::iconify(&api_set, &api_name),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_is_colorable_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_is_colorable",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::support::icon::Icon>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::support::icon::Icon::is_colorable(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_local_image_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_local_image",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::support::icon::Icon::local_image(&api_path),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_new_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_new",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_identifier = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(waypoints_domain::support::icon::Icon::new(
+                    &api_identifier,
+                ))?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_parse_namespace_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_parse_namespace",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::support::icon::Icon>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::Icon::parse_namespace(&api_that),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_remote_image_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_remote_image",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_url = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::support::icon::Icon::remote_image(&api_url),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_system_emoji_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_system_emoji",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_name = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::support::icon::Icon::system_emoji(&api_name),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__icon_waypoints_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "icon_waypoints",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_set = <String>::sse_decode(&mut deserializer);
+            let api_name = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::support::icon::Icon::waypoints(&api_set, &api_name),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__status__info_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "info",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::status::info(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__journal_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "journal",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::journal(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__landmark_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "landmark_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::types::marks::Landmark::builder())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__landmark_chart_id_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "landmark_chart_id",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::marks::Landmark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::marks::Landmark::chart_id(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__landmark_type_name_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "landmark_type_name",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::marks::Landmark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok({
+                    waypoints_domain::types::marks::Landmark::type_name(&api_that);
+                })?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__status__loading_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "loading",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::status::loading(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__models__mark__mark_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::models::mark::Mark::builder())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__mark_data_is_content_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_data_is_content",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::marks::MarkData>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::types::marks::MarkData::is_content(&api_that),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__mark_data_is_landmark_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_data_is_landmark",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::marks::MarkData>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::types::marks::MarkData::is_landmark(&api_that),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__mark_data_type_name_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_data_type_name",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::marks::MarkData>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::marks::MarkData::type_name(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__ids__mark_id_new_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_id_new",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(waypoints_domain::types::ids::MarkID::new())?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__models__mark__mark_is_content_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_is_content",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::models::mark::Mark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::models::mark::Mark::is_content(&api_that),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__models__mark__mark_is_landmark_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_is_landmark",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::models::mark::Mark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::models::mark::Mark::is_landmark(&api_that),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__models__mark__mark_type_name_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "mark_type_name",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <waypoints_domain::models::mark::Mark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::models::mark::Mark::type_name(&api_that),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__marks__math_engine_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "math_engine_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::types::marks::MathEngine::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__meeting_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "meeting",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::meeting(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__menu_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "menu",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::menu(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__note_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "note",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::note(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__objective_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "objective",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::objective(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__page_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "page",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::page(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__status__pending_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "pending",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::status::pending(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__charts__person_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "person",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::charts::person(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__remove_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "remove",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::remove(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__rich_reference__rich_reference_from_id_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "rich_reference_from_id",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <waypoints_domain::types::ids::MarkID>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::rich_reference::RichReference::from_id(api_id),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__rich_reference__rich_reference_new_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "rich_reference_new",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <waypoints_domain::types::ids::MarkID>::sse_decode(&mut deserializer);
+            let api_mode =
+                <waypoints_domain::types::rich_reference::ReferenceDisplayMode>::sse_decode(
+                    &mut deserializer,
+                );
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::rich_reference::RichReference::new(api_id, api_mode),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__rich_text__rich_text_is_empty_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "rich_text_is_empty",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::rich_text::RichText>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::rich_text::RichText::is_empty(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__save_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "save",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::save(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__search_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "search",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::search(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__feature_kind__select_builder__select_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "select_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::types::feature_kind::select_builder::Select::builder(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__feature_kind__select_builder__select_group_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "select_group_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::types::feature_kind::select_builder::SelectGroup::builder(
+                        ),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__feature_kind__select_builder__select_option_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec,_,_>(flutter_rust_bridge::for_generated::TaskInfo{ debug_name: "select_option_builder", port: Some(port_), mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal }, move || {
+            let message = unsafe { flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_) };
+            let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end(); move |context|  {
+                    transform_result_sse::<_, ()>((move ||  {
+                         let output_ok = Result::<_,()>::Ok(waypoints_domain::types::feature_kind::select_builder::SelectOption::builder())?;   Ok(output_ok)
+                    })())
+                } })
+}
+fn wire__waypoints_domain__support__icon__presets__actions__settings_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "settings",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::settings(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__actions__sort_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "sort",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::actions::sort(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__status__success_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "success",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::status::success(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__models__terrain__terrain_builder_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "terrain_builder",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(waypoints_domain::models::terrain::Terrain::builder())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__waypoints_domain__types__rich_text__text_mark_is_valid_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "text_mark_is_valid",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::rich_text::TextMark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::rich_text::TextMark::is_valid(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__rich_text__text_mark_length_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "text_mark_length",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::rich_text::TextMark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::rich_text::TextMark::length(&api_that),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__types__rich_text__text_mark_overlaps_with_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "text_mark_overlaps_with",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that =
+                <waypoints_domain::types::rich_text::TextMark>::sse_decode(&mut deserializer);
+            let api_other =
+                <waypoints_domain::types::rich_text::TextMark>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Result::<_, ()>::Ok(
+                    waypoints_domain::types::rich_text::TextMark::overlaps_with(
+                        &api_that, &api_other,
+                    ),
+                )?;
+                Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__waypoints_domain__support__icon__presets__status__warning_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "warning",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        waypoints_domain::support::icon::presets::status::warning(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+
+// Section: static_checks
+
+#[allow(clippy::unnecessary_literal_unwrap)]
+const _: fn() = || {
+    {
+        let Base36ID_ = None::<waypoints_domain::types::ids::Base36ID>.unwrap();
+        let _: String = Base36ID_.0;
+    }
+    {
+        let Chart = None::<waypoints_domain::models::chart::Chart>.unwrap();
+        let _: waypoints_domain::types::ids::ChartID = Chart.id;
+        let _: String = Chart.name;
+        let _: Option<String> = Chart.description;
+        let _: Option<waypoints_domain::support::icon::Icon> = Chart.icon;
+        let _: IndexMap<FeatureID, Feature> = Chart.features;
+    }
+    {
+        let ChartID_ = None::<waypoints_domain::types::ids::ChartID>.unwrap();
+        let _: String = ChartID_.0;
+    }
+    match None::<waypoints_domain::types::marks::Content>.unwrap() {
+        waypoints_domain::types::marks::Content::Paragraph { rich_text } => {
+            let _: waypoints_domain::types::rich_text::RichText = rich_text;
+        }
+        waypoints_domain::types::marks::Content::Heading1 { rich_text } => {
+            let _: waypoints_domain::types::rich_text::RichText = rich_text;
+        }
+        waypoints_domain::types::marks::Content::Heading2 { rich_text } => {
+            let _: waypoints_domain::types::rich_text::RichText = rich_text;
+        }
+        waypoints_domain::types::marks::Content::Heading3 { rich_text } => {
+            let _: waypoints_domain::types::rich_text::RichText = rich_text;
+        }
+        waypoints_domain::types::marks::Content::Blockquote { rich_text } => {
+            let _: waypoints_domain::types::rich_text::RichText = rich_text;
+        }
+        waypoints_domain::types::marks::Content::ListItem { rich_text } => {
+            let _: waypoints_domain::types::rich_text::RichText = rich_text;
+        }
+        waypoints_domain::types::marks::Content::EnumItem { rich_text } => {
+            let _: waypoints_domain::types::rich_text::RichText = rich_text;
+        }
+        waypoints_domain::types::marks::Content::Callout {
+            icon,
+            background_color,
+            items,
+        } => {
+            let _: String = icon;
+            let _: waypoints_domain::support::Color = background_color;
+            let _: Vec<waypoints_domain::types::marks::Content> = items;
+        }
+        waypoints_domain::types::marks::Content::Code { language, lines } => {
+            let _: String = language;
+            let _: Vec<String> = lines;
+        }
+        waypoints_domain::types::marks::Content::Table {
+            cells,
+            col_size,
+            row_size,
+            col_header,
+            row_header,
+            fill_width,
+            col_colors,
+            row_colors,
+        } => {
+            let _: Vec<Vec<waypoints_domain::types::rich_text::RichText>> = cells;
+            let _: Option<Vec<Option<Size>>> = col_size;
+            let _: Option<Vec<Option<Size>>> = row_size;
+            let _: Option<bool> = col_header;
+            let _: Option<bool> = row_header;
+            let _: Option<bool> = fill_width;
+            let _: Option<Vec<Option<waypoints_domain::support::Color>>> = col_colors;
+            let _: Option<Vec<Option<waypoints_domain::support::Color>>> = row_colors;
+        }
+        waypoints_domain::types::marks::Content::Math { expression, engine } => {
+            let _: String = expression;
+            let _: waypoints_domain::types::marks::MathEngine = engine;
+        }
+        waypoints_domain::types::marks::Content::Divider => {}
+    }
+    {
+        let Feature = None::<waypoints_domain::types::feature::Feature>.unwrap();
+        let _: waypoints_domain::types::ids::FeatureID = Feature.id;
+        let _: String = Feature.name;
+        let _: waypoints_domain::types::feature_kind::FeatureKind = Feature.kind;
+        let _: Option<String> = Feature.description;
+        let _: bool = Feature.required;
+    }
+    {
+        let FeatureID_ = None::<waypoints_domain::types::ids::FeatureID>.unwrap();
+        let _: waypoints_domain::types::ids::Base36ID = FeatureID_.0;
+    }
+    match None::<waypoints_domain::types::feature_kind::FeatureKind>.unwrap() {
+        waypoints_domain::types::feature_kind::FeatureKind::Text => {}
+        waypoints_domain::types::feature_kind::FeatureKind::Number {
+            min,
+            max,
+            step,
+            precision,
+            format,
+        } => {
+            let _: Option<f64> = min;
+            let _: Option<f64> = max;
+            let _: Option<f64> = step;
+            let _: Option<u8> = precision;
+            let _: Option<String> = format;
+        }
+        waypoints_domain::types::feature_kind::FeatureKind::Checkbox => {}
+        waypoints_domain::types::feature_kind::FeatureKind::Date {
+            min_date,
+            min_time,
+            max_date,
+            max_time,
+            timezone,
+        } => {
+            let _: Option<NaiveDate> = min_date;
+            let _: Option<NaiveTime> = min_time;
+            let _: Option<NaiveDate> = max_date;
+            let _: Option<NaiveTime> = max_time;
+            let _: Option<String> = timezone;
+        }
+        waypoints_domain::types::feature_kind::FeatureKind::Email => {}
+        waypoints_domain::types::feature_kind::FeatureKind::Phone => {}
+        waypoints_domain::types::feature_kind::FeatureKind::URL => {}
+        waypoints_domain::types::feature_kind::FeatureKind::Select {
+            options,
+            default_option,
+        } => {
+            let _: IndexMap<GlyphID, SelectOption> = options;
+            let _: Option<waypoints_domain::types::ids::GlyphID> = default_option;
+        }
+        waypoints_domain::types::feature_kind::FeatureKind::MultiSelect {
+            options,
+            max_selections,
+            default_options,
+        } => {
+            let _: IndexMap<GlyphID, SelectOption> = options;
+            let _: Option<usize> = max_selections;
+            let _: Vec<waypoints_domain::types::ids::GlyphID> = default_options;
+        }
+        waypoints_domain::types::feature_kind::FeatureKind::GroupedSelect {
+            groups,
+            default_option,
+        } => {
+            let _: IndexMap<GlyphID, SelectGroup> = groups;
+            let _: Option<waypoints_domain::types::ids::GlyphID> = default_option;
+        }
+        waypoints_domain::types::feature_kind::FeatureKind::GroupedMultiSelect {
+            groups,
+            max_selections,
+            default_options,
+        } => {
+            let _: IndexMap<GlyphID, SelectGroup> = groups;
+            let _: Option<usize> = max_selections;
+            let _: IndexMap<GlyphID, GlyphID> = default_options;
+        }
+        waypoints_domain::types::feature_kind::FeatureKind::Reference {
+            allowed_types,
+            max_references,
+            display_field,
+            display_mode,
+            filter_criteria,
+        } => {
+            let _: Option<Vec<waypoints_domain::types::ids::ChartID>> = allowed_types;
+            let _: Option<usize> = max_references;
+            let _: String = display_field;
+            let _: waypoints_domain::types::rich_reference::ReferenceDisplayMode = display_mode;
+            let _: Option<Value> = filter_criteria;
+        }
+        waypoints_domain::types::feature_kind::FeatureKind::Formula => {}
+    }
+    {
+        let GlyphID_ = None::<waypoints_domain::types::ids::GlyphID>.unwrap();
+        let _: waypoints_domain::types::ids::Base36ID = GlyphID_.0;
+    }
+    {
+        let Icon = None::<waypoints_domain::support::icon::Icon>.unwrap();
+        let _: String = Icon.identifier;
+        let _: Option<String> = Icon.alt_text;
+        let _: Option<bool> = Icon.colorable;
+        let _: Option<Value> = Icon.metadata;
+    }
+    match None::<waypoints_domain::support::icon::IconNamespace>.unwrap() {
+        waypoints_domain::support::icon::IconNamespace::Iconify { set, name } => {
+            let _: String = set;
+            let _: String = name;
+        }
+        waypoints_domain::support::icon::IconNamespace::Waypoints { set, name } => {
+            let _: String = set;
+            let _: String = name;
+        }
+        waypoints_domain::support::icon::IconNamespace::SystemEmoji { name } => {
+            let _: String = name;
+        }
+        waypoints_domain::support::icon::IconNamespace::LocalImage { path } => {
+            let _: String = path;
+        }
+        waypoints_domain::support::icon::IconNamespace::RemoteImage { url } => {
+            let _: String = url;
+        }
+    }
+    {
+        let Landmark = None::<waypoints_domain::types::marks::Landmark>.unwrap();
+        let _: waypoints_domain::types::ids::ChartID = Landmark.chart;
+        let _: waypoints_domain::types::rich_text::RichText = Landmark.title;
+        let _: Option<waypoints_domain::support::icon::Icon> = Landmark.icon;
+        let _: Vec<waypoints_domain::types::rich_reference::RichReference> = Landmark.children;
+        let _: IndexMap<FeatureID, Reading> = Landmark.readings;
+    }
+    {
+        let Mark = None::<waypoints_domain::models::mark::Mark>.unwrap();
+        let _: waypoints_domain::types::ids::MarkID = Mark.id;
+        let _: waypoints_domain::types::marks::MarkData = Mark.data;
+        let _: Option<Value> = Mark.extra;
+    }
+    match None::<waypoints_domain::types::marks::MarkData>.unwrap() {
+        waypoints_domain::types::marks::MarkData::Content(field0) => {
+            let _: waypoints_domain::types::marks::Content = field0;
+        }
+        waypoints_domain::types::marks::MarkData::Landmark(field0) => {
+            let _: waypoints_domain::types::marks::Landmark = field0;
+        }
+    }
+    {
+        let MarkID_ = None::<waypoints_domain::types::ids::MarkID>.unwrap();
+        let _: uuid::Uuid = MarkID_.0;
+    }
+    match None::<waypoints_domain::types::reading::Reading>.unwrap() {
+        waypoints_domain::types::reading::Reading::Text(field0) => {
+            let _: String = field0;
+        }
+        waypoints_domain::types::reading::Reading::Number(field0) => {
+            let _: f64 = field0;
+        }
+        waypoints_domain::types::reading::Reading::Bool(field0) => {
+            let _: bool = field0;
+        }
+        waypoints_domain::types::reading::Reading::Date(field0) => {
+            let _: chrono::NaiveDateTime = field0;
+        }
+        waypoints_domain::types::reading::Reading::DateRange(field0, field1) => {
+            let _: chrono::NaiveDateTime = field0;
+            let _: chrono::NaiveDateTime = field1;
+        }
+        waypoints_domain::types::reading::Reading::Select(field0) => {
+            let _: waypoints_domain::types::ids::GlyphID = field0;
+        }
+        waypoints_domain::types::reading::Reading::MultiSelect(field0) => {
+            let _: Vec<waypoints_domain::types::ids::GlyphID> = field0;
+        }
+        waypoints_domain::types::reading::Reading::GroupedSelect(field0) => {
+            let _: std::collections::HashMap<
+                waypoints_domain::types::ids::GlyphID,
+                Vec<waypoints_domain::types::ids::GlyphID>,
+            > = field0;
+        }
+        waypoints_domain::types::reading::Reading::References(field0) => {
+            let _: Vec<waypoints_domain::types::ids::MarkID> = field0;
+        }
+        waypoints_domain::types::reading::Reading::URL(field0) => {
+            let _: String = field0;
+        }
+        waypoints_domain::types::reading::Reading::Email(field0) => {
+            let _: String = field0;
+        }
+        waypoints_domain::types::reading::Reading::Phone(field0, field1) => {
+            let _: String = field0;
+            let _: String = field1;
+        }
+        waypoints_domain::types::reading::Reading::File(field0) => {
+            let _: String = field0;
+        }
+        waypoints_domain::types::reading::Reading::Formula(field0) => {
+            let _: String = field0;
+        }
+        waypoints_domain::types::reading::Reading::Null => {}
+    }
+    {
+        let RichReference = None::<waypoints_domain::types::rich_reference::RichReference>.unwrap();
+        let _: waypoints_domain::types::ids::MarkID = RichReference.id;
+        let _: waypoints_domain::types::rich_reference::ReferenceDisplayMode =
+            RichReference.display_mode;
+    }
+    {
+        let RichText = None::<waypoints_domain::types::rich_text::RichText>.unwrap();
+        let _: String = RichText.plain_text;
+        let _: Vec<waypoints_domain::types::rich_text::TextMark> = RichText.marks;
+    }
+    {
+        let Select = None::<waypoints_domain::types::feature_kind::select_builder::Select>.unwrap();
+        let _: std::collections::HashMap<
+            waypoints_domain::types::ids::GlyphID,
+            waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+        > = Select.groups;
+        let _: Option<usize> = Select.max_selections;
+        let _: Vec<waypoints_domain::types::ids::GlyphID> = Select.default_options;
+        let _: bool = Select.flatten_single_group;
+        let _: Option<waypoints_domain::types::ids::GlyphID> = Select.default_group;
+    }
+    {
+        let SelectGroup =
+            None::<waypoints_domain::types::feature_kind::select_builder::SelectGroup>.unwrap();
+        let _: waypoints_domain::types::ids::GlyphID = SelectGroup.id;
+        let _: String = SelectGroup.name;
+        let _: Option<String> = SelectGroup.description;
+        let _: IndexMap<GlyphID, SelectOption> = SelectGroup.options;
+        let _: Option<usize> = SelectGroup.max_selections;
+        let _: Vec<waypoints_domain::types::ids::GlyphID> = SelectGroup.default_options;
+    }
+    {
+        let SelectOption =
+            None::<waypoints_domain::types::feature_kind::select_builder::SelectOption>.unwrap();
+        let _: waypoints_domain::types::ids::GlyphID = SelectOption.id;
+        let _: String = SelectOption.name;
+        let _: Option<String> = SelectOption.description;
+        let _: Option<waypoints_domain::support::icon::Icon> = SelectOption.icon;
+        let _: waypoints_domain::support::Color = SelectOption.color;
+    }
+    {
+        let Terrain = None::<waypoints_domain::models::terrain::Terrain>.unwrap();
+        let _: waypoints_domain::types::ids::MarkID = Terrain.src_id;
+        let _: waypoints_domain::types::ids::MarkID = Terrain.dst_id;
+        let _: Option<Value> = Terrain.extra;
+    }
+    {
+        let TextMark = None::<waypoints_domain::types::rich_text::TextMark>.unwrap();
+        let _: waypoints_domain::types::rich_text::TextMarkKind = TextMark.kind;
+        let _: usize = TextMark.start;
+        let _: usize = TextMark.end;
+        let _: Option<Value> = TextMark.data;
+    }
+};
+
+// Section: related_funcs
+
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        ChartBuilder<(
+            (String,),
+            (Option<String>,),
+            (Option<Icon>,),
+            (IndexMap<FeatureID, Feature>,)
+        )>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<DateBuilder<((), (), (), (), ())>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, GlyphID>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectOption>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        LandmarkBuilder<(
+            (),
+            (RichText,),
+            (),
+            (Vec<RichReference>,),
+            (IndexMap<FeatureID, Reading>,)
+        )>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        MarkBuilder<((MarkData,), (Option<Json>,))>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NumberBuilder<((), (), (), (), ())>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        ReferenceBuilder<(
+            (Option<Vec<ChartID>>,),
+            (Option<usize>,),
+            (String,),
+            (ReferenceDisplayMode,),
+            (Option<Json>,)
+        )>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        SelectBuilder<(
+            (HashMap<GlyphID, SelectGroup>,),
+            (Option<usize>,),
+            (),
+            (),
+            (Option<GlyphID>,)
+        )>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        SelectGroupBuilder<(
+            (String,),
+            (Option<String>,),
+            (IndexMap<GlyphID, SelectOption>,),
+            (Option<usize>,),
+            (Vec<GlyphID>,)
+        )>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        SelectOptionBuilder<((String,), (), (), ())>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+        TerrainBuilder<((), (), (Option<Json>,))>,
+    >
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>
+);
+
 // Section: dart2rust
+
+impl SseDecode
+    for ChartBuilder<(
+        (String,),
+        (Option<String>,),
+        (Option<Icon>,),
+        (IndexMap<FeatureID, Feature>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ChartBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (Option<Icon>,),
+                    (IndexMap<FeatureID, Feature>,),
+                )>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for Date {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for DateBuilder<((), (), (), (), ())> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                DateBuilder<((), (), (), (), ())>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for IndexMap<FeatureID, Feature> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for IndexMap<FeatureID, Reading> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for IndexMap<GlyphID, GlyphID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, GlyphID>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for IndexMap<GlyphID, SelectGroup> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for IndexMap<GlyphID, SelectOption> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                IndexMap<GlyphID, SelectOption>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode
+    for LandmarkBuilder<(
+        (),
+        (RichText,),
+        (),
+        (Vec<RichReference>,),
+        (IndexMap<FeatureID, Reading>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                LandmarkBuilder<(
+                    (),
+                    (RichText,),
+                    (),
+                    (Vec<RichReference>,),
+                    (IndexMap<FeatureID, Reading>,),
+                )>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for MarkBuilder<((MarkData,), (Option<Json>,))> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                MarkBuilder<((MarkData,), (Option<Json>,))>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for NaiveDate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for NaiveTime {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for Number {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for NumberBuilder<((), (), (), (), ())> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                NumberBuilder<((), (), (), (), ())>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for Reference {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode
+    for ReferenceBuilder<(
+        (Option<Vec<ChartID>>,),
+        (Option<usize>,),
+        (String,),
+        (ReferenceDisplayMode,),
+        (Option<Json>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ReferenceBuilder<(
+                    (Option<Vec<ChartID>>,),
+                    (Option<usize>,),
+                    (String,),
+                    (ReferenceDisplayMode,),
+                    (Option<Json>,),
+                )>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode
+    for SelectBuilder<(
+        (HashMap<GlyphID, SelectGroup>,),
+        (Option<usize>,),
+        (),
+        (),
+        (Option<GlyphID>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectBuilder<(
+                    (HashMap<GlyphID, SelectGroup>,),
+                    (Option<usize>,),
+                    (),
+                    (),
+                    (Option<GlyphID>,),
+                )>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode
+    for SelectGroupBuilder<(
+        (String,),
+        (Option<String>,),
+        (IndexMap<GlyphID, SelectOption>,),
+        (Option<usize>,),
+        (Vec<GlyphID>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectGroupBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (IndexMap<GlyphID, SelectOption>,),
+                    (Option<usize>,),
+                    (Vec<GlyphID>,),
+                )>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for SelectOptionBuilder<((String,), (), (), ())> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectOptionBuilder<((String,), (), (), ())>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for Size {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for TerrainBuilder<((), (), (Option<Json>,))> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                TerrainBuilder<((), (), (Option<Json>,))>,
+            >,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for Value {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for chrono::NaiveDateTime {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i64>::sse_decode(deserializer);
+        return chrono::DateTime::from_timestamp_micros(inner)
+            .expect("invalid or out-of-range datetime")
+            .naive_utc();
+    }
+}
+
+impl SseDecode
+    for std::collections::HashMap<
+        waypoints_domain::types::ids::GlyphID,
+        Vec<waypoints_domain::types::ids::GlyphID>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <Vec<(
+            waypoints_domain::types::ids::GlyphID,
+            Vec<waypoints_domain::types::ids::GlyphID>,
+        )>>::sse_decode(deserializer);
+        return inner.into_iter().collect();
+    }
+}
+
+impl SseDecode
+    for std::collections::HashMap<
+        waypoints_domain::types::ids::GlyphID,
+        waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <Vec<(
+            waypoints_domain::types::ids::GlyphID,
+            waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+        )>>::sse_decode(deserializer);
+        return inner.into_iter().collect();
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            ChartBuilder<(
+                (String,),
+                (Option<String>,),
+                (Option<Icon>,),
+                (IndexMap<FeatureID, Feature>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<DateBuilder<((), (), (), (), ())>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, GlyphID>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectOption>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            LandmarkBuilder<(
+                (),
+                (RichText,),
+                (),
+                (Vec<RichReference>,),
+                (IndexMap<FeatureID, Reading>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            MarkBuilder<((MarkData,), (Option<Json>,))>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            NumberBuilder<((), (), (), (), ())>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            ReferenceBuilder<(
+                (Option<Vec<ChartID>>,),
+                (Option<usize>,),
+                (String,),
+                (ReferenceDisplayMode,),
+                (Option<Json>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            SelectBuilder<(
+                (HashMap<GlyphID, SelectGroup>,),
+                (Option<usize>,),
+                (),
+                (),
+                (Option<GlyphID>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            SelectGroupBuilder<(
+                (String,),
+                (Option<String>,),
+                (IndexMap<GlyphID, SelectOption>,),
+                (Option<usize>,),
+                (Vec<GlyphID>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            SelectOptionBuilder<((String,), (), (), ())>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            TerrainBuilder<((), (), (Option<Json>,))>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode for String {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <Vec<u8>>::sse_decode(deserializer);
+        return String::from_utf8(inner).unwrap();
+    }
+}
+
+impl SseDecode for uuid::Uuid {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <Vec<u8>>::sse_decode(deserializer);
+        return uuid::Uuid::from_slice(&inner).expect("fail to decode uuid");
+    }
+}
+
+impl SseDecode for waypoints_domain::types::ids::Base36ID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <String>::sse_decode(deserializer);
+        return waypoints_domain::types::ids::Base36ID(var_field0);
+    }
+}
+
+impl SseDecode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u8().unwrap() != 0
+    }
+}
+
+impl SseDecode for waypoints_domain::models::chart::Chart {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::ChartID>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_description = <Option<String>>::sse_decode(deserializer);
+        let mut var_icon =
+            <Option<waypoints_domain::support::icon::Icon>>::sse_decode(deserializer);
+        let mut var_features = <IndexMap<FeatureID, Feature>>::sse_decode(deserializer);
+        return waypoints_domain::models::chart::Chart {
+            id: var_id,
+            name: var_name,
+            description: var_description,
+            icon: var_icon,
+            features: var_features,
+        };
+    }
+}
+
+impl SseDecode for crate::transfer::chart_dto::ChartDTO {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::ChartID>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_description = <Option<String>>::sse_decode(deserializer);
+        let mut var_icon =
+            <Option<waypoints_domain::support::icon::Icon>>::sse_decode(deserializer);
+        let mut var_features =
+            <Vec<waypoints_domain::types::feature::Feature>>::sse_decode(deserializer);
+        return crate::transfer::chart_dto::ChartDTO {
+            id: var_id,
+            name: var_name,
+            description: var_description,
+            icon: var_icon,
+            features: var_features,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::ids::ChartID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <String>::sse_decode(deserializer);
+        return waypoints_domain::types::ids::ChartID(var_field0);
+    }
+}
+
+impl SseDecode for waypoints_domain::support::Color {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => waypoints_domain::support::Color::Default,
+            1 => waypoints_domain::support::Color::Gray,
+            2 => waypoints_domain::support::Color::Brown,
+            3 => waypoints_domain::support::Color::Orange,
+            4 => waypoints_domain::support::Color::Yellow,
+            5 => waypoints_domain::support::Color::Green,
+            6 => waypoints_domain::support::Color::Blue,
+            7 => waypoints_domain::support::Color::Purple,
+            8 => waypoints_domain::support::Color::Pink,
+            9 => waypoints_domain::support::Color::Red,
+            _ => unreachable!("Invalid variant for Color: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::marks::Content {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_richText =
+                    <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Paragraph {
+                    rich_text: var_richText,
+                };
+            }
+            1 => {
+                let mut var_richText =
+                    <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Heading1 {
+                    rich_text: var_richText,
+                };
+            }
+            2 => {
+                let mut var_richText =
+                    <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Heading2 {
+                    rich_text: var_richText,
+                };
+            }
+            3 => {
+                let mut var_richText =
+                    <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Heading3 {
+                    rich_text: var_richText,
+                };
+            }
+            4 => {
+                let mut var_richText =
+                    <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Blockquote {
+                    rich_text: var_richText,
+                };
+            }
+            5 => {
+                let mut var_richText =
+                    <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::ListItem {
+                    rich_text: var_richText,
+                };
+            }
+            6 => {
+                let mut var_richText =
+                    <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::EnumItem {
+                    rich_text: var_richText,
+                };
+            }
+            7 => {
+                let mut var_icon = <String>::sse_decode(deserializer);
+                let mut var_backgroundColor =
+                    <waypoints_domain::support::Color>::sse_decode(deserializer);
+                let mut var_items =
+                    <Vec<waypoints_domain::types::marks::Content>>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Callout {
+                    icon: var_icon,
+                    background_color: var_backgroundColor,
+                    items: var_items,
+                };
+            }
+            8 => {
+                let mut var_language = <String>::sse_decode(deserializer);
+                let mut var_lines = <Vec<String>>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Code {
+                    language: var_language,
+                    lines: var_lines,
+                };
+            }
+            9 => {
+                let mut var_cells =
+                    <Vec<Vec<waypoints_domain::types::rich_text::RichText>>>::sse_decode(
+                        deserializer,
+                    );
+                let mut var_colSize = <Option<Vec<Option<Size>>>>::sse_decode(deserializer);
+                let mut var_rowSize = <Option<Vec<Option<Size>>>>::sse_decode(deserializer);
+                let mut var_colHeader = <Option<bool>>::sse_decode(deserializer);
+                let mut var_rowHeader = <Option<bool>>::sse_decode(deserializer);
+                let mut var_fillWidth = <Option<bool>>::sse_decode(deserializer);
+                let mut var_colColors =
+                    <Option<Vec<Option<waypoints_domain::support::Color>>>>::sse_decode(
+                        deserializer,
+                    );
+                let mut var_rowColors =
+                    <Option<Vec<Option<waypoints_domain::support::Color>>>>::sse_decode(
+                        deserializer,
+                    );
+                return waypoints_domain::types::marks::Content::Table {
+                    cells: var_cells,
+                    col_size: var_colSize,
+                    row_size: var_rowSize,
+                    col_header: var_colHeader,
+                    row_header: var_rowHeader,
+                    fill_width: var_fillWidth,
+                    col_colors: var_colColors,
+                    row_colors: var_rowColors,
+                };
+            }
+            10 => {
+                let mut var_expression = <String>::sse_decode(deserializer);
+                let mut var_engine =
+                    <waypoints_domain::types::marks::MathEngine>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::Content::Math {
+                    expression: var_expression,
+                    engine: var_engine,
+                };
+            }
+            11 => {
+                return waypoints_domain::types::marks::Content::Divider;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for waypoints_domain::types::feature::Feature {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::FeatureID>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_kind =
+            <waypoints_domain::types::feature_kind::FeatureKind>::sse_decode(deserializer);
+        let mut var_description = <Option<String>>::sse_decode(deserializer);
+        let mut var_required_ = <bool>::sse_decode(deserializer);
+        return waypoints_domain::types::feature::Feature {
+            id: var_id,
+            name: var_name,
+            kind: var_kind,
+            description: var_description,
+            required: var_required_,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::ids::FeatureID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <waypoints_domain::types::ids::Base36ID>::sse_decode(deserializer);
+        return waypoints_domain::types::ids::FeatureID(var_field0);
+    }
+}
+
+impl SseDecode for waypoints_domain::types::feature_kind::FeatureKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                return waypoints_domain::types::feature_kind::FeatureKind::Text;
+            }
+            1 => {
+                let mut var_min = <Option<f64>>::sse_decode(deserializer);
+                let mut var_max = <Option<f64>>::sse_decode(deserializer);
+                let mut var_step = <Option<f64>>::sse_decode(deserializer);
+                let mut var_precision = <Option<u8>>::sse_decode(deserializer);
+                let mut var_format = <Option<String>>::sse_decode(deserializer);
+                return waypoints_domain::types::feature_kind::FeatureKind::Number {
+                    min: var_min,
+                    max: var_max,
+                    step: var_step,
+                    precision: var_precision,
+                    format: var_format,
+                };
+            }
+            2 => {
+                return waypoints_domain::types::feature_kind::FeatureKind::Checkbox;
+            }
+            3 => {
+                let mut var_minDate = <Option<NaiveDate>>::sse_decode(deserializer);
+                let mut var_minTime = <Option<NaiveTime>>::sse_decode(deserializer);
+                let mut var_maxDate = <Option<NaiveDate>>::sse_decode(deserializer);
+                let mut var_maxTime = <Option<NaiveTime>>::sse_decode(deserializer);
+                let mut var_timezone = <Option<String>>::sse_decode(deserializer);
+                return waypoints_domain::types::feature_kind::FeatureKind::Date {
+                    min_date: var_minDate,
+                    min_time: var_minTime,
+                    max_date: var_maxDate,
+                    max_time: var_maxTime,
+                    timezone: var_timezone,
+                };
+            }
+            4 => {
+                return waypoints_domain::types::feature_kind::FeatureKind::Email;
+            }
+            5 => {
+                return waypoints_domain::types::feature_kind::FeatureKind::Phone;
+            }
+            6 => {
+                return waypoints_domain::types::feature_kind::FeatureKind::URL;
+            }
+            7 => {
+                let mut var_options = <IndexMap<GlyphID, SelectOption>>::sse_decode(deserializer);
+                let mut var_defaultOption =
+                    <Option<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+                return waypoints_domain::types::feature_kind::FeatureKind::Select {
+                    options: var_options,
+                    default_option: var_defaultOption,
+                };
+            }
+            8 => {
+                let mut var_options = <IndexMap<GlyphID, SelectOption>>::sse_decode(deserializer);
+                let mut var_maxSelections = <Option<usize>>::sse_decode(deserializer);
+                let mut var_defaultOptions =
+                    <Vec<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+                return waypoints_domain::types::feature_kind::FeatureKind::MultiSelect {
+                    options: var_options,
+                    max_selections: var_maxSelections,
+                    default_options: var_defaultOptions,
+                };
+            }
+            9 => {
+                let mut var_groups = <IndexMap<GlyphID, SelectGroup>>::sse_decode(deserializer);
+                let mut var_defaultOption =
+                    <Option<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+                return waypoints_domain::types::feature_kind::FeatureKind::GroupedSelect {
+                    groups: var_groups,
+                    default_option: var_defaultOption,
+                };
+            }
+            10 => {
+                let mut var_groups = <IndexMap<GlyphID, SelectGroup>>::sse_decode(deserializer);
+                let mut var_maxSelections = <Option<usize>>::sse_decode(deserializer);
+                let mut var_defaultOptions = <IndexMap<GlyphID, GlyphID>>::sse_decode(deserializer);
+                return waypoints_domain::types::feature_kind::FeatureKind::GroupedMultiSelect {
+                    groups: var_groups,
+                    max_selections: var_maxSelections,
+                    default_options: var_defaultOptions,
+                };
+            }
+            11 => {
+                let mut var_allowedTypes =
+                    <Option<Vec<waypoints_domain::types::ids::ChartID>>>::sse_decode(deserializer);
+                let mut var_maxReferences = <Option<usize>>::sse_decode(deserializer);
+                let mut var_displayField = <String>::sse_decode(deserializer);
+                let mut var_displayMode =
+                    <waypoints_domain::types::rich_reference::ReferenceDisplayMode>::sse_decode(
+                        deserializer,
+                    );
+                let mut var_filterCriteria = <Option<Value>>::sse_decode(deserializer);
+                return waypoints_domain::types::feature_kind::FeatureKind::Reference {
+                    allowed_types: var_allowedTypes,
+                    max_references: var_maxReferences,
+                    display_field: var_displayField,
+                    display_mode: var_displayMode,
+                    filter_criteria: var_filterCriteria,
+                };
+            }
+            12 => {
+                return waypoints_domain::types::feature_kind::FeatureKind::Formula;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for waypoints_domain::types::ids::GlyphID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <waypoints_domain::types::ids::Base36ID>::sse_decode(deserializer);
+        return waypoints_domain::types::ids::GlyphID(var_field0);
+    }
+}
 
 impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -52,10 +4165,898 @@ impl SseDecode for i32 {
     }
 }
 
-impl SseDecode for bool {
+impl SseDecode for i64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_u8().unwrap() != 0
+        deserializer.cursor.read_i64::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for waypoints_domain::support::icon::Icon {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_identifier = <String>::sse_decode(deserializer);
+        let mut var_altText = <Option<String>>::sse_decode(deserializer);
+        let mut var_colorable = <Option<bool>>::sse_decode(deserializer);
+        let mut var_metadata = <Option<Value>>::sse_decode(deserializer);
+        return waypoints_domain::support::icon::Icon {
+            identifier: var_identifier,
+            alt_text: var_altText,
+            colorable: var_colorable,
+            metadata: var_metadata,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::support::icon::IconNamespace {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_set_ = <String>::sse_decode(deserializer);
+                let mut var_name = <String>::sse_decode(deserializer);
+                return waypoints_domain::support::icon::IconNamespace::Iconify {
+                    set: var_set_,
+                    name: var_name,
+                };
+            }
+            1 => {
+                let mut var_set_ = <String>::sse_decode(deserializer);
+                let mut var_name = <String>::sse_decode(deserializer);
+                return waypoints_domain::support::icon::IconNamespace::Waypoints {
+                    set: var_set_,
+                    name: var_name,
+                };
+            }
+            2 => {
+                let mut var_name = <String>::sse_decode(deserializer);
+                return waypoints_domain::support::icon::IconNamespace::SystemEmoji {
+                    name: var_name,
+                };
+            }
+            3 => {
+                let mut var_path = <String>::sse_decode(deserializer);
+                return waypoints_domain::support::icon::IconNamespace::LocalImage {
+                    path: var_path,
+                };
+            }
+            4 => {
+                let mut var_url = <String>::sse_decode(deserializer);
+                return waypoints_domain::support::icon::IconNamespace::RemoteImage {
+                    url: var_url,
+                };
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for waypoints_domain::types::marks::Landmark {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_chart = <waypoints_domain::types::ids::ChartID>::sse_decode(deserializer);
+        let mut var_title =
+            <waypoints_domain::types::rich_text::RichText>::sse_decode(deserializer);
+        let mut var_icon =
+            <Option<waypoints_domain::support::icon::Icon>>::sse_decode(deserializer);
+        let mut var_children =
+            <Vec<waypoints_domain::types::rich_reference::RichReference>>::sse_decode(deserializer);
+        let mut var_readings = <IndexMap<FeatureID, Reading>>::sse_decode(deserializer);
+        return waypoints_domain::types::marks::Landmark {
+            chart: var_chart,
+            title: var_title,
+            icon: var_icon,
+            children: var_children,
+            readings: var_readings,
+        };
+    }
+}
+
+impl SseDecode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::ids::ChartID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<waypoints_domain::types::ids::ChartID>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::marks::Content> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<waypoints_domain::types::marks::Content>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::feature::Feature> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<waypoints_domain::types::feature::Feature>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::ids::GlyphID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<waypoints_domain::types::ids::GlyphID>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<Vec<waypoints_domain::types::rich_text::RichText>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <Vec<waypoints_domain::types::rich_text::RichText>>::sse_decode(deserializer),
+            );
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::ids::MarkID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<waypoints_domain::types::ids::MarkID>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<Option<Size>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<Option<Size>>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<Option<waypoints_domain::support::Color>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<Option<waypoints_domain::support::Color>>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<u8> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<u8>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode
+    for Vec<(
+        waypoints_domain::types::ids::GlyphID,
+        Vec<waypoints_domain::types::ids::GlyphID>,
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<(
+                waypoints_domain::types::ids::GlyphID,
+                Vec<waypoints_domain::types::ids::GlyphID>,
+            )>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode
+    for Vec<(
+        waypoints_domain::types::ids::GlyphID,
+        waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<(
+                waypoints_domain::types::ids::GlyphID,
+                waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+            )>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::rich_reference::RichReference> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <waypoints_domain::types::rich_reference::RichReference>::sse_decode(deserializer),
+            );
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::rich_text::RichText> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<waypoints_domain::types::rich_text::RichText>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<waypoints_domain::types::rich_text::TextMark> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<waypoints_domain::types::rich_text::TextMark>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for waypoints_domain::models::mark::Mark {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::MarkID>::sse_decode(deserializer);
+        let mut var_data = <waypoints_domain::types::marks::MarkData>::sse_decode(deserializer);
+        let mut var_extra = <Option<Value>>::sse_decode(deserializer);
+        return waypoints_domain::models::mark::Mark {
+            id: var_id,
+            data: var_data,
+            extra: var_extra,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::marks::MarkData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 =
+                    <waypoints_domain::types::marks::Content>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::MarkData::Content(var_field0);
+            }
+            1 => {
+                let mut var_field0 =
+                    <waypoints_domain::types::marks::Landmark>::sse_decode(deserializer);
+                return waypoints_domain::types::marks::MarkData::Landmark(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::transfer::mark_dto::MarkDTO {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::MarkID>::sse_decode(deserializer);
+        let mut var_data = <waypoints_domain::types::marks::MarkData>::sse_decode(deserializer);
+        let mut var_extra = <Value>::sse_decode(deserializer);
+        return crate::transfer::mark_dto::MarkDTO {
+            id: var_id,
+            data: var_data,
+            extra: var_extra,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::ids::MarkID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <uuid::Uuid>::sse_decode(deserializer);
+        return waypoints_domain::types::ids::MarkID(var_field0);
+    }
+}
+
+impl SseDecode for waypoints_domain::types::marks::MathEngine {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => waypoints_domain::types::marks::MathEngine::Typst,
+            1 => waypoints_domain::types::marks::MathEngine::LaTeX,
+            _ => unreachable!("Invalid variant for MathEngine: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for Option<usize> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<usize>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<NaiveDate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<NaiveDate>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<NaiveTime> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<NaiveTime>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Size> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Size>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Value> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Value>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<bool>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<waypoints_domain::support::Color> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<waypoints_domain::support::Color>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<f64>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<waypoints_domain::types::feature::Feature> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<waypoints_domain::types::feature::Feature>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<waypoints_domain::types::ids::GlyphID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<waypoints_domain::types::ids::GlyphID>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<waypoints_domain::support::icon::Icon> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<waypoints_domain::support::icon::Icon>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<waypoints_domain::support::icon::IconNamespace> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(
+                <waypoints_domain::support::icon::IconNamespace>::sse_decode(deserializer),
+            );
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<u8> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<u8>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Vec<waypoints_domain::types::ids::ChartID>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<waypoints_domain::types::ids::ChartID>>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Vec<Option<Size>>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<Option<Size>>>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Vec<Option<waypoints_domain::support::Color>>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<Option<waypoints_domain::support::Color>>>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for waypoints_domain::types::reading::Reading {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Text(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <f64>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Number(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <bool>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Bool(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <chrono::NaiveDateTime>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Date(var_field0);
+            }
+            4 => {
+                let mut var_field0 = <chrono::NaiveDateTime>::sse_decode(deserializer);
+                let mut var_field1 = <chrono::NaiveDateTime>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::DateRange(
+                    var_field0, var_field1,
+                );
+            }
+            5 => {
+                let mut var_field0 =
+                    <waypoints_domain::types::ids::GlyphID>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Select(var_field0);
+            }
+            6 => {
+                let mut var_field0 =
+                    <Vec<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::MultiSelect(var_field0);
+            }
+            7 => {
+                let mut var_field0 = <std::collections::HashMap<
+                    waypoints_domain::types::ids::GlyphID,
+                    Vec<waypoints_domain::types::ids::GlyphID>,
+                >>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::GroupedSelect(var_field0);
+            }
+            8 => {
+                let mut var_field0 =
+                    <Vec<waypoints_domain::types::ids::MarkID>>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::References(var_field0);
+            }
+            9 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::URL(var_field0);
+            }
+            10 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Email(var_field0);
+            }
+            11 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                let mut var_field1 = <String>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Phone(var_field0, var_field1);
+            }
+            12 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::File(var_field0);
+            }
+            13 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return waypoints_domain::types::reading::Reading::Formula(var_field0);
+            }
+            14 => {
+                return waypoints_domain::types::reading::Reading::Null;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode
+    for (
+        waypoints_domain::types::ids::GlyphID,
+        Vec<waypoints_domain::types::ids::GlyphID>,
+    )
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <waypoints_domain::types::ids::GlyphID>::sse_decode(deserializer);
+        let mut var_field1 = <Vec<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+        return (var_field0, var_field1);
+    }
+}
+
+impl SseDecode
+    for (
+        waypoints_domain::types::ids::GlyphID,
+        waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+    )
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <waypoints_domain::types::ids::GlyphID>::sse_decode(deserializer);
+        let mut var_field1 =
+            <waypoints_domain::types::feature_kind::select_builder::SelectGroup>::sse_decode(
+                deserializer,
+            );
+        return (var_field0, var_field1);
+    }
+}
+
+impl SseDecode for waypoints_domain::types::rich_reference::ReferenceDisplayMode {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::Avatar,
+            1 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::Mention,
+            2 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::Inline,
+            3 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::Embed,
+            4 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardXS,
+            5 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardSM,
+            6 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardMD,
+            7 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardLG,
+            8 => waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardXL,
+            _ => unreachable!("Invalid variant for ReferenceDisplayMode: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::rich_reference::RichReference {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::MarkID>::sse_decode(deserializer);
+        let mut var_displayMode =
+            <waypoints_domain::types::rich_reference::ReferenceDisplayMode>::sse_decode(
+                deserializer,
+            );
+        return waypoints_domain::types::rich_reference::RichReference {
+            id: var_id,
+            display_mode: var_displayMode,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::rich_text::RichText {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_plainText = <String>::sse_decode(deserializer);
+        let mut var_marks =
+            <Vec<waypoints_domain::types::rich_text::TextMark>>::sse_decode(deserializer);
+        return waypoints_domain::types::rich_text::RichText {
+            plain_text: var_plainText,
+            marks: var_marks,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::feature_kind::select_builder::Select {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_groups = <std::collections::HashMap<
+            waypoints_domain::types::ids::GlyphID,
+            waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+        >>::sse_decode(deserializer);
+        let mut var_maxSelections = <Option<usize>>::sse_decode(deserializer);
+        let mut var_defaultOptions =
+            <Vec<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+        let mut var_flattenSingleGroup = <bool>::sse_decode(deserializer);
+        let mut var_defaultGroup =
+            <Option<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+        return waypoints_domain::types::feature_kind::select_builder::Select {
+            groups: var_groups,
+            max_selections: var_maxSelections,
+            default_options: var_defaultOptions,
+            flatten_single_group: var_flattenSingleGroup,
+            default_group: var_defaultGroup,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::feature_kind::select_builder::SelectGroup {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::GlyphID>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_description = <Option<String>>::sse_decode(deserializer);
+        let mut var_options = <IndexMap<GlyphID, SelectOption>>::sse_decode(deserializer);
+        let mut var_maxSelections = <Option<usize>>::sse_decode(deserializer);
+        let mut var_defaultOptions =
+            <Vec<waypoints_domain::types::ids::GlyphID>>::sse_decode(deserializer);
+        return waypoints_domain::types::feature_kind::select_builder::SelectGroup {
+            id: var_id,
+            name: var_name,
+            description: var_description,
+            options: var_options,
+            max_selections: var_maxSelections,
+            default_options: var_defaultOptions,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::feature_kind::select_builder::SelectOption {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <waypoints_domain::types::ids::GlyphID>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_description = <Option<String>>::sse_decode(deserializer);
+        let mut var_icon =
+            <Option<waypoints_domain::support::icon::Icon>>::sse_decode(deserializer);
+        let mut var_color = <waypoints_domain::support::Color>::sse_decode(deserializer);
+        return waypoints_domain::types::feature_kind::select_builder::SelectOption {
+            id: var_id,
+            name: var_name,
+            description: var_description,
+            icon: var_icon,
+            color: var_color,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::models::terrain::Terrain {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_srcId = <waypoints_domain::types::ids::MarkID>::sse_decode(deserializer);
+        let mut var_dstId = <waypoints_domain::types::ids::MarkID>::sse_decode(deserializer);
+        let mut var_extra = <Option<Value>>::sse_decode(deserializer);
+        return waypoints_domain::models::terrain::Terrain {
+            src_id: var_srcId,
+            dst_id: var_dstId,
+            extra: var_extra,
+        };
+    }
+}
+
+impl SseDecode for crate::transfer::terrain_dto::TerrainDTO {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_srcId = <waypoints_domain::types::ids::MarkID>::sse_decode(deserializer);
+        let mut var_dstId = <waypoints_domain::types::ids::MarkID>::sse_decode(deserializer);
+        let mut var_extra = <Option<Value>>::sse_decode(deserializer);
+        return crate::transfer::terrain_dto::TerrainDTO {
+            src_id: var_srcId,
+            dst_id: var_dstId,
+            extra: var_extra,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::rich_text::TextMark {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_kind =
+            <waypoints_domain::types::rich_text::TextMarkKind>::sse_decode(deserializer);
+        let mut var_start = <usize>::sse_decode(deserializer);
+        let mut var_end = <usize>::sse_decode(deserializer);
+        let mut var_data = <Option<Value>>::sse_decode(deserializer);
+        return waypoints_domain::types::rich_text::TextMark {
+            kind: var_kind,
+            start: var_start,
+            end: var_end,
+            data: var_data,
+        };
+    }
+}
+
+impl SseDecode for waypoints_domain::types::rich_text::TextMarkKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => waypoints_domain::types::rich_text::TextMarkKind::Bold,
+            1 => waypoints_domain::types::rich_text::TextMarkKind::Italic,
+            2 => waypoints_domain::types::rich_text::TextMarkKind::Underline,
+            3 => waypoints_domain::types::rich_text::TextMarkKind::Strikethrough,
+            4 => waypoints_domain::types::rich_text::TextMarkKind::Superscript,
+            5 => waypoints_domain::types::rich_text::TextMarkKind::Subscript,
+            6 => waypoints_domain::types::rich_text::TextMarkKind::Code,
+            7 => waypoints_domain::types::rich_text::TextMarkKind::Link,
+            8 => waypoints_domain::types::rich_text::TextMarkKind::Mention,
+            9 => waypoints_domain::types::rich_text::TextMarkKind::Highlight,
+            10 => waypoints_domain::types::rich_text::TextMarkKind::Color,
+            11 => waypoints_domain::types::rich_text::TextMarkKind::BackgroundColor,
+            12 => waypoints_domain::types::rich_text::TextMarkKind::FontSize,
+            13 => waypoints_domain::types::rich_text::TextMarkKind::FontFamily,
+            14 => waypoints_domain::types::rich_text::TextMarkKind::Math,
+            15 => waypoints_domain::types::rich_text::TextMarkKind::Spoiler,
+            16 => waypoints_domain::types::rich_text::TextMarkKind::Comment,
+            _ => unreachable!("Invalid variant for TextMarkKind: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u64::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for u8 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u8().unwrap()
+    }
+}
+
+impl SseDecode for () {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
+}
+
+impl SseDecode for usize {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u64::<NativeEndian>().unwrap() as _
     }
 }
 
@@ -68,6 +5069,319 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
+        1 => wire__waypoints_domain__types__feature_kind__date_builder__Date_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        2 => wire__waypoints_domain__types__feature_kind__number_builder__Number_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        3 => {
+            wire__waypoints_domain__types__feature_kind__reference_builder__Reference_builder_impl(
+                port,
+                ptr,
+                rust_vec_len,
+                data_len,
+            )
+        }
+        4 => wire__waypoints_domain__types__marks__Size_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        8 => wire__waypoints_domain__support__icon__presets__actions__add_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        9 => wire__waypoints_domain__types__ids__base_36_id_as_str_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        11 => wire__waypoints_domain__support__icon__presets__charts__bookmark_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        12 => wire__waypoints_domain__support__icon__presets__actions__cancel_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        13 => wire__waypoints_domain__models__chart__chart_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        20 => wire__waypoints_domain__support__icon__presets__charts__charter_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        21 => wire__waypoints_domain__support__icon__presets__actions__close_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        22 => wire__waypoints_domain__support__color_sample_from_string_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        23 => wire__waypoints_domain__support__color_sample_with_seed_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        24 => wire__waypoints_domain__support__color_to_hex_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__waypoints_domain__support__icon__presets__actions__delete_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        27 => wire__waypoints_domain__support__icon__presets__actions__edit_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        28 => wire__waypoints_domain__support__icon__presets__status__error_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        29 => wire__waypoints_domain__support__icon__presets__charts__event_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        30 => wire__waypoints_domain__types__feature__feature_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        32 => wire__waypoints_domain__support__icon__presets__actions__filter_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        33 => wire__waypoints_domain__support__icon__presets__charts__for_chart_name_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        35 => wire__waypoints_domain__support__icon__icon_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        40 => wire__waypoints_domain__support__icon__icon_parse_namespace_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        44 => wire__waypoints_domain__support__icon__presets__status__info_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        45 => wire__waypoints_domain__support__icon__presets__charts__journal_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        46 => wire__waypoints_domain__types__marks__landmark_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        49 => wire__waypoints_domain__support__icon__presets__status__loading_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        50 => wire__waypoints_domain__models__mark__mark_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        51 => wire__waypoints_domain__types__marks__mark_data_is_content_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        52 => wire__waypoints_domain__types__marks__mark_data_is_landmark_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        55 => wire__waypoints_domain__models__mark__mark_is_content_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        56 => wire__waypoints_domain__models__mark__mark_is_landmark_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        57 => wire__waypoints_domain__models__mark__mark_type_name_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        58 => wire__waypoints_domain__types__marks__math_engine_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        59 => wire__waypoints_domain__support__icon__presets__charts__meeting_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        60 => wire__waypoints_domain__support__icon__presets__actions__menu_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        61 => wire__waypoints_domain__support__icon__presets__charts__note_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        62 => wire__waypoints_domain__support__icon__presets__charts__objective_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        63 => wire__waypoints_domain__support__icon__presets__charts__page_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        64 => wire__waypoints_domain__support__icon__presets__status__pending_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        65 => wire__waypoints_domain__support__icon__presets__charts__person_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        66 => wire__waypoints_domain__support__icon__presets__actions__remove_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        70 => wire__waypoints_domain__support__icon__presets__actions__save_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        71 => wire__waypoints_domain__support__icon__presets__actions__search_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        72 => wire__waypoints_domain__types__feature_kind__select_builder__select_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        73 => {
+            wire__waypoints_domain__types__feature_kind__select_builder__select_group_builder_impl(
+                port,
+                ptr,
+                rust_vec_len,
+                data_len,
+            )
+        }
+        74 => {
+            wire__waypoints_domain__types__feature_kind__select_builder__select_option_builder_impl(
+                port,
+                ptr,
+                rust_vec_len,
+                data_len,
+            )
+        }
+        75 => wire__waypoints_domain__support__icon__presets__actions__settings_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        76 => wire__waypoints_domain__support__icon__presets__actions__sort_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        77 => wire__waypoints_domain__support__icon__presets__status__success_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        78 => wire__waypoints_domain__models__terrain__terrain_builder_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        82 => wire__waypoints_domain__support__icon__presets__status__warning_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         _ => unreachable!(),
     }
 }
@@ -80,11 +5394,2714 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
+        10 => wire__waypoints_domain__types__ids__base_36_id_new_impl(ptr, rust_vec_len, data_len),
+        14 => wire__waypoints_domain__models__chart__chart_get_feature_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        15 => {
+            wire__waypoints_domain__types__ids__chart_id_builtin_impl(ptr, rust_vec_len, data_len)
+        }
+        16 => wire__waypoints_domain__types__ids__chart_id_is_builtin_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        17 => wire__waypoints_domain__types__ids__chart_id_name_impl(ptr, rust_vec_len, data_len),
+        18 => wire__waypoints_domain__types__ids__chart_id_new_impl(ptr, rust_vec_len, data_len),
+        19 => wire__waypoints_domain__models__chart__chart_is_builtin_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        25 => wire__waypoints_domain__types__marks__content_type_name_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        31 => wire__waypoints_domain__types__ids__feature_id_new_impl(ptr, rust_vec_len, data_len),
+        34 => wire__waypoints_domain__types__ids__glyph_id_new_impl(ptr, rust_vec_len, data_len),
+        36 => wire__waypoints_domain__support__icon__icon_iconify_impl(ptr, rust_vec_len, data_len),
+        37 => wire__waypoints_domain__support__icon__icon_is_colorable_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        38 => wire__waypoints_domain__support__icon__icon_local_image_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        39 => wire__waypoints_domain__support__icon__icon_new_impl(ptr, rust_vec_len, data_len),
+        41 => wire__waypoints_domain__support__icon__icon_remote_image_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        42 => wire__waypoints_domain__support__icon__icon_system_emoji_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        43 => {
+            wire__waypoints_domain__support__icon__icon_waypoints_impl(ptr, rust_vec_len, data_len)
+        }
+        47 => wire__waypoints_domain__types__marks__landmark_chart_id_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        48 => wire__waypoints_domain__types__marks__landmark_type_name_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        53 => wire__waypoints_domain__types__marks__mark_data_type_name_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        54 => wire__waypoints_domain__types__ids__mark_id_new_impl(ptr, rust_vec_len, data_len),
+        67 => wire__waypoints_domain__types__rich_reference__rich_reference_from_id_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        68 => wire__waypoints_domain__types__rich_reference__rich_reference_new_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        69 => wire__waypoints_domain__types__rich_text__rich_text_is_empty_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        79 => wire__waypoints_domain__types__rich_text__text_mark_is_valid_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        80 => wire__waypoints_domain__types__rich_text__text_mark_length_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        81 => wire__waypoints_domain__types__rich_text__text_mark_overlaps_with_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         _ => unreachable!(),
     }
 }
 
 // Section: rust2dart
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<
+        ChartBuilder<(
+            (String,),
+            (Option<String>,),
+            (Option<Icon>,),
+            (IndexMap<FeatureID, Feature>,),
+        )>,
+    >
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<
+        ChartBuilder<(
+            (String,),
+            (Option<String>,),
+            (Option<Icon>,),
+            (IndexMap<FeatureID, Feature>,),
+        )>,
+    >
+{
+}
+
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<
+            ChartBuilder<(
+                (String,),
+                (Option<String>,),
+                (Option<Icon>,),
+                (IndexMap<FeatureID, Feature>,),
+            )>,
+        >,
+    >
+    for ChartBuilder<(
+        (String,),
+        (Option<String>,),
+        (Option<Icon>,),
+        (IndexMap<FeatureID, Feature>,),
+    )>
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<
+        ChartBuilder<(
+            (String,),
+            (Option<String>,),
+            (Option<Icon>,),
+            (IndexMap<FeatureID, Feature>,),
+        )>,
+    > {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Date> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Date> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Date>> for Date {
+    fn into_into_dart(self) -> FrbWrapper<Date> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<DateBuilder<((), (), (), (), ())>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<DateBuilder<((), (), (), (), ())>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<DateBuilder<((), (), (), (), ())>>>
+    for DateBuilder<((), (), (), (), ())>
+{
+    fn into_into_dart(self) -> FrbWrapper<DateBuilder<((), (), (), (), ())>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>>
+{
+}
+
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>>,
+    > for FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<IndexMap<FeatureID, Feature>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<IndexMap<FeatureID, Feature>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<IndexMap<FeatureID, Feature>>>
+    for IndexMap<FeatureID, Feature>
+{
+    fn into_into_dart(self) -> FrbWrapper<IndexMap<FeatureID, Feature>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<IndexMap<FeatureID, Reading>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<IndexMap<FeatureID, Reading>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<IndexMap<FeatureID, Reading>>>
+    for IndexMap<FeatureID, Reading>
+{
+    fn into_into_dart(self) -> FrbWrapper<IndexMap<FeatureID, Reading>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<IndexMap<GlyphID, GlyphID>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<IndexMap<GlyphID, GlyphID>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<IndexMap<GlyphID, GlyphID>>>
+    for IndexMap<GlyphID, GlyphID>
+{
+    fn into_into_dart(self) -> FrbWrapper<IndexMap<GlyphID, GlyphID>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<IndexMap<GlyphID, SelectGroup>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<IndexMap<GlyphID, SelectGroup>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<IndexMap<GlyphID, SelectGroup>>>
+    for IndexMap<GlyphID, SelectGroup>
+{
+    fn into_into_dart(self) -> FrbWrapper<IndexMap<GlyphID, SelectGroup>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<IndexMap<GlyphID, SelectOption>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<IndexMap<GlyphID, SelectOption>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<IndexMap<GlyphID, SelectOption>>>
+    for IndexMap<GlyphID, SelectOption>
+{
+    fn into_into_dart(self) -> FrbWrapper<IndexMap<GlyphID, SelectOption>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<
+        LandmarkBuilder<(
+            (),
+            (RichText,),
+            (),
+            (Vec<RichReference>,),
+            (IndexMap<FeatureID, Reading>,),
+        )>,
+    >
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<
+        LandmarkBuilder<(
+            (),
+            (RichText,),
+            (),
+            (Vec<RichReference>,),
+            (IndexMap<FeatureID, Reading>,),
+        )>,
+    >
+{
+}
+
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<
+            LandmarkBuilder<(
+                (),
+                (RichText,),
+                (),
+                (Vec<RichReference>,),
+                (IndexMap<FeatureID, Reading>,),
+            )>,
+        >,
+    >
+    for LandmarkBuilder<(
+        (),
+        (RichText,),
+        (),
+        (Vec<RichReference>,),
+        (IndexMap<FeatureID, Reading>,),
+    )>
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<
+        LandmarkBuilder<(
+            (),
+            (RichText,),
+            (),
+            (Vec<RichReference>,),
+            (IndexMap<FeatureID, Reading>,),
+        )>,
+    > {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<MarkBuilder<((MarkData,), (Option<Json>,))>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<MarkBuilder<((MarkData,), (Option<Json>,))>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<MarkBuilder<((MarkData,), (Option<Json>,))>>>
+    for MarkBuilder<((MarkData,), (Option<Json>,))>
+{
+    fn into_into_dart(self) -> FrbWrapper<MarkBuilder<((MarkData,), (Option<Json>,))>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<NaiveDate> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<NaiveDate> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<NaiveDate>> for NaiveDate {
+    fn into_into_dart(self) -> FrbWrapper<NaiveDate> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<NaiveTime> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<NaiveTime> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<NaiveTime>> for NaiveTime {
+    fn into_into_dart(self) -> FrbWrapper<NaiveTime> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Number> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Number> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Number>> for Number {
+    fn into_into_dart(self) -> FrbWrapper<Number> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<NumberBuilder<((), (), (), (), ())>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<NumberBuilder<((), (), (), (), ())>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<NumberBuilder<((), (), (), (), ())>>>
+    for NumberBuilder<((), (), (), (), ())>
+{
+    fn into_into_dart(self) -> FrbWrapper<NumberBuilder<((), (), (), (), ())>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Reference> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Reference> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Reference>> for Reference {
+    fn into_into_dart(self) -> FrbWrapper<Reference> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<
+        ReferenceBuilder<(
+            (Option<Vec<ChartID>>,),
+            (Option<usize>,),
+            (String,),
+            (ReferenceDisplayMode,),
+            (Option<Json>,),
+        )>,
+    >
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<
+        ReferenceBuilder<(
+            (Option<Vec<ChartID>>,),
+            (Option<usize>,),
+            (String,),
+            (ReferenceDisplayMode,),
+            (Option<Json>,),
+        )>,
+    >
+{
+}
+
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<
+            ReferenceBuilder<(
+                (Option<Vec<ChartID>>,),
+                (Option<usize>,),
+                (String,),
+                (ReferenceDisplayMode,),
+                (Option<Json>,),
+            )>,
+        >,
+    >
+    for ReferenceBuilder<(
+        (Option<Vec<ChartID>>,),
+        (Option<usize>,),
+        (String,),
+        (ReferenceDisplayMode,),
+        (Option<Json>,),
+    )>
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<
+        ReferenceBuilder<(
+            (Option<Vec<ChartID>>,),
+            (Option<usize>,),
+            (String,),
+            (ReferenceDisplayMode,),
+            (Option<Json>,),
+        )>,
+    > {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<
+        SelectBuilder<(
+            (HashMap<GlyphID, SelectGroup>,),
+            (Option<usize>,),
+            (),
+            (),
+            (Option<GlyphID>,),
+        )>,
+    >
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<
+        SelectBuilder<(
+            (HashMap<GlyphID, SelectGroup>,),
+            (Option<usize>,),
+            (),
+            (),
+            (Option<GlyphID>,),
+        )>,
+    >
+{
+}
+
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<
+            SelectBuilder<(
+                (HashMap<GlyphID, SelectGroup>,),
+                (Option<usize>,),
+                (),
+                (),
+                (Option<GlyphID>,),
+            )>,
+        >,
+    >
+    for SelectBuilder<(
+        (HashMap<GlyphID, SelectGroup>,),
+        (Option<usize>,),
+        (),
+        (),
+        (Option<GlyphID>,),
+    )>
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<
+        SelectBuilder<(
+            (HashMap<GlyphID, SelectGroup>,),
+            (Option<usize>,),
+            (),
+            (),
+            (Option<GlyphID>,),
+        )>,
+    > {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<
+        SelectGroupBuilder<(
+            (String,),
+            (Option<String>,),
+            (IndexMap<GlyphID, SelectOption>,),
+            (Option<usize>,),
+            (Vec<GlyphID>,),
+        )>,
+    >
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<
+        SelectGroupBuilder<(
+            (String,),
+            (Option<String>,),
+            (IndexMap<GlyphID, SelectOption>,),
+            (Option<usize>,),
+            (Vec<GlyphID>,),
+        )>,
+    >
+{
+}
+
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<
+            SelectGroupBuilder<(
+                (String,),
+                (Option<String>,),
+                (IndexMap<GlyphID, SelectOption>,),
+                (Option<usize>,),
+                (Vec<GlyphID>,),
+            )>,
+        >,
+    >
+    for SelectGroupBuilder<(
+        (String,),
+        (Option<String>,),
+        (IndexMap<GlyphID, SelectOption>,),
+        (Option<usize>,),
+        (Vec<GlyphID>,),
+    )>
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<
+        SelectGroupBuilder<(
+            (String,),
+            (Option<String>,),
+            (IndexMap<GlyphID, SelectOption>,),
+            (Option<usize>,),
+            (Vec<GlyphID>,),
+        )>,
+    > {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<SelectOptionBuilder<((String,), (), (), ())>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<SelectOptionBuilder<((String,), (), (), ())>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<SelectOptionBuilder<((String,), (), (), ())>>>
+    for SelectOptionBuilder<((String,), (), (), ())>
+{
+    fn into_into_dart(self) -> FrbWrapper<SelectOptionBuilder<((String,), (), (), ())>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Size> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Size> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Size>> for Size {
+    fn into_into_dart(self) -> FrbWrapper<Size> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<TerrainBuilder<((), (), (Option<Json>,))>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<TerrainBuilder<((), (), (Option<Json>,))>>
+{
+}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<TerrainBuilder<((), (), (Option<Json>,))>>>
+    for TerrainBuilder<((), (), (Option<Json>,))>
+{
+    fn into_into_dart(self) -> FrbWrapper<TerrainBuilder<((), (), (Option<Json>,))>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Value> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Value> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Value>> for Value {
+    fn into_into_dart(self) -> FrbWrapper<Value> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::ids::Base36ID> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.0.0.into_into_dart().into_dart()].into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::ids::Base36ID>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::ids::Base36ID>>
+    for waypoints_domain::types::ids::Base36ID
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::ids::Base36ID> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::models::chart::Chart> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.id.into_into_dart().into_dart(),
+            self.0.name.into_into_dart().into_dart(),
+            self.0.description.into_into_dart().into_dart(),
+            self.0.icon.into_into_dart().into_dart(),
+            self.0.features.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::models::chart::Chart>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::models::chart::Chart>>
+    for waypoints_domain::models::chart::Chart
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::models::chart::Chart> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::transfer::chart_dto::ChartDTO {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.description.into_into_dart().into_dart(),
+            self.icon.into_into_dart().into_dart(),
+            self.features.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::transfer::chart_dto::ChartDTO
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::transfer::chart_dto::ChartDTO>
+    for crate::transfer::chart_dto::ChartDTO
+{
+    fn into_into_dart(self) -> crate::transfer::chart_dto::ChartDTO {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::ids::ChartID> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.0.0.into_into_dart().into_dart()].into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::ids::ChartID>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::ids::ChartID>>
+    for waypoints_domain::types::ids::ChartID
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::ids::ChartID> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::support::Color> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::support::Color::Default => 0.into_dart(),
+            waypoints_domain::support::Color::Gray => 1.into_dart(),
+            waypoints_domain::support::Color::Brown => 2.into_dart(),
+            waypoints_domain::support::Color::Orange => 3.into_dart(),
+            waypoints_domain::support::Color::Yellow => 4.into_dart(),
+            waypoints_domain::support::Color::Green => 5.into_dart(),
+            waypoints_domain::support::Color::Blue => 6.into_dart(),
+            waypoints_domain::support::Color::Purple => 7.into_dart(),
+            waypoints_domain::support::Color::Pink => 8.into_dart(),
+            waypoints_domain::support::Color::Red => 9.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::support::Color>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::support::Color>>
+    for waypoints_domain::support::Color
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::support::Color> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::marks::Content> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::types::marks::Content::Paragraph { rich_text } => {
+                [0.into_dart(), rich_text.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::Content::Heading1 { rich_text } => {
+                [1.into_dart(), rich_text.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::Content::Heading2 { rich_text } => {
+                [2.into_dart(), rich_text.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::Content::Heading3 { rich_text } => {
+                [3.into_dart(), rich_text.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::Content::Blockquote { rich_text } => {
+                [4.into_dart(), rich_text.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::Content::ListItem { rich_text } => {
+                [5.into_dart(), rich_text.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::Content::EnumItem { rich_text } => {
+                [6.into_dart(), rich_text.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::Content::Callout {
+                icon,
+                background_color,
+                items,
+            } => [
+                7.into_dart(),
+                icon.into_into_dart().into_dart(),
+                background_color.into_into_dart().into_dart(),
+                items.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::marks::Content::Code { language, lines } => [
+                8.into_dart(),
+                language.into_into_dart().into_dart(),
+                lines.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::marks::Content::Table {
+                cells,
+                col_size,
+                row_size,
+                col_header,
+                row_header,
+                fill_width,
+                col_colors,
+                row_colors,
+            } => [
+                9.into_dart(),
+                cells.into_into_dart().into_dart(),
+                col_size.into_into_dart().into_dart(),
+                row_size.into_into_dart().into_dart(),
+                col_header.into_into_dart().into_dart(),
+                row_header.into_into_dart().into_dart(),
+                fill_width.into_into_dart().into_dart(),
+                col_colors.into_into_dart().into_dart(),
+                row_colors.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::marks::Content::Math { expression, engine } => [
+                10.into_dart(),
+                expression.into_into_dart().into_dart(),
+                engine.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::marks::Content::Divider => [11.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::marks::Content>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::marks::Content>>
+    for waypoints_domain::types::marks::Content
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::marks::Content> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::feature::Feature> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.id.into_into_dart().into_dart(),
+            self.0.name.into_into_dart().into_dart(),
+            self.0.kind.into_into_dart().into_dart(),
+            self.0.description.into_into_dart().into_dart(),
+            self.0.required.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::feature::Feature>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::feature::Feature>>
+    for waypoints_domain::types::feature::Feature
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::feature::Feature> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::ids::FeatureID> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.0.0.into_into_dart().into_dart()].into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::ids::FeatureID>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::ids::FeatureID>>
+    for waypoints_domain::types::ids::FeatureID
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::ids::FeatureID> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<waypoints_domain::types::feature_kind::FeatureKind>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::types::feature_kind::FeatureKind::Text => [0.into_dart()].into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::Number {
+                min,
+                max,
+                step,
+                precision,
+                format,
+            } => [
+                1.into_dart(),
+                min.into_into_dart().into_dart(),
+                max.into_into_dart().into_dart(),
+                step.into_into_dart().into_dart(),
+                precision.into_into_dart().into_dart(),
+                format.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::Checkbox => {
+                [2.into_dart()].into_dart()
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Date {
+                min_date,
+                min_time,
+                max_date,
+                max_time,
+                timezone,
+            } => [
+                3.into_dart(),
+                min_date.into_into_dart().into_dart(),
+                min_time.into_into_dart().into_dart(),
+                max_date.into_into_dart().into_dart(),
+                max_time.into_into_dart().into_dart(),
+                timezone.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::Email => {
+                [4.into_dart()].into_dart()
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Phone => {
+                [5.into_dart()].into_dart()
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::URL => [6.into_dart()].into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::Select {
+                options,
+                default_option,
+            } => [
+                7.into_dart(),
+                options.into_into_dart().into_dart(),
+                default_option.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::MultiSelect {
+                options,
+                max_selections,
+                default_options,
+            } => [
+                8.into_dart(),
+                options.into_into_dart().into_dart(),
+                max_selections.into_into_dart().into_dart(),
+                default_options.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::GroupedSelect {
+                groups,
+                default_option,
+            } => [
+                9.into_dart(),
+                groups.into_into_dart().into_dart(),
+                default_option.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::GroupedMultiSelect {
+                groups,
+                max_selections,
+                default_options,
+            } => [
+                10.into_dart(),
+                groups.into_into_dart().into_dart(),
+                max_selections.into_into_dart().into_dart(),
+                default_options.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::Reference {
+                allowed_types,
+                max_references,
+                display_field,
+                display_mode,
+                filter_criteria,
+            } => [
+                11.into_dart(),
+                allowed_types.into_into_dart().into_dart(),
+                max_references.into_into_dart().into_dart(),
+                display_field.into_into_dart().into_dart(),
+                display_mode.into_into_dart().into_dart(),
+                filter_criteria.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::feature_kind::FeatureKind::Formula => {
+                [12.into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::feature_kind::FeatureKind>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<waypoints_domain::types::feature_kind::FeatureKind>,
+    > for waypoints_domain::types::feature_kind::FeatureKind
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::feature_kind::FeatureKind> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::ids::GlyphID> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.0.0.into_into_dart().into_dart()].into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::ids::GlyphID>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::ids::GlyphID>>
+    for waypoints_domain::types::ids::GlyphID
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::ids::GlyphID> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::support::icon::Icon> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.identifier.into_into_dart().into_dart(),
+            self.0.alt_text.into_into_dart().into_dart(),
+            self.0.colorable.into_into_dart().into_dart(),
+            self.0.metadata.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::support::icon::Icon>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::support::icon::Icon>>
+    for waypoints_domain::support::icon::Icon
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::support::icon::Icon> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::support::icon::IconNamespace> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::support::icon::IconNamespace::Iconify { set, name } => [
+                0.into_dart(),
+                set.into_into_dart().into_dart(),
+                name.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::support::icon::IconNamespace::Waypoints { set, name } => [
+                1.into_dart(),
+                set.into_into_dart().into_dart(),
+                name.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::support::icon::IconNamespace::SystemEmoji { name } => {
+                [2.into_dart(), name.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::support::icon::IconNamespace::LocalImage { path } => {
+                [3.into_dart(), path.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::support::icon::IconNamespace::RemoteImage { url } => {
+                [4.into_dart(), url.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::support::icon::IconNamespace>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::support::icon::IconNamespace>>
+    for waypoints_domain::support::icon::IconNamespace
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::support::icon::IconNamespace> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::marks::Landmark> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.chart.into_into_dart().into_dart(),
+            self.0.title.into_into_dart().into_dart(),
+            self.0.icon.into_into_dart().into_dart(),
+            self.0.children.into_into_dart().into_dart(),
+            self.0.readings.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::marks::Landmark>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::marks::Landmark>>
+    for waypoints_domain::types::marks::Landmark
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::marks::Landmark> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::models::mark::Mark> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.id.into_into_dart().into_dart(),
+            self.0.data.into_into_dart().into_dart(),
+            self.0.extra.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::models::mark::Mark>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::models::mark::Mark>>
+    for waypoints_domain::models::mark::Mark
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::models::mark::Mark> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::marks::MarkData> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::types::marks::MarkData::Content(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::marks::MarkData::Landmark(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::marks::MarkData>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::marks::MarkData>>
+    for waypoints_domain::types::marks::MarkData
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::marks::MarkData> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::transfer::mark_dto::MarkDTO {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.data.into_into_dart().into_dart(),
+            self.extra.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::transfer::mark_dto::MarkDTO
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::transfer::mark_dto::MarkDTO>
+    for crate::transfer::mark_dto::MarkDTO
+{
+    fn into_into_dart(self) -> crate::transfer::mark_dto::MarkDTO {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::ids::MarkID> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.0.0.into_into_dart().into_dart()].into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::ids::MarkID>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::ids::MarkID>>
+    for waypoints_domain::types::ids::MarkID
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::ids::MarkID> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::marks::MathEngine> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::types::marks::MathEngine::Typst => 0.into_dart(),
+            waypoints_domain::types::marks::MathEngine::LaTeX => 1.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::marks::MathEngine>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::marks::MathEngine>>
+    for waypoints_domain::types::marks::MathEngine
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::marks::MathEngine> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::reading::Reading> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::types::reading::Reading::Text(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::Number(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::Bool(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::Date(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::DateRange(field0, field1) => [
+                4.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::reading::Reading::Select(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::MultiSelect(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::GroupedSelect(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::References(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::URL(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::Email(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::Phone(field0, field1) => [
+                11.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            waypoints_domain::types::reading::Reading::File(field0) => {
+                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::Formula(field0) => {
+                [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            waypoints_domain::types::reading::Reading::Null => [14.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::reading::Reading>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::reading::Reading>>
+    for waypoints_domain::types::reading::Reading
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::reading::Reading> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<waypoints_domain::types::rich_reference::ReferenceDisplayMode>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::Avatar => 0.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::Mention => 1.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::Inline => 2.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::Embed => 3.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardXS => 4.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardSM => 5.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardMD => 6.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardLG => 7.into_dart(),
+            waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardXL => 8.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::rich_reference::ReferenceDisplayMode>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<waypoints_domain::types::rich_reference::ReferenceDisplayMode>,
+    > for waypoints_domain::types::rich_reference::ReferenceDisplayMode
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<waypoints_domain::types::rich_reference::ReferenceDisplayMode> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<waypoints_domain::types::rich_reference::RichReference>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.id.into_into_dart().into_dart(),
+            self.0.display_mode.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::rich_reference::RichReference>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<waypoints_domain::types::rich_reference::RichReference>,
+    > for waypoints_domain::types::rich_reference::RichReference
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::rich_reference::RichReference> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::rich_text::RichText> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.plain_text.into_into_dart().into_dart(),
+            self.0.marks.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::rich_text::RichText>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::rich_text::RichText>>
+    for waypoints_domain::types::rich_text::RichText
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::rich_text::RichText> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<waypoints_domain::types::feature_kind::select_builder::Select>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.groups.into_into_dart().into_dart(),
+            self.0.max_selections.into_into_dart().into_dart(),
+            self.0.default_options.into_into_dart().into_dart(),
+            self.0.flatten_single_group.into_into_dart().into_dart(),
+            self.0.default_group.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::feature_kind::select_builder::Select>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<waypoints_domain::types::feature_kind::select_builder::Select>,
+    > for waypoints_domain::types::feature_kind::select_builder::Select
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<waypoints_domain::types::feature_kind::select_builder::Select> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectGroup>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.id.into_into_dart().into_dart(),
+            self.0.name.into_into_dart().into_dart(),
+            self.0.description.into_into_dart().into_dart(),
+            self.0.options.into_into_dart().into_dart(),
+            self.0.max_selections.into_into_dart().into_dart(),
+            self.0.default_options.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectGroup>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectGroup>,
+    > for waypoints_domain::types::feature_kind::select_builder::SelectGroup
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectGroup> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectOption>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.id.into_into_dart().into_dart(),
+            self.0.name.into_into_dart().into_dart(),
+            self.0.description.into_into_dart().into_dart(),
+            self.0.icon.into_into_dart().into_dart(),
+            self.0.color.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectOption>
+{
+}
+impl
+    flutter_rust_bridge::IntoIntoDart<
+        FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectOption>,
+    > for waypoints_domain::types::feature_kind::select_builder::SelectOption
+{
+    fn into_into_dart(
+        self,
+    ) -> FrbWrapper<waypoints_domain::types::feature_kind::select_builder::SelectOption> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::models::terrain::Terrain> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.src_id.into_into_dart().into_dart(),
+            self.0.dst_id.into_into_dart().into_dart(),
+            self.0.extra.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::models::terrain::Terrain>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::models::terrain::Terrain>>
+    for waypoints_domain::models::terrain::Terrain
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::models::terrain::Terrain> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::transfer::terrain_dto::TerrainDTO {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.src_id.into_into_dart().into_dart(),
+            self.dst_id.into_into_dart().into_dart(),
+            self.extra.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::transfer::terrain_dto::TerrainDTO
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::transfer::terrain_dto::TerrainDTO>
+    for crate::transfer::terrain_dto::TerrainDTO
+{
+    fn into_into_dart(self) -> crate::transfer::terrain_dto::TerrainDTO {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<waypoints_domain::types::rich_text::TextMark> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.kind.into_into_dart().into_dart(),
+            self.0.start.into_into_dart().into_dart(),
+            self.0.end.into_into_dart().into_dart(),
+            self.0.data.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::rich_text::TextMark>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::rich_text::TextMark>>
+    for waypoints_domain::types::rich_text::TextMark
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::rich_text::TextMark> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart
+    for FrbWrapper<waypoints_domain::types::rich_text::TextMarkKind>
+{
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            waypoints_domain::types::rich_text::TextMarkKind::Bold => 0.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Italic => 1.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Underline => 2.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Strikethrough => 3.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Superscript => 4.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Subscript => 5.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Code => 6.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Link => 7.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Mention => 8.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Highlight => 9.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Color => 10.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::BackgroundColor => 11.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::FontSize => 12.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::FontFamily => 13.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Math => 14.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Spoiler => 15.into_dart(),
+            waypoints_domain::types::rich_text::TextMarkKind::Comment => 16.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<waypoints_domain::types::rich_text::TextMarkKind>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<waypoints_domain::types::rich_text::TextMarkKind>>
+    for waypoints_domain::types::rich_text::TextMarkKind
+{
+    fn into_into_dart(self) -> FrbWrapper<waypoints_domain::types::rich_text::TextMarkKind> {
+        self.into()
+    }
+}
+
+impl SseEncode
+    for ChartBuilder<(
+        (String,),
+        (Option<String>,),
+        (Option<Icon>,),
+        (IndexMap<FeatureID, Feature>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ChartBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (Option<Icon>,),
+                    (IndexMap<FeatureID, Feature>,),
+                )>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for Date {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>>>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for DateBuilder<((), (), (), (), ())> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                DateBuilder<((), (), (), (), ())>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for IndexMap<FeatureID, Feature> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for IndexMap<FeatureID, Reading> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for IndexMap<GlyphID, GlyphID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, GlyphID>>,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for IndexMap<GlyphID, SelectGroup> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for IndexMap<GlyphID, SelectOption> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                IndexMap<GlyphID, SelectOption>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode
+    for LandmarkBuilder<(
+        (),
+        (RichText,),
+        (),
+        (Vec<RichReference>,),
+        (IndexMap<FeatureID, Reading>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                LandmarkBuilder<(
+                    (),
+                    (RichText,),
+                    (),
+                    (Vec<RichReference>,),
+                    (IndexMap<FeatureID, Reading>,),
+                )>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for MarkBuilder<((MarkData,), (Option<Json>,))> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                MarkBuilder<((MarkData,), (Option<Json>,))>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for NaiveDate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode for NaiveTime {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode for Number {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode for NumberBuilder<((), (), (), (), ())> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                NumberBuilder<((), (), (), (), ())>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for Reference {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode
+    for ReferenceBuilder<(
+        (Option<Vec<ChartID>>,),
+        (Option<usize>,),
+        (String,),
+        (ReferenceDisplayMode,),
+        (Option<Json>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ReferenceBuilder<(
+                    (Option<Vec<ChartID>>,),
+                    (Option<usize>,),
+                    (String,),
+                    (ReferenceDisplayMode,),
+                    (Option<Json>,),
+                )>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode
+    for SelectBuilder<(
+        (HashMap<GlyphID, SelectGroup>,),
+        (Option<usize>,),
+        (),
+        (),
+        (Option<GlyphID>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectBuilder<(
+                    (HashMap<GlyphID, SelectGroup>,),
+                    (Option<usize>,),
+                    (),
+                    (),
+                    (Option<GlyphID>,),
+                )>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode
+    for SelectGroupBuilder<(
+        (String,),
+        (Option<String>,),
+        (IndexMap<GlyphID, SelectOption>,),
+        (Option<usize>,),
+        (Vec<GlyphID>,),
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectGroupBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (IndexMap<GlyphID, SelectOption>,),
+                    (Option<usize>,),
+                    (Vec<GlyphID>,),
+                )>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for SelectOptionBuilder<((String,), (), (), ())> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectOptionBuilder<((String,), (), (), ())>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for Size {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>>>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for TerrainBuilder<((), (), (Option<Json>,))> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                TerrainBuilder<((), (), (Option<Json>,))>,
+            >,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for Value {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>>>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for chrono::NaiveDateTime {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i64>::sse_encode(self.and_utc().timestamp_micros(), serializer);
+    }
+}
+
+impl SseEncode
+    for std::collections::HashMap<
+        waypoints_domain::types::ids::GlyphID,
+        Vec<waypoints_domain::types::ids::GlyphID>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<(
+            waypoints_domain::types::ids::GlyphID,
+            Vec<waypoints_domain::types::ids::GlyphID>,
+        )>>::sse_encode(self.into_iter().collect(), serializer);
+    }
+}
+
+impl SseEncode
+    for std::collections::HashMap<
+        waypoints_domain::types::ids::GlyphID,
+        waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<(
+            waypoints_domain::types::ids::GlyphID,
+            waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+        )>>::sse_encode(self.into_iter().collect(), serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            ChartBuilder<(
+                (String,),
+                (Option<String>,),
+                (Option<Icon>,),
+                (IndexMap<FeatureID, Feature>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<DateBuilder<((), (), (), (), ())>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, GlyphID>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectOption>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            LandmarkBuilder<(
+                (),
+                (RichText,),
+                (),
+                (Vec<RichReference>,),
+                (IndexMap<FeatureID, Reading>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            MarkBuilder<((MarkData,), (Option<Json>,))>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            NumberBuilder<((), (), (), (), ())>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            ReferenceBuilder<(
+                (Option<Vec<ChartID>>,),
+                (Option<usize>,),
+                (String,),
+                (ReferenceDisplayMode,),
+                (Option<Json>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            SelectBuilder<(
+                (HashMap<GlyphID, SelectGroup>,),
+                (Option<usize>,),
+                (),
+                (),
+                (Option<GlyphID>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            SelectGroupBuilder<(
+                (String,),
+                (Option<String>,),
+                (IndexMap<GlyphID, SelectOption>,),
+                (Option<usize>,),
+                (Vec<GlyphID>,),
+            )>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            SelectOptionBuilder<((String,), (), (), ())>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+            TerrainBuilder<((), (), (Option<Json>,))>,
+        >,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode for String {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<u8>>::sse_encode(self.into_bytes(), serializer);
+    }
+}
+
+impl SseEncode for uuid::Uuid {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<u8>>::sse_encode(self.as_bytes().to_vec(), serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::ids::Base36ID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.0, serializer);
+    }
+}
+
+impl SseEncode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u8(self as _).unwrap();
+    }
+}
+
+impl SseEncode for waypoints_domain::models::chart::Chart {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::ChartID>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <Option<String>>::sse_encode(self.description, serializer);
+        <Option<waypoints_domain::support::icon::Icon>>::sse_encode(self.icon, serializer);
+        <IndexMap<FeatureID, Feature>>::sse_encode(self.features, serializer);
+    }
+}
+
+impl SseEncode for crate::transfer::chart_dto::ChartDTO {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::ChartID>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <Option<String>>::sse_encode(self.description, serializer);
+        <Option<waypoints_domain::support::icon::Icon>>::sse_encode(self.icon, serializer);
+        <Vec<waypoints_domain::types::feature::Feature>>::sse_encode(self.features, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::ids::ChartID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.0, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::support::Color {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                waypoints_domain::support::Color::Default => 0,
+                waypoints_domain::support::Color::Gray => 1,
+                waypoints_domain::support::Color::Brown => 2,
+                waypoints_domain::support::Color::Orange => 3,
+                waypoints_domain::support::Color::Yellow => 4,
+                waypoints_domain::support::Color::Green => 5,
+                waypoints_domain::support::Color::Blue => 6,
+                waypoints_domain::support::Color::Purple => 7,
+                waypoints_domain::support::Color::Pink => 8,
+                waypoints_domain::support::Color::Red => 9,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for waypoints_domain::types::marks::Content {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            waypoints_domain::types::marks::Content::Paragraph { rich_text } => {
+                <i32>::sse_encode(0, serializer);
+                <waypoints_domain::types::rich_text::RichText>::sse_encode(rich_text, serializer);
+            }
+            waypoints_domain::types::marks::Content::Heading1 { rich_text } => {
+                <i32>::sse_encode(1, serializer);
+                <waypoints_domain::types::rich_text::RichText>::sse_encode(rich_text, serializer);
+            }
+            waypoints_domain::types::marks::Content::Heading2 { rich_text } => {
+                <i32>::sse_encode(2, serializer);
+                <waypoints_domain::types::rich_text::RichText>::sse_encode(rich_text, serializer);
+            }
+            waypoints_domain::types::marks::Content::Heading3 { rich_text } => {
+                <i32>::sse_encode(3, serializer);
+                <waypoints_domain::types::rich_text::RichText>::sse_encode(rich_text, serializer);
+            }
+            waypoints_domain::types::marks::Content::Blockquote { rich_text } => {
+                <i32>::sse_encode(4, serializer);
+                <waypoints_domain::types::rich_text::RichText>::sse_encode(rich_text, serializer);
+            }
+            waypoints_domain::types::marks::Content::ListItem { rich_text } => {
+                <i32>::sse_encode(5, serializer);
+                <waypoints_domain::types::rich_text::RichText>::sse_encode(rich_text, serializer);
+            }
+            waypoints_domain::types::marks::Content::EnumItem { rich_text } => {
+                <i32>::sse_encode(6, serializer);
+                <waypoints_domain::types::rich_text::RichText>::sse_encode(rich_text, serializer);
+            }
+            waypoints_domain::types::marks::Content::Callout {
+                icon,
+                background_color,
+                items,
+            } => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(icon, serializer);
+                <waypoints_domain::support::Color>::sse_encode(background_color, serializer);
+                <Vec<waypoints_domain::types::marks::Content>>::sse_encode(items, serializer);
+            }
+            waypoints_domain::types::marks::Content::Code { language, lines } => {
+                <i32>::sse_encode(8, serializer);
+                <String>::sse_encode(language, serializer);
+                <Vec<String>>::sse_encode(lines, serializer);
+            }
+            waypoints_domain::types::marks::Content::Table {
+                cells,
+                col_size,
+                row_size,
+                col_header,
+                row_header,
+                fill_width,
+                col_colors,
+                row_colors,
+            } => {
+                <i32>::sse_encode(9, serializer);
+                <Vec<Vec<waypoints_domain::types::rich_text::RichText>>>::sse_encode(
+                    cells, serializer,
+                );
+                <Option<Vec<Option<Size>>>>::sse_encode(col_size, serializer);
+                <Option<Vec<Option<Size>>>>::sse_encode(row_size, serializer);
+                <Option<bool>>::sse_encode(col_header, serializer);
+                <Option<bool>>::sse_encode(row_header, serializer);
+                <Option<bool>>::sse_encode(fill_width, serializer);
+                <Option<Vec<Option<waypoints_domain::support::Color>>>>::sse_encode(
+                    col_colors, serializer,
+                );
+                <Option<Vec<Option<waypoints_domain::support::Color>>>>::sse_encode(
+                    row_colors, serializer,
+                );
+            }
+            waypoints_domain::types::marks::Content::Math { expression, engine } => {
+                <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(expression, serializer);
+                <waypoints_domain::types::marks::MathEngine>::sse_encode(engine, serializer);
+            }
+            waypoints_domain::types::marks::Content::Divider => {
+                <i32>::sse_encode(11, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for waypoints_domain::types::feature::Feature {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::FeatureID>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <waypoints_domain::types::feature_kind::FeatureKind>::sse_encode(self.kind, serializer);
+        <Option<String>>::sse_encode(self.description, serializer);
+        <bool>::sse_encode(self.required, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::ids::FeatureID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::Base36ID>::sse_encode(self.0, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::feature_kind::FeatureKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            waypoints_domain::types::feature_kind::FeatureKind::Text => {
+                <i32>::sse_encode(0, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Number {
+                min,
+                max,
+                step,
+                precision,
+                format,
+            } => {
+                <i32>::sse_encode(1, serializer);
+                <Option<f64>>::sse_encode(min, serializer);
+                <Option<f64>>::sse_encode(max, serializer);
+                <Option<f64>>::sse_encode(step, serializer);
+                <Option<u8>>::sse_encode(precision, serializer);
+                <Option<String>>::sse_encode(format, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Checkbox => {
+                <i32>::sse_encode(2, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Date {
+                min_date,
+                min_time,
+                max_date,
+                max_time,
+                timezone,
+            } => {
+                <i32>::sse_encode(3, serializer);
+                <Option<NaiveDate>>::sse_encode(min_date, serializer);
+                <Option<NaiveTime>>::sse_encode(min_time, serializer);
+                <Option<NaiveDate>>::sse_encode(max_date, serializer);
+                <Option<NaiveTime>>::sse_encode(max_time, serializer);
+                <Option<String>>::sse_encode(timezone, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Email => {
+                <i32>::sse_encode(4, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Phone => {
+                <i32>::sse_encode(5, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::URL => {
+                <i32>::sse_encode(6, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Select {
+                options,
+                default_option,
+            } => {
+                <i32>::sse_encode(7, serializer);
+                <IndexMap<GlyphID, SelectOption>>::sse_encode(options, serializer);
+                <Option<waypoints_domain::types::ids::GlyphID>>::sse_encode(
+                    default_option,
+                    serializer,
+                );
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::MultiSelect {
+                options,
+                max_selections,
+                default_options,
+            } => {
+                <i32>::sse_encode(8, serializer);
+                <IndexMap<GlyphID, SelectOption>>::sse_encode(options, serializer);
+                <Option<usize>>::sse_encode(max_selections, serializer);
+                <Vec<waypoints_domain::types::ids::GlyphID>>::sse_encode(
+                    default_options,
+                    serializer,
+                );
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::GroupedSelect {
+                groups,
+                default_option,
+            } => {
+                <i32>::sse_encode(9, serializer);
+                <IndexMap<GlyphID, SelectGroup>>::sse_encode(groups, serializer);
+                <Option<waypoints_domain::types::ids::GlyphID>>::sse_encode(
+                    default_option,
+                    serializer,
+                );
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::GroupedMultiSelect {
+                groups,
+                max_selections,
+                default_options,
+            } => {
+                <i32>::sse_encode(10, serializer);
+                <IndexMap<GlyphID, SelectGroup>>::sse_encode(groups, serializer);
+                <Option<usize>>::sse_encode(max_selections, serializer);
+                <IndexMap<GlyphID, GlyphID>>::sse_encode(default_options, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Reference {
+                allowed_types,
+                max_references,
+                display_field,
+                display_mode,
+                filter_criteria,
+            } => {
+                <i32>::sse_encode(11, serializer);
+                <Option<Vec<waypoints_domain::types::ids::ChartID>>>::sse_encode(
+                    allowed_types,
+                    serializer,
+                );
+                <Option<usize>>::sse_encode(max_references, serializer);
+                <String>::sse_encode(display_field, serializer);
+                <waypoints_domain::types::rich_reference::ReferenceDisplayMode>::sse_encode(
+                    display_mode,
+                    serializer,
+                );
+                <Option<Value>>::sse_encode(filter_criteria, serializer);
+            }
+            waypoints_domain::types::feature_kind::FeatureKind::Formula => {
+                <i32>::sse_encode(12, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for waypoints_domain::types::ids::GlyphID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::Base36ID>::sse_encode(self.0, serializer);
+    }
+}
 
 impl SseEncode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -93,10 +8110,733 @@ impl SseEncode for i32 {
     }
 }
 
-impl SseEncode for bool {
+impl SseEncode for i64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_u8(self as _).unwrap();
+        serializer.cursor.write_i64::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for waypoints_domain::support::icon::Icon {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.identifier, serializer);
+        <Option<String>>::sse_encode(self.alt_text, serializer);
+        <Option<bool>>::sse_encode(self.colorable, serializer);
+        <Option<Value>>::sse_encode(self.metadata, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::support::icon::IconNamespace {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            waypoints_domain::support::icon::IconNamespace::Iconify { set, name } => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(set, serializer);
+                <String>::sse_encode(name, serializer);
+            }
+            waypoints_domain::support::icon::IconNamespace::Waypoints { set, name } => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(set, serializer);
+                <String>::sse_encode(name, serializer);
+            }
+            waypoints_domain::support::icon::IconNamespace::SystemEmoji { name } => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(name, serializer);
+            }
+            waypoints_domain::support::icon::IconNamespace::LocalImage { path } => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(path, serializer);
+            }
+            waypoints_domain::support::icon::IconNamespace::RemoteImage { url } => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(url, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for waypoints_domain::types::marks::Landmark {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::ChartID>::sse_encode(self.chart, serializer);
+        <waypoints_domain::types::rich_text::RichText>::sse_encode(self.title, serializer);
+        <Option<waypoints_domain::support::icon::Icon>>::sse_encode(self.icon, serializer);
+        <Vec<waypoints_domain::types::rich_reference::RichReference>>::sse_encode(
+            self.children,
+            serializer,
+        );
+        <IndexMap<FeatureID, Reading>>::sse_encode(self.readings, serializer);
+    }
+}
+
+impl SseEncode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::ids::ChartID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::ids::ChartID>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::marks::Content> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::marks::Content>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::feature::Feature> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::feature::Feature>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::ids::GlyphID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::ids::GlyphID>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<Vec<waypoints_domain::types::rich_text::RichText>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <Vec<waypoints_domain::types::rich_text::RichText>>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::ids::MarkID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::ids::MarkID>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<Option<Size>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <Option<Size>>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<Option<waypoints_domain::support::Color>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <Option<waypoints_domain::support::Color>>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<u8> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <u8>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode
+    for Vec<(
+        waypoints_domain::types::ids::GlyphID,
+        Vec<waypoints_domain::types::ids::GlyphID>,
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <(
+                waypoints_domain::types::ids::GlyphID,
+                Vec<waypoints_domain::types::ids::GlyphID>,
+            )>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode
+    for Vec<(
+        waypoints_domain::types::ids::GlyphID,
+        waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+    )>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <(
+                waypoints_domain::types::ids::GlyphID,
+                waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+            )>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::rich_reference::RichReference> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::rich_reference::RichReference>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::rich_text::RichText> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::rich_text::RichText>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<waypoints_domain::types::rich_text::TextMark> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <waypoints_domain::types::rich_text::TextMark>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for waypoints_domain::models::mark::Mark {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::MarkID>::sse_encode(self.id, serializer);
+        <waypoints_domain::types::marks::MarkData>::sse_encode(self.data, serializer);
+        <Option<Value>>::sse_encode(self.extra, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::marks::MarkData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            waypoints_domain::types::marks::MarkData::Content(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <waypoints_domain::types::marks::Content>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::marks::MarkData::Landmark(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <waypoints_domain::types::marks::Landmark>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::transfer::mark_dto::MarkDTO {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::MarkID>::sse_encode(self.id, serializer);
+        <waypoints_domain::types::marks::MarkData>::sse_encode(self.data, serializer);
+        <Value>::sse_encode(self.extra, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::ids::MarkID {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <uuid::Uuid>::sse_encode(self.0, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::marks::MathEngine {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                waypoints_domain::types::marks::MathEngine::Typst => 0,
+                waypoints_domain::types::marks::MathEngine::LaTeX => 1,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for Option<usize> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <usize>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<NaiveDate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <NaiveDate>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<NaiveTime> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <NaiveTime>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Size> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Size>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Value> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Value>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <bool>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<waypoints_domain::support::Color> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <waypoints_domain::support::Color>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <f64>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<waypoints_domain::types::feature::Feature> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <waypoints_domain::types::feature::Feature>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<waypoints_domain::types::ids::GlyphID> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <waypoints_domain::types::ids::GlyphID>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<waypoints_domain::support::icon::Icon> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <waypoints_domain::support::icon::Icon>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<waypoints_domain::support::icon::IconNamespace> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <waypoints_domain::support::icon::IconNamespace>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<u8> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <u8>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Vec<waypoints_domain::types::ids::ChartID>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<waypoints_domain::types::ids::ChartID>>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Vec<Option<Size>>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<Option<Size>>>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Vec<Option<waypoints_domain::support::Color>>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<Option<waypoints_domain::support::Color>>>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for waypoints_domain::types::reading::Reading {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            waypoints_domain::types::reading::Reading::Text(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Number(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <f64>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Bool(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <bool>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Date(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <chrono::NaiveDateTime>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::DateRange(field0, field1) => {
+                <i32>::sse_encode(4, serializer);
+                <chrono::NaiveDateTime>::sse_encode(field0, serializer);
+                <chrono::NaiveDateTime>::sse_encode(field1, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Select(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <waypoints_domain::types::ids::GlyphID>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::MultiSelect(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <Vec<waypoints_domain::types::ids::GlyphID>>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::GroupedSelect(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <std::collections::HashMap<
+                    waypoints_domain::types::ids::GlyphID,
+                    Vec<waypoints_domain::types::ids::GlyphID>,
+                >>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::References(field0) => {
+                <i32>::sse_encode(8, serializer);
+                <Vec<waypoints_domain::types::ids::MarkID>>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::URL(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Email(field0) => {
+                <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Phone(field0, field1) => {
+                <i32>::sse_encode(11, serializer);
+                <String>::sse_encode(field0, serializer);
+                <String>::sse_encode(field1, serializer);
+            }
+            waypoints_domain::types::reading::Reading::File(field0) => {
+                <i32>::sse_encode(12, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Formula(field0) => {
+                <i32>::sse_encode(13, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            waypoints_domain::types::reading::Reading::Null => {
+                <i32>::sse_encode(14, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode
+    for (
+        waypoints_domain::types::ids::GlyphID,
+        Vec<waypoints_domain::types::ids::GlyphID>,
+    )
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::GlyphID>::sse_encode(self.0, serializer);
+        <Vec<waypoints_domain::types::ids::GlyphID>>::sse_encode(self.1, serializer);
+    }
+}
+
+impl SseEncode
+    for (
+        waypoints_domain::types::ids::GlyphID,
+        waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+    )
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::GlyphID>::sse_encode(self.0, serializer);
+        <waypoints_domain::types::feature_kind::select_builder::SelectGroup>::sse_encode(
+            self.1, serializer,
+        );
+    }
+}
+
+impl SseEncode for waypoints_domain::types::rich_reference::ReferenceDisplayMode {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::Avatar => 0,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::Mention => 1,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::Inline => 2,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::Embed => 3,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardXS => 4,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardSM => 5,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardMD => 6,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardLG => 7,
+                waypoints_domain::types::rich_reference::ReferenceDisplayMode::CardXL => 8,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for waypoints_domain::types::rich_reference::RichReference {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::MarkID>::sse_encode(self.id, serializer);
+        <waypoints_domain::types::rich_reference::ReferenceDisplayMode>::sse_encode(
+            self.display_mode,
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for waypoints_domain::types::rich_text::RichText {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.plain_text, serializer);
+        <Vec<waypoints_domain::types::rich_text::TextMark>>::sse_encode(self.marks, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::feature_kind::select_builder::Select {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <std::collections::HashMap<
+            waypoints_domain::types::ids::GlyphID,
+            waypoints_domain::types::feature_kind::select_builder::SelectGroup,
+        >>::sse_encode(self.groups, serializer);
+        <Option<usize>>::sse_encode(self.max_selections, serializer);
+        <Vec<waypoints_domain::types::ids::GlyphID>>::sse_encode(self.default_options, serializer);
+        <bool>::sse_encode(self.flatten_single_group, serializer);
+        <Option<waypoints_domain::types::ids::GlyphID>>::sse_encode(self.default_group, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::feature_kind::select_builder::SelectGroup {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::GlyphID>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <Option<String>>::sse_encode(self.description, serializer);
+        <IndexMap<GlyphID, SelectOption>>::sse_encode(self.options, serializer);
+        <Option<usize>>::sse_encode(self.max_selections, serializer);
+        <Vec<waypoints_domain::types::ids::GlyphID>>::sse_encode(self.default_options, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::feature_kind::select_builder::SelectOption {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::GlyphID>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <Option<String>>::sse_encode(self.description, serializer);
+        <Option<waypoints_domain::support::icon::Icon>>::sse_encode(self.icon, serializer);
+        <waypoints_domain::support::Color>::sse_encode(self.color, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::models::terrain::Terrain {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::MarkID>::sse_encode(self.src_id, serializer);
+        <waypoints_domain::types::ids::MarkID>::sse_encode(self.dst_id, serializer);
+        <Option<Value>>::sse_encode(self.extra, serializer);
+    }
+}
+
+impl SseEncode for crate::transfer::terrain_dto::TerrainDTO {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::ids::MarkID>::sse_encode(self.src_id, serializer);
+        <waypoints_domain::types::ids::MarkID>::sse_encode(self.dst_id, serializer);
+        <Option<Value>>::sse_encode(self.extra, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::rich_text::TextMark {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <waypoints_domain::types::rich_text::TextMarkKind>::sse_encode(self.kind, serializer);
+        <usize>::sse_encode(self.start, serializer);
+        <usize>::sse_encode(self.end, serializer);
+        <Option<Value>>::sse_encode(self.data, serializer);
+    }
+}
+
+impl SseEncode for waypoints_domain::types::rich_text::TextMarkKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                waypoints_domain::types::rich_text::TextMarkKind::Bold => 0,
+                waypoints_domain::types::rich_text::TextMarkKind::Italic => 1,
+                waypoints_domain::types::rich_text::TextMarkKind::Underline => 2,
+                waypoints_domain::types::rich_text::TextMarkKind::Strikethrough => 3,
+                waypoints_domain::types::rich_text::TextMarkKind::Superscript => 4,
+                waypoints_domain::types::rich_text::TextMarkKind::Subscript => 5,
+                waypoints_domain::types::rich_text::TextMarkKind::Code => 6,
+                waypoints_domain::types::rich_text::TextMarkKind::Link => 7,
+                waypoints_domain::types::rich_text::TextMarkKind::Mention => 8,
+                waypoints_domain::types::rich_text::TextMarkKind::Highlight => 9,
+                waypoints_domain::types::rich_text::TextMarkKind::Color => 10,
+                waypoints_domain::types::rich_text::TextMarkKind::BackgroundColor => 11,
+                waypoints_domain::types::rich_text::TextMarkKind::FontSize => 12,
+                waypoints_domain::types::rich_text::TextMarkKind::FontFamily => 13,
+                waypoints_domain::types::rich_text::TextMarkKind::Math => 14,
+                waypoints_domain::types::rich_text::TextMarkKind::Spoiler => 15,
+                waypoints_domain::types::rich_text::TextMarkKind::Comment => 16,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u64::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for u8 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u8(self).unwrap();
+    }
+}
+
+impl SseEncode for () {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
+}
+
+impl SseEncode for usize {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer
+            .cursor
+            .write_u64::<NativeEndian>(self as _)
+            .unwrap();
     }
 }
 
@@ -108,15 +8848,513 @@ mod io {
     // Section: imports
 
     use super::*;
+    use crate::*;
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
     };
-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
+    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
+    use waypoints_domain::models::chart::*;
+    use waypoints_domain::models::mark::*;
+    use waypoints_domain::models::terrain::*;
+    use waypoints_domain::types::feature::*;
+    use waypoints_domain::types::feature_kind::date_builder::*;
+    use waypoints_domain::types::feature_kind::number_builder::*;
+    use waypoints_domain::types::feature_kind::reference_builder::*;
+    use waypoints_domain::types::feature_kind::select_builder::*;
+    use waypoints_domain::types::marks::*;
 
     // Section: boilerplate
 
     flutter_rust_bridge::frb_generated_boilerplate_io!();
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ChartBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (Option<Icon>,),
+                    (IndexMap<FeatureID, Feature>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ChartBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (Option<Icon>,),
+                    (IndexMap<FeatureID, Feature>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>>::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                DateBuilder<((), (), (), (), ())>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                DateBuilder<((), (), (), (), ())>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap < GlyphID , GlyphID >>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap < GlyphID , GlyphID >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                IndexMap<GlyphID, SelectOption>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                IndexMap<GlyphID, SelectOption>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                LandmarkBuilder<(
+                    (),
+                    (RichText,),
+                    (),
+                    (Vec<RichReference>,),
+                    (IndexMap<FeatureID, Reading>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                LandmarkBuilder<(
+                    (),
+                    (RichText,),
+                    (),
+                    (Vec<RichReference>,),
+                    (IndexMap<FeatureID, Reading>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                MarkBuilder<((MarkData,), (Option<Json>,))>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                MarkBuilder<((MarkData,), (Option<Json>,))>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>>::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                NumberBuilder<((), (), (), (), ())>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                NumberBuilder<((), (), (), (), ())>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>>::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ReferenceBuilder<(
+                    (Option<Vec<ChartID>>,),
+                    (Option<usize>,),
+                    (String,),
+                    (ReferenceDisplayMode,),
+                    (Option<Json>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ReferenceBuilder<(
+                    (Option<Vec<ChartID>>,),
+                    (Option<usize>,),
+                    (String,),
+                    (ReferenceDisplayMode,),
+                    (Option<Json>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectBuilder<(
+                    (HashMap<GlyphID, SelectGroup>,),
+                    (Option<usize>,),
+                    (),
+                    (),
+                    (Option<GlyphID>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectBuilder<(
+                    (HashMap<GlyphID, SelectGroup>,),
+                    (Option<usize>,),
+                    (),
+                    (),
+                    (Option<GlyphID>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectGroupBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (IndexMap<GlyphID, SelectOption>,),
+                    (Option<usize>,),
+                    (Vec<GlyphID>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectGroupBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (IndexMap<GlyphID, SelectOption>,),
+                    (Option<usize>,),
+                    (Vec<GlyphID>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectOptionBuilder<((String,), (), (), ())>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectOptionBuilder<((String,), (), (), ())>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>>::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                TerrainBuilder<((), (), (Option<Json>,))>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                TerrainBuilder<((), (), (Option<Json>,))>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Value>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_waypoints_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Value>>::decrement_strong_count(ptr as _);
+    }
 }
 #[cfg(not(target_family = "wasm"))]
 pub use io::*;
@@ -130,17 +9368,515 @@ mod web {
     // Section: imports
 
     use super::*;
+    use crate::*;
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
     };
     use flutter_rust_bridge::for_generated::wasm_bindgen;
     use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
+    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
+    use waypoints_domain::models::chart::*;
+    use waypoints_domain::models::mark::*;
+    use waypoints_domain::models::terrain::*;
+    use waypoints_domain::types::feature::*;
+    use waypoints_domain::types::feature_kind::date_builder::*;
+    use waypoints_domain::types::feature_kind::number_builder::*;
+    use waypoints_domain::types::feature_kind::reference_builder::*;
+    use waypoints_domain::types::feature_kind::select_builder::*;
+    use waypoints_domain::types::marks::*;
 
     // Section: boilerplate
 
     flutter_rust_bridge::frb_generated_boilerplate_web!();
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ChartBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (Option<Icon>,),
+                    (IndexMap<FeatureID, Feature>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerChartBuilderStringOptionStringOptionIconIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ChartBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (Option<Icon>,),
+                    (IndexMap<FeatureID, Feature>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Date>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                DateBuilder<((), (), (), (), ())>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDateBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                DateBuilder<((), (), (), (), ())>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFeatureBuilderStringFeatureKindOptionStringbool(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                FeatureBuilder<((String,), (FeatureKind,), (Option<String>,), (bool,))>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDFeature(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Feature>>,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<FeatureID, Reading>>,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap < GlyphID , GlyphID >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap < GlyphID , GlyphID >>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectGroup(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IndexMap<GlyphID, SelectGroup>>,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                IndexMap<GlyphID, SelectOption>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIndexMapGlyphIDSelectOption(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                IndexMap<GlyphID, SelectOption>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                LandmarkBuilder<(
+                    (),
+                    (RichText,),
+                    (),
+                    (Vec<RichReference>,),
+                    (IndexMap<FeatureID, Reading>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLandmarkBuilderRichTextVecRichReferenceIndexMapFeatureIDReading(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                LandmarkBuilder<(
+                    (),
+                    (RichText,),
+                    (),
+                    (Vec<RichReference>,),
+                    (IndexMap<FeatureID, Reading>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                MarkBuilder<((MarkData,), (Option<Json>,))>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerMarkBuilderMarkDataOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                MarkBuilder<((MarkData,), (Option<Json>,))>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumber(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Number>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                NumberBuilder<((), (), (), (), ())>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNumberBuilder(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                NumberBuilder<((), (), (), (), ())>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReference(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Reference>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ReferenceBuilder<(
+                    (Option<Vec<ChartID>>,),
+                    (Option<usize>,),
+                    (String,),
+                    (ReferenceDisplayMode,),
+                    (Option<Json>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReferenceBuilderOptionVecChartIDOptionusizeStringReferenceDisplayModeOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                ReferenceBuilder<(
+                    (Option<Vec<ChartID>>,),
+                    (Option<usize>,),
+                    (String,),
+                    (ReferenceDisplayMode,),
+                    (Option<Json>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectBuilder<(
+                    (HashMap<GlyphID, SelectGroup>,),
+                    (Option<usize>,),
+                    (),
+                    (),
+                    (Option<GlyphID>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectBuilderHashMapGlyphIDSelectGroupOptionusizeOptionGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectBuilder<(
+                    (HashMap<GlyphID, SelectGroup>,),
+                    (Option<usize>,),
+                    (),
+                    (),
+                    (Option<GlyphID>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectGroupBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (IndexMap<GlyphID, SelectOption>,),
+                    (Option<usize>,),
+                    (Vec<GlyphID>,),
+                )>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectGroupBuilderStringOptionStringIndexMapGlyphIDSelectOptionOptionusizeVecGlyphID(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectGroupBuilder<(
+                    (String,),
+                    (Option<String>,),
+                    (IndexMap<GlyphID, SelectOption>,),
+                    (Option<usize>,),
+                    (Vec<GlyphID>,),
+                )>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectOptionBuilder<((String,), (), (), ())>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSelectOptionBuilderString(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                SelectOptionBuilder<((String,), (), (), ())>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSize(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Size>>::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                TerrainBuilder<((), (), (Option<Json>,))>,
+            >,
+        >::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerTerrainBuilderOptionJson(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
+                TerrainBuilder<((), (), (Option<Json>,))>,
+            >,
+        >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Value>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner< Value>>::decrement_strong_count(ptr as _);
+    }
 }
 #[cfg(target_family = "wasm")]
 pub use web::*;

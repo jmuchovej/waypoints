@@ -9,7 +9,6 @@ targets:
           exclude:
             - lib/src/objectbox/**
             - lib/**/*.entity.dart
-
       # Disable freezed for objectbox directory
       # freezed:
       #   enabled: true
@@ -53,6 +52,5 @@ targets:
           include:
             - lib/src/objectbox/**
             - lib/**/*.entity.dart
-
       objectbox_generator|generator:
         enabled: true

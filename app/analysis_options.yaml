@@ -1,5 +1,4 @@
 include: package:flutter_lints/flutter.yaml
-
 analyzer:
   errors:
     avoid_redundant_argument_values: ignore
@@ -10,45 +9,33 @@ analyzer:
     unused_local_variable: warning
     dead_code: warning
     avoid_print: error
-
   enable-experiment:
     - dot-shorthands
-
   plugins:
     - custom_lint
-
 custom_lint:
   enable_all_lint_rules: true
-
 linter:
   rules:
     # avoid_print: true
     require_trailing_commas: true
-
     prefer_collection_literals: true
     prefer_final_fields: true
     prefer_final_in_for_each: true
     prefer_final_locals: true
-
     sized_box_for_whitespace: true
     use_decorated_box: true
-
     unnecessary_parenthesis: true
     unnecessary_await_in_return: true
     unnecessary_raw_strings: true
-
     avoid_unnecessary_containers: true
     avoid_redundant_argument_values: false
     avoid_unused_constructor_parameters: true
-
     always_declare_return_types: true
-
     sort_constructors_first: true
     unawaited_futures: true
-
     avoid_relative_lib_imports: true
     prefer_relative_imports: true
-
 dart_code_metrics:
   extends:
     - package:dart_code_metrics_presets/recommended.yaml
