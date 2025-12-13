@@ -83,8 +83,12 @@
     language = "system";
     entry = "${config.git-hooks.hooks.cargo-test.package}/bin/cargo test";
     files = "\\.rs$";
+    pass_filenames = false;
   };
-  git-hooks.hooks.treefmt.enable = true;
+  git-hooks.hooks.treefmt = {
+    enable = true;
+    settings.fail-on-change = false;
+  };
 
   # See full reference at https://devenv.sh/reference/options/
 
