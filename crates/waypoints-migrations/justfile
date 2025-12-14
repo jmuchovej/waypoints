@@ -1,0 +1,54 @@
+# All migration-related tasks!
+[private]
+default:
+    @just --list
+
+[doc("Create a new migration!")]
+generate name:
+    sea-orm-cli migrate generate "{{ name }}" --local-time
+
+[doc("Check migration status (only useful during Dev)")]
+status:
+    sea-orm-cli migrate status
+
+[doc("Applies any pending migrations")]
+up:
+    sea-orm-cli migrate up
+
+[doc("Reverts migrations (1 at a time)")]
+down:
+    sea-orm-cli migrate down
+
+[doc("[DESTRUCTIVE] Drops all tables, then reapplies the migrations")]
+fresh:
+    sea-orm-cli migrate fresh
+
+[doc("Attempts to rollback migrations, then reapplies all migrations")]
+refresh:
+    sea-orm-cli migrate refresh
+
+[doc("Attempts to rollback all applied migrations")]
+reset:
+    sea-orm-cli migrate reset
+
+[doc("Setup mock database with seeded data for testing")]
+setup-mock:
+    #!/usr/bin/env bash
+    export MOCK_DATABASE_URL="sqlite://waypoints_mock.db?mode=rwc"
+    echo "Setting up mock database with seeded data..."
+    sea-orm-cli migrate up --database-url $MOCK_DATABASE_URL
+    echo "Mock database setup complete at waypoints_mock.db"
+
+[doc("Clean mock database")]
+clean-mock:
+    rm -f atlas_mock.db
+    echo "Mock database removed"
+
+[doc("Reset mock database (clean + setup)")]
+reset-mock: clean-mock setup-mock
+
+[doc("Check mock database status")]
+status-mock:
+    #!/usr/bin/env bash
+    export MOCK_DATABASE_URL="sqlite://waypoints_mock.db?mode=rwc"
+    sea-orm-cli migrate status --database-url $MOCK_DATABASE_URL
