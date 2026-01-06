@@ -120,14 +120,10 @@ class PanelManager extends StateNotifier<PanelSystemState> {
     if (detectionContext != null) {
       final screenWidth = MediaQuery.of(detectionContext).size.width;
       final isMobile = screenWidth < 768;
-      waypointsLog.finest(
-        '📱 Screen width: ${screenWidth}px, isMobile: $isMobile',
-      );
+      waypointsLog.finest('📱 Screen width: ${screenWidth}px, isMobile: $isMobile');
 
       if (isMobile) {
-        waypointsLog.info(
-          '📱 Mobile detected - routing to full screen navigation',
-        );
+        waypointsLog.info('📱 Mobile detected - routing to full screen navigation');
         // On mobile, navigate to full screen instead
         _navigateToFullScreen(request, detectionContext);
         return;
@@ -279,9 +275,9 @@ class PanelManager extends StateNotifier<PanelSystemState> {
   /// Load persisted sidebar state on initialization
   Future<void> _loadPersistedSidebarState() async {
     try {
-      // final persistedState = await SidebarPersistence.loadSidebarState();
-      // state = state.copyWith(showSidebar: persistedState);
-      // waypointsLog.fine('Loaded persisted sidebar state: $persistedState');
+      final persistedState = await SidebarPersistence.loadSidebarState();
+      state = state.copyWith(showSidebar: persistedState);
+      waypointsLog.fine('Loaded persisted sidebar state: $persistedState');
     } catch (e, stack) {
       waypointsLog.warning('Failed to load persisted sidebar state', e, stack);
     }
@@ -290,9 +286,9 @@ class PanelManager extends StateNotifier<PanelSystemState> {
   /// Save sidebar state to persistence
   void _saveSidebarState(bool showSidebar) {
     // Save asynchronously without blocking UI
-    // SidebarPersistence.saveSidebarState(showSidebar).catchError((e, stack) {
-    //   waypointsLog.warning('Failed to save sidebar state', e, stack);
-    // });
+    SidebarPersistence.saveSidebarState(showSidebar).catchError((e, stack) {
+      waypointsLog.warning('Failed to save sidebar state', e, stack);
+    });
   }
 
   @override

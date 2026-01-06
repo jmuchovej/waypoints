@@ -24,9 +24,7 @@ class TaskProjectChip extends ConsumerWidget {
 
     // If no project, don't show the pill
     if (!task.project.hasValue) {
-      waypointsTaskEditorLog.finest(
-        '  - No project association (hasValue=false)',
-      );
+      waypointsTaskEditorLog.finest('  - No project association (hasValue=false)');
       return const SizedBox.shrink();
     }
 

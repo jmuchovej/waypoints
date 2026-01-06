@@ -13,6 +13,8 @@ class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.navigationShell});
   final StatefulNavigationShell navigationShell;
 
+  final StatefulNavigationShell navigationShell;
+
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
 }

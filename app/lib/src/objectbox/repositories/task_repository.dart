@@ -181,28 +181,29 @@ class TaskRepository extends ThingRepository<TaskEntity> {
   Stream<List<TaskEntity>> topLevel(Stream<List<TaskEntity>> taskStream) {
     return taskStream.map((tasks) {
       waypointsDBLog.info('topLevel: Filtering ${tasks.length} active tasks');
-      final topLevelTasks = tasks.where((task) {
-        if (task.parent == null) {
-          // No parent = top-level task
-          return true;
-        }
+      final topLevelTasks =
+          tasks.where((task) {
+            if (task.parent == null) {
+              // No parent = top-level task
+              return true;
+            }
 
-        final parent = task.parent!;
-        // Has parent - check if parent is a task (child task) or project (top-level task)
-        final isChildOfTask = parent.type == TaskEntity.key;
-        if (isChildOfTask) {
-          waypointsDBQueryLog.finer(
-            'Filtering out subtask: ${task.title.toPlainText()} (parent task: ${parent.uuid})',
-          );
-          return false;
-        }
+            final parent = task.parent!;
+            // Has parent - check if parent is a task (child task) or project (top-level task)
+            final isChildOfTask = parent.type == TaskEntity.key;
+            if (isChildOfTask) {
+              waypointsDBQueryLog.finer(
+                'Filtering out subtask: ${task.title.toPlainText()} (parent task: ${parent.uuid})',
+              );
+              return false;
+            }
 
-        // Parent is project/other = top-level task
-        waypointsDBQueryLog.finest(
-          'Top-level task: ${task.title.toPlainText()} (parent ${parent.type}: ${parent.uuid})',
-        );
-        return true;
-      }).toList();
+            // Parent is project/other = top-level task
+            waypointsDBQueryLog.finest(
+              'Top-level task: ${task.title.toPlainText()} (parent ${parent.type}: ${parent.uuid})',
+            );
+            return true;
+          }).toList();
 
       waypointsDBQueryLog.fine(
         'topLevel: Found ${topLevelTasks.length} top-level tasks',

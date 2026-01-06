@@ -56,11 +56,12 @@ class AutoSaveListener implements EditListener {
   @override
   void onEdit(List<EditEvent> changeList) {
     waypointsEditorLog.info('Received ${changeList.length} changes');
-    final thingChangeEvents = changeList
-        .whereType<DocumentEdit>()
-        .where((edit) => edit.change is ThingChangeEvent)
-        .map((edit) => edit.change as ThingChangeEvent)
-        .toList();
+    final thingChangeEvents =
+        changeList
+            .whereType<DocumentEdit>()
+            .where((edit) => edit.change is ThingChangeEvent)
+            .map((edit) => edit.change as ThingChangeEvent)
+            .toList();
 
     waypointsEditorLog.info(
       'Found ${thingChangeEvents.length} `ThingChangeEvent` changes',

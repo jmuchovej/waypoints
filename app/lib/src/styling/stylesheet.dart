@@ -7,7 +7,7 @@ import 'text_styles.dart';
 /// This provides all styling configuration including responsive context
 final stylesheetProvider = Provider<WaypointsStylesheet>((ref) {
   throw UnimplementedError(
-    'waypointsStylesheetProvider must be overridden in widget tree',
+    'stylesheetProvider must be overridden in widget tree',
   );
 });
 
@@ -132,14 +132,6 @@ class WaypointsStylesheet {
 
 /// Spacing and padding configuration
 class WaypointsSpacing {
-  /// Create responsive spacing based on style context
-  factory WaypointsSpacing.responsive(WaypointsStyleContext context) {
-    return switch (context.breakpoint) {
-      WaypointsBreakpoint.mobile => mobile,
-      WaypointsBreakpoint.tablet => tablet,
-      WaypointsBreakpoint.desktop => desktop,
-    };
-  }
   const WaypointsSpacing({
     required this.documentPadding,
     required this.contentHorizontal,
@@ -166,6 +158,15 @@ class WaypointsSpacing {
 
   /// Internal padding for chip components
   final EdgeInsets chipPadding;
+
+  /// Create responsive spacing based on style context
+  factory WaypointsSpacing.responsive(WaypointsStyleContext context) {
+    return switch (context.breakpoint) {
+      WaypointsBreakpoint.mobile => mobile,
+      WaypointsBreakpoint.tablet => tablet,
+      WaypointsBreakpoint.desktop => desktop,
+    };
+  }
 
   /// Mobile spacing (< 600px)
   static const mobile = WaypointsSpacing(
@@ -200,18 +201,6 @@ class WaypointsSpacing {
 
 /// Color extensions for Waypoints-specific needs
 class WaypointsColors {
-  /// Create colors from Material ColorScheme
-  factory WaypointsColors._fromColorScheme(ColorScheme scheme) {
-    return WaypointsColors(
-      taskOverdue: scheme.error,
-      taskToday: scheme.tertiary,
-      taskHighPriority: scheme.primary,
-      projectActive: scheme.primary,
-      projectArchived: scheme.onSurfaceVariant.withOpacity(0.6),
-      editorHighlight: scheme.primary.withOpacity(0.1),
-      editorSelection: scheme.primary.withOpacity(0.3),
-    );
-  }
   const WaypointsColors({
     required this.taskOverdue,
     required this.taskToday,
@@ -229,4 +218,17 @@ class WaypointsColors {
   final Color projectArchived;
   final Color editorHighlight;
   final Color editorSelection;
+
+  /// Create colors from Material ColorScheme
+  factory WaypointsColors._fromColorScheme(ColorScheme scheme) {
+    return WaypointsColors(
+      taskOverdue: scheme.error,
+      taskToday: scheme.tertiary,
+      taskHighPriority: scheme.primary,
+      projectActive: scheme.primary,
+      projectArchived: scheme.onSurfaceVariant.withOpacity(0.6),
+      editorHighlight: scheme.primary.withOpacity(0.1),
+      editorSelection: scheme.primary.withOpacity(0.3),
+    );
+  }
 }

@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Riverpod provider for guaranteed non-nullable text styles
 /// This ensures all fontSize, height, and other critical properties are never null
-final waypointsTextStylesProvider = Provider<WaypointsTextStyleSet>((ref) {
+final textStylesProvider = Provider<WaypointsTextStyleSet>((ref) {
   throw UnimplementedError(
-    'waypointsTextStylesProvider must be overridden in widget tree',
+    'textStylesProvider must be overridden in widget tree',
   );
 });
 
@@ -19,7 +19,7 @@ class WaypointsTextStyles {
   /// Get non-nullable text styles from Riverpod provider
   /// This is the preferred method - use WaypointsTextStyles.of(ref) with WidgetRef
   static WaypointsTextStyleSet of(WidgetRef ref) {
-    return ref.read(waypointsTextStylesProvider);
+    return ref.read(textStylesProvider);
   }
 
   /// Get non-nullable text styles from BuildContext (legacy support)
@@ -214,8 +214,9 @@ class WaypointsTextStyleSet {
     final height =
         style.height ??
         1.0; // height can legitimately be null (means default line height)
-    final fontSize = style
-        .fontSize!; // fontSize is guaranteed non-null by WaypointsTextStyles
+    final fontSize =
+        style
+            .fontSize!; // fontSize is guaranteed non-null by WaypointsTextStyles
     final lineHeight = fontSize * height;
 
     return EdgeInsets.only(top: lineHeight / 2, bottom: lineHeight / 4);

@@ -222,11 +222,12 @@ class TaskComponentState extends ConsumerState<TaskComponent>
       'TaskComponent.buildPillsRow: creating for task=${task.uuid}',
     );
 
-    final pills = <Widget>[
-      TaskProgressChip(parentTask: task),
-      TaskDueDateChip(task: task),
-      TaskProjectChip(task: task),
-    ].where((widget) => widget.runtimeType != SizedBox).toList();
+    final pills =
+        <Widget>[
+          TaskProgressChip(task: task),
+          TaskDueDateChip(task: task),
+          TaskProjectChip(task: task),
+        ].where((widget) => widget.runtimeType != SizedBox).toList();
 
     // Only show the row if there are pills to display
     if (pills.isEmpty) {

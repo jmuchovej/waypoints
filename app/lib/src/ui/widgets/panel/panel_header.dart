@@ -63,19 +63,20 @@ class _PanelHeaderState extends ConsumerState<PanelHeader> {
     final spacing = stylesheet.spacing;
 
     final styleBuilder = headerTextStyleBuilder(context);
-    final headerText = widget.readonly
-        ? WaypointsText.fromAttributedText(
-            widget.controller.text,
-            textStyleBuilder: styleBuilder,
-            sizeMode: WaypointsTextFieldSizeMode.max,
-          )
-        : WaypointsTextField.fromAttributedText(
-            widget.hintText!,
-            textStyleBuilder: styleBuilder,
-            controller: widget.titleController,
-            focusNode: widget.titleFocusNode,
-            hintStyleBuilder: headerHintStyleBuilder(context),
-          );
+    final headerText =
+        widget.readonly
+            ? WaypointsText.fromAttributedText(
+              widget.controller.text,
+              textStyleBuilder: styleBuilder,
+              sizeMode: WaypointsTextFieldSizeMode.max,
+            )
+            : WaypointsTextField.fromAttributedText(
+              widget.hintText!,
+              textStyleBuilder: styleBuilder,
+              controller: widget.titleController,
+              focusNode: widget.titleFocusNode,
+              hintStyleBuilder: headerHintStyleBuilder(context),
+            );
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: spacing.maxContentWidth),

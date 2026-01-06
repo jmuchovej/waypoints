@@ -9,6 +9,7 @@ import 'src/infrastructure/logging.dart';
 import 'src/l10n/l10n.dart';
 import 'src/objectbox/objectbox.dart';
 import 'src/router.dart';
+import 'src/styling/theme.dart';
 import 'src/styling/stylesheet.dart';
 import 'src/styling/text_styles.dart';
 import 'src/styling/theme.dart';
@@ -70,7 +71,7 @@ class Waypoints extends ConsumerWidget {
         // Provide WaypointsTextStyles to all widgets via ProviderScope override
         return ProviderScope(
           overrides: [
-            waypointsTextStylesProvider.overrideWithValue(
+            textStylesProvider.overrideWithValue(
               WaypointsTextStyles.fromContext(context),
             ),
             stylesheetProvider.overrideWithValue(

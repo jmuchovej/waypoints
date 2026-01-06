@@ -55,11 +55,17 @@ class WaypointsText extends WaypointsTextBase {
   const WaypointsText.fromAttributedText(
     AttributedText text, {
     super.key,
-    super.textStyleBuilder,
-    super.textAlign,
-    super.textDirection,
-    super.sizeMode,
-  }) : super(text: text);
+    AttributionStyleBuilder? textStyleBuilder,
+    TextAlign textAlign = TextAlign.left,
+    TextDirection textDirection = TextDirection.ltr,
+    WaypointsTextFieldSizeMode sizeMode = WaypointsTextFieldSizeMode.adaptive,
+  }) : super(
+         text: text,
+         textStyleBuilder: textStyleBuilder,
+         textAlign: textAlign,
+         textDirection: textDirection,
+         sizeMode: sizeMode,
+       );
 
   AttributionStyleBuilder get _defaultStyleBuilder {
     return (Set<Attribution> attributions) {

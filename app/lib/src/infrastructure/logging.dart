@@ -72,10 +72,7 @@ Logger _trackLoggerAccess(String name, Logger logger) {
   return logger;
 }
 
-final waypointsLog = _trackLoggerAccess(
-  LogNames.waypoints,
-  Logger(LogNames.waypoints),
-);
+final waypointsLog = _trackLoggerAccess(LogNames.waypoints, Logger(LogNames.waypoints));
 final waypointsEditorLog = Logger(LogNames.editor);
 final waypointsTaskEditorLog = Logger(LogNames.taskEditor);
 final waypointsProjectEditorLog = Logger(LogNames.projectEditor);

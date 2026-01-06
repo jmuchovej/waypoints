@@ -28,8 +28,8 @@
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
-		78B875F9251C905457603494 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EE860F81B7F746E52353A00 /* Pods_Runner.framework */; };
-		FC451A6CC4205128D533002C /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 822E6943569880AAF7348C84 /* Pods_RunnerTests.framework */; };
+		8F5F392DEDFAAFAEADCA30C0 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E689C7F414944A0FC06CBFC6 /* Pods_RunnerTests.framework */; };
+		B98F09B69548C7C0372B4689 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B5549FFA2B1893C1F0C3C694 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
