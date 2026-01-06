@@ -1,0 +1,22 @@
+name: playground
+publish_to: "none"
+resolution: workspace
+version: 1.0.0+1
+environment:
+  sdk: ^3.9.0
+dependencies:
+  waypoints:
+    path: ../app
+  flutter:
+    sdk: flutter
+  widgetbook: ^3.20.1
+  widgetbook_annotation: ^3.9.0
+  hooks_riverpod: ^3.0.3
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  widgetbook_generator: ^3.16.0
+  build_runner: ^2.7.1
+flutter:
+  uses-material-design: true

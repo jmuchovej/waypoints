@@ -1,0 +1,38 @@
+# All tasks related to Waypoints (Playground)!
+[private]
+default:
+    @just --list
+
+[doc("Refresh flutter dependencies")]
+[group("dependencies")]
+refresh-deps:
+    flutter pub get
+
+[doc("Add a dependency -- currently this only supports one argument.")]
+[group("dependencies")]
+add-dep dependency:
+    flutter pub add "{{ dependency }}"
+
+[doc("Start a development run of flutter on `device`!")]
+[group("development")]
+dev device:
+    flutter run \
+      --no-pub \
+      -d "{{ device }}"
+
+[doc("Start a development run on `chrome`!")]
+[group("development")]
+dev-web:
+    flutter run \
+      --no-pub \
+      -d chrome \
+      --web-port=28526 \
+      --web-header=Cross-Origin-Opener-Policy=same-origin \
+      --web-header=Cross-Origin-Embedder-Policy=require-corp
+
+[doc("Run `build-runner`")]
+[group("development")]
+build-runner:
+    dart run \
+      build_runner watch \
+      -d

@@ -1,0 +1,56 @@
+targets:
+  $default:
+    builders:
+      # Disable source_gen combining_builder for objectbox directory
+      # to avoid conflicts with objectbox_generator
+      source_gen:combining_builder:
+        enabled: true
+        generate_for:
+          exclude:
+            - lib/src/objectbox/**
+            - lib/**/*.entity.dart
+      # Disable freezed for objectbox directory
+      # freezed:
+      #   enabled: true
+      #   generate_for:
+      #     exclude:
+      #       - lib/src/objectbox/**
+      #       - lib/**/*.entity.dart
+
+      # Disable json_serializable for objectbox directory
+      # json_serializable:
+      #   enabled: true
+      #   generate_for:
+      #     exclude:
+      #       - lib/src/objectbox/**
+      #       - lib/**/*.entity.dart
+
+      # TODO WHEN/IF migrating back to Drift, reenable these to support
+      #   partial files
+      # drift_dev:
+      #   enabled: false
+
+      # drift_dev:analyzer:
+      #   enabled: true
+      #   options: &options
+      #     store_date_time_values_as_text: true
+      #     named_parameters: true
+      #     sql:
+      #       dialect: sqlite
+      #       options:
+      #         version: "3.39"
+      #         modules: [fts5]
+
+      # drift_dev:modular:
+      #   enabled: true
+      #   options: *options
+
+      # Configure ObjectBox to only process entity files
+      objectbox_generator|resolver:
+        enabled: true
+        generate_for:
+          include:
+            - lib/src/objectbox/**
+            - lib/**/*.entity.dart
+      objectbox_generator|generator:
+        enabled: true
