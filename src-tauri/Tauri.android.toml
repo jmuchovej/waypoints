@@ -1,0 +1,3 @@
+# https://tauri.app/distribute/google-play/
+[bundle.android]
+min-sdk-version = 28

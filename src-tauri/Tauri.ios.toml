@@ -1,0 +1,4 @@
+# https://tauri.app/distribute/sign/ios/
+# https://tauri.app/distribute/macos-application-bundle/
+[bundle.resources]
+"infoplist/**" = "./platforms/ios/"

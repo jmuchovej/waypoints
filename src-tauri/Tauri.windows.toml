@@ -1,0 +1,3 @@
+[bundle.windows]
+digest-algorithm = "sha256"
+timestamp-url = ""

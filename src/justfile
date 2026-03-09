@@ -1,0 +1,35 @@
+[private]
+default:
+    @just --list
+
+[private]
+via-nuxi +ARGS:
+    bunx nuxi {{ ARGS }}
+
+dev:
+    @just via-nuxi dev
+
+generate:
+    @just via-nuxi generate
+
+postinstall:
+    @just via-nuxi prepare
+
+typecheck:
+    @just via-nuxi typecheck
+
+clean:
+    @just via-nuxi cleanup
+
+[private]
+via-storybook +ARGS:
+    bunx storybook {{ ARGS }}
+
+storybook-dev:
+    @just via-storybook dev --port 9298
+
+storybook-build:
+    @just via-storybook build
+
+add +ARGS:
+    bun add {{ ARGS }}

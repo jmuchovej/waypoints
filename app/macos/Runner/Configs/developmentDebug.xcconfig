@@ -1,8 +1,0 @@
-#include "../../Flutter/developmentDebug.xcconfig"
-#include "Warnings.xcconfig"
-
-ASSET_PREFIX=development
-BUNDLE_NAME=Waypoints (Dev)
-BUNDLE_DISPLAY_NAME=Waypoints (Dev)
-PRODUCT_NAME=Waypoints (Dev)
-TARGET_NAME=Waypoints (Dev)

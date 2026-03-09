@@ -1,8 +1,0 @@
-#include "../../Flutter/stagingProfile.xcconfig"
-#include "Warnings.xcconfig"
-
-ASSET_PREFIX=staging
-BUNDLE_NAME=Waypoints (Staging)
-BUNDLE_DISPLAY_NAME=Waypoints (Staging)
-PRODUCT_NAME=Waypoints (Staging)
-TARGET_NAME=Waypoints (Staging)

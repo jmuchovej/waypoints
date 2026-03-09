@@ -1,6 +1,0 @@
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
-#include "Generated.xcconfig"
-
-ASSET_PREFIX=staging
-BUNDLE_NAME=Waypoints (Staging)
-BUNDLE_DISPLAY_NAME=Waypoints (Staging)

@@ -1,8 +1,0 @@
-#include "../../Flutter/productionRelease.xcconfig"
-#include "Warnings.xcconfig"
-
-ASSET_PREFIX=production
-BUNDLE_NAME=Waypoints
-BUNDLE_DISPLAY_NAME=Waypoints
-PRODUCT_NAME=Waypoints
-TARGET_NAME=Waypoints

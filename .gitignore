@@ -2,12 +2,14 @@
 .direnv/
 .devenv.flake.nix
 .pre-commit-config.yaml
+local.properties
+.mcp.json
 
 _research/
+.scratch/
 data/
 
 .idea/
-.scratch/
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,rust,flutter,dart,deno,database,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,rust,flutter,dart,deno,database,node

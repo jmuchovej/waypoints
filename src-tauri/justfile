@@ -1,0 +1,18 @@
+mod app "../src/justfile"
+
+[private]
+default:
+    @just --list
+
+[private]
+via-tauri +ARGS="--debug":
+    cargo tauri {{ ARGS }}
+
+dev *ARGS:
+    @just via-tauri dev {{ ARGS }}
+
+ios +ARGS:
+    @just via-tauri ios {{ ARGS }}
+
+android +ARGS:
+    @just via-tauri android {{ ARGS }}
