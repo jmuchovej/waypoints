@@ -6,15 +6,14 @@
 use super::{ChartID, FeatureID, GlyphID};
 use crate::{Color, DomainResult, Icon, Json, mark::ReferenceDisplayMode};
 use chrono::{NaiveDate, NaiveTime};
-use flutter_rust_bridge::frb;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::collections::HashMap;
 use typed_builder::TypedBuilder;
 
 /// Field types that can be used in Charts.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum FeatureKind {
     Text,
@@ -58,7 +57,7 @@ pub enum FeatureKind {
     /// Multiple selection from options
     MultiSelect {
         options: IndexMap<GlyphID, SelectOption>,
-        max_selections: Option<usize>,
+        max_selections: Option<u32>,
         #[serde(default)]
         default_options: Vec<GlyphID>,
     },
@@ -72,14 +71,14 @@ pub enum FeatureKind {
     /// Grouped multiple selection
     GroupedMultiSelect {
         groups: IndexMap<GlyphID, SelectGroup>,
-        max_selections: Option<usize>,
+        max_selections: Option<u32>,
         default_options: IndexMap<GlyphID, GlyphID>,
     },
 
     /// Reference to other Things
     Reference {
         allowed_types: Option<Vec<ChartID>>,
-        max_references: Option<usize>,
+        max_references: Option<u32>,
         #[serde(default = "default_display_field")]
         display_field: String,
         #[serde(rename = "as", default)]
@@ -95,7 +94,6 @@ fn default_display_field() -> String {
 }
 
 impl Default for FeatureKind {
-    #[frb(ignore)]
     fn default() -> Self {
         FeatureKind::Text
     }

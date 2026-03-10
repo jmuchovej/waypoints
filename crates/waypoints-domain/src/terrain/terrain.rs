@@ -1,16 +1,12 @@
 use super::TerrainKind;
 use crate::{Json, mark::MarkID};
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use typed_builder::TypedBuilder;
 
 /// Graph edges representing relationships between blocks.
-#[derive(Debug, Clone, PartialEq, TypedBuilder, Deserialize, Serialize)]
-#[builder(
-  builder_type(attributes(#[frb(ignore)])),
-  field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, TypedBuilder, Deserialize, Serialize, Type)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Terrain {
     /// The directed edge this block is coming from
     pub src_id: MarkID,

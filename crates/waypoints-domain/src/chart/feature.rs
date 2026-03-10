@@ -6,8 +6,8 @@
 use super::{ChartID, FeatureID, FeatureKind, GlyphID};
 use crate::{DomainResult, Json};
 use chrono::{NaiveDate, NaiveTime};
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::collections::HashMap;
 use typed_builder::TypedBuilder;
 
@@ -20,12 +20,8 @@ use typed_builder::TypedBuilder;
 /// [FK]: super::FeatureKind
 /// [F.id]: super::FeatureID
 /// [M:L]: crate::mark::Landmark
-#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize)]
-#[builder(
-  field_defaults(setter(strip_option(ignore_invalid), prefix = "with_")),
-  builder_type(attributes(#[frb(ignore)])),
-)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
+#[builder(field_defaults(setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Feature {
     #[builder(default, setter(skip))]
     pub id: FeatureID,

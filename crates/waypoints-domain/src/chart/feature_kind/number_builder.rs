@@ -1,6 +1,5 @@
 //! Builder pattern for creating number field configurations with chainable methods.
 use super::{ChartID, FeatureKind};
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
@@ -8,8 +7,7 @@ use typed_builder::TypedBuilder;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypedBuilder)]
 #[builder(
     field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-    build_method(into),
-    builder_type(attributes(#[frb(ignore)])),
+    build_method(into)
 )]
 pub struct Number {
     min: Option<f64>,
@@ -32,7 +30,6 @@ impl From<Number> for FeatureKind {
 }
 
 impl Default for Number {
-    #[frb(ignore)]
     fn default() -> Self {
         Self::builder().build()
     }

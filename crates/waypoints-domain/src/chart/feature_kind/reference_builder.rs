@@ -1,6 +1,5 @@
 //! Builder pattern for creating reference field configurations with chainable methods.
 use super::{ChartID, FeatureKind, Json, ReferenceDisplayMode};
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
@@ -17,10 +16,7 @@ macro_rules! impl_display_mode {
 
 /// Builder pattern for Reference fields
 #[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize)]
-#[builder(
-    field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-    builder_type(attributes(#[frb(ignore)])),
-)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Reference {
     #[builder(
       via_mutators(init = None),
@@ -45,7 +41,7 @@ pub struct Reference {
       via_mutators(init = None),
       mutators(
         /// Set a maximum number of references
-        pub fn with_max_references(&mut self, max: usize) {
+        pub fn with_max_references(&mut self, max: u32) {
             self.max_references = Some(max);
         }
 
@@ -56,7 +52,7 @@ pub struct Reference {
 
       )
     )]
-    max_references: Option<usize>,
+    max_references: Option<u32>,
 
     #[builder(
       via_mutators(init = "title".to_string()),
@@ -127,7 +123,6 @@ pub struct Reference {
 }
 
 impl Default for Reference {
-    #[frb(ignore)]
     fn default() -> Self {
         Self::builder().build()
     }

@@ -1,16 +1,15 @@
 use super::{MarkID, reading_validators as validators};
 use crate::chart::{Feature, FeatureKind, GlyphID};
 use chrono::NaiveDateTime;
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::collections::HashMap;
 
 /// Instances of [`Features`][F] with their relevant data on a [`Landmark`][M:L].
 ///
 /// [F]: crate::chart::Feature
 /// [M:L]: crate::mark::Landmark
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(untagged)]
 pub enum Reading {
     Text(String),
@@ -34,7 +33,6 @@ pub enum Reading {
 
 impl FeatureKind {
     /// Validate a reading against this feature's constraints using enum dispatch
-    #[frb(ignore)]
     pub fn validate_reading(&self, reading: &Reading) -> Result<(), String> {
         match self {
             FeatureKind::Text => validators::text(reading, self),

@@ -1,6 +1,6 @@
 export default defineAppConfig({
   app: {
-    name: "Larder",
+    name: "Waypoints",
   },
   ui: {
     colors: {

@@ -4,8 +4,14 @@ use tauri::App;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let specta = builders::specta_builder();
+
     tauri::Builder::default()
-        .setup(|app: &mut App| builders::setup(app))
+        .invoke_handler(specta.invoke_handler())
+        .setup(move |app: &mut App| {
+            specta.mount_events(app);
+            builders::setup(app)
+        })
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_fs::init())

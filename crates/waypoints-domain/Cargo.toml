@@ -22,10 +22,10 @@ derive_more = { workspace = true, features = [
   "try_unwrap",
   "unwrap",
 ] }
-flutter_rust_bridge.workspace = true
 indexmap.workspace = true
 rand.workspace = true
 serde.workspace = true
+specta.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 typed-builder.workspace = true

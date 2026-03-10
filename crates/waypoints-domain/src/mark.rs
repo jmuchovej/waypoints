@@ -1,12 +1,14 @@
 use crate::{DomainError, DomainResult};
 use derive_more::{Debug, Display, FromStr};
-use flutter_rust_bridge::frb;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use uuid::Uuid;
 
 /// Unique identifier for a [`Mark`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type,
+)]
 #[display("{}", self.inner().to_string().to_lowercase())]
 #[debug("MarkID({})", self.inner().to_string().to_lowercase())]
 #[serde(transparent)]
@@ -31,7 +33,6 @@ impl From<Uuid> for MarkID {
 }
 
 impl Default for MarkID {
-    #[frb(ignore)]
     fn default() -> Self {
         Self::new()
     }

@@ -229,7 +229,7 @@ pub fn reference(reading: &Reading, feature: &FeatureKind) -> Result<(), String>
     match reading {
         Reading::References(refs) => {
             if let Some(max) = max_references {
-                if refs.len() > *max {
+                if refs.len() > *max as usize {
                     return Err(format!("Too many references (max: {})", max));
                 }
             }
@@ -274,7 +274,7 @@ pub fn multi_select(reading: &Reading, feature: &FeatureKind) -> Result<(), Stri
     match reading {
         Reading::MultiSelect(selected) => {
             if let Some(max) = max_selections {
-                if selected.len() > *max {
+                if selected.len() > *max as usize {
                     return Err(format!("Too many selections (max: {})", max));
                 }
             }
@@ -328,7 +328,7 @@ pub fn grouped_multi_select(reading: &Reading, feature: &FeatureKind) -> Result<
     match reading {
         Reading::MultiSelect(selected) => {
             if let Some(max) = max_selections {
-                if selected.len() > *max {
+                if selected.len() > *max as usize {
                     return Err(format!("Too many selections (max: {})", max));
                 }
             }

@@ -44,12 +44,12 @@
 //! assert_eq!(emoji.is_colorable(), Some(false));
 //! ```
 
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
 use crate::{DomainError, DomainResult};
+use specta::Type;
 
 /// A flexible icon representation using hierarchical identifiers.
 ///
@@ -57,8 +57,7 @@ use crate::{DomainError, DomainResult};
 /// type, and specific icon. The UI layer is responsible for resolving these identifiers
 /// to actual rendered icons and determining colorability via appropriate APIs.
 /// flutter_rust_bridge:non_opaque
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct Icon {
     /// Hierarchical icon identifier (e.g., "iconify:mdi:home", "system:emoji:house")
     pub identifier: String,
@@ -77,8 +76,7 @@ pub struct Icon {
 }
 
 /// Icon namespace for different icon sources.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub enum IconNamespace {
     /// Iconify icon collection
     Iconify { set: String, name: String },
@@ -107,7 +105,6 @@ impl Icon {
     /// let icon = Icon::new("iconify:mdi:home");
     /// assert_eq!(icon.identifier, "iconify:mdi:home");
     /// ```
-    #[frb(sync)]
     pub fn new(identifier: &str) -> Self {
         Self {
             identifier: identifier.to_string(),
@@ -130,7 +127,6 @@ impl Icon {
     /// let settings = Icon::iconify("heroicons-outline", "cog-6-tooth");
     /// assert_eq!(settings.identifier, "iconify:heroicons-outline:cog-6-tooth");
     /// ```
-    #[frb(sync)]
     pub fn iconify(set: &str, name: &str) -> Self {
         Self {
             alt_text: format!("Icon: {set}:{name}").into(),
@@ -148,7 +144,6 @@ impl Icon {
     /// let custom = Icon::waypoints("ui", "special-button");
     /// assert_eq!(custom.identifier, "waypoints:ui:special-button");
     /// ```
-    #[frb(sync)]
     pub fn waypoints(set: &str, name: &str) -> Self {
         Self {
             alt_text: format!("Waypoints icon: {set}:{name}").into(),
@@ -171,7 +166,6 @@ impl Icon {
     /// let emoji = Icon::system_emoji("🏠");
     /// assert_eq!(emoji.identifier, "system:emoji:🏠");
     /// ```
-    #[frb(sync)]
     pub fn system_emoji(name: &str) -> Self {
         Self {
             alt_text: format!("Emoji: {name}").into(),
@@ -190,7 +184,6 @@ impl Icon {
     /// let logo = Icon::local_image("assets/logo.png");
     /// assert_eq!(logo.identifier, "local-image:assets/logo.png");
     /// ```
-    #[frb(sync)]
     pub fn local_image(path: &str) -> Self {
         Self {
             alt_text: format!("Image: {}", path.split('/').last().unwrap_or(path)).into(),
@@ -209,7 +202,6 @@ impl Icon {
     /// let remote = Icon::remote_image("https://example.com/icon.svg");
     /// assert_eq!(remote.identifier, "remote-image:https://example.com/icon.svg");
     /// ```
-    #[frb(sync)]
     pub fn remote_image(url: &str) -> Self {
         Self {
             alt_text: "Remote image".to_string().into(),
@@ -266,7 +258,6 @@ impl Icon {
     /// For other types, it's determined based on the icon type.
     ///
     /// Returns None if colorability hasn't been determined yet (requires API call).
-    #[frb(sync)]
     pub fn is_colorable(&self) -> Option<bool> {
         // If we have cached colorability info, return it
         if let Some(colorable) = self.colorable {

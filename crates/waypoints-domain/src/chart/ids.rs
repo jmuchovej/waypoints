@@ -7,6 +7,7 @@ use crate::error::{DomainError, DomainResult};
 use derive_more::{Debug, Display, FromStr};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use uuid::Uuid;
 
 const BASE36ID_LEN: usize = 4;
@@ -14,7 +15,7 @@ const BASE36ID_LEN: usize = 4;
 /// Base-36 encoded identifier newtype. (Currently 4-character limit.)
 ///
 /// This is the core type that [`ChartID`], [`FeatureID`], and [`GlyphID`] wrap.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
 #[display("{_0}")]
 #[debug("b36::{_0}")]
 #[serde(transparent)]
@@ -84,7 +85,7 @@ impl std::str::FromStr for Base36ID {
 /// or special `"builtin.*"` identifiers for built-in chart types.
 ///
 /// [C]: super::Chart
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
 #[display("{}", self.name())]
 #[debug("ChartID({})", self.name())]
 #[serde(transparent)]
@@ -149,7 +150,9 @@ impl TryFrom<String> for ChartID {
 /// [C]: super::Chart
 /// [F]: super::Feature
 /// [L]: crate::mark::Landmark
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr, Type,
+)]
 #[display("{_0}")]
 #[debug("FeatureID({_0})")]
 #[serde(transparent)]
@@ -177,7 +180,9 @@ impl From<FeatureID> for String {
 /// Unique identifier for a select option within a [`Feature`][F].
 ///
 /// [F]: super::Feature
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr, Type,
+)]
 #[display("{_0}")]
 #[debug("GlyphID({_0})")]
 #[serde(transparent)]

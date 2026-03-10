@@ -3,13 +3,12 @@
 //! This module provides RichReference, which combines a BlockID with display mode
 //! information to control how references are rendered in the UI.
 use super::MarkID;
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Display mode for rendering references in the UI.
 /// Determines how referenced Landmarks should be visually presented.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum ReferenceDisplayMode {
     /// Small circular avatar (typically for people)
@@ -33,7 +32,6 @@ pub enum ReferenceDisplayMode {
 }
 
 impl Default for ReferenceDisplayMode {
-    #[frb(ignore)]
     fn default() -> Self {
         ReferenceDisplayMode::Inline
     }
@@ -41,8 +39,7 @@ impl Default for ReferenceDisplayMode {
 
 /// A reference that includes display mode information.
 /// Used for top-level Thing fields like children, created_by, updated_by.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct RichReference {
     /// The referenced block ID
     pub id: MarkID,
@@ -53,13 +50,11 @@ pub struct RichReference {
 
 impl RichReference {
     /// Create a new RichReference from the given ID.
-    #[frb(sync)]
     pub fn from_id(id: MarkID) -> Self {
         Self::new(id, ReferenceDisplayMode::default())
     }
 
     /// Create a new RichReference with the given ID and display mode.
-    #[frb(sync)]
     pub fn new(id: MarkID, mode: ReferenceDisplayMode) -> Self {
         Self {
             id,

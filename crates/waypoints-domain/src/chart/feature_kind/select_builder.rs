@@ -1,19 +1,15 @@
 //! Unified select builder that handles all select types as specializations of grouped multi-select.
 use super::{FeatureKind, GlyphID};
 use crate::{Color, Icon};
-use flutter_rust_bridge::frb;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::{collections::HashMap, str::FromStr};
 use typed_builder::TypedBuilder;
 
 /// Option for select fields
-#[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize)]
-#[builder(
-    field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-    builder_type(attributes(#[frb(ignore)])),
-)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize, Type)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct SelectOption {
     #[builder(default, setter(skip))]
     pub id: GlyphID,
@@ -33,12 +29,8 @@ pub struct SelectOption {
 }
 
 /// Group of options for grouped select fields
-#[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize)]
-#[builder(
-    field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-    builder_type(attributes(#[frb(ignore)])),
-)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize, Type)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct SelectGroup {
     #[builder(default, setter(skip))]
     pub id: GlyphID,
@@ -85,7 +77,7 @@ pub struct SelectGroup {
         }
 
         /// Set maximum number of selections
-        pub fn with_max_selections(mut self, max: usize) {
+        pub fn with_max_selections(mut self, max: u32) {
           self.max_selections = Some(max);
         }
 
@@ -95,7 +87,7 @@ pub struct SelectGroup {
         }
       )
     )]
-    pub max_selections: Option<usize>,
+    pub max_selections: Option<u32>,
 
     #[builder(
       via_mutators,
@@ -124,10 +116,7 @@ impl From<String> for SelectOption {
 /// Unified builder for all select types (single, multi, grouped, grouped-multi)
 /// All are internally represented as grouped multi-select with different constraints
 #[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize)]
-#[builder(
-    field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-    builder_type(attributes(#[frb(ignore)])),
-)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Select {
     /// Groups of options - single group for simple selects, multiple for grouped
     #[builder(
@@ -185,7 +174,7 @@ pub struct Select {
         }
 
         /// Set maximum number of selections
-        pub fn with_max_selections(mut self, max: usize) {
+        pub fn with_max_selections(mut self, max: u32) {
           self.max_selections = Some(max);
         }
 
@@ -195,7 +184,7 @@ pub struct Select {
         }
       )
     )]
-    pub max_selections: Option<usize>,
+    pub max_selections: Option<u32>,
     /// Default selected options
     #[builder(setter(!strip_option))]
     pub default_options: Vec<GlyphID>,
@@ -207,7 +196,6 @@ pub struct Select {
 }
 
 impl Default for Select {
-    #[frb(ignore)]
     fn default() -> Self {
         Self::builder().build()
     }

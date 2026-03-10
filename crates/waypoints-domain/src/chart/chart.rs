@@ -1,17 +1,13 @@
 use super::{ChartID, Feature, FeatureID};
 use crate::{HasIcon, Icon};
-use flutter_rust_bridge::frb;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::str::FromStr;
 use typed_builder::TypedBuilder;
 
-#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize)]
-#[builder(
-  field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-  builder_type(attributes(#[frb(ignore)]))
-)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Chart {
     /// A unique identifier for the [`Chart`]. This is more thoroughly detailed in
     /// [`ChartID`], but the aim here is to have a compact, unique identifier that allows
@@ -69,13 +65,11 @@ pub struct Chart {
 
 impl Chart {
     /// Is this a built-in [`Chart`]?
-    #[frb(sync)]
     pub fn is_builtin(&self) -> bool {
         self.id.is_builtin()
     }
 
     /// Retrieve a [`Feature`] by its [`FeatureID`].
-    #[frb(sync)]
     pub fn get_feature(&self, feature_id: &FeatureID) -> Option<Feature> {
         self.features.get(feature_id).cloned()
     }

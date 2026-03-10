@@ -1,15 +1,11 @@
 use super::{Content, Landmark, MarkData, MarkID};
 use crate::Json;
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use typed_builder::TypedBuilder;
 
-#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize)]
-#[builder(
-  field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-  builder_type(attributes(#[frb(ignore)])),
-)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Mark {
     /// A unique identifier for the [`Mark`]. This is more thoroughly detailed in
     /// [`MarkID`], but the aim here is to have a high-capacity, unique identifier that

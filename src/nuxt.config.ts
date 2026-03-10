@@ -11,7 +11,6 @@ export default defineNuxtConfig({
     "@nuxt/ui",
     "@nuxt/hints",
     "@nuxt/image",
-    // "@nuxtjs/storybook",
     "@pinia/nuxt",
     "@vueuse/nuxt",
     "@nuxt/icon",
@@ -28,26 +27,16 @@ export default defineNuxtConfig({
     "/": { prerender: true },
   },
 
-  eslint: {
-    config: {
-      stylistic: {
-        commaDangle: "always",
-        braceStyle: "1tbs",
-      },
-    },
-  },
-
   app: {
     head: {
-      title: "Larder",
+      title: "Waypoints",
       charset: "utf-8",
       viewport: "width=device-width, initial-scale=1",
       meta: [
         { name: "format-detection", content: "no" },
         {
           name: "viewport",
-          content:
-            "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+          content: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
         },
       ],
     },
@@ -60,14 +49,13 @@ export default defineNuxtConfig({
       mode: "out-in",
     },
   },
-  css: ["@/assets/css/main.css"],
-  svgo: {
-    autoImportPath: "@/assets/",
-  },
+
   ssr: false,
+
   dir: {
     modules: "app/modules",
   },
+
   imports: {
     presets: [
       {
@@ -83,6 +71,7 @@ export default defineNuxtConfig({
       },
     ],
   },
+
   vite: {
     clearScreen: false,
     envPrefix: ["VITE_", "TAURI_"],
@@ -97,28 +86,30 @@ export default defineNuxtConfig({
         : undefined,
     },
   },
+
   devServer: {
     host: host || "0",
     port: 9297,
   },
+
   router: {
     options: {
       scrollBehaviorType: "smooth",
     },
   },
+
   eslint: {
     config: {
       standalone: false,
+      stylistic: {
+        commaDangle: "always",
+        braceStyle: "1tbs",
+      },
     },
   },
+
+  // https://nuxt.com/docs/4.x/guide/going-further/experimental-features
   experimental: {
     typedPages: true,
   },
-  // storybook: {
-  //   url: "http://localhost:9298",
-  //   storybookRoute: "/__storybook__",
-  //   port: 9298,
-  //   // Very verbose logs for debugging
-  //   logLevel: Number.POSITIVE_INFINITY,
-  // }
 });

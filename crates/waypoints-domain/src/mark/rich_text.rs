@@ -1,9 +1,8 @@
 use crate::Json;
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct RichText {
     pub plain_text: String,
     #[serde(default)]
@@ -11,14 +10,12 @@ pub struct RichText {
 }
 
 impl RichText {
-    #[frb(sync)]
     pub fn is_empty(&self) -> bool {
         self.plain_text.is_empty() && self.marks.is_empty()
     }
 }
 
 impl Default for RichText {
-    #[frb(ignore)]
     fn default() -> Self {
         RichText {
             plain_text: String::new(),
@@ -38,17 +35,16 @@ impl From<String> for RichText {
 }
 
 /// Text formatting marks (bold, italic, links, etc.)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct TextMark {
     /// Type of formatting
     pub kind: TextMarkKind,
 
     /// Start position in the text (Unicode character offset)
-    pub start: usize,
+    pub start: u32,
 
     /// End position in the text (Unicode character offset)
-    pub end: usize,
+    pub end: u32,
 
     /// Additional data for the mark (e.g., URL for links)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -57,20 +53,17 @@ pub struct TextMark {
 
 impl TextMark {
     /// Validate that the mark has valid start/end positions
-    #[frb(sync)]
     pub fn is_valid(&self) -> bool {
         self.start <= self.end
     }
 
     /// Check if this mark overlaps with another mark
-    #[frb(sync)]
     pub fn overlaps_with(&self, other: &TextMark) -> bool {
         !(self.end <= other.start || other.end <= self.start)
     }
 
     /// Get the length of this mark
-    #[frb(sync)]
-    pub fn length(&self) -> usize {
+    pub fn length(&self) -> u32 {
         if self.end >= self.start {
             self.end - self.start
         } else {
@@ -80,8 +73,7 @@ impl TextMark {
 }
 
 /// Types of text formatting.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum TextMarkKind {
     Bold,
@@ -232,8 +224,8 @@ mod tests {
         for (i, mark_type) in mark_types.into_iter().enumerate() {
             let mark = TextMark {
                 kind: mark_type.clone(),
-                start: i * 5,
-                end: i * 5 + 4,
+                start: (i * 5) as u32,
+                end: (i * 5 + 4) as u32,
                 data: None,
             };
 
@@ -408,11 +400,11 @@ mod tests {
         let full_mark = TextMark {
             kind: TextMarkKind::Highlight,
             start: 0,
-            end: full_text.len(),
+            end: full_text.len() as u32,
             data: None,
         };
 
         assert!(full_mark.is_valid());
-        assert_eq!(full_mark.length(), full_text.len());
+        assert_eq!(full_mark.length(), full_text.len() as u32);
     }
 }

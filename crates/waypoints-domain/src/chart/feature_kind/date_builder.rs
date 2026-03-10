@@ -1,16 +1,12 @@
 //! Builder pattern for creating number field configurations with chainable methods.
 use super::{ChartID, FeatureKind};
 use chrono::{NaiveDate, NaiveTime};
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 /// Builder pattern for Numeric fields
 #[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize)]
-#[builder(
-    field_defaults(default, setter(strip_option, prefix = "with_")),
-    builder_type(attributes(#[frb(ignore)])),
-)]
+#[builder(field_defaults(default, setter(strip_option, prefix = "with_")))]
 pub struct Date {
     min_date: Option<NaiveDate>,
     min_time: Option<NaiveTime>,
@@ -32,7 +28,6 @@ impl From<Date> for FeatureKind {
 }
 
 impl Default for Date {
-    #[frb(ignore)]
     fn default() -> Self {
         Self::builder().build()
     }

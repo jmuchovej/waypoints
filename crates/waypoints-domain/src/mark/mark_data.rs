@@ -3,13 +3,13 @@ use crate::Color;
 use crate::chart::{ChartID, FeatureID};
 use crate::{HasIcon, Icon, Json};
 use derive_more::{IsVariant, Unwrap};
-use flutter_rust_bridge::frb;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use typed_builder::TypedBuilder;
 
 /// A wrapper for [`Content`] and [`Landmark`] data.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, IsVariant)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, IsVariant, Type)]
 #[serde(tag = "mark", rename_all = "kebab-case")]
 pub enum MarkData {
     /// [`Content`] marks. These hold most user-generated data (i.e., paragraphs, headings, etc.).
@@ -42,8 +42,8 @@ impl Default for MarkData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, Type)]
+#[serde(tag = "type", content = "value", rename_all = "snake_case")]
 pub enum Size {
     /// Fixed size in pixels
     Fixed(u16),
@@ -56,8 +56,7 @@ pub enum Size {
 
 /// Content blocks - the actual content pieces users work with.
 /// These are "dumb" blocks with minimal built-in properties.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Content {
     /// The base paragraph (the most common form of content)
@@ -138,7 +137,6 @@ pub enum Content {
 }
 
 impl Default for Content {
-    #[frb(ignore)]
     fn default() -> Self {
         Content::Paragraph {
             rich_text: RichText::default(),
@@ -147,7 +145,7 @@ impl Default for Content {
 }
 
 /// Math rendering engines
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default, Type)]
 #[serde(rename_all = "lowercase")]
 pub enum MathEngine {
     #[default]
@@ -183,11 +181,8 @@ impl Content {
 /// plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
 ///
 /// [C]: crate::chart::Chart
-#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize)]
-#[builder(
-  field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")),
-  builder_type(attributes(#[frb(ignore)]))
-)]
+#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
+#[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Landmark {
     /// The schema this landmark conforms to
     pub chart: ChartID,

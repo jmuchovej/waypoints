@@ -1,12 +1,11 @@
-use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[frb(non_opaque, unignore)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 pub enum Color {
     Default,
     Gray,
@@ -72,7 +71,6 @@ impl Color {
 }
 
 impl Default for Color {
-    #[frb(ignore)]
     fn default() -> Self {
         Color::Default
     }
