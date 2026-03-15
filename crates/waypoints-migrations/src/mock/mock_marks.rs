@@ -1,49 +1,131 @@
 use super::ChartIDMap;
+use super::markdown::parse_markdown;
 use crate::utils::{MigrationError, MigrationResult};
 use sea_orm::{ActiveModelTrait, ActiveValue::Unchanged, EntityTrait, TryIntoModel};
 use sea_orm_migration::prelude::*;
 use std::collections::HashMap;
 use waypoints_domain::{
     chart::ChartID,
-    mark::{Content, Landmark, Mark, MarkID, RichText},
+    mark::{Landmark, Mark, MarkID},
 };
 use waypoints_entities::prelude::{ActiveMark, MarkModel, Marks};
 
 pub type MarkIDMap = HashMap<String, MarkID>;
 
-/// Seed marks - currently only Page landmarks and basic content
+/// A page definition: a landmark page plus markdown body content.
+struct PageDef {
+    /// Key used in the mark ID map (e.g., "page-japan-trip")
+    key: &'static str,
+    /// Title shown in the landmark
+    title: &'static str,
+    /// Markdown source for the body content
+    markdown: &'static str,
+}
+
+/// All seed pages with their markdown bodies.
+fn page_defs() -> Vec<PageDef> {
+    vec![
+        // ── Demo / Welcome ──────────────────────────────────────────
+        PageDef {
+            key: "page-welcome",
+            title: "Welcome to Waypoints",
+            markdown: include_str!("docs/demo.md"),
+        },
+        // ── Trip Planning ───────────────────────────────────────────
+        PageDef {
+            key: "page-japan-trip",
+            title: "Japan Trip 2026",
+            markdown: include_str!("docs/japan-trip.md"),
+        },
+        PageDef {
+            key: "page-tokyo-restaurants",
+            title: "Tokyo Restaurant Guide",
+            markdown: include_str!("docs/tokyo-restaurants.md"),
+        },
+        PageDef {
+            key: "page-travel-gear",
+            title: "Travel Gear & Packing",
+            markdown: include_str!("docs/travel-gear.md"),
+        },
+        // ── Pop-Sci Reading ─────────────────────────────────────────
+        PageDef {
+            key: "page-reading-list",
+            title: "Reading List",
+            markdown: include_str!("docs/reading-list.md"),
+        },
+        PageDef {
+            key: "page-cosmos-notes",
+            title: "Book Notes: Cosmos",
+            markdown: include_str!("docs/cosmos-notes.md"),
+        },
+        PageDef {
+            key: "page-elegant-universe",
+            title: "Book Notes: The Elegant Universe",
+            markdown: include_str!("docs/elegant-universe-notes.md"),
+        },
+    ]
+}
+
+/// Seed marks: creates landmark pages and their parsed content children.
+///
+/// Returns a `MarkIDMap` so that `seed_terrains` can wire up the parent→child
+/// edges. Content marks are keyed as `"{page-key}:content:{index}"`.
 pub(crate) async fn seed_marks(
     manager: &SchemaManager<'_>,
     chart_ids: &ChartIDMap,
 ) -> MigrationResult<MarkIDMap> {
-    let mut marks = Vec::new();
-
-    // Add Pages only (other chart types deferred)
-    let page_id = try_get_chart(chart_ids, "Page")?;
-    marks.extend(seed_pages(page_id).await?);
-
-    // Add basic content marks
-    marks.extend(seed_content_marks().await?);
-
+    let page_chart_id = try_get_chart(chart_ids, "Page")?;
     let db = manager.get_connection();
     let mut markmap = MarkIDMap::new();
 
-    for mark in marks {
-        let Mark { id, .. } = mark;
-        let exists = Marks::find_by_id(id.inner()).one(db).await?;
-        let mut active: ActiveMark = mark.into();
+    for def in page_defs() {
+        // 1. Create the landmark page mark
+        let page_mark = Mark::builder()
+            .with_landmark(
+                Landmark::builder()
+                    .with_chart(page_chart_id.clone())
+                    .with_title(def.title.to_string())
+                    .build(),
+            )
+            .build();
 
-        let model: MarkModel = if exists.is_some() {
-            active.id = Unchanged(id.inner());
-            active.update(db).await?
-        } else {
-            active.insert(db).await?
+        let page_id = insert_mark(db, &mut markmap, def.key, page_mark).await?;
+
+        // 2. Parse markdown into Content blocks and create child marks
+        let blocks = parse_markdown(def.markdown);
+        for (i, content) in blocks.into_iter().enumerate() {
+            let child_key = format!("{}:content:{}", def.key, i);
+            let child_mark = Mark::builder().with_content(content).build();
+            insert_mark(db, &mut markmap, &child_key, child_mark).await?;
         }
-        .try_into_model()?;
-        markmap.insert(model.id.to_string(), model.id.into());
+
+        let _ = page_id; // used implicitly via markmap
     }
 
     Ok(markmap)
+}
+
+async fn insert_mark(
+    db: &sea_orm_migration::SchemaManagerConnection<'_>,
+    markmap: &mut MarkIDMap,
+    key: &str,
+    mark: Mark,
+) -> MigrationResult<MarkID> {
+    let id = mark.id;
+    let exists = Marks::find_by_id(id.inner()).one(db).await?;
+    let mut active: ActiveMark = mark.into();
+
+    let model: MarkModel = if exists.is_some() {
+        active.id = Unchanged(id.inner());
+        active.update(db).await?
+    } else {
+        active.insert(db).await?
+    }
+    .try_into_model()?;
+
+    let mark_id: MarkID = model.id.into();
+    markmap.insert(key.to_string(), mark_id);
+    Ok(mark_id)
 }
 
 fn try_get_chart(chart_ids: &ChartIDMap, key: &str) -> MigrationResult<ChartID> {
@@ -51,59 +133,4 @@ fn try_get_chart(chart_ids: &ChartIDMap, key: &str) -> MigrationResult<ChartID> 
         .get(key)
         .ok_or(MigrationError::ChartNotFound(key.into()))
         .cloned()
-}
-
-async fn seed_pages(chart_id: ChartID) -> MigrationResult<Vec<Mark>> {
-    Ok(vec![
-        // Sample Page 1: Welcome Page
-        Mark::builder()
-            .with_landmark(
-                Landmark::builder()
-                    .with_chart(chart_id.clone())
-                    .with_title("Welcome to Waypoints".to_string())
-                    .build(),
-            )
-            .build(),
-        // Sample Page 2: Getting Started
-        Mark::builder()
-            .with_landmark(
-                Landmark::builder()
-                    .with_chart(chart_id.clone())
-                    .with_title("Getting Started".to_string())
-                    .build(),
-            )
-            .build(),
-        // Sample Page 3: Example Project
-        Mark::builder()
-            .with_landmark(
-                Landmark::builder()
-                    .with_chart(chart_id)
-                    .with_title("Example Project".to_string())
-                    .build(),
-            )
-            .build(),
-    ])
-}
-
-async fn seed_content_marks() -> MigrationResult<Vec<Mark>> {
-    Ok(vec![
-        // Basic paragraph content
-        Mark::builder()
-            .with_content(Content::Paragraph {
-                rich_text: RichText::from("This is a sample paragraph in Waypoints.".to_string()),
-            })
-            .build(),
-        // Heading content
-        Mark::builder()
-            .with_content(Content::Heading1 {
-                rich_text: RichText::from("Sample Heading".to_string()),
-            })
-            .build(),
-        // List item content
-        Mark::builder()
-            .with_content(Content::ListItem {
-                rich_text: RichText::from("Sample list item".to_string()),
-            })
-            .build(),
-    ])
 }

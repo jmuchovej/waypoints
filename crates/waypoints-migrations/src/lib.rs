@@ -1,10 +1,13 @@
 mod m20251118_203548_create_marks_table;
 mod m20251118_203608_create_charts_table;
 mod m20251118_203617_create_terrains_table;
+#[cfg(feature = "mock")]
 mod m20251121_202202_seed_mock_data;
 mod utils;
 
+#[cfg(feature = "mock")]
 pub(crate) mod mock {
+    pub(crate) mod markdown;
     mod mock_charts;
     mod mock_marks;
     mod mock_terrains;
@@ -32,11 +35,16 @@ impl MigratorTrait for Migrator {
     }
 
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![
+        #[allow(unused_mut)]
+        let mut migrations: Vec<Box<dyn MigrationTrait>> = vec![
             Box::new(m20251118_203548_create_marks_table::Migration),
             Box::new(m20251118_203608_create_charts_table::Migration),
             Box::new(m20251118_203617_create_terrains_table::Migration),
-            Box::new(m20251121_202202_seed_mock_data::Migration),
-        ]
+        ];
+
+        #[cfg(feature = "mock")]
+        migrations.push(Box::new(m20251121_202202_seed_mock_data::Migration));
+
+        migrations
     }
 }

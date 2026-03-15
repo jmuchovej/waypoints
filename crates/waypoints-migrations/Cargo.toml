@@ -30,6 +30,8 @@ tokio.workspace = true
 waypoints-domain.workspace = true
 waypoints-entities.workspace = true
 
+pulldown-cmark = { workspace = true, optional = true }
+
 [features]
 default = []
-mock = []
+mock = ["pulldown-cmark"]
