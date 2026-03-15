@@ -2,6 +2,7 @@
 import type { DropdownMenuItem } from "@nuxt/ui";
 import { commands } from "~/bindings.g";
 import type { Territory } from "~/bindings.g";
+import { UDropdownMenu, UButton } from "#components";
 
 defineProps<{
   collapsed?: boolean;

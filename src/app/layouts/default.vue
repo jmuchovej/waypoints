@@ -3,6 +3,13 @@ import { today, getLocalTimeZone } from "@internationalized/date";
 import { ref } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import type { NavigationMenuItem } from "@nuxt/ui";
+import {
+  LazyUCalendar,
+  UDashboardGroup,
+  UDashboardSearch,
+  UDashboardSearchButton,
+  UDashboardSidebar,
+} from "#components";
 
 const route = useRoute();
 
@@ -51,6 +58,8 @@ const links = (state: "collapsed" | "expanded"): NavigationMenuItem[] => {
 
 const open = ref(false);
 const newLandmarkOpen = ref(false);
+const date = shallowRef(today(getLocalTimeZone()));
+
 // Listen for File > New menu event from native menu (⌘N / Ctrl+N)
 let unlisten: (() => void) | undefined;
 onMounted(async () => {
@@ -92,8 +101,7 @@ useHead({
           <TerritoryMenu :collapsed="collapsed" />
 
           <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
-
-          <UCalendar
+          <LazyUCalendar
             v-model="date"
             :year-controls="false"
             variant="subtle"

@@ -1,7 +1,8 @@
 import { defineNuxtConfig } from "nuxt/config";
 
-const host = import.meta.env.NUXT_HMR_HOST || import.meta.env.TAURI_DEV_HOST || undefined;
-const isMobile = !!/android|ios/.exec(import.meta.env.TAURI_ENV_PLATFORM || "");
+const env = import.meta.env; // sugar
+const host = env.NUXT_HMR_HOST || env.TAURI_DEV_HOST || undefined;
+const isMobile = !!/android|ios/.exec(env.TAURI_ENV_PLATFORM || "");
 const devPort = 9297;
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
@@ -12,6 +13,9 @@ export default defineNuxtConfig({
 
   devtools: {
     enabled: true,
+    timeline: {
+      enabled: true,
+    },
   },
 
   alias: {
@@ -33,21 +37,6 @@ export default defineNuxtConfig({
     modules: "app/modules",
   },
 
-  imports: {
-    presets: [
-      {
-        from: "zod",
-        imports: [
-          "z",
-          {
-            name: "infer",
-            as: "zInfer",
-            type: true,
-          },
-        ],
-      },
-    ],
-  },
   router: {
     options: {
       scrollBehaviorType: "smooth",
@@ -65,9 +54,9 @@ export default defineNuxtConfig({
     typedPages: true,
   },
 
-  mcp: {
-    includeNuxtDocsMcp: true,
-  },
+  // mcp: {
+  //   includeNuxtDocsMcp: true,
+  // },
 
   // storybook: {
   //   url: "http://localhost:9298",
@@ -76,6 +65,11 @@ export default defineNuxtConfig({
   //   // Very verbose logs for debugging
   //   logLevel: Number.POSITIVE_INFINITY,
   // }
+
+  sourcemap: {
+    server: false,
+    client: false,
+  },
 
   vite: {
     clearScreen: false,
