@@ -61,6 +61,9 @@ const open = ref(false);
         resizable
         collapsible
         class="bg-elevated/25"
+        :ui="{
+          footer: 'border-t border-default',
+        }"
       >
         <template #default="{ collapsed }">
           <TerritoryMenu :collapsed="collapsed" />
@@ -84,6 +87,10 @@ const open = ref(false);
             tooltip
             popover
           />
+        </template>
+
+        <template #footer="{ collapsed }">
+          <UserMenu :collapsed="collapsed" />
         </template>
       </UDashboardSidebar>
 
