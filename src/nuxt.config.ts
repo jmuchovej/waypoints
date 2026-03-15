@@ -14,9 +14,17 @@ export default defineNuxtConfig({
     enabled: true,
   },
 
+  alias: {
+    "~editor": "../editor",
+  },
+
   css: ["~/assets/css/main.css", "~editor/assets/editor.css"],
   components: [{ path: "~/components", pathPrefix: false }],
 
+  typescript: {
+    tsConfig: {
+      include: ["../editor/**/*"],
+    },
   },
 
   ssr: false,
