@@ -39,8 +39,14 @@
   android = {
     enable = true;
     ndk.enable = true;
-    platforms.version = [ "34" ];
-    buildTools.version = [ "34.0.0" ];
+    platforms.version = [
+      "36"
+      "34"
+    ];
+    buildTools.version = [
+      "35.0.0"
+      "34.0.0"
+    ];
   };
 
   # https://devenv.sh/git-hooks/

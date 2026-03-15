@@ -101,6 +101,7 @@ useHead({
           <TerritoryMenu :collapsed="collapsed" />
 
           <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
+
           <LazyUCalendar
             v-model="date"
             :year-controls="false"

@@ -134,3 +134,13 @@ wildcard_in_or_patterns = "allow"
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(frb_expand)"] }
 # TODO: figure out how to _only_ allow this in development!
 unused = { level = "allow", priority = -1 }
+
+[profile.dev]
+incremental = true # Compile your binary in smaller steps.
+
+[profile.release]
+codegen-units = 1 # Allows LLVM to perform better optimization.
+lto = true        # Enables link-time-optimizations.
+opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
+panic = "abort"   # Higher performance by disabling panic handlers.
+strip = true      # Ensures debug symbols are removed.
