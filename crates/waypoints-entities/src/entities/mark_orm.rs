@@ -56,9 +56,12 @@ impl ActiveModelBehavior for ActiveModel {
         let mut ready = self;
 
         let data = ready.data.clone().unwrap();
-        let mark: MarkData =
+        let mut mark: MarkData =
             serde_json::from_value(data).map_err(|err| DbErr::Custom(err.to_string()))?;
+        mark.derive_plain_texts();
         ready.mark = Set(mark.type_name());
+        ready.data =
+            Set(serde_json::to_value(&mark).map_err(|err| DbErr::Custom(err.to_string()))?);
 
         ready.set_timestamps(insert);
 
@@ -82,16 +85,14 @@ impl From<Model> for Mark {
     fn from(model: Model) -> Self {
         let mut builder = Mark::builder();
 
-        builder = match model.mark.as_str() {
-            "content" => {
-                let data: Content = serde_json::from_value(model.data).unwrap();
-                builder.with_content(data)
-            }
-            "landmark" => {
-                let data: Landmark = serde_json::from_value(model.data).unwrap();
-                builder.with_landmark(data)
-            }
-            _ => unreachable!(),
+        builder = if model.mark.starts_with("content") {
+            let data: Content = serde_json::from_value(model.data).unwrap();
+            builder.with_content(data)
+        } else if model.mark.starts_with("landmark") {
+            let data: Landmark = serde_json::from_value(model.data).unwrap();
+            builder.with_landmark(data)
+        } else {
+            unreachable!("unknown mark type: {}", model.mark)
         };
 
         if let Some(extra) = model.extra {

@@ -49,7 +49,7 @@ pub use mark::Mark;
 pub use mark_data::{Content, Landmark, MarkData};
 pub use reading::Reading;
 pub use rich_reference::{ReferenceDisplayMode, RichReference};
-pub use rich_text::{RichText, TextMark, TextMarkKind};
+pub use rich_text::{InlineMark, RichText, TextMarkKind, TextSegment};
 
 pub mod reading_validators;
 

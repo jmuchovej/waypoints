@@ -36,6 +36,16 @@ impl MarkData {
     }
 }
 
+impl MarkData {
+    /// Walk all `RichText` fields and recompute their `plain_text`.
+    pub fn derive_plain_text(&mut self) {
+        match self {
+            MarkData::Content(c) => c.derive_plain_text(),
+            MarkData::Landmark(l) => l.title.derive_plain_text(),
+        }
+    }
+}
+
 impl Default for MarkData {
     fn default() -> Self {
         MarkData::Content(Content::default())
@@ -173,6 +183,34 @@ impl Content {
             Content::Divider => "divider",
         }
     }
+
+    /// Recompute `plain_text` on every `RichText` field in this content block.
+    pub fn derive_plain_text(&mut self) {
+        match self {
+            Content::Paragraph { rich_text }
+            | Content::Heading1 { rich_text }
+            | Content::Heading2 { rich_text }
+            | Content::Heading3 { rich_text }
+            | Content::ListItem { rich_text }
+            | Content::EnumItem { rich_text } => {
+                rich_text.derive_plain_text();
+            }
+            Content::Table { cells, .. } => {
+                for row in cells {
+                    for cell in row {
+                        cell.derive_plain_text();
+                    }
+                }
+            }
+            Content::Blockquote { items, .. }
+            | Content::Callout { items, .. } => {
+                for item in items {
+                    item.derive_plain_text();
+                }
+            }
+            Content::Code { .. } | Content::Math { .. } | Content::Divider => {}
+        }
+    }
 }
 
 /// Landmark marks &ndash; semantic objects defined by [`Charts`][C].
@@ -246,17 +284,14 @@ impl Landmark {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{TextMark, TextMarkKind};
+    use super::super::{InlineMark, TextMarkKind, TextSegment};
     use super::*;
 
     #[test]
     fn test_content_type_names() {
         assert_eq!(
             Content::Paragraph {
-                rich_text: RichText {
-                    plain_text: "test".to_string(),
-                    marks: vec![]
-                }
+                rich_text: RichText::from("test".to_string())
             }
             .type_name(),
             "paragraph"
@@ -299,20 +334,27 @@ mod tests {
         let content = Content::Paragraph {
             rich_text: RichText {
                 plain_text: "Hello, world!".to_string(),
-                marks: vec![TextMark {
-                    kind: TextMarkKind::Bold,
-                    start: 0,
-                    end: 5,
-                    data: None,
-                }],
+                segments: vec![
+                    TextSegment {
+                        text: "Hello".to_string(),
+                        marks: vec![InlineMark {
+                            kind: TextMarkKind::Bold,
+                            data: None,
+                        }],
+                    },
+                    TextSegment {
+                        text: ", world!".to_string(),
+                        marks: vec![],
+                    },
+                ],
             },
         };
 
         assert_eq!(content.type_name(), "paragraph");
         if let Content::Paragraph { rich_text } = content {
             assert_eq!(rich_text.plain_text, "Hello, world!");
-            assert_eq!(rich_text.marks.len(), 1);
-            assert_eq!(rich_text.marks[0].kind, TextMarkKind::Bold);
+            assert_eq!(rich_text.segments.len(), 2);
+            assert_eq!(rich_text.segments[0].marks[0].kind, TextMarkKind::Bold);
         }
     }
 
@@ -339,46 +381,19 @@ mod tests {
         let content = Content::Table {
             cells: vec![
                 vec![
-                    RichText {
-                        plain_text: "Name".to_string(),
-                        marks: vec![],
-                    },
-                    RichText {
-                        plain_text: "Age".to_string(),
-                        marks: vec![],
-                    },
-                    RichText {
-                        plain_text: "City".to_string(),
-                        marks: vec![],
-                    },
+                    RichText::from("Name".to_string()),
+                    RichText::from("Age".to_string()),
+                    RichText::from("City".to_string()),
                 ],
                 vec![
-                    RichText {
-                        plain_text: "Alice".to_string(),
-                        marks: vec![],
-                    },
-                    RichText {
-                        plain_text: "30".to_string(),
-                        marks: vec![],
-                    },
-                    RichText {
-                        plain_text: "New York".to_string(),
-                        marks: vec![],
-                    },
+                    RichText::from("Alice".to_string()),
+                    RichText::from("30".to_string()),
+                    RichText::from("New York".to_string()),
                 ],
                 vec![
-                    RichText {
-                        plain_text: "Bob".to_string(),
-                        marks: vec![],
-                    },
-                    RichText {
-                        plain_text: "25".to_string(),
-                        marks: vec![],
-                    },
-                    RichText {
-                        plain_text: "San Francisco".to_string(),
-                        marks: vec![],
-                    },
+                    RichText::from("Bob".to_string()),
+                    RichText::from("25".to_string()),
+                    RichText::from("San Francisco".to_string()),
                 ],
             ],
             col_size: None,
@@ -448,13 +463,24 @@ mod tests {
     fn test_content_serialization() {
         let content = Content::Paragraph {
             rich_text: RichText {
-                plain_text: "Hello, **world**!".to_string(),
-                marks: vec![TextMark {
-                    kind: TextMarkKind::Bold,
-                    start: 7,
-                    end: 14,
-                    data: None,
-                }],
+                plain_text: "Hello, world!".to_string(),
+                segments: vec![
+                    TextSegment {
+                        text: "Hello, ".to_string(),
+                        marks: vec![],
+                    },
+                    TextSegment {
+                        text: "world".to_string(),
+                        marks: vec![InlineMark {
+                            kind: TextMarkKind::Bold,
+                            data: None,
+                        }],
+                    },
+                    TextSegment {
+                        text: "!".to_string(),
+                        marks: vec![],
+                    },
+                ],
             },
         };
 
