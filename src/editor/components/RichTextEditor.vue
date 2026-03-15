@@ -1,0 +1,157 @@
+<script lang="ts">
+import type { RichText, MarkID } from "@waypoints/domain";
+
+export interface RichTextEditorProps {
+  /** When provided, enables focus-to-edit via the orchestrator. Omit for static-only rendering. */
+  blockId?: MarkID;
+  richText: RichText;
+  placeholder?: string;
+  /** When provided without blockId, the editor is always active (standalone mode). */
+  onUpdate?: (rt: RichText) => void;
+  /** Mark names to exclude from the toolbar (e.g. ["bold"]) */
+  exclude?: string[];
+  /** Intercept keydown before TipTap. Return true to prevent default handling. */
+  onKeyDown?: (e: KeyboardEvent) => boolean;
+}
+
+export interface RichTextEditorEmits {
+  click: [e: MouseEvent];
+  mousedown: [e: MouseEvent];
+}
+</script>
+
+<script setup lang="ts">
+import { emojis } from "@tiptap/extension-emoji";
+import {
+  useInlineEditor,
+  BlockOrchestratorKey,
+  type OrchestratorContext,
+} from "../composables";
+import { inlineToolbarItems } from "../tiptap/toolbar-items";
+import { LazyUEditorToolbar, LazyUEditorEmojiMenu } from "#components";
+import TextSegment from "./TextSegment.vue";
+
+const props = defineProps<RichTextEditorProps>();
+const emit = defineEmits<RichTextEditorEmits>();
+
+function onClick(e: MouseEvent) {
+  emit("click", e);
+}
+
+const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey, {});
+const { focus } = orchestrator;
+
+const isGroupActive = inject<Ref<boolean>>("group-active", ref(false));
+
+const isStandalone = computed(() => !props.blockId && !!props.onUpdate);
+
+const editing = computed(() => {
+  if (isStandalone.value) return true;
+  if (!props.blockId || !orchestrator) return false;
+  return focus?.isFocused(props.blockId) || isGroupActive.value;
+});
+
+const editorEl = ref<HTMLElement | null>(null);
+const richTextRef = computed(() => props.richText);
+
+function onEditorUpdate(rt: RichText): void | Promise<void> {
+  if (props.blockId) {
+    return orchestrator?.onUpdateBlockText(props.blockId, rt);
+  }
+  props.onUpdate?.(rt);
+}
+
+const {
+  editor: editorRef,
+  handle,
+  createEditor,
+  destroyEditor,
+} = useInlineEditor({
+  richText: richTextRef as Ref<ConverterRichText>,
+  blockID: props.blockId,
+  placeholder: props.placeholder,
+  onUpdate: onEditorUpdate,
+  onKeyDown: props.onKeyDown,
+});
+
+function mountEditor() {
+  if (!editorEl.value || editorRef.value) return;
+  createEditor(editorEl.value);
+  if (props.blockId) {
+    // registerEditor executes any pending focus intent (position or coords)
+    focus?.registerEditor(props.blockId, handle);
+  }
+}
+
+onMounted(() => {
+  if (editing.value) mountEditor();
+});
+
+// Orchestrator mode: mount/unmount as focus changes.
+watch(editing, (isEditing, wasEditing) => {
+  if (isStandalone.value) return;
+  if (isEditing && !wasEditing) {
+    nextTick(mountEditor);
+  } else if (!isEditing && wasEditing) {
+    if (props.blockId) focus?.unregisterEditor(props.blockId);
+    destroyEditor();
+  }
+});
+
+onBeforeUnmount(() => {
+  if (props.blockId) focus?.unregisterEditor(props.blockId);
+  destroyEditor();
+});
+
+const toolbarItems = computed(() => {
+  if (!props.exclude?.length) return [inlineToolbarItems];
+  return [
+    inlineToolbarItems.filter(
+      (item) => !("mark" in item && props.exclude!.includes(item.mark)),
+    ),
+  ];
+});
+
+const isEmpty = computed(() => {
+  const rt = props.richText;
+  if (!rt.segments.length) return true;
+  return rt.segments.every((s) => !s.text);
+});
+
+function onMousedown(e: MouseEvent) {
+  emit("mousedown", e);
+
+  if (editing.value || !props.blockId) return;
+  e.preventDefault();
+  focus?.focusBlockAt(props.blockId, e);
+}
+</script>
+
+<template>
+  <span class="block cursor-text" @click="onClick" @mousedown="onMousedown">
+    <span v-if="editing" ref="editorEl" />
+    <template v-else-if="isEmpty && placeholder">
+      <span class="text-dimmed">{{ placeholder }}</span>
+    </template>
+    <template v-else-if="richText.segments.every((s) => !s.marks?.length)">
+      {{ richText.plain_text || richText.segments.map((s) => s.text).join("") }}
+    </template>
+    <template v-else>
+      <TextSegment v-for="(seg, i) in richText.segments" :key="i" :segment="seg" />
+    </template>
+    <LazyUEditorToolbar
+      v-if="editorRef"
+      :editor="editorRef"
+      layout="bubble"
+      :items="toolbarItems"
+      :update-delay="0"
+      size="xs"
+    />
+    <LazyUEditorEmojiMenu
+      v-if="editorRef"
+      :editor="editorRef"
+      :items="emojis"
+      :limit="50"
+    />
+  </span>
+</template>
