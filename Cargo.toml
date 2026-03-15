@@ -4,6 +4,7 @@ members = [
   "crates/domain",
   "crates/store",
   "src-tauri",
+  "crates/editor",
 ]
 
 [workspace.package]
@@ -73,6 +74,7 @@ uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
 
 # keep-sorted start
 domain = { path = "crates/domain" }
+editor = { path = "crates/editor" }
 store = { path = "crates/store" }
 Waypoints = { path = "src-tauri" }
 # keep-sorted end
