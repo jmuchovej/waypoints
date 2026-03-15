@@ -1,9 +1,5 @@
 use domain::{
-    Color, Icon,
-    chart::{
-        Feature, FeatureKind, Reference,
-        feature_kind::{Select, SelectGroup, SelectOption},
-    },
+    Color, Feature, FeatureKind, Icon, Reference, Select, SelectBuilder, SelectGroup, SelectOption,
 };
 
 pub fn status_multi_select() -> Select {

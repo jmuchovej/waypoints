@@ -27,9 +27,16 @@ use std::collections::HashMap;
 
 // Import built-in type modules
 mod _utils;
+pub mod bookmark;
+pub mod campaign;
+pub mod journal;
+pub mod meeting;
+pub mod note;
+pub mod objective;
 pub mod page;
+pub mod person;
 
-use _utils::tags_feature;
+use _utils::{status_multi_select, tags_feature};
 
 /// Registry of all built-in [`Landmark`] types.
 /// This provides a centralized way to access, extend, and reset built-in [Charts][`Chart`].
@@ -120,24 +127,27 @@ impl Default for BuiltinRegistry {
 /// # Examples
 ///
 /// ```
-/// use waypoints_entities::builtin::builtin_charts;
+/// use store::builtin::builtin_charts;
 ///
 /// let charts = builtin_charts();
 ///
-/// // All should be builtin
 /// for chart in &charts {
 ///     assert!(chart.is_builtin(), "{} should be builtin", chart.name);
 /// }
 ///
-/// // Should include common types
 /// let chart_names: Vec<&str> = charts.iter().map(|c| c.name.as_str()).collect();
 /// assert!(chart_names.contains(&"Page"));
 /// ```
 pub fn builtin_charts() -> Vec<Chart> {
     vec![
         page::chart(),
-        // Additional builtin charts will be added incrementally:
-        // - Note, Person, Objective, Meeting, Campaign, Bookmark, Journal
+        objective::chart(),
+        note::chart(),
+        person::chart(),
+        campaign::chart(),
+        meeting::chart(),
+        bookmark::chart(),
+        journal::chart(),
     ]
 }
 

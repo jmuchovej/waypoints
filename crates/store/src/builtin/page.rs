@@ -27,26 +27,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_page_chart() {
+    fn page_chart() {
         let page = chart();
         assert_eq!(page.name, "Page");
-        assert_eq!(page.features.len(), 0); // Page has no custom fields - base fields are on Thing struct
-
-        // Page should have no additional fields beyond the base Thing structure
-        // (title, icon, children are guaranteed on every Thing instance)
-
-        // Should have icon set
+        assert_eq!(page.features.len(), 0);
         assert_eq!(page.icon, Some(icon_presets::charts::page()));
-        assert!(page.icon.is_some());
     }
 
     #[test]
-    fn test_page_chart_id() {
+    fn page_chart_id() {
         assert_eq!(chart().id, type_id());
     }
 
     #[test]
-    fn test_page_icon_system() {
+    fn page_icon_system() {
         use domain::Icon;
 
         let page = chart();
