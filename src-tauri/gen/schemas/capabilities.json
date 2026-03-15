@@ -3,38 +3,31 @@
     "identifier": "main",
     "description": "Capabilities for the app window",
     "local": true,
-    "windows": ["main", "secondary"],
+    "windows": ["*"],
     "permissions": [
-      "core:path:default",
-      "core:event:default",
-      "core:window:default",
-      "core:app:default",
-      "core:resources:default",
-      "core:menu:default",
-      "core:tray:default",
-      "shell:allow-open",
-      {
-        "identifier": "shell:allow-execute",
-        "allow": [
-          {
-            "args": ["-c", { "validator": "\\S+" }],
-            "cmd": "sh",
-            "name": "exec-sh",
-            "sidecar": false
-          }
-        ]
-      },
-      "notification:default",
-      "os:allow-platform",
-      "os:allow-arch",
-      "os:allow-family",
-      "os:allow-version",
-      "os:allow-locale",
-      "fs:allow-document-read",
-      "fs:allow-document-write",
-      "store:default",
+      "core:default",
+      "core:window:allow-start-dragging",
       "core:webview:allow-create-webview",
-      "core:webview:allow-create-webview-window"
+      "core:webview:allow-create-webview-window",
+      "notification:default",
+      "notification:allow-is-permission-granted",
+      "os:default",
+      "dialog:default",
+      "store:default",
+      "fs:default",
+      { "identifier": "fs:allow-exists", "allow": [{ "path": "$APPDATA/*" }] },
+      "fs:allow-runtime-meta-recursive",
+      "fs:allow-runtime-read-recursive",
+      "fs:allow-runtime-write-recursive",
+      "fs:allow-resource-meta-recursive",
+      "fs:allow-resource-read-recursive",
+      "fs:allow-resource-write-recursive",
+      "fs:allow-document-meta-recursive",
+      "fs:allow-document-read-recursive",
+      "fs:allow-document-write-recursive",
+      "fs:allow-download-meta-recursive",
+      "fs:allow-download-read-recursive",
+      "fs:allow-download-write-recursive"
     ]
   }
 }

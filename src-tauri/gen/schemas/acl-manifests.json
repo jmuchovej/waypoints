@@ -1798,6 +1798,67 @@
     "permission_sets": {},
     "global_scope_schema": null
   },
+  "dialog": {
+    "default_permission": {
+      "identifier": "default",
+      "description": "This permission set configures the types of dialogs\navailable from the dialog plugin.\n\n#### Granted Permissions\n\nAll dialog types are enabled.\n\n\n",
+      "permissions": ["allow-ask", "allow-confirm", "allow-message", "allow-save", "allow-open"]
+    },
+    "permissions": {
+      "allow-ask": {
+        "identifier": "allow-ask",
+        "description": "Enables the ask command without any pre-configured scope.",
+        "commands": { "allow": ["ask"], "deny": [] }
+      },
+      "allow-confirm": {
+        "identifier": "allow-confirm",
+        "description": "Enables the confirm command without any pre-configured scope.",
+        "commands": { "allow": ["confirm"], "deny": [] }
+      },
+      "allow-message": {
+        "identifier": "allow-message",
+        "description": "Enables the message command without any pre-configured scope.",
+        "commands": { "allow": ["message"], "deny": [] }
+      },
+      "allow-open": {
+        "identifier": "allow-open",
+        "description": "Enables the open command without any pre-configured scope.",
+        "commands": { "allow": ["open"], "deny": [] }
+      },
+      "allow-save": {
+        "identifier": "allow-save",
+        "description": "Enables the save command without any pre-configured scope.",
+        "commands": { "allow": ["save"], "deny": [] }
+      },
+      "deny-ask": {
+        "identifier": "deny-ask",
+        "description": "Denies the ask command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["ask"] }
+      },
+      "deny-confirm": {
+        "identifier": "deny-confirm",
+        "description": "Denies the confirm command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["confirm"] }
+      },
+      "deny-message": {
+        "identifier": "deny-message",
+        "description": "Denies the message command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["message"] }
+      },
+      "deny-open": {
+        "identifier": "deny-open",
+        "description": "Denies the open command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["open"] }
+      },
+      "deny-save": {
+        "identifier": "deny-save",
+        "description": "Denies the save command without any pre-configured scope.",
+        "commands": { "allow": [], "deny": ["save"] }
+      }
+    },
+    "permission_sets": {},
+    "global_scope_schema": null
+  },
   "fs": {
     "default_permission": {
       "identifier": "default",
@@ -1872,10 +1933,7 @@
       "allow-read-text-file-lines": {
         "identifier": "allow-read-text-file-lines",
         "description": "Enables the read_text_file_lines command without any pre-configured scope.",
-        "commands": {
-          "allow": ["read_text_file_lines", "read_text_file_lines_next"],
-          "deny": []
-        }
+        "commands": { "allow": ["read_text_file_lines", "read_text_file_lines_next"], "deny": [] }
       },
       "allow-read-text-file-lines-next": {
         "identifier": "allow-read-text-file-lines-next",
@@ -2119,10 +2177,7 @@
       "read-dirs": {
         "identifier": "read-dirs",
         "description": "This enables directory read and file metadata related commands without any pre-configured accessible paths.",
-        "commands": {
-          "allow": ["read_dir", "stat", "lstat", "fstat", "exists"],
-          "deny": []
-        }
+        "commands": { "allow": ["read_dir", "stat", "lstat", "fstat", "exists"], "deny": [] }
       },
       "read-files": {
         "identifier": "read-files",
@@ -2213,9 +2268,7 @@
         "identifier": "scope-appcache",
         "description": "This scope permits access to all files and list content of top level directories in the `$APPCACHE` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$APPCACHE" }, { "path": "$APPCACHE/*" }]
-        }
+        "scope": { "allow": [{ "path": "$APPCACHE" }, { "path": "$APPCACHE/*" }] }
       },
       "scope-appcache-index": {
         "identifier": "scope-appcache-index",
@@ -2227,17 +2280,13 @@
         "identifier": "scope-appcache-recursive",
         "description": "This scope permits recursive access to the complete `$APPCACHE` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$APPCACHE" }, { "path": "$APPCACHE/**" }]
-        }
+        "scope": { "allow": [{ "path": "$APPCACHE" }, { "path": "$APPCACHE/**" }] }
       },
       "scope-appconfig": {
         "identifier": "scope-appconfig",
         "description": "This scope permits access to all files and list content of top level directories in the `$APPCONFIG` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$APPCONFIG" }, { "path": "$APPCONFIG/*" }]
-        }
+        "scope": { "allow": [{ "path": "$APPCONFIG" }, { "path": "$APPCONFIG/*" }] }
       },
       "scope-appconfig-index": {
         "identifier": "scope-appconfig-index",
@@ -2249,9 +2298,7 @@
         "identifier": "scope-appconfig-recursive",
         "description": "This scope permits recursive access to the complete `$APPCONFIG` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$APPCONFIG" }, { "path": "$APPCONFIG/**" }]
-        }
+        "scope": { "allow": [{ "path": "$APPCONFIG" }, { "path": "$APPCONFIG/**" }] }
       },
       "scope-appdata": {
         "identifier": "scope-appdata",
@@ -2269,17 +2316,13 @@
         "identifier": "scope-appdata-recursive",
         "description": "This scope permits recursive access to the complete `$APPDATA` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$APPDATA" }, { "path": "$APPDATA/**" }]
-        }
+        "scope": { "allow": [{ "path": "$APPDATA" }, { "path": "$APPDATA/**" }] }
       },
       "scope-applocaldata": {
         "identifier": "scope-applocaldata",
         "description": "This scope permits access to all files and list content of top level directories in the `$APPLOCALDATA` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$APPLOCALDATA" }, { "path": "$APPLOCALDATA/*" }]
-        }
+        "scope": { "allow": [{ "path": "$APPLOCALDATA" }, { "path": "$APPLOCALDATA/*" }] }
       },
       "scope-applocaldata-index": {
         "identifier": "scope-applocaldata-index",
@@ -2291,9 +2334,7 @@
         "identifier": "scope-applocaldata-recursive",
         "description": "This scope permits recursive access to the complete `$APPLOCALDATA` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$APPLOCALDATA" }, { "path": "$APPLOCALDATA/**" }]
-        }
+        "scope": { "allow": [{ "path": "$APPLOCALDATA" }, { "path": "$APPLOCALDATA/**" }] }
       },
       "scope-applog": {
         "identifier": "scope-applog",
@@ -2401,17 +2442,13 @@
         "identifier": "scope-desktop-recursive",
         "description": "This scope permits recursive access to the complete `$DESKTOP` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$DESKTOP" }, { "path": "$DESKTOP/**" }]
-        }
+        "scope": { "allow": [{ "path": "$DESKTOP" }, { "path": "$DESKTOP/**" }] }
       },
       "scope-document": {
         "identifier": "scope-document",
         "description": "This scope permits access to all files and list content of top level directories in the `$DOCUMENT` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$DOCUMENT" }, { "path": "$DOCUMENT/*" }]
-        }
+        "scope": { "allow": [{ "path": "$DOCUMENT" }, { "path": "$DOCUMENT/*" }] }
       },
       "scope-document-index": {
         "identifier": "scope-document-index",
@@ -2423,17 +2460,13 @@
         "identifier": "scope-document-recursive",
         "description": "This scope permits recursive access to the complete `$DOCUMENT` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$DOCUMENT" }, { "path": "$DOCUMENT/**" }]
-        }
+        "scope": { "allow": [{ "path": "$DOCUMENT" }, { "path": "$DOCUMENT/**" }] }
       },
       "scope-download": {
         "identifier": "scope-download",
         "description": "This scope permits access to all files and list content of top level directories in the `$DOWNLOAD` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$DOWNLOAD" }, { "path": "$DOWNLOAD/*" }]
-        }
+        "scope": { "allow": [{ "path": "$DOWNLOAD" }, { "path": "$DOWNLOAD/*" }] }
       },
       "scope-download-index": {
         "identifier": "scope-download-index",
@@ -2445,9 +2478,7 @@
         "identifier": "scope-download-recursive",
         "description": "This scope permits recursive access to the complete `$DOWNLOAD` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$DOWNLOAD" }, { "path": "$DOWNLOAD/**" }]
-        }
+        "scope": { "allow": [{ "path": "$DOWNLOAD" }, { "path": "$DOWNLOAD/**" }] }
       },
       "scope-exe": {
         "identifier": "scope-exe",
@@ -2507,9 +2538,7 @@
         "identifier": "scope-localdata",
         "description": "This scope permits access to all files and list content of top level directories in the `$LOCALDATA` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$LOCALDATA" }, { "path": "$LOCALDATA/*" }]
-        }
+        "scope": { "allow": [{ "path": "$LOCALDATA" }, { "path": "$LOCALDATA/*" }] }
       },
       "scope-localdata-index": {
         "identifier": "scope-localdata-index",
@@ -2521,9 +2550,7 @@
         "identifier": "scope-localdata-recursive",
         "description": "This scope permits recursive access to the complete `$LOCALDATA` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$LOCALDATA" }, { "path": "$LOCALDATA/**" }]
-        }
+        "scope": { "allow": [{ "path": "$LOCALDATA" }, { "path": "$LOCALDATA/**" }] }
       },
       "scope-log": {
         "identifier": "scope-log",
@@ -2559,9 +2586,7 @@
         "identifier": "scope-picture-recursive",
         "description": "This scope permits recursive access to the complete `$PICTURE` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$PICTURE" }, { "path": "$PICTURE/**" }]
-        }
+        "scope": { "allow": [{ "path": "$PICTURE" }, { "path": "$PICTURE/**" }] }
       },
       "scope-public": {
         "identifier": "scope-public",
@@ -2585,9 +2610,7 @@
         "identifier": "scope-resource",
         "description": "This scope permits access to all files and list content of top level directories in the `$RESOURCE` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$RESOURCE" }, { "path": "$RESOURCE/*" }]
-        }
+        "scope": { "allow": [{ "path": "$RESOURCE" }, { "path": "$RESOURCE/*" }] }
       },
       "scope-resource-index": {
         "identifier": "scope-resource-index",
@@ -2599,9 +2622,7 @@
         "identifier": "scope-resource-recursive",
         "description": "This scope permits recursive access to the complete `$RESOURCE` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$RESOURCE" }, { "path": "$RESOURCE/**" }]
-        }
+        "scope": { "allow": [{ "path": "$RESOURCE" }, { "path": "$RESOURCE/**" }] }
       },
       "scope-runtime": {
         "identifier": "scope-runtime",
@@ -2619,9 +2640,7 @@
         "identifier": "scope-runtime-recursive",
         "description": "This scope permits recursive access to the complete `$RUNTIME` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$RUNTIME" }, { "path": "$RUNTIME/**" }]
-        }
+        "scope": { "allow": [{ "path": "$RUNTIME" }, { "path": "$RUNTIME/**" }] }
       },
       "scope-temp": {
         "identifier": "scope-temp",
@@ -2645,9 +2664,7 @@
         "identifier": "scope-template",
         "description": "This scope permits access to all files and list content of top level directories in the `$TEMPLATE` folder.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$TEMPLATE" }, { "path": "$TEMPLATE/*" }]
-        }
+        "scope": { "allow": [{ "path": "$TEMPLATE" }, { "path": "$TEMPLATE/*" }] }
       },
       "scope-template-index": {
         "identifier": "scope-template-index",
@@ -2659,9 +2676,7 @@
         "identifier": "scope-template-recursive",
         "description": "This scope permits recursive access to the complete `$TEMPLATE` folder, including sub directories and files.",
         "commands": { "allow": [], "deny": [] },
-        "scope": {
-          "allow": [{ "path": "$TEMPLATE" }, { "path": "$TEMPLATE/**" }]
-        }
+        "scope": { "allow": [{ "path": "$TEMPLATE" }, { "path": "$TEMPLATE/**" }] }
       },
       "scope-video": {
         "identifier": "scope-video",
@@ -3877,10 +3892,7 @@
               "description": "The name for this allowed shell command configuration.\n\nThis name will be used inside of the webview API to call this command along with any specified arguments.",
               "type": "string"
             },
-            "sidecar": {
-              "description": "If this command is a sidecar command.",
-              "type": "boolean"
-            }
+            "sidecar": { "description": "If this command is a sidecar command.", "type": "boolean" }
           },
           "required": ["name", "sidecar"],
           "type": "object"
