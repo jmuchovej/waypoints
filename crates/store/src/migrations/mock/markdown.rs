@@ -69,12 +69,7 @@ pub fn parse_markdown(input: &str) -> Vec<ParsedBlock> {
 
     /// Take the accumulated segments as a RichText, computing plain_text.
     fn take_rich_text(segments: &mut Vec<TextSegment>) -> RichText {
-        let segs = std::mem::take(segments);
-        let plain_text: String = segs.iter().map(|s| s.text.as_str()).collect();
-        RichText {
-            plain_text,
-            segments: segs,
-        }
+        RichText::new(std::mem::take(segments))
     }
 
     for event in parser {
@@ -217,7 +212,7 @@ pub fn parse_markdown(input: &str) -> Vec<ParsedBlock> {
             Event::End(TagEnd::Paragraph) => {
                 flush_text(&mut current_text, &active_marks, &mut segments);
                 let rt = take_rich_text(&mut segments);
-                if rt.plain_text.is_empty() {
+                if rt.plain_text().is_empty() {
                     // Skip empty paragraphs regardless of context
                 } else {
                     match ctx {
@@ -315,14 +310,14 @@ mod tests {
         let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
-        assert_eq!(rt.plain_text, "This is bold text");
+        assert_eq!(rt.plain_text(), "This is bold text");
         // Should be 3 segments: "This is ", "bold", " text"
-        assert_eq!(rt.segments.len(), 3);
-        assert!(rt.segments[0].marks.is_empty());
-        assert_eq!(rt.segments[1].text, "bold");
-        assert_eq!(rt.segments[1].marks.len(), 1);
-        assert_eq!(rt.segments[1].marks[0].kind, TextMarkKind::Bold);
-        assert!(rt.segments[2].marks.is_empty());
+        assert_eq!(rt.segments().len(), 3);
+        assert!(rt.segments()[0].marks.is_empty());
+        assert_eq!(rt.segments()[1].text, "bold");
+        assert_eq!(rt.segments()[1].marks.len(), 1);
+        assert_eq!(rt.segments()[1].marks[0].kind, TextMarkKind::Bold);
+        assert!(rt.segments()[2].marks.is_empty());
     }
 
     #[test]
@@ -331,8 +326,8 @@ mod tests {
         let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
-        assert_eq!(rt.plain_text, "Some italic here");
-        let italic_seg = rt.segments.iter().find(|s| !s.marks.is_empty()).unwrap();
+        assert_eq!(rt.plain_text(), "Some italic here");
+        let italic_seg = rt.segments().iter().find(|s| !s.marks.is_empty()).unwrap();
         assert_eq!(italic_seg.text, "italic");
         assert_eq!(italic_seg.marks[0].kind, TextMarkKind::Italic);
     }
@@ -343,8 +338,8 @@ mod tests {
         let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
-        assert_eq!(rt.plain_text, "Use cargo build to compile");
-        let code_seg = rt.segments.iter().find(|s| !s.marks.is_empty()).unwrap();
+        assert_eq!(rt.plain_text(), "Use cargo build to compile");
+        let code_seg = rt.segments().iter().find(|s| !s.marks.is_empty()).unwrap();
         assert_eq!(code_seg.text, "cargo build");
         assert_eq!(code_seg.marks[0].kind, TextMarkKind::Code);
     }
@@ -393,8 +388,8 @@ mod tests {
         let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
-        assert_eq!(rt.plain_text, "This is deleted text");
-        let strike_seg = rt.segments.iter().find(|s| !s.marks.is_empty()).unwrap();
+        assert_eq!(rt.plain_text(), "This is deleted text");
+        let strike_seg = rt.segments().iter().find(|s| !s.marks.is_empty()).unwrap();
         assert_eq!(strike_seg.text, "deleted");
         assert_eq!(strike_seg.marks[0].kind, TextMarkKind::Strikethrough);
     }
@@ -406,8 +401,8 @@ mod tests {
         let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
-        assert_eq!(rt.plain_text, "mornings can be cold chilly");
-        let strike_seg = rt.segments.iter().find(|s| !s.marks.is_empty()).unwrap();
+        assert_eq!(rt.plain_text(), "mornings can be cold chilly");
+        let strike_seg = rt.segments().iter().find(|s| !s.marks.is_empty()).unwrap();
         assert_eq!(strike_seg.text, "cold");
         assert_eq!(strike_seg.marks[0].kind, TextMarkKind::Strikethrough);
     }
@@ -418,9 +413,9 @@ mod tests {
         let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
-        assert_eq!(rt.plain_text, "café latte");
+        assert_eq!(rt.plain_text(), "café latte");
         let bold_seg = rt
-            .segments
+            .segments()
             .iter()
             .find(|s| s.marks.iter().any(|m| m.kind == TextMarkKind::Bold))
             .unwrap();
@@ -433,8 +428,8 @@ mod tests {
         let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
-        assert_eq!(rt.plain_text, "Check this link out");
-        let link_seg = rt.segments.iter().find(|s| !s.marks.is_empty()).unwrap();
+        assert_eq!(rt.plain_text(), "Check this link out");
+        let link_seg = rt.segments().iter().find(|s| !s.marks.is_empty()).unwrap();
         assert_eq!(link_seg.text, "this link");
         assert_eq!(link_seg.marks.len(), 1);
         assert_eq!(link_seg.marks[0].kind, TextMarkKind::Link);

@@ -2,9 +2,7 @@
 resolver = "3"
 members = [
   "crates/waypoints-domain",
-  "crates/waypoints-entities",
   "crates/store",
-  "crates/waypoints-migrations",
   "src-tauri",
   # "crates/waypoints-store"
 ]
@@ -78,8 +76,6 @@ uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
 cartograph = { path = "src-tauri" }
 store = { path = "crates/store" }
 waypoints-domain = { path = "crates/waypoints-domain" }
-waypoints-entities = { path = "crates/waypoints-entities" }
-waypoints-migrations = { path = "crates/waypoints-migrations" }
 # keep-sorted end
 
 tauri-plugin-shell = "2.3.4"

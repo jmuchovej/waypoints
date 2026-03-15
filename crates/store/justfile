@@ -1,4 +1,4 @@
-# All migration-related tasks!
+# All `store`-related tasks!
 [private]
 default:
     @just --list

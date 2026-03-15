@@ -1,4 +1,0 @@
-# All migration-related tasks!
-[private]
-default:
-    @just --list

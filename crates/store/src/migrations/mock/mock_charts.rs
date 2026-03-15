@@ -1,3 +1,5 @@
+use crate::builtin::builtin_charts;
+use crate::entities::{ActiveChart, ChartModel, Charts};
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{Set, Unchanged},
@@ -6,9 +8,8 @@ use sea_orm::{
 use sea_orm_migration::prelude::*;
 use std::collections::HashMap;
 use waypoints_domain::chart::{Chart, ChartID};
-use waypoints_entities::prelude::{ActiveChart, ChartModel, Charts, builtin_charts};
 
-use crate::utils::MigrationResult;
+use crate::migrations::utils::MigrationResult;
 
 pub type ChartIDMap = HashMap<String, ChartID>;
 

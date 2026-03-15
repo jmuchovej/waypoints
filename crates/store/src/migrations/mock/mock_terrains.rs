@@ -1,5 +1,6 @@
 use super::{ChartIDMap, MarkIDMap};
-use crate::utils::MigrationResult;
+use crate::entities::{ActiveTerrain, Terrains};
+use crate::migrations::utils::MigrationResult;
 use sea_orm::{ActiveModelTrait, EntityTrait};
 use sea_orm_migration::prelude::*;
 use std::collections::HashMap;
@@ -8,7 +9,6 @@ use waypoints_domain::{
     mark::MarkID,
     terrain::{Terrain, TerrainKind},
 };
-use waypoints_entities::prelude::{ActiveTerrain, Terrains};
 
 pub type TerrainIDMap = HashMap<(String, String), (MarkID, MarkID)>;
 
