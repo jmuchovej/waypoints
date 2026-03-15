@@ -1,19 +1,21 @@
-<template>
-  <div class="flex flex-1 relative">
-    <UDashboardPanel id="home">
-      <template #header>
-        <UDashboardNavbar title="Waypoints" icon="i-lucide-house">
-          <template #leading>
-            <UDashboardSidebarCollapse />
-          </template>
-        </UDashboardNavbar>
-      </template>
+<script setup lang="ts"></script>
 
-      <template #body>
-        <div class="flex flex-1 items-center justify-center">
-          <p class="text-muted text-lg">Welcome to Waypoints</p>
-        </div>
-      </template>
-    </UDashboardPanel>
-  </div>
+<template>
+  <UDashboardPanel id="home">
+    <template #header>
+      <UDashboardNavbar title="Waypoints">
+        <template #leading>
+          <UDashboardSidebarCollapse />
+        </template>
+      </UDashboardNavbar>
+    </template>
+
+    <template #body> </template>
+  </UDashboardPanel>
 </template>
+
+<style scoped>
+#dashboard-panel-home {
+  padding-left: env(titlebar-area-x);
+}
+</style>
