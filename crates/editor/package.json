@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./types.g.ts"
+    ".": "./typescript/types.g.ts"
+  },
+  "dependencies": {
+    "@waypoints/domain": "catalog:"
   }
 }

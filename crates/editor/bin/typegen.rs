@@ -13,7 +13,7 @@ fn main() {
     collection.register::<CreateResult>();
     collection.register::<UndoRedoResult>();
 
-    let out = format!("{}/types.g.ts", env!("CARGO_MANIFEST_DIR"));
+    let out = format!("{}/typescript/types.g.ts", env!("CARGO_MANIFEST_DIR"));
     Typescript::default()
         .export_to(&out, &collection)
         .expect("failed to export editor types");
