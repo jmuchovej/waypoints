@@ -3,29 +3,49 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(from = "RichTextDTO")]
 pub struct RichText {
-    #[serde(default)]
-    pub plain_text: String,
-    pub segments: Vec<TextSegment>,
+    plain_text: String,
+    segments: Vec<TextSegment>,
+}
+
+/// Deserialization DTO that routes through `RichText::new()`.
+#[derive(Deserialize)]
+struct RichTextDTO {
+    segments: Vec<TextSegment>,
+}
+
+impl From<RichTextDTO> for RichText {
+    fn from(dto: RichTextDTO) -> Self {
+        RichText::new(dto.segments)
+    }
 }
 
 impl RichText {
-    pub fn is_empty(&self) -> bool {
-        self.segments.is_empty()
+    pub fn new(segments: Vec<TextSegment>) -> Self {
+        let plain_text = segments.iter().map(|s| s.text.as_str()).collect();
+        Self {
+            plain_text,
+            segments,
+        }
     }
 
-    /// Recompute `plain_text` by joining all segment texts.
-    pub fn derive_plain_text(&mut self) {
-        self.plain_text = self.segments.iter().map(|s| s.text.as_str()).collect();
+    pub fn plain_text(&self) -> &str {
+        &self.plain_text
+    }
+
+    pub fn segments(&self) -> &[TextSegment] {
+        &self.segments
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.segments.is_empty()
     }
 }
 
 impl Default for RichText {
     fn default() -> Self {
-        RichText {
-            plain_text: String::new(),
-            segments: Vec::new(),
-        }
+        RichText::new(Vec::new())
     }
 }
 
@@ -34,14 +54,10 @@ impl From<String> for RichText {
         if text.is_empty() {
             return RichText::default();
         }
-        let plain_text = text.clone();
-        RichText {
-            plain_text,
-            segments: vec![TextSegment {
-                text,
-                marks: Vec::new(),
-            }],
-        }
+        RichText::new(vec![TextSegment {
+            text,
+            marks: Vec::new(),
+        }])
     }
 }
 
@@ -114,104 +130,73 @@ mod tests {
 
     #[test]
     fn test_rich_text_creation() {
-        let rt = RichText {
-            plain_text: "Hello, world!".to_string(),
-            segments: vec![TextSegment {
-                text: "Hello, world!".to_string(),
-                marks: vec![],
-            }],
-        };
-        assert_eq!(rt.plain_text, "Hello, world!");
-        assert_eq!(rt.segments.len(), 1);
+        let rt = RichText::new(vec![TextSegment {
+            text: "Hello, world!".to_string(),
+            marks: vec![],
+        }]);
+        assert_eq!(rt.plain_text(), "Hello, world!");
+        assert_eq!(rt.segments().len(), 1);
     }
 
     #[test]
     fn test_rich_text_with_marks() {
-        let rt = RichText {
-            plain_text: "Hello, bold world!".to_string(),
-            segments: vec![
-                TextSegment {
-                    text: "Hello, ".to_string(),
-                    marks: vec![],
-                },
-                TextSegment {
-                    text: "bold".to_string(),
-                    marks: vec![InlineMark {
-                        kind: TextMarkKind::Bold,
-                        data: None,
-                    }],
-                },
-                TextSegment {
-                    text: " world!".to_string(),
-                    marks: vec![],
-                },
-            ],
-        };
-        assert_eq!(rt.plain_text, "Hello, bold world!");
-        assert_eq!(rt.segments.len(), 3);
-        assert_eq!(rt.segments[1].marks[0].kind, TextMarkKind::Bold);
-    }
-
-    #[test]
-    fn test_derive_plain_text() {
-        let mut rt = RichText {
-            plain_text: String::new(),
-            segments: vec![
-                TextSegment {
-                    text: "Hello, ".to_string(),
-                    marks: vec![],
-                },
-                TextSegment {
-                    text: "world!".to_string(),
-                    marks: vec![InlineMark {
-                        kind: TextMarkKind::Bold,
-                        data: None,
-                    }],
-                },
-            ],
-        };
-        rt.derive_plain_text();
-        assert_eq!(rt.plain_text, "Hello, world!");
+        let rt = RichText::new(vec![
+            TextSegment {
+                text: "Hello, ".to_string(),
+                marks: vec![],
+            },
+            TextSegment {
+                text: "bold".to_string(),
+                marks: vec![InlineMark {
+                    kind: TextMarkKind::Bold,
+                    data: None,
+                }],
+            },
+            TextSegment {
+                text: " world!".to_string(),
+                marks: vec![],
+            },
+        ]);
+        assert_eq!(rt.plain_text(), "Hello, bold world!");
+        assert_eq!(rt.segments().len(), 3);
+        assert_eq!(rt.segments()[1].marks[0].kind, TextMarkKind::Bold);
     }
 
     #[test]
     fn test_from_string() {
         let rt = RichText::from("Hello".to_string());
-        assert_eq!(rt.plain_text, "Hello");
-        assert_eq!(rt.segments.len(), 1);
-        assert_eq!(rt.segments[0].text, "Hello");
-        assert!(rt.segments[0].marks.is_empty());
+        assert_eq!(rt.plain_text(), "Hello");
+        assert_eq!(rt.segments().len(), 1);
+        assert_eq!(rt.segments()[0].text, "Hello");
+        assert!(rt.segments()[0].marks.is_empty());
     }
 
     #[test]
     fn test_from_empty_string() {
         let rt = RichText::from(String::new());
         assert!(rt.is_empty());
-        assert_eq!(rt.segments.len(), 0);
+        assert_eq!(rt.segments().len(), 0);
     }
 
     #[test]
     fn test_rich_text_serialization() {
-        let rt = RichText {
-            plain_text: "Click here for more".to_string(),
-            segments: vec![
-                TextSegment {
-                    text: "Click ".to_string(),
-                    marks: vec![],
-                },
-                TextSegment {
-                    text: "here".to_string(),
-                    marks: vec![InlineMark {
-                        kind: TextMarkKind::Link,
-                        data: Some(serde_json::json!("https://example.com")),
-                    }],
-                },
-                TextSegment {
-                    text: " for more".to_string(),
-                    marks: vec![],
-                },
-            ],
-        };
+        let rt = RichText::new(vec![
+            TextSegment {
+                text: "Click ".to_string(),
+                marks: vec![],
+            },
+            TextSegment {
+                text: "here".to_string(),
+                marks: vec![InlineMark {
+                    kind: TextMarkKind::Link,
+                    data: Some(serde_json::json!("https://example.com")),
+                }],
+            },
+            TextSegment {
+                text: " for more".to_string(),
+                marks: vec![],
+            },
+        ]);
 
         let json = serde_json::to_string(&rt).unwrap();
         let deserialized: RichText = serde_json::from_str(&json).unwrap();
@@ -304,5 +289,12 @@ mod tests {
             ],
         };
         assert_eq!(seg.marks.len(), 2);
+    }
+
+    #[test]
+    fn test_deserialization_computes_plain_text() {
+        let json = r#"{"segments":[{"text":"hello"},{"text":" world","marks":[{"kind":"bold"}]}]}"#;
+        let rt: RichText = serde_json::from_str(json).unwrap();
+        assert_eq!(rt.plain_text(), "hello world");
     }
 }
