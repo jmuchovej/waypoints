@@ -25,6 +25,18 @@ pub async fn open(path: &Path) -> StoreResult<DatabaseConnection> {
     Ok(db)
 }
 
+pub async fn reset(db: DatabaseConnection) -> StoreResult<DatabaseConnection> {
+    tracing::info!("resetting migrations");
+    Migrator::down(&db, None).await?;
+    tracing::debug!("  migration reset complete");
+
+    tracing::info!("running migrations");
+    Migrator::up(&db, None).await?;
+    tracing::debug!("  migrations complete");
+
+    Ok(db)
+}
+
 pub async fn checkpoint(db: &DatabaseConnection) {
     let result = db
         .execute(Statement::from_string(
