@@ -4,8 +4,8 @@ export default defineAppConfig({
   },
   ui: {
     colors: {
-      primary: "green",
-      neutral: "zinc",
+      primary: "cyan",
+      neutral: "mist",
     },
     button: {
       slots: {
@@ -32,6 +32,9 @@ export default defineAppConfig({
       slots: {
         root: "scrollbar-none",
       },
+    },
+    dashboardGroup: {
+      base: "relative flex flex-1 overflow-hidden",
     },
   },
 });
