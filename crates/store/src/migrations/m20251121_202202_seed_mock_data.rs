@@ -1,8 +1,8 @@
-use crate::mock::{seed_charts, seed_marks, seed_terrains};
-use crate::utils::SeaDBResult;
+use super::mock::{seed_charts, seed_marks, seed_terrains};
+use super::utils::SeaDBResult;
+use crate::entities::{Charts, Marks, Terrains};
 use sea_orm::EntityTrait;
 use sea_orm_migration::prelude::*;
-use waypoints_entities::prelude::{Charts, Marks, Terrains};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

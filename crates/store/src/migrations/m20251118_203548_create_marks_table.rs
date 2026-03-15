@@ -1,6 +1,6 @@
-use crate::utils::{SeaDBResult, infer_index_name, table_name};
+use super::utils::{SeaDBResult, infer_index_name, table_name};
+use crate::entities::Marks as Entity;
 use sea_orm_migration::{prelude::*, sea_orm::Schema};
-use waypoints_entities::prelude::Marks as Entity;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

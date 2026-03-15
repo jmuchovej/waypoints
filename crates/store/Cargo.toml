@@ -12,6 +12,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+async-trait.workspace = true
+uuid.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
 derive_more = { workspace = true, features = [
@@ -21,8 +23,9 @@ derive_more = { workspace = true, features = [
   "from",
 ] }
 indexmap.workspace = true
-sea-orm = { workspace = true, default-features = false }
+sea-orm.workspace = true
 sea-orm-migration = { workspace = true, default-features = false }
+serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
