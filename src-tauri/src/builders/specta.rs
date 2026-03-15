@@ -51,6 +51,7 @@ pub fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
         editor::editor_swap_mark_order,
         editor::editor_undo,
         editor::editor_redo,
+        editor::editor_render_math,
     ]);
 
     builder

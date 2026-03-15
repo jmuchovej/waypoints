@@ -6,6 +6,7 @@ pub mod projection;
 pub mod rich_text;
 pub mod service;
 pub mod types;
+pub mod typst;
 
 pub use error::{EditorError, EditorResult};
 pub use service::EditorService;

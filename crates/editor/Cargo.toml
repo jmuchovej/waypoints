@@ -21,6 +21,12 @@ thiserror.workspace = true
 tracing.workspace = true
 chrono.workspace = true
 uuid.workspace = true
+typst.workspace = true
+typst-assets.workspace = true
+typst-library.workspace = true
+typst-svg.workspace = true
+typst-syntax.workspace = true
+typst-utils.workspace = true
 
 [[bin]]
 name = "typegen"
