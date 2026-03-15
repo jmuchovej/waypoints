@@ -4,7 +4,7 @@ use crate::{Color, Icon};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 use typed_builder::TypedBuilder;
 
 /// Option for select fields
@@ -118,10 +118,17 @@ impl From<String> for SelectOption {
 #[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize)]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Select {
-    /// Groups of options - single group for simple selects, multiple for grouped
+    /// Groups of options - single group for simple selects, multiple for grouped.
+    ///
+    /// `IndexMap` (not `HashMap`) is critical here: it preserves insertion
+    /// order so `with_group` calls come out in the order the chart author
+    /// wrote them. That order propagates through the `From<Select> for
+    /// FeatureKind` conversion and on into the JSON serialization, so the
+    /// frontend renders groups in the intended order (e.g. Status: Pending
+    /// → In Progress → Finished).
     #[builder(
       setter(!strip_option),
-      via_mutators(init = HashMap::new()),
+      via_mutators(init = IndexMap::new()),
       mutators(
         #[mutator(requires=[default_group])]
         pub fn with_group(mut self, group: SelectGroup, is_default: Option<bool>) {
@@ -162,7 +169,7 @@ pub struct Select {
         // }
       )
     )]
-    pub groups: HashMap<GlyphID, SelectGroup>,
+    pub groups: IndexMap<GlyphID, SelectGroup>,
 
     /// Maximum selections allowed (None = unlimited, Some(1) = single select)
     #[builder(
