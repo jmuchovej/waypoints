@@ -202,8 +202,7 @@ impl Content {
                     }
                 }
             }
-            Content::Blockquote { items, .. }
-            | Content::Callout { items, .. } => {
+            Content::Blockquote { items, .. } | Content::Callout { items, .. } => {
                 for item in items {
                     item.derive_plain_text();
                 }

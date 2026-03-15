@@ -7,14 +7,7 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineNuxtConfig({
   compatibilityDate: "2026-03-05",
 
-  modules: [
-    "@nuxt/ui",
-    "@nuxt/hints",
-    "@nuxt/image",
-    "@pinia/nuxt",
-    "@vueuse/nuxt",
-    "@nuxt/icon",
-  ],
+  modules: ["@nuxt/ui", "@nuxt/hints", "@nuxt/image", "@pinia/nuxt", "@vueuse/nuxt", "@nuxt/icon"],
 
   devtools: {
     enabled: true,
@@ -79,10 +72,10 @@ export default defineNuxtConfig({
       strictPort: true,
       hmr: host
         ? {
-          protocol: "ws",
-          host,
-          port: 3001,
-        }
+            protocol: "ws",
+            host,
+            port: 3001,
+          }
         : undefined,
     },
   },

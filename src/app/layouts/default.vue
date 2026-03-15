@@ -70,9 +70,17 @@ const open = ref(false);
         class="bg-elevated/25"
       >
         <template #default="{ collapsed }">
-          <UDashboardSearchButton
-            :collapsed="collapsed"
-            class="bg-transparent ring-default"
+          <TerritoryMenu :collapsed="collapsed" />
+
+          <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
+
+          <UCalendar
+            v-model="date"
+            :year-controls="false"
+            variant="subtle"
+            size="xs"
+            week-numbers
+            fixed-weeks
           />
 
           <UNavigationMenu

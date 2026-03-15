@@ -21,11 +21,7 @@
       "mcp__nuxt-ui",
       "mcp__filesystem"
     ],
-    "ask": [
-      "mcp__filesystem__write_file",
-      "Bash(bun run:*)",
-      "Bash(git rm:*)"
-    ],
+    "ask": ["mcp__filesystem__write_file", "Bash(bun run:*)", "Bash(git rm:*)"],
     "deny": ["Bash(npx:*)", "Bash(pnpx:*)"]
   },
   "enableAllProjectMcpServers": true,

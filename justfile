@@ -8,7 +8,6 @@ default:
 
 mod app "src/justfile"
 mod tauri "src-tauri/justfile"
-mod cartograph "crates/cartograph"
 mod waypoints "crates/waypoints-domain"
 mod entities "crates/waypoints-entities"
 mod migrations "crates/waypoints-migrations"
