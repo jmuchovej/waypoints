@@ -5,20 +5,20 @@ identifier = "so.waypoints"
 
 [build]
 before-build-command = "just app::generate"
-frontend-dist = "../src/dist"
 before-dev-command = "just app::dev"
-dev-url = "http://localhost:9297"
+devUrl = "http://localhost:9297"
+frontend-dist = "../src/dist"
 
 [bundle]
 homepage = "https://waypoints.so"
 active = true
 targets = "all"
 icon = [
-  "icons/32x32.png",
-  "icons/128x128.png",
-  "icons/128x128@2x.png",
-  "icons/icon.icns",
-  "icons/icon.ico",
+  "icons/app-icon.iconset/icon_32x32.png",
+  "icons/app-icon.iconset/icon_128x128.png",
+  "icons/app-icon.iconset/icon_128x128@2x.png",
+  "icons/icon-mainline.icns",
+  "icons/icon-mainline.ico",
 ]
 resources = []
 external-bin = []

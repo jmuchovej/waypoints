@@ -27,6 +27,18 @@ clean:
 dev:
     @just tauri::dev
 
+# Build alpha flavor
+alpha:
+    @just tauri::alpha
+
+# Build beta flavor
+beta:
+    @just tauri::beta
+
+# Build production release
+release:
+    @just tauri::release
+
 # Testing
 test:
     flutter test

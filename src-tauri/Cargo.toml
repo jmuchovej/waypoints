@@ -39,3 +39,7 @@ objc2-app-kit.workspace = true
 [features]
 default = ["desktop"]
 desktop = ["tauri/tray-icon"]
+development = ["waypoints-migrations/mock"]
+alpha = []
+beta = []
+release = []

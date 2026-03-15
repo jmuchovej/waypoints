@@ -8,8 +8,22 @@ default:
 via-tauri +ARGS="--debug":
     cargo tauri {{ ARGS }}
 
-dev *ARGS:
-    @just via-tauri dev {{ ARGS }}
+# Development — mock seed data, debug build
+dev $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
+    @just via-tauri dev --features development --config Tauri.flavor=dev.toml {{ ARGS }}
+
+# Alpha — debug build, no mock data
+alpha *ARGS:
+    @just via-tauri dev --features alpha --config Tauri.flavor=alpha.toml {{ ARGS }}
+
+# Beta — release-optimized build
+beta *ARGS:
+    @just via-tauri build --features beta --config Tauri.flavor=beta.toml {{ ARGS }}
+
+# Production release — base Tauri.toml, default features only
+release *ARGS:
+    @just via-tauri build --features release {{ ARGS }}
+
 # Generate .icns and .ico from each flavor's iconset
 icons:
     #!/usr/bin/env bash

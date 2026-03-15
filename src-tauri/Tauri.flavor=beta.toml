@@ -1,0 +1,15 @@
+# :schema https://schema.tauri.app/config/2
+product-name = "Waypoints (Preview)"
+version = "0.1.0"
+identifier = "so.waypoints.preview"
+
+[bundle]
+active = true
+targets = "all"
+icon = [
+  "icons/app-icon-preview.iconset/icon_32x32.png",
+  "icons/app-icon-preview.iconset/icon_128x128.png",
+  "icons/app-icon-preview.iconset/icon_128x128@2x.png",
+  "icons/icon-preview.icns",
+  "icons/icon-preview.ico",
+]

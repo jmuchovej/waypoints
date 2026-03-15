@@ -1,0 +1,15 @@
+# :schema https://schema.tauri.app/config/2
+product-name = "Waypoints (Development)"
+version = "0.1.0"
+identifier = "so.waypoints.dev"
+
+[bundle]
+active = true
+targets = "all"
+icon = [
+  "icons/app-icon-dev.iconset/icon_32x32.png",
+  "icons/app-icon-dev.iconset/icon_128x128.png",
+  "icons/app-icon-dev.iconset/icon_128x128@2x.png",
+  "icons/icon-development.icns",
+  "icons/icon-development.ico",
+]
