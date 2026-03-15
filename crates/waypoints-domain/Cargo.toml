@@ -30,7 +30,13 @@ serde_json.workspace = true
 thiserror.workspace = true
 typed-builder.workspace = true
 uuid.workspace = true
+specta-typescript.workspace = true
 validator = { version = "0.20.0", features = ["derive", "indexmap"] }
+
+[[bin]]
+name = "typegen"
+path = "src/bin/typegen.rs"
+required-features = []
 
 [lints]
 workspace = true
