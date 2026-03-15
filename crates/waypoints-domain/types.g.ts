@@ -80,7 +80,7 @@ export type Content =
   /**
    * A quote
    */
-  | { type: "blockquote"; rich_text: RichText }
+  | { type: "blockquote" }
   /**
    * An unordered list item
    */
@@ -92,7 +92,7 @@ export type Content =
   /**
    * Callout
    */
-  | { type: "callout"; icon: string; background_color: Color; items: Content[] }
+  | { type: "callout"; icon: string; background_color: Color }
   /**
    * Code block with syntax highlighting
    */
@@ -470,7 +470,7 @@ export type RichReference = {
   as?: ReferenceDisplayMode;
 };
 
-export type RichText = { plain_text?: string; segments: TextSegment[] };
+export type RichText = { plain_text: string; segments: TextSegment[] };
 
 /**
  * Group of options for grouped select fields
