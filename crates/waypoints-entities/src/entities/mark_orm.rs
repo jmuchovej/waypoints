@@ -58,7 +58,7 @@ impl ActiveModelBehavior for ActiveModel {
         let data = ready.data.clone().unwrap();
         let mut mark: MarkData =
             serde_json::from_value(data).map_err(|err| DbErr::Custom(err.to_string()))?;
-        mark.derive_plain_texts();
+        mark.derive_plain_text();
         ready.mark = Set(mark.type_name());
         ready.data =
             Set(serde_json::to_value(&mark).map_err(|err| DbErr::Custom(err.to_string()))?);
