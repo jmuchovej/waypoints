@@ -16,10 +16,15 @@ domain.workspace = true
 store.workspace = true
 serde.workspace = true
 specta.workspace = true
+specta-typescript.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 chrono.workspace = true
 uuid.workspace = true
+
+[[bin]]
+name = "typegen"
+path = "bin/typegen.rs"
 
 [lints]
 workspace = true

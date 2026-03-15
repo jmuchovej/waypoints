@@ -16,7 +16,8 @@ mod editor "crates/editor/justfile"
 typegen:
     cargo run -p Waypoints --bin typegen
     cargo run -p domain --bin typegen
-    treefmt src/app/bindings.g.ts crates/domain/types.g.ts
+    cargo run -p editor --bin typegen
+    treefmt src/app/bindings.g.ts crates/domain/types.g.ts crates/editor/types.g.ts
 
 clean:
     cargo clean
