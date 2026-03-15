@@ -4,6 +4,8 @@
 .pre-commit-config.yaml
 local.properties
 .mcp.json
+.android/
+.secrets/
 
 _research/
 .secrets/

@@ -62,7 +62,9 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
     }
     permissionLauncher =
         activity.registerForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions(), permissionCallback)
+            ActivityResultContracts.RequestMultiplePermissions(),
+            permissionCallback,
+        )
     activityLauncher =
         activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             result ->
@@ -199,7 +201,7 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
       url: String,
       message: String,
       defaultValue: String,
-      result: JsPromptResult
+      result: JsPromptResult,
   ): Boolean {
     if (activity.isFinishing) {
       return true
@@ -235,13 +237,15 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
    */
   override fun onGeolocationPermissionsShowPrompt(
       origin: String,
-      callback: GeolocationPermissions.Callback
+      callback: GeolocationPermissions.Callback,
   ) {
     super.onGeolocationPermissionsShowPrompt(origin, callback)
     Logger.debug("onGeolocationPermissionsShowPrompt: DOING IT HERE FOR ORIGIN: $origin")
     val geoPermissions =
         arrayOf(
-            Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        )
     if (!PermissionHelper.hasPermissions(activity, geoPermissions)) {
       permissionListener =
           object : PermissionListener {
@@ -250,8 +254,10 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
                 callback.invoke(origin, true, false)
               } else {
                 val coarsePermission = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    PermissionHelper.hasPermissions(activity, coarsePermission)) {
+                if (
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        PermissionHelper.hasPermissions(activity, coarsePermission)
+                ) {
                   callback.invoke(origin, true, false)
                 } else {
                   callback.invoke(origin, false, false)
@@ -270,7 +276,7 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
   override fun onShowFileChooser(
       webView: WebView,
       filePathCallback: ValueCallback<Array<Uri?>?>,
-      fileChooserParams: FileChooserParams
+      fileChooserParams: FileChooserParams,
   ): Boolean {
     val acceptTypes = listOf(*fileChooserParams.acceptTypes)
     val captureEnabled = fileChooserParams.isCaptureEnabled
@@ -310,7 +316,7 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
   private fun showMediaCaptureOrFilePicker(
       filePathCallback: ValueCallback<Array<Uri?>?>,
       fileChooserParams: FileChooserParams,
-      isVideo: Boolean
+      isVideo: Boolean,
   ) {
     val isVideoCaptureSupported = true
     val shown =
@@ -322,7 +328,8 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
     if (!shown) {
       Logger.warn(
           Logger.tags("FileChooser"),
-          "Media capture intent could not be launched. Falling back to default file picker.")
+          "Media capture intent could not be launched. Falling back to default file picker.",
+      )
       showFilePicker(filePathCallback, fileChooserParams)
     }
   }
@@ -375,7 +382,7 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
 
   private fun showFilePicker(
       filePathCallback: ValueCallback<Array<Uri?>?>,
-      fileChooserParams: FileChooserParams
+      fileChooserParams: FileChooserParams,
   ) {
     val intent = fileChooserParams.createIntent()
     if (fileChooserParams.mode == FileChooserParams.MODE_OPEN_MULTIPLE) {
@@ -438,7 +445,8 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
               "File: %s - Line %d - Msg: %s",
               consoleMessage.sourceId(),
               consoleMessage.lineNumber(),
-              consoleMessage.message())
+              consoleMessage.message(),
+          )
       val level = consoleMessage.messageLevel().name
       if ("ERROR".equals(level, ignoreCase = true)) {
         Logger.error(tag, msg, null)
@@ -464,7 +472,10 @@ class RustWebChromeClient(appActivity: WryActivity) : WebChromeClient() {
   private fun createImageFileUri(): Uri {
     val photoFile = createImageFile(activity)
     return FileProvider.getUriForFile(
-        activity, activity.packageName.toString() + ".fileprovider", photoFile)
+        activity,
+        activity.packageName.toString() + ".fileprovider",
+        photoFile,
+    )
   }
 
   @Throws(IOException::class)

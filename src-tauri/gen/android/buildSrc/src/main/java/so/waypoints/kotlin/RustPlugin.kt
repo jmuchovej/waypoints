@@ -65,7 +65,8 @@ open class RustPlugin : Plugin<Project> {
                   project.tasks
                       .maybeCreate(
                           "rustBuild$targetArchCapitalized$profileCapitalized",
-                          BuildTask::class.java)
+                          BuildTask::class.java,
+                      )
                       .apply {
                         group = TASK_GROUP
                         description = "Build dynamic library in $profile mode for $targetArch"
@@ -76,7 +77,8 @@ open class RustPlugin : Plugin<Project> {
 
               buildTask.dependsOn(targetBuildTask)
               tasks["merge$targetArchCapitalized${profileCapitalized}JniLibFolders"].dependsOn(
-                  targetBuildTask)
+                  targetBuildTask
+              )
             }
           }
         }

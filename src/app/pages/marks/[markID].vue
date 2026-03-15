@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import type {
-  Mark,
-  Landmark,
-  FeatureID,
-  Reading,
-  RichText,
-  Chart,
-} from "@waypoints/domain";
+import type { Mark, Landmark, FeatureID, Reading, RichText, Chart } from "@waypoints/domain";
 import DocumentBody from "~editor/components/DocumentBody.vue";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import ReadingsTable from "~editor/components/ReadingsTable.vue";
@@ -137,9 +130,7 @@ async function focusFirstBlockOrCreate() {
 /** DocumentBody → Title: ArrowLeft at start, ArrowUp on first line */
 function onDocExitTop() {
   // Focus the title editor's ProseMirror at the end
-  const titleEl = document.querySelector(
-    ".landmark-title .ProseMirror",
-  ) as HTMLElement | null;
+  const titleEl = document.querySelector(".landmark-title .ProseMirror") as HTMLElement | null;
   if (titleEl) {
     titleEl.focus();
     // Move cursor to end
@@ -207,11 +198,7 @@ const uiPanel = {
 
         <div class="editor-content">
           <!-- Block-based document editor -->
-          <DocumentBody
-            ref="docBodyRef"
-            :landmark-id="markID"
-            :on-exit-top="onDocExitTop"
-          />
+          <DocumentBody ref="docBodyRef" :landmark-id="markID" :on-exit-top="onDocExitTop" />
         </div>
       </div>
 

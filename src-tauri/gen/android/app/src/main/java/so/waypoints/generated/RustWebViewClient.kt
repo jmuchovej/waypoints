@@ -28,7 +28,7 @@ class RustWebViewClient(context: Context) : WebViewClient() {
 
   override fun shouldInterceptRequest(
       view: WebView,
-      request: WebResourceRequest
+      request: WebResourceRequest,
   ): WebResourceResponse? {
     pendingUrlRedirect?.let {
       Handler(Looper.getMainLooper()).post { view.loadUrl(it) }
@@ -70,14 +70,16 @@ class RustWebViewClient(context: Context) : WebViewClient() {
   override fun onReceivedError(
       view: WebView,
       request: WebResourceRequest,
-      error: WebResourceError
+      error: WebResourceError,
   ) {
     // we get a net::ERR_CONNECTION_REFUSED when an external URL redirects to a custom protocol
     // e.g. oauth flow, because shouldInterceptRequest is not called on redirects
     // so we must force retry here with loadUrl() to get a chance of the custom protocol to kick in
-    if (error.errorCode == ERROR_CONNECT &&
-        request.isForMainFrame &&
-        request.url != lastInterceptedUrl) {
+    if (
+        error.errorCode == ERROR_CONNECT &&
+            request.isForMainFrame &&
+            request.url != lastInterceptedUrl
+    ) {
       // prevent the default error page from showing
       view.stopLoading()
       // without this initial loadUrl the app is stuck
@@ -103,7 +105,7 @@ class RustWebViewClient(context: Context) : WebViewClient() {
   private external fun handleRequest(
       webviewId: String,
       request: WebResourceRequest,
-      isDocumentStartScriptEnabled: Boolean
+      isDocumentStartScriptEnabled: Boolean,
   ): WebResourceResponse?
 
   private external fun shouldOverride(url: String): Boolean

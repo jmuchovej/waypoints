@@ -1,11 +1,6 @@
 [workspace]
 resolver = "3"
-members = [
-  "crates/domain",
-  "crates/store",
-  "src-tauri",
-  "crates/editor",
-]
+members = ["crates/domain", "crates/store", "src-tauri", "crates/editor"]
 
 [workspace.package]
 version = "0.1.0"
@@ -23,7 +18,9 @@ publish = false
 anyhow = "1.0.99"
 async-trait = "0.1.89"
 chrono = { version = "0.4.42", default-features = false, features = ["serde"] }
-chrono-tz = { version = "0.10.4", default-features = false, features = ["serde"] }
+chrono-tz = { version = "0.10.4", default-features = false, features = [
+  "serde",
+] }
 derive_more = "2.0.1"
 eyre = "0.6.12"
 fake = { version = "4.4.0", default-features = false }
@@ -64,7 +61,11 @@ sea-query = { version = "0.32.7", default-features = false, features = [
   "with-uuid",
 ] }
 serde = { version = "1.0.224", features = ["derive"] }
-serde_json = { version = "1.0.145", features = ["indexmap", "preserve_order", "raw_value"] }
+serde_json = { version = "1.0.145", features = [
+  "indexmap",
+  "preserve_order",
+  "raw_value",
+] }
 thiserror = "2.0.15"
 tokio = { version = "1.47.1", features = ["sync"] }
 tracing = "0.1.41"
@@ -87,7 +88,13 @@ tauri-plugin-dialog = "2.2.0"
 tauri-plugin-store = "2.4.2"
 tauri = { version = "2.10.3", features = ["unstable"] }
 tauri-build = { version = "2.5.6", features = ["config-toml"] }
-wry = { version = "0.54.4", features = ["os-webview", "protocol", "drag-drop", "tracing", "serde"] }
+wry = { version = "0.54.4", features = [
+  "os-webview",
+  "protocol",
+  "drag-drop",
+  "tracing",
+  "serde",
+] }
 
 typst = "0.14"
 typst-assets = { version = "0.14", features = ["fonts"] }
@@ -107,7 +114,10 @@ specta = { version = "=2.0.0-rc.22", features = [
 specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 
-objc2-app-kit = { version = "0.3", default-features = false, features = ["NSView", "NSScrollView"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+  "NSView",
+  "NSScrollView",
+] }
 
 [workspace.lints.clippy]
 blocks_in_conditions = "allow"

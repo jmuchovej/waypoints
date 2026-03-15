@@ -16,7 +16,12 @@ async-trait.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
-derive_more = { workspace = true, features = ["debug", "display", "error", "from"] }
+derive_more = { workspace = true, features = [
+  "debug",
+  "display",
+  "error",
+  "from",
+] }
 indexmap.workspace = true
 sea-orm.workspace = true
 sea-orm-migration = { workspace = true, default-features = false }

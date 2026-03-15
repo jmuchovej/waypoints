@@ -24,8 +24,9 @@ object PermissionHelper {
    */
   fun hasPermissions(context: Context?, permissions: Array<String>): Boolean {
     for (perm in permissions) {
-      if (ActivityCompat.checkSelfPermission(context!!, perm) !=
-          PackageManager.PERMISSION_GRANTED) {
+      if (
+          ActivityCompat.checkSelfPermission(context!!, perm) != PackageManager.PERMISSION_GRANTED
+      ) {
         return false
       }
     }
@@ -80,7 +81,8 @@ object PermissionHelper {
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             pm.getPackageInfo(
                 context.packageName,
-                PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()),
+            )
           } else {
             @Suppress("DEPRECATION")
             pm.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)

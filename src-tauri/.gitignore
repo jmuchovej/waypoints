@@ -1,4 +1,5 @@
 gen/android/keystore.properties
+icons/generated/
 
 # Created by https://www.toptal.com/developers/gitignore/api/rust,deno,macos,linux,windows,database
 # Edit at https://www.toptal.com/developers/gitignore?templates=rust,deno,macos,linux,windows,database
