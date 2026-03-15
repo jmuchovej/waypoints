@@ -28,7 +28,6 @@ pub fn index_name<E>(entity: E, c: &str) -> SeaDBResult<String>
 where
     E: EntityTrait,
 {
-    let table = entity.to_string();
-    let name = format!("idx-{table}-{c}");
+    let name = format!("idx-{table}-{c}", table = entity.to_string());
     Ok(name)
 }
