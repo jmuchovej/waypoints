@@ -28,8 +28,6 @@ pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         "loaded territory registry"
     );
 
-    let mut editor_db: Option<sea_orm::DatabaseConnection> = None;
-
     if let Some(last_id) = registry.last_active_id {
         if let Some(entry) = registry.registry.iter().find(|e| e.id == last_id) {
             let workspace_dir = manager.entry_path(entry);
@@ -42,7 +40,6 @@ pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                     tracing::debug!("block_on: db opened, acquiring locks");
                     let active_db = manager.active_db.clone();
                     let active_id = manager.active_id.clone();
-                    editor_db = Some(db.clone());
                     tauri::async_runtime::block_on(async {
                         *active_db.lock().await = Some(db);
                         *active_id.lock().await = Some(last_id);
@@ -60,26 +57,13 @@ pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         tracing::debug!("no last_active_id, skipping territory resume");
     }
 
+    // EditorService shares the same Arc<Mutex<Option<DB>>> as the manager.
+    let editor = editor::EditorService::new(manager.active_db.clone());
+    app.manage(Mutex::new(editor));
+    tracing::debug!("editor service registered in app state");
+
     app.manage(manager);
     tracing::debug!("territory manager registered in app state");
-
-    // Set up EditorService with the active DB (or a placeholder that will be replaced)
-    if let Some(db) = editor_db {
-        let editor = editor::EditorService::new(db);
-        app.manage(Mutex::new(editor));
-        tracing::debug!("editor service registered in app state");
-    } else {
-        // No active territory yet — create a dummy connection that will be replaced
-        // when a territory is opened. Using an in-memory SQLite as placeholder.
-        let placeholder_db = tauri::async_runtime::block_on(async {
-            sea_orm::Database::connect("sqlite::memory:")
-                .await
-                .expect("failed to create placeholder DB")
-        });
-        let editor = editor::EditorService::new(placeholder_db);
-        app.manage(Mutex::new(editor));
-        tracing::debug!("editor service registered with placeholder DB");
-    }
 
     Ok(())
 }

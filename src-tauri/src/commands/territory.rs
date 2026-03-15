@@ -95,12 +95,12 @@ pub async fn territory_create(
         if let Some(old_db) = active_db.take() {
             store::checkpoint(&old_db).await;
         }
-        *active_db = Some(db.clone());
+        *active_db = Some(db);
     }
     *mgr.active_id.lock().await = Some(id);
 
-    // Replace EditorService with new DB
-    *editor_state.lock().await = editor::EditorService::new(db);
+    // Clear undo histories for the new territory
+    editor_state.lock().await.clear_histories();
 
     Ok(entry)
 }
@@ -170,12 +170,12 @@ pub async fn territory_open(
         if let Some(old_db) = active_db.take() {
             store::checkpoint(&old_db).await;
         }
-        *active_db = Some(db.clone());
+        *active_db = Some(db);
     }
     *mgr.active_id.lock().await = Some(entry.id);
 
-    // Replace EditorService with new DB
-    *editor_state.lock().await = editor::EditorService::new(db);
+    // Clear undo histories for the new territory
+    editor_state.lock().await.clear_histories();
 
     Ok(entry)
 }
@@ -197,11 +197,9 @@ pub async fn territory_close(
     registry.last_active_id = None;
     save_registry(&app, &registry)?;
 
-    // Replace EditorService with placeholder
-    let placeholder_db = sea_orm::Database::connect("sqlite::memory:")
-        .await
-        .map_err(|e| TerritoryError::Database(e))?;
-    *editor_state.lock().await = editor::EditorService::new(placeholder_db);
+    // Clear undo histories — EditorService will return NoActiveTerritory
+    // on subsequent calls since the shared Arc now holds None.
+    editor_state.lock().await.clear_histories();
 
     Ok(())
 }
@@ -235,11 +233,7 @@ pub async fn territory_remove(
             }
             *mgr.active_id.lock().await = None;
 
-            // Replace EditorService with placeholder
-            let placeholder_db = sea_orm::Database::connect("sqlite::memory:")
-                .await
-                .map_err(|e| TerritoryError::Database(e))?;
-            *editor_state.lock().await = editor::EditorService::new(placeholder_db);
+            editor_state.lock().await.clear_histories();
         }
     }
 

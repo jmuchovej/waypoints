@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
 use store::DatabaseConnection;
@@ -8,11 +10,14 @@ use crate::history::CommandHistory;
 use crate::types::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
 use crate::{mutation, projection};
 
-/// The editor service holds a database connection and per-landmark undo histories.
+pub type SharedDatabase = Arc<Mutex<Option<DatabaseConnection>>>;
+
+/// The editor service holds a shared database connection and per-landmark undo histories.
 ///
-/// Constructed when a territory opens; dropped and recreated on territory switch.
+/// The [`SharedDatabase`] Arc is shared with `TerritoryManager` so territory switches
+/// only need to swap the inner `Option` — no EditorService reconstruction required.
 pub struct EditorService {
-    db: DatabaseConnection,
+    db: SharedDatabase,
     histories: HashMap<MarkID, CommandHistory>,
 }
 
@@ -29,25 +34,41 @@ fn history_entry(
 }
 
 impl EditorService {
-    pub fn new(db: DatabaseConnection) -> Self {
+    pub fn new(db: SharedDatabase) -> Self {
         Self {
             db,
             histories: HashMap::new(),
         }
     }
 
+    /// Lock the shared Arc, clone the connection (cheap pool handle), release lock.
+    async fn db(&self) -> EditorResult<DatabaseConnection> {
+        self.db
+            .lock()
+            .await
+            .clone()
+            .ok_or(EditorError::NoActiveTerritory)
+    }
+
+    /// Clear all undo histories (e.g. on territory switch).
+    pub fn clear_histories(&mut self) {
+        self.histories.clear();
+    }
+
     // ----- Read operations -----
 
     /// Fetch a single mark by ID.
     pub async fn get_mark(&self, mark_id: MarkID) -> EditorResult<Mark> {
-        store::query::mark::get(&self.db, mark_id)
+        let db = self.db().await?;
+        store::query::mark::get(&db, mark_id)
             .await?
             .ok_or(EditorError::NotFound(mark_id.inner()))
     }
 
     /// List all landmark marks (equivalent to old `mark_list`).
     pub async fn mark_list(&self) -> EditorResult<Vec<Mark>> {
-        Ok(store::query::mark::list_landmarks(&self.db).await?)
+        let db = self.db().await?;
+        Ok(store::query::mark::list_landmarks(&db).await?)
     }
 
     /// Project a landmark into a flat block list.
@@ -56,33 +77,11 @@ impl EditorService {
         landmark_id: MarkID,
         max_depth: Option<u32>,
     ) -> EditorResult<Vec<RenderNode>> {
-        projection::project_landmark(&self.db, landmark_id, max_depth).await
+        let db = self.db().await?;
+        projection::project_landmark(&db, landmark_id, max_depth).await
     }
 
-    // ----- Ported write operations -----
-
-    pub async fn create_mark(
-        &mut self,
-        id: MarkID,
-        parent_id: MarkID,
-        content: Content,
-        created_at: &str,
-        after_id: Option<MarkID>,
-        landmark_id: MarkID,
-    ) -> EditorResult<CreateResult> {
-        let h = history_entry(&mut self.histories, landmark_id);
-        mutation::create_mark(
-            &self.db,
-            h,
-            id,
-            parent_id,
-            content,
-            created_at,
-            after_id,
-            landmark_id,
-        )
-        .await
-    }
+    // ----- Write operations -----
 
     pub async fn update_mark(
         &mut self,
@@ -90,8 +89,9 @@ impl EditorService {
         content: Content,
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::update_mark(&self.db, h, id, content, landmark_id).await
+        mutation::update_mark(&db, h, id, content, landmark_id).await
     }
 
     pub async fn delete_mark(
@@ -99,26 +99,37 @@ impl EditorService {
         id: MarkID,
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::delete_mark(&self.db, h, id, landmark_id).await
+        mutation::delete_mark(&db, h, id, landmark_id).await
     }
 
-    pub async fn move_mark(
+    pub async fn move_marks(
         &mut self,
         parent_id: MarkID,
-        child_id: MarkID,
+        child_ids: &[MarkID],
         after_id: Option<MarkID>,
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::move_mark(&self.db, h, parent_id, child_id, after_id, landmark_id).await
+        mutation::move_marks(&db, h, parent_id, child_ids, after_id, landmark_id).await
     }
 
     pub async fn update_mark_title(&self, id: MarkID, title: RichText) -> EditorResult<()> {
-        mutation::update_mark_title(&self.db, id, title).await
+        let db = self.db().await?;
+        mutation::update_mark_title(&db, id, title).await
     }
 
-    // ----- New structural operations -----
+    pub async fn update_mark_reading(
+        &self,
+        id: MarkID,
+        feature_id: domain::chart::FeatureID,
+        reading: domain::mark::Reading,
+    ) -> EditorResult<Mark> {
+        let db = self.db().await?;
+        mutation::update_mark_reading(&db, id, feature_id, reading).await
+    }
 
     pub async fn create_mark_after(
         &mut self,
@@ -127,8 +138,9 @@ impl EditorService {
         data: MarkData,
         landmark_id: MarkID,
     ) -> EditorResult<CreateResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::create_mark_after(&self.db, h, after_id, parent_id, data, landmark_id).await
+        mutation::create_mark_after(&db, h, after_id, parent_id, data, landmark_id).await
     }
 
     pub async fn update_mark_text(
@@ -137,8 +149,9 @@ impl EditorService {
         rich_text: RichText,
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::update_mark_text(&self.db, h, mark_id, rich_text, landmark_id).await
+        mutation::update_mark_text(&db, h, mark_id, rich_text, landmark_id).await
     }
 
     pub async fn split_mark(
@@ -147,8 +160,9 @@ impl EditorService {
         offset: u32,
         landmark_id: MarkID,
     ) -> EditorResult<SplitResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::split_mark(&self.db, h, mark_id, offset as usize, landmark_id).await
+        mutation::split_mark(&db, h, mark_id, offset as usize, landmark_id).await
     }
 
     pub async fn merge_marks(
@@ -157,8 +171,9 @@ impl EditorService {
         source_id: MarkID,
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::merge_marks(&self.db, h, target_id, source_id, landmark_id).await
+        mutation::merge_marks(&db, h, target_id, source_id, landmark_id).await
     }
 
     pub async fn delete_marks(
@@ -166,8 +181,9 @@ impl EditorService {
         mark_ids: &[MarkID],
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::delete_marks(&self.db, h, mark_ids, landmark_id).await
+        mutation::delete_marks(&db, h, mark_ids, landmark_id).await
     }
 
     pub async fn reparent_mark(
@@ -176,28 +192,18 @@ impl EditorService {
         new_parent_id: MarkID,
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::reparent_mark(&self.db, h, mark_id, new_parent_id, landmark_id).await
+        mutation::reparent_mark(&db, h, mark_id, new_parent_id, landmark_id).await
     }
-
-    pub async fn swap_mark_order(
-        &mut self,
-        mark_id_a: MarkID,
-        mark_id_b: MarkID,
-        landmark_id: MarkID,
-    ) -> EditorResult<MutationResult> {
-        let h = history_entry(&mut self.histories, landmark_id);
-        mutation::swap_mark_order(&self.db, h, mark_id_a, mark_id_b, landmark_id).await
-    }
-
-    // ----- Undo/Redo -----
 
     pub async fn undo(&mut self, landmark_id: MarkID) -> EditorResult<Option<UndoRedoResult>> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        let cursor = h.undo(&self.db).await?;
+        let cursor = h.undo(&db).await?;
         match cursor {
             Some(c) => {
-                let blocks = projection::project_landmark(&self.db, landmark_id, None).await?;
+                let blocks = projection::project_landmark(&db, landmark_id, None).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,
                     cursor: Some(c),
@@ -208,11 +214,12 @@ impl EditorService {
     }
 
     pub async fn redo(&mut self, landmark_id: MarkID) -> EditorResult<Option<UndoRedoResult>> {
+        let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        let cursor = h.redo(&self.db).await?;
+        let cursor = h.redo(&db).await?;
         match cursor {
             Some(c) => {
-                let blocks = projection::project_landmark(&self.db, landmark_id, None).await?;
+                let blocks = projection::project_landmark(&db, landmark_id, None).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,
                     cursor: Some(c),

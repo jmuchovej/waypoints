@@ -9,7 +9,7 @@ pub mod types;
 pub mod typst;
 
 pub use error::{EditorError, EditorResult};
-pub use service::EditorService;
+pub use service::{EditorService, SharedDatabase};
 pub use types::{
     CreateResult, CursorState, MutationResult, RenderNode, SplitResult, UndoRedoResult,
 };

@@ -12,10 +12,12 @@ pub enum EditorError {
     NotLandmark(Uuid),
     #[error("invalid content: {0}")]
     InvalidContent(String),
-    #[error("invalid timestamp: {0}")]
-    InvalidTimestamp(String),
+    #[error("validation failed: {0}")]
+    Validation(String),
     #[error("serialization error: {0}")]
     Serialization(String),
+    #[error("no active territory")]
+    NoActiveTerritory,
     #[error("store error: {0}")]
     Store(#[from] store::StoreError),
 }
