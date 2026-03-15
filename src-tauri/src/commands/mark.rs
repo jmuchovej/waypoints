@@ -4,6 +4,7 @@ use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
     QueryOrder,
 };
+use std::collections::{HashMap, HashSet};
 use store::entities::{ActiveMark, ActiveTerrain, MarkColumn, Marks, TerrainColumn, Terrains};
 use tauri::State;
 use uuid::Uuid;
@@ -24,7 +25,10 @@ pub async fn mark_list(mgr: State<'_, TerritoryManager>) -> MarkResult<Vec<Mark>
         .await?;
 
     tracing::info!(count = models.len(), "mark_list: found landmarks");
-    Ok(models.into_iter().map(Mark::from).collect())
+    models
+        .into_iter()
+        .map(|m| Mark::try_from(m).map_err(Into::into))
+        .collect::<MarkResult<_>>()
 }
 
 #[tauri::command]
@@ -41,7 +45,7 @@ pub async fn mark_get(mgr: State<'_, TerritoryManager>, id: Uuid) -> MarkResult<
         .await?
         .ok_or(MarkError::NotFound(id))?;
 
-    let mark = Mark::from(model);
+    let mark = Mark::try_from(model)?;
     tracing::info!(%id, is_landmark = mark.is_landmark(), "mark_get: root mark loaded");
 
     let expanded = expand_children(db, mark, 0).await?;
@@ -126,8 +130,7 @@ async fn expand_children(
     );
 
     if child_models.len() != dst_ids.len() {
-        let found_ids: std::collections::HashSet<Uuid> =
-            child_models.iter().map(|m| m.id).collect();
+        let found_ids: HashSet<Uuid> = child_models.iter().map(|m| m.id).collect();
         let missing: Vec<_> = dst_ids
             .iter()
             .filter(|id| !found_ids.contains(id))
@@ -140,13 +143,13 @@ async fn expand_children(
     }
 
     // Index child marks by ID for ordering
-    let child_map: std::collections::HashMap<Uuid, Mark> = child_models
+    let child_map: HashMap<Uuid, Mark> = child_models
         .into_iter()
         .map(|m| {
             let id = m.id;
-            (id, Mark::from(m))
+            Mark::try_from(m).map(|mark| (id, mark)).map_err(Into::into)
         })
-        .collect();
+        .collect::<MarkResult<_>>()?;
 
     // Expand in terrain order
     let mut children = Vec::with_capacity(dst_ids.len());
