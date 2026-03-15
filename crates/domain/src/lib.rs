@@ -39,10 +39,21 @@
 //! [F]: crate::chart::Feature
 //! [R]: crate::mark::Reading
 
-pub mod _shared;
+mod _shared;
 pub mod chart;
 pub mod mark;
 pub mod terrain;
 
 pub use _shared::fractional_index;
 pub use _shared::*;
+pub use chart::builders::{
+    ChartBuilder, DateBuilder, NumberBuilder, ReferenceBuilder, SelectBuilder,
+};
+pub use chart::{
+    Chart, ChartID, Date, DateGranularity, Feature, FeatureID, FeatureKind, GlyphID, Number,
+    Reference, Select, SelectGroup, SelectOption,
+};
+pub use mark::builders::MarkBuilder;
+pub use mark::{Mark, MarkID};
+pub use terrain::builders::TerrainBuilder;
+pub use terrain::{Terrain, TerrainKind};

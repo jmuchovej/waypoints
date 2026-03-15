@@ -1,4 +1,4 @@
-use super::{MarkID, reading_validators as validators};
+use super::{MarkID, RichText, reading_validators as validators};
 use crate::chart::{Feature, FeatureKind, GlyphID};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -10,9 +10,9 @@ use std::collections::HashMap;
 /// [F]: crate::chart::Feature
 /// [M:L]: crate::mark::Landmark
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
-#[serde(untagged)]
+#[serde(tag = "type", content = "value", rename_all = "kebab-case")]
 pub enum Reading {
-    Text(String),
+    Text(RichText),
     Number(f64),
     Bool(bool),
     /// Single date/datetime
@@ -23,6 +23,7 @@ pub enum Reading {
     MultiSelect(Vec<GlyphID>),
     GroupedSelect(HashMap<GlyphID, Vec<GlyphID>>),
     References(Vec<MarkID>),
+    #[serde(rename = "url")]
     URL(String),
     Email(String),
     Phone(String, String),

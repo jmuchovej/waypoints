@@ -10,8 +10,8 @@
 //! - `iconify:<set>:<name>` - Iconify icons (e.g., `iconify:mdi:home`)
 //! - `waypoints:<set>:<name>` - Custom Waypoints icons (future)
 //! - `system:emoji:<name>` - Platform emoji (e.g., `system:emoji:house`)
-//! - `local-image:<path>` - Local asset images (e.g., `local-image:assets/logo.png`)
-//! - `remote-image:<url>` - Remote images (e.g., `remote-image:https://...`)
+//! - `local:image:<path>` - Local asset images (e.g., `local:image:assets/logo.png`)
+//! - `remote:image:<url>` - Remote images (e.g., `remote:image:https://...`)
 //!
 //! # Examples
 //!
@@ -30,10 +30,10 @@
 //! assert_eq!(emoji.identifier, "system:emoji:house");
 //!
 //! let image = Icon::local_image("assets/logo.png");
-//! assert_eq!(image.identifier, "local-image:assets/logo.png");
+//! assert_eq!(image.identifier, "local:image:assets/logo.png");
 //!
 //! let remote = Icon::remote_image("https://example.com/icon.svg");
-//! assert_eq!(remote.identifier, "remote-image:https://example.com/icon.svg");
+//! assert_eq!(remote.identifier, "remote:image:https://example.com/icon.svg");
 //!
 //! // Parse from strings using FromStr
 //! let parsed: Icon = "iconify:mdi:home".parse().unwrap();
@@ -182,13 +182,13 @@ impl Icon {
     /// use waypoints_domain::Icon;
     ///
     /// let logo = Icon::local_image("assets/logo.png");
-    /// assert_eq!(logo.identifier, "local-image:assets/logo.png");
+    /// assert_eq!(logo.identifier, "local:image:assets/logo.png");
     /// ```
     pub fn local_image(path: &str) -> Self {
         Self {
             alt_text: format!("Image: {}", path.split('/').last().unwrap_or(path)).into(),
             colorable: false.into(),
-            ..Self::new(&format!("local-image:{}", path))
+            ..Self::new(&format!("local:image:{}", path))
         }
     }
 
@@ -200,13 +200,13 @@ impl Icon {
     /// use waypoints_domain::Icon;
     ///
     /// let remote = Icon::remote_image("https://example.com/icon.svg");
-    /// assert_eq!(remote.identifier, "remote-image:https://example.com/icon.svg");
+    /// assert_eq!(remote.identifier, "remote:image:https://example.com/icon.svg");
     /// ```
     pub fn remote_image(url: &str) -> Self {
         Self {
             alt_text: "Remote image".to_string().into(),
             colorable: false.into(),
-            ..Self::new(&format!("remote-image:{}", url))
+            ..Self::new(&format!("remote:image:{}", url))
         }
     }
 
@@ -242,10 +242,10 @@ impl Icon {
             ["system", "emoji", name] => Some(SystemEmoji {
                 name: name.to_string(),
             }),
-            ["local-image", path] => Some(LocalImage {
+            ["local", "image", path] => Some(LocalImage {
                 path: path.to_string(),
             }),
-            ["remote-image", url] => Some(RemoteImage {
+            ["remote", "image", url] => Some(RemoteImage {
                 url: url.to_string(),
             }),
             _ => None,
@@ -298,7 +298,7 @@ impl FromStr for Icon {
     ///
     /// // URLs
     /// let url_icon: Icon = "https://example.com/icon.png".parse().unwrap();
-    /// assert_eq!(url_icon.identifier, "remote-image:https://example.com/icon.png");
+    /// assert_eq!(url_icon.identifier, "remote:image:https://example.com/icon.png");
     ///
     /// // Plain emoji
     /// let emoji: Icon = "🏠".parse().unwrap();
@@ -313,8 +313,8 @@ impl FromStr for Icon {
         if s.starts_with("iconify:")
             || s.starts_with("waypoints:")
             || s.starts_with("system:")
-            || s.starts_with("local-image:")
-            || s.starts_with("remote-image:")
+            || s.starts_with("local:image:")
+            || s.starts_with("remote:image:")
         {
             return Ok(Icon::new(s));
         }
@@ -499,12 +499,12 @@ mod tests {
         assert_eq!(emoji.identifier, "system:emoji:house");
 
         let local = Icon::local_image("assets/logo.png");
-        assert_eq!(local.identifier, "local-image:assets/logo.png");
+        assert_eq!(local.identifier, "local:image:assets/logo.png");
 
         let remote = Icon::remote_image("https://example.com/icon.svg");
         assert_eq!(
             remote.identifier,
-            "remote-image:https://example.com/icon.svg"
+            "remote:image:https://example.com/icon.svg"
         );
     }
 

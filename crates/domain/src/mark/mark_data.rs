@@ -63,15 +63,12 @@ pub enum Content {
     Paragraph { rich_text: RichText },
 
     /// Level 1 Heading
-    #[serde(rename = "heading1")]
     Heading1 { rich_text: RichText },
 
     /// Level 2 Heading
-    #[serde(rename = "heading2")]
     Heading2 { rich_text: RichText },
 
     /// Level 3 Heading
-    #[serde(rename = "heading3")]
     Heading3 { rich_text: RichText },
 
     /// A quote
@@ -90,7 +87,6 @@ pub enum Content {
     },
 
     /// Code block with syntax highlighting
-    #[serde(rename = "code-block")]
     Code {
         language: String,
         lines: Vec<String>,
@@ -109,7 +105,6 @@ pub enum Content {
     },
 
     /// Typst/LaTeX content
-    #[serde(rename = "math-block")]
     Math {
         expression: String,
         engine: MathEngine,
@@ -177,9 +172,9 @@ impl Content {
             Content::ListItem { .. } => "list-item",
             Content::EnumItem { .. } => "enum-item",
             Content::Callout { .. } => "callout",
-            Content::Code { .. } => "code-block",
+            Content::Code { .. } => "code",
             Content::Table { .. } => "table",
-            Content::Math { .. } => "math-block",
+            Content::Math { .. } => "math",
             Content::Divider => "divider",
         }
     }
@@ -274,7 +269,7 @@ mod tests {
                 lines: vec!["fn main() {}".to_string()],
             }
             .type_name(),
-            "code-block"
+            "code"
         );
         assert_eq!(
             Content::Table {
@@ -338,7 +333,7 @@ mod tests {
             ],
         };
 
-        assert_eq!(content.type_name(), "code-block");
+        assert_eq!(content.type_name(), "code");
         if let Content::Code { language, lines } = content {
             assert_eq!(language, "rust");
             assert!(lines.join("\n").contains("fn main()"));
