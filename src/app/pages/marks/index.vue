@@ -8,7 +8,10 @@ import { iconName } from "~/utils/icon";
 const log = createLogger("marks");
 
 const landmarks = ref<Mark[]>([]);
+const charts = ref<Map<ChartID, Chart>>(new Map());
 const loading = ref(true);
+const newLandmarkOpen = ref(false);
+
 /** Fallback icon when neither the landmark nor its chart has one set. */
 const FALLBACK_ICON = "i-lucide-file-text";
 
@@ -17,10 +20,7 @@ async function load() {
 
   // Fetch marks and charts in parallel — the chart lookup feeds the icon
   // resolution path so we need both before rendering.
-  const [markResult, chartResult] = await Promise.all([
-    commands.markList(),
-    commands.chartList(),
-  ]);
+  const [markResult, chartResult] = await Promise.all([commands.markList(), commands.chartList()]);
 
   if (markResult.status === "ok") {
     landmarks.value = markResult.data;
@@ -86,6 +86,17 @@ async function onTitleUpdate(mark: Mark, richText: RichText) {
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+        <template #right>
+          <UTooltip text="New landmark" :kbds="['meta', 'N']">
+            <UButton
+              icon="i-lucide-plus"
+              label="New"
+              size="sm"
+              color="primary"
+              @click="newLandmarkOpen = true"
+            />
+          </UTooltip>
+        </template>
       </UDashboardNavbar>
     </template>
 
@@ -136,4 +147,6 @@ async function onTitleUpdate(mark: Mark, richText: RichText) {
       </nav>
     </template>
   </UDashboardPanel>
+
+  <NewLandmarkPalette v-model:open="newLandmarkOpen" />
 </template>

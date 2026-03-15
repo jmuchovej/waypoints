@@ -12,9 +12,7 @@ const props = defineProps<{
 <template>
   <div class="relative py-0.5 leading-snug flex">
     <span class="select-none text-dimmed min-w-[2ch] pe-1 text-end">
-      <template v-if="isContent(block.data, ContentType.EnumItem)"
-        >{{ enumIndex ?? 1 }}.</template
-      >
+      <template v-if="isContent(block.data, ContentType.EnumItem)">{{ enumIndex ?? 1 }}.</template>
       <template v-else>&bull;</template>
     </span>
     <RichTextEditor

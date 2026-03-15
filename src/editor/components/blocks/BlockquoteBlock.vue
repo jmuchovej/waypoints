@@ -27,9 +27,7 @@ const childBlocks = computed(() => {
     <div class="bg-accented w-1.5 rounded-xs" />
     <div class="italic flex-1">
       <Block v-for="child in childBlocks" :key="child.id" :block="child" />
-      <p v-if="childBlocks.length === 0" class="text-dimmed text-sm italic">
-        Empty quote
-      </p>
+      <p v-if="childBlocks.length === 0" class="text-dimmed text-sm italic">Empty quote</p>
     </div>
   </div>
 </template>

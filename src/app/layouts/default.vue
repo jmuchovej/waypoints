@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { today, getLocalTimeZone } from "@internationalized/date";
 import { ref } from "vue";
+import { listen } from "@tauri-apps/api/event";
 import type { NavigationMenuItem } from "@nuxt/ui";
 
 const route = useRoute();
@@ -49,6 +50,15 @@ const links = (state: "collapsed" | "expanded"): NavigationMenuItem[] => {
 };
 
 const open = ref(false);
+const newLandmarkOpen = ref(false);
+// Listen for File > New menu event from native menu (⌘N / Ctrl+N)
+let unlisten: (() => void) | undefined;
+onMounted(async () => {
+  unlisten = await listen("app:mark:new", () => {
+    newLandmarkOpen.value = true;
+  });
+});
+onUnmounted(() => unlisten?.());
 
 useHead({
   title: "Waypoints",
@@ -108,6 +118,7 @@ useHead({
       </UDashboardSidebar>
 
       <UDashboardSearch :groups="[]" />
+      <NewLandmarkPalette v-model:open="newLandmarkOpen" />
 
       <slot />
     </UDashboardGroup>

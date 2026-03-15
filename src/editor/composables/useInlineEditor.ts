@@ -1,5 +1,14 @@
 import type { RichText } from "@waypoints/domain";
-import { type Ref, type ShallowRef, inject, nextTick, onUnmounted, shallowReadonly, shallowRef, watch } from "vue";
+import {
+  type Ref,
+  type ShallowRef,
+  inject,
+  nextTick,
+  onUnmounted,
+  shallowReadonly,
+  shallowRef,
+  watch,
+} from "vue";
 import {
   createEditor as createBridgedEditor,
   mkDocument,

@@ -8,12 +8,8 @@ import TipTapPlaceholder from "@tiptap/extension-placeholder";
 import TipTapText from "@tiptap/extension-text";
 import type { EditorProps } from "@tiptap/pm/view";
 import type { RichText } from "@waypoints/domain";
-import {
-  CommandMenu, type CommandMenuDelegate
-} from "./extensions/command-menu";
-import {
-  MarkdownShortcuts, type BlockTypeDelegate
-} from "./extensions/markdown-shortcuts";
+import { CommandMenu, type CommandMenuDelegate } from "./extensions/command-menu";
+import { MarkdownShortcuts, type BlockTypeDelegate } from "./extensions/markdown-shortcuts";
 import {
   Bold,
   Code,

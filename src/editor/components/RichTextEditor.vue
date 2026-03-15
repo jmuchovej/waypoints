@@ -22,11 +22,7 @@ export interface RichTextEditorEmits {
 
 <script setup lang="ts">
 import { emojis } from "@tiptap/extension-emoji";
-import {
-  useInlineEditor,
-  BlockOrchestratorKey,
-  type OrchestratorContext,
-} from "../composables";
+import { useInlineEditor, BlockOrchestratorKey, type OrchestratorContext } from "../composables";
 import { inlineToolbarItems } from "../tiptap/toolbar-items";
 import { LazyUEditorToolbar, LazyUEditorEmojiMenu } from "#components";
 import TextSegment from "./TextSegment.vue";
@@ -106,9 +102,7 @@ onBeforeUnmount(() => {
 const toolbarItems = computed(() => {
   if (!props.exclude?.length) return [inlineToolbarItems];
   return [
-    inlineToolbarItems.filter(
-      (item) => !("mark" in item && props.exclude!.includes(item.mark)),
-    ),
+    inlineToolbarItems.filter((item) => !("mark" in item && props.exclude!.includes(item.mark))),
   ];
 });
 
@@ -147,11 +141,6 @@ function onMousedown(e: MouseEvent) {
       :update-delay="0"
       size="xs"
     />
-    <LazyUEditorEmojiMenu
-      v-if="editorRef"
-      :editor="editorRef"
-      :items="emojis"
-      :limit="50"
-    />
+    <LazyUEditorEmojiMenu v-if="editorRef" :editor="editorRef" :items="emojis" :limit="50" />
   </span>
 </template>

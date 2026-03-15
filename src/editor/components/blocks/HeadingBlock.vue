@@ -8,9 +8,5 @@ const props = defineProps<{
 </script>
 
 <template>
-  <RichTextEditor
-    :block-id="block.id"
-    :rich-text="block.data.rich_text"
-    placeholder="Heading"
-  />
+  <RichTextEditor :block-id="block.id" :rich-text="block.data.rich_text" placeholder="Heading" />
 </template>

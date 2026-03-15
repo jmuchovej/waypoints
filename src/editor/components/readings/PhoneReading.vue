@@ -22,9 +22,7 @@ const COUNTRY_CODE = "+1";
 const props = defineProps<PhoneReadingProps>();
 const emit = defineEmits<PhoneReadingEmits>();
 
-const localValue = ref<string>(
-  props.value?.type === "phone" ? props.value.value[1] : "",
-);
+const localValue = ref<string>(props.value?.type === "phone" ? props.value.value[1] : "");
 
 watch(
   () => props.value,

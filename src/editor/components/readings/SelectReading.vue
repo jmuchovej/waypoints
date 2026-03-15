@@ -152,9 +152,7 @@ const items = computed<InputMenuItem[]>(() => {
       result.push({ type: "label", label: group.name });
       for (const [optId, opt] of Object.entries(group.options ?? {})) {
         if (opt == null) continue;
-        result.push(
-          optionToItem(optId as GlyphID, opt as SelectOption, groupId as GlyphID),
-        );
+        result.push(optionToItem(optId as GlyphID, opt as SelectOption, groupId as GlyphID));
       }
       first = false;
     }
@@ -189,8 +187,7 @@ const selectedIds = computed<GlyphID[]>(() => {
   if (v) {
     if (v.type === "select") ids = [v.value];
     else if (v.type === "multi-select") ids = v.value;
-    else if (v.type === "grouped-select")
-      ids = Object.values(v.value).flat() as GlyphID[];
+    else if (v.type === "grouped-select") ids = Object.values(v.value).flat() as GlyphID[];
   }
   log.debug(`selectedIds (${props.feature.name})`, { rawValue: v, ids });
   return ids;
