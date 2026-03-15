@@ -22,7 +22,7 @@ pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                 println!("menu item {} not handled", other);
             }
         })
-        .build(app);
+        .build(app)?;
 
     Ok(())
 }
