@@ -36,16 +36,6 @@ impl MarkData {
     }
 }
 
-impl MarkData {
-    /// Walk all `RichText` fields and recompute their `plain_text`.
-    pub fn derive_plain_text(&mut self) {
-        match self {
-            MarkData::Content(c) => c.derive_plain_text(),
-            MarkData::Landmark(l) => l.title.derive_plain_text(),
-        }
-    }
-}
-
 impl Default for MarkData {
     fn default() -> Self {
         MarkData::Content(Content::default())
@@ -70,55 +60,37 @@ pub enum Size {
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Content {
     /// The base paragraph (the most common form of content)
-    Paragraph {
-        #[serde(flatten)]
-        rich_text: RichText,
-    },
+    Paragraph { rich_text: RichText },
 
     /// Level 1 Heading
-    Heading1 {
-        #[serde(flatten)]
-        rich_text: RichText,
-    },
+    #[serde(rename = "heading1")]
+    Heading1 { rich_text: RichText },
 
     /// Level 2 Heading
-    Heading2 {
-        #[serde(flatten)]
-        rich_text: RichText,
-    },
+    #[serde(rename = "heading2")]
+    Heading2 { rich_text: RichText },
 
     /// Level 3 Heading
-    Heading3 {
-        #[serde(flatten)]
-        rich_text: RichText,
-    },
+    #[serde(rename = "heading3")]
+    Heading3 { rich_text: RichText },
 
     /// A quote
-    Blockquote {
-        #[serde(flatten)]
-        rich_text: RichText,
-    },
+    Blockquote,
 
     /// An unordered list item
-    ListItem {
-        #[serde(flatten)]
-        rich_text: RichText,
-    },
+    ListItem { rich_text: RichText },
 
     /// An ordered list item
-    EnumItem {
-        #[serde(flatten)]
-        rich_text: RichText,
-    },
+    EnumItem { rich_text: RichText },
 
     /// Callout
     Callout {
         icon: String,
         background_color: Color,
-        items: Vec<Content>,
     },
 
     /// Code block with syntax highlighting
+    #[serde(rename = "code-block")]
     Code {
         language: String,
         lines: Vec<String>,
@@ -137,6 +109,7 @@ pub enum Content {
     },
 
     /// Typst/LaTeX content
+    #[serde(rename = "math-block")]
     Math {
         expression: String,
         engine: MathEngine,
@@ -164,28 +137,22 @@ pub enum MathEngine {
 }
 
 impl Content {
-    pub fn type_name(&self) -> &'static str {
+    /// Get a reference to the rich text field, if this variant has one.
+    pub fn rich_text(&self) -> Option<&RichText> {
         match self {
-            Content::Paragraph { .. } => "paragraph",
-            Content::Heading1 { .. } => "heading1",
-            Content::Heading2 { .. } => "heading2",
-            Content::Heading3 { .. } => "heading3",
-            Content::Blockquote { .. } => "blockquote",
-            Content::ListItem { .. } => "list-item",
-            Content::EnumItem { .. } => "enum-item",
-            Content::Callout { .. } => "callout",
-            Content::Code { .. } => "code",
-            Content::Table { .. } => "table",
-            Content::Math { engine, .. } => match engine {
-                MathEngine::Typst => "math-typst",
-                MathEngine::LaTeX => "math-latex",
-            },
-            Content::Divider => "divider",
+            Content::Paragraph { rich_text }
+            | Content::Heading1 { rich_text }
+            | Content::Heading2 { rich_text }
+            | Content::Heading3 { rich_text }
+            | Content::ListItem { rich_text }
+            | Content::EnumItem { rich_text } => Some(rich_text),
+            _ => None,
         }
     }
 
-    /// Recompute `plain_text` on every `RichText` field in this content block.
-    pub fn derive_plain_text(&mut self) {
+    /// Set the rich text field on variants that have one.
+    /// Returns `false` if the variant has no rich text field.
+    pub fn set_rich_text(&mut self, new_rt: RichText) -> bool {
         match self {
             Content::Paragraph { rich_text }
             | Content::Heading1 { rich_text }
@@ -193,21 +160,27 @@ impl Content {
             | Content::Heading3 { rich_text }
             | Content::ListItem { rich_text }
             | Content::EnumItem { rich_text } => {
-                rich_text.derive_plain_text();
+                *rich_text = new_rt;
+                true
             }
-            Content::Table { cells, .. } => {
-                for row in cells {
-                    for cell in row {
-                        cell.derive_plain_text();
-                    }
-                }
-            }
-            Content::Blockquote { items, .. } | Content::Callout { items, .. } => {
-                for item in items {
-                    item.derive_plain_text();
-                }
-            }
-            Content::Code { .. } | Content::Math { .. } | Content::Divider => {}
+            _ => false,
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Content::Paragraph { .. } => "paragraph",
+            Content::Heading1 { .. } => "heading1",
+            Content::Heading2 { .. } => "heading2",
+            Content::Heading3 { .. } => "heading3",
+            Content::Blockquote => "blockquote",
+            Content::ListItem { .. } => "list-item",
+            Content::EnumItem { .. } => "enum-item",
+            Content::Callout { .. } => "callout",
+            Content::Code { .. } => "code-block",
+            Content::Table { .. } => "table",
+            Content::Math { .. } => "math-block",
+            Content::Divider => "divider",
         }
     }
 }
@@ -301,7 +274,7 @@ mod tests {
                 lines: vec!["fn main() {}".to_string()],
             }
             .type_name(),
-            "code"
+            "code-block"
         );
         assert_eq!(
             Content::Table {
@@ -323,7 +296,7 @@ mod tests {
                 engine: MathEngine::Typst,
             }
             .type_name(),
-            "math-typst"
+            "math-block"
         );
         assert_eq!(Content::Divider.type_name(), "divider");
     }
@@ -331,29 +304,26 @@ mod tests {
     #[test]
     fn test_paragraph_content_creation() {
         let content = Content::Paragraph {
-            rich_text: RichText {
-                plain_text: "Hello, world!".to_string(),
-                segments: vec![
-                    TextSegment {
-                        text: "Hello".to_string(),
-                        marks: vec![InlineMark {
-                            kind: TextMarkKind::Bold,
-                            data: None,
-                        }],
-                    },
-                    TextSegment {
-                        text: ", world!".to_string(),
-                        marks: vec![],
-                    },
-                ],
-            },
+            rich_text: RichText::new(vec![
+                TextSegment {
+                    text: "Hello".to_string(),
+                    marks: vec![InlineMark {
+                        kind: TextMarkKind::Bold,
+                        data: None,
+                    }],
+                },
+                TextSegment {
+                    text: ", world!".to_string(),
+                    marks: vec![],
+                },
+            ]),
         };
 
         assert_eq!(content.type_name(), "paragraph");
         if let Content::Paragraph { rich_text } = content {
-            assert_eq!(rich_text.plain_text, "Hello, world!");
-            assert_eq!(rich_text.segments.len(), 2);
-            assert_eq!(rich_text.segments[0].marks[0].kind, TextMarkKind::Bold);
+            assert_eq!(rich_text.plain_text(), "Hello, world!");
+            assert_eq!(rich_text.segments().len(), 2);
+            assert_eq!(rich_text.segments()[0].marks[0].kind, TextMarkKind::Bold);
         }
     }
 
@@ -368,7 +338,7 @@ mod tests {
             ],
         };
 
-        assert_eq!(content.type_name(), "code");
+        assert_eq!(content.type_name(), "code-block");
         if let Content::Code { language, lines } = content {
             assert_eq!(language, "rust");
             assert!(lines.join("\n").contains("fn main()"));
@@ -411,8 +381,8 @@ mod tests {
         {
             assert_eq!(cells.len(), 3); // 3 rows
             assert_eq!(cells[0].len(), 3); // 3 columns in first row
-            assert_eq!(cells[0][0].plain_text, "Name");
-            assert_eq!(cells[1][0].plain_text, "Alice");
+            assert_eq!(cells[0][0].plain_text(), "Name");
+            assert_eq!(cells[1][0].plain_text(), "Alice");
             assert_eq!(col_header, Some(true));
         }
     }
@@ -429,8 +399,8 @@ mod tests {
             engine: MathEngine::LaTeX,
         };
 
-        assert_eq!(typst_math.type_name(), "math-typst");
-        assert_eq!(latex_math.type_name(), "math-latex");
+        assert_eq!(typst_math.type_name(), "math-block");
+        assert_eq!(latex_math.type_name(), "math-block");
 
         if let Content::Math { expression, engine } = typst_math {
             assert_eq!(expression, "x^2 + y^2 = z^2");
@@ -459,28 +429,83 @@ mod tests {
     }
 
     #[test]
+    fn test_content_type_name_matches_serde_tag() {
+        let variants: Vec<Content> = vec![
+            Content::Paragraph {
+                rich_text: RichText::default(),
+            },
+            Content::Heading1 {
+                rich_text: RichText::default(),
+            },
+            Content::Heading2 {
+                rich_text: RichText::default(),
+            },
+            Content::Heading3 {
+                rich_text: RichText::default(),
+            },
+            Content::Blockquote,
+            Content::ListItem {
+                rich_text: RichText::default(),
+            },
+            Content::EnumItem {
+                rich_text: RichText::default(),
+            },
+            Content::Callout {
+                icon: String::new(),
+                background_color: Color::default(),
+            },
+            Content::Code {
+                language: String::new(),
+                lines: vec![],
+            },
+            Content::Table {
+                cells: vec![],
+                col_size: None,
+                row_size: None,
+                col_header: None,
+                row_header: None,
+                fill_width: None,
+                col_colors: None,
+                row_colors: None,
+            },
+            Content::Math {
+                expression: String::new(),
+                engine: MathEngine::default(),
+            },
+            Content::Divider,
+        ];
+
+        for content in variants {
+            let json = serde_json::to_value(&content).unwrap();
+            assert_eq!(
+                json["type"].as_str().unwrap(),
+                content.type_name(),
+                "type_name() drifted from serde tag for {:?}",
+                content.type_name(),
+            );
+        }
+    }
+
+    #[test]
     fn test_content_serialization() {
         let content = Content::Paragraph {
-            rich_text: RichText {
-                plain_text: "Hello, world!".to_string(),
-                segments: vec![
-                    TextSegment {
-                        text: "Hello, ".to_string(),
-                        marks: vec![],
-                    },
-                    TextSegment {
-                        text: "world".to_string(),
-                        marks: vec![InlineMark {
-                            kind: TextMarkKind::Bold,
-                            data: None,
-                        }],
-                    },
-                    TextSegment {
-                        text: "!".to_string(),
-                        marks: vec![],
-                    },
-                ],
-            },
+            rich_text: RichText::new(vec![
+                TextSegment {
+                    text: "Hello, ".to_string(),
+                    marks: vec![],
+                },
+                TextSegment {
+                    text: "world".to_string(),
+                    marks: vec![InlineMark {
+                        kind: TextMarkKind::Bold,
+                        data: None,
+                    }],
+                },
+                TextSegment {
+                    text: "!".to_string(),
+                    marks: vec![],
+                },
+            ]),
         };
 
         let json = serde_json::to_string(&content).unwrap();
