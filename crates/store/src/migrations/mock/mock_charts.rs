@@ -9,11 +9,11 @@ use sea_orm_migration::prelude::*;
 use std::collections::HashMap;
 use waypoints_domain::chart::{Chart, ChartID};
 
-use crate::migrations::utils::MigrationResult;
+use crate::error::StoreResult;
 
 pub type ChartIDMap = HashMap<String, ChartID>;
 
-pub(crate) async fn seed_charts(manager: &SchemaManager<'_>) -> MigrationResult<ChartIDMap> {
+pub(crate) async fn seed_charts(manager: &SchemaManager<'_>) -> StoreResult<ChartIDMap> {
     let db = manager.get_connection();
 
     let mut chartmap = ChartIDMap::new();

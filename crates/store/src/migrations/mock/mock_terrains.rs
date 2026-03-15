@@ -1,6 +1,6 @@
 use super::{ChartIDMap, MarkIDMap};
 use crate::entities::{ActiveTerrain, Terrains};
-use crate::migrations::utils::MigrationResult;
+use crate::error::StoreResult;
 use sea_orm::{ActiveModelTrait, EntityTrait};
 use sea_orm_migration::prelude::*;
 use std::collections::HashMap;
@@ -33,7 +33,7 @@ pub(crate) async fn seed_terrains(
     manager: &SchemaManager<'_>,
     mark_ids: &MarkIDMap,
     _chart_ids: &ChartIDMap,
-) -> MigrationResult<TerrainIDMap> {
+) -> StoreResult<TerrainIDMap> {
     let db = manager.get_connection();
     let mut terrain_map = TerrainIDMap::new();
 
@@ -115,7 +115,7 @@ async fn insert_terrain(
     terrain_map: &mut TerrainIDMap,
     page_key: &str,
     child_key: &str,
-) -> MigrationResult<()> {
+) -> StoreResult<()> {
     let terrain = Terrain::builder()
         .with_src_id(src_id)
         .with_dst_id(dst_id)

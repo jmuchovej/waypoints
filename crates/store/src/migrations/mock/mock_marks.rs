@@ -1,7 +1,7 @@
 use super::ChartIDMap;
 use super::markdown::parse_markdown;
 use crate::entities::{ActiveMark, MarkModel, Marks};
-use crate::migrations::utils::{MigrationError, MigrationResult};
+use crate::error::{StoreError, StoreResult};
 use sea_orm::{ActiveModelTrait, ActiveValue::Unchanged, EntityTrait, TryIntoModel};
 use sea_orm_migration::prelude::*;
 use std::collections::HashMap;
@@ -73,7 +73,7 @@ fn page_defs() -> Vec<PageDef> {
 pub(crate) async fn seed_marks(
     manager: &SchemaManager<'_>,
     chart_ids: &ChartIDMap,
-) -> MigrationResult<MarkIDMap> {
+) -> StoreResult<MarkIDMap> {
     let page_chart_id = try_get_chart(chart_ids, "Page")?;
     let db = manager.get_connection();
     let mut markmap = MarkIDMap::new();
@@ -119,10 +119,10 @@ async fn insert_mark(
     markmap: &mut MarkIDMap,
     key: &str,
     mark: Mark,
-) -> MigrationResult<MarkID> {
+) -> StoreResult<MarkID> {
     let id = mark.id;
     let exists = Marks::find_by_id(id.inner()).one(db).await?;
-    let mut active: ActiveMark = mark.into();
+    let mut active: ActiveMark = mark.try_into()?;
 
     let model: MarkModel = if exists.is_some() {
         active.id = Unchanged(id.inner());
@@ -137,9 +137,9 @@ async fn insert_mark(
     Ok(mark_id)
 }
 
-fn try_get_chart(chart_ids: &ChartIDMap, key: &str) -> MigrationResult<ChartID> {
+fn try_get_chart(chart_ids: &ChartIDMap, key: &str) -> StoreResult<ChartID> {
     chart_ids
         .get(key)
-        .ok_or(MigrationError::ChartNotFound(key.into()))
         .cloned()
+        .ok_or_else(|| StoreError::Custom(format!("seed chart not found: {key}")))
 }

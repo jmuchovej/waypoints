@@ -1,5 +1,9 @@
 use thiserror::Error;
+use waypoints_domain::DomainError;
+use waypoints_domain::chart::{ChartID, FeatureID, GlyphID};
 use waypoints_domain::mark::MarkID;
+
+use crate::entities::MarkModel;
 
 pub type StoreResult<T> = ::std::result::Result<T, StoreError>;
 
@@ -9,10 +13,22 @@ pub enum StoreError {
     Database(#[from] sea_orm::DbErr),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("domain error: {0}")]
+    Domain(#[from] DomainError),
+    #[error("Mark not found: {0}")]
+    MarkNotFound(MarkID),
+    #[error("Chart not found: {0}")]
+    ChartNotFound(ChartID),
+    #[error("Glyph not found: {0}")]
+    GlyphNotFound(GlyphID),
+    #[error("Feature not found: {0}")]
+    FeatureNotFound(FeatureID),
     #[error("serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
     #[error("unknown mark: {0}, [type={1}]")]
     UnknownMark(MarkID, String),
+    #[error("{0}")]
+    Custom(String),
 }
 
 impl From<StoreError> for sea_orm::DbErr {
