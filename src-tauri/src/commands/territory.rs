@@ -7,13 +7,12 @@ use uuid::Uuid;
 use crate::settings;
 use crate::territory::{
     Territory, TerritoryError, TerritoryKind, TerritoryManager, TerritoryRegistry, TerritoryResult,
-    db,
 };
 
 fn load_registry(app: &AppHandle) -> TerritoryResult<TerritoryRegistry> {
     let store = app
         .store(settings::SETTINGS_FILE)
-        .map_err(|e| TerritoryError::Store(e.to_string()))?;
+        .map_err(|e| TerritoryError::Config(e.to_string()))?;
 
     let value = store
         .get(settings::KEY_TERRITORIES)
@@ -21,19 +20,20 @@ fn load_registry(app: &AppHandle) -> TerritoryResult<TerritoryRegistry> {
 
     store.close_resource();
 
-    serde_json::from_value(value).map_err(|e| TerritoryError::Store(e.to_string()))
+    serde_json::from_value(value).map_err(|e| TerritoryError::Config(e.to_string()))
 }
 
 fn save_registry(app: &AppHandle, registry: &TerritoryRegistry) -> TerritoryResult<()> {
     let store = app
         .store(settings::SETTINGS_FILE)
-        .map_err(|e| TerritoryError::Store(e.to_string()))?;
+        .map_err(|e| TerritoryError::Config(e.to_string()))?;
 
-    let value = serde_json::to_value(registry).map_err(|e| TerritoryError::Store(e.to_string()))?;
+    let value =
+        serde_json::to_value(registry).map_err(|e| TerritoryError::Config(e.to_string()))?;
     store.set(settings::KEY_TERRITORIES, value);
     store
         .save()
-        .map_err(|e| TerritoryError::Store(e.to_string()))?;
+        .map_err(|e| TerritoryError::Config(e.to_string()))?;
     store.close_resource();
 
     Ok(())
@@ -71,8 +71,9 @@ pub async fn territory_create(
 ) -> TerritoryResult<Territory> {
     let id = Uuid::new_v4();
     let workspace_dir = mgr.managed_path(id);
+    let db_path = workspace_dir.join("waypoints.db");
 
-    let db = db::open(&workspace_dir).await?;
+    let db = store::open(&db_path).await?;
 
     let entry = Territory {
         id,
@@ -92,9 +93,9 @@ pub async fn territory_create(
     {
         let mut active_db = mgr.active_db.lock().await;
         if let Some(old_db) = active_db.take() {
-            db::checkpoint(&old_db).await;
+            store::checkpoint(&old_db).await;
         }
-        *active_db = Some(db);
+        *active_db = Some(db.clone());
     }
     *mgr.active_id.lock().await = Some(id);
 
@@ -151,13 +152,14 @@ pub async fn territory_open(
             entry
         }
     } else {
-        return Err(TerritoryError::Store(
+        return Err(TerritoryError::Config(
             "must provide either id or path".to_string(),
         ));
     };
 
     let workspace_dir = mgr.entry_path(&entry);
-    let db = db::open(&workspace_dir).await?;
+    let db_path = workspace_dir.join("waypoints.db");
+    let db = store::open(&db_path).await?;
 
     registry.last_active_id = Some(entry.id);
     save_registry(&app, &registry)?;
@@ -166,9 +168,9 @@ pub async fn territory_open(
     {
         let mut active_db = mgr.active_db.lock().await;
         if let Some(old_db) = active_db.take() {
-            db::checkpoint(&old_db).await;
+            store::checkpoint(&old_db).await;
         }
-        *active_db = Some(db);
+        *active_db = Some(db.clone());
     }
     *mgr.active_id.lock().await = Some(entry.id);
 
@@ -187,7 +189,7 @@ pub async fn territory_close(
 ) -> TerritoryResult<()> {
     let mut active_db = mgr.active_db.lock().await;
     if let Some(db) = active_db.take() {
-        db::checkpoint(&db).await;
+        store::checkpoint(&db).await;
     }
     *mgr.active_id.lock().await = None;
 
@@ -229,7 +231,7 @@ pub async fn territory_remove(
         if current_id == Some(id) {
             let mut active_db = mgr.active_db.lock().await;
             if let Some(db) = active_db.take() {
-                db::checkpoint(&db).await;
+                store::checkpoint(&db).await;
             }
             *mgr.active_id.lock().await = None;
 

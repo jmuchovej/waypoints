@@ -3,7 +3,7 @@ use tauri_plugin_store::StoreExt;
 use tokio::sync::Mutex;
 
 use crate::settings;
-use crate::territory::{TerritoryManager, TerritoryRegistry, db};
+use crate::territory::{TerritoryManager, TerritoryRegistry};
 
 pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let data_dir = app.path().app_data_dir()?;
@@ -35,8 +35,9 @@ pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             let workspace_dir = manager.entry_path(entry);
             tracing::info!(id = %last_id, path = %workspace_dir.display(), "resuming territory");
 
+            let db_path = workspace_dir.join("waypoints.db");
             tracing::debug!("block_on: opening database");
-            match tauri::async_runtime::block_on(db::open(&workspace_dir)) {
+            match tauri::async_runtime::block_on(store::open(&db_path)) {
                 Ok(db) => {
                     tracing::debug!("block_on: db opened, acquiring locks");
                     let active_db = manager.active_db.clone();

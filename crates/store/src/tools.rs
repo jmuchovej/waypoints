@@ -1,17 +1,18 @@
 use std::path::Path;
 
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
-use waypoints_migrations::{Migrator, MigratorTrait};
 
-use super::TerritoryResult;
+use crate::error::StoreResult;
+use crate::migrations::{Migrator, MigratorTrait};
 
-pub async fn open(workspace_dir: &Path) -> TerritoryResult<DatabaseConnection> {
-    tracing::debug!(path = %workspace_dir.display(), "ensuring workspace directory exists");
-    std::fs::create_dir_all(workspace_dir)?;
+pub async fn open(path: &Path) -> StoreResult<DatabaseConnection> {
+    if let Some(parent) = path.parent() {
+        tracing::debug!(path = %parent.display(), "ensuring parent directory exists");
+        std::fs::create_dir_all(parent)?;
+    }
 
-    let db_path = workspace_dir.join("waypoints.db");
-    let db_url = format!("sqlite:{}?mode=rwc", db_path.display());
-    let db_exists = db_path.exists();
+    let db_url = format!("sqlite:{}?mode=rwc", path.display());
+    let db_exists = path.exists();
 
     tracing::info!(url = %db_url, exists = db_exists, "connecting to database");
     let db = Database::connect(&db_url).await?;

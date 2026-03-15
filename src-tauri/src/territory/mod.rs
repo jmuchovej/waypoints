@@ -1,4 +1,3 @@
-pub(crate) mod db;
 mod error;
 mod manager;
 mod registry;

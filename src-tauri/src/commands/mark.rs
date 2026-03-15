@@ -6,7 +6,7 @@ use tauri::State;
 use uuid::Uuid;
 use waypoints_domain::fractional_index;
 use waypoints_domain::mark::{Content, Mark, MarkData, RichText};
-use waypoints_entities::prelude::{
+use store::entities::{
     ActiveMark, ActiveTerrain, MarkColumn, Marks, TerrainColumn, Terrains,
 };
 

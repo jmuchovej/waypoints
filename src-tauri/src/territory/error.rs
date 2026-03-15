@@ -12,7 +12,9 @@ pub enum TerritoryError {
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("store error: {0}")]
-    Store(String),
+    Store(#[from] store::StoreError),
+    #[error("config error: {0}")]
+    Config(String),
 }
 
 impl Serialize for TerritoryError {

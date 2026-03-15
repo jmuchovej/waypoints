@@ -35,8 +35,7 @@ specta.workspace = true
 specta-typescript.workspace = true
 tauri-specta.workspace = true
 waypoints-domain.workspace = true
-waypoints-entities.workspace = true
-waypoints-migrations.workspace = true
+store.workspace = true
 wry.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -45,7 +44,7 @@ objc2-app-kit.workspace = true
 [features]
 default = ["desktop"]
 desktop = ["tauri/tray-icon"]
-development = ["waypoints-migrations/mock"]
-alpha = []
-beta = []
-release = []
+development = ["store/development"]
+alpha = ["store/alpha"]
+beta = ["store/beta"]
+release = ["store/release"]
