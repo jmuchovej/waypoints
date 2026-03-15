@@ -1,40 +1,14 @@
-<script setup lang="ts">
+<script lang="ts">
 import type { TextSegment } from "@waypoints/domain";
-import InlineBold from "./inline/InlineBold.vue";
-import InlineItalic from "./inline/InlineItalic.vue";
-import InlineUnderline from "./inline/InlineUnderline.vue";
-import InlineStrikethrough from "./inline/InlineStrikethrough.vue";
-import InlineSuperscript from "./inline/InlineSuperscript.vue";
-import InlineSubscript from "./inline/InlineSubscript.vue";
-import InlineCode from "./inline/InlineCode.vue";
-import InlineHighlight from "./inline/InlineHighlight.vue";
-import InlineLink from "./inline/InlineLink.vue";
-import InlineMention from "./inline/InlineMention.vue";
-import InlineSpoiler from "./inline/InlineSpoiler.vue";
-import InlineColor from "./inline/InlineColor.vue";
-import InlineMath from "./inline/InlineMath.vue";
-import InlineComment from "./inline/InlineComment.vue";
 
-const props = defineProps<{
+export interface TextSegmentProps {
   segment: TextSegment;
-}>();
+}
+</script>
+<script setup lang="ts">
+import { registry } from "./inline";
 
-const markComponentMap: Record<string, Component> = {
-  bold: InlineBold,
-  italic: InlineItalic,
-  underline: InlineUnderline,
-  strikethrough: InlineStrikethrough,
-  superscript: InlineSuperscript,
-  subscript: InlineSubscript,
-  code: InlineCode,
-  highlight: InlineHighlight,
-  link: InlineLink,
-  mention: InlineMention,
-  spoiler: InlineSpoiler,
-  color: InlineColor,
-  math: InlineMath,
-  comment: InlineComment,
-};
+const props = defineProps<TextSegmentProps>();
 
 /**
  * Build a nested VNode tree: outermost mark wraps the next, etc.
@@ -49,7 +23,7 @@ function renderSegment() {
   // Build from innermost to outermost
   let inner: any = props.segment.text;
   for (const mark of [...marks].reverse()) {
-    const Comp = markComponentMap[mark.kind];
+    const Comp = registry(mark);
     if (Comp) {
       const captured = inner;
       inner = h(Comp, { data: mark.data }, () => captured);
