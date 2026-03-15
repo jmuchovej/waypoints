@@ -1,11 +1,19 @@
 use tauri::{App, Builder as TauriBuilder, Wry};
 use tauri_specta::Builder as SpectaBuilder;
 
+mod settings;
+pub mod territory;
+
 mod builders {
     pub(crate) mod specta;
     pub(crate) mod store;
+    pub(crate) mod territory;
     #[cfg(desktop)]
     pub(crate) mod tray;
+}
+
+mod commands {
+    pub mod territory;
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -41,6 +49,10 @@ pub fn run() {
             tracing::info!("tauri setup: initializing store");
             builders::store::setup(app)?;
             tracing::info!("tauri setup: store ready");
+
+            tracing::info!("tauri setup: initializing territory manager");
+            builders::territory::setup(app)?;
+            tracing::info!("tauri setup: territory manager ready");
 
             #[cfg(desktop)]
             {

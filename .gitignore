@@ -6,6 +6,7 @@ local.properties
 .mcp.json
 
 _research/
+.secrets/
 .scratch/
 data/
 

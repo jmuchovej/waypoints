@@ -1,0 +1,84 @@
+use tauri::{App, Manager};
+use tauri_plugin_store::StoreExt;
+use tokio::sync::Mutex;
+
+use crate::settings;
+use crate::territory::{TerritoryManager, TerritoryRegistry, db};
+
+pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
+    let data_dir = app.path().app_data_dir()?;
+    let managed_root = data_dir.join("territories");
+    tracing::debug!(path = %managed_root.display(), "territory managed root");
+
+    let manager = TerritoryManager::new(managed_root);
+
+    // Try to resume the last active workspace
+    tracing::debug!("opening settings store");
+    let store = app.store(settings::SETTINGS_FILE)?;
+    tracing::debug!("reading territory registry from store");
+    let registry: TerritoryRegistry = store
+        .get(settings::KEY_TERRITORIES)
+        .and_then(|v| serde_json::from_value(v).ok())
+        .unwrap_or_default();
+    store.close_resource();
+
+    tracing::debug!(
+        count = registry.registry.len(),
+        last_active = ?registry.last_active_id,
+        "loaded territory registry"
+    );
+
+    let mut editor_db: Option<sea_orm::DatabaseConnection> = None;
+
+    if let Some(last_id) = registry.last_active_id {
+        if let Some(entry) = registry.registry.iter().find(|e| e.id == last_id) {
+            let workspace_dir = manager.entry_path(entry);
+            tracing::info!(id = %last_id, path = %workspace_dir.display(), "resuming territory");
+
+            tracing::debug!("block_on: opening database");
+            match tauri::async_runtime::block_on(db::open(&workspace_dir)) {
+                Ok(db) => {
+                    tracing::debug!("block_on: db opened, acquiring locks");
+                    let active_db = manager.active_db.clone();
+                    let active_id = manager.active_id.clone();
+                    editor_db = Some(db.clone());
+                    tauri::async_runtime::block_on(async {
+                        *active_db.lock().await = Some(db);
+                        *active_id.lock().await = Some(last_id);
+                    });
+                    tracing::info!("resumed territory {last_id}");
+                }
+                Err(e) => {
+                    tracing::warn!("failed to resume territory {last_id}: {e}");
+                }
+            }
+        } else {
+            tracing::warn!(id = %last_id, "last_active_id not found in registry, skipping resume");
+        }
+    } else {
+        tracing::debug!("no last_active_id, skipping territory resume");
+    }
+
+    app.manage(manager);
+    tracing::debug!("territory manager registered in app state");
+
+    // Set up EditorService with the active DB (or a placeholder that will be replaced)
+    if let Some(db) = editor_db {
+        let editor = editor::EditorService::new(db);
+        app.manage(Mutex::new(editor));
+        tracing::debug!("editor service registered in app state");
+    } else {
+        // No active territory yet — create a dummy connection that will be replaced
+        // when a territory is opened. Using an in-memory SQLite as placeholder.
+        let placeholder_db = tauri::async_runtime::block_on(async {
+            sea_orm::Database::connect("sqlite::memory:")
+                .await
+                .expect("failed to create placeholder DB")
+        });
+        let editor = editor::EditorService::new(placeholder_db);
+        app.manage(Mutex::new(editor));
+        tracing::debug!("editor service registered with placeholder DB");
+    }
+
+    Ok(())
+}
