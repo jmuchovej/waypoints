@@ -1,4 +1,5 @@
 import process from "node:process";
+import { defineNuxtConfig } from "nuxt/config";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -7,7 +8,6 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-03-05",
 
   modules: [
-    "@nuxt/eslint",
     "@nuxt/ui",
     "@nuxt/hints",
     "@nuxt/image",
@@ -98,14 +98,10 @@ export default defineNuxtConfig({
     },
   },
 
-  eslint: {
-    config: {
-      standalone: false,
-      stylistic: {
-        commaDangle: "always",
-        braceStyle: "1tbs",
-      },
-    },
+  ui: {
+    fonts: true,
+    mdc: true,
+    content: true,
   },
 
   // https://nuxt.com/docs/4.x/guide/going-further/experimental-features
