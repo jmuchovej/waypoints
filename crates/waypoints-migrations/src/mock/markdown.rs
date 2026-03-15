@@ -1,16 +1,40 @@
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use waypoints_domain::mark::{Content, InlineMark, RichText, TextMarkKind, TextSegment};
 
-/// Parse a markdown string into a flat list of domain `Content` blocks.
+/// A parsed block with optional nested children (for compound blocks like blockquote).
+#[derive(Debug, Clone)]
+pub struct ParsedBlock {
+    pub content: Content,
+    /// Children that should be terrain-linked under this block (e.g. blockquote paragraphs).
+    pub children: Vec<Content>,
+}
+
+impl ParsedBlock {
+    fn leaf(content: Content) -> Self {
+        Self {
+            content,
+            children: Vec::new(),
+        }
+    }
+
+    fn compound(content: Content, children: Vec<Content>) -> Self {
+        Self { content, children }
+    }
+}
+
+/// Parse a markdown string into a list of `ParsedBlock`s.
+///
+/// Compound blocks (e.g., blockquote) carry their children in `ParsedBlock::children`
+/// so the seeder can create proper terrain edges.
 ///
 /// Uses `pulldown-cmark` for robust CommonMark parsing, then maps the AST
 /// events into our domain types. Inline formatting (bold, italic,
 /// strikethrough, code, links) is captured as segment-based marks.
-pub fn parse_markdown(input: &str) -> Vec<Content> {
+pub fn parse_markdown(input: &str) -> Vec<ParsedBlock> {
     let opts = Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TABLES;
     let parser = Parser::new_ext(input, opts);
 
-    let mut blocks = Vec::new();
+    let mut blocks: Vec<ParsedBlock> = Vec::new();
     let mut ctx = BlockCtx::None;
 
     // Inline accumulator — segment-based
@@ -24,6 +48,9 @@ pub fn parse_markdown(input: &str) -> Vec<Content> {
 
     // List state
     let mut list_ordered = false;
+
+    // Blockquote accumulator — collects inner Content items
+    let mut bq_items: Vec<Content> = Vec::new();
 
     /// Flush accumulated text into a segment with the current active marks.
     fn flush_text(
@@ -71,6 +98,7 @@ pub fn parse_markdown(input: &str) -> Vec<Content> {
             }
             Event::Start(Tag::BlockQuote(_)) => {
                 ctx = BlockCtx::Blockquote;
+                bq_items.clear();
             }
             Event::Start(Tag::List(start)) => {
                 list_ordered = start.is_some();
@@ -179,36 +207,42 @@ pub fn parse_markdown(input: &str) -> Vec<Content> {
             Event::End(TagEnd::Heading(level)) => {
                 flush_text(&mut current_text, &active_marks, &mut segments);
                 let rt = take_rich_text(&mut segments);
-                blocks.push(match level {
+                blocks.push(ParsedBlock::leaf(match level {
                     HeadingLevel::H1 => Content::Heading1 { rich_text: rt },
                     HeadingLevel::H2 => Content::Heading2 { rich_text: rt },
                     _ => Content::Heading3 { rich_text: rt },
-                });
+                }));
                 ctx = BlockCtx::None;
             }
             Event::End(TagEnd::Paragraph) => {
                 flush_text(&mut current_text, &active_marks, &mut segments);
                 let rt = take_rich_text(&mut segments);
-                match ctx {
-                    BlockCtx::Blockquote => {
-                        blocks.push(Content::Blockquote { rich_text: rt });
-                        // Don't reset ctx yet — BlockQuote end will do it
-                    }
-                    BlockCtx::ListItem { ordered } => {
-                        if ordered {
-                            blocks.push(Content::EnumItem { rich_text: rt });
-                        } else {
-                            blocks.push(Content::ListItem { rich_text: rt });
+                if rt.plain_text.is_empty() {
+                    // Skip empty paragraphs regardless of context
+                } else {
+                    match ctx {
+                        BlockCtx::Blockquote => {
+                            bq_items.push(Content::Paragraph { rich_text: rt });
+                            // Don't reset ctx yet — BlockQuote end will do it
                         }
-                    }
-                    _ => {
-                        if !rt.plain_text.is_empty() {
-                            blocks.push(Content::Paragraph { rich_text: rt });
+                        BlockCtx::ListItem { ordered } => {
+                            if ordered {
+                                blocks.push(ParsedBlock::leaf(Content::EnumItem { rich_text: rt }));
+                            } else {
+                                blocks.push(ParsedBlock::leaf(Content::ListItem { rich_text: rt }));
+                            }
+                        }
+                        _ => {
+                            blocks.push(ParsedBlock::leaf(Content::Paragraph { rich_text: rt }));
                         }
                     }
                 }
             }
             Event::End(TagEnd::BlockQuote(_)) => {
+                blocks.push(ParsedBlock::compound(
+                    Content::Blockquote,
+                    std::mem::take(&mut bq_items),
+                ));
                 ctx = BlockCtx::None;
             }
             Event::End(TagEnd::Item) => {
@@ -217,9 +251,9 @@ pub fn parse_markdown(input: &str) -> Vec<Content> {
                     flush_text(&mut current_text, &active_marks, &mut segments);
                     let rt = take_rich_text(&mut segments);
                     if list_ordered {
-                        blocks.push(Content::EnumItem { rich_text: rt });
+                        blocks.push(ParsedBlock::leaf(Content::EnumItem { rich_text: rt }));
                     } else {
-                        blocks.push(Content::ListItem { rich_text: rt });
+                        blocks.push(ParsedBlock::leaf(Content::ListItem { rich_text: rt }));
                     }
                 }
                 ctx = BlockCtx::None;
@@ -232,16 +266,16 @@ pub fn parse_markdown(input: &str) -> Vec<Content> {
                 if code_lines.ends_with('\n') {
                     code_lines.pop();
                 }
-                blocks.push(Content::Code {
+                blocks.push(ParsedBlock::leaf(Content::Code {
                     language: std::mem::take(&mut code_lang),
                     lines: code_lines.split('\n').map(String::from).collect(),
-                });
+                }));
                 code_lines.clear();
                 ctx = BlockCtx::None;
             }
 
             Event::Rule => {
-                blocks.push(Content::Divider);
+                blocks.push(ParsedBlock::leaf(Content::Divider));
             }
 
             // Ignore everything else (HTML, footnotes, etc.)
@@ -270,15 +304,15 @@ mod tests {
     fn test_headings() {
         let blocks = parse_markdown("# Title\n## Subtitle\n### Section");
         assert_eq!(blocks.len(), 3);
-        assert_eq!(blocks[0].type_name(), "heading1");
-        assert_eq!(blocks[1].type_name(), "heading2");
-        assert_eq!(blocks[2].type_name(), "heading3");
+        assert_eq!(blocks[0].content.type_name(), "heading1");
+        assert_eq!(blocks[1].content.type_name(), "heading2");
+        assert_eq!(blocks[2].content.type_name(), "heading3");
     }
 
     #[test]
     fn test_bold_inline() {
         let blocks = parse_markdown("This is **bold** text");
-        let Content::Paragraph { rich_text: rt } = &blocks[0] else {
+        let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
         assert_eq!(rt.plain_text, "This is bold text");
@@ -294,7 +328,7 @@ mod tests {
     #[test]
     fn test_italic_inline() {
         let blocks = parse_markdown("Some *italic* here");
-        let Content::Paragraph { rich_text: rt } = &blocks[0] else {
+        let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
         assert_eq!(rt.plain_text, "Some italic here");
@@ -306,7 +340,7 @@ mod tests {
     #[test]
     fn test_inline_code() {
         let blocks = parse_markdown("Use `cargo build` to compile");
-        let Content::Paragraph { rich_text: rt } = &blocks[0] else {
+        let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
         assert_eq!(rt.plain_text, "Use cargo build to compile");
@@ -318,17 +352,17 @@ mod tests {
     #[test]
     fn test_lists() {
         let blocks = parse_markdown("- Item one\n- Item two\n\n1. First\n2. Second");
-        assert_eq!(blocks[0].type_name(), "list-item");
-        assert_eq!(blocks[1].type_name(), "list-item");
-        assert_eq!(blocks[2].type_name(), "enum-item");
-        assert_eq!(blocks[3].type_name(), "enum-item");
+        assert_eq!(blocks[0].content.type_name(), "list-item");
+        assert_eq!(blocks[1].content.type_name(), "list-item");
+        assert_eq!(blocks[2].content.type_name(), "enum-item");
+        assert_eq!(blocks[3].content.type_name(), "enum-item");
     }
 
     #[test]
     fn test_code_block() {
         let blocks = parse_markdown("```rust\nfn main() {\n    println!(\"hi\");\n}\n```");
         assert_eq!(blocks.len(), 1);
-        if let Content::Code { language, lines } = &blocks[0] {
+        if let Content::Code { language, lines } = &blocks[0].content {
             assert_eq!(language, "rust");
             assert_eq!(lines.len(), 3);
             assert_eq!(lines[0], "fn main() {");
@@ -341,20 +375,22 @@ mod tests {
     fn test_blockquote() {
         let blocks = parse_markdown("> This is a quote");
         assert_eq!(blocks.len(), 1);
-        assert_eq!(blocks[0].type_name(), "blockquote");
+        assert_eq!(blocks[0].content.type_name(), "blockquote");
+        assert_eq!(blocks[0].children.len(), 1);
+        assert_eq!(blocks[0].children[0].type_name(), "paragraph");
     }
 
     #[test]
     fn test_divider() {
         let blocks = parse_markdown("Before\n\n---\n\nAfter");
         assert_eq!(blocks.len(), 3);
-        assert_eq!(blocks[1].type_name(), "divider");
+        assert_eq!(blocks[1].content.type_name(), "divider");
     }
 
     #[test]
     fn test_strikethrough() {
         let blocks = parse_markdown("This is ~~deleted~~ text");
-        let Content::Paragraph { rich_text: rt } = &blocks[0] else {
+        let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
         assert_eq!(rt.plain_text, "This is deleted text");
@@ -367,7 +403,7 @@ mod tests {
     fn test_multibyte_char_offsets() {
         // Segment model doesn't need offset math — just verify plain_text is correct
         let blocks = parse_markdown("mornings can be ~~cold~~ chilly");
-        let Content::Paragraph { rich_text: rt } = &blocks[0] else {
+        let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
         assert_eq!(rt.plain_text, "mornings can be cold chilly");
@@ -379,7 +415,7 @@ mod tests {
     #[test]
     fn test_multibyte_before_mark() {
         let blocks = parse_markdown("café **latte**");
-        let Content::Paragraph { rich_text: rt } = &blocks[0] else {
+        let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
         assert_eq!(rt.plain_text, "café latte");
@@ -394,7 +430,7 @@ mod tests {
     #[test]
     fn test_link() {
         let blocks = parse_markdown("Check [this link](https://example.com) out");
-        let Content::Paragraph { rich_text: rt } = &blocks[0] else {
+        let Content::Paragraph { rich_text: rt } = &blocks[0].content else {
             panic!("expected paragraph");
         };
         assert_eq!(rt.plain_text, "Check this link out");

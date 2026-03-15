@@ -91,12 +91,21 @@ pub(crate) async fn seed_marks(
 
         let page_id = insert_mark(db, &mut markmap, def.key, page_mark).await?;
 
-        // 2. Parse markdown into Content blocks and create child marks
+        // 2. Parse markdown into ParsedBlocks and create child marks
+        //    Compound blocks (e.g. blockquote) carry nested children that
+        //    get their own marks keyed as "{page}:content:{i}:child:{j}".
         let blocks = parse_markdown(def.markdown);
-        for (i, content) in blocks.into_iter().enumerate() {
+        for (i, parsed) in blocks.into_iter().enumerate() {
             let child_key = format!("{}:content:{}", def.key, i);
-            let child_mark = Mark::builder().with_content(content).build();
+            let child_mark = Mark::builder().with_content(parsed.content).build();
             insert_mark(db, &mut markmap, &child_key, child_mark).await?;
+
+            // Nested children of compound blocks
+            for (j, nested) in parsed.children.into_iter().enumerate() {
+                let nested_key = format!("{}:content:{}:child:{}", def.key, i, j);
+                let nested_mark = Mark::builder().with_content(nested).build();
+                insert_mark(db, &mut markmap, &nested_key, nested_mark).await?;
+            }
         }
 
         let _ = page_id; // used implicitly via markmap
