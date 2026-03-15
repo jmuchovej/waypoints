@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     enabled: true,
   },
 
-  css: ["~/assets/css/main.css"],
+  css: ["~/assets/css/main.css", "~editor/assets/editor.css"],
   components: [{ path: "~/components", pathPrefix: false }],
 
   },

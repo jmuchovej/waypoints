@@ -1,0 +1,395 @@
+@reference "~/assets/css/main.css";
+
+.editor-layout {
+  --margin-width: minmax(--spacing(4), 1fr);
+  --content-width: minmax(auto, 100%);
+
+  @apply w-full grid;
+
+  grid-template-columns:
+    [full-start] var(--margin-left-width, var(--margin-width))
+    [content-start] var(--content-width)
+    [content-end] var(--margin-right-width, var(--margin-width))
+    [full-end];
+}
+
+@media (width >= 40rem) {
+  /* sm */
+  .editor-layout {
+    --margin-width: minmax(--spacing(8), 1fr);
+    --content-width: minmax(auto, --spacing(160));
+  }
+}
+
+@media (width >= 64rem) {
+  /* lg */
+  .editor-layout {
+    --margin-width: minmax(--spacing(16), 1fr);
+    --content-width: minmax(auto, --spacing(192));
+  }
+}
+
+.editor-full {
+  @apply col-[full];
+}
+
+.editor-content {
+  @apply col-[content];
+}
+
+.editor-document,
+.inline-editor {
+  @apply outline-none caret-primary;
+}
+
+.landmark-title {
+  @apply text-4xl font-bold;
+  @apply min-h-16;
+  @apply flex flex-col justify-center;
+}
+
+.editor-document {
+  @apply relative outline-none;
+  @apply caret-primary;
+
+  .mark {
+    @apply relative py-1 px-1;
+    @apply first:mt-0 last:mb-0 my-1;
+    @apply rounded-sm;
+    @apply leading-snug;
+    @apply transition-[background-color,shadow,opacity] duration-150 ease-out;
+    @apply bg-elevated/0;
+    padding-inline-start: --spacing((var(--depth, 0) * 6 + 1));
+
+    &.selected {
+      @apply bg-primary/10 outline outline-primary/30;
+    }
+
+    &.dragging {
+      @apply opacity-40;
+    }
+
+    &.inside-drop-target {
+      @apply outline-2 outline-dashed outline-primary/50;
+      @apply bg-primary/5;
+      @apply rounded;
+    }
+  }
+
+  &[data-type^="heading"] {
+    @apply text-highlighted font-bold flex leading-snug;
+  }
+
+  &[data-type="heading1"] {
+    @apply text-3xl;
+  }
+
+  &[data-type="heading2"] {
+    @apply text-2xl;
+  }
+
+  &[data-type="heading3"] {
+    @apply text-xl;
+  }
+
+  &[data-type="code"] {
+    @apply text-sm leading-6;
+    @apply border border-muted bg-muted;
+    @apply rounded-md;
+    @apply px-4 py-3;
+    @apply whitespace-pre-wrap break-words;
+    @apply overflow-x-auto;
+
+    code {
+      @apply p-0 rounded-none border-0 bg-transparent;
+      @apply text-inherit font-mono;
+    }
+  }
+
+  .drop-indicator {
+    @apply relative h-0 pointer-events-none z-10;
+    /* "shadow" */
+    @apply before:content-[''] before:absolute before:inset-x-0 before:h-2.5 before:-translate-y-1/2 before:bg-primary/5 before:rounded;
+    /* "primary highlight" */
+    @apply after:content-[''] after:absolute after:inset-x-1 after:top-0 after:h-0.5 after:-translate-y-1/2 after:bg-primary after:rounded-full;
+  }
+
+  /* When a drop indicator is inserted before the first .mark or after the last,
+     restore the margin overrides that :first-child/:last-child would normally provide. */
+  .drop-indicator:first-child + .mark {
+    @apply mt-0;
+  }
+  .mark:has(+ .drop-indicator:last-child) {
+    @apply mb-0;
+  }
+
+  &[data-type="paragraph"] {
+    @apply leading-snug min-h-6;
+  }
+
+  &[data-type="list-item"],
+  &[data-type="enum-item"] {
+    @apply relative py-0.5 leading-snug flex;
+
+    .prefix {
+      @apply select-none text-dimmed min-w-[2ch] pe-1 text-end;
+    }
+  }
+
+  &[data-type="list-item"] .prefix {
+  }
+
+  &[data-type="enum-item"] .prefix {
+  }
+
+  /* ── Selection ─────────────────────────────────────────────────────────── */
+
+  ::selection {
+    @apply bg-primary/20;
+  }
+
+  /* ── Inspector hover highlight ─────────────────────────────────────────── */
+
+  [data-mark-id].inspector-highlight {
+    @apply outline-2 outline-dashed outline-offset-2;
+    @apply outline-primary/50 bg-primary/5;
+    @apply rounded;
+    @apply duration-150;
+    @apply transition-[background-color,outline-color];
+  }
+
+  /* ── Inline marks ──────────────────────────────────────────────────────── */
+  /* Applied to both static Vue rendering and TipTap's ProseMirror DOM.      */
+
+  [data-inline="bold"] {
+    font-weight: bolder;
+  }
+
+  [data-inline="italic"] {
+    @apply italic;
+  }
+
+  [data-inline="underline"] {
+    @apply underline;
+  }
+
+  [data-inline="strikethrough"] {
+    @apply line-through text-default/50 decoration-primary decoration-2;
+  }
+
+  [data-inline="link"] {
+    @apply underline text-primary underline-offset-2 cursor-pointer;
+  }
+
+  [data-inline="code"] {
+    @apply px-1.5 py-0.5 text-sm font-mono font-medium rounded-md border border-muted text-highlighted bg-muted;
+  }
+
+  [data-inline="comment"] {
+    @apply bg-warning/10 border-b-2 border-warning cursor-pointer;
+  }
+
+  [data-inline="highlight"] {
+    @apply px-0.5 py-0.5 rounded-sm border bg-yellow-200/40 dark:bg-yellow-500/20;
+  }
+
+  [data-inline="color"] {
+    @apply px-1.5 py-0.5 rounded-md border;
+  }
+
+  [data-inline="mention"] {
+    @apply cursor-pointer rounded-sm px-0.5;
+    @apply hover:bg-primary/10 hover:underline;
+  }
+
+  [data-inline="spoiler"] {
+    @apply transition-[colors,background-color] duration-100 ease-in-out;
+    @apply bg-accented rounded-sm px-1 py-1 cursor-pointer;
+    color: transparent;
+
+    &:has(.spoiler-active) {
+      color: inherit;
+      @apply bg-accented/10;
+    }
+  }
+
+  [data-inline="math"] {
+    @apply relative inline rounded-sm px-1 py-0.5;
+
+    .math-visual {
+      @apply pointer-events-none;
+    }
+
+    .math-text--rendered {
+      color: transparent;
+    }
+
+    .math-text:not(.math-text--rendered) {
+      @apply font-mono text-sm bg-muted/50;
+    }
+
+    .katex {
+      @apply font-sans text-sm;
+    }
+
+    &.math-editing {
+      @apply font-mono text-sm bg-muted/50;
+      color: inherit;
+    }
+  }
+
+  .math-preview {
+    @apply inline-block ml-1 align-middle;
+    @apply pointer-events-none;
+
+    .katex {
+      @apply font-sans text-sm;
+    }
+  }
+
+  .math-loading {
+    @apply opacity-60;
+  }
+
+  /* ProseMirror overrides */
+  .ProseMirror {
+    @apply leading-snug;
+    @apply relative;
+    @apply wrap-break-word;
+    @apply whitespace-pre-wrap whitespace-break-spaces;
+
+    [contenteditable="false"] {
+      white-space: normal;
+
+      [contenteditable="true"] {
+        white-space: pre-wrap;
+      }
+    }
+
+    pre {
+      white-space: pre-wrap;
+    }
+  }
+}
+
+/* ── Drag ghost (floating clone appended to <body>) ────────────────────── */
+
+.drag-ghost {
+  @apply fixed pointer-events-none z-[1000];
+  @apply py-1 px-1;
+  @apply leading-snug;
+  @apply rounded-sm;
+  @apply bg-elevated/40;
+  @apply transition-[transform,opacity,box-shadow,background-color] duration-150 ease-out;
+
+  &.lifting {
+    @apply opacity-85 rotate-1 scale-98;
+    @apply bg-elevated;
+    @apply shadow-md;
+  }
+}
+
+/* ── Multi-block drag ghost ──────────────────────────────────────────── */
+
+.drag-ghost.multi {
+  @apply flex flex-col gap-0.5;
+}
+
+.drag-ghost-item {
+  @apply max-h-8 overflow-hidden;
+  @apply truncate;
+  @apply border-b border-primary/10;
+  @apply text-sm leading-tight;
+  @apply px-1 py-0.5;
+}
+
+.drag-ghost-overflow {
+  @apply text-xs text-primary font-medium px-2 py-1;
+}
+
+.mark.long-press-active {
+  @apply scale-[0.98] bg-primary/5;
+  @apply transition-transform duration-200 ease-out;
+}
+
+.floating-handles {
+  @apply absolute z-10;
+  @apply h-6 text-dimmed;
+  @apply hidden items-center justify-center;
+  @apply gap-2;
+  @apply touch-none select-none;
+  transform: translateX(calc(-100% - 4px));
+  @apply transition-all;
+  @apply duration-150 ease-out;
+
+  .floating-handle {
+    @apply rounded-sm;
+    @apply h-6 w-6 px-0.5;
+    @apply touch-none select-none;
+    @apply flex items-center justify-center;
+    @apply bg-elevated/40;
+    @apply transition-all duration-150 ease-out;
+    @apply hover:opacity-100! hover:bg-elevated;
+
+    &.handle-add {
+      @apply cursor-pointer;
+    }
+
+    &.handle-drag {
+      @apply cursor-grab active:cursor-grabbing;
+    }
+  }
+}
+
+/* Must match EDITOR_WIDE_REM in utils/breakpoints.ts */
+@media (width >= 40rem) {
+  .floating-handles {
+    @apply flex;
+  }
+}
+
+.ProseMirror-selectednode:not(img):not([data-type="code"]) {
+  @apply bg-primary/20;
+}
+
+.inline-editor {
+  .is-empty[data-placeholder]::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none text-dimmed;
+  }
+}
+
+.readings-table {
+  --label-width: minmax(8rem, max-content);
+  --input-width: minmax(0, 1fr);
+
+  @apply w-full grid;
+
+  grid-template-columns:
+    [label-start] var(--label-width)
+    [label-end input-start] var(--input-width) [input-end];
+  column-gap: --spacing(4);
+  row-gap: --spacing(3);
+  align-items: baseline;
+}
+
+/*
+ * Each row is a single wrapper element (single render root) but its box
+ * is erased from the layout so its children (label + input cell) become
+ * direct grid children of .readings-table.
+ */
+.reading-row {
+  display: contents;
+}
+
+.reading-label {
+  @apply text-sm text-dimmed font-medium text-end pt-1;
+}
+
+.reading-input {
+  @apply flex flex-col gap-1 min-w-0;
+}
+
+.reading-description {
+  @apply text-xs text-dimmed;
+}
