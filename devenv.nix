@@ -21,19 +21,7 @@
     just
   ];
 
-  languages.rust = {
-    enable = true;
-    channel = "stable";
-    targets = [
-      "aarch64-linux-android"
-      "armv7-linux-androideabi"
-      "i686-linux-android"
-      "x86_64-linux-android"
-      "aarch64-apple-ios"
-      "aarch64-apple-ios-sim"
-      "x86_64-apple-ios"
-    ];
-  };
+  languages.rust.enable = true;
   languages.deno.enable = true;
   languages.javascript = {
     enable = true;
