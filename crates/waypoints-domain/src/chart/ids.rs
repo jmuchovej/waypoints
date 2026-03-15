@@ -150,9 +150,7 @@ impl TryFrom<String> for ChartID {
 /// [C]: super::Chart
 /// [F]: super::Feature
 /// [L]: crate::mark::Landmark
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr, Type,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr, Type)]
 #[display("{_0}")]
 #[debug("FeatureID({_0})")]
 #[serde(transparent)]
@@ -180,9 +178,7 @@ impl From<FeatureID> for String {
 /// Unique identifier for a select option within a [`Feature`][F].
 ///
 /// [F]: super::Feature
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr, Type,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, FromStr, Type)]
 #[display("{_0}")]
 #[debug("GlyphID({_0})")]
 #[serde(transparent)]
