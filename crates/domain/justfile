@@ -5,4 +5,5 @@ default:
 
 typegen:
     cargo run --bin typegen
-    treefmt types.g.ts
+    bun run bin/schemagen.ts
+    treefmt typescript/*.g.ts

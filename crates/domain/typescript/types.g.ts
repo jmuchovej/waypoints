@@ -68,15 +68,15 @@ export type Content =
   /**
    * Level 1 Heading
    */
-  | { type: "heading1"; rich_text: RichText }
+  | { type: "heading-1"; rich_text: RichText }
   /**
    * Level 2 Heading
    */
-  | { type: "heading2"; rich_text: RichText }
+  | { type: "heading-2"; rich_text: RichText }
   /**
    * Level 3 Heading
    */
-  | { type: "heading3"; rich_text: RichText }
+  | { type: "heading-3"; rich_text: RichText }
   /**
    * A quote
    */
@@ -96,7 +96,7 @@ export type Content =
   /**
    * Code block with syntax highlighting
    */
-  | { type: "code-block"; language: string; lines: string[] }
+  | { type: "code"; language: string; lines: string[] }
   /**
    * Inline table
    */
@@ -114,11 +114,41 @@ export type Content =
   /**
    * Typst/LaTeX content
    */
-  | { type: "math-block"; expression: string; engine: MathEngine }
+  | { type: "math"; expression: string; engine: MathEngine }
   /**
    * Horizontal divider
    */
   | { type: "divider" };
+
+/**
+ * Precision at which a date/time value should be captured and displayed.
+ *
+ * This is a schema-level concern, not a UI-only one. A "Birthday" feature
+ * wants `Day`; a "Meeting start" feature wants `Minute`. The stored value
+ * is always a `NaiveDateTime`, but sub-granularity fields are zeroed on
+ * write and hidden from the editor so users can't enter meaningless
+ * precision.
+ *
+ * The variant names mirror `@internationalized/date` and Nuxt UI's
+ * `UInputDate` `granularity` prop so the frontend can map 1:1.
+ */
+export type DateGranularity =
+  /**
+   * Date only — time component is zeroed (00:00:00).
+   */
+  | "day"
+  /**
+   * Date + hour — minutes and seconds zeroed.
+   */
+  | "hour"
+  /**
+   * Date + hour + minute — seconds zeroed.
+   */
+  | "minute"
+  /**
+   * Full precision.
+   */
+  | "second";
 
 /**
  * A feature defines a field within a [`Chart`][C] that [`Landmarks`][M:L] can have values for.
@@ -181,6 +211,7 @@ export type FeatureKind =
       max_date: string | null;
       max_time: string | null;
       timezone: string | null;
+      granularity?: DateGranularity;
     }
   /**
    * Email field with basic validation
@@ -393,25 +424,27 @@ export type MathEngine = "typst" | "latex";
  * [M:L]: crate::mark::Landmark
  */
 export type Reading =
-  | string
-  | number
-  | boolean
+  | { type: "text"; value: RichText }
+  | { type: "number"; value: number }
+  | { type: "bool"; value: boolean }
   /**
    * Single date/datetime
    */
-  | string
+  | { type: "date"; value: string }
   /**
    * Date range with optional start/end dates and times
    */
-  | [string, string]
-  | GlyphID
-  | GlyphID[]
-  | Partial<{ [key in GlyphID]: GlyphID[] }>
-  | MarkID[]
-  | string
-  | [string, string]
-  | string
-  | null;
+  | { type: "date-range"; value: [string, string] }
+  | { type: "select"; value: GlyphID }
+  | { type: "multi-select"; value: GlyphID[] }
+  | { type: "grouped-select"; value: Partial<{ [key in GlyphID]: GlyphID[] }> }
+  | { type: "references"; value: MarkID[] }
+  | { type: "url"; value: string }
+  | { type: "email"; value: string }
+  | { type: "phone"; value: [string, string] }
+  | { type: "file"; value: string }
+  | { type: "formula"; value: string }
+  | { type: "null" };
 
 /**
  * Display mode for rendering references in the UI.

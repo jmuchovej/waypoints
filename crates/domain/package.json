@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./types.g.ts"
+    ".": "./typescript/index.ts"
   }
 }
