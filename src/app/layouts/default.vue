@@ -5,55 +5,48 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 
 const route = useRoute();
 
-const links: NavigationMenuItem[][] = [];
-links.push([
-  {
-    label: "Home",
-    icon: "i-lucide-house",
-    to: "/",
+const links = (state: "collapsed" | "expanded"): NavigationMenuItem[] => {
+  const base = [
+    {
+      label: "Home",
+      icon: "i-lucide-house",
+      to: "/",
+      onSelect() {
+        open.value = false;
+      },
+    },
+    {
+      label: "Marks",
+      icon: "i-lucide-map-pin",
+      to: "/marks",
+      onSelect() {
+        open.value = false;
+      },
+    },
+  ];
+
+  const pins = {
+    label: "Pinned",
+    icon: "i-lucide-pin",
     onSelect() {
       open.value = false;
     },
-  },
-  {
-    label: "Settings",
-    icon: "i-lucide-settings",
-    to: "/settings",
     defaultOpen: true,
-    type: "trigger",
-    children: [
-      {
-        label: "General",
-        to: "/settings",
-        exact: true,
-        onSelect() {
-          open.value = false;
-        },
-      },
-      {
-        label: "Members",
-        to: "/settings/members",
-        onSelect() {
-          open.value = false;
-        },
-      },
-      {
-        label: "Notifications",
-        to: "/settings/notifications",
-        onSelect() {
-          open.value = false;
-        },
-      },
-      {
-        label: "Security",
-        to: "/settings/security",
-        onSelect() {
-          open.value = false;
-        },
-      },
-    ],
-  },
-]);
+    children: state === "expanded" ? [] : [],
+  } satisfies NavigationMenuItem;
+
+  const recents = {
+    label: "Recent",
+    icon: "i-lucide-clock-fading",
+    onSelect() {
+      open.value = false;
+    },
+    defaultOpen: true,
+    children: state === "expanded" ? [] : [],
+  } satisfies NavigationMenuItem;
+
+  return [...base, pins, recents];
+};
 
 const open = ref(false);
 </script>
@@ -84,9 +77,10 @@ const open = ref(false);
           />
 
           <UNavigationMenu
-            :collapsed="collapsed"
-            :items="links[0]"
+            :key="collapsed ? 'collapsed' : 'expanded'"
+            :items="links(collapsed ? 'collapsed' : 'expanded')"
             orientation="vertical"
+            :ui="{ link: 'p-1.5 overflow-hidden' }"
             tooltip
             popover
           />
