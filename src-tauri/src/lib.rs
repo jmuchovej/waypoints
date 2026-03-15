@@ -12,6 +12,7 @@ pub mod builders {
 }
 
 mod commands {
+    pub mod chart;
     pub mod editor;
     pub mod mark;
     pub mod territory;

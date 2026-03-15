@@ -16,9 +16,14 @@ pub fn register_types(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
 }
 
 pub fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
-    use crate::commands::{editor, mark, territory};
+    use crate::commands::{chart, editor, mark, territory};
 
     let builder = builder.commands(collect_commands![
+        // chart
+        chart::chart_list,
+        chart::chart_get,
+        chart::landmark_create,
+        // mark
         mark::mark_list,
         mark::mark_get,
         mark::mark_create,
