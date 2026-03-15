@@ -17,6 +17,9 @@ pub struct Terrain {
     /// What kind of edge is this?
     pub kind: TerrainKind,
 
+    /// Lexicographic ordering string (only meaningful for certain edge kinds like `Child`)
+    pub order: Option<String>,
+
     /// Extra metadata that belongs to this particular edge
     #[builder(default, via_mutators, mutators(
       pub fn with_extra(mut self, extra: Json) {

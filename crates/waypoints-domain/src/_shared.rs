@@ -6,6 +6,7 @@ pub type Uuid = uuid::Uuid;
 
 pub mod color;
 pub mod error;
+pub mod fractional_index;
 pub mod icon;
 
 pub use color::Color;

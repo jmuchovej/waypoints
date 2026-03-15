@@ -1,10 +1,10 @@
 use sea_orm::{
-    ActiveModelBehavior, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait,
-    EnumIter, PrimaryKeyTrait, prelude::Json,
+    ActiveModelBehavior, ActiveValue::Set, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
+    EntityTrait, EnumIter, PrimaryKeyTrait, prelude::Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use waypoints_domain::terrain::Terrain;
+use waypoints_domain::terrain::{Terrain, TerrainKind};
 
 /// Graph edges representing relationships between blocks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DeriveEntityModel)]
@@ -17,6 +17,13 @@ pub struct Model {
     /// The directed edge this block is going to
     #[sea_orm(primary_key)]
     pub dst_id: Uuid,
+
+    /// What kind of edge is this? Stored as "child", "reference", or "custom".
+    #[sea_orm(indexed)]
+    pub kind: String,
+
+    /// Lexicographic ordering string (only meaningful for certain edge kinds)
+    pub order: Option<String>,
 
     /// Extra metadata that belongs to this particular edge
     pub extra: Option<Json>,
@@ -38,16 +45,39 @@ impl ActiveModelBehavior for ActiveModel {}
 
 impl From<Model> for Terrain {
     fn from(model: Model) -> Self {
-        let mut builder = Terrain::builder()
+        let kind = match model.kind.as_str() {
+            "child" => TerrainKind::Child,
+            "reference" => TerrainKind::Reference,
+            _ => TerrainKind::Custom,
+        };
+
+        let mut terrain = Terrain::builder()
             .with_src_id(model.src_id.into())
-            .with_dst_id(model.dst_id.into());
+            .with_dst_id(model.dst_id.into())
+            .with_kind(kind)
+            .build();
 
-        if let Some(extra) = model.extra {
-            builder = builder.with_extra(extra);
-        }
-
-        let terrain: Terrain = builder.build();
+        terrain.order = model.order;
+        terrain.extra = model.extra;
 
         terrain
+    }
+}
+
+impl From<Terrain> for ActiveModel {
+    fn from(terrain: Terrain) -> Self {
+        let kind_str = match terrain.kind {
+            TerrainKind::Child => "child",
+            TerrainKind::Reference => "reference",
+            TerrainKind::Custom => "custom",
+        };
+
+        ActiveModel {
+            src_id: Set(terrain.src_id.inner()),
+            dst_id: Set(terrain.dst_id.inner()),
+            kind: Set(kind_str.to_string()),
+            order: Set(terrain.order),
+            extra: Set(terrain.extra),
+        }
     }
 }

@@ -6,10 +6,11 @@ macro_rules! impl_timestamps {
                 use chrono::Local;
                 use sea_orm::ActiveValue::{NotSet, Set};
                 let now = Local::now().naive_utc();
-                self.created_at = match insert {
-                    true => Set(now.clone()),
-                    false => NotSet,
-                };
+                // On insert, only set created_at if not already explicitly set.
+                // This allows callers to supply a frontend-sourced timestamp.
+                if insert && matches!(self.created_at, NotSet) {
+                    self.created_at = Set(now.clone());
+                }
                 self.updated_at = Set(now);
             }
         }
