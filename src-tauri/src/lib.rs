@@ -3,10 +3,10 @@ use tauri_specta::Builder as SpectaBuilder;
 
 mod builders {
     pub(crate) mod specta;
+    pub(crate) mod store;
     #[cfg(desktop)]
     pub(crate) mod tray;
 }
-
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
