@@ -1,7 +1,8 @@
-import process from "node:process";
 import { defineNuxtConfig } from "nuxt/config";
 
-const host = process.env.TAURI_DEV_HOST;
+const host = import.meta.env.NUXT_HMR_HOST || import.meta.env.TAURI_DEV_HOST || undefined;
+const isMobile = !!/android|ios/.exec(import.meta.env.TAURI_ENV_PLATFORM || "");
+const devPort = 9297;
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -16,31 +17,6 @@ export default defineNuxtConfig({
   css: ["~/assets/css/main.css"],
   components: [{ path: "~/components", pathPrefix: false }],
 
-  routeRules: {
-    "/": { prerender: true },
-  },
-
-  app: {
-    head: {
-      title: "Waypoints",
-      charset: "utf-8",
-      viewport: "width=device-width, initial-scale=1",
-      meta: [
-        { name: "format-detection", content: "no" },
-        {
-          name: "viewport",
-          content: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
-        },
-      ],
-    },
-    pageTransition: {
-      name: "page",
-      mode: "out-in",
-    },
-    layoutTransition: {
-      name: "layout",
-      mode: "out-in",
-    },
   },
 
   ssr: false,
@@ -64,27 +40,6 @@ export default defineNuxtConfig({
       },
     ],
   },
-
-  vite: {
-    clearScreen: false,
-    envPrefix: ["VITE_", "TAURI_"],
-    server: {
-      strictPort: true,
-      hmr: host
-        ? {
-            protocol: "ws",
-            host,
-            port: 3001,
-          }
-        : undefined,
-    },
-  },
-
-  devServer: {
-    host: host || "0",
-    port: 9297,
-  },
-
   router: {
     options: {
       scrollBehaviorType: "smooth",
@@ -100,5 +55,65 @@ export default defineNuxtConfig({
   // https://nuxt.com/docs/4.x/guide/going-further/experimental-features
   experimental: {
     typedPages: true,
+  },
+
+  mcp: {
+    includeNuxtDocsMcp: true,
+  },
+
+  // storybook: {
+  //   url: "http://localhost:9298",
+  //   storybookRoute: "/__storybook__",
+  //   port: 9298,
+  //   // Very verbose logs for debugging
+  //   logLevel: Number.POSITIVE_INFINITY,
+  // }
+
+  vite: {
+    clearScreen: false,
+    envPrefix: ["VITE_", "TAURI_"],
+    optimizeDeps: {
+      include: [
+        "@tiptap/core",
+        "@tiptap/pm/state",
+        "@tiptap/pm/view",
+        "@tiptap/extension-paragraph",
+        "@tiptap/extension-heading",
+        "@tiptap/extension-code-block",
+        "@tiptap/extension-list-item",
+        "@tiptap/extension-blockquote",
+        "@tiptap/extension-horizontal-rule",
+        "@tiptap/vue-3",
+        "@tiptap/vue-3/menus",
+        "@tiptap/starter-kit",
+        "uuid",
+        "zod",
+      ],
+    },
+    server: {
+      strictPort: true,
+      warmup: {},
+      watch: {
+        ignored: ["**/src-tauri/**"],
+        usePolling: true,
+      },
+    },
+  },
+
+  devServer: {
+    host: isMobile ? "0.0.0.0" : undefined,
+    port: devPort,
+  },
+
+  hooks: {
+    // Monkey patch: https://github.com/tauri-apps/tauri/issues/11165#issuecomment-3694978357
+    "vite:extend": ({ config }) => {
+      if (isMobile && config.server?.hmr && config.server.hmr !== true) {
+        config.server.hmr.port = devPort;
+        config.server.hmr.protocol = "ws";
+        config.server.hmr.host = host;
+        config.server.origin = `http://${host}:${devPort}`;
+      }
+    },
   },
 });
