@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "crates/waypoints-domain",
   "crates/waypoints-entities",
+  "crates/store",
   "crates/waypoints-migrations",
   "src-tauri",
   # "crates/waypoints-store"
@@ -35,6 +36,7 @@ open-location-code = { git = "https://github.com/google/open-location-code", ver
 paste = "1.0.15"
 pest = "2.8.3"
 pest_derive = "2.8.3"
+pulldown-cmark = { version = "0.13", default-features = false }
 pretty_assertions = "1.4.1"
 rand = "0.8"
 regex = "1.11.1"
@@ -71,11 +73,14 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 typed-builder = "0.23.2"
 uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
+
+# keep-sorted start
+cartograph = { path = "src-tauri" }
+store = { path = "crates/store" }
 waypoints-domain = { path = "crates/waypoints-domain" }
 waypoints-entities = { path = "crates/waypoints-entities" }
 waypoints-migrations = { path = "crates/waypoints-migrations" }
-waypoints-store = { path = "crates/waypoints-store" }
-cartograph = { path = "src-tauri" }
+# keep-sorted end
 
 tauri-plugin-shell = "2.3.4"
 tauri-plugin-notification = "2.3.3"
