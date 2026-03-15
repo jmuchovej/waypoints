@@ -1,9 +1,12 @@
 use tauri::{App, Builder as TauriBuilder};
 
+mod mark;
 mod settings;
 pub mod territory;
 
 pub mod builders {
+    #[cfg(debug_assertions)]
+    pub(crate) mod menus;
     pub mod specta;
     pub(crate) mod store;
     pub(crate) mod territory;
@@ -59,6 +62,13 @@ pub fn run() {
                 tracing::info!("tauri setup: building tray icon");
                 builders::tray::setup(app)?;
                 tracing::info!("tauri setup: tray ready");
+            }
+
+            #[cfg(debug_assertions)]
+            {
+                tracing::info!("tauri setup: building dev-only menus");
+                builders::menus::setup(app)?;
+                tracing::info!("tauri setup: dev-only menus ready");
             }
 
             tracing::info!("tauri setup: complete");
