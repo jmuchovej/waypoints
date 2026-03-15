@@ -10,6 +10,26 @@ via-tauri +ARGS="--debug":
 
 dev *ARGS:
     @just via-tauri dev {{ ARGS }}
+# Generate .icns and .ico from each flavor's iconset
+icons:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for json in icons/*.json; do
+        flavor="$(basename "$json" .json)"
+        iconset="icons/$(yq -p json -oy '.iconset' "$json")"
+
+        echo "[$flavor] $iconset → icons/icon-${flavor}.icns, icons/icon-${flavor}.ico"
+
+        # macOS .icns
+        iconutil -c icns "$iconset" -o "icons/icon-${flavor}.icns"
+
+        # Windows .ico (multi-resolution)
+        magick "$iconset/icon_256x256.png" \
+               "$iconset/icon_128x128.png" \
+               "$iconset/icon_32x32.png" \
+               "$iconset/icon_16x16.png" \
+               "icons/icon-${flavor}.ico"
+    done
 
 ios +ARGS:
     @just via-tauri ios {{ ARGS }}

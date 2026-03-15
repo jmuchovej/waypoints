@@ -17,6 +17,7 @@
     cargo-expand
     cargo-tauri
     cargo-binstall
+    imagemagick
     just
   ];
 

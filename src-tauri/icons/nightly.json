@@ -1,0 +1,6 @@
+{
+  "iconset": "app-icon-nightly.iconset",
+  "default": "app-icon.iconset/icon_512x512@2x.png.png",
+  "bg_color": "#0E4768",
+  "android_fg_scale": 100
+}
