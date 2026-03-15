@@ -15,7 +15,7 @@ mod migrations "crates/waypoints-migrations"
 
 # Generate TypeScript types from Rust models
 typegen:
-    cargo build -p cartograph
+    cargo build -p Waypoints
     treefmt src/app/bindings.g.ts
 
 clean:
