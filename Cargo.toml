@@ -81,9 +81,11 @@ tauri-plugin-shell = "2.3.4"
 tauri-plugin-notification = "2.3.3"
 tauri-plugin-os = "2.3.2"
 tauri-plugin-fs = "2.4.5"
+tauri-plugin-dialog = "2.2.0"
 tauri-plugin-store = "2.4.2"
 tauri = { version = "2.10.3", features = ["unstable"] }
 tauri-build = { version = "2.5.6", features = ["config-toml"] }
+wry = { version = "0.54.4", features = ["os-webview", "protocol", "drag-drop", "tracing", "serde"] }
 
 specta = { version = "=2.0.0-rc.22", features = [
   "derive",

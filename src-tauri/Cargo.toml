@@ -19,6 +19,7 @@ tauri-plugin-shell.workspace = true
 tauri-plugin-notification.workspace = true
 tauri-plugin-os.workspace = true
 tauri-plugin-fs.workspace = true
+tauri-plugin-dialog.workspace = true
 tauri-plugin-store.workspace = true
 sea-orm.workspace = true
 tokio.workspace = true
@@ -32,6 +33,7 @@ specta-typescript.workspace = true
 tauri-specta.workspace = true
 waypoints-domain.workspace = true
 waypoints-migrations.workspace = true
+wry.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit.workspace = true
