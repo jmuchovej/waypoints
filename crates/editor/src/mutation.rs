@@ -1,5 +1,6 @@
+use domain::chart::FeatureID;
 use domain::fractional_index;
-use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
+use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
 use store::DatabaseConnection;
 use store::query::{mark, terrain};
 
@@ -8,17 +9,6 @@ use crate::history::CommandHistory;
 use crate::ops::AtomicOp;
 use crate::projection;
 use crate::types::{CreateResult, CursorState, MutationResult, RenderNode, SplitResult};
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn parse_iso_timestamp(s: &str) -> EditorResult<chrono::NaiveDateTime> {
-    chrono::DateTime::parse_from_rfc3339(s)
-        .map(|dt| dt.naive_utc())
-        .or_else(|_| chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f"))
-        .map_err(|e| EditorError::InvalidTimestamp(format!("{s}: {e}")))
-}
 
 /// Compute a fractional index for inserting after `after_id` among `parent_id`'s children.
 async fn compute_order(
@@ -91,54 +81,6 @@ async fn find_parent_edge(
         .await?
         .ok_or(EditorError::NotFound(mark_id.inner()))?;
     Ok((edge.src_id, edge.order.unwrap_or_default()))
-}
-
-// ---------------------------------------------------------------------------
-// Ported write operations
-// ---------------------------------------------------------------------------
-
-/// Create a mark (ported from `mark_create` command).
-pub async fn create_mark(
-    db: &DatabaseConnection,
-    history: &mut CommandHistory,
-    id: MarkID,
-    parent_id: MarkID,
-    content: Content,
-    created_at: &str,
-    after_id: Option<MarkID>,
-    landmark_id: MarkID,
-) -> EditorResult<CreateResult> {
-    let parsed_ts = parse_iso_timestamp(created_at)?;
-    let mark_data = MarkData::Content(content);
-
-    let new_order = compute_order(db, parent_id, after_id).await?;
-
-    mark::insert(db, id, &mark_data, parsed_ts).await?;
-    terrain::insert_child_edge(db, parent_id, id, &new_order).await?;
-
-    // Record op
-    let cursor = CursorState {
-        block_id: id,
-        offset: Some(0),
-    };
-    history.push(
-        vec![AtomicOp::CreateMark {
-            mark_id: id,
-            data: mark_data,
-            parent_id: Some(parent_id),
-            fractional_index: new_order,
-        }],
-        id,
-        cursor.clone(),
-        cursor,
-        false,
-    );
-
-    let blocks = projection::project_landmark(db, landmark_id, None).await?;
-    Ok(CreateResult {
-        new_mark_id: id,
-        blocks,
-    })
 }
 
 /// Update a mark's content (ported from `mark_update` command).
@@ -215,39 +157,44 @@ pub async fn delete_mark(
     Ok(MutationResult { blocks })
 }
 
-/// Move a mark (ported from `mark_move` command).
-pub async fn move_mark(
+/// Move one or more marks to a new position (batch version of the old `move_mark`).
+///
+/// `child_ids` must be in visual order (top-to-bottom). Each block is placed
+/// sequentially after the previous one, so `compute_order_excluding` always
+/// sees the updated position of the preceding block.
+pub async fn move_marks(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
     parent_id: MarkID,
-    child_id: MarkID,
+    child_ids: &[MarkID],
     after_id: Option<MarkID>,
     landmark_id: MarkID,
 ) -> EditorResult<MutationResult> {
-    let (old_parent, old_index) = find_parent_edge(db, child_id).await?;
+    let mut ops = Vec::new();
+    let mut prev_id = after_id;
 
-    let new_order = compute_order_excluding(db, parent_id, after_id, child_id).await?;
+    for &child_id in child_ids {
+        let (old_parent, old_index) = find_parent_edge(db, child_id).await?;
+        let new_order = compute_order_excluding(db, parent_id, prev_id, child_id).await?;
+        terrain::update_child_edge(db, child_id, Some(parent_id), &new_order).await?;
 
-    terrain::delete_child_edges_by_dst(db, child_id).await?;
-    terrain::insert_child_edge(db, parent_id, child_id, &new_order).await?;
-
-    let cursor = CursorState {
-        block_id: child_id,
-        offset: None,
-    };
-    history.push(
-        vec![AtomicOp::Reparent {
+        ops.push(AtomicOp::Reparent {
             mark_id: child_id,
             old_parent,
             new_parent: parent_id,
             old_index,
             new_index: new_order,
-        }],
-        child_id,
-        cursor.clone(),
-        cursor,
-        false,
-    );
+        });
+        prev_id = Some(child_id);
+    }
+
+    if let Some(&first) = child_ids.first() {
+        let cursor = CursorState {
+            block_id: first,
+            offset: None,
+        };
+        history.push(ops, first, cursor.clone(), cursor, false);
+    }
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -275,9 +222,37 @@ pub async fn update_mark_title(
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// New structural operations
-// ---------------------------------------------------------------------------
+/// Set or remove a reading on a landmark. If `reading` is `Reading::Null`, the entry is removed.
+pub async fn update_mark_reading(
+    db: &DatabaseConnection,
+    id: MarkID,
+    feature_id: FeatureID,
+    reading: Reading,
+) -> EditorResult<Mark> {
+    let m = mark::get(db, id)
+        .await?
+        .ok_or(EditorError::NotFound(id.inner()))?;
+
+    let mut mark_data = m.data;
+    match &mut mark_data {
+        MarkData::Landmark(landmark) => {
+            if matches!(reading, Reading::Null) {
+                landmark.readings.shift_remove(&feature_id);
+            } else {
+                landmark.readings.insert(feature_id, reading);
+            }
+        }
+        _ => return Err(EditorError::NotLandmark(id.inner())),
+    }
+
+    mark::update_data(db, id, &mark_data).await?;
+
+    // Re-fetch and return the updated mark
+    let updated = mark::get(db, id)
+        .await?
+        .ok_or(EditorError::NotFound(id.inner()))?;
+    Ok(updated)
+}
 
 /// Create a mark after a specified sibling.
 pub async fn create_mark_after(
@@ -587,8 +562,7 @@ pub async fn reparent_mark(
     let new_order =
         fractional_index::key_between(edges.last().and_then(|e| e.order.as_deref()), None);
 
-    terrain::delete_child_edges_by_dst(db, mark_id).await?;
-    terrain::insert_child_edge(db, new_parent_id, mark_id, &new_order).await?;
+    terrain::update_child_edge(db, mark_id, Some(new_parent_id), &new_order).await?;
 
     let cursor = CursorState {
         block_id: mark_id,
@@ -603,49 +577,6 @@ pub async fn reparent_mark(
             new_index: new_order.into(),
         }],
         mark_id,
-        cursor.clone(),
-        cursor,
-        false,
-    );
-
-    let blocks = projection::project_landmark(db, landmark_id, None).await?;
-    Ok(MutationResult { blocks })
-}
-
-/// Swap the order of two sibling marks.
-pub async fn swap_mark_order(
-    db: &DatabaseConnection,
-    history: &mut CommandHistory,
-    mark_id_a: MarkID,
-    mark_id_b: MarkID,
-    landmark_id: MarkID,
-) -> EditorResult<MutationResult> {
-    let edge_a = terrain::find_parent_edge(db, mark_id_a)
-        .await?
-        .ok_or(EditorError::NotFound(mark_id_a.inner()))?;
-
-    let edge_b = terrain::find_parent_edge(db, mark_id_b)
-        .await?
-        .ok_or(EditorError::NotFound(mark_id_b.inner()))?;
-
-    let order_a = edge_a.order.unwrap_or_default();
-    let order_b = edge_b.order.unwrap_or_default();
-
-    terrain::update_child_edge_order(db, mark_id_a, &order_b).await?;
-    terrain::update_child_edge_order(db, mark_id_b, &order_a).await?;
-
-    let cursor = CursorState {
-        block_id: mark_id_a,
-        offset: None,
-    };
-    history.push(
-        vec![AtomicOp::SwapOrder {
-            mark_id_a,
-            mark_id_b,
-            old_index_a: order_a.into(),
-            old_index_b: order_b.into(),
-        }],
-        mark_id_a,
         cursor.clone(),
         cursor,
         false,

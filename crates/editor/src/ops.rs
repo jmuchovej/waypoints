@@ -36,12 +36,6 @@ pub enum AtomicOp {
         old_index: String,
         new_index: String,
     },
-    SwapOrder {
-        mark_id_a: MarkID,
-        mark_id_b: MarkID,
-        old_index_a: String,
-        old_index_b: String,
-    },
 }
 
 impl AtomicOp {
@@ -93,17 +87,6 @@ impl AtomicOp {
                 old_index: new_index.clone(),
                 new_index: old_index.clone(),
             },
-            AtomicOp::SwapOrder {
-                mark_id_a,
-                mark_id_b,
-                old_index_a,
-                old_index_b,
-            } => AtomicOp::SwapOrder {
-                mark_id_a: *mark_id_a,
-                mark_id_b: *mark_id_b,
-                old_index_a: old_index_b.clone(),
-                old_index_b: old_index_a.clone(),
-            },
         }
     }
 
@@ -129,11 +112,6 @@ impl AtomicOp {
                 new_index,
                 ..
             } => apply_reparent(db, *mark_id, *new_parent, new_index).await,
-            AtomicOp::SwapOrder {
-                mark_id_a,
-                mark_id_b,
-                ..
-            } => apply_swap_order(db, *mark_id_a, *mark_id_b).await,
         }
     }
 }
@@ -184,6 +162,7 @@ async fn apply_content_update(
 }
 
 /// Create a new mark and its terrain edge.
+/// If the mark already exists (e.g. undoing a soft-delete), restore it instead.
 async fn apply_create_mark(
     db: &DatabaseConnection,
     mark_id: MarkID,
@@ -191,8 +170,17 @@ async fn apply_create_mark(
     parent_id: Option<MarkID>,
     fractional_index: &str,
 ) -> EditorResult<()> {
-    let now = chrono::Local::now().naive_utc();
-    mark::insert(db, mark_id, data, now).await?;
+    match mark::restore(db, mark_id).await {
+        Ok(()) => {
+            // Restored a soft-deleted mark — update its data to match
+            mark::update_data(db, mark_id, data).await?;
+        }
+        Err(_) => {
+            // Mark doesn't exist at all — fresh insert
+            let now = chrono::Local::now().naive_utc();
+            mark::insert(db, mark_id, data, now).await?;
+        }
+    }
 
     if let Some(pid) = parent_id {
         terrain::insert_child_edge(db, pid, mark_id, fractional_index).await?;
@@ -214,30 +202,6 @@ async fn apply_reparent(
     new_parent: MarkID,
     new_index: &str,
 ) -> EditorResult<()> {
-    terrain::delete_child_edges_by_dst(db, mark_id).await?;
-    terrain::insert_child_edge(db, new_parent, mark_id, new_index).await?;
-    Ok(())
-}
-
-/// Swap the fractional indices of two marks.
-async fn apply_swap_order(
-    db: &DatabaseConnection,
-    mark_id_a: MarkID,
-    mark_id_b: MarkID,
-) -> EditorResult<()> {
-    let edge_a = terrain::find_parent_edge(db, mark_id_a)
-        .await?
-        .ok_or(EditorError::NotFound(mark_id_a.inner()))?;
-
-    let edge_b = terrain::find_parent_edge(db, mark_id_b)
-        .await?
-        .ok_or(EditorError::NotFound(mark_id_b.inner()))?;
-
-    let order_a = edge_a.order.unwrap_or_default();
-    let order_b = edge_b.order.unwrap_or_default();
-
-    terrain::update_child_edge_order(db, mark_id_a, &order_b).await?;
-    terrain::update_child_edge_order(db, mark_id_b, &order_a).await?;
-
+    terrain::update_child_edge(db, mark_id, Some(new_parent), new_index).await?;
     Ok(())
 }
