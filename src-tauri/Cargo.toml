@@ -11,6 +11,10 @@ rust-version.workspace = true
 name = "waypoints"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "waypoints"
+path = "bin/waypoints.rs"
+
 [build-dependencies]
 tauri-build.workspace = true
 
