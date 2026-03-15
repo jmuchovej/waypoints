@@ -1,11 +1,10 @@
-use tauri::{App, Builder as TauriBuilder, Wry};
-use tauri_specta::Builder as SpectaBuilder;
+use tauri::{App, Builder as TauriBuilder};
 
 mod settings;
 pub mod territory;
 
-mod builders {
-    pub(crate) mod specta;
+pub mod builders {
+    pub mod specta;
     pub(crate) mod store;
     pub(crate) mod territory;
     #[cfg(desktop)]
@@ -26,12 +25,10 @@ pub fn run() {
     tracing::info!("waypoints starting");
 
     let specta = {
-        let builder = SpectaBuilder::<Wry>::new();
-        let builder = builders::specta::register_types(builder);
-        let builder = builders::specta::register_commands(builder);
+        let builder = builders::specta::build();
 
         #[cfg(all(debug_assertions, desktop))]
-        builders::specta::export(&builder);
+        builders::specta::export(&builder, "../src/app/bindings.g.ts");
 
         builder
     };

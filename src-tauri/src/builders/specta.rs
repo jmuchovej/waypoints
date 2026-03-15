@@ -1,9 +1,10 @@
 use tauri::Wry;
 use tauri_specta::{Builder as SpectaBuilder, collect_commands};
 
-use crate::territory::{MarkTree, Territory, TerritoryKind};
+use crate::mark::MarkTree;
+use crate::territory::{Territory, TerritoryKind};
 
-pub(crate) fn register_types(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
+pub fn register_types(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
     let builder = builder
         // mark (expanded)
         .typ::<MarkTree>()
@@ -14,8 +15,8 @@ pub(crate) fn register_types(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> 
     builder
 }
 
-pub(crate) fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
-    use crate::commands::{mark, territory};
+pub fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
+    use crate::commands::{editor, mark, territory};
 
     let builder = builder.commands(collect_commands![
         mark::mark_list,
@@ -25,6 +26,7 @@ pub(crate) fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wr
         mark::mark_delete,
         mark::mark_move,
         mark::mark_update_title,
+        // territory
         territory::territory_get_active,
         territory::territory_list,
         territory::territory_open,
@@ -54,12 +56,14 @@ pub(crate) fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wr
     builder
 }
 
-#[cfg(all(debug_assertions, desktop))]
-pub(crate) fn export(builder: &SpectaBuilder<Wry>) {
+pub fn export(builder: &SpectaBuilder<Wry>, path: &str) {
     builder
-        .export(
-            specta_typescript::Typescript::default(),
-            "../src/app/bindings.g.ts",
-        )
+        .export(specta_typescript::Typescript::default(), path)
         .expect("failed to export specta bindings");
+}
+
+pub fn build() -> SpectaBuilder<Wry> {
+    let builder = SpectaBuilder::<Wry>::new();
+    let builder = register_types(builder);
+    register_commands(builder)
 }
