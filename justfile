@@ -15,9 +15,11 @@ mod editor "crates/editor/justfile"
 # Generate TypeScript types from Rust models
 typegen:
     cargo run -p Waypoints --bin typegen
-    cargo run -p domain --bin typegen
-    cargo run -p editor --bin typegen
-    treefmt src/app/bindings.g.ts crates/domain/types.g.ts crates/editor/types.g.ts
+    @just domain::typegen
+    @just editor::typegen
+    treefmt src/app/bindings.g.ts
+    bun run scripts/patch-bindings.ts
+    treefmt src/app/bindings.g.ts
 
 clean:
     cargo clean
