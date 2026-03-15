@@ -1,0 +1,41 @@
+#:tombi schema.strict = false
+#:schema ../gen/schemas/desktop-schema.json
+identifier = "main"
+description = "Capabilities for the app window"
+windows = ["*"]
+permissions = [
+  # https://tauri.app/reference/acl/core-permissions/
+  "core:default",
+
+  "core:window:allow-start-dragging",
+
+  "core:webview:allow-create-webview",
+  "core:webview:allow-create-webview-window",
+
+  "notification:default",
+  "notification:allow-is-permission-granted",
+
+  "os:default",
+
+  "dialog:default",
+
+  "store:default",
+
+  "fs:default",
+  { identifier = "fs:allow-exists", allow = [{ path = "$APPDATA/*" }] },
+  "fs:allow-runtime-meta-recursive",
+  "fs:allow-runtime-read-recursive",
+  "fs:allow-runtime-write-recursive",
+
+  "fs:allow-resource-meta-recursive",
+  "fs:allow-resource-read-recursive",
+  "fs:allow-resource-write-recursive",
+
+  "fs:allow-document-meta-recursive",
+  "fs:allow-document-read-recursive",
+  "fs:allow-document-write-recursive",
+
+  "fs:allow-download-meta-recursive",
+  "fs:allow-download-read-recursive",
+  "fs:allow-download-write-recursive",
+]
