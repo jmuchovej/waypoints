@@ -1,4 +1,5 @@
 mod app "../src/justfile"
+mod icons "../waypoints/icons/justfile"
 
 [private]
 default:
@@ -8,22 +9,30 @@ default:
 via-tauri +ARGS="--debug":
     cargo tauri {{ ARGS }}
 
+# Requires rustup, bun, cargo-tauri, just, and op in your [nix] profile.
+[private]
+via-tauri-build +ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    key_path="{{ justfile_directory() }}/../.secrets/AuthKey.p8"
+    mkdir -p "$(dirname "${key_path}")"
+    op read "op://waypoints.so/Apple Signing/private-key" > "$key_path"
+    env -i \
+        HOME="$HOME" \
+        USER="$USER" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nix-profile/bin:$HOME/.cargo/bin:$HOME/.bun/bin" \
+        APPLE_API_ISSUER="op://waypoints.so/Apple Signing/issuer-id" \
+        APPLE_API_KEY="op://waypoints.so/Apple Signing/key-id" \
+        APPLE_API_KEY_PATH="$key_path" \
+        APPLE_CERTIFICATE="op://waypoints.so/Apple Signing/certificate" \
+        APPLE_CERTIFICATE_PASSWORD="op://waypoints.so/Apple Signing/password" \
+        op run -- cargo tauri build {{ ARGS }}
+
+clean:
+    cargo clean
+
 # Development — mock seed data, debug build
 dev $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
-    @just via-tauri dev --features development --config Tauri.flavor=dev.toml {{ ARGS }}
-
-# Alpha — debug build, no mock data
-alpha *ARGS:
-    @just via-tauri dev --features alpha --config Tauri.flavor=alpha.toml {{ ARGS }}
-
-# Beta — release-optimized build
-beta *ARGS:
-    @just via-tauri build --features beta --config Tauri.flavor=beta.toml {{ ARGS }}
-
-# Production release — base Tauri.toml, default features only
-release *ARGS:
-    @just via-tauri build --features release {{ ARGS }}
-
 # Generate .icns and .ico from each flavor's iconset
 icons:
     #!/usr/bin/env bash
@@ -44,6 +53,15 @@ icons:
                "$iconset/icon_16x16.png" \
                "icons/icon-${flavor}.ico"
     done
+    @just via-tauri dev --features development --config Tauri.flavor=development.toml {{ ARGS }}
+
+# Preview — signed release-optimized build
+preview *ARGS:
+    @just via-tauri-build --features preview --config Tauri.flavor=preview.toml {{ ARGS }}
+
+# Stable — signed, production build
+stable *ARGS:
+    @just via-tauri-build --features stable {{ ARGS }}
 
 ios +ARGS:
     @just via-tauri ios {{ ARGS }}

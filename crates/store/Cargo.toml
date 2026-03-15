@@ -31,9 +31,8 @@ pulldown-cmark = { workspace = true, optional = true }
 
 [features]
 default = []
-release = []
-beta = []
-alpha = []
+stable = []
+preview = []
 development = ["mock"]
 mock = ["pulldown-cmark"]
 

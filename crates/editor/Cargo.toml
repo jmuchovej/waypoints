@@ -18,6 +18,7 @@ serde.workspace = true
 specta.workspace = true
 specta-typescript.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 chrono.workspace = true
 uuid.workspace = true
@@ -31,6 +32,13 @@ typst-utils.workspace = true
 [[bin]]
 name = "typegen"
 path = "bin/typegen.rs"
+required-features = ["development"]
 
 [lints]
 workspace = true
+
+[features]
+default = []
+development = []
+preview = []
+stable = []

@@ -36,7 +36,13 @@ validator = { version = "0.20.0", features = ["derive", "indexmap"] }
 [[bin]]
 name = "typegen"
 path = "bin/typegen.rs"
-required-features = []
+required-features = ["development"]
 
 [lints]
 workspace = true
+
+[features]
+default = []
+development = []
+preview = []
+stable = []
