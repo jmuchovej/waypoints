@@ -144,6 +144,7 @@ pub fn date(reading: &Reading, feature: &FeatureKind) -> Result<(), String> {
         min_time,
         max_time,
         timezone: _,
+        granularity: _,
     } = feature
     else {
         unreachable!("validate_date called with non-Date feature")

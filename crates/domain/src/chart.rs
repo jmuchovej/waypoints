@@ -2,7 +2,9 @@ pub mod ids;
 pub use ids::{ChartID, FeatureID, GlyphID};
 
 pub mod feature_kind;
-pub use feature_kind::{Date, FeatureKind, Number, Reference, Select};
+pub use feature_kind::{
+    Date, DateGranularity, FeatureKind, Number, Reference, Select, SelectGroup, SelectOption,
+};
 
 pub mod feature;
 pub use feature::Feature;

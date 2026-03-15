@@ -37,6 +37,8 @@ pub enum FeatureKind {
         max_date: Option<NaiveDate>,
         max_time: Option<NaiveTime>,
         timezone: Option<String>,
+        #[serde(default)]
+        granularity: DateGranularity,
     },
 
     /// Email field with basic validation
@@ -104,7 +106,7 @@ pub mod number_builder;
 pub mod reference_builder;
 pub mod select_builder;
 
-pub use date_builder::Date;
+pub use date_builder::{Date, DateGranularity};
 pub use number_builder::Number;
 pub use reference_builder::Reference;
 pub use select_builder::{Select, SelectGroup, SelectOption};

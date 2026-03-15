@@ -4,7 +4,7 @@ use specta_typescript::Typescript;
 use domain::{
     Color, Icon, IconNamespace,
     chart::{
-        Chart, ChartID, Feature, FeatureID, FeatureKind, GlyphID,
+        Chart, ChartID, DateGranularity, Feature, FeatureID, FeatureKind, GlyphID,
         feature_kind::{SelectGroup, SelectOption},
         ids::Base36ID,
     },
@@ -32,6 +32,7 @@ fn main() {
     collection.register::<Chart>();
     collection.register::<Feature>();
     collection.register::<FeatureKind>();
+    collection.register::<DateGranularity>();
     collection.register::<SelectOption>();
     collection.register::<SelectGroup>();
 
@@ -55,7 +56,7 @@ fn main() {
     collection.register::<Terrain>();
     collection.register::<TerrainKind>();
 
-    let out = format!("{}/types.g.ts", env!("CARGO_MANIFEST_DIR"));
+    let out = format!("{}/typescript/types.g.ts", env!("CARGO_MANIFEST_DIR"));
     Typescript::default()
         .export_to(&out, &collection)
         .expect("failed to export domain types");
