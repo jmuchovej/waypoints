@@ -1,5 +1,5 @@
 //! Core block types and implementations.
-use sea_orm::ActiveValue::{NotSet, Set, Unchanged};
+use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::{
     ActiveModelBehavior, ConnectionTrait, DbErr, DeriveEntityModel, DerivePrimaryKey,
     DeriveRelation, EnumIter, PrimaryKeyTrait,
@@ -11,7 +11,8 @@ use waypoints_domain::{
     mark::{Content, Landmark, Mark, MarkData, MarkID},
 };
 
-use crate::impl_timestamps;
+use crate::error::StoreError;
+use crate::{StoreResult, impl_timestamps};
 
 /// Core block structure representing any piece of content.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DeriveEntityModel)]
@@ -36,9 +37,9 @@ pub struct Model {
     pub created_by: Option<Uuid>,
     /// Person who last modified the block (optional)
     pub updated_by: Option<Uuid>,
-    /// Has the user marked this Location as "deleted"?
+    /// Has the user marked this Mark as "deleted"?
     pub deleted_at: Option<DateTime>,
-    /// Has the user marked this Location as "archived"?
+    /// Has the user marked this Mark as "archived"?
     pub archived_at: Option<DateTime>,
 }
 
@@ -56,12 +57,9 @@ impl ActiveModelBehavior for ActiveModel {
         let mut ready = self;
 
         let data = ready.data.clone().unwrap();
-        let mut mark: MarkData =
-            serde_json::from_value(data).map_err(|err| DbErr::Custom(err.to_string()))?;
-        mark.derive_plain_text();
+        let mark: MarkData = serde_json::from_value(data).map_err(StoreError::from)?;
         ready.mark = Set(mark.type_name());
-        ready.data =
-            Set(serde_json::to_value(&mark).map_err(|err| DbErr::Custom(err.to_string()))?);
+        ready.data = Set(serde_json::to_value(&mark).map_err(StoreError::from)?);
 
         ready.set_timestamps(insert);
 
@@ -69,30 +67,36 @@ impl ActiveModelBehavior for ActiveModel {
     }
 }
 
-impl From<Mark> for ActiveModel {
-    fn from(mark: Mark) -> Self {
-        ActiveModel {
+impl TryFrom<Mark> for ActiveModel {
+    type Error = StoreError;
+
+    fn try_from(mark: Mark) -> StoreResult<Self> {
+        Ok(ActiveModel {
             id: Unchanged(mark.id.inner()),
             mark: Set(mark.type_name()),
-            data: Set(serde_json::to_value(mark.data).unwrap_or(Json::Null)),
+            data: Set(serde_json::to_value(mark.data)?),
             extra: Set(mark.extra),
             ..Default::default()
-        }
+        })
     }
 }
 
-impl From<Model> for Mark {
-    fn from(model: Model) -> Self {
+impl TryFrom<Model> for Mark {
+    type Error = StoreError;
+
+    fn try_from(model: Model) -> StoreResult<Self> {
         let mut builder = Mark::builder();
 
-        builder = if model.mark.starts_with("content") {
-            let data: Content = serde_json::from_value(model.data).unwrap();
-            builder.with_content(data)
-        } else if model.mark.starts_with("landmark") {
-            let data: Landmark = serde_json::from_value(model.data).unwrap();
-            builder.with_landmark(data)
-        } else {
-            unreachable!("unknown mark type: {}", model.mark)
+        builder = match model.mark.split_once(".") {
+            Some(("content", _)) => {
+                let data: Content = serde_json::from_value(model.data)?;
+                builder.with_content(data)
+            }
+            Some(("landmark", _)) => {
+                let data: Landmark = serde_json::from_value(model.data)?;
+                builder.with_landmark(data)
+            }
+            _ => return Err(StoreError::UnknownMark(model.id.into(), model.mark)),
         };
 
         if let Some(extra) = model.extra {
@@ -101,9 +105,9 @@ impl From<Model> for Mark {
 
         let mark: Mark = builder.build();
 
-        Self {
+        Ok(Self {
             id: model.id.into(),
             ..mark
-        }
+        })
     }
 }
