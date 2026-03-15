@@ -1,6 +1,6 @@
 //! Page built-in type - A container for other blocks.
 use super::tags_feature;
-use waypoints_domain::{
+use domain::{
     chart::{Chart, ChartID, Feature, Reference},
     icon_presets,
 };
@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn test_page_icon_system() {
-        use waypoints_domain::Icon;
+        use domain::Icon;
 
         let page = chart();
 

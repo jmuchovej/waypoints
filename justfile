@@ -8,15 +8,15 @@ default:
 
 mod app "src/justfile"
 mod tauri "src-tauri/justfile"
-mod waypoints "crates/waypoints-domain"
-mod entities "crates/waypoints-entities"
-mod migrations "crates/waypoints-migrations"
+mod domain "crates/domain/justfile"
+mod store "crates/store/justfile"
+mod editor "crates/editor/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
     cargo run -p Waypoints --bin typegen
-    cargo run -p waypoints-domain --bin typegen
-    treefmt src/app/bindings.g.ts crates/waypoints-domain/types.g.ts
+    cargo run -p domain --bin typegen
+    treefmt src/app/bindings.g.ts crates/domain/types.g.ts
 
 clean:
     cargo clean

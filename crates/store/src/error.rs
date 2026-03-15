@@ -1,7 +1,7 @@
+use domain::DomainError;
+use domain::chart::{ChartID, FeatureID, GlyphID};
+use domain::mark::MarkID;
 use thiserror::Error;
-use waypoints_domain::DomainError;
-use waypoints_domain::chart::{ChartID, FeatureID, GlyphID};
-use waypoints_domain::mark::MarkID;
 
 use crate::entities::MarkModel;
 

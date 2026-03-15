@@ -1,7 +1,7 @@
 use specta::TypeCollection;
 use specta_typescript::Typescript;
 
-use waypoints_domain::{
+use domain::{
     Color, Icon, IconNamespace,
     chart::{
         Chart, ChartID, Feature, FeatureID, FeatureKind, GlyphID,

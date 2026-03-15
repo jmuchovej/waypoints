@@ -1,10 +1,9 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/waypoints-domain",
+  "crates/domain",
   "crates/store",
   "src-tauri",
-  # "crates/waypoints-store"
 ]
 
 [workspace.package]
@@ -73,9 +72,9 @@ typed-builder = "0.23.2"
 uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
 
 # keep-sorted start
-cartograph = { path = "src-tauri" }
+domain = { path = "crates/domain" }
 store = { path = "crates/store" }
-waypoints-domain = { path = "crates/waypoints-domain" }
+Waypoints = { path = "src-tauri" }
 # keep-sorted end
 
 tauri-plugin-shell = "2.3.4"

@@ -1,10 +1,10 @@
+use domain::terrain::{Terrain, TerrainKind};
 use sea_orm::{
     ActiveModelBehavior, ActiveValue::Set, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
     EntityTrait, EnumIter, PrimaryKeyTrait, prelude::Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use waypoints_domain::terrain::{Terrain, TerrainKind};
 
 /// Graph edges representing relationships between blocks.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DeriveEntityModel)]

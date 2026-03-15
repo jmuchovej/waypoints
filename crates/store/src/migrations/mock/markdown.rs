@@ -1,5 +1,5 @@
+use domain::mark::{Content, InlineMark, RichText, TextMarkKind, TextSegment};
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
-use waypoints_domain::mark::{Content, InlineMark, RichText, TextMarkKind, TextSegment};
 
 /// A parsed block with optional nested children (for compound blocks like blockquote).
 #[derive(Debug, Clone)]

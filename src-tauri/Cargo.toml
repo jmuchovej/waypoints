@@ -43,7 +43,8 @@ thiserror.workspace = true
 specta.workspace = true
 specta-typescript.workspace = true
 tauri-specta.workspace = true
-waypoints-domain.workspace = true
+editor.workspace = true
+domain.workspace = true
 store.workspace = true
 wry.workspace = true
 

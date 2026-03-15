@@ -22,8 +22,8 @@
 // TODO add examples of working with the different Chart types
 //!
 
+use domain::chart::{Chart, ChartID};
 use std::collections::HashMap;
-use waypoints_domain::chart::{Chart, ChartID};
 
 // Import built-in type modules
 mod _utils;

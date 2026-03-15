@@ -2,13 +2,13 @@ use super::ChartIDMap;
 use super::markdown::parse_markdown;
 use crate::entities::{ActiveMark, MarkModel, Marks};
 use crate::error::{StoreError, StoreResult};
-use sea_orm::{ActiveModelTrait, ActiveValue::Unchanged, EntityTrait, TryIntoModel};
-use sea_orm_migration::prelude::*;
-use std::collections::HashMap;
-use waypoints_domain::{
+use domain::{
     chart::ChartID,
     mark::{Landmark, Mark, MarkID},
 };
+use sea_orm::{ActiveModelTrait, ActiveValue::Unchanged, EntityTrait, TryIntoModel};
+use sea_orm_migration::prelude::*;
+use std::collections::HashMap;
 
 pub type MarkIDMap = HashMap<String, MarkID>;
 

@@ -1,14 +1,12 @@
+use domain::fractional_index;
+use domain::mark::{Content, Mark, MarkData, RichText};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter,
     QueryOrder,
 };
+use store::entities::{ActiveMark, ActiveTerrain, MarkColumn, Marks, TerrainColumn, Terrains};
 use tauri::State;
 use uuid::Uuid;
-use waypoints_domain::fractional_index;
-use waypoints_domain::mark::{Content, Mark, MarkData, RichText};
-use store::entities::{
-    ActiveMark, ActiveTerrain, MarkColumn, Marks, TerrainColumn, Terrains,
-};
 
 use crate::mark::{MarkError, MarkResult, MarkTree};
 use crate::territory::TerritoryManager;

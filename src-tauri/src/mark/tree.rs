@@ -1,6 +1,6 @@
+use domain::mark::Mark;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use waypoints_domain::mark::Mark;
 
 /// A mark with its recursively expanded children.
 ///

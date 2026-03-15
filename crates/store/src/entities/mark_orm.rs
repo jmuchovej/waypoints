@@ -1,4 +1,8 @@
 //! Core block types and implementations.
+use domain::{
+    Uuid,
+    mark::{Content, Landmark, Mark, MarkData, MarkID},
+};
 use sea_orm::ActiveValue::{Set, Unchanged};
 use sea_orm::{
     ActiveModelBehavior, ConnectionTrait, DbErr, DeriveEntityModel, DerivePrimaryKey,
@@ -6,10 +10,6 @@ use sea_orm::{
     prelude::{DateTime, Json},
 };
 use serde::{Deserialize, Serialize};
-use waypoints_domain::{
-    Uuid,
-    mark::{Content, Landmark, Mark, MarkData, MarkID},
-};
 
 use crate::error::StoreError;
 use crate::{StoreResult, impl_timestamps};

@@ -3,7 +3,7 @@ pub mod entities;
 pub mod error;
 mod macros;
 mod migrations;
-mod query;
+pub mod query;
 mod tools;
 
 pub use error::{StoreError, StoreResult};

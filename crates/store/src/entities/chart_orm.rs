@@ -22,15 +22,15 @@
 //!
 //! This is separate from thing instances - schemas define what's possible,
 //! while Thing instances store actual data.
+use domain::{
+    Icon,
+    chart::{Chart, ChartID, Feature},
+};
 use sea_orm::{
     ActiveModelBehavior, DbErr, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EnumIter,
     IntoActiveModel, PrimaryKeyTrait, prelude::Json,
 };
 use serde::{Deserialize, Serialize};
-use waypoints_domain::{
-    Icon,
-    chart::{Chart, ChartID, Feature},
-};
 
 /// Charts define the various kinds of [`Landmarks`][`crate::landmark::Landmark`] you can have within Waypoints.
 ///

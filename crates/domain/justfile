@@ -2,3 +2,7 @@
 [private]
 default:
     @just --list
+
+typegen:
+    cargo run --bin typegen
+    treefmt types.g.ts

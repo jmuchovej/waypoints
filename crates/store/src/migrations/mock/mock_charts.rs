@@ -1,5 +1,6 @@
 use crate::builtin::builtin_charts;
 use crate::entities::{ActiveChart, ChartModel, Charts};
+use domain::chart::{Chart, ChartID};
 use sea_orm::{
     ActiveModelTrait,
     ActiveValue::{Set, Unchanged},
@@ -7,7 +8,6 @@ use sea_orm::{
 };
 use sea_orm_migration::prelude::*;
 use std::collections::HashMap;
-use waypoints_domain::chart::{Chart, ChartID};
 
 use crate::error::StoreResult;
 

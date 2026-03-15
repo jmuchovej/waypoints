@@ -1,4 +1,4 @@
-use waypoints_domain::{
+use domain::{
     Color, Icon,
     chart::{
         Feature, FeatureKind, Reference,
