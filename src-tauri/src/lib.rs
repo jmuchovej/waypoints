@@ -13,6 +13,7 @@ mod builders {
 }
 
 mod commands {
+    pub mod mark;
     pub mod territory;
 }
 
