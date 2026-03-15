@@ -49,6 +49,20 @@ const links = (state: "collapsed" | "expanded"): NavigationMenuItem[] => {
 };
 
 const open = ref(false);
+
+useHead({
+  title: "Waypoints",
+  charset: "utf-8",
+  viewport: "width=device-width, initial-scale=1",
+  meta: [
+    { name: "format-detection", content: "no" },
+    {
+      name: "viewport",
+      content:
+        "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+    },
+  ],
+});
 </script>
 
 <template>

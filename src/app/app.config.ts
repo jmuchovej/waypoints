@@ -33,8 +33,38 @@ export default defineAppConfig({
         root: "scrollbar-none",
       },
     },
+    dashboardSidebar: {
+      slots: {
+        // root: "transition-[left,right,width] duration-200 ease-linear",
+      },
+    },
+    dashboardPanel: {
+      slots: {
+        // root: "transition-[left,right,width] duration-200 ease-linear",
+      },
+    },
     dashboardGroup: {
       base: "relative flex flex-1 overflow-hidden",
+    },
+    header: {
+      slots: {
+        content: "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+      },
+    },
+    modal: {
+      slots: {
+        content: "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+      },
+    },
+    slideover: {
+      slots: {
+        content: "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+      },
+    },
+    drawer: {
+      slots: {
+        content: "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+      },
     },
   },
 });
