@@ -6,8 +6,8 @@
 default:
     @just --list
 
-mod app "src/justfile"
-mod tauri "src-tauri/justfile"
+mod app "waypoints/justfile"
+mod tauri "waypoints/src-tauri/justfile"
 mod domain "crates/domain/justfile"
 mod store "crates/store/justfile"
 mod editor "crates/editor/justfile"

@@ -48,6 +48,7 @@ editor.workspace = true
 domain.workspace = true
 store.workspace = true
 wry.workspace = true
+resvg = "0.47.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit.workspace = true

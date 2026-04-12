@@ -10,6 +10,7 @@ export interface PhoneReadingEmits {
   update: [reading: Reading];
 }
 </script>
+
 <script setup lang="ts">
 import type { Reading, Feature } from "@waypoints/domain";
 

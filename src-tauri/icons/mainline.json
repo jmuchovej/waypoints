@@ -1,6 +1,0 @@
-{
-  "iconset": "app-icon.iconset",
-  "default": "app-icon.iconset/icon_512x512@2x.png",
-  "bg_color": "#334155",
-  "android_fg_scale": 100
-}

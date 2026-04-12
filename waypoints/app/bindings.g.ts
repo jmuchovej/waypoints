@@ -3,6 +3,30 @@
 /** user-defined commands **/
 
 export const commands = {
+  async chartList(): Promise<Result<Chart[], string>> {
+    try {
+      return { status: "ok", data: await TAURI_INVOKE("chart_list") };
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      else return { status: "error", error: e as any };
+    }
+  },
+  async chartGet(chartId: ChartID): Promise<Result<Chart | null, string>> {
+    try {
+      return { status: "ok", data: await TAURI_INVOKE("chart_get", { chartId }) };
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      else return { status: "error", error: e as any };
+    }
+  },
+  async landmarkCreate(chartId: ChartID): Promise<Result<Mark, string>> {
+    try {
+      return { status: "ok", data: await TAURI_INVOKE("landmark_create", { chartId }) };
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      else return { status: "error", error: e as any };
+    }
+  },
   async markList(): Promise<Result<Mark[], string>> {
     try {
       return { status: "ok", data: await TAURI_INVOKE("mark_list") };
@@ -157,31 +181,6 @@ export const commands = {
       else return { status: "error", error: e as any };
     }
   },
-  async editorCreateMark(
-    id: MarkID,
-    parentId: MarkID,
-    content: Content,
-    createdAt: string,
-    afterId: MarkID | null,
-    landmarkId: MarkID,
-  ): Promise<Result<CreateResult, string>> {
-    try {
-      return {
-        status: "ok",
-        data: await TAURI_INVOKE("editor_create_mark", {
-          id,
-          parentId,
-          content,
-          createdAt,
-          afterId,
-          landmarkId,
-        }),
-      };
-    } catch (e) {
-      if (e instanceof Error) throw e;
-      else return { status: "error", error: e as any };
-    }
-  },
   async editorUpdateMark(
     id: MarkID,
     content: Content,
@@ -205,16 +204,16 @@ export const commands = {
       else return { status: "error", error: e as any };
     }
   },
-  async editorMoveMark(
+  async editorMoveMarks(
     parentId: MarkID,
-    childId: MarkID,
+    childIds: MarkID[],
     afterId: MarkID | null,
     landmarkId: MarkID,
   ): Promise<Result<MutationResult, string>> {
     try {
       return {
         status: "ok",
-        data: await TAURI_INVOKE("editor_move_mark", { parentId, childId, afterId, landmarkId }),
+        data: await TAURI_INVOKE("editor_move_marks", { parentId, childIds, afterId, landmarkId }),
       };
     } catch (e) {
       if (e instanceof Error) throw e;
@@ -224,6 +223,21 @@ export const commands = {
   async editorUpdateMarkTitle(id: MarkID, title: RichText): Promise<Result<null, string>> {
     try {
       return { status: "ok", data: await TAURI_INVOKE("editor_update_mark_title", { id, title }) };
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      else return { status: "error", error: e as any };
+    }
+  },
+  async editorUpdateMarkReading(
+    id: MarkID,
+    featureId: FeatureID,
+    reading: Reading,
+  ): Promise<Result<Mark, string>> {
+    try {
+      return {
+        status: "ok",
+        data: await TAURI_INVOKE("editor_update_mark_reading", { id, featureId, reading }),
+      };
     } catch (e) {
       if (e instanceof Error) throw e;
       else return { status: "error", error: e as any };
@@ -324,21 +338,6 @@ export const commands = {
       else return { status: "error", error: e as any };
     }
   },
-  async editorSwapMarkOrder(
-    markIdA: MarkID,
-    markIdB: MarkID,
-    landmarkId: MarkID,
-  ): Promise<Result<MutationResult, string>> {
-    try {
-      return {
-        status: "ok",
-        data: await TAURI_INVOKE("editor_swap_mark_order", { markIdA, markIdB, landmarkId }),
-      };
-    } catch (e) {
-      if (e instanceof Error) throw e;
-      else return { status: "error", error: e as any };
-    }
-  },
   async editorUndo(landmarkId: MarkID): Promise<Result<UndoRedoResult | null, string>> {
     try {
       return { status: "ok", data: await TAURI_INVOKE("editor_undo", { landmarkId }) };
@@ -350,6 +349,21 @@ export const commands = {
   async editorRedo(landmarkId: MarkID): Promise<Result<UndoRedoResult | null, string>> {
     try {
       return { status: "ok", data: await TAURI_INVOKE("editor_redo", { landmarkId }) };
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      else return { status: "error", error: e as any };
+    }
+  },
+  async editorRenderMath(
+    expression: string,
+    engine: MathEngine,
+    displayMode: boolean,
+  ): Promise<Result<string, string>> {
+    try {
+      return {
+        status: "ok",
+        data: await TAURI_INVOKE("editor_render_math", { expression, engine, displayMode }),
+      };
     } catch (e) {
       if (e instanceof Error) throw e;
       else return { status: "error", error: e as any };
@@ -369,6 +383,32 @@ export const commands = {
  * This is the core type that [`ChartID`], [`FeatureID`], and [`GlyphID`] wrap.
  */
 export type Base36ID = string;
+export type Chart = {
+  /**
+   * A unique identifier for the [`Chart`]. This is more thoroughly detailed in
+   * [`ChartID`], but the aim here is to have a compact, unique identifier that allows
+   * Waypoints to reference [`Charts`][Chart] in a way that's not contingent names
+   * (which a user could arbitrarily change).
+   */
+  id: ChartID;
+  /**
+   * A human-readable name for the [`Chart`].
+   */
+  name: string;
+  /**
+   * A brief description of the [`Chart`].
+   */
+  description: string | null;
+  /**
+   * A [`Icon`] that should be associated with the [`Chart`].
+   */
+  icon: Icon | null;
+  /**
+   * A mapping of [`FeatureIDs`][`FeatureID`] to [`Feature`] definitions. This describes
+   * the properties that each [`Chart`] should have.
+   */
+  features: Partial<{ [key in FeatureID]: Feature }>;
+};
 /**
  * Unique identifier for a [`Chart`][C].
  *
@@ -413,7 +453,7 @@ export type Content =
   /**
    * A quote
    */
-  | { type: "blockquote"; rich_text: RichText }
+  | { type: "blockquote" }
   /**
    * An unordered list item
    */
@@ -425,7 +465,7 @@ export type Content =
   /**
    * Callout
    */
-  | { type: "callout"; icon: string; background_color: Color; items: Content[] }
+  | { type: "callout"; icon: string; background_color: Color }
   /**
    * Code block with syntax highlighting
    */
@@ -452,6 +492,43 @@ export type Content =
    * Horizontal divider
    */
   | { type: "divider" };
+/**
+ * Result of a create operation.
+ */
+export type CreateResult = { new_mark_id: MarkID; blocks: RenderNode[] };
+/**
+ * Cursor position within the editor.
+ */
+export type CursorState = { block_id: MarkID; offset: number | null };
+/**
+ * Precision at which a date/time value should be captured and displayed.
+ *
+ * This is a schema-level concern, not a UI-only one. A "Birthday" feature
+ * wants `Day`; a "Meeting start" feature wants `Minute`. The stored value
+ * is always a `NaiveDateTime`, but sub-granularity fields are zeroed on
+ * write and hidden from the editor so users can't enter meaningless
+ * precision.
+ *
+ * The variant names mirror `@internationalized/date` and Nuxt UI's
+ * `UInputDate` `granularity` prop so the frontend can map 1:1.
+ */
+export type DateGranularity =
+  /**
+   * Date only — time component is zeroed (00:00:00).
+   */
+  | "day"
+  /**
+   * Date + hour — minutes and seconds zeroed.
+   */
+  | "hour"
+  /**
+   * Date + hour + minute — seconds zeroed.
+   */
+  | "minute"
+  /**
+   * Full precision.
+   */
+  | "second";
 /**
  * A feature defines a field within a [`Chart`][C] that [`Landmarks`][M:L] can have values for.
  *
@@ -511,6 +588,7 @@ export type FeatureKind =
       max_date: string | null;
       max_time: string | null;
       timezone: string | null;
+      granularity?: DateGranularity;
     }
   /**
    * Email field with basic validation
@@ -600,29 +678,9 @@ export type Icon = {
   metadata?: JsonValue | null;
 };
 /**
- * Icon namespace for different icon sources.
+ * An inline formatting mark (bold, italic, link, etc.).
  */
-export type IconNamespace =
-  /**
-   * Iconify icon collection
-   */
-  | { Iconify: { set: string; name: string } }
-  /**
-   * Waypoints custom icons (future)
-   */
-  | { Waypoints: { set: string; name: string } }
-  /**
-   * System/platform emoji
-   */
-  | { SystemEmoji: { name: string } }
-  /**
-   * Local image file or asset
-   */
-  | { LocalImage: { path: string } }
-  /**
-   * Remote image URL
-   */
-  | { RemoteImage: { url: string } };
+export type InlineMark = { kind: TextMarkKind; data?: JsonValue | null };
 export type JsonValue =
   | null
   | boolean
@@ -737,25 +795,27 @@ export type MutationResult = { blocks: RenderNode[] };
  * [M:L]: crate::mark::Landmark
  */
 export type Reading =
-  | string
-  | number
-  | boolean
+  | { type: "text"; value: RichText }
+  | { type: "number"; value: number }
+  | { type: "bool"; value: boolean }
   /**
    * Single date/datetime
    */
-  | string
+  | { type: "date"; value: string }
   /**
    * Date range with optional start/end dates and times
    */
-  | [string, string]
-  | GlyphID
-  | GlyphID[]
-  | Partial<{ [key in GlyphID]: GlyphID[] }>
-  | MarkID[]
-  | string
-  | [string, string]
-  | string
-  | null;
+  | { type: "date-range"; value: [string, string] }
+  | { type: "select"; value: GlyphID }
+  | { type: "multi-select"; value: GlyphID[] }
+  | { type: "grouped-select"; value: Partial<{ [key in GlyphID]: GlyphID[] }> }
+  | { type: "references"; value: MarkID[] }
+  | { type: "url"; value: string }
+  | { type: "email"; value: string }
+  | { type: "phone"; value: [string, string] }
+  | { type: "file"; value: string }
+  | { type: "formula"; value: string }
+  | { type: "null" };
 /**
  * Display mode for rendering references in the UI.
  * Determines how referenced Landmarks should be visually presented.
@@ -822,7 +882,7 @@ export type RichReference = {
    */
   as?: ReferenceDisplayMode;
 };
-export type RichText = { plain_text: string; marks?: TextMark[] };
+export type RichText = { plain_text: string; segments: TextSegment[] };
 /**
  * Group of options for grouped select fields
  */
@@ -861,53 +921,18 @@ export type Size =
    */
   | { type: "auto" };
 /**
- * Graph edges representing relationships between blocks.
+ * Result of a split operation.
  */
-export type Terrain = {
-  /**
-   * The directed edge this block is coming from
-   */
-  src_id: MarkID;
-  /**
-   * The directed edge this block is going to
-   */
-  dst_id: MarkID;
-  /**
-   * What kind of edge is this?
-   */
-  kind: TerrainKind;
-  /**
-   * Extra metadata that belongs to this particular edge
-   */
-  extra: JsonValue | null;
+export type SplitResult = { new_mark_id: MarkID; blocks: RenderNode[] };
+export type Territory = {
+  id: string;
+  name: string;
+  kind: TerritoryKind;
+  path: string | null;
+  createdAt: string;
+  lastOpenedAt: string | null;
 };
-/**
- * Terrain kinds which designate the relationship between two [`Marks`][M].
- *
- * [M]: crate::mark::Mark
- */
-export type TerrainKind = { type: "child" } | { type: "reference" } | { type: "custom" };
-/**
- * Text formatting marks (bold, italic, links, etc.)
- */
-export type TextMark = {
-  /**
-   * Type of formatting
-   */
-  kind: TextMarkKind;
-  /**
-   * Start position in the text (Unicode character offset)
-   */
-  start: number;
-  /**
-   * End position in the text (Unicode character offset)
-   */
-  end: number;
-  /**
-   * Additional data for the mark (e.g., URL for links)
-   */
-  data?: JsonValue | null;
-};
+export type TerritoryKind = "managed" | "external";
 /**
  * Types of text formatting.
  */

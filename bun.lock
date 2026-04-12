@@ -12,7 +12,7 @@
         "@waypoints/domain": "catalog:",
       },
     },
-    "src": {
+    "waypoints": {
       "name": "waypoints",
       "dependencies": {
         "@fontsource-variable/dm-sans": "catalog:",
@@ -2918,7 +2918,7 @@
 
     "w3c-keyname": ["w3c-keyname@2.2.8", "", {}, "sha512-dpojBhNsCNN7T82Tm7k26A6G9ML3NkhDsnw9n/eoxSRlVBB4CEtIQ/KTCLI2Fwf3ataSXRhYFkQi3SlnFwPvPQ=="],
 
-    "waypoints": ["waypoints@workspace:src"],
+    "waypoints": ["waypoints@workspace:waypoints"],
 
     "web-namespaces": ["web-namespaces@2.0.1", "", {}, "sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ=="],
 

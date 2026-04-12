@@ -1,6 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["crates/domain", "crates/store", "src-tauri", "crates/editor"]
+members = [
+  "crates/domain",
+  "crates/store",
+  "crates/editor",
+  "waypoints/src-tauri",
+]
 
 [workspace.package]
 version = "0.1.0"

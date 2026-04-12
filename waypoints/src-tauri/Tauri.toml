@@ -38,5 +38,7 @@ min-width = 375
 min-height = 812
 resizable = true
 fullscreen = false
+# title-bar-style = "overlay"
+# hidden-title = true
 
 [app.security]
