@@ -1,5 +1,5 @@
 mod app "../justfile"
-mod icons "../icons/justfile"
+mod icons "./icons/justfile"
 
 [private]
 default:

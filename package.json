@@ -3,7 +3,8 @@
     "packages": [
       "waypoints",
       "crates/domain",
-      "crates/editor"
+      "crates/editor",
+      "waypoints/src-tauri/icons"
     ],
     "catalog": {
       "@waypoints/domain": "link:@waypoints/domain",
