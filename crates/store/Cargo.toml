@@ -40,6 +40,11 @@ stable = []
 preview = []
 development = ["mock"]
 mock = ["pulldown-cmark"]
+test-utils = []
+
+[dev-dependencies]
+rstest = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]
 workspace = true

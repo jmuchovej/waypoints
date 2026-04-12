@@ -96,6 +96,19 @@ pub async fn soft_delete(db: &DatabaseConnection, id: MarkID) -> StoreResult<()>
     Ok(())
 }
 
+/// Restore a soft-deleted mark (clear deleted_at). Errors if not found or not deleted.
+pub async fn restore(db: &DatabaseConnection, id: MarkID) -> StoreResult<()> {
+    let model = Marks::find_by_id(id.inner())
+        .one(db)
+        .await?
+        .ok_or(StoreError::MarkNotFound(id))?;
+
+    let mut active: ActiveMark = model.into_active_model();
+    active.deleted_at = Set(None);
+    active.update(db).await?;
+    Ok(())
+}
+
 /// Hard-delete (actually deletes). Doesn't error if the record is absent.
 pub async fn hard_delete(db: &DatabaseConnection, id: MarkID) -> StoreResult<()> {
     let model = Marks::find_by_id(id.inner())

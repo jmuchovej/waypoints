@@ -62,20 +62,16 @@ pub async fn delete_edges_by_dst(db: &DatabaseConnection, dst_id: MarkID) -> Sto
     Ok(())
 }
 
-/// Delete only child-kind edges where dst_id matches.
-pub async fn delete_child_edges_by_dst(db: &DatabaseConnection, dst_id: MarkID) -> StoreResult<()> {
-    Terrains::delete_many()
-        .filter(TerrainColumn::DstId.eq(dst_id.inner()))
-        .filter(TerrainColumn::Kind.eq("child"))
-        .exec(db)
-        .await?;
-    Ok(())
-}
-
-/// Update the fractional order of the child edge pointing to dst_id.
-pub async fn update_child_edge_order(
+/// Update the child edge pointing to `dst_id`.
+/// Always sets a new fractional order; optionally re-parents to a new `src_id`.
+///
+/// When the parent changes, this deletes the old edge and inserts a new one
+/// because the primary key is `(src_id, dst_id)` — SeaORM can't update PK fields
+/// in-place (the WHERE clause would use the new value and match nothing).
+pub async fn update_child_edge(
     db: &DatabaseConnection,
     dst_id: MarkID,
+    new_parent: Option<MarkID>,
     new_order: &str,
 ) -> StoreResult<()> {
     let model = Terrains::find()
@@ -85,8 +81,26 @@ pub async fn update_child_edge_order(
         .await?
         .ok_or(StoreError::MarkNotFound(dst_id))?;
 
-    let mut active: ActiveTerrain = model.into_active_model();
-    active.order = Set(Some(new_order.to_string()));
-    active.update(db).await?;
+    match new_parent {
+        Some(parent) if parent.inner() != model.src_id => {
+            // Reparenting: delete old edge and insert new one
+            let extra = model.extra.clone();
+            model.delete(db).await?;
+            let active = ActiveTerrain {
+                src_id: Set(parent.inner()),
+                dst_id: Set(dst_id.inner()),
+                kind: Set("child".to_string()),
+                order: Set(Some(new_order.to_string())),
+                extra: Set(extra),
+            };
+            active.insert(db).await?;
+        }
+        _ => {
+            // Same parent (or None) — just update order
+            let mut active: ActiveTerrain = model.into_active_model();
+            active.order = Set(Some(new_order.to_string()));
+            active.update(db).await?;
+        }
+    }
     Ok(())
 }
