@@ -9,6 +9,8 @@ via-nuxi +ARGS:
 dev:
     @just via-nuxi dev
 
+setup: postinstall
+
 generate:
     @just via-nuxi generate
 

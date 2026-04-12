@@ -82,7 +82,7 @@ uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
 domain = { path = "crates/domain" }
 editor = { path = "crates/editor" }
 store = { path = "crates/store" }
-Waypoints = { path = "src-tauri" }
+Waypoints = { path = "waypoints/src-tauri" }
 # keep-sorted end
 
 tauri-plugin-shell = "2.3.4"

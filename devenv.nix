@@ -28,7 +28,6 @@
     lsp.enable = true;
     bun.enable = true;
     bun.install.enable = true;
-    directory = "./src";
   };
   languages.typescript = {
     enable = true;
@@ -58,6 +57,7 @@
   git-hooks.hooks.check-added-large-files.enable = true;
   git-hooks.hooks.clippy.enable = true;
   git-hooks.hooks.cargo-check.enable = true;
+  git-hooks.hooks.keep-sorted.enable = true;
   git-hooks.hooks.cargo-test = {
     enable = true;
     package = pkgs.cargo;
@@ -101,6 +101,7 @@
       rustfmt.enable = true;
       ktfmt.enable = true;
       swift-format.enable = true;
+      taplo.enable = true;
       rufo = {
         enable = true;
         includes = [

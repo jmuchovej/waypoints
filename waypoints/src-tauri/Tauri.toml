@@ -7,7 +7,7 @@ identifier = "so.waypoints"
 before-build-command = "just app::generate"
 before-dev-command = "just app::dev"
 devUrl = "http://localhost:9297"
-frontend-dist = "../src/dist"
+frontend-dist = "../dist"
 
 [bundle]
 homepage = "https://waypoints.so"
