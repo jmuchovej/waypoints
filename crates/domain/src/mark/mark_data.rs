@@ -291,7 +291,7 @@ mod tests {
                 engine: MathEngine::Typst,
             }
             .type_name(),
-            "math-block"
+            "math"
         );
         assert_eq!(Content::Divider.type_name(), "divider");
     }
@@ -394,8 +394,8 @@ mod tests {
             engine: MathEngine::LaTeX,
         };
 
-        assert_eq!(typst_math.type_name(), "math-block");
-        assert_eq!(latex_math.type_name(), "math-block");
+        assert_eq!(typst_math.type_name(), "math");
+        assert_eq!(latex_math.type_name(), "math");
 
         if let Content::Math { expression, engine } = typst_math {
             assert_eq!(expression, "x^2 + y^2 = z^2");

@@ -9,7 +9,7 @@ use waypoints::builders::specta;
 fn main() {
     let builder = specta::build();
 
-    let out = Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/app/bindings.g.ts");
+    let out = Path::new(env!("CARGO_MANIFEST_DIR")).join("../app/bindings.g.ts");
     specta::export(&builder, out.to_str().unwrap());
 
     println!("bindings written to {}", out.display());

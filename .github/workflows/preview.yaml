@@ -1,0 +1,18 @@
+name: Preview
+
+on:
+  push:
+    tags: ["v*-pre.*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build.yaml
+    with:
+      flavor: preview
+      features: preview
+      config: Tauri.flavor=preview.toml
+      tag: ${{ github.ref_name }}
+      prerelease: true
+    secrets:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}

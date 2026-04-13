@@ -1,0 +1,107 @@
+name: Build (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      flavor:
+        required: true
+        type: string
+        description: "Build flavor — matches icons recipe and feature flag (preview, stable)"
+      features:
+        required: true
+        type: string
+        description: "Cargo feature flags to enable"
+      config:
+        required: false
+        type: string
+        default: ""
+        description: "Tauri config override file (e.g. Tauri.flavor=preview.toml); empty for stable"
+      tag:
+        required: false
+        type: string
+        default: ""
+        description: "Release tag name (e.g. v1.2.3)"
+      prerelease:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      SOPS_AGE_KEY:
+        required: true
+        description: "Age private key for decrypting .secrets/*.sops.yaml"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            runner: macos-latest
+          - platform: linux
+            runner: ubuntu-22.04
+          - platform: windows
+            runner: windows-latest
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup just
+        uses: extractions/setup-just@v2
+
+      - name: Install JS deps
+        run: bun install
+
+      - name: Install sops + age + yq (macOS)
+        if: matrix.platform == 'macos'
+        run: brew install sops age yq
+
+      - name: Decrypt Apple signing secrets
+        if: matrix.platform == 'macos'
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          secrets=$(sops -d .secrets/signing-apple.sops.yaml)
+          key_path="${RUNNER_TEMP}/AuthKey.p8"
+          echo "${secrets}" | yq '.private-key' > "${key_path}"
+          echo "APPLE_API_KEY_PATH=${key_path}" >> "$GITHUB_ENV"
+          echo "APPLE_API_ISSUER=$(echo "${secrets}" | yq '.issuer-id')" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY=$(echo "${secrets}" | yq '.key-id')" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE=$(echo "${secrets}" | yq '.certificate')" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE_PASSWORD=$(echo "${secrets}" | yq '.password')" >> "$GITHUB_ENV"
+
+      - name: Generate icons
+        run: just icons::${{ inputs.flavor }}
+        working-directory: waypoints/src-tauri
+
+      - name: Build
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ env.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ env.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_ISSUER: ${{ env.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ env.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
+        with:
+          projectPath: waypoints
+          args: >-
+            --features ${{ inputs.features }}
+            ${{ inputs.config != '' && format('--config {0}', inputs.config) || '' }}
+          tagName: ${{ inputs.tag }}
+          releaseName: "Waypoints ${{ inputs.tag }}"
+          prerelease: ${{ inputs.prerelease }}

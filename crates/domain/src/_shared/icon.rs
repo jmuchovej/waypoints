@@ -16,7 +16,7 @@
 //! # Examples
 //!
 //! ```
-//! use waypoints_domain::Icon;
+//! use domain::Icon;
 //!
 //! // Iconify icons - colorability determined by API
 //! let home = Icon::iconify("mdi", "home");
@@ -100,7 +100,7 @@ impl Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::Icon;
+    /// use domain::Icon;
     ///
     /// let icon = Icon::new("iconify:mdi:home");
     /// assert_eq!(icon.identifier, "iconify:mdi:home");
@@ -119,7 +119,7 @@ impl Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::Icon;
+    /// use domain::Icon;
     ///
     /// let home = Icon::iconify("mdi", "home");
     /// assert_eq!(home.identifier, "iconify:mdi:home");
@@ -139,7 +139,7 @@ impl Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::Icon;
+    /// use domain::Icon;
     ///
     /// let custom = Icon::waypoints("ui", "special-button");
     /// assert_eq!(custom.identifier, "waypoints:ui:special-button");
@@ -157,7 +157,7 @@ impl Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::Icon;
+    /// use domain::Icon;
     ///
     /// let house = Icon::system_emoji("house");
     /// assert_eq!(house.identifier, "system:emoji:house");
@@ -179,7 +179,7 @@ impl Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::Icon;
+    /// use domain::Icon;
     ///
     /// let logo = Icon::local_image("assets/logo.png");
     /// assert_eq!(logo.identifier, "local:image:assets/logo.png");
@@ -197,7 +197,7 @@ impl Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::Icon;
+    /// use domain::Icon;
     ///
     /// let remote = Icon::remote_image("https://example.com/icon.svg");
     /// assert_eq!(remote.identifier, "remote:image:https://example.com/icon.svg");
@@ -215,7 +215,7 @@ impl Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::{Icon, IconNamespace};
+    /// use domain::{Icon, IconNamespace};
     ///
     /// let icon = Icon::iconify("mdi", "home");
     /// match icon.parse_namespace() {
@@ -285,7 +285,7 @@ impl FromStr for Icon {
     /// # Examples
     ///
     /// ```
-    /// use waypoints_domain::Icon;
+    /// use domain::Icon;
     /// use std::str::FromStr;
     ///
     /// // Already hierarchical - pass through

@@ -53,7 +53,7 @@ fn pow_base(exp: usize) -> u64 {
 /// reordering.
 ///
 /// ```
-/// use waypoints_domain::fractional_index::generate_n;
+/// use domain::fractional_index::generate_n;
 ///
 /// let keys = generate_n(3);
 /// assert_eq!(keys.len(), 3);
@@ -83,7 +83,7 @@ pub fn generate_n(n: usize) -> Vec<String> {
 /// will be one character longer.
 ///
 /// ```
-/// use waypoints_domain::fractional_index::key_between;
+/// use domain::fractional_index::key_between;
 ///
 /// let mid = key_between(Some("i000"), Some("i002"));
 /// assert_eq!(mid, "i001");

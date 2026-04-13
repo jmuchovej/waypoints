@@ -4,8 +4,8 @@ version = "0.1.0"
 identifier = "so.waypoints"
 
 [build]
-before-build-command = "just app::generate"
-before-dev-command = "just app::dev"
+before-build-command = "just generate"
+before-dev-command = "just dev"
 devUrl = "http://localhost:9297"
 frontend-dist = "../dist"
 
@@ -26,7 +26,6 @@ copyright = ""
 category = "DeveloperTool"
 short-description = ""
 long-description = ""
-
 
 [plugins]
 

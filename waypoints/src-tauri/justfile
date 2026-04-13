@@ -1,4 +1,3 @@
-mod app "../justfile"
 mod icons "./icons/justfile"
 
 [private]

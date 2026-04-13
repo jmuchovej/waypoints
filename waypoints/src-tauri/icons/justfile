@@ -2,7 +2,7 @@
 default: stable
 
 # Generate icons for the dev flavor
-development: (generate "dev")
+dev: (generate "development")
 
 # Generate icons for the nightly (nightly) flavor
 nightly: (generate "nightly")

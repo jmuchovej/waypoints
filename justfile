@@ -31,21 +31,13 @@ clean:
 dev:
     @just tauri::dev
 
-# Build alpha flavor
-alpha:
-    @just tauri::alpha
-
-# Build beta flavor
+# Build a preview release
 beta:
-    @just tauri::beta
+    @just tauri::preview
 
-# Build production release
+# Build a stable release
 release:
-    @just tauri::release
-
-# Testing
-test:
-    flutter test
+    @just tauri::stable
 
 # Setup commands for new developers
 setup:

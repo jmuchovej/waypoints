@@ -71,7 +71,7 @@ const ANDROID_DENSITIES = SIZES["android"] as unknown as ReadonlyArray<{
   px: number;
 }>;
 
-const FLAVORS = ["dev", "nightly", "preview", "stable"] as const;
+const FLAVORS = ["development", "nightly", "preview", "stable"] as const;
 const THEMES = ["light", "dark"] as const;
 const PLATFORMS = ["windows", "linux", "macOS", "iOS", "android"] as const;
 type Platform = (typeof PLATFORMS)[number];
@@ -268,7 +268,7 @@ function paintOuterBG(tree: INode, outer: string | undefined): INode {
     const tint = matrices[matrices.length - 1];
     if (!tint) return;
 
-    const [r, g, b] = chroma(outer).rgb();
+    const [r, g, b] = chroma(resolveToken(outer)).rgb();
     const norm = (v: number) => (v / 255).toFixed(9);
     tint.attributes.values = `
       0 0 0 0 ${norm(r)}
