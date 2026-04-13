@@ -9,24 +9,26 @@ default:
 via-tauri +ARGS="--debug":
     cargo tauri {{ ARGS }}
 
-# Requires rustup, bun, cargo-tauri, just, and op in your [nix] profile.
+# Requires rustup, bun, cargo-tauri, just, and sops in your [nix] profile.
 [private]
 via-tauri-build +ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
-    key_path="{{ justfile_directory() }}/../.secrets/AuthKey.p8"
-    mkdir -p "$(dirname "${key_path}")"
-    op read "op://waypoints.so/Apple Signing/private-key" > "$key_path"
+    sops_file="${PROJECT_ROOT}/.secrets/signing-apple.sops.yaml"
+    key_path=$(mktemp "${TMPDIR:-/tmp}/AuthKey.XXXXXX.p8")
+    trap 'rm -f "${key_path}"' EXIT
+    secrets=$(sops -d "${sops_file}")
+    echo "${secrets}" | yq '.private-key' > "${key_path}"
     env -i \
         HOME="$HOME" \
         USER="$USER" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nix-profile/bin:$HOME/.cargo/bin:$HOME/.bun/bin" \
-        APPLE_API_ISSUER="op://waypoints.so/Apple Signing/issuer-id" \
-        APPLE_API_KEY="op://waypoints.so/Apple Signing/key-id" \
-        APPLE_API_KEY_PATH="$key_path" \
-        APPLE_CERTIFICATE="op://waypoints.so/Apple Signing/certificate" \
-        APPLE_CERTIFICATE_PASSWORD="op://waypoints.so/Apple Signing/password" \
-        op run -- cargo tauri build {{ ARGS }}
+        APPLE_API_ISSUER="$(echo "${secrets}" | yq '.issuer-id')" \
+        APPLE_API_KEY="$(echo "${secrets}" | yq '.key-id')" \
+        APPLE_API_KEY_PATH="${key_path}" \
+        APPLE_CERTIFICATE="$(echo "${secrets}" | yq '.certificate')" \
+        APPLE_CERTIFICATE_PASSWORD="$(echo "${secrets}" | yq '.password')" \
+        cargo tauri build {{ ARGS }}
 
 clean:
     cargo clean

@@ -5,14 +5,14 @@
 local.properties
 .mcp.json
 .android/
-.secrets/
 
 _research/
-.secrets/
 .scratch/
 data/
 
 .idea/
+
+**/src-tauri/gen/schemas/*.json
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,rust,flutter,dart,deno,database,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,rust,flutter,dart,deno,database,node

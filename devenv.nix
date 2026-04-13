@@ -19,6 +19,8 @@
     cargo-binstall
     imagemagick
     just
+    sops
+    age
   ];
 
   languages.rust.enable = true;
