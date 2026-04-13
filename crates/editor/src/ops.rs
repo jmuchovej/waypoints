@@ -191,7 +191,7 @@ async fn apply_create_mark(
 /// Soft-delete a mark and remove its terrain edges.
 async fn apply_delete_mark(db: &DatabaseConnection, mark_id: MarkID) -> EditorResult<()> {
     mark::soft_delete(db, mark_id).await?;
-    terrain::delete_edges_by_dst(db, mark_id).await?;
+    terrain::delete_edges_by_dst(db, mark_id, None).await?;
     Ok(())
 }
 

@@ -18,13 +18,18 @@ pub async fn get(db: &DatabaseConnection, id: MarkID) -> StoreResult<Option<Mark
     model.map(Mark::try_from).transpose().map_err(Into::into)
 }
 
-/// List all non-deleted landmark marks.
-pub async fn list_landmarks(db: &DatabaseConnection) -> StoreResult<Vec<Mark>> {
-    let models = Marks::find()
-        .filter(MarkColumn::Mark.starts_with("landmark."))
-        .filter(MarkColumn::DeletedAt.is_null())
-        .all(db)
-        .await?;
+/// List non-deleted marks, optionally filtered by type prefix.
+///
+/// When `prefix` is `None`, returns all non-deleted marks.
+/// When `prefix` is `Some("landmark")`, returns marks whose type starts with `"landmark."`.
+pub async fn list(db: &DatabaseConnection, prefix: Option<&str>) -> StoreResult<Vec<Mark>> {
+    let mut query = Marks::find().filter(MarkColumn::DeletedAt.is_null());
+
+    if let Some(p) = prefix {
+        query = query.filter(MarkColumn::Mark.starts_with(&format!("{p}.")));
+    }
+
+    let models = query.all(db).await?;
     models
         .into_iter()
         .map(Mark::try_from)
@@ -46,13 +51,13 @@ pub async fn get_many(db: &DatabaseConnection, ids: &[Uuid]) -> StoreResult<Vec<
         .map_err(Into::into)
 }
 
-/// Insert a new mark.
+/// Insert a new mark, returning the created [`Mark`].
 pub async fn insert(
     db: &DatabaseConnection,
     id: MarkID,
     data: &MarkData,
     created_at: NaiveDateTime,
-) -> StoreResult<()> {
+) -> StoreResult<Mark> {
     let data_json = serde_json::to_value(data)?;
     let active = ActiveMark {
         id: Set(id.inner()),
@@ -62,8 +67,8 @@ pub async fn insert(
         created_at: Set(created_at),
         ..Default::default()
     };
-    active.insert(db).await?;
-    Ok(())
+    let model = active.insert(db).await?;
+    Mark::try_from(model)
 }
 
 /// Update the data column. Errors with NotFound if missing/deleted.

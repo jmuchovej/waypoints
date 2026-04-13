@@ -68,7 +68,7 @@ impl EditorService {
     /// List all landmark marks (equivalent to old `mark_list`).
     pub async fn mark_list(&self) -> EditorResult<Vec<Mark>> {
         let db = self.db().await?;
-        Ok(store::query::mark::list_landmarks(&db).await?)
+        Ok(store::query::mark::list(&db, Some("landmark")).await?)
     }
 
     /// Project a landmark into a flat block list.

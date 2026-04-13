@@ -1,4 +1,6 @@
-use domain::mark::MarkID;
+use std::collections::HashMap;
+
+use domain::mark::{Mark, MarkID};
 use store::DatabaseConnection;
 use store::query::{mark, terrain};
 
@@ -51,8 +53,7 @@ async fn walk_children(
     let children = mark::get_many(db, &dst_ids).await?;
 
     // Index by ID for ordering
-    let child_map: std::collections::HashMap<MarkID, domain::mark::Mark> =
-        children.into_iter().map(|m| (m.id, m)).collect();
+    let child_map: HashMap<MarkID, Mark> = children.into_iter().map(|m| (m.id, m)).collect();
 
     // Iterate in terrain order
     for edge in &edges {

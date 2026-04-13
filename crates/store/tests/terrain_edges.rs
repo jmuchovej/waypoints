@@ -109,7 +109,7 @@ async fn delete_edges_by_dst(#[future] db: DatabaseConnection) {
         .await
         .unwrap();
 
-    terrain::delete_edges_by_dst(&db, child).await.unwrap();
+    terrain::delete_edges_by_dst(&db, child, None).await.unwrap();
 
     let edges = terrain::get_child_edges(&db, parent).await.unwrap();
     assert!(edges.is_empty());

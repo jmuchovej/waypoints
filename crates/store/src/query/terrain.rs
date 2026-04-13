@@ -1,5 +1,5 @@
 use domain::mark::MarkID;
-use domain::terrain::Terrain;
+use domain::terrain::{Terrain, TerrainKind};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
     IntoActiveModel, ModelTrait, QueryFilter, QueryOrder,
@@ -7,6 +7,14 @@ use sea_orm::{
 
 use crate::entities::{ActiveTerrain, TerrainColumn, Terrains};
 use crate::error::{StoreError, StoreResult};
+
+fn kind_str(kind: &TerrainKind) -> &'static str {
+    match kind {
+        TerrainKind::Child => "child",
+        TerrainKind::Reference => "reference",
+        TerrainKind::Custom => "custom",
+    }
+}
 
 /// Get all child edges for a parent, ordered by fractional index ASC.
 pub async fn get_child_edges(
@@ -53,12 +61,22 @@ pub async fn insert_child_edge(
     Ok(())
 }
 
-/// Delete ALL edges (any kind) where dst_id matches.
-pub async fn delete_edges_by_dst(db: &DatabaseConnection, dst_id: MarkID) -> StoreResult<()> {
-    Terrains::delete_many()
-        .filter(TerrainColumn::DstId.eq(dst_id.inner()))
-        .exec(db)
-        .await?;
+/// Delete edges where dst_id matches.
+///
+/// When `kind` is `None`, deletes all edges regardless of kind.
+/// When `kind` is `Some(k)`, only deletes edges of that kind.
+pub async fn delete_edges_by_dst(
+    db: &DatabaseConnection,
+    dst_id: MarkID,
+    kind: Option<&TerrainKind>,
+) -> StoreResult<()> {
+    let mut query = Terrains::delete_many().filter(TerrainColumn::DstId.eq(dst_id.inner()));
+
+    if let Some(k) = kind {
+        query = query.filter(TerrainColumn::Kind.eq(kind_str(k)));
+    }
+
+    query.exec(db).await?;
     Ok(())
 }
 

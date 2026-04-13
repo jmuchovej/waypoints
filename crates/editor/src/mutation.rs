@@ -134,7 +134,7 @@ pub async fn delete_mark(
     let (parent_id, frac_idx) = find_parent_edge(db, id).await.ok().unzip();
 
     mark::soft_delete(db, id).await?;
-    terrain::delete_edges_by_dst(db, id).await?;
+    terrain::delete_edges_by_dst(db, id, None).await?;
 
     let cursor = CursorState {
         block_id: id,
@@ -473,7 +473,7 @@ pub async fn merge_marks(
     // Delete source
     let (source_parent, source_idx) = find_parent_edge(db, source_id).await?;
     mark::soft_delete(db, source_id).await?;
-    terrain::delete_edges_by_dst(db, source_id).await?;
+    terrain::delete_edges_by_dst(db, source_id, None).await?;
 
     // Record ops
     let cursor_before = CursorState {
@@ -525,7 +525,7 @@ pub async fn delete_marks(
         let (parent_id, frac_idx) = find_parent_edge(db, mid).await.ok().unzip();
 
         mark::soft_delete(db, mid).await?;
-        terrain::delete_edges_by_dst(db, mid).await?;
+        terrain::delete_edges_by_dst(db, mid, None).await?;
 
         ops.push(AtomicOp::DeleteMark {
             mark_id: mid,
