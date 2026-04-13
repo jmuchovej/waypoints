@@ -1,9 +1,10 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/cartograph",
   "crates/domain",
-  "crates/store",
   "crates/editor",
+  "crates/store",
   "waypoints/src-tauri",
 ]
 
@@ -36,8 +37,8 @@ open-location-code = { git = "https://github.com/google/open-location-code", ver
 paste = "1.0.15"
 pest = "2.8.3"
 pest_derive = "2.8.3"
-pulldown-cmark = { version = "0.13", default-features = false }
 pretty_assertions = "1.4.1"
+pulldown-cmark = { version = "0.13", default-features = false }
 rand = "0.8"
 regex = "1.11.1"
 rstest = "0.26.1"
@@ -78,27 +79,28 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 typed-builder = "0.23.2"
 uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
 
+Waypoints = { path = "waypoints/src-tauri" }
 # keep-sorted start
+cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 editor = { path = "crates/editor" }
 store = { path = "crates/store" }
-Waypoints = { path = "waypoints/src-tauri" }
 # keep-sorted end
 
-tauri-plugin-shell = "2.3.4"
-tauri-plugin-notification = "2.3.3"
-tauri-plugin-os = "2.3.2"
-tauri-plugin-fs = "2.4.5"
-tauri-plugin-dialog = "2.2.0"
-tauri-plugin-store = "2.4.2"
 tauri = { version = "2.10.3", features = ["unstable"] }
 tauri-build = { version = "2.5.6", features = ["config-toml"] }
+tauri-plugin-dialog = "2.2.0"
+tauri-plugin-fs = "2.4.5"
+tauri-plugin-notification = "2.3.3"
+tauri-plugin-os = "2.3.2"
+tauri-plugin-shell = "2.3.4"
+tauri-plugin-store = "2.4.2"
 wry = { version = "0.54.4", features = [
+  "drag-drop",
   "os-webview",
   "protocol",
-  "drag-drop",
-  "tracing",
   "serde",
+  "tracing",
 ] }
 
 typst = "0.14"
@@ -109,8 +111,8 @@ typst-syntax = "0.14"
 typst-utils = "0.14"
 
 specta = { version = "=2.0.0-rc.22", features = [
-  "derive",
   "chrono",
+  "derive",
   "function",
   "indexmap",
   "serde_json",
@@ -120,8 +122,8 @@ specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 
 objc2-app-kit = { version = "0.3", default-features = false, features = [
-  "NSView",
   "NSScrollView",
+  "NSView",
 ] }
 
 [workspace.lints.clippy]
@@ -144,8 +146,8 @@ unused = { level = "allow", priority = -1 }
 incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
-codegen-units = 1 # Allows LLVM to perform better optimization.
-lto = true        # Enables link-time-optimizations.
 opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
-panic = "abort"   # Higher performance by disabling panic handlers.
 strip = true      # Ensures debug symbols are removed.
+lto = true        # Enables link-time-optimizations.
+panic = "abort"   # Higher performance by disabling panic handlers.
+codegen-units = 1 # Allows LLVM to perform better optimization.

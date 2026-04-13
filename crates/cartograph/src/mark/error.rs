@@ -20,7 +20,7 @@ pub enum MarkError {
     #[error("database error: {0}")]
     Database(#[from] sea_orm::DbErr),
     #[error("store error: {0}")]
-    Store(#[from] store::error::StoreError),
+    Store(#[from] store::StoreError),
 }
 
 impl Serialize for MarkError {

@@ -7,10 +7,10 @@ use uuid::Uuid;
 
 use super::{Territory, TerritoryKind};
 
-pub(crate) struct TerritoryManager {
+pub struct TerritoryManager {
     managed_root: PathBuf,
-    pub(crate) active_db: Arc<Mutex<Option<DatabaseConnection>>>,
-    pub(crate) active_id: Arc<Mutex<Option<Uuid>>>,
+    pub active_db: Arc<Mutex<Option<DatabaseConnection>>>,
+    pub active_id: Arc<Mutex<Option<Uuid>>>,
 }
 
 impl TerritoryManager {

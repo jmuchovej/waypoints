@@ -25,6 +25,7 @@ path = "bin/waypoints.rs"
 tauri-build.workspace = true
 
 [dependencies]
+async-trait.workspace = true
 tauri-plugin-shell.workspace = true
 tauri-plugin-notification.workspace = true
 tauri-plugin-os.workspace = true
@@ -44,6 +45,7 @@ thiserror.workspace = true
 specta.workspace = true
 specta-typescript.workspace = true
 tauri-specta.workspace = true
+cartograph.workspace = true
 editor.workspace = true
 domain.workspace = true
 store.workspace = true

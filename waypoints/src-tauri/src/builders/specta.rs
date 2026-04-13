@@ -1,18 +1,12 @@
 use tauri::Wry;
 use tauri_specta::{Builder as SpectaBuilder, collect_commands};
 
-use crate::mark::MarkTree;
-use crate::territory::{Territory, TerritoryKind};
+use cartograph::territory::{Territory, TerritoryKind};
 
 pub fn register_types(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
-    let builder = builder
-        // mark (expanded)
-        .typ::<MarkTree>()
-        // territory
-        .typ::<Territory>()
-        .typ::<TerritoryKind>();
-
     builder
+        .typ::<Territory>()
+        .typ::<TerritoryKind>()
 }
 
 pub fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
@@ -25,7 +19,6 @@ pub fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
         chart::landmark_create,
         // mark
         mark::mark_list,
-        mark::mark_get,
         mark::mark_create,
         mark::mark_update,
         mark::mark_delete,

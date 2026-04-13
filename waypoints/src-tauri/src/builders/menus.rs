@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use tauri::Runtime;
 use tauri::async_runtime;
 use tauri::image::Image;
@@ -8,7 +10,8 @@ use tauri::menu::{
     AboutMetadata, AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder,
 };
 use tauri::{App, AppHandle, Emitter, Manager};
-use tokio::sync::Mutex;
+
+use cartograph::WaypointsRuntime;
 
 type SetupResult<T> = Result<T, Box<dyn std::error::Error>>;
 type SubMenuResult<R> = SetupResult<Submenu<R>>;
@@ -176,32 +179,17 @@ fn setup_developer<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
 
     app_handle.on_menu_event(move |_app, event| match event.id().0.as_str() {
         "reset-database" => {
-            use crate::territory::TerritoryManager;
             let handle = handle.clone();
             async_runtime::spawn(async move {
-                let mgr = handle.state::<TerritoryManager>();
-                let editor_state = handle.state::<Mutex<editor::EditorService>>();
+                let rt = handle.state::<Arc<WaypointsRuntime>>();
 
-                let mut active_db = mgr.active_db.lock().await;
-                let Some(db) = active_db.take() else {
-                    tracing::warn!("reset-database: no active territory");
+                if let Err(e) = rt.reset_db().await {
+                    tracing::error!("database reset failed: {e}");
                     return;
-                };
+                }
 
-                match store::reset(db).await {
-                    Ok(fresh_db) => {
-                        *active_db = Some(fresh_db);
-                        drop(active_db);
-                        editor_state.lock().await.clear_histories();
-                        tracing::info!("database reset complete");
-
-                        if let Some(window) = handle.get_webview_window("main") {
-                            let _ = window.eval("window.location.reload()");
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("database reset failed: {e}");
-                    }
+                if let Some(window) = handle.get_webview_window("main") {
+                    let _ = window.eval("window.location.reload()");
                 }
             });
         }

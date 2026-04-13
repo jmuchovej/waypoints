@@ -1,14 +1,12 @@
 use tauri::{App, Builder as TauriBuilder};
 
-mod mark;
+mod registry_store;
 mod settings;
-pub mod territory;
 
 pub mod builders {
     #[cfg(debug_assertions)]
     pub(crate) mod menus;
     pub mod specta;
-    pub(crate) mod store;
     pub(crate) mod territory;
     #[cfg(desktop)]
     pub(crate) mod tray;
@@ -33,7 +31,7 @@ pub fn run() {
         let builder = builders::specta::build();
 
         #[cfg(all(debug_assertions, desktop))]
-        builders::specta::export(&builder, "../src/app/bindings.g.ts");
+        builders::specta::export(&builder, "../app/bindings.g.ts");
 
         builder
     };
@@ -49,13 +47,9 @@ pub fn run() {
             tracing::info!("tauri setup: mounting specta events");
             specta.mount_events(app);
 
-            tracing::info!("tauri setup: initializing store");
-            builders::store::setup(app)?;
-            tracing::info!("tauri setup: store ready");
-
-            tracing::info!("tauri setup: initializing territory manager");
+            tracing::info!("tauri setup: initializing runtime");
             builders::territory::setup(app)?;
-            tracing::info!("tauri setup: territory manager ready");
+            tracing::info!("tauri setup: runtime ready");
 
             #[cfg(desktop)]
             {

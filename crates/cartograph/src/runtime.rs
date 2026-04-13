@@ -1,0 +1,108 @@
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
+
+use editor::EditorService;
+
+use crate::chart::ChartHandle;
+use crate::mark::MarkHandle;
+use crate::territory::{RegistryStore, TerritoryHandle, TerritoryManager, TerritoryResult};
+
+pub struct WaypointsRuntime {
+    manager: TerritoryManager,
+    editor: Mutex<EditorService>,
+    registry: Arc<dyn RegistryStore>,
+}
+
+impl WaypointsRuntime {
+    pub fn new(managed_root: PathBuf, registry: Arc<dyn RegistryStore>) -> Self {
+        let manager = TerritoryManager::new(managed_root);
+        let editor = EditorService::new(manager.active_db.clone());
+        Self {
+            manager,
+            editor: Mutex::new(editor),
+            registry,
+        }
+    }
+
+    pub async fn resume(&self) -> TerritoryResult<()> {
+        let registry = self.registry.load().await?;
+
+        let Some(last_id) = registry.last_active_id else {
+            tracing::debug!("no last_active_id, skipping territory resume");
+            return Ok(());
+        };
+
+        let Some(entry) = registry.registry.iter().find(|e| e.id == last_id) else {
+            tracing::warn!(id = %last_id, "last_active_id not found in registry, skipping resume");
+            return Ok(());
+        };
+
+        let workspace_dir = self.manager.entry_path(entry);
+        tracing::info!(id = %last_id, path = %workspace_dir.display(), "resuming territory");
+
+        let db_path = workspace_dir.join("waypoints.db");
+        match store::open(&db_path).await {
+            Ok(db) => {
+                *self.manager.active_db.lock().await = Some(db);
+                *self.manager.active_id.lock().await = Some(last_id);
+                tracing::info!("resumed territory {last_id}");
+            }
+            Err(e) => {
+                tracing::warn!("failed to resume territory {last_id}: {e}");
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn editor(&self) -> tokio::sync::MutexGuard<'_, EditorService> {
+        self.editor.lock().await
+    }
+
+    pub fn territory(&self) -> TerritoryHandle<'_> {
+        TerritoryHandle {
+            manager: &self.manager,
+            registry: self.registry.as_ref(),
+            editor: &self.editor,
+        }
+    }
+
+    pub fn marks(&self) -> MarkHandle<'_> {
+        MarkHandle {
+            db: &self.manager.active_db,
+        }
+    }
+
+    pub fn charts(&self) -> ChartHandle<'_> {
+        ChartHandle {
+            db: &self.manager.active_db,
+        }
+    }
+
+    /// Reset the active database (drop all tables, re-run migrations).
+    /// Clears editor undo histories afterward.
+    pub async fn reset_db(&self) -> Result<(), store::StoreError> {
+        let mut db_guard = self.manager.active_db.lock().await;
+        let Some(db) = db_guard.take() else {
+            tracing::warn!("reset_db: no active territory");
+            return Ok(());
+        };
+
+        match store::reset(db).await {
+            Ok(fresh_db) => {
+                *db_guard = Some(fresh_db);
+                drop(db_guard);
+                self.editor.lock().await.clear_histories();
+                tracing::info!("database reset complete");
+                Ok(())
+            }
+            Err(e) => {
+                // DB is gone — leave the slot empty
+                tracing::error!("database reset failed: {e}");
+                Err(e)
+            }
+        }
+    }
+}
