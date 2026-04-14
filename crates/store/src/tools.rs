@@ -26,13 +26,9 @@ pub async fn open(path: &Path) -> StoreResult<DatabaseConnection> {
 }
 
 pub async fn reset(db: DatabaseConnection) -> StoreResult<DatabaseConnection> {
-    tracing::info!("resetting migrations");
-    Migrator::down(&db, None).await?;
-    tracing::debug!("  migration reset complete");
-
-    tracing::info!("running migrations");
-    Migrator::up(&db, None).await?;
-    tracing::debug!("  migrations complete");
+    tracing::info!("resetting database (fresh)");
+    Migrator::fresh(&db).await?;
+    tracing::debug!("  fresh reset complete");
 
     Ok(db)
 }
