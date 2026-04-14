@@ -49,7 +49,9 @@ impl MarkHandle<'_> {
         let existing_edges = store::query::terrain::get_child_edges(&db, parent_mark_id).await?;
 
         let new_order = if let Some(after) = after_id {
-            let after_idx = existing_edges.iter().position(|e| e.dst_id.inner() == after);
+            let after_idx = existing_edges
+                .iter()
+                .position(|e| e.dst_id.inner() == after);
             match after_idx {
                 Some(idx) => {
                     let after_order = existing_edges[idx].order.as_deref();

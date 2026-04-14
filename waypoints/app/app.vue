@@ -10,7 +10,7 @@
   </Html>
 </template>
 
-<style scoped>
+<style>
 @reference "~/assets/css/main.css";
 
 .app-wrapper {

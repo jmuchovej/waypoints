@@ -23,7 +23,11 @@
     age
   ];
 
-  languages.rust.enable = true;
+  languages.rust = {
+    enable = true;
+    lsp.enable = true;
+    toolchainFile = ./rust-toolchain.toml;
+  };
   languages.deno.enable = true;
   languages.javascript = {
     enable = true;

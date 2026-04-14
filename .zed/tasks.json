@@ -1,6 +1,14 @@
 [
   {
-    "label": "Development",
-    "command": "just dev"
+    "label": "Development (Desktop)",
+    "command": "just tauri::dev"
+  },
+  {
+    "label": "Development (Android)",
+    "command": "just tauri::android dev"
+  },
+  {
+    "label": "Development (iOS)",
+    "command": "just tauri::ios dev"
   }
 ]

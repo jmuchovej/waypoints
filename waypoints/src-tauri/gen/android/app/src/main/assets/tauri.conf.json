@@ -58,23 +58,23 @@
   },
   "build": {
     "devUrl": "http://192.168.88.93:9297/",
-    "frontendDist": "../src/dist",
-    "beforeDevCommand": "just app::dev",
-    "beforeBuildCommand": "just app::generate",
+    "frontendDist": "../dist",
+    "beforeDevCommand": "just dev",
+    "beforeBuildCommand": "just generate",
     "removeUnusedCommands": false,
     "additionalWatchFolders": []
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["dmg", "nsis", "appimage", "deb"],
     "createUpdaterArtifacts": false,
     "homepage": "https://waypoints.so",
     "icon": [
-      "icons/app-icon.iconset/icon_32x32.png",
-      "icons/app-icon.iconset/icon_128x128.png",
-      "icons/app-icon.iconset/icon_128x128@2x.png",
-      "icons/icon-mainline.icns",
-      "icons/icon-mainline.ico"
+      "icons/generated/32x32.png",
+      "icons/generated/128x128.png",
+      "icons/generated/128x128@2x.png",
+      "icons/generated/icon.icns",
+      "icons/generated/icon.ico"
     ],
     "resources": [],
     "copyright": "",
