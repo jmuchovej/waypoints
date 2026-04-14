@@ -4,6 +4,6 @@ default:
     @just --list
 
 typegen:
-    cargo run --bin typegen
+    cargo run --bin typegen --features development
     bun run bin/schemagen.ts
     treefmt typescript/*.g.ts

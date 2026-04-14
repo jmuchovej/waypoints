@@ -14,30 +14,18 @@ mod editor "crates/editor/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
-    cargo run -p Waypoints --bin typegen
+    cargo run -p Waypoints --features development --bin typegen
     @just domain::typegen
     @just editor::typegen
-    treefmt src/app/bindings.g.ts
+    treefmt waypoints/app/bindings.g.ts
     bun run scripts/patch-bindings.ts
-    treefmt src/app/bindings.g.ts
+    treefmt waypoints/app/bindings.g.ts
 
 clean:
     cargo clean
     @just app::clean
     @just tauri::clean
     devenv gc
-
-# Spawn [desktop] app development
-dev:
-    @just tauri::dev
-
-# Build a preview release
-beta:
-    @just tauri::preview
-
-# Build a stable release
-release:
-    @just tauri::stable
 
 # Setup commands for new developers
 setup:
