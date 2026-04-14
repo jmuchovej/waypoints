@@ -1,3 +1,8 @@
+---
+uuid: 45f453a4-b942-41ed-b144-57207eb74ce5
+title: Welcome to Waypoints
+---
+
 Waypoints is a structured editor for capturing and organizing your work. Everything you write lives inside **Marks** — discrete, identifiable blocks of content that can be referenced, linked, and composed.
 
 ---

@@ -1,6 +1,11 @@
+---
+uuid: 709c745e-f227-4428-85a5-99265409b4b5
+title: "Book Notes: The Elegant Universe"
+---
+
 ## Overview
 
-**The Elegant Universe** by Brian Greene (1999). A pop-sci introduction to string theory and the quest for a unified theory of physics. Greene is a string theorist himself, so this is an advocate's account — he's upfront about it, but worth keeping in mind.
+@fc07004e-ee6b-46a5-835d-b500af70d87b by @2aff733e-fd33-4d13-9cb0-b0113c42160d (1999). A pop-sci introduction to string theory and the quest for a unified theory of physics. Greene is a string theorist himself, so this is an advocate's account — he's upfront about it, but worth keeping in mind.
 
 The book is structured in three parts: relativity, quantum mechanics, and then string theory as the proposed unification. The first two parts are genuinely excellent introductions even if you never care about strings.
 

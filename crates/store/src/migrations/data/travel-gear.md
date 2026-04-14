@@ -1,3 +1,8 @@
+---
+uuid: fbe92d0b-2d62-49e2-9599-77ee58f27301
+title: Travel Gear & Packing
+---
+
 ## The Carry-On Setup
 
 After way too many trips with checked bags, I've gone full **one-bag travel**. Here's the current loadout:

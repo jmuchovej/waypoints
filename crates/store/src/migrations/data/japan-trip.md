@@ -1,3 +1,8 @@
+---
+uuid: 2035c144-f530-4776-b854-4c37371a8711
+title: Japan Trip 2026
+---
+
 ## Itinerary
 
 We're spending **two weeks** in Japan, split between Tokyo, Kyoto, and a few days exploring the countryside. The rough plan:

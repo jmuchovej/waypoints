@@ -1,6 +1,11 @@
+---
+uuid: 84c3d230-0441-4fb2-ad70-5ac7a077e5b6
+title: "Book Notes: Cosmos"
+---
+
 ## Overview
 
-**Cosmos** by Carl Sagan (1980). The companion book to the TV series. It's dated in places — we've learned a _lot_ since 1980 — but Sagan's writing holds up remarkably well. His gift is making you feel the scale of things without losing the human thread.
+@674d09eb-2840-4d35-ba5e-460cdd1bc424 by @ea5a92af-cedf-4947-8f5c-1e5439f0f3fe (1980). The companion book to the TV series. It's dated in places — we've learned a _lot_ since 1980 — but Sagan's writing holds up remarkably well. His gift is making you feel the scale of things without losing the human thread.
 
 The book spans cosmology, biology, history of science, and philosophy. It's less a textbook and more a love letter to curiosity.
 

@@ -1,3 +1,8 @@
+---
+uuid: efd61c9a-4cdf-4f0a-bf59-b819636043c9
+title: Tokyo Restaurant Guide
+---
+
 ## Tsukiji / Toyosu Area
 
 The outer market at Tsukiji is still the best spot for a seafood breakfast. A few standouts:
