@@ -4,6 +4,7 @@ members = [
   "crates/cartograph",
   "crates/domain",
   "crates/editor",
+  "crates/importer",
   "crates/store",
   "waypoints/src-tauri",
 ]
@@ -66,6 +67,7 @@ sea-query = { version = "0.32.7", default-features = false, features = [
   "with-json",
   "with-uuid",
 ] }
+sha2 = "0.10"
 serde = { version = "1.0.224", features = ["derive"] }
 serde_json = { version = "1.0.145", features = [
   "indexmap",
@@ -84,6 +86,7 @@ Waypoints = { path = "waypoints/src-tauri" }
 cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 editor = { path = "crates/editor" }
+importer = { path = "crates/importer" }
 store = { path = "crates/store" }
 # keep-sorted end
 

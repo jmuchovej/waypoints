@@ -32,14 +32,14 @@ tokio.workspace = true
 tracing.workspace = true
 domain.workspace = true
 
-pulldown-cmark = { workspace = true, optional = true }
+importer = { workspace = true, optional = true }
 
 [features]
 default = []
 stable = []
 preview = []
 development = ["mock"]
-mock = ["pulldown-cmark"]
+mock = ["importer"]
 test-utils = []
 
 [dev-dependencies]
