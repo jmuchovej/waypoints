@@ -1,16 +1,15 @@
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { Icns, IcnsImage } from "@fiahfy/icns";
 import chroma from "chroma-js";
 import { defineCommand, runMain } from "citty";
 import { parseTOML } from "confbox";
 import pngToIco from "png-to-ico";
-import sharp, { Sharp } from "sharp";
+import sharp, { type Sharp } from "sharp";
 import { type INode, parse as parseSvg, stringify as stringifySvg } from "svgson";
 import tailwindColors from "tailwindcss/colors";
-import { readFileSync } from "node:fs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -54,8 +53,14 @@ const SIZES = parseTOML(readFileSync(resolve(HERE, `./sizes.toml`), "utf-8")) as
   Record<string, string | number>
 >;
 
-const LINUX_PNGS = SIZES["linux"] as unknown as ReadonlyArray<{ name: string; px: number }>;
-const ICNS_ENTRIES = SIZES["macOS"] as unknown as ReadonlyArray<{ os: string; px: number }>;
+const LINUX_PNGS = SIZES["linux"] as unknown as ReadonlyArray<{
+  name: string;
+  px: number;
+}>;
+const ICNS_ENTRIES = SIZES["macOS"] as unknown as ReadonlyArray<{
+  os: string;
+  px: number;
+}>;
 const ICO_SIZES = SIZES["windows"] as unknown as ReadonlyArray<{ px: number }>;
 
 interface IosEntry {
@@ -65,7 +70,10 @@ interface IosEntry {
   px: number;
 }
 const IOS_ENTRIES = SIZES["iOS"] as unknown as ReadonlyArray<IosEntry>;
-const MENU_BAR_SCALES = SIZES["menu-bar"] as unknown as ReadonlyArray<{ name: string; px: number }>;
+const MENU_BAR_SCALES = SIZES["menu-bar"] as unknown as ReadonlyArray<{
+  name: string;
+  px: number;
+}>;
 const ANDROID_DENSITIES = SIZES["android"] as unknown as ReadonlyArray<{
   density: string;
   px: number;
@@ -171,7 +179,7 @@ function resolveToken(token: string): string {
     throw new Error(`Malformed color token: "${token}" (expected "family")`);
   }
 
-  let color: string | undefined = undefined;
+  let color: string | undefined;
   if (typeof tailwindColors[family] === "string") {
     color = tailwindColors[family];
   } else if (tailwindColors[family] && shade) {
@@ -314,6 +322,13 @@ function injectLogo(tree: INode, logo: INode, width: number): INode {
   if (!injected) throw new Error("`#inner` not found");
 
   return tree;
+}
+
+/** Convert `#RRGGBBAA` → `#AARRGGBB` for Android color resources. */
+function rgbaToArgb(hex: string): string {
+  const h = hex.replace("#", "");
+  if (h.length <= 6) return hex;
+  return `#${h.slice(6)}${h.slice(0, 6)}`;
 }
 
 /** Rasterize an SVG buffer at the given size, preserving alpha. */
@@ -555,7 +570,7 @@ async function writeAndroid(srcDir: string, dstDir: string, fills: Fills): Promi
   await mkdir(valuesDir, { recursive: true });
   const bgXML = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">${fills["dark"].inner}</color>
+    <color name="ic_launcher_background">${rgbaToArgb(fills["dark"].inner!)}</color>
 </resources>
 `;
   await writeFile(resolve(valuesDir, "ic_launcher_background.xml"), bgXML);

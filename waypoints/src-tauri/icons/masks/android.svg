@@ -7,6 +7,6 @@
   </defs>
   <g id="android" stroke="none" fill="none" xlink:href="#path-1">
     <polygon id="background" fill="#334155" fill-rule="evenodd" points="0 0 432 0 432 432 0 432"/>
-    <g id="inner" transform="translate(84, 84)" xlink:href="#path-2"/>
+    <g id="inner" transform="translate(108, 108)" xlink:href="#path-2"/>
   </g>
 </svg>
