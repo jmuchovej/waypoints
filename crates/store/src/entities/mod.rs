@@ -10,5 +10,6 @@ pub use mark_orm::{
 };
 pub use terrain_orm::{
     ActiveModel as ActiveTerrain, Column as TerrainColumn, Entity as Terrains,
-    Model as TerrainModel,
+    Model as TerrainModel, kind_to_string as terrain_kind_to_string,
+    string_to_kind as terrain_string_to_kind,
 };

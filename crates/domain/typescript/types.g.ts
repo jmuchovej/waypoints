@@ -547,8 +547,20 @@ export type Size =
 
 /**
  * Graph edges representing relationships between blocks.
+ *
+ * Each edge has a stable [`TerrainID`] that is independent of its endpoints.
+ * This enables a true multigraph: multiple edges — including multiple edges
+ * of the same `kind` — can exist between the same `(src_id, dst_id)` pair,
+ * distinguished by their `id`.
  */
 export type Terrain = {
+  /**
+   * Stable edge identity. Generated on creation, never changes. Use this
+   * to address a specific edge unambiguously (e.g., when deleting or
+   * updating a single edge among several of the same kind between the
+   * same endpoints).
+   */
+  id: TerrainID;
   /**
    * The directed edge this block is coming from
    */
@@ -572,11 +584,60 @@ export type Terrain = {
 };
 
 /**
+ * Unique identifier for a [`Terrain`][super::Terrain] edge.
+ *
+ * Each edge has its own stable identity independent of its endpoints. This
+ * enables a true multigraph: multiple edges between the same `(src, dst)`
+ * pair — even of the same [`TerrainKind`][super::TerrainKind] — can coexist
+ * as distinct rows, each with their own `TerrainID`. Without this, the
+ * primary key would need to encode every dimension that could vary per
+ * edge (kind, feature attribution, order, etc.), which bakes assumptions
+ * into the PK itself and makes future extensions painful.
+ *
+ * Generated as a random [`Uuid::new_v4`] on edge creation. Never changes.
+ */
+export type TerrainID = string;
+
+/**
  * Terrain kinds which designate the relationship between two [`Marks`][M].
  *
  * [M]: crate::mark::Mark
+ *
+ * # Serde format
+ *
+ * Uses adjacent tagging (`{ "type": ..., "value": ... }`) so that the
+ * parameterized [`Reading`][Self::Reading] variant can carry its
+ * `(ChartID, FeatureID)` payload cleanly. Internally-tagged enums only
+ * support newtype or struct variants, but tuple variants are more
+ * ergonomic for Rust callers.
+ *
+ * ```json
+ * // Child    → { "type": "child" }
+ * // Reading  → { "type": "reading", "value": ["builtin.meeting", "a1b2"] }
+ * ```
+ *
+ * # DB format
+ *
+ * When persisted to the `terrains.kind` column we flatten to a single
+ * string: `"child"`, `"reference"`, `"custom"`, or
+ * `"reading::{chart}::{feature}"`. See the helpers in
+ * `store::query::terrain` / `store::entities::terrain_orm` for the
+ * bidirectional conversion.
  */
-export type TerrainKind = { type: "child" } | { type: "reference" } | { type: "custom" };
+export type TerrainKind =
+  | { type: "child" }
+  | { type: "reference" }
+  | { type: "custom" }
+  /**
+   * A [`Reading`][crate::mark::Reading] of kind
+   * [`Reference`][crate::chart::FeatureKind::Reference] materialized as a
+   * graph edge. The `ChartID` and `FeatureID` identify *which* Reference
+   * feature on *which* Chart the edge represents — enabling queries like
+   * "all backlinks into this landmark attributed to the `attendees`
+   * feature of a `Meeting`" without scanning every landmark's readings
+   * JSON.
+   */
+  | { type: "reading"; value: [ChartID, FeatureID] };
 
 /**
  * Types of text formatting.

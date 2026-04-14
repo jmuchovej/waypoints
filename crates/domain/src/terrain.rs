@@ -1,6 +1,8 @@
 #[allow(clippy::module_inception)]
 pub mod terrain;
 pub use terrain::Terrain;
+pub mod terrain_id;
+pub use terrain_id::TerrainID;
 pub mod terrain_kind;
 pub use terrain_kind::TerrainKind;
 

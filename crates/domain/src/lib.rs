@@ -56,4 +56,4 @@ pub use chart::{
 pub use mark::builders::MarkBuilder;
 pub use mark::{Mark, MarkID};
 pub use terrain::builders::TerrainBuilder;
-pub use terrain::{Terrain, TerrainKind};
+pub use terrain::{Terrain, TerrainID, TerrainKind};

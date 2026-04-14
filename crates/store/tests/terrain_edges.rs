@@ -109,7 +109,9 @@ async fn delete_edges_by_dst(#[future] db: DatabaseConnection) {
         .await
         .unwrap();
 
-    terrain::delete_edges_by_dst(&db, child, None).await.unwrap();
+    terrain::delete_edges_by_dst(&db, child, None)
+        .await
+        .unwrap();
 
     let edges = terrain::get_child_edges(&db, parent).await.unwrap();
     assert!(edges.is_empty());
@@ -358,4 +360,256 @@ async fn convert_paragraphs_to_list_items() {
 #[tokio::test]
 async fn unwrap_container_promotes_children() {
     todo!("delete a blockquote, reparent its children back to the grandparent in-place")
+}
+
+// ---------------------------------------------------------------------------
+// Multigraph: same (src, dst) with multiple edges of different kinds
+// ---------------------------------------------------------------------------
+
+use domain::chart::{ChartID, FeatureID};
+use domain::terrain::TerrainKind;
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+use std::str::FromStr;
+use store::entities::{
+    ActiveTerrain, TerrainColumn, Terrains, terrain_kind_to_string as kind_to_string,
+};
+
+/// Insert a terrain edge of arbitrary kind. Tests only — production code
+/// should use the query-layer helpers as they get added per-kind.
+async fn insert_edge(
+    db: &sea_orm::DatabaseConnection,
+    src: MarkID,
+    dst: MarkID,
+    kind: TerrainKind,
+    order: Option<&str>,
+) {
+    ActiveTerrain {
+        id: Set(uuid::Uuid::new_v4()),
+        src_id: Set(src.inner()),
+        dst_id: Set(dst.inner()),
+        kind: Set(kind_to_string(&kind)),
+        order: Set(order.map(str::to_string)),
+        extra: Set(None),
+    }
+    .insert(db)
+    .await
+    .unwrap();
+}
+
+/// A Child edge AND a Reference edge between the same (src, dst) pair must
+/// coexist. Under the old `(src_id, dst_id)` primary key this was
+/// impossible — the whole point of adding `id` as the PK is to enable this.
+#[rstest]
+#[tokio::test]
+async fn child_and_reference_between_same_pair_coexist(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let src = new_id();
+    let dst = new_id();
+    mark::insert(&db, src, &landmark("page", "Src"), now())
+        .await
+        .unwrap();
+    mark::insert(&db, dst, &landmark("page", "Dst"), now())
+        .await
+        .unwrap();
+
+    insert_edge(&db, src, dst, TerrainKind::Child, Some("i000")).await;
+    insert_edge(&db, src, dst, TerrainKind::Reference, None).await;
+
+    let all = Terrains::find()
+        .filter(TerrainColumn::SrcId.eq(src.inner()))
+        .filter(TerrainColumn::DstId.eq(dst.inner()))
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(all.len(), 2, "both edges should coexist");
+
+    let kinds: Vec<&str> = all.iter().map(|m| m.kind.as_str()).collect();
+    assert!(kinds.contains(&"child"));
+    assert!(kinds.contains(&"reference"));
+}
+
+/// Two Reading edges on the same (src, dst) pair but for different features
+/// must coexist — this is the "Meeting.attendees AND Meeting.organizer both
+/// point at the same Person" case.
+#[rstest]
+#[tokio::test]
+async fn multiple_reading_edges_same_pair_different_features(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let meeting = new_id();
+    let person = new_id();
+    mark::insert(&db, meeting, &landmark("meeting", "M"), now())
+        .await
+        .unwrap();
+    mark::insert(&db, person, &landmark("person", "P"), now())
+        .await
+        .unwrap();
+
+    let chart = ChartID::builtin("meeting");
+    let attendees = FeatureID::from_str("attn").unwrap();
+    let organizer = FeatureID::from_str("orgz").unwrap();
+
+    insert_edge(
+        &db,
+        meeting,
+        person,
+        TerrainKind::Reading(chart.clone(), attendees.clone()),
+        None,
+    )
+    .await;
+    insert_edge(
+        &db,
+        meeting,
+        person,
+        TerrainKind::Reading(chart.clone(), organizer.clone()),
+        None,
+    )
+    .await;
+
+    let all = Terrains::find()
+        .filter(TerrainColumn::SrcId.eq(meeting.inner()))
+        .filter(TerrainColumn::DstId.eq(person.inner()))
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(all.len(), 2, "both reading edges should coexist");
+
+    // Distinct edge IDs — the PK disambiguates them.
+    assert_ne!(all[0].id, all[1].id);
+}
+
+/// Reading edges are queryable by kind-string prefix — this is what makes
+/// the backlink query fast (no JSON scanning, just an indexed string filter).
+#[rstest]
+#[tokio::test]
+async fn reading_edges_queryable_by_kind_prefix(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let person = new_id();
+    mark::insert(&db, person, &landmark("person", "Target"), now())
+        .await
+        .unwrap();
+
+    // Create 3 sources, each with a Reading edge pointing at `person`.
+    let chart = ChartID::builtin("meeting");
+    let feature = FeatureID::from_str("attn").unwrap();
+    for i in 0..3 {
+        let src = new_id();
+        mark::insert(&db, src, &landmark("meeting", &format!("M{i}")), now())
+            .await
+            .unwrap();
+        insert_edge(
+            &db,
+            src,
+            person,
+            TerrainKind::Reading(chart.clone(), feature.clone()),
+            None,
+        )
+        .await;
+    }
+
+    // Also insert a Child edge and a Reference edge from an unrelated source —
+    // those should NOT show up in the reading-prefix query.
+    let noise_src = new_id();
+    mark::insert(&db, noise_src, &landmark("page", "Noise"), now())
+        .await
+        .unwrap();
+    insert_edge(&db, noise_src, person, TerrainKind::Child, Some("i000")).await;
+    insert_edge(&db, noise_src, person, TerrainKind::Reference, None).await;
+
+    // Backlink query: who references this person via ANY reading feature?
+    let readings = Terrains::find()
+        .filter(TerrainColumn::DstId.eq(person.inner()))
+        .filter(TerrainColumn::Kind.starts_with("reading::"))
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(readings.len(), 3, "exactly three reading edges, no noise");
+    for r in &readings {
+        assert!(
+            r.kind.starts_with("reading::"),
+            "unexpected kind: {}",
+            r.kind
+        );
+    }
+}
+
+/// Round-trip: insert a Reading edge, fetch it back, verify the enum
+/// variant is reconstructed correctly via the `From<Model>` impl.
+#[rstest]
+#[tokio::test]
+async fn reading_edge_db_roundtrip_preserves_enum_variant(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let src = new_id();
+    let dst = new_id();
+    mark::insert(&db, src, &landmark("meeting", "M"), now())
+        .await
+        .unwrap();
+    mark::insert(&db, dst, &landmark("person", "P"), now())
+        .await
+        .unwrap();
+
+    let chart = ChartID::builtin("meeting");
+    let feature = FeatureID::from_str("attn").unwrap();
+    insert_edge(
+        &db,
+        src,
+        dst,
+        TerrainKind::Reading(chart.clone(), feature.clone()),
+        None,
+    )
+    .await;
+
+    let model = Terrains::find()
+        .filter(TerrainColumn::SrcId.eq(src.inner()))
+        .filter(TerrainColumn::DstId.eq(dst.inner()))
+        .one(&db)
+        .await
+        .unwrap()
+        .expect("edge should exist");
+
+    // DB string should preserve the "builtin." prefix that ChartID::Display
+    // would strip. This is the whole reason kind_to_string bypasses Display.
+    assert_eq!(model.kind, "reading::builtin.meeting::attn");
+
+    let terrain: domain::terrain::Terrain = model.into();
+    match terrain.kind {
+        TerrainKind::Reading(c, f) => {
+            assert_eq!(c, chart);
+            assert_eq!(f, feature);
+        }
+        other => panic!("expected Reading variant, got {other:?}"),
+    }
+}
+
+/// Two Child edges with the same src/dst but different edge IDs can be
+/// inserted at the schema level — this is the "block embeds / synced
+/// blocks" case that the `id`-based PK unlocks. The editor's query layer
+/// still assumes one-parent-per-child (see `find_parent_edge` comment),
+/// so this isn't yet wired up in production, but the schema doesn't
+/// prevent it.
+#[rstest]
+#[tokio::test]
+async fn schema_allows_duplicate_child_edges_for_future_block_embeds(
+    #[future] db: DatabaseConnection,
+) {
+    let db = db.await;
+    let parent = new_id();
+    let child = new_id();
+    mark::insert(&db, parent, &landmark("page", "P"), now())
+        .await
+        .unwrap();
+    mark::insert(&db, child, &paragraph("c"), now())
+        .await
+        .unwrap();
+
+    insert_edge(&db, parent, child, TerrainKind::Child, Some("a000")).await;
+    insert_edge(&db, parent, child, TerrainKind::Child, Some("m000")).await;
+
+    let all = Terrains::find()
+        .filter(TerrainColumn::SrcId.eq(parent.inner()))
+        .filter(TerrainColumn::DstId.eq(child.inner()))
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(all.len(), 2, "schema must allow duplicate same-kind edges");
+    assert_ne!(all[0].id, all[1].id, "edge IDs must be distinct");
 }
