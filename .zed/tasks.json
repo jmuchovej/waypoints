@@ -1,14 +1,14 @@
 [
   {
     "label": "Development (Desktop)",
-    "command": "just tauri::dev"
+    "command": "direnv exec . just tauri::dev"
   },
   {
     "label": "Development (Android)",
-    "command": "just tauri::android dev"
+    "command": "direnv exec . just tauri::android dev"
   },
   {
     "label": "Development (iOS)",
-    "command": "just tauri::ios dev"
+    "command": "direnv exec . just tauri::ios dev"
   }
 ]
