@@ -1,6 +1,7 @@
 mod m20251118_203548_create_marks_table;
 mod m20251118_203608_create_charts_table;
 mod m20251118_203617_create_terrains_table;
+mod m20251121_202043_seed_charts;
 #[cfg(feature = "mock")]
 mod m20251121_202202_seed_mock_data;
 mod utils;
@@ -40,6 +41,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251118_203548_create_marks_table::Migration),
             Box::new(m20251118_203608_create_charts_table::Migration),
             Box::new(m20251118_203617_create_terrains_table::Migration),
+            Box::new(m20251121_202043_seed_charts::Migration),
         ];
 
         #[cfg(feature = "mock")]
