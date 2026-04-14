@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use tauri::Runtime;
-use tauri::async_runtime;
-use tauri::image::Image;
-use tauri::menu::IconMenuItemBuilder;
 #[cfg(target_os = "macos")]
 use tauri::menu::Submenu;
-use tauri::menu::{
-    AboutMetadata, AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder,
+use tauri::{
+    App, AppHandle, Emitter, Manager, Runtime, async_runtime,
+    image::Image,
+    menu::{
+        AboutMetadata, AboutMetadataBuilder, IconMenuItemBuilder, MenuBuilder, MenuEvent,
+        MenuItemBuilder, SubmenuBuilder,
+    },
 };
-use tauri::{App, AppHandle, Emitter, Manager};
 
 use cartograph::WaypointsRuntime;
 
@@ -62,7 +62,7 @@ fn setup_view<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     #[cfg(debug_assertions)]
     let builder = {
         let handle = app_handle.clone();
-        app_handle.on_menu_event(move |_app, event| {
+        app_handle.on_menu_event(move |_app, event: MenuEvent| {
             let Some(window) = handle.get_webview_window("main") else {
                 return;
             };
@@ -127,7 +127,7 @@ fn setup_edit<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
 
 fn setup_file<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     let handle = app_handle.clone();
-    app_handle.on_menu_event(move |_app, event| {
+    app_handle.on_menu_event(move |_app, event: MenuEvent| {
         if event.id().0.as_str() == "new" {
             if let Some(window) = handle.get_webview_window("main") {
                 let _ = window.emit("app:mark:new", ());
@@ -177,7 +177,7 @@ fn setup_developer<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     let builder = SubmenuBuilder::new(app_handle, "Developer");
     let handle = app_handle.clone();
 
-    app_handle.on_menu_event(move |_app, event| match event.id().0.as_str() {
+    app_handle.on_menu_event(move |_app, event: MenuEvent| match event.id().0.as_str() {
         "reset-database" => {
             let handle = handle.clone();
             async_runtime::spawn(async move {

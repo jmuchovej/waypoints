@@ -4,7 +4,7 @@ mod registry_store;
 mod settings;
 
 pub mod builders {
-    #[cfg(debug_assertions)]
+    #[cfg(desktop)]
     pub(crate) mod menus;
     pub mod specta;
     pub(crate) mod territory;
@@ -56,10 +56,7 @@ pub fn run() {
                 tracing::info!("tauri setup: building tray icon");
                 builders::tray::setup(app)?;
                 tracing::info!("tauri setup: tray ready");
-            }
 
-            #[cfg(debug_assertions)]
-            {
                 tracing::info!("tauri setup: building dev-only menus");
                 builders::menus::setup(app)?;
                 tracing::info!("tauri setup: dev-only menus ready");
