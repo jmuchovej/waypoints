@@ -1,12 +1,8 @@
 use tauri::Wry;
 use tauri_specta::{Builder as SpectaBuilder, collect_commands};
 
-use cartograph::territory::{Territory, TerritoryKind};
-
 pub fn register_types(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
     builder
-        .typ::<Territory>()
-        .typ::<TerritoryKind>()
 }
 
 pub fn register_commands(builder: SpectaBuilder<Wry>) -> SpectaBuilder<Wry> {
