@@ -1,16 +1,15 @@
 //! Full-stack proof: two real app databases, two coordinators, the real
-//! `HttpRelayClient`, and a live outpost — the complete sync path over
+//! `HttpPeer`, and a live outpost — the complete sync path over
 //! actual HTTP. Plus the gossip pump: two live outposts converging
 //! through pull-only anti-entropy (PROTOCOL.md §1 "Gossip").
 
 use std::sync::Arc;
 
 use cartograph::Maneuver;
-use cartograph::sync::{HttpRelayClient, SyncCoordinator, sync_once, touched_marks};
+use cartograph::sync::{HttpPeer, SyncCoordinator, sync_once, touched_marks};
 use domain::mark::{Content, MarkData, MarkID, RichText};
 use domain::sync::{AccountID, DeviceID, RealmID};
 use outpost::auth::Validator;
-use outpost::sync::peers::client::PeerClient;
 use outpost::sync::peers::pump::{pump_all, pump_once};
 use outpost::sync::peers::store::EnvelopeStore;
 use outpost::sync::peers::turso::Storage;
@@ -97,7 +96,7 @@ async fn create_mark(
 #[tokio::test]
 async fn two_devices_sync_over_http() {
     let (base, _storage) = spawn_outpost().await;
-    let relay = HttpRelayClient::new(&base, SECRET);
+    let relay = HttpPeer::new(&base, SECRET);
 
     let (account, realm) = (AccountID::new(), RealmID::new());
     let (db_a, mut a) = joined_device(account, realm, "a").await;
@@ -125,7 +124,7 @@ async fn two_devices_sync_over_http() {
 #[tokio::test]
 async fn wrong_secret_is_rejected() {
     let (base, _storage) = spawn_outpost().await;
-    let relay = HttpRelayClient::new(&base, "not-the-secret");
+    let relay = HttpPeer::new(&base, "not-the-secret");
 
     let (account, realm) = (AccountID::new(), RealmID::new());
     let (db_a, mut a) = joined_device(account, realm, "a").await;
@@ -151,13 +150,13 @@ async fn pump_converges_two_outposts() {
 
     // Device 1 only ever talks to outpost A.
     let id = create_mark(&db_1, &mut dev_1, "via gossip").await;
-    let relay_a = HttpRelayClient::new(&base_a, SECRET);
+    let relay_a = HttpPeer::new(&base_a, SECRET);
     sync_once(&db_1, &mut dev_1, &relay_a, &base_a)
         .await
         .unwrap();
 
     // B pulls from A.
-    let peer_a = PeerClient::new(&base_a, SECRET);
+    let peer_a = HttpPeer::new(&base_a, SECRET);
     let realm_str = realm.to_string();
     let pumped = pump_once(storage_b.as_ref(), &peer_a, &realm_str)
         .await
@@ -165,7 +164,7 @@ async fn pump_converges_two_outposts() {
     assert_eq!((pumped.fetched, pumped.stored, pumped.dropped), (1, 1, 0));
 
     // Device 2 only ever talks to outpost B — and still converges.
-    let relay_b = HttpRelayClient::new(&base_b, SECRET);
+    let relay_b = HttpPeer::new(&base_b, SECRET);
     let down = sync_once(&db_2, &mut dev_2, &relay_b, &base_b)
         .await
         .unwrap();
@@ -192,8 +191,8 @@ async fn bidirectional_pump_reaches_fixpoint() {
     // Each device edits against its own outpost.
     let id_1 = create_mark(&db_1, &mut dev_1, "from A's side").await;
     let id_2 = create_mark(&db_2, &mut dev_2, "from B's side").await;
-    let relay_a = HttpRelayClient::new(&base_a, SECRET);
-    let relay_b = HttpRelayClient::new(&base_b, SECRET);
+    let relay_a = HttpPeer::new(&base_a, SECRET);
+    let relay_b = HttpPeer::new(&base_b, SECRET);
     sync_once(&db_1, &mut dev_1, &relay_a, &base_a)
         .await
         .unwrap();
@@ -201,8 +200,8 @@ async fn bidirectional_pump_reaches_fixpoint() {
         .await
         .unwrap();
 
-    let peer_a = PeerClient::new(&base_a, SECRET);
-    let peer_b = PeerClient::new(&base_b, SECRET);
+    let peer_a = HttpPeer::new(&base_a, SECRET);
+    let peer_b = HttpPeer::new(&base_b, SECRET);
     let realm_str = realm.to_string();
 
     // A↔B gossip cycle: idempotency terminates propagation. Two laps
@@ -254,14 +253,14 @@ async fn pump_all_bootstraps_fresh_mirror_via_extra_realms() {
     let (account, realm) = (AccountID::new(), RealmID::new());
     let (db_1, mut dev_1) = joined_device(account, realm, "one").await;
     create_mark(&db_1, &mut dev_1, "mirrored").await;
-    let relay_a = HttpRelayClient::new(&base_a, SECRET);
+    let relay_a = HttpPeer::new(&base_a, SECRET);
     sync_once(&db_1, &mut dev_1, &relay_a, &base_a)
         .await
         .unwrap();
 
     // B is brand-new: it knows no realms locally, so only the configured
     // extras give it something to pull (the bootstrap case).
-    let peers = vec![PeerClient::new(&base_a, SECRET)];
+    let peers = vec![HttpPeer::new(&base_a, SECRET)];
 
     let nothing = pump_all(storage_b.as_ref(), &peers, &[]).await;
     assert_eq!(nothing.fetched, 0, "no local realms, no extras: no pull");

@@ -7,7 +7,7 @@
 
 use tracing::warn;
 
-use super::client::{PeerClient, PeerError};
+use super::peer::{HttpPeer, Peer, PeerError};
 use super::store::{GossipStore, StoreError, rfc3339_now};
 use super::wire::{DEFAULT_LIMIT, EnvelopeHead};
 
@@ -34,7 +34,7 @@ pub enum PumpError {
 /// from any state, repeatedly — same contract as the app's `sync_once`.
 pub async fn pump_once<S>(
     store: &S,
-    peer: &PeerClient,
+    peer: &HttpPeer,
     realm_id: &str,
 ) -> Result<PumpOutcome, PumpError>
 where
@@ -93,7 +93,7 @@ where
 /// One gossip round: every configured peer × every relevant realm
 /// (locally-known realms plus configured extras). A failing edge is
 /// logged and skipped — one dead peer must not stall the others.
-pub async fn pump_all<S>(store: &S, peers: &[PeerClient], extra_realms: &[String]) -> PumpOutcome
+pub async fn pump_all<S>(store: &S, peers: &[HttpPeer], extra_realms: &[String]) -> PumpOutcome
 where
     S: GossipStore + ?Sized,
 {
