@@ -13,6 +13,7 @@
 
 use domain::sync::HLC;
 use outpost::sync::peers::peer::{Peer, PeerError};
+use outpost::sync::peers::wire::EnvelopeFace;
 use serde_json::value::RawValue;
 use store::DatabaseConnection;
 use store::query::{relay_cursor, sync_log};
@@ -123,11 +124,13 @@ where
 /// Rebuild the wire envelope from its persisted `sync_log` row.
 fn envelope_from_row(row: store::entities::SyncLogModel) -> EditorResult<Envelope> {
     Ok(Envelope {
-        group_id: row.group_id.into(),
-        account_id: row.account_id.into(),
-        realm_id: row.realm_id.into(),
-        device_id: row.device_id.into(),
-        hlc: HLC(row.hlc),
+        face: EnvelopeFace {
+            group_id: row.group_id.into(),
+            account_id: row.account_id.into(),
+            realm_id: row.realm_id.into(),
+            device_id: row.device_id.into(),
+            hlc: HLC(row.hlc),
+        },
         checkpoints: serde_json::from_value(row.ops)
             .map_err(|e| EditorError::Serialization(e.to_string()))?,
         touched_marks: serde_json::from_value(row.touched_marks)

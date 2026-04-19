@@ -9,6 +9,8 @@ use store::{
     },
 };
 
+use outpost::sync::peers::wire::EnvelopeFace;
+
 use super::{ConflictResolver, LastWriteResolver, Resolution, envelope::Envelope};
 use crate::editor::{EditorError, EditorResult, Maneuver, ManeuverTarget};
 
@@ -125,11 +127,13 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
         device::set_last_hlc(db, self.device_id, hlc).await?;
 
         let group = Envelope {
-            group_id: OpID::new(),
-            account_id: self.account_id,
-            realm_id: self.realm_id,
-            device_id: self.device_id,
-            hlc,
+            face: EnvelopeFace {
+                group_id: OpID::new(),
+                account_id: self.account_id,
+                realm_id: self.realm_id,
+                device_id: self.device_id,
+                hlc,
+            },
             checkpoints: ops,
             touched_marks,
         };
@@ -155,19 +159,19 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
         db: &DatabaseConnection,
         group: Envelope,
     ) -> EditorResult<ApplyOutcome> {
-        if sync_log::contains(db, group.group_id).await? {
+        if sync_log::contains(db, group.face.group_id).await? {
             return Ok(ApplyOutcome::Skipped(SkipReason::AlreadyApplied));
         }
-        if group.realm_id != self.realm_id {
+        if group.face.realm_id != self.realm_id {
             return Ok(ApplyOutcome::Skipped(SkipReason::WrongRealm));
         }
         // Before receive(): adopting a poisoned HLC would drag our own
         // clock into the future and spread the drift to our next writes.
-        if group.hlc.physical() > SystemClock.now_ms() + MAX_HLC_DRIFT_MS {
+        if group.face.hlc.physical() > SystemClock.now_ms() + MAX_HLC_DRIFT_MS {
             return Ok(ApplyOutcome::Skipped(SkipReason::ExcessiveDrift));
         }
 
-        self.last_hlc = HLC::receive(self.last_hlc, group.hlc);
+        self.last_hlc = HLC::receive(self.last_hlc, group.face.hlc);
         device::set_last_hlc(db, self.device_id, self.last_hlc).await?;
 
         // Persist before applying: a crash mid-apply leaves the group
@@ -180,7 +184,7 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
         for op in &group.checkpoints {
             match self
                 .resolver
-                .resolve(db, op, group.hlc, group.device_id)
+                .resolve(db, op, group.face.hlc, group.face.device_id)
                 .await?
             {
                 Resolution::Applied => applied += 1,
@@ -204,11 +208,11 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
 
 fn log_entry(group: &Envelope, origin: SyncOrigin) -> EditorResult<SyncLogEntry> {
     Ok(SyncLogEntry {
-        group_id: group.group_id,
-        device_id: group.device_id,
-        account_id: group.account_id,
-        realm_id: group.realm_id,
-        hlc: group.hlc,
+        group_id: group.face.group_id,
+        device_id: group.face.device_id,
+        account_id: group.face.account_id,
+        realm_id: group.face.realm_id,
+        hlc: group.face.hlc,
         ops: serde_json::to_value(&group.checkpoints)
             .map_err(|e| EditorError::Serialization(e.to_string()))?,
         touched_marks: serde_json::to_value(&group.touched_marks)
@@ -277,11 +281,13 @@ mod tests {
     ) -> Envelope {
         let touched = touched_marks(&ops);
         Envelope {
-            group_id: OpID::new(),
-            account_id: AccountID::new(),
-            realm_id,
-            device_id,
-            hlc,
+            face: EnvelopeFace {
+                group_id: OpID::new(),
+                account_id: AccountID::new(),
+                realm_id,
+                device_id,
+                hlc,
+            },
             checkpoints: ops,
             touched_marks: touched,
         }
@@ -312,21 +318,21 @@ mod tests {
         let marks = touched_marks(&ops);
         let group = coord.log_local(&db, ops, marks).await.unwrap();
 
-        let row = SyncLog::find_by_id(group.group_id.inner())
+        let row = SyncLog::find_by_id(group.face.group_id.inner())
             .one(&db)
             .await
             .unwrap()
             .expect("sync_log row for local group");
         assert_eq!(row.origin, 0);
-        assert_eq!(row.hlc, group.hlc.inner());
+        assert_eq!(row.hlc, group.face.hlc.inner());
 
         assert_eq!(
             mark_q::get_row_clock(&db, id).await.unwrap(),
-            Some((group.hlc, coord.device_id()))
+            Some((group.face.hlc, coord.device_id()))
         );
 
         let dev = device::get_local(&db).await.unwrap().unwrap();
-        assert_eq!(dev.last_hlc, group.hlc.inner(), "last_hlc persisted");
+        assert_eq!(dev.last_hlc, group.face.hlc.inner(), "last_hlc persisted");
     }
 
     #[tokio::test]
