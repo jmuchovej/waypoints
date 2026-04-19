@@ -1,0 +1,60 @@
+items:
+  - title: Reliable undo/redo
+    description: Operations must reliably reverse and replay editing actions.
+    status: in-progress
+
+  - title: Code blocks
+    description: Plain code blocks as a first-class content type.
+    status: in-progress
+
+  - title: Drag-and-drop fixes
+    description: Dropping into empty compound blocks and correct dedent behavior.
+    status: in-progress
+
+  - title: Last-write-wins sync
+    description: Basic device sync via relay server with encrypted storage.
+    status: in-progress
+
+  - title: Wiki-style linking
+    description: "[[Double bracket]] linking with autocomplete and a backlink panel."
+    status: next
+
+  - title: Full-text search
+    description: Search index across all content with highlighted matches.
+    status: next
+
+  - title: Command palette
+    description: Cmd+K to navigate landmarks, create documents, and run actions.
+    status: next
+
+  - title: Logseq importer
+    description: Import Logseq pages, blocks, and properties into Waypoints.
+    status: next
+
+  - title: Syntax-highlighted code blocks
+    description: "Language detection, token coloring, line numbers, and copy button."
+    status: next
+
+  - title: PDF attachments
+    description: "Upload, store, and view PDFs alongside your notes."
+    status: next
+
+  - title: Voice input
+    description: ASR transcription with speaker diarization as an input method.
+    status: later
+
+  - title: Local agents
+    description: On-device language models with MCP tool integration.
+    status: later
+
+  - title: Health and telemetry
+    description: "Ingest data from Apple Health, Fitbit, and other sources."
+    status: later
+
+  - title: Extension system
+    description: An Obsidian-caliber plugin ecosystem backed by block-level data.
+    status: later
+
+  - title: Peer-to-peer sync
+    description: Self-hosted relay servers. Eventually fully peer-to-peer.
+    status: later
