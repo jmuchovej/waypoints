@@ -9,6 +9,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
+use domain::sync::{DeviceID, RealmID};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
@@ -17,6 +18,12 @@ use crate::auth::{AuthError, Identity, Validator};
 use super::service::{UploadRejection, accept_upload, serve_fetch};
 use super::store::EnvelopeStore;
 use super::wire::{DEFAULT_LIMIT, MAX_BATCH, MAX_BODY_BYTES, MAX_LIMIT};
+
+/// Realms are UUIDs (PROTOCOL.md §1); reject malformed path params
+/// before they reach auth or storage.
+fn parse_realm(raw: &str) -> Option<RealmID> {
+    uuid::Uuid::parse_str(raw).ok().map(RealmID::from)
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -58,11 +65,11 @@ fn bearer(headers: &HeaderMap) -> &str {
 async fn authenticate(
     state: &AppState,
     headers: &HeaderMap,
-    realm_id: &str,
+    realm_id: RealmID,
 ) -> Result<Identity, Response> {
     state
         .validator
-        .validate(bearer(headers), realm_id)
+        .validate(bearer(headers), &realm_id.to_string())
         .await
         .map_err(|e| match e {
             AuthError::Missing | AuthError::Unknown => {
@@ -87,7 +94,10 @@ async fn upload(
     headers: HeaderMap,
     body: String,
 ) -> Response {
-    let identity = match authenticate(&state, &headers, &realm_id).await {
+    let Some(realm_id) = parse_realm(&realm_id) else {
+        return problem(StatusCode::BAD_REQUEST, "malformed realm id");
+    };
+    let identity = match authenticate(&state, &headers, realm_id).await {
         Ok(i) => i,
         Err(response) => return response,
     };
@@ -105,9 +115,9 @@ async fn upload(
 
     let response = accept_upload(
         state.storage.as_ref(),
-        &realm_id,
+        realm_id,
         &parsed.envelopes,
-        identity.account_id.as_deref(),
+        identity.account_id,
     )
     .await;
     match response {
@@ -145,7 +155,10 @@ async fn fetch(
     Query(params): Query<FetchParams>,
     headers: HeaderMap,
 ) -> Response {
-    if let Err(response) = authenticate(&state, &headers, &realm_id).await {
+    let Some(realm_id) = parse_realm(&realm_id) else {
+        return problem(StatusCode::BAD_REQUEST, "malformed realm id");
+    };
+    if let Err(response) = authenticate(&state, &headers, realm_id).await {
         return response;
     }
     if params.since_seq < 0 {
@@ -153,11 +166,16 @@ async fn fetch(
     }
     let limit = params.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
 
+    // A malformed or absent exclude_device filters nothing — the same
+    // no-match semantics the string comparison had.
+    let exclude_device = uuid::Uuid::parse_str(&params.exclude_device)
+        .ok()
+        .map(DeviceID::from);
     let page = serve_fetch(
         state.storage.as_ref(),
-        &realm_id,
+        realm_id,
         params.since_seq,
-        &params.exclude_device,
+        exclude_device,
         limit,
     )
     .await;

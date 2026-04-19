@@ -17,8 +17,10 @@ pub struct Envelope {
     pub device_id: DeviceID,
     /// Serialized as a decimal string: packed HLCs exceed
     /// `Number.MAX_SAFE_INTEGER`, so a bare JSON number would be silently
-    /// corrupted by any JavaScript relay or tool that re-parses it.
-    #[serde(with = "hlc_wire")]
+    /// corrupted by any JavaScript relay or tool that re-parses it. The
+    /// serde impl lives in outpost's wire module, next to the rest of
+    /// the §2 wire contract.
+    #[serde(with = "outpost::sync::peers::wire::hlc_wire")]
     pub hlc: HLC,
     pub checkpoints: Vec<Maneuver>,
     /// Mark IDs touched by this group. Used for cheap dependency checks
@@ -26,20 +28,6 @@ pub struct Envelope {
     /// Not load-bearing in v1 (LWW handles missing marks gracefully via
     /// CreateMark forward-fill), but cheap to populate and useful later.
     pub touched_marks: Vec<MarkID>,
-}
-
-mod hlc_wire {
-    use domain::sync::HLC;
-    use serde::{Deserialize, Deserializer, Serializer, de::Error};
-
-    pub fn serialize<S: Serializer>(hlc: &HLC, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&hlc.inner().to_string())
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<HLC, D::Error> {
-        let raw = String::deserialize(d)?;
-        raw.parse::<i64>().map(HLC).map_err(D::Error::custom)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
