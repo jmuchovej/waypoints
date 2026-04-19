@@ -1,88 +1,91 @@
 <script setup lang="ts">
-import { commands } from "~/bindings.g";
-import type { Mark, MarkID } from "@waypoints/domain";
+import { isLandmark, isContent, type Mark } from "@waypoints/domain";
+
+const ReadonlyRichText = defineAsyncComponent(() => import("../RichText.vue"));
+
+/**
+ * Hydrated mention data from the backend.
+ *
+ * `mark` is absent when the referenced mark no longer exists in the database
+ * (i.e., hard-deleted). In that case only the UUID remains — the mention
+ * renders as a broken link.
+ *
+ * TODO: Distinguish soft-deleted (trashed) marks from hard-deleted — show
+ *       muted/struck-through styling instead of a broken link.
+ * TODO: Distinguish archived marks — separate visual treatment.
+ * TODO: Consider preventing hard deletion when inbound mention references
+ *       exist, or at least surfacing a warning.
+ */
+type MentionData = { id: string; mark?: Mark };
 
 const props = defineProps<{
-  data: unknown;
+  data: MentionData;
 }>();
 
-const id = (props.data as Record<string, unknown> | null)?.id as string | undefined;
+const id = computed(() => props.data.id);
+const mentionMark = computed(() => props.data.mark ?? null);
+const isBroken = computed(() => !mentionMark.value);
 
-function handleClick() {
-  if (id) {
-    navigateTo(`/marks/${id}`);
-  }
-}
-
-// ── Hover card data ──────────────────────────────────────────────────────
-
-const mentionCache = new Map<string, Mark>();
-const mentionData = ref<Mark | null>(null);
-const loading = ref(false);
-
-async function fetchMention() {
-  if (!id || mentionData.value) return;
-
-  const cached = mentionCache.get(id);
-  if (cached) {
-    mentionData.value = cached;
-    return;
-  }
-
-  loading.value = true;
-  try {
-    const result = await commands.editorGetMark(id as MarkID);
-    if (result.status === "ok") {
-      mentionData.value = result.data;
-      mentionCache.set(id, result.data);
-    }
-  } catch {
-    // Silently fail if backend unavailable
-  } finally {
-    loading.value = false;
-  }
-}
-
-const mentionLabel = computed(() => {
-  if (!mentionData.value) return undefined;
-  const d = mentionData.value.data;
-  if ("mark" in d) {
-    if (d.mark === "landmark" && "title" in d) {
-      const title = d.title as { plain_text?: string } | undefined;
-      return title?.plain_text ?? "Untitled";
-    }
-    if (d.mark === "content" && "type" in d) {
-      return String(d.type);
-    }
-  }
-  return "Mark";
+const mentionTitle = computed(() => {
+  const m = mentionMark.value;
+  if (!m) return null;
+  if (isLandmark(m.data)) return m.data.title;
+  return null;
 });
 
 const mentionIcon = computed(() => {
-  if (!mentionData.value) return "i-lucide-file";
-  const d = mentionData.value.data;
-  if ("mark" in d && d.mark === "landmark") return "i-lucide-landmark";
-  return "i-lucide-file-text";
+  const m = mentionMark.value;
+  if (!m) return null;
+  if (isLandmark(m.data)) return m.data.icon;
+  return null;
 });
+
+const mentionContentType = computed(() => {
+  const m = mentionMark.value;
+  if (!m) return null;
+  if (isContent(m.data)) return m.data.type;
+  return null;
+});
+
+function handleClick() {
+  if (id.value) {
+    navigateTo(`/marks/${id.value}`);
+  }
+}
 </script>
 
 <template>
-  <UPopover mode="hover" :open-delay="300" @open="fetchMention">
-    <span data-inline="mention" class="mention" :data-id="id" @click.stop="handleClick">
+  <UPopover mode="hover" :open-delay="300">
+    <span
+      data-inline="mention"
+      :class="{ 'mention--broken': isBroken }"
+      :data-id="id"
+      @mousedown.stop
+      @click.stop="handleClick"
+    >
       <slot />
     </span>
 
     <template #content>
       <div class="p-2 min-w-40 max-w-60">
-        <div v-if="loading" class="flex items-center gap-2 text-sm text-dimmed">
-          <UIcon name="i-lucide-loader-2" class="size-4 animate-spin" />
-          Loading...
-        </div>
-        <div v-else-if="mentionData" class="flex items-center gap-2">
-          <UIcon :name="mentionIcon" class="size-4 shrink-0 text-dimmed" />
-          <span class="text-sm font-medium truncate">{{ mentionLabel }}</span>
-        </div>
-        <div v-else class="text-sm text-dimmed">Unknown mark</div>
+        <template v-if="mentionTitle">
+          <div class="flex items-center gap-2">
+            <UIcon
+              v-if="mentionIcon"
+              :name="mentionIcon.identifier"
+              class="size-4 shrink-0 text-dimmed"
+            />
+            <span class="text-sm font-medium truncate">
+              <ReadonlyRichText :rich-text="mentionTitle" />
+            </span>
+          </div>
+        </template>
+        <template v-else-if="mentionContentType">
+          <span class="text-sm text-dimmed">{{ mentionContentType }}</span>
+        </template>
+        <template v-else>
+          <span class="text-sm text-dimmed">Unknown mark</span>
+        </template>
       </div>
     </template>
   </UPopover>

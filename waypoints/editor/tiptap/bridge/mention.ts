@@ -1,10 +1,13 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { InlineKind } from "@waypoints/domain";
 
 /**
- * Minimal mention mark — registers the schema type so Tiptap can parse
- * content containing mention marks without crashing. Full mention editing
- * (autocomplete, insertion UI) is deferred to a later milestone.
+ * Mention mark — renders inline mention references. The segment text is
+ * pre-hydrated by the backend to show the landmark title rather than a UUID.
+ *
+ * Clicks on mentions while the editor is focused are suppressed to prioritize
+ * editing; navigation is handled by the read-only InlineMention.vue component.
  */
 export const Mention = Mark.create({
   name: InlineKind.Mention,
@@ -27,6 +30,24 @@ export const Mention = Mark.create({
         class: "mention",
       }),
       0,
+    ];
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("mentionClick"),
+        props: {
+          handleClick(view, _pos, event) {
+            const target = event.target as HTMLElement;
+            if (target.closest?.('[data-inline="mention"]')) {
+              // Suppress navigation while the editor is focused — prioritize editing.
+              return true;
+            }
+            return false;
+          },
+        },
+      }),
     ];
   },
 });

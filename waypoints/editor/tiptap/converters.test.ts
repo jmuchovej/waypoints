@@ -25,8 +25,11 @@ describe("toTipTapMark", () => {
     });
   });
 
-  it("converts mention mark with id", () => {
-    const mark: InlineMark = { kind: InlineKind.Mention, data: "some-uuid" };
+  it("converts hydrated mention mark (extracts id from object)", () => {
+    const mark: InlineMark = {
+      kind: InlineKind.Mention,
+      data: { id: "some-uuid", mark: { id: "some-uuid", data: { mark: "landmark" } } },
+    };
     expect(toTipTapMark(mark)).toEqual({
       type: "mention",
       attrs: { id: "some-uuid" },
@@ -103,9 +106,13 @@ describe("mark round-trip", () => {
     expect(toInlineMark(toTipTapMark(mark))).toEqual(mark);
   });
 
-  it("round-trips mention mark", () => {
-    const mark: InlineMark = { kind: InlineKind.Mention, data: "some-uuid" };
-    expect(toInlineMark(toTipTapMark(mark))).toEqual(mark);
+  it("round-trips hydrated mention to bare UUID", () => {
+    const hydrated: InlineMark = {
+      kind: InlineKind.Mention,
+      data: { id: "some-uuid", mark: { id: "some-uuid", data: { mark: "landmark" } } },
+    };
+    const expected: InlineMark = { kind: InlineKind.Mention, data: "some-uuid" };
+    expect(toInlineMark(toTipTapMark(hydrated))).toEqual(expected);
   });
 
   it("round-trips math mark", () => {

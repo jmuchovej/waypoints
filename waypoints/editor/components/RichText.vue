@@ -20,7 +20,7 @@ const isEmpty = computed(() => {
 </script>
 
 <template>
-  <span class="block">
+  <span>
     <template v-if="isEmpty && placeholder">
       <span class="text-dimmed">{{ placeholder }}</span>
     </template>

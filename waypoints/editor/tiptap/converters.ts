@@ -15,8 +15,8 @@ export function toTipTapMark(mark: InlineMark): TipTapMark {
   if (mark.kind === InlineKind.Link && typeof mark.data === "string") {
     return { type: mark.kind, attrs: { href: mark.data } };
   }
-  if (mark.kind === InlineKind.Mention && mark.data && typeof mark.data === "string") {
-    return { type: mark.kind, attrs: { id: mark.data } };
+  if (mark.kind === InlineKind.Mention && mark.data) {
+    return { type: mark.kind, attrs: { id: (mark.data as Record<string, unknown>).id } };
   }
   if (mark.kind === InlineKind.Math && mark.data && typeof mark.data === "object") {
     return { type: mark.kind, attrs: { engine: (mark.data as any).engine ?? "typst" } };

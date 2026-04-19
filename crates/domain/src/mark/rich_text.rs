@@ -38,6 +38,10 @@ impl RichText {
         &self.segments
     }
 
+    pub fn segments_mut(&mut self) -> &mut Vec<TextSegment> {
+        &mut self.segments
+    }
+
     pub fn is_empty(&self) -> bool {
         self.segments.is_empty()
     }

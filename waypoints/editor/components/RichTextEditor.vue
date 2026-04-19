@@ -152,7 +152,7 @@ function onMousedown(e: MouseEvent) {
 </script>
 
 <template>
-  <span class="block cursor-text" @click="onClick" @mousedown="onMousedown">
+  <span class="cursor-text" @click="onClick" @mousedown="onMousedown">
     <span v-if="editing" ref="editorEl" />
     <ReadonlyRichText v-else :rich-text="richText" :placeholder="placeholder" />
     <div v-if="editorRef" class="contents">

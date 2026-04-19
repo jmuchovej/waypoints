@@ -214,8 +214,23 @@
   }
 
   [data-inline="mention"] {
-    @apply cursor-pointer rounded-sm px-0.5;
-    @apply hover:bg-primary/10 hover:underline;
+    @apply inline-flex cursor-pointer rounded-md px-1 py-0.5;
+    @apply transition-colors duration-100 ease-in-out;
+    @apply relative after:absolute overflow-hidden;
+    @apply bg-accented/50 hover:bg-primary/10;
+    @apply bg-accented/50 hover:after:bg-primary/50;
+
+    &:after {
+      content: "";
+      @apply transition-colors duration-100 ease-in-out;
+      @apply absolute h-1 w-full bottom-0 left-0 right-0;
+      @apply bg-accented/50;
+    }
+
+    &.mention--broken {
+      @apply line-through text-dimmed cursor-not-allowed;
+      @apply hover:bg-error/10;
+    }
   }
 
   [data-inline="spoiler"] {

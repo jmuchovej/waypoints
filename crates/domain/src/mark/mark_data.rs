@@ -148,6 +148,19 @@ impl Content {
         }
     }
 
+    /// Get a mutable reference to the rich text field, if this variant has one.
+    pub fn rich_text_mut(&mut self) -> Option<&mut RichText> {
+        match self {
+            Content::Paragraph { rich_text }
+            | Content::Heading1 { rich_text }
+            | Content::Heading2 { rich_text }
+            | Content::Heading3 { rich_text }
+            | Content::ListItem { rich_text }
+            | Content::EnumItem { rich_text } => Some(rich_text),
+            _ => None,
+        }
+    }
+
     /// Set the rich text field on variants that have one.
     /// Returns `false` if the variant has no rich text field.
     pub fn set_rich_text(&mut self, new_rt: RichText) -> bool {
