@@ -12,6 +12,7 @@ mod domain "crates/domain/justfile"
 mod store "crates/store/justfile"
 mod editor "crates/editor/justfile"
 mod cartograph "crates/cartograph/justfile"
+mod website "website/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:

@@ -134,6 +134,7 @@
       "*.properties"
       "*.gradle"
       "*.xcconfig"
+      "**/content/**/*.md"
     ];
     config.settings.global.on-unmatched = "info";
     config.programs = {

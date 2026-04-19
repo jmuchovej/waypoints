@@ -1,0 +1,31 @@
+@layer theme, base, clerk, components, utilities;
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+:root {
+  --clerk-color-primary: var(--color-sky-400);
+  --clerk-color-primary-foreground: light-dark(var(--color-sky-900), var(--color-sky-900));
+  --clerk-color-danger: var(--color-rose-500);
+  --clerk-color-success: var(--color-emerald-400);
+  --clerk-color-warning: var(--color-amber-400);
+  --clerk-color-neutral: var(--color-mist-500);
+  --clerk-color-foreground: light-dark(var(--color-mist-900), var(--color-mist-100));
+  --clerk-color-background: light-dark(var(--color-mist-200), var(--color-mist-800));
+  --clerk-color-input: light-dark(var(--color-mist-50), var(--color-mist-950));
+  --clerk-color-input-foreground: light-dark(var(--color-mist-950), var(--color-mist-50));
+  --clerk-color-ring: light-dark(var(--color-sky-400), var(--color-sky-600));
+  --clerk-color-shimmer: light-dark(var(--color-sky-50), var(--color-sky-950));
+  --clerk-color-modal-backdrop: light-dark(var(--color-mist-900), var(--color-mist-100));
+  --clerk-border-radius: --spacing(2);
+  --clerk-spacing: --spacing(4);
+  --clerk-color-border: light-dark(var(--color-slate-800), var(--color-slate-200));
+  /*--clerk-color-border: transparent;*/
+  /*--clerk-color-shadow: light-dark(var(--color-slate-800), var(--color-slate-200));*/
+  --clerk-color-shadow: transparent;
+  --clerk-color-muted-foreground: light-dark(var(--color-mist-800), var(--color-mist-200));
+  --clerk-color-muted: light-dark(var(--color-mist-300), var(--color-mist-900));
+}
+
+@theme static {
+  --font-sans: "Public Sans", sans-serif;
+}

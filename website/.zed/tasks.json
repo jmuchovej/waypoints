@@ -1,0 +1,6 @@
+[
+  {
+    "label": "Website (Dev)",
+    "command": "direnv exec . just website::dev"
+  }
+]

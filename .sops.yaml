@@ -6,3 +6,7 @@ creation_rules:
     age:
       - *jmuchovej
       - *waypoints-ci
+  - path_regex: "website/secrets\\.sops\\.yaml$"
+    age:
+      - *jmuchovej
+      - *waypoints-ci

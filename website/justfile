@@ -1,0 +1,30 @@
+[private]
+default:
+    @just --list
+
+[private]
+via-nuxi +ARGS:
+    bunx --bun nuxi {{ ARGS }}
+
+dev:
+    @just via-nuxi dev
+
+setup: postinstall
+
+generate:
+    @just via-nuxi generate
+
+postinstall:
+    @just via-nuxi prepare
+
+typecheck:
+    @just via-nuxi typecheck
+
+clean:
+    @just via-nuxi cleanup
+
+test *ARGS:
+    bunx vitest {{ ARGS }}
+
+add +ARGS:
+    bun add {{ ARGS }}
