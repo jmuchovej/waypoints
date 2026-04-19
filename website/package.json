@@ -27,6 +27,7 @@
     "docus": "catalog:",
     "drizzle-orm": "^0.44.0",
     "nuxt": "catalog:",
+    "sops-age": "^4.0.2",
     "tailwindcss": "catalog:",
     "ufo": "catalog:",
     "valibot": "catalog:",

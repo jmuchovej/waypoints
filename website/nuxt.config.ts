@@ -1,8 +1,31 @@
 import { defineNuxtConfig } from "nuxt/config";
+import { loadSopsSecrets } from "./secrets";
+
+await loadSopsSecrets();
+console.log(process.env.NUXT_TURSO_DATABASE_URL);
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   extends: ["docus"],
+
+  runtimeConfig: {
+    github: {
+      token: "",
+      clientId: "",
+      clientSecret: "",
+    },
+    betterAuthSecret: "",
+    turso: {
+      databaseUrl: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    },
+    public: {
+      turnstileSiteKey: "",
+      github: {
+        appId: "",
+      },
+    },
+  },
 
   // Docus provides: @nuxt/ui, @nuxt/content, @nuxt/image, @nuxtjs/mcp-toolkit,
   // @nuxtjs/robots, nuxt-og-image, nuxt-llms
@@ -43,9 +66,9 @@ export default defineNuxtConfig({
 
   compatibilityDate: "2025-01-15",
 
-  hints: {
-    devtools: true,
-  },
+  // hints: {
+  //   devtools: true,
+  // },
 
   site: {
     name: "Waypoints",

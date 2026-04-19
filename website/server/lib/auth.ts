@@ -5,6 +5,8 @@ import { passkey } from "@better-auth/passkey";
 import { db } from "./database";
 import * as schema from "../database/schema";
 
+const config = useRuntimeConfig();
+
 export const auth = betterAuth({
   appName: "Waypoints",
 
@@ -16,8 +18,8 @@ export const auth = betterAuth({
 
   socialProviders: {
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: config.github.clientId,
+      clientSecret: config.github.clientSecret,
     },
   },
 
@@ -34,6 +36,8 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // refresh every 24h
   },
+
+  secrets: [{ version: 1, value: config.betterAuthSecret }],
 
   advanced: {
     generateId: () => crypto.randomUUID(),

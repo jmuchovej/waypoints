@@ -1,8 +1,9 @@
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   const manifest = await buildUpdateManifest("preview");
 
   if (!manifest) {
-    throw createError({ statusCode: 204, statusMessage: "No Content" });
+    setResponseStatus(event, 204);
+    return null;
   }
 
   return manifest;

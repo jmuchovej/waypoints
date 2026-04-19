@@ -22,14 +22,17 @@ export interface ReleaseAssets {
 }
 
 export async function fetchGitHubReleases(): Promise<GitHubRelease[]> {
+  const { github } = useRuntimeConfig();
   const releases = await $fetch<GitHubRelease[]>(`https://api.github.com/repos/${REPO}/releases`, {
     headers: {
       Accept: "application/vnd.github+json",
-      ...(process.env.GITHUB_TOKEN && {
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+      ...(github.token && {
+        Authorization: `Bearer ${github.token}`,
       }),
     },
   });
+
+  console.log(releases);
 
   return releases.filter((r) => !r.draft);
 }
