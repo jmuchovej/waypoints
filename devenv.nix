@@ -2,12 +2,11 @@
   pkgs,
   lib,
   config,
-  inputs,
   ...
 }:
 {
   stdenv = pkgs.clangStdenv;
-  env.LD_LIBRARY_PATH = "\$LD_LIBRARY_PATH";
+  env.LD_LIBRARY_PATH = lib.mkForce "";
   env.PROJECT_ROOT = config.env.DEVENV_ROOT;
 
   packages = with pkgs; [
