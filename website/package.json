@@ -36,6 +36,7 @@
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/simple-icons": "catalog:",
+    "@types/node": "^25.6.1",
     "better-sqlite3": "catalog:",
     "drizzle-kit": "^0.31.0",
     "typescript": "catalog:",

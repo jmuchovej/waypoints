@@ -3,11 +3,12 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { twoFactor } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { db } from "./database";
+import * as schema from "../database/schema";
 
 export const auth = betterAuth({
   appName: "Waypoints",
 
-  database: drizzleAdapter(db, { provider: "sqlite" }),
+  database: drizzleAdapter(db, { provider: "sqlite", schema }),
 
   emailAndPassword: {
     enabled: true,
