@@ -80,6 +80,10 @@ jobs:
           password=${password}
           EOF
 
+      - name: Generate icons
+        run: just icons::${{ inputs.flavor }}
+        working-directory: waypoints/src-tauri
+
       - name: Build Android
         env:
           WAYPOINTS_FLAVOR: ${{ inputs.flavor }}

@@ -90,6 +90,10 @@ jobs:
           echo "ASC_ISSUER_ID=${asc_issuer}" >> "$GITHUB_ENV"
           echo "ASC_KEY_PATH=${asc_key_path}" >> "$GITHUB_ENV"
 
+      - name: Generate icons
+        run: just icons::${{ inputs.flavor }}
+        working-directory: waypoints/src-tauri
+
       - name: Build iOS
         working-directory: waypoints
         run: cargo tauri ios build --features ${{ inputs.features }} --export-method
