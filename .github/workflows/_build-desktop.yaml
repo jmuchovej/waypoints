@@ -1,4 +1,4 @@
-name: Build (reusable)
+name: Build Desktop
 
 on:
   workflow_call:
@@ -6,7 +6,8 @@ on:
       flavor:
         required: true
         type: string
-        description: "Build flavor — matches icons recipe and feature flag (preview, stable)"
+        description: "Build flavor — matches icons recipe and feature flag (preview,
+          stable)"
       features:
         required: true
         type: string
@@ -15,7 +16,8 @@ on:
         required: false
         type: string
         default: ""
-        description: "Tauri config override file (e.g. Tauri.flavor=preview.toml); empty for stable"
+        description: "Tauri config override file (e.g. Tauri.flavor=preview.toml); empty
+          for stable"
       tag:
         required: false
         type: string
@@ -77,12 +79,12 @@ jobs:
         run: |
           secrets=$(sops -d .secrets/signing-apple.sops.yaml)
           key_path="${RUNNER_TEMP}/AuthKey.p8"
-          echo "${secrets}" | yq '.private-key' > "${key_path}"
+          echo "${secrets}" | yq '.developer-id.key-prv' > "${key_path}"
           echo "APPLE_API_KEY_PATH=${key_path}" >> "$GITHUB_ENV"
-          echo "APPLE_API_ISSUER=$(echo "${secrets}" | yq '.issuer-id')" >> "$GITHUB_ENV"
-          echo "APPLE_API_KEY=$(echo "${secrets}" | yq '.key-id')" >> "$GITHUB_ENV"
-          echo "APPLE_CERTIFICATE=$(echo "${secrets}" | yq '.certificate')" >> "$GITHUB_ENV"
-          echo "APPLE_CERTIFICATE_PASSWORD=$(echo "${secrets}" | yq '.password')" >> "$GITHUB_ENV"
+          echo "APPLE_API_ISSUER=$(echo "${secrets}" | yq '.developer-id.issuer-id')" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY=$(echo "${secrets}" | yq '.developer-id.key-id')" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE=$(echo "${secrets}" | yq '.developer-id.certificate')" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE_PASSWORD=$(echo "${secrets}" | yq '.developer-id.password')" >> "$GITHUB_ENV"
 
       - name: Generate icons
         run: just icons::${{ inputs.flavor }}
@@ -100,8 +102,8 @@ jobs:
         with:
           projectPath: waypoints
           args: >-
-            --features ${{ inputs.features }}
-            ${{ inputs.config != '' && format('--config {0}', inputs.config) || '' }}
+            --features ${{ inputs.features }} ${{ inputs.config != '' &&
+            format('--config {0}', inputs.config) || '' }}
           tagName: ${{ inputs.tag }}
           releaseName: "Waypoints ${{ inputs.tag }}"
           prerelease: ${{ inputs.prerelease }}

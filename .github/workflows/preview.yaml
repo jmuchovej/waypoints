@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    uses: ./.github/workflows/_build.yaml
+  desktop:
+    uses: ./.github/workflows/_build-desktop.yaml
     with:
       flavor: preview
       features: preview
