@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { today, getLocalTimeZone } from "@internationalized/date";
 import { ref } from "vue";
-import { listen } from "~/ipc";
+import { ipc, listen } from "#imports";
 import { AppSidebar } from "#components";
 
 const route = useRoute();

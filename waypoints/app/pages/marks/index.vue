@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { navigateTo } from "#imports";
 import type { RichText, Chart, ChartID, LandmarkMark } from "@waypoints/domain";
 import { toRichText } from "@waypoints/domain";
-import RichTextEditor from "~editor/components/RichTextEditor.vue";
-import ipc from "~/ipc";
-import { iconName } from "~/utils/icon";
+import { RichTextEditor } from "#components";
+import { navigateTo, ipc, iconName } from "#imports";
 
 const log = createLogger("marks");
 

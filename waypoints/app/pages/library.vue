@@ -34,6 +34,4 @@ const title = computed(() => toRichText("Library"));
   <div class="overflow-auto flex-1">
     <NuxtPage />
   </div>
-
-  <NewLandmarkPalette v-model:open="newLandmarkOpen" />
 </template>

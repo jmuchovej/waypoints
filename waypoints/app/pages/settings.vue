@@ -5,10 +5,9 @@ import { toRichText } from "@waypoints/domain";
 const tabs: NavigationMenuItem[][] = [
   [
     {
-      label: "General",
+      label: "Profile",
       icon: "i-lucide-user",
-      to: "/settings",
-      exact: true,
+      to: "/settings/profile",
     },
     {
       label: "Members",
