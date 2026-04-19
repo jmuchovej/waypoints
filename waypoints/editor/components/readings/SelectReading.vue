@@ -292,6 +292,7 @@ function onUpdate(val: OptionItem | OptionItem[] | null) {
     :items="items"
     :multiple="isMulti"
     :icon="selectedIcon"
+    size="md"
     variant="ghost"
     label-key="label"
     placeholder="Select…"

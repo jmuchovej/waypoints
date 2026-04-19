@@ -36,7 +36,7 @@ function onUpdate(rt: RichText) {
   <RichTextEditor
     :rich-text="richText"
     :on-update="onUpdate"
-    placeholder="—"
+    placeholder="Empty"
     class="reading-text"
   />
 </template>
@@ -45,6 +45,9 @@ function onUpdate(rt: RichText) {
 @reference "~/assets/css/main.css";
 
 .reading-text {
-  @apply block w-full text-sm;
+  @apply w-full rounded-md text-sm/4;
+  @apply px-2.5 py-2;
+  @apply text-highlighted bg-transparent;
+  @apply hover:bg-elevated focus-within:bg-elevated;
 }
 </style>

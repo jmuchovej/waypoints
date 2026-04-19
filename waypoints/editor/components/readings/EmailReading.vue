@@ -40,9 +40,9 @@ function onInput(val: string) {
   <UInput
     :model-value="localValue"
     type="email"
-    placeholder="name@example.com"
-    icon="i-lucide-mail"
-    size="sm"
+    placeholder="Empty"
+    size="md"
+    variant="ghost"
     @update:model-value="onInput"
   />
 </template>

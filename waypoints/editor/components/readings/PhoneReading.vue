@@ -47,9 +47,9 @@ function onInput(val: string) {
   <UInput
     :model-value="localValue"
     type="tel"
-    placeholder="(555) 123-4567"
-    icon="i-lucide-phone"
-    size="sm"
+    placeholder="Empty"
+    size="md"
+    variant="ghost"
     @update:model-value="onInput"
   />
 </template>

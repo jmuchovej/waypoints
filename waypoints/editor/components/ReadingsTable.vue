@@ -30,15 +30,6 @@ function handleUpdate(featureId: FeatureID, reading: Reading) {
 
 <template>
   <div v-if="features.length > 0" class="readings-table">
-    <!--
-      Each row is a single <div class="reading-row"> with `display: contents`
-      (see style below) so its children (label + input cell) become direct
-      grid children and participate in the parent's column tracks. Using a
-      real wrapper element rather than <template v-for> with multiple root
-      children avoids Vue's Fragment patching bug — a nested DOM update
-      (e.g. inside UInputMenu) can invalidate the fragment's sibling anchor
-      and crash with `parent.insertBefore(null)`.
-    -->
     <div v-for="[featureId, feature] in features" :key="featureId" class="reading-row">
       <label :for="featureId" class="reading-label">
         {{ feature.name }}

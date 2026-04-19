@@ -98,6 +98,7 @@ function onCalendarPick(picked: DateValue) {
     :model-value="dateValue"
     :granularity="granularity"
     variant="ghost"
+    size="md"
     @update:model-value="onUpdate"
   >
     <template #leading>

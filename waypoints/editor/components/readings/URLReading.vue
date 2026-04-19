@@ -39,9 +39,8 @@ function onInput(val: string) {
   <UInput
     :model-value="localValue"
     type="url"
-    placeholder="https://example.com"
-    icon="i-lucide-link"
-    size="sm"
+    placeholder="Empty"
+    size="md"
     @update:model-value="onInput"
   />
 </template>

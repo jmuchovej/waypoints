@@ -49,8 +49,8 @@ function onChange(val: number) {
     :min="numberKind?.min ?? undefined"
     :max="numberKind?.max ?? undefined"
     :step="numberKind?.step ?? undefined"
-    placeholder="—"
-    size="sm"
+    size="md"
+    placeholder="Empty"
     @update:model-value="onChange"
   />
 </template>

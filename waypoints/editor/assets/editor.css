@@ -400,7 +400,7 @@
     [label-start] var(--label-width)
     [label-end input-start] var(--input-width) [input-end];
   column-gap: --spacing(4);
-  row-gap: --spacing(3);
+  row-gap: --spacing(1);
   align-items: baseline;
 }
 
