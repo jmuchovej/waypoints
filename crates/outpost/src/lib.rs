@@ -4,38 +4,40 @@
 //! per-realm arrival seqs, and never parses `checkpoints`. Conflict
 //! resolution lives exclusively in the app's Rust core; an outpost that
 //! tried to be clever would be wrong.
+//!
+//! Feature-delimited (an embedding app pulls in only what it needs):
+//! - `peers` (default): wire types, fetch client, `EnvelopeStore` seam,
+//!   gossip pump.
+//! - `peers-serve`: the §4 endpoints as an axum router, plus auth.
+//! - `store-turso`: the embedded turso envelope store.
+//! - `binary`: everything the `outpost` binary needs.
 
+/// The sync engine, feature-delimited (PROTOCOL.md §1). `peers` is the
+/// store-and-forward peer engine — the only component that exists.
+/// `relays` (live forwarding between simultaneously-online peers) and
+/// `directory` (peer discovery) are reserved names for future
+/// components; they gain modules when they gain code.
+#[cfg(feature = "peers")]
+pub mod sync {
+    /// The store-and-forward peer engine: wire contract, fetch client,
+    /// storage seam, and the gossip pump. Log-plane only — nothing in this
+    /// tree may parse `checkpoints` or import maneuver types; a peer that
+    /// stores envelopes it cannot parse is what survives app-version skew.
+    pub mod peers {
+        pub mod client;
+        pub mod pump;
+        pub mod store;
+        pub mod wire;
+
+        #[cfg(feature = "peers-serve")]
+        pub mod serve;
+        #[cfg(feature = "store-turso")]
+        pub mod turso;
+    }
+}
+
+#[cfg(feature = "peers-serve")]
 pub mod auth;
-mod handlers;
-pub mod storage;
 
-use std::sync::Arc;
-
-use axum::Router;
-use axum::extract::DefaultBodyLimit;
-use axum::routing::get;
-
-use crate::auth::Validator;
-use crate::storage::Storage;
-
-pub const MAX_BATCH: usize = 100;
-pub const MAX_BODY_BYTES: usize = 1 << 20; // 1 MiB
-pub const DEFAULT_LIMIT: usize = 200;
-pub const MAX_LIMIT: usize = 500;
-
-#[derive(Clone)]
-pub struct AppState {
-    pub storage: Arc<Storage>,
-    pub validator: Arc<Validator>,
-}
-
-pub fn router(state: AppState) -> Router {
-    Router::new()
-        .route(
-            "/realms/{realm_id}/envelopes",
-            get(handlers::fetch).post(handlers::upload),
-        )
-        .route("/healthz", get(async || "ok"))
-        .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
-        .with_state(state)
-}
+#[cfg(feature = "peers-serve")]
+pub use sync::peers::serve::{AppState, router};
