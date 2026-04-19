@@ -1,29 +1,33 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(just:*)",
-      "Bash(just app:*)",
-      "Bash(just tauri:*)",
-      "Bash(bun add:*)",
-      "Bash(bunx:*)",
-      "Bash(cargo build:*)",
-      "Bash(cargo info:*)",
-      "Bash(cargo check:*)",
-      "WebFetch(domain:crates.io)",
-      "WebFetch(domain:docs.rs)",
-      "WebFetch(domain:lib.rs)",
-      "WebFetch(domain:lucide.dev)",
-      "WebFetch(domain:sea-ql.org)",
-      "WebFetch(domain:specta.dev)",
-      "WebFetch(domain:zed.dev)",
-      "WebFetch(domain:localhost)",
-      "WebSearch",
-      "mcp__nuxt-ui",
-      "mcp__filesystem"
-    ],
-    "ask": ["mcp__filesystem__write_file", "Bash(bun run:*)", "Bash(git rm:*)"],
-    "deny": ["Bash(npx:*)", "Bash(pnpx:*)"]
-  },
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["nuxt-ui", "filesystem", "devenv"]
+	"permissions": {
+		"allow": [
+			"Bash(just:*)",
+			"Bash(just app:*)",
+			"Bash(just tauri:*)",
+			"Bash(bun add:*)",
+			"Bash(bunx:*)",
+			"Bash(cargo build:*)",
+			"Bash(cargo info:*)",
+			"Bash(cargo check:*)",
+			"WebFetch(domain:crates.io)",
+			"WebFetch(domain:deepwiki.com)",
+			"WebFetch(domain:tauri.app)",
+			"WebFetch(domain:v2.tauri.app)",
+			"WebFetch(domain:docs.rs)",
+			"WebFetch(domain:lib.rs)",
+			"WebFetch(domain:lucide.dev)",
+			"WebFetch(domain:sea-ql.org)",
+			"WebFetch(domain:specta.dev)",
+			"WebFetch(domain:zed.dev)",
+			"WebFetch(domain:localhost)",
+			"WebSearch",
+			"mcp__nuxt-ui",
+			"mcp__filesystem",
+			"mcp__github"
+		],
+		"ask": ["mcp__filesystem__write_file", "Bash(bun run:*)", "Bash(git rm:*)"],
+		"deny": ["Bash(npx:*)", "Bash(pnpx:*)"]
+	},
+	"enableAllProjectMcpServers": true,
+	"enabledMcpjsonServers": ["nuxt-ui", "filesystem", "devenv"]
 }
