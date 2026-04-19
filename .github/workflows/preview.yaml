@@ -26,3 +26,13 @@ jobs:
       prerelease: true
     secrets:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+  ios:
+    uses: ./.github/workflows/_build-ios.yaml
+    with:
+      flavor: preview
+      features: preview
+      tag: ${{ github.ref_name }}
+      prerelease: true
+    secrets:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
