@@ -43,6 +43,7 @@ domain.workspace = true
 store.workspace = true
 wry.workspace = true
 resvg = "0.47.0"
+tauri-plugin-updater = "2.10.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit.workspace = true

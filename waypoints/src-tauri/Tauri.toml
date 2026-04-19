@@ -13,6 +13,7 @@ frontend-dist = "../dist"
 homepage = "https://waypoints.so"
 active = true
 targets = ["dmg", "nsis", "appimage", "deb"]
+createUpdaterArtifacts = true
 icon = [
   "icons/generated/32x32.png",
   "icons/generated/128x128.png",
@@ -27,7 +28,11 @@ category = "DeveloperTool"
 short-description = ""
 long-description = ""
 
-[plugins]
+[plugins.updater]
+endpoints = [
+  "https://api.waypoints.so/releases/{{target}}/{{arch}}/{{current_version}}",
+]
+pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
 
 [[app.windows]]
 title = "Waypoints"

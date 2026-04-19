@@ -39,4 +39,6 @@ permissions = [
   "fs:allow-download-meta-recursive",
   "fs:allow-download-read-recursive",
   "fs:allow-download-write-recursive",
+
+  "updater:default",
 ]

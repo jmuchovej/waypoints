@@ -12,6 +12,7 @@ use tauri::{
 };
 
 use cartograph::WaypointsRuntime;
+use tauri_plugin_updater::UpdaterExt;
 
 type SetupResult<T> = Result<T, Box<dyn std::error::Error>>;
 type SubMenuResult<R> = SetupResult<Submenu<R>>;
@@ -37,6 +38,17 @@ pub fn setup(app: &mut App) -> SetupResult<()> {
 
     app.set_menu(menu.build()?)?;
 
+    // Updater menu handler
+    let handle = app_handle.clone();
+    app_handle.on_menu_event(move |_app, event: MenuEvent| {
+        if event.id().0.as_str() == "check-for-updates" {
+            let handle = handle.clone();
+            async_runtime::spawn(async move {
+                check_for_updates(handle).await;
+            });
+        }
+    });
+
     Ok(())
 }
 
@@ -45,6 +57,11 @@ fn setup_macos<R: tauri::Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R>
     let metadata = setup_about(app_handle)?;
     Ok(SubmenuBuilder::new(app_handle, pkg_name)
         .about(Some(metadata))
+        .separator()
+        .item(
+            &MenuItemBuilder::with_id("check-for-updates", "Check for Updates...")
+                .build(app_handle)?,
+        )
         .separator()
         .services()
         .separator()
@@ -192,7 +209,13 @@ fn setup_help<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     let builder = SubmenuBuilder::new(app_handle, "Help");
 
     #[cfg(not(target_os = "macos"))]
-    let builder = builder.about(setup_about(app_handle)?.into());
+    let builder = builder
+        .item(
+            &MenuItemBuilder::with_id("check-for-updates", "Check for Updates...")
+                .build(app_handle)?,
+        )
+        .separator()
+        .about(setup_about(app_handle)?.into());
 
     Ok(builder.build()?)
 }
@@ -229,6 +252,48 @@ fn setup_developer<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     );
 
     Ok(builder.build()?)
+}
+
+async fn check_for_updates(handle: AppHandle) {
+    tracing::info!("checking for updates");
+
+    let updater = match handle.updater() {
+        Ok(u) => u,
+        Err(e) => {
+            tracing::error!("failed to create updater: {e}");
+            return;
+        }
+    };
+
+    match updater.check().await {
+        Ok(Some(update)) => {
+            tracing::info!("update available: v{}", update.version);
+
+            if let Err(e) = update
+                .download_and_install(
+                    |downloaded, total| {
+                        tracing::info!("downloading update: {downloaded}/{total:?} bytes");
+                    },
+                    || {
+                        tracing::info!("download complete, installing");
+                    },
+                )
+                .await
+            {
+                tracing::error!("update failed: {e}");
+                return;
+            }
+
+            tracing::info!("update installed, restarting");
+            handle.restart();
+        }
+        Ok(None) => {
+            tracing::info!("no update available");
+        }
+        Err(e) => {
+            tracing::error!("update check failed: {e}");
+        }
+    }
 }
 
 fn setup_about<R: Runtime>(app_handle: &AppHandle<R>) -> SetupResult<AboutMetadata<'_>> {
