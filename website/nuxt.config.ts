@@ -43,6 +43,10 @@ export default defineNuxtConfig({
     enabled: true,
   },
 
+  mcp: {
+    enabled: false,
+  },
+
   css: ["~/assets/css/main.css"],
 
   routeRules: {
