@@ -5,6 +5,7 @@ export interface FloatingHandlesProps {
 
 import { isInGutter, handlePosition } from "../utils/floating-handle";
 import { getMarkID, getClosestBlock } from "../utils/elements";
+import BlockContextMenu from "./BlockContextMenu.vue";
 </script>
 
 <script setup lang="ts">
@@ -31,7 +32,9 @@ function positionFor(markEl: HTMLElement) {
 // Non-reactive dedup ref — avoids recalculating when the cursor stays on the same block
 let lastMarkEl: HTMLElement | null = null;
 
-const shouldShow = computed(() => isVisible.value && dragDrop.blockIDs.value.length === 0);
+const shouldShow = computed(
+  () => (isVisible.value || contextMenuOpen.value) && dragDrop.blockIDs.value.length === 0,
+);
 
 function onContainerPointerMove(event: PointerEvent) {
   if (dragDrop.blockIDs.value.length > 0) return;
@@ -76,14 +79,52 @@ function onDocumentPointerMove(event: PointerEvent) {
   isVisible.value = false;
 }
 
+const DRAG_THRESHOLD_PX = 5;
+let dragStartX = 0;
+let dragStartY = 0;
+let pendingDragEvent: PointerEvent | null = null;
+let dragStarted = false;
+
 function onDragPointerDown(e: PointerEvent) {
-  if (!hoveredMarkId.value) return;
-  const { dragDrop, selection } = orchestrator;
-  const ids = selection.isSelected(hoveredMarkId.value)
-    ? sortByVisualOrder([...selection.selectedIDs.value])
-    : [hoveredMarkId.value];
-  dragDrop.onPointerDown(ids, e);
+  if (!hoveredMarkId.value || e.button !== 0) return;
+
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  pendingDragEvent = e;
+  dragStarted = false;
+
+  document.addEventListener("pointermove", onDragThresholdMove);
+  document.addEventListener("pointerup", onDragThresholdUp);
 }
+
+function onDragThresholdMove(e: PointerEvent) {
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  if (Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD_PX && pendingDragEvent) {
+    dragStarted = true;
+    contextMenuOpen.value = false;
+    e.preventDefault();
+    document.removeEventListener("pointermove", onDragThresholdMove);
+    document.removeEventListener("pointerup", onDragThresholdUp);
+
+    const { dragDrop, selection } = orchestrator;
+    const ids = selection.isSelected(hoveredMarkId.value!)
+      ? sortByVisualOrder([...selection.selectedIDs.value])
+      : [hoveredMarkId.value!];
+    dragDrop.onPointerDown(ids, pendingDragEvent);
+    pendingDragEvent = null;
+  }
+}
+
+function onDragThresholdUp(_e: PointerEvent) {
+  document.removeEventListener("pointermove", onDragThresholdMove);
+  document.removeEventListener("pointerup", onDragThresholdUp);
+  pendingDragEvent = null;
+
+  // If no drag started, the UDropdownMenu trigger handles the click natively.
+}
+
+const contextMenuOpen = ref(false);
 
 function onAddClick(e: MouseEvent) {
   if (!hoveredMarkId.value) return;
@@ -132,7 +173,12 @@ watchEffect((onCleanup) => {
     <div class="floating-handle handle-add" @click.stop="onAddClick">
       <UIcon name="i-lucide-plus" />
     </div>
-    <div class="floating-handle handle-drag" @pointerdown.stop="onDragPointerDown">
+    <BlockContextMenu v-if="hoveredMarkId" v-model:open="contextMenuOpen" :block-id="hoveredMarkId">
+      <div class="floating-handle handle-drag" @pointerdown.stop="onDragPointerDown">
+        <UIcon name="i-lucide-grip-vertical" />
+      </div>
+    </BlockContextMenu>
+    <div v-else class="floating-handle handle-drag" @pointerdown.stop="onDragPointerDown">
       <UIcon name="i-lucide-grip-vertical" />
     </div>
   </div>

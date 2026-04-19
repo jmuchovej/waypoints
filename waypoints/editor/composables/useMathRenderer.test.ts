@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// ── Mock katex (must be before import of module under test) ─────────────
-
 const mockRenderToString = vi.fn((expr: string) => `<span class="katex">${expr}</span>`);
 
 vi.mock("katex", () => ({
@@ -9,8 +7,6 @@ vi.mock("katex", () => ({
     renderToString: (...args: any[]) => mockRenderToString(...args),
   },
 }));
-
-// ── Mock Tauri IPC ──────────────────────────────────────────────────────
 
 const mockInvoke = vi.fn(async () => "<svg>typst</svg>");
 
@@ -21,14 +17,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 // Import AFTER mocks are set up
 const { useMathRenderer } = await import("./useMathRenderer");
 
-// ── Reset between tests ─────────────────────────────────────────────────
-
 beforeEach(() => {
   mockRenderToString.mockClear();
   mockInvoke.mockClear();
 });
-
-// ── Tests ───────────────────────────────────────────────────────────────
 
 describe("useMathRenderer", () => {
   describe("katex rendering", () => {
