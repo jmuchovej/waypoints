@@ -1,0 +1,7 @@
+[
+  {
+    "label": "Axum Server (Desktop)",
+    "description": "Launches the Axum-based server to support pure web-dev.",
+    "command": "direnv exec . just server::dev"
+  }
+]

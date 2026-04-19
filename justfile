@@ -11,6 +11,7 @@ mod tauri "waypoints/src-tauri/justfile"
 mod cartograph "crates/cartograph/justfile"
 mod domain "crates/domain/justfile"
 mod store "crates/store/justfile"
+mod server "crates/server/justfile"
 mod website "website/justfile"
 
 # Generate TypeScript types from Rust models
