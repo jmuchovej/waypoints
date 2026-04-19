@@ -24,8 +24,9 @@ pub mod sync {
     /// tree may parse `checkpoints` or import maneuver types; a peer that
     /// stores envelopes it cannot parse is what survives app-version skew.
     pub mod peers {
-        pub mod client;
+        pub mod peer;
         pub mod pump;
+        pub mod service;
         pub mod store;
         pub mod wire;
 

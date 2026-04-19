@@ -58,15 +58,13 @@ pub mod sync {
     mod coordinator;
     mod driver;
     mod envelope;
-    mod relay;
 
     pub use coordinator::{ApplyOutcome, SkipReason, SyncCoordinator, touched_marks};
     pub use driver::{SyncOutcome, sync_once};
     pub use envelope::{Envelope, TextPayload};
-    pub use relay::{
-        FetchPage, HttpRelayClient, InMemoryRelayClient, NoopRelayClient, RelayClient,
-        RelayError, SequencedEnvelope, UploadAck,
-    };
+    // The peer seam is outpost's (raw envelopes; see relay/PROTOCOL.md).
+    // Re-exported so app code has one import surface for sync.
+    pub use outpost::sync::peers::peer::{HttpPeer, LocalPeer, NoopPeer, Peer, PeerError};
     pub use resolver::{ConflictResolver, LastWriteResolver, Resolution};
 }
 

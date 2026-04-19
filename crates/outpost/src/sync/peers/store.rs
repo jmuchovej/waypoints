@@ -61,6 +61,73 @@ pub trait GossipStore: EnvelopeStore {
     async fn known_realms(&self) -> Result<Vec<String>, StoreError>;
 }
 
+/// The always-on peer's log in miniature: an in-memory `EnvelopeStore`
+/// for driver tests and `LocalPeer` loopbacks. Same contract as the
+/// turso store — arrival-ordered seqs, group_id idempotency.
+#[derive(Debug, Default)]
+pub struct MemoryStore {
+    rows: std::sync::Mutex<Vec<MemoryRow>>,
+}
+
+#[derive(Debug)]
+struct MemoryRow {
+    seq: i64,
+    group_id: String,
+    realm_id: String,
+    device_id: String,
+    payload: String,
+}
+
+#[async_trait]
+impl EnvelopeStore for MemoryStore {
+    async fn append(
+        &self,
+        heads: &[EnvelopeHead],
+        payloads: &[&str],
+        _received_at: &str,
+    ) -> Result<Vec<(String, i64)>, StoreError> {
+        let mut rows = self.rows.lock().unwrap();
+        let mut acks = Vec::with_capacity(heads.len());
+        for (head, payload) in heads.iter().zip(payloads) {
+            let seq = match rows.iter().find(|r| r.group_id == head.group_id) {
+                Some(existing) => existing.seq,
+                None => {
+                    let seq = rows.len() as i64 + 1;
+                    rows.push(MemoryRow {
+                        seq,
+                        group_id: head.group_id.clone(),
+                        realm_id: head.realm_id.clone(),
+                        device_id: head.device_id.clone(),
+                        payload: (*payload).to_string(),
+                    });
+                    seq
+                }
+            };
+            acks.push((head.group_id.clone(), seq));
+        }
+        Ok(acks)
+    }
+
+    async fn page(
+        &self,
+        realm_id: &str,
+        since_seq: i64,
+        limit: usize,
+    ) -> Result<Vec<StoredEnvelope>, StoreError> {
+        let rows = self.rows.lock().unwrap();
+        Ok(rows
+            .iter()
+            .filter(|r| r.realm_id == realm_id && r.seq > since_seq)
+            .take(limit + 1)
+            .map(|r| StoredEnvelope {
+                seq: r.seq,
+                device_id: r.device_id.clone(),
+                payload: r.payload.clone(),
+            })
+            .collect())
+    }
+}
+
 /// RFC 3339 UTC without pulling chrono into the dependency tree.
 pub fn rfc3339_now() -> String {
     let now = std::time::SystemTime::now()

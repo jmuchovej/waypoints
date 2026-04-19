@@ -14,11 +14,9 @@ use serde_json::value::RawValue;
 
 use crate::auth::{AuthError, Identity, Validator};
 
-use super::store::{EnvelopeStore, rfc3339_now};
-use super::wire::{
-    DEFAULT_LIMIT, EnvelopeHead, FetchResponse, MAX_BATCH, MAX_BODY_BYTES, MAX_LIMIT,
-    SequencedEnvelope, UploadAck, UploadResponse,
-};
+use super::service::{UploadRejection, accept_upload, serve_fetch};
+use super::store::EnvelopeStore;
+use super::wire::{DEFAULT_LIMIT, MAX_BATCH, MAX_BODY_BYTES, MAX_LIMIT};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -105,45 +103,29 @@ async fn upload(
         );
     }
 
-    let mut heads = Vec::with_capacity(parsed.envelopes.len());
-    for raw in &parsed.envelopes {
-        let head = match EnvelopeHead::parse(raw.get()) {
-            Ok(h) => h,
-            Err(e) => return problem(StatusCode::BAD_REQUEST, e),
-        };
-        if head.realm_id != realm_id {
-            return problem(
-                StatusCode::BAD_REQUEST,
-                format!("envelope {} realm mismatch", head.group_id),
-            );
-        }
-        if let Some(account) = &identity.account_id
-            && &head.account_id != account
-        {
-            return problem(
-                StatusCode::FORBIDDEN,
-                format!("envelope {} account mismatch", head.group_id),
-            );
-        }
-        heads.push(head);
-    }
-
-    let payloads: Vec<&str> = parsed.envelopes.iter().map(|r| r.get()).collect();
-    let received_at = rfc3339_now();
-    let acks = match state.storage.append(&heads, &payloads, &received_at).await {
-        Ok(acks) => acks,
-        Err(e) => {
+    let response = accept_upload(
+        state.storage.as_ref(),
+        &realm_id,
+        &parsed.envelopes,
+        identity.account_id.as_deref(),
+    )
+    .await;
+    match response {
+        Ok(body) => Json(body).into_response(),
+        Err(UploadRejection::Malformed(message)) => problem(StatusCode::BAD_REQUEST, message),
+        Err(UploadRejection::RealmMismatch { group_id }) => problem(
+            StatusCode::BAD_REQUEST,
+            format!("envelope {group_id} realm mismatch"),
+        ),
+        Err(UploadRejection::AccountMismatch { group_id }) => problem(
+            StatusCode::FORBIDDEN,
+            format!("envelope {group_id} account mismatch"),
+        ),
+        Err(UploadRejection::Store(e)) => {
             tracing::error!(error = %e, "append failed");
-            return problem(StatusCode::INTERNAL_SERVER_ERROR, "storage failure");
+            problem(StatusCode::INTERNAL_SERVER_ERROR, "storage failure")
         }
-    };
-
-    let results: Vec<UploadAck> = acks
-        .into_iter()
-        .map(|(group_id, seq)| UploadAck { group_id, seq })
-        .collect();
-    let max_seq = results.iter().map(|r| r.seq).max().unwrap_or(0);
-    Json(UploadResponse { results, max_seq }).into_response()
+    }
 }
 
 // ── Fetch ───────────────────────────────────────────────────────────────
@@ -171,34 +153,19 @@ async fn fetch(
     }
     let limit = params.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
 
-    let window = match state.storage.page(&realm_id, params.since_seq, limit).await {
-        Ok(rows) => rows,
+    let page = serve_fetch(
+        state.storage.as_ref(),
+        &realm_id,
+        params.since_seq,
+        &params.exclude_device,
+        limit,
+    )
+    .await;
+    match page {
+        Ok(body) => Json(body).into_response(),
         Err(e) => {
             tracing::error!(error = %e, "page failed");
-            return problem(StatusCode::INTERNAL_SERVER_ERROR, "storage failure");
+            problem(StatusCode::INTERNAL_SERVER_ERROR, "storage failure")
         }
-    };
-
-    let has_more = window.len() > limit;
-    let window = &window[..window.len().min(limit)];
-    let next_since = window.last().map(|s| s.seq).unwrap_or(params.since_seq);
-
-    let envelopes = window
-        .iter()
-        .filter(|row| row.device_id != params.exclude_device)
-        .filter_map(|row| {
-            let raw = RawValue::from_string(row.payload.clone()).ok()?;
-            Some(SequencedEnvelope {
-                seq: row.seq,
-                envelope: raw,
-            })
-        })
-        .collect();
-
-    Json(FetchResponse {
-        envelopes,
-        next_since,
-        has_more,
-    })
-    .into_response()
+    }
 }

@@ -1,0 +1,101 @@
+//! The §4 request semantics, transport-free: one implementation shared
+//! by the HTTP handlers (`serve`, which adds auth and body caps) and
+//! `LocalPeer` (loopback/tests). Protocol logic must not fork between
+//! them — a test double that re-implements the protocol can drift from
+//! it silently.
+
+use serde_json::value::RawValue;
+
+use super::store::{EnvelopeStore, StoreError, rfc3339_now};
+use super::wire::{EnvelopeHead, FetchResponse, SequencedEnvelope, UploadAck, UploadResponse};
+
+/// Why an upload was refused. Transports map these onto their own
+/// error vocabulary (HTTP statuses, `PeerError`).
+#[derive(Debug)]
+pub enum UploadRejection {
+    Malformed(String),
+    RealmMismatch { group_id: String },
+    AccountMismatch { group_id: String },
+    Store(StoreError),
+}
+
+/// §4.1 minus transport concerns: parse heads, guard realm (and account,
+/// when the caller's auth mode knows one), append idempotently, ack
+/// every envelope with its seq.
+pub async fn accept_upload<S>(
+    store: &S,
+    realm_id: &str,
+    envelopes: &[&RawValue],
+    token_account: Option<&str>,
+) -> Result<UploadResponse, UploadRejection>
+where
+    S: EnvelopeStore + ?Sized,
+{
+    let mut heads = Vec::with_capacity(envelopes.len());
+    for raw in envelopes {
+        let head = EnvelopeHead::parse(raw.get()).map_err(UploadRejection::Malformed)?;
+        if head.realm_id != realm_id {
+            return Err(UploadRejection::RealmMismatch {
+                group_id: head.group_id,
+            });
+        }
+        if let Some(account) = token_account
+            && head.account_id != account
+        {
+            return Err(UploadRejection::AccountMismatch {
+                group_id: head.group_id,
+            });
+        }
+        heads.push(head);
+    }
+
+    let payloads: Vec<&str> = envelopes.iter().map(|r| r.get()).collect();
+    let acks = store
+        .append(&heads, &payloads, &rfc3339_now())
+        .await
+        .map_err(UploadRejection::Store)?;
+
+    let results: Vec<UploadAck> = acks
+        .into_iter()
+        .map(|(group_id, seq)| UploadAck { group_id, seq })
+        .collect();
+    let max_seq = results.iter().map(|r| r.seq).max().unwrap_or(0);
+    Ok(UploadResponse { results, max_seq })
+}
+
+/// §4.2 minus transport concerns: scan-window page, `has_more` via the
+/// store's limit+1 overshoot, `next_since` advanced past device-excluded
+/// envelopes too.
+pub async fn serve_fetch<S>(
+    store: &S,
+    realm_id: &str,
+    since_seq: i64,
+    exclude_device: &str,
+    limit: usize,
+) -> Result<FetchResponse, StoreError>
+where
+    S: EnvelopeStore + ?Sized,
+{
+    let window = store.page(realm_id, since_seq, limit).await?;
+    let has_more = window.len() > limit;
+    let window = &window[..window.len().min(limit)];
+    let next_since = window.last().map(|s| s.seq).unwrap_or(since_seq);
+
+    let envelopes = window
+        .iter()
+        .filter(|row| row.device_id != exclude_device)
+        .filter_map(|row| {
+            let raw = RawValue::from_string(row.payload.clone()).ok()?;
+            Some(SequencedEnvelope {
+                seq: row.seq,
+                envelope: raw,
+            })
+        })
+        .collect();
+
+    Ok(FetchResponse {
+        envelopes,
+        next_since,
+        has_more,
+    })
+}
