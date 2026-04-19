@@ -1,5 +1,6 @@
 use crate::editor::Maneuver;
-use domain::{AccountID, DeviceID, HLC, MarkID, OpID, RealmID, mark::RichText};
+use domain::{MarkID, mark::RichText};
+use outpost::sync::peers::wire::EnvelopeFace;
 use serde::{Deserialize, Serialize};
 
 /// The unit of sync: one command group's ops, wrapped with the identity and
@@ -7,21 +8,11 @@ use serde::{Deserialize, Serialize};
 /// every field except the skip-marked internals of `ops` is transmitted.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Envelope {
-    /// Group-level idempotency key.
-    pub group_id: OpID,
-    pub account_id: AccountID,
-    pub realm_id: RealmID,
-    /// The originating device's real ID at origination time. Never rewritten,
-    /// even when devices are aliased later — that would retroactively change
-    /// LWW outcomes.
-    pub device_id: DeviceID,
-    /// Serialized as a decimal string: packed HLCs exceed
-    /// `Number.MAX_SAFE_INTEGER`, so a bare JSON number would be silently
-    /// corrupted by any JavaScript relay or tool that re-parses it. The
-    /// serde impl lives in outpost's wire module, next to the rest of
-    /// the §2 wire contract.
-    #[serde(with = "outpost::sync::peers::wire::hlc_wire")]
-    pub hlc: HLC,
+    /// The §4 routing face — outpost's wire type, flattened so the JSON
+    /// shape is unchanged. What a relay reads is literally this field;
+    /// everything below it is opaque to the log plane.
+    #[serde(flatten)]
+    pub face: EnvelopeFace,
     pub checkpoints: Vec<Maneuver>,
     /// Mark IDs touched by this group. Used for cheap dependency checks
     /// ("does the receiver have all these marks already?") before applying.
@@ -41,17 +32,19 @@ pub enum TextPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::{MarkData, TerrainID, TerrainKind};
+    use domain::{AccountID, DeviceID, HLC, MarkData, OpID, RealmID, TerrainID, TerrainKind};
 
     fn representative_group() -> Envelope {
         let mark_id = MarkID::new();
         let parent_id = MarkID::new();
         Envelope {
-            group_id: OpID::new(),
-            account_id: AccountID::new(),
-            realm_id: RealmID::new(),
-            device_id: DeviceID::new(),
-            hlc: HLC::pack(1_735_689_600_000, 42),
+            face: EnvelopeFace {
+                group_id: OpID::new(),
+                account_id: AccountID::new(),
+                realm_id: RealmID::new(),
+                device_id: DeviceID::new(),
+                hlc: HLC::pack(1_735_689_600_000, 42),
+            },
             checkpoints: vec![
                 Maneuver::CreateMark {
                     mark_id,
@@ -106,11 +99,7 @@ mod tests {
         );
 
         // Non-skipped fields survive intact.
-        assert_eq!(back.group_id, group.group_id);
-        assert_eq!(back.account_id, group.account_id);
-        assert_eq!(back.realm_id, group.realm_id);
-        assert_eq!(back.device_id, group.device_id);
-        assert_eq!(back.hlc, group.hlc);
+        assert_eq!(back.face, group.face);
         assert_eq!(back.touched_marks, group.touched_marks);
         assert_eq!(back.checkpoints.len(), group.checkpoints.len());
     }
