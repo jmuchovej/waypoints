@@ -1,5 +1,5 @@
 import { Mark, mergeAttributes, getMarkRange } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import { InlineKind } from "@waypoints/domain";
 
 /**
@@ -97,17 +97,13 @@ export const Mention = Mark.create({
               // Cursor is inside a mention — skip to the nearest edge
               if (event.key === "ArrowLeft") {
                 view.dispatch(
-                  state.tr.setSelection(
-                    state.selection.constructor.near(state.doc.resolve(mentionRange.from), -1),
-                  ),
+                  state.tr.setSelection(Selection.near(state.doc.resolve(mentionRange.from), -1)),
                 );
                 return true;
               }
               if (event.key === "ArrowRight") {
                 view.dispatch(
-                  state.tr.setSelection(
-                    state.selection.constructor.near(state.doc.resolve(mentionRange.to)),
-                  ),
+                  state.tr.setSelection(Selection.near(state.doc.resolve(mentionRange.to))),
                 );
                 return true;
               }

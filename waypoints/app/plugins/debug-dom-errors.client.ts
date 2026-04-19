@@ -27,7 +27,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     if (instance) {
       const chain: string[] = [];
-      let current = instance;
+      let current: typeof instance | null = instance;
       while (current) {
         const name = current.$options?.name || current.$options?.__name || "Anonymous";
         const props = current.$props ? Object.keys(current.$props) : [];

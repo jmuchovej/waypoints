@@ -10,6 +10,7 @@ const siderbarOpen = ref(true);
 provide("sidebar-open", siderbarOpen);
 
 const newLandmarkOpen = ref(false);
+provide("new-landmark-open", newLandmarkOpen);
 const date = shallowRef(today(getLocalTimeZone()));
 
 // Listen for File > New menu event from native menu (⌘N / Ctrl+N)
@@ -23,9 +24,8 @@ onUnmounted(() => unlisten?.());
 
 useHead({
   titleTemplate: (title) => title ?? "Waypoints",
-  charset: "utf-8",
-  viewport: "width=device-width, initial-scale=1",
   meta: [
+    { charset: "utf-8" },
     { name: "format-detection", content: "no" },
     {
       name: "viewport",

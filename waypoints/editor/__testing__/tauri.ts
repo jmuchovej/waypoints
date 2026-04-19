@@ -1,7 +1,8 @@
 import { mockIPC, clearMocks } from "@tauri-apps/api/mocks";
+import type { InvokeArgs } from "@tauri-apps/api/core";
 import { afterEach } from "vitest";
 
-export type IPCHandler = (cmd: string, payload?: Record<string, unknown>) => unknown;
+export type IPCHandler = (cmd: string, payload?: InvokeArgs) => unknown;
 
 /**
  * Set up Tauri IPC mocking for a test suite.

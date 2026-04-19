@@ -45,7 +45,7 @@ export function useInlineEditor(options: UseInlineEditorOptions) {
       orchestrator: _orchestrator,
       onUpdate: ({ editor }) => {
         if (debounceTimer.value) clearTimeout(debounceTimer.value);
-        debounceTimer.value = setTimeout(() => flush(editor), 150);
+        debounceTimer.value = setTimeout(() => flush(editor as Editor), 150);
       },
     });
   }

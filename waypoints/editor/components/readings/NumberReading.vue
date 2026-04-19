@@ -11,8 +11,6 @@ export interface NumberReadingEmits {
 }
 </script>
 <script setup lang="ts">
-import type { Reading, Feature } from "@waypoints/domain";
-
 const props = defineProps<NumberReadingProps>();
 const emit = defineEmits<NumberReadingEmits>();
 

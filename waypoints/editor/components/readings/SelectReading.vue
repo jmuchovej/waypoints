@@ -72,14 +72,14 @@ const isGrouped = computed(() => {
  * standard Nuxt UI fields. The `id` is the GlyphID of the option (the
  * value persisted in `Reading`); `groupId` is set for grouped kinds.
  */
-interface OptionItem extends InputMenuItem {
+type OptionItem = (InputMenuItem & object) & {
   id: GlyphID;
   groupId?: GlyphID;
   label: string;
-}
+};
 
 function isOption(item: InputMenuItem): item is OptionItem {
-  return "id" in item;
+  return typeof item === "object" && item !== null && "id" in item;
 }
 
 function optionToItem(id: GlyphID, opt: SelectOption, groupId?: GlyphID): OptionItem {
@@ -262,6 +262,6 @@ function onUpdate(val: OptionItem | OptionItem[] | null) {
     delete-icon="i-lucide-trash"
     clear-icon="i-lucide-trash"
     open-on-click
-    @update:model-value="onUpdate"
+    @update:model-value="(v) => onUpdate(v as OptionItem | OptionItem[] | null)"
   />
 </template>

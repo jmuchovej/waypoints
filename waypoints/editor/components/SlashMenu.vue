@@ -6,6 +6,7 @@ import {
   type CommandMenuContext,
 } from "../composables";
 import { filterSlashItems, groupSlashItems, type SlashMenuItem } from "../tiptap/slash-menu-items";
+import type { RichText } from "@waypoints/domain";
 
 const overlay = inject<CommandMenuContext>(CommandMenuKey);
 const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey);
@@ -32,12 +33,9 @@ function selectItem(item: SlashMenuItem) {
   const block = orchestrator.blocks.value.find((b) => b.id === blockId);
 
   // Extract current rich_text, stripping the /query trigger text
-  let currentRichText: { segments: { text: string; marks?: unknown[] }[] } | undefined;
+  let currentRichText: RichText | undefined;
   if (block?.data.mark === "content" && "rich_text" in block.data) {
-    const rt = block.data.rich_text as {
-      plain_text?: string;
-      segments: { text: string; marks?: unknown[] }[];
-    };
+    const rt = block.data.rich_text as RichText;
     // Strip the slash command from the text (e.g., "/heading1" or "/ heading1")
     const cleaned = stripSlashTrigger(rt);
     currentRichText = cleaned.segments.length > 0 ? cleaned : undefined;
@@ -49,11 +47,11 @@ function selectItem(item: SlashMenuItem) {
 }
 
 /** Remove the /query text from rich_text segments. */
-function stripSlashTrigger(rt: { segments: { text: string; marks?: unknown[] }[] }) {
+function stripSlashTrigger(rt: RichText): RichText {
   // The slash trigger is always at the end of the text: ".../<query>"
   // We need to find and remove the last occurrence of /\S* pattern
   const segments = rt.segments.map((s) => ({ ...s }));
-  if (segments.length === 0) return { segments };
+  if (segments.length === 0) return { plain_text: "", segments };
 
   // Find the last segment that contains the slash trigger
   for (let i = segments.length - 1; i >= 0; i--) {
@@ -72,7 +70,7 @@ function stripSlashTrigger(rt: { segments: { text: string; marks?: unknown[] }[]
     }
   }
 
-  return { segments };
+  return { plain_text: segments.map((s) => s.text).join(""), segments };
 }
 
 function handleKeydown(e: KeyboardEvent) {

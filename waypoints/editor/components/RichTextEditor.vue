@@ -35,8 +35,8 @@ function onClick(e: MouseEvent) {
   emit("click", e);
 }
 
-const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey, {});
-const { focus } = orchestrator;
+const orchestrator = inject<OrchestratorContext | undefined>(BlockOrchestratorKey, undefined);
+const focus = orchestrator?.focus;
 
 const isGroupActive = inject<Ref<boolean>>("group-active", ref(false));
 
@@ -64,11 +64,11 @@ const {
   createEditor,
   destroyEditor,
 } = useInlineEditor({
-  richText: richTextRef as Ref<ConverterRichText>,
+  richText: richTextRef as Ref<RichText>,
   blockID: props.blockId,
   placeholder: props.placeholder,
   onUpdate: onEditorUpdate,
-  onKeyDown: props.onKeyDown,
+  onKeyDown: props.onKeyDown ? (_view, event) => props.onKeyDown!(event) : undefined,
 });
 
 function mountEditor() {

@@ -1,0 +1,72 @@
+diff --git a/modules/config.ts b/modules/config.ts
+index 1140c3b14e6103f8b9dc168aab9a2a9c7b3baca8..6fdde4017b3e54175ebd03166e8969f6c1c00327 100644
+--- a/modules/config.ts
++++ b/modules/config.ts
+@@ -39,7 +39,7 @@ export default defineNuxtModule({
+       url,
+       name: siteName,
+       debug: false,
+-    })
++    }) as typeof nuxt.options.site
+ 
+     nuxt.options.appConfig.header = defu(nuxt.options.appConfig.header, {
+       title: siteName,
+diff --git a/nuxt.config.ts b/nuxt.config.ts
+index 5a5267dcacc1e3bb7225a6002f4cdac1dff88899..ca3ade630cf0945332d32dcdc586368a2d4dc2db 100644
+--- a/nuxt.config.ts
++++ b/nuxt.config.ts
+@@ -1,11 +1,17 @@
+ import { join } from 'node:path'
++import { defineNuxtConfig } from 'nuxt/config'
+ import { extendViteConfig, createResolver, useNuxt } from '@nuxt/kit'
++import type { NitroConfig } from 'nitropack'
+ 
+ const { resolve } = createResolver(import.meta.url)
+ 
+ type DocusI18nOptions = { locales?: Array<string | { code: string }> }
+ 
+-export default defineNuxtConfig({
++// Assigned to an (un-annotated) const so the object is not subject to TS's
++// excess-property check: several keys here (content/mdc/icon/ogImage/robots)
++// come from Nuxt modules whose NuxtConfig augmentations aren't loaded when this
++// layer config is type-checked in isolation. Matching keys are still validated.
++const config = {
+   modules: [
+     resolve('./modules/config'),
+     resolve('./modules/routing'),
+@@ -14,9 +20,12 @@ export default defineNuxtConfig({
+     resolve('./modules/css'),
+     () => {
+       const nuxt = useNuxt()
+-      nuxt.options.icon ||= {}
+-      nuxt.options.icon.customCollections ||= []
+-      nuxt.options.icon.customCollections.push({
++      const options = nuxt.options as typeof nuxt.options & {
++        icon?: { customCollections?: Array<{ prefix: string, dir: string }> }
++      }
++      options.icon ||= {}
++      options.icon.customCollections ||= []
++      options.icon.customCollections.push({
+         prefix: 'custom',
+         dir: join(nuxt.options.srcDir, 'assets/icons'),
+       })
+@@ -89,7 +98,7 @@ export default defineNuxtConfig({
+     },
+   },
+   hooks: {
+-    'nitro:config'(nitroConfig) {
++    'nitro:config'(nitroConfig: NitroConfig) {
+       const nuxt = useNuxt()
+ 
+       const i18nOptions = (nuxt.options as typeof nuxt.options & { i18n?: DocusI18nOptions }).i18n
+@@ -133,4 +142,9 @@ export default defineNuxtConfig({
+     ],
+     sitemap: '/sitemap.xml',
+   },
+-})
++}
++
++// Asserted to the expected param type: this layer config uses several Nuxt
++// module config keys (content/mdc/icon/ogImage/robots) whose NuxtConfig
++// augmentations aren't loaded when the config is type-checked in isolation.
++export default defineNuxtConfig(config as Parameters<typeof defineNuxtConfig>[0])

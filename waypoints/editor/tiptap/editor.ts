@@ -1,5 +1,5 @@
 import type { JSONContent, EditorOptions as TipTapEditorOptions } from "@tiptap/core";
-import { Editor } from "@tiptap/core";
+import { Editor } from "@tiptap/vue-3";
 import TipTapDocument from "@tiptap/extension-document";
 import TipTapEmoji from "@tiptap/extension-emoji";
 import TipTapLink from "@tiptap/extension-link";
@@ -27,7 +27,7 @@ import { Spoiler } from "./bridge/spoiler";
 import { TextColor } from "./bridge/text-color";
 import { toTipTap } from "./converters";
 
-export type { Editor } from "@tiptap/core";
+export type { Editor } from "@tiptap/vue-3";
 
 const InlineDocument = TipTapDocument.extend({
   content: "paragraph",

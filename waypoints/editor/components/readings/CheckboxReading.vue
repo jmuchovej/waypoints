@@ -17,8 +17,8 @@ const emit = defineEmits<CheckboxReadingEmits>();
 
 const checked = computed(() => props.value?.type === "bool" && props.value.value);
 
-function onChange(val: boolean) {
-  emit("update", { type: "bool", value: val });
+function onChange(val: boolean | "indeterminate") {
+  emit("update", { type: "bool", value: val === true });
 }
 </script>
 

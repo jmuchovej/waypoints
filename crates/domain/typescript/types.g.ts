@@ -7,6 +7,13 @@
  */
 export type Base36ID = string;
 
+/**
+ * Visual theme for a content block. Applies both ink (foreground) and
+ * surface (background) styling from the selected color. Independent
+ * ink/surface control is handled at the inline mark level.
+ */
+export type BlockTheme = { color: Color };
+
 export type Chart = {
   /**
    * A unique identifier for the [`Chart`]. This is more thoroughly detailed in
@@ -57,27 +64,49 @@ export type Color =
   | "red";
 
 /**
- * Visual theme for a content block. Applies both ink (foreground) and
- * surface (background) styling from the selected color.
- */
-export type BlockTheme = {
-  color: Color;
-};
-
-/**
  * Content blocks - the actual content pieces users work with.
  * These are "dumb" blocks with minimal built-in properties.
  */
 export type Content =
+  /**
+   * The base paragraph (the most common form of content)
+   */
   | { type: "paragraph"; rich_text: RichText; theme?: BlockTheme | null }
+  /**
+   * Level 1 Heading
+   */
   | { type: "heading-1"; rich_text: RichText; theme?: BlockTheme | null }
+  /**
+   * Level 2 Heading
+   */
   | { type: "heading-2"; rich_text: RichText; theme?: BlockTheme | null }
+  /**
+   * Level 3 Heading
+   */
   | { type: "heading-3"; rich_text: RichText; theme?: BlockTheme | null }
+  /**
+   * A quote
+   */
   | { type: "blockquote"; theme?: BlockTheme | null }
+  /**
+   * An unordered list item
+   */
   | { type: "list-item"; rich_text: RichText; theme?: BlockTheme | null }
+  /**
+   * An ordered list item
+   */
   | { type: "enum-item"; rich_text: RichText; theme?: BlockTheme | null }
+  /**
+   * Callout
+   */
   | { type: "callout"; icon: string; theme?: BlockTheme | null }
+  /**
+   * Code block with syntax highlighting
+   */
   | { type: "code"; language: string; lines: string[]; theme?: BlockTheme | null }
+  /**
+   * Inline table
+   */
   | {
       type: "table";
       cells: RichText[][];
@@ -90,7 +119,13 @@ export type Content =
       row_colors: (Color | null)[] | null;
       theme?: BlockTheme | null;
     }
+  /**
+   * Typst/LaTeX content
+   */
   | { type: "math"; expression: string; engine: MathEngine; theme?: BlockTheme | null }
+  /**
+   * Horizontal divider
+   */
   | { type: "divider"; theme?: BlockTheme | null };
 
 /**
@@ -306,13 +341,7 @@ export type IconNamespace =
  */
 export type InlineMark = { kind: TextMarkKind; data?: JsonValue | null };
 
-export type JsonValue =
-  | null
-  | boolean
-  | number
-  | string
-  | JsonValue[]
-  | Partial<{ [key in string]: JsonValue }>;
+export type JsonValue = unknown;
 
 /**
  * Landmark marks &ndash; semantic objects defined by [`Charts`][C].

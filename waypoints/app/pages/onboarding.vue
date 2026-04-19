@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { navigateTo } from "#imports";
+
 definePageMeta({ layout: "onboarding" });
 </script>
 

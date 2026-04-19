@@ -5,7 +5,9 @@
 export default defineNitroPlugin((nitroApp) => {
   if (!import.meta.prerender) return;
 
-  nitroApp.hooks.hook("prerender:routes", async (ctx) => {
+  // `prerender:routes` is a Nitro build hook (payload is a `Set<string>` of
+  // routes); it isn't part of NitroRuntimeHooks, so the hooks object is cast.
+  (nitroApp.hooks as any).hook("prerender:routes", async (routes: Set<string>) => {
     try {
       const data = await $fetch<{
         releases: { tag: string; prerelease: boolean; draft: boolean }[];
@@ -14,13 +16,13 @@ export default defineNitroPlugin((nitroApp) => {
       for (const release of data.releases) {
         if (release.draft) continue;
         const channel = release.prerelease ? "preview" : "stable";
-        ctx.routes.add(`/releases/${channel}/${release.tag}`);
+        routes.add(`/releases/${channel}/${release.tag}`);
       }
     } catch (err) {
       console.warn("[prerender-releases] Failed to fetch releases:", err);
     }
 
-    ctx.routes.add("/api/v1/update/stable.json");
-    ctx.routes.add("/api/v1/update/preview.json");
+    routes.add("/api/v1/update/stable.json");
+    routes.add("/api/v1/update/preview.json");
   });
 });

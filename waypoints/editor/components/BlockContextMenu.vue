@@ -183,7 +183,7 @@ const items = computed<DropdownMenuItem[][]>(() => {
       label: colorLabel(c),
       type: "checkbox" as const,
       checked: currentThemeColor.value === c || (c === "default" && !currentThemeColor.value),
-      color: c,
+      color: c as unknown as DropdownMenuItem["color"],
       onSelect(e: Event) {
         e.preventDefault();
         setColor(c);

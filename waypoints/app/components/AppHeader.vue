@@ -14,6 +14,7 @@ import type { Ref } from "vue";
 const logger = createLogger("AppHeader");
 
 const open = inject<Ref<boolean>>("sidebar-open", ref(false));
+const newLandmarkOpen = inject<Ref<boolean>>("new-landmark-open", ref(false));
 const props = defineProps<AppHeaderProps>();
 logger.debug(props.title);
 </script>

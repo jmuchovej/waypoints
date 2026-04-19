@@ -4,8 +4,9 @@ export interface FloatingHandlesProps {
 }
 
 import { isInGutter, handlePosition } from "../utils/floating-handle";
-import { getMarkID, getClosestBlock } from "../utils/elements";
+import { getMarkID, getClosestBlock, type BlockElement } from "../utils/elements";
 import BlockContextMenu from "./BlockContextMenu.vue";
+import type { MarkID } from "@waypoints/domain";
 </script>
 
 <script setup lang="ts">
@@ -13,7 +14,7 @@ import { BlockOrchestratorKey, type OrchestratorContext } from "../composables";
 
 const props = defineProps<FloatingHandlesProps>();
 
-const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey);
+const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey)!;
 const { dragDrop } = orchestrator;
 
 const hoveredMarkId = ref<MarkID | null>(null);
@@ -44,7 +45,7 @@ function onContainerPointerMove(event: PointerEvent) {
     // If the resolved block is inside a compound, check whether the cursor
     // is in the compound's "own" zone (left of the child's indent area).
     // If so, prefer the compound block for the drag handle.
-    const parent = el.parentElement?.closest<HTMLElement>(`[data-mark-id]`);
+    const parent = el.parentElement?.closest<BlockElement>(`[data-mark-id]`);
     if (parent) {
       const childLeft = el.getBoundingClientRect().left;
       if (event.clientX < childLeft) {

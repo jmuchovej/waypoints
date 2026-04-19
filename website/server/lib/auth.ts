@@ -40,6 +40,8 @@ export const auth = betterAuth({
   secrets: [{ version: 1, value: config.betterAuthSecret }],
 
   advanced: {
-    generateId: () => crypto.randomUUID(),
+    database: {
+      generateId: () => crypto.randomUUID(),
+    },
   },
 });

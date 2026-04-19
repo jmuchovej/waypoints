@@ -2,7 +2,6 @@ import { defineNuxtConfig } from "nuxt/config";
 import { loadSopsSecrets } from "./secrets";
 
 await loadSopsSecrets();
-console.log(process.env.NUXT_TURSO_DATABASE_URL);
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -20,7 +19,6 @@ export default defineNuxtConfig({
       authToken: process.env.TURSO_AUTH_TOKEN,
     },
     public: {
-      turnstileSiteKey: "",
       github: {
         appId: "",
       },
@@ -72,6 +70,16 @@ export default defineNuxtConfig({
 
   site: {
     name: "Waypoints",
+  },
+
+  llms: {
+    domain: "https://waypoints.so",
+    title: "Waypoints",
+    description: "",
+    full: {
+      title: "Waypoints",
+      description: "",
+    },
   },
 
   vite: {

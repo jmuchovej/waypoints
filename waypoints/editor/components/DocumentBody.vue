@@ -15,7 +15,7 @@ import {
   useCommandMenu,
   useLongPressDrag,
 } from "../composables";
-import { ContentType, isCompoundType, isContent, isEmpty, type MarkID } from "@waypoints/domain";
+import { ContentType, isCompoundType, isContent, isEmpty } from "@waypoints/domain";
 import { indexFor } from "../utils/list-item";
 import { getBlocks, getMarkID } from "../utils/elements";
 import Block from "./Block.vue";

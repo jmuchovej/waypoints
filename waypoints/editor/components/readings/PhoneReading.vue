@@ -12,8 +12,6 @@ export interface PhoneReadingEmits {
 </script>
 
 <script setup lang="ts">
-import type { Reading, Feature } from "@waypoints/domain";
-
 // TODO: expand country-code support beyond US (+1).
 // Currently the country code is hardcoded; the second element of Reading::Phone
 // is the user-entered number string. A future iteration should add a country

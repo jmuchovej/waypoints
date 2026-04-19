@@ -11,8 +11,6 @@ export interface EmailReadingEmits {
 }
 </script>
 <script setup lang="ts">
-import type { Reading, Feature } from "@waypoints/domain";
-
 const props = defineProps<EmailReadingProps>();
 const emit = defineEmits<EmailReadingEmits>();
 

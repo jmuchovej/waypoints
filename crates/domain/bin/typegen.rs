@@ -61,5 +61,30 @@ fn main() {
         .export_to(&out, &collection)
         .expect("failed to export domain types");
 
+    simplify_json_value(&out);
+
     println!("wrote {out}");
+}
+
+/// Rewrite the generated `export type JsonValue = …` declaration to `unknown`.
+fn simplify_json_value(path: &str) {
+    let contents = std::fs::read_to_string(path).expect("read generated types.g.ts");
+    let anchor = "export type JsonValue =";
+    let start = contents
+        .find(anchor)
+        .expect("JsonValue declaration not found in generated output");
+    // Specta emits each type alias on a single line (and without a trailing
+    // semicolon — that's added later by treefmt), so replace through the end of
+    // the declaration's line. (Matching on `;` is unsafe: the next type's doc
+    // comment contains `&ndash;`, whose entity semicolon would match first.)
+    let end = start
+        + contents[start..]
+            .find('\n')
+            .unwrap_or(contents.len() - start);
+    let rewritten = format!(
+        "{}export type JsonValue = unknown;{}",
+        &contents[..start],
+        &contents[end..],
+    );
+    std::fs::write(path, rewritten).expect("write simplified types.g.ts");
 }

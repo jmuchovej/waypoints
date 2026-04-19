@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockRenderToString = vi.fn((expr: string) => `<span class="katex">${expr}</span>`);
+const mockRenderToString = vi.fn((...args: any[]) => `<span class="katex">${args[0]}</span>`);
 
 vi.mock("katex", () => ({
   default: {
@@ -8,7 +8,7 @@ vi.mock("katex", () => ({
   },
 }));
 
-const mockSvg = vi.fn(async () => "<svg>typst</svg>");
+const mockSvg = vi.fn(async (..._args: any[]) => "<svg>typst</svg>");
 
 vi.mock("@myriaddreamin/typst.ts/contrib/all-in-one-lite", () => ({
   $typst: {

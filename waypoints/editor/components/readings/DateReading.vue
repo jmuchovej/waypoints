@@ -95,11 +95,11 @@ function onCalendarPick(picked: DateValue) {
 <template>
   <UInputDate
     ref="inputDate"
-    :model-value="dateValue"
+    :model-value="dateValue ?? undefined"
     :granularity="granularity"
     variant="ghost"
     size="md"
-    @update:model-value="onUpdate"
+    @update:model-value="(v) => onUpdate((v as CalendarDateTime | undefined) ?? null)"
   >
     <template #leading>
       <UPopover v-model:open="popoverOpen" :reference="inputDate?.inputsRef[3]?.$el">

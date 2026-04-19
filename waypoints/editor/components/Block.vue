@@ -17,7 +17,7 @@ import { isFocusableType, isLandmark, isContent } from "@waypoints/domain";
 
 const props = defineProps<BlockProps>();
 
-const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey);
+const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey)!;
 const { focus, dragDrop, selection } = orchestrator;
 
 const [DefineDropIndicator, DropIndicator] = createReusableTemplate<{

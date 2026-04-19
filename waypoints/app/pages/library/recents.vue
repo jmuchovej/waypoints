@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { navigateTo } from "#imports";
 import type { RichText, Chart, ChartID, LandmarkMark } from "@waypoints/domain";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import { iconName } from "~/utils/icon";

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { LazyUAvatar, LazyUCommandPalette } from "#components";
-import type { CommandPaletteItem } from "@nuxt/ui";
 import type { Chart } from "@waypoints/domain";
 import { iconName } from "~/utils/icon";
 import ipc from "~/ipc";
@@ -21,19 +20,17 @@ async function loadCharts() {
 
 onMounted(loadCharts);
 
-const groups = computed(() => [
-  {
-    id: "charts",
-    label: "Create New",
-    items: charts.value.map(
-      (chart): CommandPaletteItem => ({
-        label: chart.name,
-        icon: iconName(chart.icon, "i-lucide-file-text"),
-        suffix: chart.description ?? undefined,
-        onSelect: () => createLandmark(chart),
-      }),
-    ),
-  },
+function toPaletteItem(chart: Chart): any {
+  return {
+    label: chart.name,
+    icon: iconName(chart.icon, "i-lucide-file-text"),
+    suffix: chart.description ?? undefined,
+    onSelect: () => createLandmark(chart),
+  };
+}
+
+const groups = computed<any[]>(() => [
+  { id: "charts", label: "Create New", items: (charts.value as any[]).map(toPaletteItem) },
 ]);
 
 async function createLandmark(chart: Chart) {

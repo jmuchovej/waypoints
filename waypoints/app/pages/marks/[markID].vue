@@ -22,7 +22,7 @@ const landmark = computed<Landmark | null>(() => {
 });
 
 const titleRichText = computed<RichText>(() => {
-  return landmark.value?.title ?? { segments: [] };
+  return landmark.value?.title ?? { plain_text: "", segments: [] };
 });
 
 const titlePlaceholder = computed(() => {
@@ -76,7 +76,7 @@ async function load() {
     }
 
     rawMark.value = mark;
-    await setNativeTitle(mark.value.plain_text);
+    await setNativeTitle(titleRichText.value.plain_text);
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {

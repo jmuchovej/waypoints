@@ -126,5 +126,12 @@
   },
   "dependencies": {
     "scule": "^1.3.0"
+  },
+  "overrides": {
+    "@internationalized/date": "3.12.1",
+    "@tiptap/vue-3": "3.22.4"
+  },
+  "patchedDependencies": {
+    "docus@5.10.0": "patches/docus@5.10.0.patch"
   }
 }

@@ -19,6 +19,10 @@ typegen:
     @just domain::typegen
     @just cartograph::typegen
 
+typecheck:
+    just app::typecheck
+    just website::typecheck
+
 clean:
     cargo clean
     @just app::clean
