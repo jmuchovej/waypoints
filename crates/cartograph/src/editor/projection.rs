@@ -4,8 +4,8 @@ use domain::mark::{Content, Mark, MarkData, MarkID, RichText, TextMarkKind};
 use store::DatabaseConnection;
 use store::query::{mark, terrain};
 
-use crate::error::{EditorError, EditorResult};
-use crate::types::RenderNode;
+use super::error::{EditorError, EditorResult};
+use super::types::RenderNode;
 
 const MAX_DEPTH: u32 = 20;
 

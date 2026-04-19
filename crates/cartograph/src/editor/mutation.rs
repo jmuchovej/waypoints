@@ -4,11 +4,11 @@ use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
 use store::DatabaseConnection;
 use store::query::{chart, mark, terrain};
 
-use crate::error::{EditorError, EditorResult};
-use crate::history::CommandHistory;
-use crate::ops::AtomicOp;
-use crate::projection;
-use crate::types::{CreateResult, CursorState, MutationResult, RenderNode, SplitResult};
+use super::error::{EditorError, EditorResult};
+use super::history::CommandHistory;
+use super::ops::AtomicOp;
+use super::projection;
+use super::types::{CreateResult, CursorState, MutationResult, RenderNode, SplitResult};
 
 /// Compute a fractional index for inserting after `after_id` among `parent_id`'s children.
 async fn compute_order(
@@ -407,7 +407,7 @@ pub async fn split_mark(
         .cloned()
         .ok_or_else(|| EditorError::InvalidContent("content has no rich_text field".into()))?;
 
-    let (left_rt, right_rt) = crate::rich_text::split_at(&old_rt, offset);
+    let (left_rt, right_rt) = super::rich_text::split_at(&old_rt, offset);
 
     // Update original mark with left portion
     let mut left_content = old_content.clone();
@@ -500,7 +500,7 @@ pub async fn merge_marks(
 
     // Merge: append source text to target
     let merge_offset = old_target_rt.plain_text().len();
-    let new_target_rt = crate::rich_text::merge(&old_target_rt, &source_rt);
+    let new_target_rt = super::rich_text::merge(&old_target_rt, &source_rt);
 
     // Update target
     let mut new_target_data = target.data;

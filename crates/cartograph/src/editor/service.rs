@@ -1,23 +1,21 @@
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
 use store::DatabaseConnection;
 
-use crate::error::{EditorError, EditorResult};
-use crate::history::CommandHistory;
-use crate::types::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
-use crate::{mutation, projection};
+use super::error::{EditorError, EditorResult};
+use super::history::CommandHistory;
+use super::types::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
+use super::{mutation, projection};
 
-pub type SharedDatabase = Arc<Mutex<Option<DatabaseConnection>>>;
+use crate::Database;
 
 /// The editor service holds a shared database connection and per-landmark undo histories.
 ///
-/// The [`SharedDatabase`] Arc is shared with `TerritoryManager` so territory switches
+/// The [`Database`](crate::Database) Arc is shared with `TerritoryManager` so territory switches
 /// only need to swap the inner `Option` — no EditorService reconstruction required.
 pub struct EditorService {
-    db: SharedDatabase,
+    db: Database,
     histories: HashMap<MarkID, CommandHistory>,
 }
 
@@ -34,7 +32,7 @@ fn history_entry(
 }
 
 impl EditorService {
-    pub fn new(db: SharedDatabase) -> Self {
+    pub fn new(db: Database) -> Self {
         Self {
             db,
             histories: HashMap::new(),

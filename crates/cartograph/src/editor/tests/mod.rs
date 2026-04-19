@@ -1,3 +1,7 @@
+mod mutations;
+mod projection;
+mod undo_redo;
+
 use std::sync::Arc;
 
 use domain::chart::ChartID;
@@ -7,7 +11,11 @@ use rstest::fixture;
 use store::query::{mark, terrain};
 use store::{DatabaseConnection, Migrator, MigratorTrait};
 
-/// Create a fresh in-memory SQLite with migrations applied.
+use crate::Database;
+use crate::editor::service::EditorService;
+
+type Env = (EditorService, DatabaseConnection);
+
 async fn test_db() -> DatabaseConnection {
     use sea_orm::Database;
     let db = Database::connect("sqlite::memory:").await.unwrap();
@@ -15,36 +23,27 @@ async fn test_db() -> DatabaseConnection {
     db
 }
 
-/// Wrap a DatabaseConnection in the SharedDb type EditorService expects.
-fn shared(db: DatabaseConnection) -> ::editor::SharedDatabase {
+fn shared(db: DatabaseConnection) -> Database {
     Arc::new(tokio::sync::Mutex::new(Some(db)))
 }
 
-/// rstest fixture — returns `(EditorService, DatabaseConnection)`.
-/// The raw `db` handle is kept for direct store queries in assertions.
 #[fixture]
-pub async fn env() -> (::editor::EditorService, DatabaseConnection) {
+async fn env() -> Env {
     let db = test_db().await;
     let shared_db = shared(db.clone());
-    let svc = ::editor::EditorService::new(shared_db);
+    let svc = EditorService::new(shared_db);
     (svc, db)
 }
 
-// -- Factory helpers --
-
-pub fn paragraph(text: &str) -> MarkData {
+fn paragraph(text: &str) -> MarkData {
     MarkData::Content(Content::paragraph(RichText::from(text.to_string())))
 }
 
-pub fn heading(text: &str) -> MarkData {
-    MarkData::Content(Content::heading1(RichText::from(text.to_string())))
-}
-
-pub fn blockquote() -> MarkData {
+fn blockquote() -> MarkData {
     MarkData::Content(Content::blockquote())
 }
 
-pub fn landmark(chart_name: &str, title: &str) -> MarkData {
+fn landmark(chart_name: &str, title: &str) -> MarkData {
     MarkData::Landmark(
         Landmark::builder()
             .with_chart(ChartID::builtin(chart_name))
@@ -53,16 +52,15 @@ pub fn landmark(chart_name: &str, title: &str) -> MarkData {
     )
 }
 
-pub fn new_id() -> MarkID {
+fn new_id() -> MarkID {
     MarkID::new()
 }
 
-pub fn now() -> chrono::NaiveDateTime {
+fn now() -> chrono::NaiveDateTime {
     chrono::Local::now().naive_utc()
 }
 
-/// Seed a landmark with `n` paragraph children. Returns `(landmark_id, child_ids)`.
-pub async fn seed_landmark(db: &DatabaseConnection, n: usize) -> (MarkID, Vec<MarkID>) {
+async fn seed_landmark(db: &DatabaseConnection, n: usize) -> (MarkID, Vec<MarkID>) {
     let lm = new_id();
     mark::insert(db, lm, &landmark("page", "Test Page"), now())
         .await
@@ -84,9 +82,7 @@ pub async fn seed_landmark(db: &DatabaseConnection, n: usize) -> (MarkID, Vec<Ma
     (lm, children)
 }
 
-/// Seed a landmark with `n` root-level paragraphs, then nest `nested` paragraphs under the
-/// specified root child (by index). Returns `(landmark_id, root_ids, nested_ids)`.
-pub async fn seed_nested(
+async fn seed_nested(
     db: &DatabaseConnection,
     n: usize,
     nest_under: usize,

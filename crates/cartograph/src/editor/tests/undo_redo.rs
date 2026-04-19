@@ -1,11 +1,7 @@
-mod fixtures;
+use super::*;
 
-use domain::mark::{MarkData, RichText};
-use fixtures::*;
+use domain::mark::{Content, MarkData, RichText};
 use rstest::rstest;
-use store::DatabaseConnection;
-
-type Env = (::editor::EditorService, DatabaseConnection);
 
 #[rstest]
 #[tokio::test]
@@ -98,8 +94,6 @@ async fn undo_merge_marks(#[future] env: Env) {
 #[rstest]
 #[tokio::test]
 async fn update_text_does_not_push_undo(#[future] env: Env) {
-    // Text undo is handled by Tiptap's local History extension, so
-    // update_mark_text should persist to DB but NOT create an undo entry.
     let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
 
@@ -107,7 +101,6 @@ async fn update_text_does_not_push_undo(#[future] env: Env) {
         .await
         .unwrap();
 
-    // Verify the text was persisted
     let m = svc.get_mark(children[0]).await.unwrap();
     let text = match &m.data {
         MarkData::Content(c) => c.rich_text().unwrap().plain_text().to_owned(),
@@ -115,7 +108,6 @@ async fn update_text_does_not_push_undo(#[future] env: Env) {
     };
     assert_eq!(text, "changed");
 
-    // Undo should return None — no entries on the stack
     let result = svc.undo(lm).await.unwrap();
     assert!(
         result.is_none(),
@@ -178,7 +170,6 @@ async fn undo_reparent_restores_parent(#[future] env: Env) {
     let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 3).await;
 
-    // Indent children[2] under children[1] (Tab)
     svc.reparent_mark(children[2], children[1], None, lm)
         .await
         .unwrap();
@@ -186,7 +177,6 @@ async fn undo_reparent_restores_parent(#[future] env: Env) {
     let blocks = svc.project_landmark(lm, None).await.unwrap();
     assert_eq!(blocks[2].parent_id, Some(children[1]));
 
-    // Undo should restore children[2] as a direct child of the landmark
     svc.undo(lm).await.unwrap();
 
     let blocks = svc.project_landmark(lm, None).await.unwrap();
@@ -216,12 +206,9 @@ async fn undo_redo_reparent_roundtrip(#[future] env: Env) {
 #[rstest]
 #[tokio::test]
 async fn undo_update_mark_restores_type(#[future] env: Env) {
-    use domain::mark::Content;
-
     let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
 
-    // Convert paragraph → heading
     let original = svc.get_mark(children[0]).await.unwrap();
     let original_rt = match &original.data {
         MarkData::Content(c) => c.rich_text().unwrap().clone(),
@@ -232,14 +219,12 @@ async fn undo_update_mark_restores_type(#[future] env: Env) {
         .await
         .unwrap();
 
-    // Verify it's a heading now
     let fetched = svc.get_mark(children[0]).await.unwrap();
     assert!(matches!(
         fetched.data,
         MarkData::Content(Content::Heading1 { .. })
     ));
 
-    // Undo should restore to paragraph
     svc.undo(lm).await.unwrap();
 
     let restored = svc.get_mark(children[0]).await.unwrap();

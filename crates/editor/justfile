@@ -1,9 +1,0 @@
-[private]
-default:
-    @just --list
-
-typegen:
-    cargo run --bin typegen --features development
-    treefmt typescript/types.g.ts
-    bun run bin/patch-types.ts
-    treefmt typescript/types.g.ts

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use editor::EditorService;
+use crate::editor::{EditorHandle, EditorService};
 
 use crate::chart::ChartHandle;
 use crate::mark::MarkHandle;
@@ -11,7 +11,7 @@ use crate::territory::{RegistryStore, TerritoryHandle, TerritoryManager, Territo
 
 pub struct WaypointsRuntime {
     manager: TerritoryManager,
-    editor: Mutex<EditorService>,
+    pub(crate) editor: Mutex<EditorService>,
     registry: Arc<dyn RegistryStore>,
 }
 
@@ -57,8 +57,10 @@ impl WaypointsRuntime {
         Ok(())
     }
 
-    pub async fn editor(&self) -> tokio::sync::MutexGuard<'_, EditorService> {
-        self.editor.lock().await
+    pub fn editor(&self) -> EditorHandle<'_> {
+        EditorHandle {
+            editor: &self.editor,
+        }
     }
 
     pub fn territory(&self) -> TerritoryHandle<'_> {

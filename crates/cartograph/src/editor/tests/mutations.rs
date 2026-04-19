@@ -1,11 +1,7 @@
-mod fixtures;
+use super::*;
 
 use domain::mark::{Content, MarkData, MarkID, RichText};
-use fixtures::*;
 use rstest::rstest;
-use store::DatabaseConnection;
-
-type Env = (::editor::EditorService, DatabaseConnection);
 
 #[rstest]
 #[tokio::test]
@@ -47,14 +43,12 @@ async fn update_mark_converts_block_type(#[future] env: Env) {
     let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
 
-    // Grab the original text before conversion
     let original = svc.get_mark(children[0]).await.unwrap();
     let original_rt = match &original.data {
         MarkData::Content(c) => c.rich_text().unwrap().clone(),
         _ => panic!("expected content"),
     };
 
-    // Convert paragraph → heading, preserving the same rich text
     let converted = Content::heading1(original_rt.clone());
     svc.update_mark(children[0], converted, lm).await.unwrap();
 
@@ -105,9 +99,7 @@ async fn split_mark_at_offset(#[future] env: Env) {
     let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
 
-    // "Block 1" is 7 bytes; split at offset 5 → "Block" | " 1"
     let result = svc.split_mark(children[0], 5, lm).await.unwrap();
-
     assert_eq!(result.blocks.len(), 2);
 
     let left = svc.get_mark(children[0]).await.unwrap();
@@ -231,12 +223,9 @@ async fn reparent_mark_into_container(#[future] env: Env) {
 #[rstest]
 #[tokio::test]
 async fn dedent_places_block_after_parent(#[future] env: Env) {
-    // Setup: root has [A, B, C]. B has [nested]. Dedenting nested should
-    // produce [A, B, nested, C] — not [A, B, C, nested].
     let (mut svc, db) = env.await;
     let (lm, roots, nested) = seed_nested(&db, 3, 1, 1).await;
 
-    // Dedent: move nested[0] from parent=roots[1] to grandparent=lm, after=roots[1]
     svc.reparent_mark(nested[0], lm, Some(roots[1]), lm)
         .await
         .unwrap();
@@ -250,8 +239,6 @@ async fn dedent_places_block_after_parent(#[future] env: Env) {
 #[rstest]
 #[tokio::test]
 async fn dedent_last_child_places_after_parent(#[future] env: Env) {
-    // Setup: root has [A, B]. B has [n1, n2]. Dedenting n2 should
-    // produce [A, B(n1), n2].
     let (mut svc, db) = env.await;
     let (lm, roots, nested) = seed_nested(&db, 2, 1, 2).await;
 
@@ -269,11 +256,9 @@ async fn dedent_last_child_places_after_parent(#[future] env: Env) {
 #[rstest]
 #[tokio::test]
 async fn reparent_with_none_after_appends(#[future] env: Env) {
-    // Passing after_id=None should append to end (indent behavior).
     let (mut svc, db) = env.await;
     let (lm, roots, nested) = seed_nested(&db, 3, 0, 1).await;
 
-    // Indent roots[2] under roots[1] (after_id=None → append)
     svc.reparent_mark(roots[2], roots[1], None, lm)
         .await
         .unwrap();

@@ -2,12 +2,12 @@ use domain::chart::{Chart, ChartID};
 use domain::mark::{Landmark, Mark, MarkData, MarkID};
 use uuid::Uuid;
 
-use editor::SharedDatabase;
+use crate::Database;
 
 use crate::mark::{MarkError, MarkResult};
 
 pub struct ChartHandle<'a> {
-    pub(crate) db: &'a SharedDatabase,
+    pub(crate) db: &'a Database,
 }
 
 impl ChartHandle<'_> {

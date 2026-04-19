@@ -2,7 +2,7 @@ use chrono::Utc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use editor::EditorService;
+use crate::editor::EditorService;
 
 use super::{
     RegistryStore, Territory, TerritoryError, TerritoryKind, TerritoryManager, TerritoryResult,

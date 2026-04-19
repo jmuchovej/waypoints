@@ -3,9 +3,9 @@ use std::time::Instant;
 use domain::mark::MarkID;
 use store::DatabaseConnection;
 
-use crate::error::EditorResult;
-use crate::ops::AtomicOp;
-use crate::types::CursorState;
+use super::error::EditorResult;
+use super::ops::AtomicOp;
+use super::types::CursorState;
 
 const MAX_HISTORY_DEPTH: usize = 200;
 const COALESCE_WINDOW_MS: u128 = 500;

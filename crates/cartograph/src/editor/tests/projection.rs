@@ -1,16 +1,11 @@
-mod fixtures;
+use super::*;
 
-use domain::mark::MarkID;
-use fixtures::*;
 use rstest::rstest;
-use store::DatabaseConnection;
 use store::query::{mark, terrain};
 
 #[rstest]
 #[tokio::test]
-async fn empty_landmark_projects_to_no_blocks(
-    #[future] env: (::editor::EditorService, DatabaseConnection),
-) {
+async fn empty_landmark_projects_to_no_blocks(#[future] env: Env) {
     let (svc, db) = env.await;
     let lm = new_id();
     mark::insert(&db, lm, &landmark("page", "Empty"), now())
@@ -23,7 +18,7 @@ async fn empty_landmark_projects_to_no_blocks(
 
 #[rstest]
 #[tokio::test]
-async fn projects_children_in_order(#[future] env: (::editor::EditorService, DatabaseConnection)) {
+async fn projects_children_in_order(#[future] env: Env) {
     let (svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 3).await;
 
@@ -38,9 +33,7 @@ async fn projects_children_in_order(#[future] env: (::editor::EditorService, Dat
 
 #[rstest]
 #[tokio::test]
-async fn nested_container_tracks_depth(
-    #[future] env: (::editor::EditorService, DatabaseConnection),
-) {
+async fn nested_container_tracks_depth(#[future] env: Env) {
     let (svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
 
@@ -71,7 +64,7 @@ async fn nested_container_tracks_depth(
 
 #[rstest]
 #[tokio::test]
-async fn nested_landmark_is_leaf(#[future] env: (::editor::EditorService, DatabaseConnection)) {
+async fn nested_landmark_is_leaf(#[future] env: Env) {
     let (svc, db) = env.await;
     let lm = new_id();
     mark::insert(&db, lm, &landmark("page", "Parent"), now())
@@ -86,7 +79,6 @@ async fn nested_landmark_is_leaf(#[future] env: (::editor::EditorService, Databa
         .await
         .unwrap();
 
-    // Give the nested landmark its own children (should NOT appear)
     let inner = new_id();
     mark::insert(&db, inner, &paragraph("hidden"), now())
         .await
@@ -103,7 +95,7 @@ async fn nested_landmark_is_leaf(#[future] env: (::editor::EditorService, Databa
 
 #[rstest]
 #[tokio::test]
-async fn max_depth_limits_recursion(#[future] env: (::editor::EditorService, DatabaseConnection)) {
+async fn max_depth_limits_recursion(#[future] env: Env) {
     let (svc, db) = env.await;
     let lm = new_id();
     mark::insert(&db, lm, &landmark("page", "Deep"), now())

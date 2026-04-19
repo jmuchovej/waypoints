@@ -3,7 +3,6 @@ resolver = "3"
 members = [
   "crates/cartograph",
   "crates/domain",
-  "crates/editor",
   "crates/importer",
   "crates/store",
   "waypoints/src-tauri",
@@ -85,7 +84,6 @@ Waypoints = { path = "waypoints/src-tauri" }
 # keep-sorted start
 cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
-editor = { path = "crates/editor" }
 importer = { path = "crates/importer" }
 store = { path = "crates/store" }
 # keep-sorted end
@@ -106,12 +104,6 @@ wry = { version = "0.54.4", features = [
   "tracing",
 ] }
 
-typst = "0.14"
-typst-assets = { version = "0.14", features = ["fonts"] }
-typst-library = "0.14"
-typst-svg = "0.14"
-typst-syntax = "0.14"
-typst-utils = "0.14"
 
 specta = { version = "=2.0.0-rc.22", features = [
   "chrono",

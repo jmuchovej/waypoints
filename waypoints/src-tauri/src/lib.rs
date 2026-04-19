@@ -64,7 +64,6 @@ pub fn run() {
             commands::editor::editor_reparent_mark,
             commands::editor::editor_undo,
             commands::editor::editor_redo,
-            commands::editor::editor_render_math,
         ])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())

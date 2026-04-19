@@ -2,7 +2,7 @@ use domain::mark::{MarkData, MarkID, RichText};
 use store::DatabaseConnection;
 use store::query::{mark, terrain};
 
-use crate::error::{EditorError, EditorResult};
+use super::error::{EditorError, EditorResult};
 
 /// An atomic, invertible operation on a single mark or terrain edge.
 #[derive(Debug, Clone)]

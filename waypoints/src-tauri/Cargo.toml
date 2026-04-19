@@ -39,7 +39,6 @@ serde_json.workspace = true
 tauri = { workspace = true, features = ["image-png"] }
 thiserror.workspace = true
 cartograph.workspace = true
-editor.workspace = true
 domain.workspace = true
 store.workspace = true
 wry.workspace = true

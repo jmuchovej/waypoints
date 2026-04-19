@@ -4,12 +4,12 @@ use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
 use domain::terrain::TerrainKind;
 use uuid::Uuid;
 
-use editor::SharedDatabase;
+use crate::Database;
 
 use super::{MarkError, MarkResult};
 
 pub struct MarkHandle<'a> {
-    pub(crate) db: &'a SharedDatabase,
+    pub(crate) db: &'a Database,
 }
 
 impl MarkHandle<'_> {

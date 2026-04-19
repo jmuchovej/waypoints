@@ -20,7 +20,6 @@ required-features = ["development"]
 async-trait.workspace = true
 chrono.workspace = true
 domain.workspace = true
-editor.workspace = true
 sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -31,6 +30,12 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+rstest = { workspace = true }
+sea-orm = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+store = { workspace = true, features = ["test-utils"] }
 
 [features]
 default = []
