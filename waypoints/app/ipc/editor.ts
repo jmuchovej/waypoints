@@ -4,7 +4,6 @@ import type {
   Mark,
   MarkData,
   MarkID,
-  MathEngine,
   Reading,
   RichText,
 } from "@waypoints/domain";
@@ -14,7 +13,7 @@ import type {
   RenderNode,
   SplitResult,
   UndoRedoResult,
-} from "@waypoints/editor";
+} from "@waypoints/cartograph";
 import { invoke } from "./invoke";
 
 export async function getMark(markId: MarkID): Promise<Mark> {
@@ -138,12 +137,4 @@ export async function undo(landmarkId: MarkID): Promise<UndoRedoResult | null> {
 
 export async function redo(landmarkId: MarkID): Promise<UndoRedoResult | null> {
   return invoke<UndoRedoResult | null>("editor_redo", { landmarkId });
-}
-
-export async function renderMath(
-  expression: string,
-  engine: MathEngine,
-  displayMode: boolean,
-): Promise<string> {
-  return invoke<string>("editor_render_math", { expression, engine, displayMode });
 }

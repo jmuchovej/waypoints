@@ -1,6 +1,6 @@
 import type { MarkData } from "@waypoints/domain";
 import { emptyRichText } from "@waypoints/domain";
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 import { describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 import {

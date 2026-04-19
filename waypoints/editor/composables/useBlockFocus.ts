@@ -1,6 +1,6 @@
 import { type Ref, ref, nextTick, computed, readonly } from "vue";
 import { isCompoundType, type MarkID } from "@waypoints/domain";
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 
 export type CursorPosition = "start" | "end";
 

@@ -1,5 +1,5 @@
 import { isCompoundType, isIndentableType, isNestableType, type MarkID } from "@waypoints/domain";
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 import { readonly, ref, type Ref } from "vue";
 import { createLogger } from "~/utils/logger";
 import {

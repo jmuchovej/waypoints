@@ -1,5 +1,5 @@
 import { type MarkID, isCompoundType } from "@waypoints/domain";
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 import type { Ref } from "vue";
 import { computed, readonly, ref, watch } from "vue";
 import { createLogger } from "~/utils/logger";

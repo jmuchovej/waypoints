@@ -1,5 +1,5 @@
 import type { ContentData, ContentKind, LandmarkData } from "@waypoints/domain";
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 
 export { CommandMenu } from "./tiptap/extensions/command-menu";
 export { ContentType, InlineKind } from "@waypoints/domain";

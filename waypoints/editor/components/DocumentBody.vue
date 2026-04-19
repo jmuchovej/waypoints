@@ -7,7 +7,7 @@ export interface DocumentBodyProps {
 </script>
 
 <script setup lang="ts">
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 import ipc from "~/ipc";
 import { listen } from "@tauri-apps/api/event";
 import {

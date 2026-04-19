@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ref, nextTick } from "vue";
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 import type { MarkData } from "@waypoints/domain";
 import { emptyRichText } from "@waypoints/domain";
 import { useBlockFocus, type EditorHandle } from "./useBlockFocus";

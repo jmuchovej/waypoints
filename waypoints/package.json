@@ -27,7 +27,6 @@
     "@vueuse/nuxt": "catalog:",
     "@waypoints/cartograph": "catalog:",
     "@waypoints/domain": "catalog:",
-    "@waypoints/editor": "catalog:",
     "consola": "catalog:",
     "katex": "catalog:",
     "nuxt": "catalog:",

@@ -6,7 +6,6 @@
     ".": "./typescript/types.g.ts"
   },
   "dependencies": {
-    "@waypoints/domain": "catalog:",
-    "@waypoints/editor": "catalog:"
+    "@waypoints/domain": "catalog:"
   }
 }

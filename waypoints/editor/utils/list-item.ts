@@ -1,5 +1,5 @@
 import { ContentType, isContent, type ContentData, type MarkData } from "@waypoints/domain";
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 
 function isIterable(
   data: MarkData,

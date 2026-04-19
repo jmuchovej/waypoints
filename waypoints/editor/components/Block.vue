@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { RenderNode } from "@waypoints/editor";
+import type { RenderNode } from "@waypoints/cartograph";
 
 export interface BlockProps {
   block: RenderNode;

@@ -4,13 +4,11 @@
       "waypoints",
       "website",
       "crates/domain",
-      "crates/editor",
       "crates/cartograph",
       "waypoints/src-tauri/icons"
     ],
     "catalog": {
       "@waypoints/domain": "workspace:*",
-      "@waypoints/editor": "workspace:*",
       "@waypoints/cartograph": "workspace:*",
       "@nuxt/devtools": "^3.2.3",
       "better-sqlite3": "^12.9.0",
