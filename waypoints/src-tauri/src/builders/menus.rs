@@ -113,9 +113,33 @@ fn setup_view<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
 }
 
 fn setup_edit<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
+    let handle = app_handle.clone();
+    app_handle.on_menu_event(move |_app, event: MenuEvent| {
+        let Some(window) = handle.get_webview_window("main") else {
+            return;
+        };
+        match event.id().0.as_str() {
+            "undo" => {
+                let _ = window.emit("app:edit:undo", ());
+            }
+            "redo" => {
+                let _ = window.emit("app:edit:redo", ());
+            }
+            _ => {}
+        }
+    });
+
     let builder = SubmenuBuilder::new(app_handle, "Edit")
-        .undo()
-        .redo()
+        .item(
+            &MenuItemBuilder::with_id("undo", "Undo")
+                .accelerator("CmdOrCtrl+Z")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id("redo", "Redo")
+                .accelerator("CmdOrCtrl+Shift+Z")
+                .build(app_handle)?,
+        )
         .separator()
         .cut()
         .copy()

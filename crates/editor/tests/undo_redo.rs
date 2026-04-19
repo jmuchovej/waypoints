@@ -7,10 +7,6 @@ use store::DatabaseConnection;
 
 type Env = (::editor::EditorService, DatabaseConnection);
 
-// ---------------------------------------------------------------------------
-// Basic undo
-// ---------------------------------------------------------------------------
-
 #[rstest]
 #[tokio::test]
 async fn undo_nothing_returns_none(#[future] env: Env) {
@@ -101,38 +97,31 @@ async fn undo_merge_marks(#[future] env: Env) {
 
 #[rstest]
 #[tokio::test]
-async fn undo_update_text(#[future] env: Env) {
+async fn update_text_does_not_push_undo(#[future] env: Env) {
+    // Text undo is handled by Tiptap's local History extension, so
+    // update_mark_text should persist to DB but NOT create an undo entry.
     let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
-
-    let original_text = {
-        let m = svc.get_mark(children[0]).await.unwrap();
-        match &m.data {
-            MarkData::Content(c) => c.rich_text().unwrap().plain_text().to_owned(),
-            _ => panic!(),
-        }
-    };
 
     svc.update_mark_text(children[0], RichText::from("changed".to_string()), lm)
         .await
         .unwrap();
 
-    // Wait past coalesce window so the next undo pops this group
-    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
-
-    svc.undo(lm).await.unwrap();
-
-    let restored = svc.get_mark(children[0]).await.unwrap();
-    let text = match &restored.data {
+    // Verify the text was persisted
+    let m = svc.get_mark(children[0]).await.unwrap();
+    let text = match &m.data {
         MarkData::Content(c) => c.rich_text().unwrap().plain_text().to_owned(),
         _ => panic!(),
     };
-    assert_eq!(text, original_text);
-}
+    assert_eq!(text, "changed");
 
-// ---------------------------------------------------------------------------
-// Redo
-// ---------------------------------------------------------------------------
+    // Undo should return None — no entries on the stack
+    let result = svc.undo(lm).await.unwrap();
+    assert!(
+        result.is_none(),
+        "text edits should not be in the undo stack"
+    );
+}
 
 #[rstest]
 #[tokio::test]
@@ -183,9 +172,88 @@ async fn new_edit_after_undo_clears_redo(#[future] env: Env) {
     assert!(redo_result.is_none(), "redo stack should be empty");
 }
 
-// ---------------------------------------------------------------------------
-// Multi-step undo
-// ---------------------------------------------------------------------------
+#[rstest]
+#[tokio::test]
+async fn undo_reparent_restores_parent(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+    let (lm, children) = seed_landmark(&db, 3).await;
+
+    // Indent children[2] under children[1] (Tab)
+    svc.reparent_mark(children[2], children[1], None, lm)
+        .await
+        .unwrap();
+
+    let blocks = svc.project_landmark(lm, None).await.unwrap();
+    assert_eq!(blocks[2].parent_id, Some(children[1]));
+
+    // Undo should restore children[2] as a direct child of the landmark
+    svc.undo(lm).await.unwrap();
+
+    let blocks = svc.project_landmark(lm, None).await.unwrap();
+    assert_eq!(blocks.len(), 3);
+    assert_eq!(blocks[2].id, children[2]);
+    assert_eq!(blocks[2].depth, 0);
+}
+
+#[rstest]
+#[tokio::test]
+async fn undo_redo_reparent_roundtrip(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+    let (lm, children) = seed_landmark(&db, 3).await;
+
+    svc.reparent_mark(children[2], children[1], None, lm)
+        .await
+        .unwrap();
+
+    svc.undo(lm).await.unwrap();
+    svc.redo(lm).await.unwrap();
+
+    let blocks = svc.project_landmark(lm, None).await.unwrap();
+    assert_eq!(blocks[2].parent_id, Some(children[1]));
+    assert_eq!(blocks[2].depth, 1);
+}
+
+#[rstest]
+#[tokio::test]
+async fn undo_update_mark_restores_type(#[future] env: Env) {
+    use domain::mark::Content;
+
+    let (mut svc, db) = env.await;
+    let (lm, children) = seed_landmark(&db, 1).await;
+
+    // Convert paragraph → heading
+    let original = svc.get_mark(children[0]).await.unwrap();
+    let original_rt = match &original.data {
+        MarkData::Content(c) => c.rich_text().unwrap().clone(),
+        _ => panic!("expected content"),
+    };
+
+    svc.update_mark(
+        children[0],
+        Content::Heading1 {
+            rich_text: original_rt.clone(),
+        },
+        lm,
+    )
+    .await
+    .unwrap();
+
+    // Verify it's a heading now
+    let fetched = svc.get_mark(children[0]).await.unwrap();
+    assert!(matches!(
+        fetched.data,
+        MarkData::Content(Content::Heading1 { .. })
+    ));
+
+    // Undo should restore to paragraph
+    svc.undo(lm).await.unwrap();
+
+    let restored = svc.get_mark(children[0]).await.unwrap();
+    assert!(matches!(
+        restored.data,
+        MarkData::Content(Content::Paragraph { .. })
+    ));
+}
 
 #[rstest]
 #[tokio::test]

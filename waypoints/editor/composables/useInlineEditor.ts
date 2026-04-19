@@ -199,6 +199,22 @@ function createEditorHandle(
         lastUpdatePromise.value = null;
       }
     },
+
+    canUndo(): boolean {
+      return editor.value?.can().undo() ?? false;
+    },
+
+    canRedo(): boolean {
+      return editor.value?.can().redo() ?? false;
+    },
+
+    undo() {
+      editor.value?.commands.undo();
+    },
+
+    redo() {
+      editor.value?.commands.redo();
+    },
   };
 }
 

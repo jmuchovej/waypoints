@@ -294,10 +294,12 @@ pub async fn create_mark_after(
     })
 }
 
-/// Update just the RichText content of a mark (records as text edit for coalescing).
+/// Update just the RichText content of a mark. Persists to DB but does NOT
+/// record in the undo history — text undo is handled by Tiptap's local History
+/// extension on the frontend.
 pub async fn update_mark_text(
     db: &DatabaseConnection,
-    history: &mut CommandHistory,
+    _history: &mut CommandHistory,
     mark_id: MarkID,
     rich_text: RichText,
     landmark_id: MarkID,
@@ -307,35 +309,19 @@ pub async fn update_mark_text(
         .ok_or(EditorError::NotFound(mark_id.inner()))?;
 
     let mut mark_data = m.data;
-    let old_rt = match &mark_data {
-        MarkData::Content(c) => c
-            .rich_text()
-            .cloned()
-            .ok_or_else(|| EditorError::InvalidContent("content has no rich_text".into()))?,
+    match &mark_data {
+        MarkData::Content(c) => {
+            c.rich_text()
+                .ok_or_else(|| EditorError::InvalidContent("content has no rich_text".into()))?;
+        }
         _ => return Err(EditorError::InvalidContent("not a content mark".into())),
     };
 
     if let MarkData::Content(c) = &mut mark_data {
-        c.set_rich_text(rich_text.clone());
+        c.set_rich_text(rich_text);
     }
 
     mark::update_data(db, mark_id, &mark_data).await?;
-
-    let cursor = CursorState {
-        block_id: mark_id,
-        offset: None,
-    };
-    history.push(
-        vec![AtomicOp::UpdateRichText {
-            mark_id,
-            old: old_rt,
-            new: rich_text,
-        }],
-        mark_id,
-        cursor.clone(),
-        cursor,
-        true, // text edit — eligible for coalescing
-    );
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })

@@ -156,6 +156,17 @@ export function useBlockOrchestrator(landmarkID: Ref<string>, blocks: Ref<Render
   }
 
   async function onUndo() {
+    // If the focused block's editor has local undo entries, let Tiptap handle it.
+    const blockId = focus.blockID.value;
+    if (blockId) {
+      const handle = focus.getHandle(blockId);
+      if (handle?.canUndo()) {
+        handle.undo();
+        return;
+      }
+    }
+
+    // Otherwise, fall through to backend structural undo.
     await flushPendingUpdates();
     stateVersion++;
     const result = await commands.editorUndo(landmarkID.value);
@@ -170,6 +181,17 @@ export function useBlockOrchestrator(landmarkID: Ref<string>, blocks: Ref<Render
   }
 
   async function onRedo() {
+    // If the focused block's editor has local redo entries, let Tiptap handle it.
+    const blockId = focus.blockID.value;
+    if (blockId) {
+      const handle = focus.getHandle(blockId);
+      if (handle?.canRedo()) {
+        handle.redo();
+        return;
+      }
+    }
+
+    // Otherwise, fall through to backend structural redo.
     await flushPendingUpdates();
     stateVersion++;
     const result = await commands.editorRedo(landmarkID.value);

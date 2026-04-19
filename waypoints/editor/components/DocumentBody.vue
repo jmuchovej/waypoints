@@ -9,6 +9,7 @@ export interface DocumentBodyProps {
 <script setup lang="ts">
 import type { RenderNode } from "@waypoints/editor";
 import { commands } from "~/bindings.g";
+import { listen } from "@tauri-apps/api/event";
 import {
   useBlockOrchestrator,
   useBlockKeymap,
@@ -40,6 +41,15 @@ orchestrator.onExitTop = props.onExitTop;
 const { handleKeydown: baseHandleKeydown } = useBlockKeymap(orchestrator);
 const { pressing, pressMarkId } = useLongPressDrag(containerRef, dragDrop);
 const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null);
+
+// Listen for native menu undo/redo events (Cmd+Z / Cmd+Shift+Z are intercepted by
+// the Tauri menu before they reach the web view's keydown handler).
+const unlisteners: (() => void)[] = [];
+onMounted(async () => {
+  unlisteners.push(await listen("app:edit:undo", () => orchestrator.onUndo()));
+  unlisteners.push(await listen("app:edit:redo", () => orchestrator.onRedo()));
+});
+onUnmounted(() => unlisteners.forEach((fn) => fn()));
 
 // Toggle .long-press-active on the pressed mark element
 watchEffect(() => {
@@ -128,7 +138,6 @@ async function onOverscrollClick() {
   const all = blocks.value;
 
   if (all.length === 0) {
-    // Empty document — create the first block under the landmark
     await orchestrator.onCreateFirstBlock();
     return;
   }
@@ -176,7 +185,6 @@ defineExpose({
         :enum-index="enumIndexFor(block, i)"
       />
 
-      <!-- Overscroll area: click to append/focus last block -->
       <div
         class="min-h-[25vh] max-h-[40vh] h-[32.5vh] cursor-text"
         @click.self="onOverscrollClick"

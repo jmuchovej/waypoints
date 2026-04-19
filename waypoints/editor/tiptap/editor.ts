@@ -6,6 +6,7 @@ import TipTapLink from "@tiptap/extension-link";
 import TipTapParagraph from "@tiptap/extension-paragraph";
 import TipTapPlaceholder from "@tiptap/extension-placeholder";
 import TipTapText from "@tiptap/extension-text";
+import { UndoRedo } from "@tiptap/extensions";
 import type { EditorProps } from "@tiptap/pm/view";
 import type { RichText } from "@waypoints/domain";
 import { CommandMenu, type CommandMenuDelegate } from "./extensions/command-menu";
@@ -82,6 +83,13 @@ export function createEditor(element: HTMLElement, options: EditorOptions): Edit
         placeholder: options.placeholder ?? "Type something…",
       }),
       TipTapEmoji,
+      UndoRedo.configure({
+        depth: 100,
+        newGroupDelay: 500,
+      }).extend({
+        // Disable built-in Cmd+Z shortcuts — we route through native menu events
+        addKeyboardShortcuts: () => ({}),
+      }),
       commandMenu,
       md,
     ],

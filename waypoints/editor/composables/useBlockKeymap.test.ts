@@ -36,6 +36,10 @@ function mockHandle(overrides: Partial<EditorHandle> = {}): EditorHandle {
     isCursorOnLastLine: vi.fn(() => false),
     getContentLength: vi.fn(() => 10),
     flush: vi.fn(async () => {}),
+    canUndo: vi.fn(() => false),
+    canRedo: vi.fn(() => false),
+    undo: vi.fn(),
+    redo: vi.fn(),
     ...overrides,
   };
 }
