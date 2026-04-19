@@ -4,6 +4,10 @@ impure: false
 nixpkgs:
   allowUnfree: true
 
+imports:
+  - ./waypoints/src-tauri/gen/android
+  - ./waypoints/src-tauri/gen/apple
+
 inputs:
   nixpkgs:
     url: github:cachix/devenv-nixpkgs/rolling
