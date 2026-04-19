@@ -16,3 +16,13 @@ jobs:
       prerelease: false
     secrets:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+  android:
+    uses: ./.github/workflows/_build-android.yaml
+    with:
+      flavor: stable
+      features: stable
+      tag: ${{ github.ref_name }}
+      prerelease: false
+    secrets:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
