@@ -1,0 +1,76 @@
+opt_out_usage
+
+# Shared helpers
+def android_aab
+  "waypoints/src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab"
+end
+
+def play_package(flavor)
+  case flavor
+  when "preview" then "so.waypoints.preview"
+  else "so.waypoints"
+  end
+end
+
+def asc_api_key
+  app_store_connect_api_key(
+    key_id: ENV.fetch("ASC_KEY_ID"),
+    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+    key_filepath: ENV.fetch("ASC_KEY_PATH"),
+    in_house: false,
+  )
+end
+
+# ─── Android ──────────────────────────────────────────────────────────
+
+platform :android do
+  desc "Upload preview AAB to Play Store internal track"
+  lane :preview do
+    upload_to_play_store(
+      package_name: play_package("preview"),
+      track: "internal",
+      aab: android_aab,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_apk: true,
+    )
+  end
+
+  desc "Upload stable AAB to Play Store production track"
+  lane :stable do
+    upload_to_play_store(
+      package_name: play_package("stable"),
+      track: "production",
+      aab: android_aab,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_apk: true,
+    )
+  end
+end
+
+# ─── iOS ──────────────────────────────────────────────────────────────
+
+platform :ios do
+  desc "Upload preview build to TestFlight"
+  lane :preview do
+    asc_api_key
+    upload_to_testflight(
+      app_identifier: "so.waypoints.preview",
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+    )
+  end
+
+  desc "Upload stable build to TestFlight"
+  lane :stable do
+    asc_api_key
+    upload_to_testflight(
+      app_identifier: "so.waypoints",
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+    )
+  end
+end

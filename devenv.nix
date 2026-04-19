@@ -52,6 +52,7 @@
     cargo-tauri
     cargo-binstall
     imagemagick
+    fastlane
     just
     sops
     age
