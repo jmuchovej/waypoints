@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { defineComponent, h, nextTick, ref } from "vue";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import type { RichText } from "@waypoints/domain";
+import { emptyRichText, toRichText } from "@waypoints/domain";
 import { useInlineEditor, type UseInlineEditorOptions } from "./useInlineEditor";
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-const emptyRt: RichText = { plain_text: "", segments: [] };
-const helloRt: RichText = { plain_text: "hello", segments: [{ text: "hello", marks: [] }] };
+const helloRt: RichText = toRichText("hello");
 
 function mountEditor(overrides: Partial<UseInlineEditorOptions> = {}) {
   let result!: ReturnType<typeof useInlineEditor>;
@@ -17,7 +17,7 @@ function mountEditor(overrides: Partial<UseInlineEditorOptions> = {}) {
     defineComponent({
       setup() {
         result = useInlineEditor({
-          richText: ref(overrides.richText?.value ?? emptyRt),
+          richText: ref(overrides.richText?.value ?? emptyRichText),
           onUpdate: overrides.onUpdate ?? onUpdate,
           ...overrides,
         } as UseInlineEditorOptions);
@@ -193,7 +193,7 @@ describe("useInlineEditor", () => {
 
   describe("external sync watch", () => {
     it("resyncs editor content when richText changes externally", async () => {
-      const richText = ref(emptyRt);
+      const richText = ref(emptyRichText);
       const { result, wrapper: w } = mountEditor({ richText });
       wrapper = w;
 

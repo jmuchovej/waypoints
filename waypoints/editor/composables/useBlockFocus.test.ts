@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ref, nextTick } from "vue";
 import type { RenderNode } from "@waypoints/editor";
-import type { MarkData, RichText } from "@waypoints/domain";
+import type { MarkData } from "@waypoints/domain";
+import { emptyRichText } from "@waypoints/domain";
 import { useBlockFocus, type EditorHandle } from "./useBlockFocus";
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-const emptyRt: RichText = { plain_text: "", segments: [] };
-
 function paragraph(id: string, parentId: string | null = null): RenderNode {
   return {
     id,
-    data: { mark: "content", type: "paragraph", rich_text: emptyRt } as MarkData,
+    data: { mark: "content", type: "paragraph", rich_text: emptyRichText } as MarkData,
     depth: parentId ? 1 : 0,
     fractional_index: "",
     parent_id: parentId,
