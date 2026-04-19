@@ -88,6 +88,11 @@
       /*@apply bg-primary/10 border-primary/30;*/
     }
 
+    /* Block-level theme: applies fg, bg, and border from data-theme */
+    &[data-theme] {
+      @apply text-(--theme-fg) bg-(--theme-bg) border-(--theme-border) rounded-sm;
+    }
+
     &.dragging {
       @apply opacity-40;
     }
@@ -132,30 +137,57 @@
     }
 
     &[data-type="code"] {
-      @apply text-sm leading-6;
-      @apply border border-muted bg-muted;
-      @apply rounded-md;
-      @apply px-4 py-3;
-      @apply whitespace-pre-wrap break-words;
-      @apply overflow-x-auto;
+      .code-block {
+        @apply relative rounded-md border border-muted overflow-hidden;
+        @apply bg-muted/50;
 
-      code {
-        @apply p-0 rounded-none border-0 bg-transparent;
-        @apply text-inherit font-mono;
+        .code-header {
+          @apply flex items-center justify-between;
+          @apply px-3 py-1.5 text-xs text-dimmed;
+          @apply border-b border-muted;
+
+          .code-lang {
+            @apply font-mono font-medium flex items-center gap-1.5;
+          }
+
+          .code-copy {
+            @apply p-1 rounded hover:bg-elevated cursor-pointer transition-colors;
+          }
+        }
+
+        .code-body,
+        .code-loading {
+          @apply overflow-x-auto overflow-y-hidden;
+          @apply rounded-md;
+
+          pre {
+            @apply text-sm leading-6 font-mono;
+            @apply px-4 py-3 m-0;
+            @apply bg-muted rounded-md;
+
+            code {
+              @apply p-0 rounded-none border-0 bg-transparent;
+              @apply text-inherit font-mono;
+            }
+          }
+
+          /* Shiki generates its own <pre> with inline styles — override bg */
+          :deep(pre) {
+            @apply !bg-muted !rounded-none !m-0 !px-4 !py-3;
+          }
+        }
       }
     }
 
     &[data-type="callout"] {
-      @apply rounded-md;
-      @apply px-4 py-3;
-      background: var(--ink-bg);
-      border: 1px solid var(--ink-bg-border);
-
       .wrapper {
         @apply flex flex-row gap-x-2;
+        @apply rounded-md px-4 py-3;
+        @apply bg-(--theme-bg) border border-(--theme-border) text-(--theme-fg);
 
         .prefix {
           @apply text-xl shrink-0;
+          @apply size-6;
         }
 
         .body {
@@ -258,11 +290,11 @@
   }
 
   [data-inline="highlight"] {
-    @apply px-0.5 py-0.5 rounded-sm border bg-yellow-200/40 dark:bg-yellow-500/20;
+    @apply px-0.5 rounded-sm bg-(--theme-bg);
   }
 
   [data-inline="color"] {
-    @apply px-1.5 py-0.5 rounded-md border;
+    @apply text-(--theme-fg);
   }
 
   [data-inline="mention"] {

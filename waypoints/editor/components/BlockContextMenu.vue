@@ -13,10 +13,28 @@ import {
   ContentConverters,
   contentData,
   isContent,
+  type Color,
   type ContentKind,
 } from "@waypoints/domain";
 import { BlockOrchestratorKey, type OrchestratorContext } from "../composables";
 import ipc from "~/ipc";
+
+const COLORS: Color[] = [
+  "default",
+  "gray",
+  "brown",
+  "orange",
+  "yellow",
+  "green",
+  "blue",
+  "purple",
+  "pink",
+  "red",
+];
+
+function colorLabel(c: Color): string {
+  return c.charAt(0).toUpperCase() + c.slice(1);
+}
 
 const props = defineProps<BlockContextMenuProps>();
 const open = defineModel<boolean>("open", { default: false });
@@ -84,6 +102,36 @@ async function duplicate() {
   }
 }
 
+// ── Color ───────────────────────────────────────────────────────────
+
+const currentThemeColor = computed<Color | null>(() => {
+  const data = block.value?.data;
+  if (!data || !isContent(data)) return null;
+  return data.theme?.color ?? null;
+});
+
+const isColorable = computed(() => {
+  const data = block.value?.data;
+  return data && isContent(data);
+});
+
+async function setColor(color: Color) {
+  if (!block.value || !orchestrator) return;
+  const data = block.value.data;
+  if (!isContent(data)) return;
+
+  try {
+    const result = await ipc.editor.updateMark(
+      props.blockId,
+      { ...data, theme: color === "default" ? undefined : { color } },
+      orchestrator.landmarkID.value,
+    );
+    orchestrator.blocks.value = result.blocks;
+  } catch (e) {
+    console.error("setColor failed:", e);
+  }
+}
+
 // ── Menu items ──────────────────────────────────────────────────────
 
 const items = computed<DropdownMenuItem[][]>(() => {
@@ -128,7 +176,31 @@ const items = computed<DropdownMenuItem[][]>(() => {
     },
   ];
 
-  return [actions, convertGroup, destructive];
+  const groups = [actions, convertGroup];
+
+  if (isColorable.value) {
+    const colorChildren: DropdownMenuItem[] = COLORS.map((c) => ({
+      label: colorLabel(c),
+      type: "checkbox" as const,
+      checked: currentThemeColor.value === c || (c === "default" && !currentThemeColor.value),
+      color: c,
+      onSelect(e: Event) {
+        e.preventDefault();
+        setColor(c);
+      },
+    }));
+
+    groups.push([
+      {
+        label: "Color",
+        icon: "i-lucide-palette",
+        children: colorChildren,
+      },
+    ]);
+  }
+
+  groups.push(destructive);
+  return groups;
 });
 
 defineShortcuts(computed(() => extractShortcuts(items.value)));
@@ -142,5 +214,13 @@ defineShortcuts(computed(() => extractShortcuts(items.value)));
     size="sm"
   >
     <slot />
+
+    <template #item-leading="{ item }">
+      <span
+        v-if="item.color && typeof item.color === 'string' && COLORS.includes(item.color as Color)"
+        class="size-3 rounded-sm shrink-0 bg-(--theme-bg) border border-(--theme-border)"
+        :data-theme="item.color"
+      />
+    </template>
   </UDropdownMenu>
 </template>
