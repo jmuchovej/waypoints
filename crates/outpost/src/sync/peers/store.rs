@@ -4,13 +4,8 @@
 //! app's own `sync_log` for in-app serving (lives app-side; §8).
 use domain::{DeviceID, OpID, RealmID};
 
+use super::error::PeerResult;
 use super::wire::EnvelopeFace;
-
-/// Opaque storage failure. Callers log it and degrade; nothing
-/// protocol-level rides on the variant.
-#[derive(Debug, thiserror::Error)]
-#[error("{0}")]
-pub struct StoreError(pub String);
 
 /// A stored envelope header row (payload carried separately, verbatim).
 pub struct StoredEnvelope {
@@ -28,7 +23,7 @@ pub trait EnvelopeStore: Send + Sync {
         faces: &[EnvelopeFace],
         payloads: &[&str],
         received_at: &str,
-    ) -> Result<Vec<(OpID, i64)>, StoreError>;
+    ) -> PeerResult<Vec<(OpID, i64)>>;
 
     /// Scan-window page: rows with `seq > since`, ascending, `limit + 1`
     /// so callers can detect has_more. Device filtering is the caller's
@@ -38,26 +33,26 @@ pub trait EnvelopeStore: Send + Sync {
         realm_id: RealmID,
         since_seq: i64,
         limit: usize,
-    ) -> Result<Vec<StoredEnvelope>, StoreError>;
+    ) -> PeerResult<Vec<StoredEnvelope>>;
 }
 
 /// What the gossip pump needs beyond serving: durable per-(peer, realm)
 /// cursors and the set of realms worth pulling.
 #[async_trait::async_trait]
 pub trait GossipStore: EnvelopeStore {
-    async fn peer_cursor(&self, peer_id: &str, realm_id: RealmID) -> Result<i64, StoreError>;
+    async fn peer_cursor(&self, peer_id: &str, realm_id: RealmID) -> PeerResult<i64>;
 
     async fn set_peer_cursor(
         &self,
         peer_id: &str,
         realm_id: RealmID,
         last_seq: i64,
-    ) -> Result<(), StoreError>;
+    ) -> PeerResult<()>;
 
     /// Realms present in the local store. The pump pulls these plus any
     /// configured extras (the bootstrap case: a fresh mirror holds no
     /// realms yet).
-    async fn known_realms(&self) -> Result<Vec<RealmID>, StoreError>;
+    async fn known_realms(&self) -> PeerResult<Vec<RealmID>>;
 }
 
 /// The always-on peer's log in miniature: an in-memory `EnvelopeStore`
@@ -84,7 +79,7 @@ impl EnvelopeStore for MemoryStore {
         faces: &[EnvelopeFace],
         payloads: &[&str],
         _received_at: &str,
-    ) -> Result<Vec<(OpID, i64)>, StoreError> {
+    ) -> PeerResult<Vec<(OpID, i64)>> {
         let mut rows = self.rows.lock().unwrap();
         let mut acks = Vec::with_capacity(faces.len());
         for (face, payload) in faces.iter().zip(payloads) {
@@ -112,7 +107,7 @@ impl EnvelopeStore for MemoryStore {
         realm_id: RealmID,
         since_seq: i64,
         limit: usize,
-    ) -> Result<Vec<StoredEnvelope>, StoreError> {
+    ) -> PeerResult<Vec<StoredEnvelope>> {
         let rows = self.rows.lock().unwrap();
         Ok(rows
             .iter()

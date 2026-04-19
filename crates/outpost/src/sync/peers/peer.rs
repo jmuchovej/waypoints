@@ -5,21 +5,14 @@
 
 use std::future::Future;
 
-use domain::sync::{DeviceID, RealmID};
+use domain::{DeviceID, RealmID};
 use serde::Serialize;
 use serde_json::value::RawValue;
 
-use super::service::{UploadRejection, accept_upload, serve_fetch};
+use super::service::{accept_upload, serve_fetch};
 use super::store::{EnvelopeStore, MemoryStore};
 use super::wire::{FetchResponse, UploadResponse};
-
-#[derive(Debug, thiserror::Error)]
-pub enum PeerError {
-    #[error("peer transport error: {0}")]
-    Transport(String),
-    #[error("peer rejected request ({status}): {message}")]
-    Rejected { status: u16, message: String },
-}
+use super::{PeerError, PeerResult};
 
 /// A peer that stores and serves envelopes: the two §4 requests,
 /// transport unspecified.
@@ -30,7 +23,7 @@ pub trait Peer: Send + Sync {
         &self,
         realm_id: RealmID,
         envelopes: Vec<Box<RawValue>>,
-    ) -> impl Future<Output = Result<UploadResponse, PeerError>> + Send;
+    ) -> impl Future<Output = PeerResult<UploadResponse>> + Send;
 
     /// Fetch a page since `since_seq` (§4.2). `exclude_device` is the
     /// device echo filter (a bandwidth optimization only) — a pulling
@@ -41,7 +34,7 @@ pub trait Peer: Send + Sync {
         since_seq: i64,
         exclude_device: Option<DeviceID>,
         limit: usize,
-    ) -> impl Future<Output = Result<FetchResponse, PeerError>> + Send;
+    ) -> impl Future<Output = PeerResult<FetchResponse>> + Send;
 }
 
 // ── HttpPeer ────────────────────────────────────────────────────────────
@@ -74,13 +67,11 @@ impl HttpPeer {
         format!("{}/realms/{}/envelopes", self.base_url, realm_id)
     }
 
-    async fn parse<T: serde::de::DeserializeOwned>(
-        response: reqwest::Response,
-    ) -> Result<T, PeerError> {
+    async fn parse<T: serde::de::DeserializeOwned>(response: reqwest::Response) -> PeerResult<T> {
         let status = response.status();
         if !status.is_success() {
             let message = response.text().await.unwrap_or_default();
-            return Err(PeerError::Rejected {
+            return Err(PeerError::RejectedRequest {
                 status: status.as_u16(),
                 message,
             });
@@ -97,7 +88,7 @@ impl Peer for HttpPeer {
         &self,
         realm_id: RealmID,
         envelopes: Vec<Box<RawValue>>,
-    ) -> Result<UploadResponse, PeerError> {
+    ) -> PeerResult<UploadResponse> {
         #[derive(Serialize)]
         struct UploadRequest {
             envelopes: Vec<Box<RawValue>>,
@@ -120,7 +111,7 @@ impl Peer for HttpPeer {
         since_seq: i64,
         exclude_device: Option<DeviceID>,
         limit: usize,
-    ) -> Result<FetchResponse, PeerError> {
+    ) -> PeerResult<FetchResponse> {
         let mut query = vec![
             ("since_seq", since_seq.to_string()),
             ("limit", limit.to_string()),
@@ -172,25 +163,12 @@ impl<S: EnvelopeStore> Peer for LocalPeer<S> {
         &self,
         realm_id: RealmID,
         envelopes: Vec<Box<RawValue>>,
-    ) -> Result<UploadResponse, PeerError> {
+    ) -> PeerResult<UploadResponse> {
         let refs: Vec<&RawValue> = envelopes.iter().map(AsRef::as_ref).collect();
-        accept_upload(&self.store, realm_id, &refs, None)
-            .await
-            .map_err(|rejection| match rejection {
-                UploadRejection::Malformed(message) => PeerError::Rejected {
-                    status: 400,
-                    message,
-                },
-                UploadRejection::RealmMismatch { group_id } => PeerError::Rejected {
-                    status: 400,
-                    message: format!("envelope {group_id} realm mismatch"),
-                },
-                UploadRejection::AccountMismatch { group_id } => PeerError::Rejected {
-                    status: 403,
-                    message: format!("envelope {group_id} account mismatch"),
-                },
-                UploadRejection::Store(e) => PeerError::Transport(e.to_string()),
-            })
+        // Pure passthrough: the service already speaks PeerError, and a
+        // local caller gets the structured rejection variants a remote
+        // caller loses to the wire.
+        accept_upload(&self.store, realm_id, &refs, None).await
     }
 
     async fn fetch_since(
@@ -199,10 +177,8 @@ impl<S: EnvelopeStore> Peer for LocalPeer<S> {
         since_seq: i64,
         exclude_device: Option<DeviceID>,
         limit: usize,
-    ) -> Result<FetchResponse, PeerError> {
-        serve_fetch(&self.store, realm_id, since_seq, exclude_device, limit)
-            .await
-            .map_err(|e| PeerError::Transport(e.to_string()))
+    ) -> PeerResult<FetchResponse> {
+        serve_fetch(&self.store, realm_id, since_seq, exclude_device, limit).await
     }
 }
 
@@ -218,7 +194,7 @@ impl Peer for NoopPeer {
         &self,
         _realm_id: RealmID,
         _envelopes: Vec<Box<RawValue>>,
-    ) -> Result<UploadResponse, PeerError> {
+    ) -> PeerResult<UploadResponse> {
         Ok(UploadResponse {
             results: Vec::new(),
             max_seq: 0,
@@ -231,7 +207,7 @@ impl Peer for NoopPeer {
         since_seq: i64,
         _exclude_device: Option<DeviceID>,
         _limit: usize,
-    ) -> Result<FetchResponse, PeerError> {
+    ) -> PeerResult<FetchResponse> {
         Ok(FetchResponse {
             envelopes: Vec::new(),
             next_since: since_seq,

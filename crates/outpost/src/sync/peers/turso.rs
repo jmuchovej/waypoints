@@ -7,14 +7,15 @@ use domain::sync::{DeviceID, RealmID};
 use tokio::sync::Mutex;
 use turso::{Connection, Value};
 
-use super::store::{EnvelopeStore, GossipStore, StoreError, StoredEnvelope};
+use super::error::{PeerError, PeerResult};
+use super::store::{EnvelopeStore, GossipStore, StoredEnvelope};
 use super::wire::EnvelopeFace;
 
 const SCHEMA: &str = include_str!("../../../schema.sql");
 
-impl From<turso::Error> for StoreError {
+impl From<turso::Error> for PeerError {
     fn from(e: turso::Error) -> Self {
-        StoreError(format!("database error: {e}"))
+        PeerError::Storage(format!("database error: {e}"))
     }
 }
 
@@ -25,7 +26,7 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub async fn open(path: &str) -> Result<Self, StoreError> {
+    pub async fn open(path: &str) -> PeerResult<Self> {
         let db = turso::Builder::new_local(path).build().await?;
         let conn = db.connect()?;
         conn.pragma_update("journal_mode", "WAL").await?;
@@ -45,7 +46,7 @@ impl EnvelopeStore for Storage {
         faces: &[EnvelopeFace],
         payloads: &[&str],
         received_at: &str,
-    ) -> Result<Vec<(domain::sync::OpID, i64)>, StoreError> {
+    ) -> PeerResult<Vec<(domain::sync::OpID, i64)>> {
         let conn = self.conn.lock().await;
         for (face, payload) in faces.iter().zip(payloads) {
             conn.execute(
@@ -94,7 +95,7 @@ impl EnvelopeStore for Storage {
         realm_id: RealmID,
         since_seq: i64,
         limit: usize,
-    ) -> Result<Vec<StoredEnvelope>, StoreError> {
+    ) -> PeerResult<Vec<StoredEnvelope>> {
         let conn = self.conn.lock().await;
         let mut rows = conn
             .query(
@@ -135,7 +136,7 @@ impl EnvelopeStore for Storage {
 
 #[async_trait]
 impl GossipStore for Storage {
-    async fn peer_cursor(&self, peer_id: &str, realm_id: RealmID) -> Result<i64, StoreError> {
+    async fn peer_cursor(&self, peer_id: &str, realm_id: RealmID) -> PeerResult<i64> {
         let conn = self.conn.lock().await;
         let mut rows = conn
             .query(
@@ -157,7 +158,7 @@ impl GossipStore for Storage {
         peer_id: &str,
         realm_id: RealmID,
         last_seq: i64,
-    ) -> Result<(), StoreError> {
+    ) -> PeerResult<()> {
         let conn = self.conn.lock().await;
         conn.execute(
             "INSERT INTO peer_cursors (peer_id, realm_id, last_seq)
@@ -169,7 +170,7 @@ impl GossipStore for Storage {
         Ok(())
     }
 
-    async fn known_realms(&self) -> Result<Vec<RealmID>, StoreError> {
+    async fn known_realms(&self) -> PeerResult<Vec<RealmID>> {
         let conn = self.conn.lock().await;
         let mut rows = conn
             .query("SELECT DISTINCT realm_id FROM envelopes", ())

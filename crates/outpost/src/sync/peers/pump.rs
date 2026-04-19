@@ -5,12 +5,13 @@
 //! append succeeds. No drift quarantine: that happens at apply time, on
 //! devices.
 
+use domain::sync::RealmID;
 use tracing::warn;
 
-use super::peer::{HttpPeer, Peer, PeerError};
-use super::store::{GossipStore, StoreError, rfc3339_now};
+use super::error::PeerResult;
+use super::peer::{HttpPeer, Peer};
+use super::store::{GossipStore, rfc3339_now};
 use super::wire::{DEFAULT_LIMIT, EnvelopeFace};
-use domain::sync::RealmID;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct PumpOutcome {
@@ -23,21 +24,10 @@ pub struct PumpOutcome {
     pub dropped: usize,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum PumpError {
-    #[error(transparent)]
-    Peer(#[from] PeerError),
-    #[error(transparent)]
-    Store(#[from] StoreError),
-}
-
 /// Drain one (peer, realm) edge to quiescence. Safe to call at any time,
 /// from any state, repeatedly — same contract as the app's `sync_once`.
-pub async fn pump_once<S>(
-    store: &S,
-    peer: &HttpPeer,
-    realm_id: RealmID,
-) -> Result<PumpOutcome, PumpError>
+/// Store failures ride into `PeerError::Store` via `From`.
+pub async fn pump_once<S>(store: &S, peer: &HttpPeer, realm_id: RealmID) -> PeerResult<PumpOutcome>
 where
     S: GossipStore + ?Sized,
 {
