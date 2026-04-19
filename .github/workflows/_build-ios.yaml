@@ -1,5 +1,8 @@
 name: Build iOS
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_call:
     inputs:
@@ -55,9 +58,12 @@ jobs:
           cert_path="${RUNNER_TEMP}/distribution.p12"
           echo "${secrets}" | yq '.distribution.certificate' | base64 -d > "${cert_path}"
           cert_password=$(echo "${secrets}" | yq '.distribution.password')
+          keychain_password=$(openssl rand -base64 32)
+
+          echo "::add-mask::${cert_password}"
+          echo "::add-mask::${keychain_password}"
 
           keychain_path="${RUNNER_TEMP}/build.keychain-db"
-          keychain_password=$(openssl rand -base64 32)
           security create-keychain -p "${keychain_password}" "${keychain_path}"
           security set-keychain-settings -lut 21600 "${keychain_path}"
           security unlock-keychain -p "${keychain_password}" "${keychain_path}"
@@ -73,8 +79,14 @@ jobs:
           # App Store Connect API key (for fastlane)
           asc_key_path="${RUNNER_TEMP}/AuthKey.p8"
           echo "${secrets}" | yq '.developer-id.key-prv' > "${asc_key_path}"
-          echo "ASC_KEY_ID=$(echo "${secrets}" | yq '.developer-id.key-id')" >> "$GITHUB_ENV"
-          echo "ASC_ISSUER_ID=$(echo "${secrets}" | yq '.developer-id.issuer-id')" >> "$GITHUB_ENV"
+          asc_key_id=$(echo "${secrets}" | yq '.developer-id.key-id')
+          asc_issuer=$(echo "${secrets}" | yq '.developer-id.issuer-id')
+
+          echo "::add-mask::${asc_key_id}"
+          echo "::add-mask::${asc_issuer}"
+
+          echo "ASC_KEY_ID=${asc_key_id}" >> "$GITHUB_ENV"
+          echo "ASC_ISSUER_ID=${asc_issuer}" >> "$GITHUB_ENV"
           echo "ASC_KEY_PATH=${asc_key_path}" >> "$GITHUB_ENV"
 
       - name: Build iOS

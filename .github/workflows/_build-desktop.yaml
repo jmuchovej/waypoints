@@ -1,12 +1,16 @@
 name: Build Desktop
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_call:
     inputs:
       flavor:
         required: true
         type: string
-        description: "Build flavor — matches icons recipe and feature flag (preview,
+        description:
+          "Build flavor — matches icons recipe and feature flag (preview,
           stable)"
       features:
         required: true
@@ -16,7 +20,8 @@ on:
         required: false
         type: string
         default: ""
-        description: "Tauri config override file (e.g. Tauri.flavor=preview.toml); empty
+        description:
+          "Tauri config override file (e.g. Tauri.flavor=preview.toml); empty
           for stable"
       tag:
         required: false
@@ -68,18 +73,44 @@ jobs:
       - name: Install JS deps
         run: bun install
 
-      - name: Install sops + age + yq (macOS)
-        if: matrix.platform == 'macos'
-        run: brew install sops age yq
-
-      - name: Install sops + age + yq (Linux)
-        if: matrix.platform == 'linux'
-        run: sudo apt-get install -y sops age yq
-
-      - name: Install sops + age + yq (Windows)
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: choco install sops age yq -y
+      - name: Install sops + age + yq
+        env:
+          SOPS_VERSION: v3.9.1
+          YQ_VERSION: v4.45.1
+          AGE_VERSION: v1.2.1
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/tools"
+          case "${{ matrix.platform }}" in
+            macos)
+              SOPS_BIN="sops-${SOPS_VERSION}.darwin.arm64"
+              YQ_BIN="yq_darwin_arm64"
+              AGE_ARCHIVE="age-${AGE_VERSION}-darwin-arm64.tar.gz"
+              ;;
+            linux)
+              SOPS_BIN="sops-${SOPS_VERSION}.linux.amd64"
+              YQ_BIN="yq_linux_amd64"
+              AGE_ARCHIVE="age-${AGE_VERSION}-linux-amd64.tar.gz"
+              ;;
+            windows)
+              SOPS_BIN="sops-${SOPS_VERSION}.exe"
+              YQ_BIN="yq_windows_amd64.exe"
+              AGE_ARCHIVE="age-${AGE_VERSION}-windows-amd64.zip"
+              ;;
+          esac
+          curl -sSL -o "${RUNNER_TEMP}/tools/sops" \
+            "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/${SOPS_BIN}"
+          curl -sSL -o "${RUNNER_TEMP}/tools/yq" \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BIN}"
+          curl -sSL -o "${RUNNER_TEMP}/tools/age-archive" \
+            "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/${AGE_ARCHIVE}"
+          if [[ "${AGE_ARCHIVE}" == *.zip ]]; then
+            unzip -j "${RUNNER_TEMP}/tools/age-archive" -d "${RUNNER_TEMP}/tools"
+          else
+            tar -xz -C "${RUNNER_TEMP}/tools" --strip-components=1 -f "${RUNNER_TEMP}/tools/age-archive"
+          fi
+          chmod +x "${RUNNER_TEMP}/tools/"*
+          echo "${RUNNER_TEMP}/tools" >> "$GITHUB_PATH"
 
       - name: Decrypt Apple signing secrets
         if: matrix.platform == 'macos'
@@ -89,11 +120,22 @@ jobs:
           secrets=$(sops -d .secrets/apple.sops.yaml)
           key_path="${RUNNER_TEMP}/AuthKey.p8"
           echo "${secrets}" | yq '.developer-id.key-prv' > "${key_path}"
+
+          issuer=$(echo "${secrets}" | yq '.developer-id.issuer-id')
+          key_id=$(echo "${secrets}" | yq '.developer-id.key-id')
+          cert=$(echo "${secrets}" | yq '.developer-id.certificate')
+          cert_pw=$(echo "${secrets}" | yq '.developer-id.password')
+
+          echo "::add-mask::${issuer}"
+          echo "::add-mask::${key_id}"
+          echo "::add-mask::${cert}"
+          echo "::add-mask::${cert_pw}"
+
           echo "APPLE_API_KEY_PATH=${key_path}" >> "$GITHUB_ENV"
-          echo "APPLE_API_ISSUER=$(echo "${secrets}" | yq '.developer-id.issuer-id')" >> "$GITHUB_ENV"
-          echo "APPLE_API_KEY=$(echo "${secrets}" | yq '.developer-id.key-id')" >> "$GITHUB_ENV"
-          echo "APPLE_CERTIFICATE=$(echo "${secrets}" | yq '.developer-id.certificate')" >> "$GITHUB_ENV"
-          echo "APPLE_CERTIFICATE_PASSWORD=$(echo "${secrets}" | yq '.developer-id.password')" >> "$GITHUB_ENV"
+          echo "APPLE_API_ISSUER=${issuer}" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY=${key_id}" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE=${cert}" >> "$GITHUB_ENV"
+          echo "APPLE_CERTIFICATE_PASSWORD=${cert_pw}" >> "$GITHUB_ENV"
 
       - name: Decrypt updater signing key
         shell: bash
@@ -101,19 +143,28 @@ jobs:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
           secrets=$(sops -d .secrets/updater.sops.yaml)
+          priv=$(echo "${secrets}" | yq '.private-key')
+          priv_pw=$(echo "${secrets}" | yq '.password')
+
+          # Multi-line value: mask each line, since add-mask only matches exact strings
+          while IFS= read -r line; do
+            [ -n "$line" ] && echo "::add-mask::${line}"
+          done <<< "${priv}"
+          echo "::add-mask::${priv_pw}"
+
           {
             echo 'TAURI_SIGNING_PRIVATE_KEY<<UPDATER_EOF'
-            echo "${secrets}" | yq '.private-key'
+            echo "${priv}"
             echo 'UPDATER_EOF'
           } >> "$GITHUB_ENV"
-          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$(echo "${secrets}" | yq '.password')" >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${priv_pw}" >> "$GITHUB_ENV"
 
       - name: Generate icons
         run: just icons::${{ inputs.flavor }}
         working-directory: waypoints/src-tauri
 
       - name: Build
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@v0.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ env.APPLE_CERTIFICATE }}
@@ -124,10 +175,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          projectPath: waypoints
+          projectPath: ./waypoints
           args: >-
             --features ${{ inputs.features }} ${{ inputs.config != '' &&
-            format('--config {0}', inputs.config) || '' }}
+            format('--config src-tauri/{0}', inputs.config) || '' }}
           tagName: ${{ inputs.tag }}
           releaseName: "Waypoints ${{ inputs.tag }}"
           prerelease: ${{ inputs.prerelease }}

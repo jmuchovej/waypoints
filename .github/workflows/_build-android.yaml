@@ -1,5 +1,8 @@
 name: Build Android
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_call:
     inputs:
@@ -34,7 +37,9 @@ jobs:
       - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y sops age yq
+          curl -sS https://i.jpillora.com/getsops/sops@v3.9.1 | sudo bash
+          curl -sS https://i.jpillora.com/mikefarah/yq@v4.45.1 | sudo bash
+          curl -sS https://i.jpillora.com/FiloSottile/age@v1.2.1 | sudo bash
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -68,6 +73,10 @@ jobs:
           echo "${secrets}" | yq '.keystore' | base64 -d > "${keystore_path}"
           key_alias=$(echo "${secrets}" | yq '.key-alias')
           password=$(echo "${secrets}" | yq '.password')
+
+          echo "::add-mask::${key_alias}"
+          echo "::add-mask::${password}"
+
           cat > waypoints/src-tauri/gen/android/keystore.properties <<EOF
           storeFile=${keystore_path}
           keyAlias=${key_alias}
