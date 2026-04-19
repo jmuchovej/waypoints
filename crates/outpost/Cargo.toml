@@ -17,7 +17,7 @@ default = ["peers"]
 # EnvelopeStore seam, and the gossip pump. What an embedding app pulls in.
 # Depends on domain for the frozen identity newtypes (OpID & friends) —
 # the log-plane fence is "never parse checkpoints", not "no domain types".
-peers = ["dep:reqwest", "dep:domain", "dep:uuid"]
+peers = ["dep:reqwest", "dep:domain", "dep:uuid", "dep:chrono"]
 # The §4 endpoints as an axum router, plus request auth.
 peers-serve = ["peers", "dep:axum", "dep:sha2", "tokio/net"]
 # The embedded turso envelope store (standalone outposts).
@@ -47,6 +47,8 @@ required-features = ["binary"]
 [dependencies]
 async-trait.workspace = true
 axum = { workspace = true, optional = true }
+# The workspace chrono is default-features = false; `clock` enables Utc::now().
+chrono = { workspace = true, features = ["clock"], optional = true }
 clap = { workspace = true, features = ["env"], optional = true }
 domain = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
