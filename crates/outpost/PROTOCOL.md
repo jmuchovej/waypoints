@@ -25,6 +25,60 @@ The relay is **replaceable and dumb** on purpose: conflict resolution,
 schema knowledge, and authority over data live exclusively in the app's
 Rust core. A relay that tried to be clever would be wrong.
 
+### Terminology: not Syncthing's "relay"
+
+We borrow Syncthing's *shape*, not its vocabulary — Syncthing uses the
+word "relay" for a different component. The mapping:
+
+| Syncthing component | What it does | Waypoints analogue |
+| ------------------- | ------------ | ------------------ |
+| Peer (a Syncthing instance) | holds data, reconciles indexes with other peers | a Waypoints installation |
+| Untrusted always-on device (e.g. a NAS node) | stores data it can't read, so peers that are never simultaneously online still converge | **what we call a relay** |
+| Relay (`strelaysrv`) | pipes encrypted bytes between two *live* peers when NAT traversal fails; stores nothing | none — a possible future transport concern (§8) |
+| Discovery server | maps device IDs to current addresses; holds no data | none — peers are configured statically |
+
+A Waypoints relay is Syncthing's *always-on peer*, not its relay:
+store-and-forward, never live-forwarding. If live forwarding or peer
+discovery infrastructure ever arrives, those are new components beside
+this one, not versions of it.
+
+### Gossip: relays replicating from relays
+
+A relay may also *pull*: run the §4.2 fetch loop against another relay
+and append what it receives to its own store, exactly as if a client
+had uploaded it. This is classical pull-based anti-entropy, and it is
+what turns isolated hub-spoke stars into a converging mesh. Nothing
+about it changes the protocol — a gossiping relay is just a peer
+exercising the client half — and it preserves the relay's defining
+property: it carries envelopes, it never originates or interprets them.
+
+Obligations of a pulling relay (a subset of §5 — it stores, never
+applies):
+
+1. **Realm-guard** each received envelope (§5.2).
+2. **Append idempotently** — `group_id` uniqueness already does this.
+   Idempotency is also what terminates propagation around cycles: A
+   pulls from B while B pulls from A, and every envelope settles after
+   one lap.
+3. **Assign fresh seqs.** Gossiped envelopes get this relay's own
+   arrival seqs; the same envelope has different seqs on different
+   relays, which §3 already made safe.
+4. **Track per-(peer, realm) cursors**, advanced only after the local
+   append succeeds.
+5. **Never rewrite payloads** — byte-verbatim in, byte-verbatim out.
+
+Drift quarantine (§5.3) is deliberately *not* on this list: it protects
+a peer's local HLC clock, and a relay has none. Quarantine happens at
+apply time, on devices.
+
+Gossip is pull-only by design. The fetch path needs only a realm grant,
+whereas upload in official mode also checks that each envelope's
+`account_id` matches the token's identity (§4.1) — a constraint a
+carrier hauling other accounts' envelopes cannot meet. Convergence
+therefore requires each edge of the peering graph to be configured on
+the *pulling* side: if A should hold B's envelopes, A must list B as a
+peer. Propagation latency is poll interval × graph diameter.
+
 ### Identity scoping
 
 | ID          | Scope of uniqueness                    | Guaranteed by            |
@@ -145,8 +199,10 @@ Response `200`:
   CONFLICT DO NOTHING` + read-back). Clients retry freely.
 - The relay validates only: token scope (does this device belong to an
   account allowed to write this realm), `realm_id` in the path matches
-  each envelope, and a payload size cap. It does not parse
-  `checkpoints`.
+  each envelope, that each envelope's `account_id` matches the token's
+  identity (when the auth mode carries one — shared-secret mode has no
+  per-device identity and skips this, see §6), and a payload size cap.
+  It does not parse `checkpoints`.
 - Batch cap: 100 envelopes or 1 MiB per request, whichever is hit
   first (`413` beyond it).
 
@@ -254,7 +310,13 @@ later is invisible to clients.
 - **In-app serving / LAN sync.** The app answering §4 from its own
   `sync_log`. Needs listeners, discovery, NAT thinking — protocol
   already accommodates it (per-source cursors), implementation does not.
+  The decided shape: the sync engine lives in this crate behind cargo
+  features (the app pulls in the client/`EnvelopeStore` surface without
+  the server or storage backends), and the app serves from `sync_log`
+  once that table gains an arrival-order `local_seq` and a byte-verbatim
+  `payload` column — verbatim so a peer can carry envelopes it cannot
+  parse (a newer app version's, or later, ciphertext).
 - **Per-peer upload tracking.** v1 tracks "uploaded to *the* relay" as a
   single flag. Multiple upload targets want an explicit `local_seq` on
-  the log and per-peer high-water marks (Syncthing-style). Schema note,
-  not a v1 need.
+  the log and per-peer high-water marks (Syncthing-style) — the same
+  `local_seq` in-app serving needs. Schema note, not a v1 need.
