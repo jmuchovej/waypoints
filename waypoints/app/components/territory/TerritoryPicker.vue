@@ -11,6 +11,18 @@ const emit = defineEmits<{
 const locationType = ref<"managed" | "custom" | "import" | null>(null);
 const selectedPath = ref<string | null>(null);
 
+// The native folder picker only exists under Tauri. In the dev browser backend
+// there's no native dialog, so custom/import paths are entered manually below.
+const isTauri = typeof window !== "undefined" && "isTauri" in window;
+
+// Bridge the `string | null` path sentinel to UInput's string model.
+const pathInput = computed({
+  get: () => selectedPath.value ?? "",
+  set: (value: string) => {
+    selectedPath.value = value || null;
+  },
+});
+
 const nameSchema = z.object({
   name: z.string().min(1, "Name is required").max(64, "Name must be 64 characters or fewer"),
 });
@@ -32,6 +44,8 @@ const canSubmit = computed(() => {
 });
 
 async function pickFolder() {
+  // No native dialog outside Tauri; the manual path input drives selectedPath.
+  if (!isTauri) return;
   const path = await open({ directory: true, multiple: false });
   if (path) {
     selectedPath.value = path as string;
@@ -114,8 +128,16 @@ const uiPickerButton = {
         </UFormField>
       </template>
 
+      <!-- Manual path entry (dev browser backend has no native folder picker) -->
+      <UFormField
+        v-if="!isTauri && (locationType === 'custom' || locationType === 'import')"
+        label="Folder path"
+      >
+        <UInput v-model="pathInput" placeholder="/path/to/territory" class="w-full" />
+      </UFormField>
+
       <!-- Selected path display (custom / import) -->
-      <p v-if="selectedPath" class="text-sm text-muted truncate max-w-full w-full text-center">
+      <p v-else-if="selectedPath" class="text-sm text-muted truncate max-w-full w-full text-center">
         {{ selectedPath }}
       </p>
 

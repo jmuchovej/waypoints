@@ -8,8 +8,7 @@ export interface DocumentBodyProps {
 
 <script setup lang="ts">
 import type { RenderNode } from "@waypoints/cartograph";
-import ipc from "~/ipc";
-import { listen } from "@tauri-apps/api/event";
+import ipc, { listen } from "~/ipc";
 import {
   useBlockOrchestrator,
   useBlockKeymap,

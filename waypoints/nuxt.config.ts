@@ -40,6 +40,15 @@ export default defineNuxtConfig({
 
   ssr: false,
 
+  // Dev-only: forward IPC calls from the Nuxt dev server (:9297) to the
+  // `waypoints-serve` HTTP backend, so the app runs in a plain browser with HMR
+  // and same-origin `/ipc` requests. Has no effect on production builds.
+  nitro: {
+    devProxy: {
+      "/ipc": { target: "http://localhost:8123/ipc", changeOrigin: true },
+    },
+  },
+
   dir: {
     modules: "app/modules",
   },

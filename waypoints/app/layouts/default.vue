@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { today, getLocalTimeZone } from "@internationalized/date";
 import { ref } from "vue";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "~/ipc";
 import { AppSidebar } from "#components";
 
 const route = useRoute();
@@ -39,14 +39,11 @@ useHead({
   ],
 });
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
-const appWindow = getCurrentWindow();
-
 watch(
   () => route.fullPath,
   async () => {
     await nextTick(); // let useHead flush the new document.title first
-    await appWindow.setTitle(document.title || "Waypoints");
+    await setNativeTitle(document.title || "Waypoints");
   },
   { immediate: true },
 );

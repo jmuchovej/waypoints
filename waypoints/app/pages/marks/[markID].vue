@@ -4,7 +4,6 @@ import DocumentBody from "~editor/components/DocumentBody.vue";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import ReadingsTable from "~editor/components/ReadingsTable.vue";
 import ipc from "~/ipc";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const log = createLogger("marks");
 
@@ -77,7 +76,7 @@ async function load() {
     }
 
     rawMark.value = mark;
-    await getCurrentWindow().setTitle(mark.value.plain_text);
+    await setNativeTitle(mark.value.plain_text);
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {

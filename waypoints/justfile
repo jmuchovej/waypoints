@@ -6,13 +6,18 @@ default:
 via-nuxi +ARGS:
     bunx nuxi {{ ARGS }}
 
-dev:
-    @just via-nuxi dev
+# Resolve a flavor's bundle identifier from its Tauri config (single source of truth).
+[private]
+_identifier flavor:
+    @yq -p toml -o yaml '.identifier' "{{ justfile_directory() }}/src-tauri/Tauri.flavor={{ flavor }}.toml"
+
+dev flavor="development":
+    VITE_WAYPOINTS_FLAVOR=$(just _identifier {{ flavor }}) just via-nuxi dev
 
 setup: postinstall
 
-generate:
-    @just via-nuxi generate
+generate flavor="development":
+    VITE_WAYPOINTS_FLAVOR=$(just _identifier {{ flavor }}) just via-nuxi generate
 
 postinstall:
     @just via-nuxi prepare

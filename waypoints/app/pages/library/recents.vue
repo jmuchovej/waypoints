@@ -61,8 +61,7 @@ async function onTitleUpdate(mark: LandmarkMark, richText: RichText) {
 useHead({
   title: "Recents",
 });
-import { getCurrentWindow } from "@tauri-apps/api/window";
-await getCurrentWindow().setTitle("Recents");
+await setNativeTitle("Recents");
 </script>
 
 <template>

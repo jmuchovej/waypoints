@@ -2,7 +2,10 @@ import ipc from "~/ipc";
 
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) return;
-  if (import.meta.dev) return;
+  // A backend is available under Tauri, or (in dev) via the waypoints-serve
+  // HTTP backend. In a production browser build there's no backend, so don't
+  // gate routing. The try/catch below still no-ops if IPC isn't ready yet.
+  if (!("isTauri" in window) && !import.meta.dev) return;
 
   try {
     const territories = await ipc.territory.list();
