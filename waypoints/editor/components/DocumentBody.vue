@@ -143,16 +143,17 @@ function onBackgroundClick(e: MouseEvent) {
   }
 }
 
-/** Click in the overscroll area: focus last empty block or append a new one */
+/** Click in the overscroll area: focus last empty block or append a new one.
+ *  Always operates at the top level — never inside compound blocks. */
 async function onOverscrollClick() {
-  const all = blocks.value;
+  const top = topLevelBlocks.value;
 
-  if (all.length === 0) {
+  if (top.length === 0) {
     await orchestrator.onCreateFirstBlock();
     return;
   }
 
-  const last = all[all.length - 1]!;
+  const last = top[top.length - 1]!;
 
   if (isContent(last.data, ContentType.Paragraph) && isEmpty(last.data)) {
     focus.focusBlock(last.id, "start");
