@@ -15,16 +15,50 @@ val tauriProperties =
       }
     }
 
+val waypointsFlavor = System.getenv("WAYPOINTS_FLAVOR") ?: "stable"
+val waypointsBuild = System.getenv("WAYPOINTS_BUILD") == "1"
+
 android {
   compileSdk = 36
   namespace = "so.waypoints"
   defaultConfig {
     manifestPlaceholders["usesCleartextTraffic"] = "false"
-    applicationId = "so.waypoints"
+    // Only suffix the applicationId for distribution builds — during dev, the
+    // Tauri CLI hardcodes the launch intent to the base identifier.
+    applicationId =
+        "so.waypoints" +
+            if (waypointsBuild) {
+              when (waypointsFlavor) {
+                "development" -> ".dev"
+                "preview" -> ".preview"
+                else -> ""
+              }
+            } else {
+              ""
+            }
     minSdk = 24
     targetSdk = 36
     versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
     versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+
+    resValue(
+        "string",
+        "app_name",
+        when (waypointsFlavor) {
+          "development" -> "Waypoints (Dev)"
+          "preview" -> "Waypoints (Preview)"
+          else -> "Waypoints"
+        },
+    )
+    resValue(
+        "string",
+        "main_activity_title",
+        when (waypointsFlavor) {
+          "development" -> "Waypoints (Dev)"
+          "preview" -> "Waypoints (Preview)"
+          else -> "Waypoints"
+        },
+    )
   }
 
   signingConfigs {
@@ -65,7 +99,11 @@ android {
       signingConfig = signingConfigs.getByName("release")
     }
   }
-  kotlinOptions { jvmTarget = "1.8" }
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
+  kotlinOptions { jvmTarget = "17" }
   buildFeatures { buildConfig = true }
 }
 

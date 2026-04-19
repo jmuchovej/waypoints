@@ -1,0 +1,4 @@
+# :schema https://schema.tauri.app/config/2
+product-name = "Waypoints"
+version = "0.1.0"
+identifier = "so.waypoints"
