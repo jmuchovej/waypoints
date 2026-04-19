@@ -21,7 +21,7 @@ async-trait.workspace = true
 chrono.workspace = true
 domain.workspace = true
 hostname.workspace = true
-reqwest.workspace = true
+outpost = { workspace = true, features = ["peers"] }
 sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
