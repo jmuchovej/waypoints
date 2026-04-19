@@ -122,8 +122,6 @@ pub(crate) fn documents() -> Vec<&'static str> {
         include_str!("data/tokyo-restaurants.md"),
         include_str!("data/travel-gear.md"),
         include_str!("data/reading-list.md"),
-        include_str!("data/cosmos-notes.md"),
-        include_str!("data/elegant-universe-notes.md"),
         // ── People ─────────────────────────────────────────────────
         include_str!("data/people/carlo-rovelli.md"),
         include_str!("data/people/douglas-hofstadter.md"),

@@ -266,8 +266,9 @@ fn import(input: &str) -> ImportResult {
     // List state
     let mut list_ordered = false;
 
-    // Blockquote accumulator
+    // Blockquote/callout accumulator
     let mut bq_items: Vec<Content> = Vec::new();
+    let mut bq_kind: Option<pulldown_cmark::BlockQuoteKind> = None;
 
     // Metadata accumulator
     let mut metadata_text = String::new();
@@ -318,8 +319,9 @@ fn import(input: &str) -> ImportResult {
                 current_text.clear();
                 active_marks.clear();
             }
-            Event::Start(Tag::BlockQuote(_)) => {
+            Event::Start(Tag::BlockQuote(kind)) => {
                 ctx = BlockCtx::Blockquote;
+                bq_kind = kind;
                 bq_items.clear();
             }
             Event::Start(Tag::List(start)) => {
@@ -437,9 +439,9 @@ fn import(input: &str) -> ImportResult {
                 }
 
                 blocks.push(ParsedBlock::leaf(match level {
-                    HeadingLevel::H1 => Content::Heading1 { rich_text: rt },
-                    HeadingLevel::H2 => Content::Heading2 { rich_text: rt },
-                    _ => Content::Heading3 { rich_text: rt },
+                    HeadingLevel::H1 => Content::heading1(rt),
+                    HeadingLevel::H2 => Content::heading2(rt),
+                    _ => Content::heading3(rt),
                 }));
                 ctx = BlockCtx::None;
             }
@@ -451,24 +453,34 @@ fn import(input: &str) -> ImportResult {
                 } else {
                     match ctx {
                         BlockCtx::Blockquote => {
-                            bq_items.push(Content::Paragraph { rich_text: rt });
+                            bq_items.push(Content::paragraph(rt));
                         }
                         BlockCtx::ListItem { ordered } => {
                             if ordered {
-                                blocks.push(ParsedBlock::leaf(Content::EnumItem { rich_text: rt }));
+                                blocks.push(ParsedBlock::leaf(Content::enum_item(rt)));
                             } else {
-                                blocks.push(ParsedBlock::leaf(Content::ListItem { rich_text: rt }));
+                                blocks.push(ParsedBlock::leaf(Content::list_item(rt)));
                             }
                         }
                         _ => {
-                            blocks.push(ParsedBlock::leaf(Content::Paragraph { rich_text: rt }));
+                            blocks.push(ParsedBlock::leaf(Content::paragraph(rt)));
                         }
                     }
                 }
             }
             Event::End(TagEnd::BlockQuote(_)) => {
+                use pulldown_cmark::BlockQuoteKind as BQK;
+
+                let compound = match bq_kind.take() {
+                    Some(BQK::Note) => Content::callout("ℹ️".to_string()),
+                    Some(BQK::Tip) => Content::callout("💡".to_string()),
+                    Some(BQK::Important) => Content::callout("❗".to_string()),
+                    Some(BQK::Warning) => Content::callout("⚠️".to_string()),
+                    Some(BQK::Caution) => Content::callout("🚨".to_string()),
+                    None => Content::blockquote(),
+                };
                 blocks.push(ParsedBlock::compound(
-                    Content::Blockquote,
+                    compound,
                     std::mem::take(&mut bq_items),
                 ));
                 ctx = BlockCtx::None;
@@ -478,9 +490,9 @@ fn import(input: &str) -> ImportResult {
                     flush_text(&mut current_text, &active_marks, &mut segments);
                     let rt = take_rich_text(&mut segments);
                     if list_ordered {
-                        blocks.push(ParsedBlock::leaf(Content::EnumItem { rich_text: rt }));
+                        blocks.push(ParsedBlock::leaf(Content::enum_item(rt)));
                     } else {
-                        blocks.push(ParsedBlock::leaf(Content::ListItem { rich_text: rt }));
+                        blocks.push(ParsedBlock::leaf(Content::list_item(rt)));
                     }
                 }
                 ctx = BlockCtx::None;
@@ -492,16 +504,16 @@ fn import(input: &str) -> ImportResult {
                 if code_lines.ends_with('\n') {
                     code_lines.pop();
                 }
-                blocks.push(ParsedBlock::leaf(Content::Code {
-                    language: std::mem::take(&mut code_lang),
-                    lines: code_lines.split('\n').map(String::from).collect(),
-                }));
+                blocks.push(ParsedBlock::leaf(Content::code(
+                    std::mem::take(&mut code_lang),
+                    code_lines.split('\n').map(String::from).collect(),
+                )));
                 code_lines.clear();
                 ctx = BlockCtx::None;
             }
 
             Event::Rule => {
-                blocks.push(ParsedBlock::leaf(Content::Divider));
+                blocks.push(ParsedBlock::leaf(Content::divider()));
             }
 
             _ => {}
@@ -672,7 +684,8 @@ mod tests {
         // landmark + paragraph = 2 marks
         assert_eq!(result.marks.len(), 2);
 
-        let MarkData::Content(Content::Paragraph { ref rich_text }) = result.marks[1].data else {
+        let MarkData::Content(Content::Paragraph { ref rich_text, .. }) = result.marks[1].data
+        else {
             panic!("expected paragraph");
         };
 
@@ -698,7 +711,8 @@ mod tests {
     fn bold_inline() {
         let md = "This is **bold** text";
         let result = WaypointsMarkdown::import(md);
-        let MarkData::Content(Content::Paragraph { ref rich_text }) = result.marks[1].data else {
+        let MarkData::Content(Content::Paragraph { ref rich_text, .. }) = result.marks[1].data
+        else {
             panic!("expected paragraph");
         };
         assert_eq!(rich_text.plain_text(), "This is bold text");
