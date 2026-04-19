@@ -55,6 +55,7 @@ pub fn run() {
             commands::editor::editor_move_marks,
             commands::editor::editor_update_mark_title,
             commands::editor::editor_update_mark_reading,
+            commands::editor::editor_wrap_in_compound,
             commands::editor::editor_create_mark_after,
             commands::editor::editor_update_mark_text,
             commands::editor::editor_split_mark,

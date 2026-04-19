@@ -6,6 +6,7 @@ import {
   contentData,
   isNestableType,
   isIndentableType,
+  isCompoundType,
 } from "@waypoints/domain";
 import type { RenderNode } from "@waypoints/editor";
 import ipc from "~/ipc";
@@ -381,12 +382,51 @@ export function useBlockOrchestrator(
   async function onChangeBlockType(id: MarkID, newContent: Content) {
     await flushPendingUpdates();
     stateVersion++;
-    try {
-      const result = await ipc.editor.updateMark(id, newContent, landmarkID.value);
-      focus.focusBlockDeferred(id, "start");
-      blocks.value = result.blocks;
-    } catch (e) {
-      log.error("updateMark (changeType) failed:", e);
+
+    if (isCompoundType(newContent.type)) {
+      // Compound blocks: create the compound and reparent the current block
+      // (or create an empty child if the block has no text).
+      const block = blocks.value.find((b) => b.id === id);
+      const parentId = block?.parent_id ?? landmarkID.value;
+      const hasContent =
+        block?.data.mark === "content" &&
+        "rich_text" in block.data &&
+        block.data.rich_text.segments.some((s: { text: string }) => s.text);
+
+      try {
+        const result = await ipc.editor.wrapInCompound(
+          contentData(newContent),
+          hasContent ? [id] : [],
+          hasContent ? null : id,
+          parentId,
+          landmarkID.value,
+        );
+        blocks.value = result.blocks;
+
+        if (hasContent) {
+          // Focus the reparented block (now inside the compound)
+          focus.focusBlock(id, "start");
+        } else {
+          // Delete the original empty block, focus the new child
+          try {
+            const deleteResult = await ipc.editor.deleteMarks([id], landmarkID.value);
+            blocks.value = deleteResult.blocks;
+          } catch {
+            // Non-critical — compound was created successfully
+          }
+          focus.focusBlockDeferred(result.new_mark_id, "start");
+        }
+      } catch (e) {
+        log.error("wrapInCompound failed:", e);
+      }
+    } else {
+      try {
+        const result = await ipc.editor.updateMark(id, newContent, landmarkID.value);
+        focus.focusBlockDeferred(id, "start");
+        blocks.value = result.blocks;
+      } catch (e) {
+        log.error("updateMark (changeType) failed:", e);
+      }
     }
   }
 

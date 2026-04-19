@@ -547,6 +547,96 @@ pub async fn merge_marks(
     Ok(MutationResult { blocks })
 }
 
+/// Create a compound block (blockquote, callout, etc.) and either:
+/// - Reparent the given `child_ids` under it, or
+/// - Create an empty paragraph child if `child_ids` is empty.
+///
+/// The compound block is placed at the position of the first child (or after
+/// `after_id` if no children are given).
+pub async fn wrap_in_compound(
+    db: &DatabaseConnection,
+    history: &mut CommandHistory,
+    compound_data: MarkData,
+    child_ids: &[MarkID],
+    after_id: Option<MarkID>,
+    parent_id: MarkID,
+    landmark_id: MarkID,
+) -> EditorResult<CreateResult> {
+    let compound_id = MarkID::new();
+    let now = chrono::Local::now().naive_utc();
+    let mut ops = Vec::new();
+
+    // Determine where to place the compound in the parent's child list.
+    let compound_order = if let Some(first_child) = child_ids.first() {
+        // Place at the first child's current position
+        let (_, old_index) = find_parent_edge(db, *first_child).await?;
+        old_index
+    } else if let Some(after) = after_id {
+        compute_order(db, parent_id, Some(after)).await?
+    } else {
+        compute_order(db, parent_id, None).await?
+    };
+
+    // Create the compound block
+    mark::insert(db, compound_id, &compound_data, now).await?;
+    terrain::insert_child_edge(db, parent_id, compound_id, &compound_order).await?;
+    ops.push(AtomicOp::CreateMark {
+        mark_id: compound_id,
+        data: compound_data,
+        parent_id: Some(parent_id),
+        fractional_index: compound_order,
+    });
+
+    let focus_id;
+
+    if child_ids.is_empty() {
+        // No children to wrap — create an empty paragraph inside the compound
+        let para_id = MarkID::new();
+        let para_data = MarkData::Content(Content::default());
+        let para_order = fractional_index::key_between(None, None);
+
+        mark::insert(db, para_id, &para_data, now).await?;
+        terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
+        ops.push(AtomicOp::CreateMark {
+            mark_id: para_id,
+            data: para_data,
+            parent_id: Some(compound_id),
+            fractional_index: para_order,
+        });
+        focus_id = para_id;
+    } else {
+        // Reparent each child under the compound
+        let mut prev_id: Option<MarkID> = None;
+        for &child_id in child_ids {
+            let (old_parent, old_index) = find_parent_edge(db, child_id).await?;
+            let new_order = compute_order_excluding(db, compound_id, prev_id, child_id).await?;
+
+            terrain::update_child_edge(db, child_id, Some(compound_id), &new_order).await?;
+            ops.push(AtomicOp::Reparent {
+                mark_id: child_id,
+                old_parent,
+                new_parent: compound_id,
+                old_index,
+                new_index: new_order.into(),
+            });
+            prev_id = Some(child_id);
+        }
+        focus_id = child_ids[0];
+    }
+
+    let cursor = CursorState {
+        block_id: focus_id,
+        offset: Some(0),
+    };
+    history.push(ops, compound_id, cursor.clone(), cursor, false);
+
+    let blocks = projection::project_landmark(db, landmark_id, None).await?;
+    Ok(CreateResult {
+        new_mark_id: compound_id,
+        blocks,
+    })
+}
+
 /// Batch soft-delete multiple marks.
 pub async fn delete_marks(
     db: &DatabaseConnection,

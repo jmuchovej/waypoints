@@ -139,6 +139,28 @@ impl EditorService {
         mutation::create_mark_after(&db, h, after_id, parent_id, data, landmark_id).await
     }
 
+    pub async fn wrap_in_compound(
+        &mut self,
+        compound_data: MarkData,
+        child_ids: &[MarkID],
+        after_id: Option<MarkID>,
+        parent_id: MarkID,
+        landmark_id: MarkID,
+    ) -> EditorResult<CreateResult> {
+        let db = self.db().await?;
+        let h = history_entry(&mut self.histories, landmark_id);
+        mutation::wrap_in_compound(
+            &db,
+            h,
+            compound_data,
+            child_ids,
+            after_id,
+            parent_id,
+            landmark_id,
+        )
+        .await
+    }
+
     pub async fn update_mark_text(
         &mut self,
         mark_id: MarkID,

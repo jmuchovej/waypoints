@@ -65,6 +65,22 @@ export async function updateReading(
   return invoke<Mark>("editor_update_mark_reading", { id, featureId, reading });
 }
 
+export async function wrapInCompound(
+  compoundData: MarkData,
+  childIds: MarkID[],
+  afterId: MarkID | null,
+  parentId: MarkID,
+  landmarkId: MarkID,
+): Promise<CreateResult> {
+  return invoke<CreateResult>("editor_wrap_in_compound", {
+    compoundData,
+    childIds,
+    afterId,
+    parentId,
+    landmarkId,
+  });
+}
+
 export async function createAfter(
   afterId: MarkID,
   parentId: MarkID,

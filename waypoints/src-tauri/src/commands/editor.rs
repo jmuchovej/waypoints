@@ -92,6 +92,21 @@ pub async fn editor_update_mark_reading(
 }
 
 #[tauri::command]
+pub async fn editor_wrap_in_compound(
+    rt: State<'_, Arc<WaypointsRuntime>>,
+    compound_data: MarkData,
+    child_ids: Vec<MarkID>,
+    after_id: Option<MarkID>,
+    parent_id: MarkID,
+    landmark_id: MarkID,
+) -> EditorResult<CreateResult> {
+    rt.editor()
+        .await
+        .wrap_in_compound(compound_data, &child_ids, after_id, parent_id, landmark_id)
+        .await
+}
+
+#[tauri::command]
 pub async fn editor_create_mark_after(
     rt: State<'_, Arc<WaypointsRuntime>>,
     after_id: MarkID,
