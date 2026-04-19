@@ -149,7 +149,6 @@ const uiPanel = {
   <AppHeader :tabs="[]" :title="titleRichText" />
 
   <div class="flex-1 pt-8 overflow-y-auto editor-layout">
-    <!-- Title -->
     <div class="editor-content landmark-title text-3xl font-bold">
       <USkeleton v-if="loading" class="min-h-8 w-full" />
       <RichTextEditor
@@ -161,16 +160,13 @@ const uiPanel = {
       />
     </div>
 
-    <!-- Readings table — schema-driven from the chart's features -->
     <div v-if="landmark && chart" class="editor-content">
       <ReadingsTable :chart="chart" :readings="landmark.readings" :on-update="onReadingUpdate" />
     </div>
 
-    <!-- Divider -->
     <USeparator class="editor-content border-default my-4" />
 
     <div class="editor-content">
-      <!-- Block-based document editor -->
       <DocumentBody ref="docBodyRef" :landmark-id="markID" :on-exit-top="onDocExitTop" />
     </div>
   </div>

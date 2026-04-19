@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
+import { toRichText } from "@waypoints/domain";
 
-const links = [
+const tabs: NavigationMenuItem[][] = [
   [
     {
       label: "General",
@@ -25,28 +26,21 @@ const links = [
       to: "/settings/security",
     },
   ],
-] satisfies NavigationMenuItem[][];
+];
+
+useHead({
+  title: "Settings",
+});
+
+const title = computed(() => toRichText("Settings"));
 </script>
 
 <template>
-  <UDashboardPanel id="settings" :ui="{ body: 'lg:py-12' }">
-    <template #header>
-      <UDashboardNavbar title="Settings">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
+  <AppHeader :tabs="tabs" :title="title" />
 
-      <UDashboardToolbar>
-        <!-- NOTE: The `-mx-1` class is used to align with the `DashboardSidebarCollapse` button here. -->
-        <UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
-      </UDashboardToolbar>
-    </template>
-
-    <template #body>
-      <div class="flex flex-col gap-4 sm:gap-6 lg:gap-12 w-full lg:max-w-2xl mx-auto">
-        <NuxtPage />
-      </div>
-    </template>
-  </UDashboardPanel>
+  <div class="overflow-auto flex-1">
+    <div class="flex flex-col gap-4 sm:gap-6 lg:gap-12 w-full lg:max-w-2xl mx-auto py-12 px-4">
+      <NuxtPage />
+    </div>
+  </div>
 </template>

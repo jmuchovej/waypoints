@@ -55,12 +55,7 @@ logger.debug(props.title);
       <USeparator class="hidden lg:flex" />
 
       <UContainer class="hidden lg:flex items-center justify-between">
-        <UNavigationMenu
-          :items="tabs"
-          highlight
-          variant="pill"
-          class="-mx-2.5 -mb-px"
-        />
+        <UNavigationMenu :items="tabs" highlight variant="pill" class="-mx-2.5 -mb-px" />
       </UContainer>
     </template>
   </UHeader>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { commands } from "~/bindings.g";
 import type { Mark, RichText, Chart, ChartID } from "@waypoints/domain";
-import { isLandmark } from "@waypoints/domain";
+import { isLandmark, toRichText } from "@waypoints/domain";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import { iconName } from "~/utils/icon";
 
@@ -63,76 +63,63 @@ async function onTitleUpdate(mark: Mark, richText: RichText) {
     log.warn("update title failed:", result.error);
   }
 }
+
+useHead({
+  title: "Marks",
+});
+
+const title = computed(() => toRichText("Marks"));
 </script>
 
 <template>
-  <UDashboardPanel id="marks">
-    <template #header>
-      <UDashboardNavbar title="Marks">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-        <template #right>
-          <UTooltip text="New landmark" :kbds="['meta', 'N']">
-            <UButton
-              icon="i-lucide-plus"
-              label="New"
-              size="sm"
-              color="primary"
-              @click="newLandmarkOpen = true"
-            />
-          </UTooltip>
-        </template>
-      </UDashboardNavbar>
-    </template>
+  <AppHeader :tabs="[]" :title="title" />
 
-    <template #body>
-      <div v-if="loading" class="flex items-center justify-center h-full">
-        <UIcon name="i-lucide-loader" class="animate-spin size-5 text-dimmed" />
-      </div>
+  <div class="overflow-auto flex-1">
+    <div v-if="loading" class="flex items-center justify-center h-full">
+      <UIcon name="i-lucide-loader" class="animate-spin size-5 text-dimmed" />
+    </div>
 
+    <div
+      v-else-if="landmarks.length === 0"
+      class="flex flex-col items-center justify-center h-full gap-2 text-dimmed"
+    >
+      <UIcon name="i-lucide-map-pin-off" class="size-8" />
+      <p>No landmarks yet</p>
+    </div>
+
+    <nav v-else class="flex flex-col p-2 gap-0.5">
       <div
-        v-else-if="landmarks.length === 0"
-        class="flex flex-col items-center justify-center h-full gap-2 text-dimmed"
+        v-for="mark in landmarks"
+        :key="mark.id"
+        role="link"
+        tabindex="0"
+        class="flex items-center gap-2 ps-3 pe-1 py-1 rounded-md hover:bg-elevated transition-colors cursor-pointer focus:outline focus:outline-2 focus:outline-primary"
+        @click="navigateTo(`/marks/${mark.id}`)"
+        @keydown.enter="navigateTo(`/marks/${mark.id}`)"
       >
-        <UIcon name="i-lucide-map-pin-off" class="size-8" />
-        <p>No landmarks yet</p>
+        <span class="flex items-center shrink-0" @click.stop>
+          <UIcon :name="landmarkIcon(mark)" class="size-5 text-dimmed" />
+        </span>
+        <RichTextEditor
+          :rich-text="landmarkTitle(mark)!"
+          :on-update="(rt: RichText) => onTitleUpdate(mark, rt)"
+          placeholder="Untitled"
+          class="min-w-0 shrink truncate"
+          @click.stop
+        />
+        <UButton
+          :to="`/marks/${mark.id}`"
+          leading-icon="i-lucide-fullscreen"
+          label="Open"
+          variant="soft"
+          color="neutral"
+          size="sm"
+          class="ms-auto shrink-0"
+          @click.stop
+        />
       </div>
-
-      <nav v-else class="flex flex-col p-2 gap-0.5">
-        <div
-          v-for="mark in landmarks"
-          :key="mark.id"
-          role="link"
-          tabindex="0"
-          class="flex items-center gap-2 ps-3 pe-1 py-1 rounded-md hover:bg-elevated transition-colors cursor-pointer focus:outline focus:outline-2 focus:outline-primary"
-          @click="navigateTo(`/marks/${mark.id}`)"
-          @keydown.enter="navigateTo(`/marks/${mark.id}`)"
-        >
-          <span class="flex items-center shrink-0" @click.stop>
-            <UIcon :name="landmarkIcon(mark)" class="size-5 text-dimmed" />
-          </span>
-          <RichTextEditor
-            :rich-text="landmarkTitle(mark)!"
-            :on-update="(rt: RichText) => onTitleUpdate(mark, rt)"
-            placeholder="Untitled"
-            class="min-w-0 shrink truncate"
-            @click.stop
-          />
-          <UButton
-            :to="`/marks/${mark.id}`"
-            leading-icon="i-lucide-fullscreen"
-            label="Open"
-            variant="soft"
-            color="neutral"
-            size="sm"
-            class="ms-auto shrink-0"
-            @click.stop
-          />
-        </div>
-      </nav>
-    </template>
-  </UDashboardPanel>
+    </nav>
+  </div>
 
   <NewLandmarkPalette v-model:open="newLandmarkOpen" />
 </template>
