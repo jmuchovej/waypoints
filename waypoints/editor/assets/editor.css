@@ -107,11 +107,27 @@
   }
 
   .drop-indicator {
+    --indent-width: calc(var(--drop-depth, 0) * --spacing(6));
+
     @apply relative h-0 pointer-events-none z-10;
-    /* "shadow" */
-    @apply before:content-[''] before:absolute before:inset-x-0 before:h-2.5 before:-translate-y-1/2 before:bg-primary/5 before:rounded;
-    /* "primary highlight" */
-    @apply after:content-[''] after:absolute after:inset-x-1 after:top-0 after:h-0.5 after:-translate-y-1/2 after:bg-primary after:rounded-full;
+
+    /* Indent segment (muted) — shows the depth zone */
+    &::before {
+      content: "";
+      @apply absolute top-0 h-0.5 -translate-y-1/2 rounded-full;
+      @apply bg-primary/20;
+      left: --spacing(1);
+      width: var(--indent-width);
+    }
+
+    /* Target segment (primary) — shows where the block lands */
+    &::after {
+      content: "";
+      @apply absolute top-0 h-0.5 -translate-y-1/2 rounded-full;
+      @apply bg-primary;
+      left: calc(var(--indent-width) + --spacing(1));
+      right: --spacing(1);
+    }
   }
 
   /* When a drop indicator is inserted before the first .mark or after the last,

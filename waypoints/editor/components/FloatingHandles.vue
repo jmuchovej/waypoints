@@ -36,17 +36,20 @@ const shouldShow = computed(() => isVisible.value && dragDrop.blockIDs.value.len
 function onContainerPointerMove(event: PointerEvent) {
   if (dragDrop.blockIDs.value.length > 0) return;
 
-  const el = getClosestBlock(event);
+  let el = getClosestBlock(event);
   if (el) {
-    if (el !== lastMarkEl) {
-      // If the new target is an ancestor of the current one (e.g., compound
-      // parent wrapping a child block), keep the handles on the child while
-      // the cursor is still vertically within the child's bounds.
-      if (lastMarkEl && el.contains(lastMarkEl)) {
-        const { top, bottom } = lastMarkEl.getBoundingClientRect();
-        const { clientY } = event;
-        if (clientY >= top && clientY <= bottom) return;
+    // If the resolved block is inside a compound, check whether the cursor
+    // is in the compound's "own" zone (left of the child's indent area).
+    // If so, prefer the compound block for the drag handle.
+    const parent = el.parentElement?.closest<HTMLElement>(`[data-mark-id]`);
+    if (parent) {
+      const childLeft = el.getBoundingClientRect().left;
+      if (event.clientX < childLeft) {
+        el = parent;
       }
+    }
+
+    if (el !== lastMarkEl) {
       lastMarkEl = el;
       positionFor(el);
     }

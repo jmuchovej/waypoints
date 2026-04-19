@@ -14,11 +14,26 @@ const isGroupActive = computed(() => {
 });
 
 provide("group-active", isGroupActive);
-provide("compound-parent-depth", props.block.depth);
+const compoundDepth = computed(() => props.block.depth);
+provide("compound-parent-depth", compoundDepth);
 
+/** All descendants of this compound block — rendered flat with depth-based indentation,
+ *  matching the same pattern DocumentBody uses at the root level. */
 const childBlocks = computed(() => {
   if (!orchestrator) return [];
-  return orchestrator.blocks.value.filter((b) => b.parent_id === props.block.id);
+  const allBlocks = orchestrator.blocks.value;
+  const descendants = new Set<string>();
+
+  // Collect all descendants by propagating through parent chains
+  for (const b of allBlocks) {
+    if (b.parent_id === props.block.id) {
+      descendants.add(b.id);
+    } else if (descendants.has(b.parent_id ?? "")) {
+      descendants.add(b.id);
+    }
+  }
+
+  return allBlocks.filter((b) => descendants.has(b.id));
 });
 </script>
 

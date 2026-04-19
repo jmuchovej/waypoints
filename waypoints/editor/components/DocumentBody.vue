@@ -33,7 +33,7 @@ const commandMenu = useCommandMenu();
 provide("command-menu", commandMenu);
 
 const containerRef = ref<HTMLDivElement | null>(null);
-const orchestrator = useBlockOrchestrator(landmarkIdRef, blocks);
+const orchestrator = useBlockOrchestrator(landmarkIdRef, blocks, containerRef);
 const { focus, selection, dragDrop } = orchestrator;
 
 // Wire up external navigation callback
@@ -90,15 +90,23 @@ function handleKeydown(e: KeyboardEvent) {
   baseHandleKeydown(e);
 }
 
-/** Filter out blocks whose parent is a compound container (they render inside their parent). */
-const topLevelBlocks = computed(() =>
-  blocks.value.filter((b) => {
-    if (!b.parent_id) return true;
+/** Filter out blocks that are descendants of a compound container (they render inside their ancestor). */
+const topLevelBlocks = computed(() => {
+  // Build a set of all block IDs that live inside a compound's subtree
+  const insideCompound = new Set<string>();
+  for (const b of blocks.value) {
+    if (insideCompound.has(b.parent_id ?? "")) {
+      // Parent is inside a compound → so is this block
+      insideCompound.add(b.id);
+      continue;
+    }
     const parent = blocks.value.find((p) => p.id === b.parent_id);
-    if (!parent) return true; // parent is the landmark root
-    return !isCompoundType(parent.data);
-  }),
-);
+    if (parent && isCompoundType(parent.data)) {
+      insideCompound.add(b.id);
+    }
+  }
+  return blocks.value.filter((b) => !insideCompound.has(b.id));
+});
 
 function enumIndexFor(block: RenderNode, index: number): number | undefined {
   return indexFor(block, index, blocks.value);

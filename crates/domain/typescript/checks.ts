@@ -8,7 +8,7 @@ export type ContentData<K extends ContentKind = ContentKind> = Extract<
 >;
 export type LandmarkData = Extract<MarkData, { mark: "landmark" }>;
 
-const compoundTypes = ["blockquote", "callout", "table"] as const;
+const compoundTypes = ["blockquote", "callout"] as const;
 export type CompoundType = (typeof compoundTypes)[number];
 
 export function isCompoundType(kind: ContentKind): kind is CompoundType;
@@ -23,9 +23,35 @@ export function isCompoundType(input: MarkData | ContentKind): input is ContentD
   );
 }
 
-const nonFocusableTypes = [...compoundTypes, "divider"] as const;
-export type NonFocusableType = (typeof nonFocusableTypes)[number];
+const nestableTypes = ["paragraph", "list-item", "enum-item"] as const;
+export type NestableType = (typeof nestableTypes)[number];
 
+export function isNestableType(kind: ContentKind): kind is NestableType;
+export function isNestableType(data: MarkData): data is ContentData<NestableType>;
+export function isNestableType(input: MarkData | ContentKind): input is ContentData<NestableType> {
+  if (typeof input === "string") {
+    return nestableTypes.includes(input as NestableType);
+  }
+  return isContent(
+    input,
+    nestableTypes.map((t) => t as ContentKind),
+  );
+}
+
+const nonIndentableTypes = ["heading-1", "heading-2", "heading-3"] as const;
+export type NonIndentableType = (typeof nonIndentableTypes)[number];
+
+export function isIndentableType(kind: ContentKind): boolean;
+export function isIndentableType(data: MarkData): boolean;
+export function isIndentableType(input: MarkData | ContentKind): boolean {
+  if (typeof input === "string") {
+    return !nonIndentableTypes.includes(input as NonIndentableType);
+  }
+  return isContent(input) && !nonIndentableTypes.includes(input.type as NonIndentableType);
+}
+
+const nonFocusableTypes = [...compoundTypes, "table", "divider"] as const;
+export type NonFocusableType = (typeof nonFocusableTypes)[number];
 export type FocusableType = Exclude<ContentKind, NonFocusableType>;
 
 function isNonFocusableType(input: ContentKind): input is NonFocusableType {

@@ -16,25 +16,29 @@ function isIterable(
  */
 export function indexFor(
   block: RenderNode,
-  blockIndex: number,
+  _blockIndex: number,
   blocks: RenderNode[],
 ): number | undefined {
   if (!isIterable(block.data)) return undefined;
 
+  // Find the block's actual index in the full blocks array
+  const actualIndex = blocks.findIndex((b) => b.id === block.id);
+  if (actualIndex < 0) return undefined;
+
   let count = 0;
-  for (let i = 0; i <= blockIndex; i++) {
+  for (let i = 0; i <= actualIndex; i++) {
     const b = blocks[i]!;
     const isSameGroup = b.parent_id === block.parent_id && b.depth === block.depth;
 
     if (isSameGroup) {
       if (isIterable(b.data)) {
         count++;
-      } else if (i < blockIndex) {
+      } else if (i < actualIndex) {
         // Non-list block at same depth/parent resets the counter
         count = 0;
       }
     }
   }
 
-  return count + 1;
+  return count;
 }

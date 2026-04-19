@@ -25,7 +25,7 @@ const [DefineDropIndicator, DropIndicator] = createReusableTemplate<{
 }>();
 
 /** Compound parents inject their own depth so children indent relative to the container. */
-const parentDepthOverride = inject<number>("compound-parent-depth", -1);
+const parentDepthOverride = inject<Ref<number> | number>("compound-parent-depth", -1);
 
 const isSelected = computed(() => selection.isSelected(props.block.id));
 const isDragging = computed(() => dragDrop?.isDragging(props.block.id));
@@ -79,9 +79,13 @@ function onClick(e: MouseEvent) {
   selection?.select(props.block.id);
 }
 
+const parentDepth = computed(() =>
+  typeof parentDepthOverride === "number" ? parentDepthOverride : parentDepthOverride.value,
+);
+
 const effectiveDepth = computed(() => {
-  if (parentDepthOverride >= 0) {
-    return props.block.depth - parentDepthOverride - 1;
+  if (parentDepth.value >= 0) {
+    return props.block.depth - parentDepth.value - 1;
   }
   return props.block.depth;
 });
@@ -96,6 +100,14 @@ const blockType = computed(() => {
   if (isContent(data)) return data.type;
   return undefined;
 });
+
+const effectiveDropDepth = computed(() => {
+  const raw = dragDrop.dropDepth.value;
+  if (parentDepth.value >= 0) {
+    return Math.max(0, raw - parentDepth.value - 1);
+  }
+  return raw;
+});
 </script>
 
 <template>
@@ -103,6 +115,7 @@ const blockType = computed(() => {
     <div
       class="drop-indicator"
       aria-hidden="true"
+      :style="`--drop-depth: ${effectiveDropDepth};`"
       v-if="dragDrop.showDropTarget(block.id, position)"
     />
   </DefineDropIndicator>

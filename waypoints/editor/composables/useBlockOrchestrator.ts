@@ -4,6 +4,8 @@ import {
   type Content,
   paragraph,
   contentData,
+  isNestableType,
+  isIndentableType,
 } from "@waypoints/domain";
 import type { RenderNode } from "@waypoints/editor";
 import { commands } from "~/bindings.g";
@@ -39,6 +41,7 @@ export async function doMoveBlocks(
   srcIDs: MarkID[],
   dstID: MarkID,
   pos: BlockPosition,
+  dropDepth: number,
   blocks: RenderNode[],
 ): Promise<RenderNode[] | undefined> {
   if (pos === "inside") {
@@ -50,26 +53,53 @@ export async function doMoveBlocks(
 
   const dst = blocks.find((b) => b.id === dstID);
   if (!dst) return undefined;
+
+  if (dropDepth > dst.depth && isNestableType(dst.data)) {
+    // Indent: target becomes the parent, append after its last child
+    const children = blocks.filter((b) => b.parent_id === dstID);
+    const afterID = children.length > 0 ? children[children.length - 1]!.id : null;
+    return await moveBlocks(dstID, srcIDs, afterID, landmarkID, pos);
+  }
+
+  if (dropDepth < dst.depth) {
+    // Dedent: walk up ancestors until we find the right scope
+    let ancestor: RenderNode | undefined = dst;
+    while (ancestor && ancestor.depth > dropDepth) {
+      ancestor = blocks.find((b) => b.id === ancestor!.parent_id);
+    }
+    if (!ancestor) {
+      // Reached root level
+      return await moveBlocks(landmarkID, srcIDs, dstID, landmarkID, pos);
+    }
+    const parentID = ancestor.parent_id ?? landmarkID;
+    return await moveBlocks(parentID, srcIDs, ancestor.id, landmarkID, pos);
+  }
+
+  // Same depth — sibling placement (original logic)
   const parentID = dst.parent_id ?? landmarkID;
 
   switch (pos) {
     case "after":
       return await moveBlocks(parentID, srcIDs, dstID, landmarkID, pos);
-    case "before":
-      // Place before dst — find the sibling before dst
+    case "before": {
       const siblings = blocks.filter((b) => b.parent_id === dst.parent_id && b.depth === dst.depth);
       const idx = siblings.findIndex((b) => b.id === dstID);
       const afterID = idx > 0 ? siblings[idx - 1]!.id : null;
       return await moveBlocks(parentID, srcIDs, afterID, landmarkID, pos);
+    }
   }
 }
 
-export function useBlockOrchestrator(landmarkID: Ref<string>, blocks: Ref<RenderNode[]>) {
+export function useBlockOrchestrator(
+  landmarkID: Ref<string>,
+  blocks: Ref<RenderNode[]>,
+  containerEl: Ref<HTMLElement | null>,
+) {
   const focus = useBlockFocus(blocks);
-  const dragDrop = useBlockDragDrop(blocks, async (srcIDs, dstID, pos) => {
+  const dragDrop = useBlockDragDrop(blocks, containerEl, async (srcIDs, dstID, pos, depth) => {
     await flushPendingUpdates();
     stateVersion++;
-    const res = await doMoveBlocks(landmarkID.value, srcIDs, dstID, pos, blocks.value);
+    const res = await doMoveBlocks(landmarkID.value, srcIDs, dstID, pos, depth, blocks.value);
     if (res) blocks.value = res;
   });
   const selection = useBlockSelection(blocks, focus);
@@ -250,10 +280,13 @@ export function useBlockOrchestrator(landmarkID: Ref<string>, blocks: Ref<Render
   async function onIndentBlock(id: MarkID) {
     await flushPendingUpdates();
     stateVersion++;
+    const block = blocks.value.find((b) => b.id === id);
+    if (block && !isIndentableType(block.data)) return; // headings can't be indented
     const siblings = getSiblings(id);
     const idx = siblings.findIndex((b) => b.id === id);
     if (idx <= 0) return; // no previous sibling to nest under
     const prevSibling = siblings[idx - 1]!;
+    if (!isNestableType(prevSibling.data)) return; // only nestable types can accept children
     const result = await commands.editorReparentMark(id, prevSibling.id, null, landmarkID.value);
     if (result.status === "ok") {
       blocks.value = result.data.blocks;
@@ -305,7 +338,15 @@ export function useBlockOrchestrator(landmarkID: Ref<string>, blocks: Ref<Render
     await flushPendingUpdates();
     stateVersion++;
 
-    const res = await doMoveBlocks(landmarkID.value, [srcID], dstID, position, blocks.value);
+    const srcBlock = blocks.value.find((b) => b.id === srcID);
+    const res = await doMoveBlocks(
+      landmarkID.value,
+      [srcID],
+      dstID,
+      position,
+      srcBlock?.depth ?? 0,
+      blocks.value,
+    );
     if (res) {
       blocks.value = res;
     }
