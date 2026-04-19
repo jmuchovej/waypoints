@@ -5,7 +5,6 @@
 
 mod fixtures;
 
-use domain::Color;
 use domain::chart::{ChartID, FeatureID};
 use domain::mark::mark_data::MathEngine;
 use domain::mark::{
@@ -23,16 +22,10 @@ use store::query::mark;
 #[rstest]
 #[case::paragraph(paragraph("hello"))]
 #[case::heading1(heading("Title"))]
-#[case::blockquote(MarkData::Content(Content::Blockquote))]
-#[case::divider(MarkData::Content(Content::Divider))]
-#[case::code_block(MarkData::Content(Content::Code {
-    language: "rust".to_string(),
-    lines: vec!["fn main() {}".to_string()],
-}))]
-#[case::callout(MarkData::Content(Content::Callout {
-    icon: "💡".to_string(),
-    background_color: Color::default(),
-}))]
+#[case::blockquote(MarkData::Content(Content::blockquote()))]
+#[case::divider(MarkData::Content(Content::divider()))]
+#[case::code_block(MarkData::Content(Content::code("rust".to_string(), vec!["fn main() {}".to_string()])))]
+#[case::callout(MarkData::Content(Content::callout("💡".to_string())))]
 #[case::table(MarkData::Content(Content::Table {
     cells: vec![
         vec![RichText::from("A".to_string()), RichText::from("B".to_string())],
@@ -45,21 +38,12 @@ use store::query::mark;
     fill_width: None,
     col_colors: None,
     row_colors: None,
+    theme: None,
 }))]
-#[case::math_typst(MarkData::Content(Content::Math {
-    expression: "x^2 + y^2 = z^2".to_string(),
-    engine: MathEngine::Typst,
-}))]
-#[case::math_latex(MarkData::Content(Content::Math {
-    expression: r"\int_0^1 x dx".to_string(),
-    engine: MathEngine::LaTeX,
-}))]
-#[case::list_item(MarkData::Content(Content::ListItem {
-    rich_text: RichText::from("bullet".to_string()),
-}))]
-#[case::enum_item(MarkData::Content(Content::EnumItem {
-    rich_text: RichText::from("numbered".to_string()),
-}))]
+#[case::math_typst(MarkData::Content(Content::math("x^2 + y^2 = z^2".to_string(), MathEngine::Typst)))]
+#[case::math_latex(MarkData::Content(Content::math(r"\int_0^1 x dx".to_string(), MathEngine::LaTeX)))]
+#[case::list_item(MarkData::Content(Content::list_item(RichText::from("bullet".to_string()))))]
+#[case::enum_item(MarkData::Content(Content::enum_item(RichText::from("numbered".to_string()))))]
 #[case::landmark_page(landmark("page", "Test Page"))]
 #[case::landmark_note(landmark("note", "My Note"))]
 fn json_roundtrip(#[case] data: MarkData) {
@@ -83,12 +67,10 @@ fn json_roundtrip(#[case] data: MarkData) {
 #[case::spoiler(TextMarkKind::Spoiler, None)]
 #[case::link(TextMarkKind::Link, Some(serde_json::json!("https://example.com")))]
 fn inline_mark_roundtrip(#[case] kind: TextMarkKind, #[case] data: Option<serde_json::Value>) {
-    let mark_data = MarkData::Content(Content::Paragraph {
-        rich_text: RichText::new(vec![TextSegment {
-            text: "decorated".to_string(),
-            marks: vec![InlineMark { kind, data }],
-        }]),
-    });
+    let mark_data = MarkData::Content(Content::paragraph(RichText::new(vec![TextSegment {
+        text: "decorated".to_string(),
+        marks: vec![InlineMark { kind, data }],
+    }])));
     let json = serde_json::to_value(&mark_data).unwrap();
     let back: MarkData = serde_json::from_value(json).unwrap();
     assert_eq!(mark_data, back);
@@ -96,34 +78,32 @@ fn inline_mark_roundtrip(#[case] kind: TextMarkKind, #[case] data: Option<serde_
 
 #[test]
 fn multi_segment_with_mixed_marks_roundtrip() {
-    let data = MarkData::Content(Content::Paragraph {
-        rich_text: RichText::new(vec![
-            TextSegment {
-                text: "bold".to_string(),
-                marks: vec![InlineMark {
-                    kind: TextMarkKind::Bold,
+    let data = MarkData::Content(Content::paragraph(RichText::new(vec![
+        TextSegment {
+            text: "bold".to_string(),
+            marks: vec![InlineMark {
+                kind: TextMarkKind::Bold,
+                data: None,
+            }],
+        },
+        TextSegment {
+            text: " plain ".to_string(),
+            marks: vec![],
+        },
+        TextSegment {
+            text: "italic+code".to_string(),
+            marks: vec![
+                InlineMark {
+                    kind: TextMarkKind::Italic,
                     data: None,
-                }],
-            },
-            TextSegment {
-                text: " plain ".to_string(),
-                marks: vec![],
-            },
-            TextSegment {
-                text: "italic+code".to_string(),
-                marks: vec![
-                    InlineMark {
-                        kind: TextMarkKind::Italic,
-                        data: None,
-                    },
-                    InlineMark {
-                        kind: TextMarkKind::Code,
-                        data: None,
-                    },
-                ],
-            },
-        ]),
-    });
+                },
+                InlineMark {
+                    kind: TextMarkKind::Code,
+                    data: None,
+                },
+            ],
+        },
+    ])));
     let json = serde_json::to_value(&data).unwrap();
     let back: MarkData = serde_json::from_value(json).unwrap();
     assert_eq!(data, back);
@@ -151,27 +131,22 @@ fn landmark_with_readings_roundtrip() {
 #[rstest]
 #[case::paragraph(paragraph("database roundtrip"))]
 #[case::heading(heading("DB Title"))]
-#[case::code(MarkData::Content(Content::Code {
-    language: "python".to_string(),
-    lines: vec!["def greet():".to_string(), "    print('hello')".to_string()],
-}))]
+#[case::code(MarkData::Content(Content::code("python".to_string(), vec!["def greet():".to_string(), "    print('hello')".to_string()])))]
 #[case::landmark(landmark("page", "Persisted Page"))]
-#[case::inline_marks(MarkData::Content(Content::Paragraph {
-    rich_text: RichText::new(vec![
-        TextSegment {
-            text: "bold".to_string(),
-            marks: vec![InlineMark { kind: TextMarkKind::Bold, data: None }],
-        },
-        TextSegment {
-            text: " then ".to_string(),
-            marks: vec![],
-        },
-        TextSegment {
-            text: "strikethrough".to_string(),
-            marks: vec![InlineMark { kind: TextMarkKind::Strikethrough, data: None }],
-        },
-    ]),
-}))]
+#[case::inline_marks(MarkData::Content(Content::paragraph(RichText::new(vec![
+    TextSegment {
+        text: "bold".to_string(),
+        marks: vec![InlineMark { kind: TextMarkKind::Bold, data: None }],
+    },
+    TextSegment {
+        text: " then ".to_string(),
+        marks: vec![],
+    },
+    TextSegment {
+        text: "strikethrough".to_string(),
+        marks: vec![InlineMark { kind: TextMarkKind::Strikethrough, data: None }],
+    },
+]))))]
 #[tokio::test]
 async fn database_roundtrip(#[future] db: DatabaseConnection, #[case] data: MarkData) {
     let db = db.await;

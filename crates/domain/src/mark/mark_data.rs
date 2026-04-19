@@ -54,45 +54,83 @@ pub enum Size {
     Auto,
 }
 
+/// Visual theme for a content block. Applies both ink (foreground) and
+/// surface (background) styling from the selected color. Independent
+/// ink/surface control is handled at the inline mark level.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct BlockTheme {
+    pub color: Color,
+}
+
 /// Content blocks - the actual content pieces users work with.
 /// These are "dumb" blocks with minimal built-in properties.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Content {
     /// The base paragraph (the most common form of content)
-    Paragraph { rich_text: RichText },
+    Paragraph {
+        rich_text: RichText,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 
     /// Level 1 Heading
     #[serde(rename = "heading-1")]
-    Heading1 { rich_text: RichText },
+    Heading1 {
+        rich_text: RichText,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 
     /// Level 2 Heading
     #[serde(rename = "heading-2")]
-    Heading2 { rich_text: RichText },
+    Heading2 {
+        rich_text: RichText,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 
     /// Level 3 Heading
     #[serde(rename = "heading-3")]
-    Heading3 { rich_text: RichText },
+    Heading3 {
+        rich_text: RichText,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 
     /// A quote
-    Blockquote,
+    Blockquote {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 
     /// An unordered list item
-    ListItem { rich_text: RichText },
+    ListItem {
+        rich_text: RichText,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 
     /// An ordered list item
-    EnumItem { rich_text: RichText },
+    EnumItem {
+        rich_text: RichText,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 
     /// Callout
     Callout {
         icon: String,
-        background_color: Color,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
     },
 
     /// Code block with syntax highlighting
     Code {
         language: String,
         lines: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
     },
 
     /// Inline table
@@ -105,22 +143,30 @@ pub enum Content {
         fill_width: Option<bool>,
         col_colors: Option<Vec<Option<Color>>>,
         row_colors: Option<Vec<Option<Color>>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
     },
 
     /// Typst/LaTeX content
     Math {
         expression: String,
         engine: MathEngine,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
     },
 
     /// Horizontal divider
-    Divider,
+    Divider {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        theme: Option<BlockTheme>,
+    },
 }
 
 impl Default for Content {
     fn default() -> Self {
         Content::Paragraph {
             rich_text: RichText::default(),
+            theme: None,
         }
     }
 }
@@ -135,15 +181,84 @@ pub enum MathEngine {
 }
 
 impl Content {
+    // ── Constructors ─────────────────────────────────────────────────────
+
+    pub fn paragraph(rich_text: RichText) -> Self {
+        Self::Paragraph {
+            rich_text,
+            theme: None,
+        }
+    }
+    pub fn heading1(rich_text: RichText) -> Self {
+        Self::Heading1 {
+            rich_text,
+            theme: None,
+        }
+    }
+    pub fn heading2(rich_text: RichText) -> Self {
+        Self::Heading2 {
+            rich_text,
+            theme: None,
+        }
+    }
+    pub fn heading3(rich_text: RichText) -> Self {
+        Self::Heading3 {
+            rich_text,
+            theme: None,
+        }
+    }
+    pub fn blockquote() -> Self {
+        Self::Blockquote { theme: None }
+    }
+    pub fn list_item(rich_text: RichText) -> Self {
+        Self::ListItem {
+            rich_text,
+            theme: None,
+        }
+    }
+    pub fn enum_item(rich_text: RichText) -> Self {
+        Self::EnumItem {
+            rich_text,
+            theme: None,
+        }
+    }
+    pub fn callout(icon: String) -> Self {
+        Self::Callout {
+            icon,
+            theme: Some(BlockTheme {
+                color: Color::default(),
+            }),
+        }
+    }
+    pub fn code(language: String, lines: Vec<String>) -> Self {
+        Self::Code {
+            language,
+            lines,
+            theme: None,
+        }
+    }
+    pub fn divider() -> Self {
+        Self::Divider { theme: None }
+    }
+    pub fn math(expression: String, engine: MathEngine) -> Self {
+        Self::Math {
+            expression,
+            engine,
+            theme: None,
+        }
+    }
+
+    // ── Accessors ────────────────────────────────────────────────────────
+
     /// Get a reference to the rich text field, if this variant has one.
     pub fn rich_text(&self) -> Option<&RichText> {
         match self {
-            Content::Paragraph { rich_text }
-            | Content::Heading1 { rich_text }
-            | Content::Heading2 { rich_text }
-            | Content::Heading3 { rich_text }
-            | Content::ListItem { rich_text }
-            | Content::EnumItem { rich_text } => Some(rich_text),
+            Content::Paragraph { rich_text, .. }
+            | Content::Heading1 { rich_text, .. }
+            | Content::Heading2 { rich_text, .. }
+            | Content::Heading3 { rich_text, .. }
+            | Content::ListItem { rich_text, .. }
+            | Content::EnumItem { rich_text, .. } => Some(rich_text),
             _ => None,
         }
     }
@@ -151,12 +266,12 @@ impl Content {
     /// Get a mutable reference to the rich text field, if this variant has one.
     pub fn rich_text_mut(&mut self) -> Option<&mut RichText> {
         match self {
-            Content::Paragraph { rich_text }
-            | Content::Heading1 { rich_text }
-            | Content::Heading2 { rich_text }
-            | Content::Heading3 { rich_text }
-            | Content::ListItem { rich_text }
-            | Content::EnumItem { rich_text } => Some(rich_text),
+            Content::Paragraph { rich_text, .. }
+            | Content::Heading1 { rich_text, .. }
+            | Content::Heading2 { rich_text, .. }
+            | Content::Heading3 { rich_text, .. }
+            | Content::ListItem { rich_text, .. }
+            | Content::EnumItem { rich_text, .. } => Some(rich_text),
             _ => None,
         }
     }
@@ -165,16 +280,34 @@ impl Content {
     /// Returns `false` if the variant has no rich text field.
     pub fn set_rich_text(&mut self, new_rt: RichText) -> bool {
         match self {
-            Content::Paragraph { rich_text }
-            | Content::Heading1 { rich_text }
-            | Content::Heading2 { rich_text }
-            | Content::Heading3 { rich_text }
-            | Content::ListItem { rich_text }
-            | Content::EnumItem { rich_text } => {
+            Content::Paragraph { rich_text, .. }
+            | Content::Heading1 { rich_text, .. }
+            | Content::Heading2 { rich_text, .. }
+            | Content::Heading3 { rich_text, .. }
+            | Content::ListItem { rich_text, .. }
+            | Content::EnumItem { rich_text, .. } => {
                 *rich_text = new_rt;
                 true
             }
             _ => false,
+        }
+    }
+
+    /// Get the block theme, if set.
+    pub fn theme(&self) -> Option<&BlockTheme> {
+        match self {
+            Content::Paragraph { theme, .. }
+            | Content::Heading1 { theme, .. }
+            | Content::Heading2 { theme, .. }
+            | Content::Heading3 { theme, .. }
+            | Content::Blockquote { theme, .. }
+            | Content::ListItem { theme, .. }
+            | Content::EnumItem { theme, .. }
+            | Content::Callout { theme, .. }
+            | Content::Code { theme, .. }
+            | Content::Table { theme, .. }
+            | Content::Math { theme, .. }
+            | Content::Divider { theme, .. } => theme.as_ref(),
         }
     }
 
@@ -184,14 +317,14 @@ impl Content {
             Content::Heading1 { .. } => "heading-1",
             Content::Heading2 { .. } => "heading-2",
             Content::Heading3 { .. } => "heading-3",
-            Content::Blockquote => "blockquote",
+            Content::Blockquote { .. } => "blockquote",
             Content::ListItem { .. } => "list-item",
             Content::EnumItem { .. } => "enum-item",
             Content::Callout { .. } => "callout",
             Content::Code { .. } => "code",
             Content::Table { .. } => "table",
             Content::Math { .. } => "math",
-            Content::Divider => "divider",
+            Content::Divider { .. } => "divider",
         }
     }
 }
@@ -274,7 +407,8 @@ mod tests {
     fn test_content_type_names() {
         assert_eq!(
             Content::Paragraph {
-                rich_text: RichText::from("test".to_string())
+                rich_text: RichText::from("test".to_string()),
+                theme: None,
             }
             .type_name(),
             "paragraph"
@@ -283,6 +417,7 @@ mod tests {
             Content::Code {
                 language: "rust".to_string(),
                 lines: vec!["fn main() {}".to_string()],
+                theme: None,
             }
             .type_name(),
             "code"
@@ -297,6 +432,7 @@ mod tests {
                 fill_width: None,
                 col_colors: None,
                 row_colors: None,
+                theme: None,
             }
             .type_name(),
             "table"
@@ -305,16 +441,18 @@ mod tests {
             Content::Math {
                 expression: "x^2".to_string(),
                 engine: MathEngine::Typst,
+                theme: None,
             }
             .type_name(),
             "math"
         );
-        assert_eq!(Content::Divider.type_name(), "divider");
+        assert_eq!(Content::Divider { theme: None }.type_name(), "divider");
     }
 
     #[test]
     fn test_paragraph_content_creation() {
         let content = Content::Paragraph {
+            theme: None,
             rich_text: RichText::new(vec![
                 TextSegment {
                     text: "Hello".to_string(),
@@ -331,7 +469,7 @@ mod tests {
         };
 
         assert_eq!(content.type_name(), "paragraph");
-        if let Content::Paragraph { rich_text } = content {
+        if let Content::Paragraph { rich_text, .. } = content {
             assert_eq!(rich_text.plain_text(), "Hello, world!");
             assert_eq!(rich_text.segments().len(), 2);
             assert_eq!(rich_text.segments()[0].marks[0].kind, TextMarkKind::Bold);
@@ -341,6 +479,7 @@ mod tests {
     #[test]
     fn test_code_content_creation() {
         let content = Content::Code {
+            theme: None,
             language: "rust".to_string(),
             lines: vec![
                 "fn main() {".to_string(),
@@ -350,7 +489,10 @@ mod tests {
         };
 
         assert_eq!(content.type_name(), "code");
-        if let Content::Code { language, lines } = content {
+        if let Content::Code {
+            language, lines, ..
+        } = content
+        {
             assert_eq!(language, "rust");
             assert!(lines.join("\n").contains("fn main()"));
         }
@@ -359,6 +501,7 @@ mod tests {
     #[test]
     fn test_table_content_creation() {
         let content = Content::Table {
+            theme: None,
             cells: vec![
                 vec![
                     RichText::from("Name".to_string()),
@@ -403,22 +546,30 @@ mod tests {
         let typst_math = Content::Math {
             expression: "x^2 + y^2 = z^2".to_string(),
             engine: MathEngine::Typst,
+            theme: None,
         };
 
         let latex_math = Content::Math {
             expression: "\\int_0^1 x dx = \\frac{1}{2}".to_string(),
             engine: MathEngine::LaTeX,
+            theme: None,
         };
 
         assert_eq!(typst_math.type_name(), "math");
         assert_eq!(latex_math.type_name(), "math");
 
-        if let Content::Math { expression, engine } = typst_math {
+        if let Content::Math {
+            expression, engine, ..
+        } = typst_math
+        {
             assert_eq!(expression, "x^2 + y^2 = z^2");
             assert_eq!(engine, MathEngine::Typst);
         }
 
-        if let Content::Math { expression, engine } = latex_math {
+        if let Content::Math {
+            expression, engine, ..
+        } = latex_math
+        {
             assert!(expression.contains("\\int"));
             assert_eq!(engine, MathEngine::LaTeX);
         }
@@ -426,7 +577,7 @@ mod tests {
 
     #[test]
     fn test_divider_creation() {
-        let content = Content::Divider;
+        let content = Content::Divider { theme: None };
         assert_eq!(content.type_name(), "divider");
     }
 
@@ -444,30 +595,37 @@ mod tests {
         let variants: Vec<Content> = vec![
             Content::Paragraph {
                 rich_text: RichText::default(),
+                theme: None,
             },
             Content::Heading1 {
                 rich_text: RichText::default(),
+                theme: None,
             },
             Content::Heading2 {
                 rich_text: RichText::default(),
+                theme: None,
             },
             Content::Heading3 {
                 rich_text: RichText::default(),
+                theme: None,
             },
-            Content::Blockquote,
+            Content::Blockquote { theme: None },
             Content::ListItem {
                 rich_text: RichText::default(),
+                theme: None,
             },
             Content::EnumItem {
                 rich_text: RichText::default(),
+                theme: None,
             },
             Content::Callout {
                 icon: String::new(),
-                background_color: Color::default(),
+                theme: None,
             },
             Content::Code {
                 language: String::new(),
                 lines: vec![],
+                theme: None,
             },
             Content::Table {
                 cells: vec![],
@@ -478,12 +636,14 @@ mod tests {
                 fill_width: None,
                 col_colors: None,
                 row_colors: None,
+                theme: None,
             },
             Content::Math {
                 expression: String::new(),
                 engine: MathEngine::default(),
+                theme: None,
             },
-            Content::Divider,
+            Content::Divider { theme: None },
         ];
 
         for content in variants {
@@ -517,6 +677,7 @@ mod tests {
                     marks: vec![],
                 },
             ]),
+            theme: None,
         };
 
         let json = serde_json::to_string(&content).unwrap();

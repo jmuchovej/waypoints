@@ -57,49 +57,27 @@ export type Color =
   | "red";
 
 /**
+ * Visual theme for a content block. Applies both ink (foreground) and
+ * surface (background) styling from the selected color.
+ */
+export type BlockTheme = {
+  color: Color;
+};
+
+/**
  * Content blocks - the actual content pieces users work with.
  * These are "dumb" blocks with minimal built-in properties.
  */
 export type Content =
-  /**
-   * The base paragraph (the most common form of content)
-   */
-  | { type: "paragraph"; rich_text: RichText }
-  /**
-   * Level 1 Heading
-   */
-  | { type: "heading-1"; rich_text: RichText }
-  /**
-   * Level 2 Heading
-   */
-  | { type: "heading-2"; rich_text: RichText }
-  /**
-   * Level 3 Heading
-   */
-  | { type: "heading-3"; rich_text: RichText }
-  /**
-   * A quote
-   */
-  | { type: "blockquote" }
-  /**
-   * An unordered list item
-   */
-  | { type: "list-item"; rich_text: RichText }
-  /**
-   * An ordered list item
-   */
-  | { type: "enum-item"; rich_text: RichText }
-  /**
-   * Callout
-   */
-  | { type: "callout"; icon: string; background_color: Color }
-  /**
-   * Code block with syntax highlighting
-   */
-  | { type: "code"; language: string; lines: string[] }
-  /**
-   * Inline table
-   */
+  | { type: "paragraph"; rich_text: RichText; theme?: BlockTheme | null }
+  | { type: "heading-1"; rich_text: RichText; theme?: BlockTheme | null }
+  | { type: "heading-2"; rich_text: RichText; theme?: BlockTheme | null }
+  | { type: "heading-3"; rich_text: RichText; theme?: BlockTheme | null }
+  | { type: "blockquote"; theme?: BlockTheme | null }
+  | { type: "list-item"; rich_text: RichText; theme?: BlockTheme | null }
+  | { type: "enum-item"; rich_text: RichText; theme?: BlockTheme | null }
+  | { type: "callout"; icon: string; theme?: BlockTheme | null }
+  | { type: "code"; language: string; lines: string[]; theme?: BlockTheme | null }
   | {
       type: "table";
       cells: RichText[][];
@@ -110,15 +88,10 @@ export type Content =
       fill_width: boolean | null;
       col_colors: (Color | null)[] | null;
       row_colors: (Color | null)[] | null;
+      theme?: BlockTheme | null;
     }
-  /**
-   * Typst/LaTeX content
-   */
-  | { type: "math"; expression: string; engine: MathEngine }
-  /**
-   * Horizontal divider
-   */
-  | { type: "divider" };
+  | { type: "math"; expression: string; engine: MathEngine; theme?: BlockTheme | null }
+  | { type: "divider"; theme?: BlockTheme | null };
 
 /**
  * Precision at which a date/time value should be captured and displayed.

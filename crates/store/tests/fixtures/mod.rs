@@ -16,21 +16,17 @@ pub async fn db() -> DatabaseConnection {
 
 /// A paragraph content mark with the given plain text.
 pub fn paragraph(text: &str) -> MarkData {
-    MarkData::Content(Content::Paragraph {
-        rich_text: RichText::from(text.to_string()),
-    })
+    MarkData::Content(Content::paragraph(RichText::from(text.to_string())))
 }
 
 /// A heading1 content mark.
 pub fn heading(text: &str) -> MarkData {
-    MarkData::Content(Content::Heading1 {
-        rich_text: RichText::from(text.to_string()),
-    })
+    MarkData::Content(Content::heading1(RichText::from(text.to_string())))
 }
 
 /// A blockquote container mark.
 pub fn blockquote() -> MarkData {
-    MarkData::Content(Content::Blockquote)
+    MarkData::Content(Content::blockquote())
 }
 
 /// A minimal landmark mark using a builtin chart.

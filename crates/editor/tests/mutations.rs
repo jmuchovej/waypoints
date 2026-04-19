@@ -34,7 +34,7 @@ async fn update_mark_text_changes_content(#[future] env: Env) {
     svc.update_mark_text(children[0], new_rt, lm).await.unwrap();
 
     let fetched = svc.get_mark(children[0]).await.unwrap();
-    if let MarkData::Content(Content::Paragraph { rich_text }) = fetched.data {
+    if let MarkData::Content(Content::Paragraph { rich_text, .. }) = fetched.data {
         assert_eq!(rich_text.plain_text(), "updated text");
     } else {
         panic!("expected paragraph");
@@ -55,14 +55,12 @@ async fn update_mark_converts_block_type(#[future] env: Env) {
     };
 
     // Convert paragraph → heading, preserving the same rich text
-    let converted = Content::Heading1 {
-        rich_text: original_rt.clone(),
-    };
+    let converted = Content::heading1(original_rt.clone());
     svc.update_mark(children[0], converted, lm).await.unwrap();
 
     let fetched = svc.get_mark(children[0]).await.unwrap();
     match &fetched.data {
-        MarkData::Content(Content::Heading1 { rich_text }) => {
+        MarkData::Content(Content::Heading1 { rich_text, .. }) => {
             assert_eq!(
                 *rich_text, original_rt,
                 "text should survive type conversion"

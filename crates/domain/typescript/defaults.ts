@@ -39,7 +39,7 @@ export function enumItem(rt?: RichText): Content {
 }
 
 export function callout(icon = "💡"): Content {
-  return { type: "callout", icon, background_color: "default" };
+  return { type: "callout", icon };
 }
 
 export function code(language = ""): Content {

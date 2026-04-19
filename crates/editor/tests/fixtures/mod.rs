@@ -33,19 +33,15 @@ pub async fn env() -> (::editor::EditorService, DatabaseConnection) {
 // -- Factory helpers --
 
 pub fn paragraph(text: &str) -> MarkData {
-    MarkData::Content(Content::Paragraph {
-        rich_text: RichText::from(text.to_string()),
-    })
+    MarkData::Content(Content::paragraph(RichText::from(text.to_string())))
 }
 
 pub fn heading(text: &str) -> MarkData {
-    MarkData::Content(Content::Heading1 {
-        rich_text: RichText::from(text.to_string()),
-    })
+    MarkData::Content(Content::heading1(RichText::from(text.to_string())))
 }
 
 pub fn blockquote() -> MarkData {
-    MarkData::Content(Content::Blockquote)
+    MarkData::Content(Content::blockquote())
 }
 
 pub fn landmark(chart_name: &str, title: &str) -> MarkData {

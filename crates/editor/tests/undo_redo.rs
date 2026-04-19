@@ -228,15 +228,9 @@ async fn undo_update_mark_restores_type(#[future] env: Env) {
         _ => panic!("expected content"),
     };
 
-    svc.update_mark(
-        children[0],
-        Content::Heading1 {
-            rich_text: original_rt.clone(),
-        },
-        lm,
-    )
-    .await
-    .unwrap();
+    svc.update_mark(children[0], Content::heading1(original_rt.clone()), lm)
+        .await
+        .unwrap();
 
     // Verify it's a heading now
     let fetched = svc.get_mark(children[0]).await.unwrap();
