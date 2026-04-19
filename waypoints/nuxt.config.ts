@@ -112,6 +112,11 @@ export default defineNuxtConfig({
         "@tiptap/extension-subscript",
         "@tiptap/extension-superscript",
         "@tiptap/extension-underline",
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
+        "@tauri-apps/api/window",
+        "@myriaddreamin/typst.ts/contrib/all-in-one-lite",
+        "@tiptap/extensions",
       ],
     },
     server: {
