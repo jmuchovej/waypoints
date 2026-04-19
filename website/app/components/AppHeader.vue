@@ -7,26 +7,39 @@ const { forced: forcedColorMode } = useDocusColorMode();
 const { isEnabled: isAssistantEnabled } = useAssistant();
 const { isEnabled, locales } = useDocusI18n();
 const { subNavigationMode } = useSubNavigation();
+
+const drawerOpen = ref(false);
 </script>
 
 <template>
-  <UHeader :ui="{ center: 'flex-1' }" :class="{ 'flex flex-col': subNavigationMode === 'header' }">
-    <AppHeaderCenter />
-
+  <UHeader
+    :ui="{
+      left: 'lg:flex-none',
+      right: 'lg:flex-none',
+      center: 'flex-1',
+    }"
+    :class="{ 'flex flex-col': subNavigationMode === 'header' }"
+  >
     <template #left>
       <AppHeaderLeft />
     </template>
+
+    <AppHeaderCenter />
 
     <template #right>
       <AppHeaderRight />
     </template>
 
-    <template #toggle="{ open, toggle }">
-      <IconMenuToggle :open="open" class="lg:hidden" @click="toggle" />
-    </template>
+    <template #toggle>
+      <ClientOnly>
+        <UDrawer v-model:open="drawerOpen" direction="bottom" should-scale-background>
+          <IconMenuToggle :open="drawerOpen" class="lg:hidden" />
 
-    <template #body>
-      <AppHeaderBody />
+          <template #body>
+            <AppHeaderBody />
+          </template>
+        </UDrawer>
+      </ClientOnly>
     </template>
 
     <template v-if="subNavigationMode === 'header'" #bottom>

@@ -35,10 +35,8 @@ export default defineNuxtConfig({
     payloadExtraction: false,
   },
 
-  vite: {
-    optimizeDeps: {
-      include: ["@vue/devtools-core", "@vue/devtools-kit", "tailwindcss/colors"],
-    },
+  colorMode: {
+    preference: "system",
   },
 
   compatibilityDate: "2025-01-15",

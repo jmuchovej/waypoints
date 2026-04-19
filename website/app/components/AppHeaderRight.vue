@@ -31,24 +31,34 @@ defineShortcuts({
     <USeparator orientation="vertical" class="h-8" />
   </template>
 
-  <ClientOnly v-if="!forcedColorMode">
-    <UColorModeButton />
+  <ColorModeButton v-if="!forcedColorMode" />
 
-    <template #fallback>
-      <div class="h-8 w-8 animate-pulse bg-neutral-200 dark:bg-neutral-800 rounded-md" />
-    </template>
-  </ClientOnly>
-
-  <UContentSearchButton variant="ghost" :ui="{ trailing: 'size-6' }">
+  <UContentSearchButton variant="ghost" class="hidden lg:inline-flex" :ui="{ trailing: 'size-6' }">
     <UKbd variant="subtle" value="meta" />
     <UKbd variant="subtle" value="K" />
   </UContentSearchButton>
-  <USeparator orientation="vertical" class="h-8" />
+
+  <USeparator orientation="vertical" class="hidden lg:block h-8" />
+
   <ClientOnly>
-    <UButton v-if="!session" label="Sign In" variant="subtle" color="neutral" to="/auth/login" />
-    <UButton v-else label="Sign Out" variant="subtle" color="neutral" @click="signOut()" />
+    <UButton
+      v-if="!session"
+      label="Sign In"
+      variant="subtle"
+      color="neutral"
+      to="/auth/login"
+      class="hidden lg:inline-flex"
+    />
+    <UButton
+      v-else
+      label="Sign Out"
+      variant="subtle"
+      color="neutral"
+      class="hidden lg:inline-flex"
+      @click="signOut()"
+    />
   </ClientOnly>
-  <UButton variant="subtle" color="primary" to="/download">
+  <UButton variant="subtle" color="primary" to="/download" class="hidden lg:inline-flex">
     <template #default> Download </template>
     <template #trailing>
       <UKbd> D </UKbd>

@@ -1,8 +1,13 @@
 export default defineAppConfig({
   repository: "waypoints-hq/waypoints",
+  app: {
+    rootAttrs: {
+      "data-vaul-drawer-wrapper": "",
+    },
+  },
   ui: {
     colors: {
-      primary: "sky",
+      primary: "indigo",
       neutral: "mist",
     },
   },
@@ -27,7 +32,6 @@ export default defineAppConfig({
     },
   },
   socials: {
-    discord: "https://discord.com/invite/ps2h6QT",
-    github: "https://github.com/waypoints-hq/waypoints",
+    discord: "https://discord.gg/kMrCfcY4R5",
   },
 });
