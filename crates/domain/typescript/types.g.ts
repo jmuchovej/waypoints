@@ -627,7 +627,6 @@ export type TextMarkKind =
   | "mention"
   | "highlight"
   | "color"
-  | "background-color"
   | "font-size"
   | "font-family"
   | "math"

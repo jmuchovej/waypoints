@@ -29,7 +29,6 @@ export const InlineKind = {
   Mention: "mention",
   Highlight: "highlight",
   Color: "color",
-  BackgroundColor: "background-color",
   FontSize: "font-size",
   FontFamily: "font-family",
   Math: "math",
