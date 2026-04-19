@@ -72,6 +72,15 @@ jobs:
         if: matrix.platform == 'macos'
         run: brew install sops age yq
 
+      - name: Install sops + age + yq (Linux)
+        if: matrix.platform == 'linux'
+        run: sudo apt-get install -y sops age yq
+
+      - name: Install sops + age + yq (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: choco install sops age yq -y
+
       - name: Decrypt Apple signing secrets
         if: matrix.platform == 'macos'
         env:
@@ -86,6 +95,19 @@ jobs:
           echo "APPLE_CERTIFICATE=$(echo "${secrets}" | yq '.developer-id.certificate')" >> "$GITHUB_ENV"
           echo "APPLE_CERTIFICATE_PASSWORD=$(echo "${secrets}" | yq '.developer-id.password')" >> "$GITHUB_ENV"
 
+      - name: Decrypt updater signing key
+        shell: bash
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          secrets=$(sops -d .secrets/updater.sops.yaml)
+          {
+            echo 'TAURI_SIGNING_PRIVATE_KEY<<UPDATER_EOF'
+            echo "${secrets}" | yq '.private-key'
+            echo 'UPDATER_EOF'
+          } >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$(echo "${secrets}" | yq '.password')" >> "$GITHUB_ENV"
+
       - name: Generate icons
         run: just icons::${{ inputs.flavor }}
         working-directory: waypoints/src-tauri
@@ -99,6 +121,8 @@ jobs:
           APPLE_API_ISSUER: ${{ env.APPLE_API_ISSUER }}
           APPLE_API_KEY: ${{ env.APPLE_API_KEY }}
           APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: waypoints
           args: >-

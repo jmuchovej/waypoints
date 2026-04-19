@@ -12,7 +12,7 @@ frontend-dist = "../dist"
 [bundle]
 homepage = "https://waypoints.so"
 active = true
-targets = ["dmg", "nsis", "appimage", "deb"]
+targets = ["app", "dmg", "nsis", "appimage", "deb"]
 createUpdaterArtifacts = true
 icon = [
   "icons/generated/32x32.png",

@@ -18,4 +18,11 @@ _dev feature $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
 
 [private]
 _build feature *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just icons::{{ feature }}
+    repo_root=$(git rev-parse --show-toplevel)
+    updater_secrets=$(sops -d "${repo_root}/.secrets/updater.sops.yaml")
+    export TAURI_SIGNING_PRIVATE_KEY="$(echo "${updater_secrets}" | yq '.private-key')"
+    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(echo "${updater_secrets}" | yq '.password')"
     cargo tauri build --features {{ feature }} --config Tauri.flavor={{ feature }}.toml {{ ARGS }}

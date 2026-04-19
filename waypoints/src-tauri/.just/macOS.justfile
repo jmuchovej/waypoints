@@ -23,21 +23,26 @@ _dev feature $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
 _build feature *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
+    just icons::{{ feature }}
     repo_root=$(git rev-parse --show-toplevel)
-    sops_file="${repo_root}/.secrets/signing-apple.sops.yaml"
+    apple_sops="${repo_root}/.secrets/apple.sops.yaml"
+    updater_sops="${repo_root}/.secrets/updater.sops.yaml"
     key_path=$(mktemp "${TMPDIR:-/tmp}/AuthKey.XXXXXX.p8")
     trap 'rm -f "${key_path}"' EXIT
-    secrets=$(sops -d "${sops_file}")
-    echo "${secrets}" | yq '.developer-id.key-prv' > "${key_path}"
+    apple_secrets=$(sops -d "${apple_sops}")
+    updater_secrets=$(sops -d "${updater_sops}")
+    echo "${apple_secrets}" | yq '.developer-id.key-prv' > "${key_path}"
     env -i \
         HOME="$HOME" \
         USER="$USER" \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nix-profile/bin:$HOME/.cargo/bin:$HOME/.bun/bin" \
-        APPLE_API_ISSUER="$(echo "${secrets}" | yq '.developer-id.issuer-id')" \
-        APPLE_API_KEY="$(echo "${secrets}" | yq '.developer-id.key-id')" \
+        APPLE_API_ISSUER="$(echo "${apple_secrets}" | yq '.developer-id.issuer-id')" \
+        APPLE_API_KEY="$(echo "${apple_secrets}" | yq '.developer-id.key-id')" \
         APPLE_API_KEY_PATH="${key_path}" \
-        APPLE_CERTIFICATE="$(echo "${secrets}" | yq '.developer-id.certificate')" \
-        APPLE_CERTIFICATE_PASSWORD="$(echo "${secrets}" | yq '.developer-id.password')" \
+        APPLE_CERTIFICATE="$(echo "${apple_secrets}" | yq '.developer-id.certificate')" \
+        APPLE_CERTIFICATE_PASSWORD="$(echo "${apple_secrets}" | yq '.developer-id.password')" \
+        TAURI_SIGNING_PRIVATE_KEY="$(echo "${updater_secrets}" | yq '.private-key')" \
+        TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(echo "${updater_secrets}" | yq '.password')" \
         cargo tauri build \
           --features {{ feature }} \
           --config Tauri.flavor={{ feature }}.toml \
