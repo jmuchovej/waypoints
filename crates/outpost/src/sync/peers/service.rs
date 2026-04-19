@@ -4,46 +4,38 @@
 //! them — a test double that re-implements the protocol can drift from
 //! it silently.
 
-use domain::sync::{AccountID, DeviceID, OpID, RealmID};
+use domain::sync::{AccountID, DeviceID, RealmID};
 use serde_json::value::RawValue;
 
-use super::store::{EnvelopeStore, StoreError, rfc3339_now};
+use super::error::{PeerError, PeerResult};
+use super::store::{EnvelopeStore, rfc3339_now};
 use super::wire::{EnvelopeFace, FetchResponse, SequencedEnvelope, UploadAck, UploadResponse};
-
-/// Why an upload was refused. Transports map these onto their own
-/// error vocabulary (HTTP statuses, `PeerError`).
-#[derive(Debug)]
-pub enum UploadRejection {
-    Malformed(String),
-    RealmMismatch { group_id: OpID },
-    AccountMismatch { group_id: OpID },
-    Store(StoreError),
-}
 
 /// §4.1 minus transport concerns: parse faces, guard realm (and account,
 /// when the caller's auth mode knows one), append idempotently, ack
-/// every envelope with its seq.
+/// every envelope with its seq. Rejections come back as the structured
+/// `PeerError` variants; `serve` maps them onto HTTP statuses.
 pub async fn accept_upload<S>(
     store: &S,
     realm_id: RealmID,
     envelopes: &[&RawValue],
     token_account: Option<AccountID>,
-) -> Result<UploadResponse, UploadRejection>
+) -> PeerResult<UploadResponse>
 where
     S: EnvelopeStore + ?Sized,
 {
     let mut faces = Vec::with_capacity(envelopes.len());
     for raw in envelopes {
-        let face = EnvelopeFace::parse(raw.get()).map_err(UploadRejection::Malformed)?;
+        let face = EnvelopeFace::parse(raw.get()).map_err(PeerError::Malformed)?;
         if face.realm_id != realm_id {
-            return Err(UploadRejection::RealmMismatch {
+            return Err(PeerError::RealmMismatch {
                 group_id: face.group_id,
             });
         }
         if let Some(account) = token_account
             && face.account_id != account
         {
-            return Err(UploadRejection::AccountMismatch {
+            return Err(PeerError::AccountMismatch {
                 group_id: face.group_id,
             });
         }
@@ -51,10 +43,7 @@ where
     }
 
     let payloads: Vec<&str> = envelopes.iter().map(|r| r.get()).collect();
-    let acks = store
-        .append(&faces, &payloads, &rfc3339_now())
-        .await
-        .map_err(UploadRejection::Store)?;
+    let acks = store.append(&faces, &payloads, &rfc3339_now()).await?;
 
     let results: Vec<UploadAck> = acks
         .into_iter()
@@ -73,7 +62,7 @@ pub async fn serve_fetch<S>(
     since_seq: i64,
     exclude_device: Option<DeviceID>,
     limit: usize,
-) -> Result<FetchResponse, StoreError>
+) -> PeerResult<FetchResponse>
 where
     S: EnvelopeStore + ?Sized,
 {

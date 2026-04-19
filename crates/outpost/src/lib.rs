@@ -24,6 +24,7 @@ pub mod sync {
     /// tree may parse `checkpoints` or import maneuver types; a peer that
     /// stores envelopes it cannot parse is what survives app-version skew.
     pub mod peers {
+        pub mod error;
         pub mod peer;
         pub mod pump;
         pub mod service;
@@ -34,6 +35,9 @@ pub mod sync {
         pub mod serve;
         #[cfg(feature = "store-turso")]
         pub mod turso;
+
+        pub use error::{PeerError, PeerResult};
+        pub use peer::{HttpPeer, LocalPeer, NoopPeer, Peer};
     }
 }
 
