@@ -21,6 +21,11 @@ export function useLongPressDrag(containerEl: Ref<HTMLElement | null>, dragDrop:
       const markId = markEl.getAttribute("data-mark-id");
       if (!markId) return;
 
+      // Suppress context menu only when drag actually activates (not on every pointerdown).
+      // modifiers.prevent would call preventDefault on every pointerdown, which blocks
+      // mousedown from reaching ProseMirror and prevents caret repositioning on click.
+      e.preventDefault();
+
       pressing.value = false;
       pressMarkId.value = null;
       dragDrop.onPointerDown([markId], e);
@@ -28,7 +33,6 @@ export function useLongPressDrag(containerEl: Ref<HTMLElement | null>, dragDrop:
     {
       delay: 500,
       distanceThreshold: 10,
-      modifiers: { prevent: true }, // suppress iOS context menu
     },
   );
 

@@ -29,6 +29,9 @@ clean:
     @just tauri::clean
     devenv gc
 
+test *ARGS:
+    @just app::test {{ ARGS }}
+
 # Setup commands for new developers
 setup:
     @just app::setup

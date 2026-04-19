@@ -16,6 +16,7 @@ import {
   type Editor,
   type EditorOptions,
 } from "../tiptap";
+import { TextSelection } from "@tiptap/pm/state";
 import type { CursorPosition, EditorHandle } from "./useBlockFocus";
 import { BlockOrchestratorKey, type OrchestratorContext } from "./useBlockOrchestrator";
 import { CommandMenuKey, type CommandMenuContext } from "./useCommandMenu";
@@ -76,7 +77,7 @@ export function useInlineEditor(options: UseInlineEditorOptions) {
 
   // Resync TipTap when external changes arrive (undo/redo, merge, split).
   watch(options.richText, (newRt) => {
-    if (isLocalUpdate || !editor.value) return;
+    if (isLocalUpdate.value || !editor.value) return;
     editor.value.commands.setContent(mkDocument(newRt));
   });
 
@@ -118,6 +119,20 @@ function createEditorHandle(
         ed.commands.focus(pos.pos);
       } else {
         ed.commands.focus("end");
+      }
+    },
+
+    onCoordsRange(x1: number, y1: number, x2: number, y2: number) {
+      const ed = editor.value;
+      if (!ed) return;
+      const start = ed.view.posAtCoords({ left: x1, top: y1 });
+      const end = ed.view.posAtCoords({ left: x2, top: y2 });
+      if (start && end) {
+        const sel = TextSelection.create(ed.state.doc, start.pos, end.pos);
+        ed.view.dispatch(ed.state.tr.setSelection(sel));
+        ed.view.focus();
+      } else {
+        ed.commands.focus(start?.pos ?? "end");
       }
     },
 

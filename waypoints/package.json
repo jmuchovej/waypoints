@@ -39,6 +39,7 @@
     "@iconify-json/simple-icons": "catalog:",
     "@iconify-json/tabler": "catalog:",
     "@nuxt/eslint": "catalog:",
+    "@nuxt/test-utils": "^4.0.2",
     "@nuxtjs/i18n": "catalog:",
     "@nuxtjs/storybook": "catalog:",
     "@storybook/addon-a11y": "catalog:",
@@ -69,12 +70,15 @@
     "@tiptap/vue-3": "catalog:tiptap",
     "@types/node": "catalog:",
     "@vue/devtools-api": "catalog:",
+    "@vue/test-utils": "^2.4.6",
     "@vueuse/core": "catalog:",
     "eslint": "catalog:",
     "eslint-plugin-storybook": "catalog:",
+    "happy-dom": "^20.9.0",
     "nuxt-mcp-dev": "catalog:",
     "typescript": "catalog:",
     "uuid": "catalog:",
+    "vitest": "^4.1.4",
     "vue-tsc": "catalog:"
   },
   "resolutions": {

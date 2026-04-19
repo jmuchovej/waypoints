@@ -48,7 +48,7 @@ export function useBlockDragDrop(blocks: Ref<RenderNode[]>, doMove: MoveBlocksFn
   function createGhost(ids: MarkID[], e: PointerEvent) {
     if (ids.length < 1) return;
 
-    const el0 = getBlock(ids[0]);
+    const el0 = getBlock(ids[0] as MarkID);
     if (!el0) return;
 
     const rect = el0.getBoundingClientRect();

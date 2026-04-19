@@ -33,5 +33,8 @@ storybook-dev:
 storybook-build:
     @just via-storybook build
 
+test *ARGS:
+    bunx vitest {{ ARGS }}
+
 add +ARGS:
     bun add {{ ARGS }}

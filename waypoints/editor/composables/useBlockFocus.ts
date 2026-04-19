@@ -9,6 +9,7 @@ export interface EditorHandle {
   focus(position?: CursorPosition): void;
   blur(): void;
   onCoords(x: number, y: number): void;
+  onCoordsRange(x1: number, y1: number, x2: number, y2: number): void;
   getCursorOffset(): number;
   isCursorAtStart(): boolean;
   isCursorAtEnd(): boolean;
@@ -20,7 +21,8 @@ export interface EditorHandle {
 
 type PendingFocus =
   | { type: "position"; position: CursorPosition }
-  | { type: "coords"; x: number; y: number };
+  | { type: "coords"; x: number; y: number }
+  | { type: "range"; x1: number; y1: number; x2: number; y2: number };
 
 export function useBlockFocus(blocks?: Ref<RenderNode[]>) {
   const blockID = ref<MarkID | null>(null);
@@ -48,7 +50,9 @@ export function useBlockFocus(blocks?: Ref<RenderNode[]>) {
       const intent = pendingFocus.intent;
       pendingFocus = null;
       nextTick(() => {
-        if (intent.type === "coords") {
+        if (intent.type === "range") {
+          handle.onCoordsRange(intent.x1, intent.y1, intent.x2, intent.y2);
+        } else if (intent.type === "coords") {
           handle.onCoords(intent.x, intent.y);
         } else {
           handle.focus(intent.position);
@@ -100,6 +104,20 @@ export function useBlockFocus(blocks?: Ref<RenderNode[]>) {
   }
 
   /**
+   * Focus a block and apply a text selection range from two screen coordinates.
+   * Used for drag-to-select on non-focused blocks: the gesture is captured on the
+   * static text, then applied after the editor mounts.
+   */
+  function focusBlockWithRange(id: MarkID, x1: number, y1: number, x2: number, y2: number) {
+    if (blockID.value && blockID.value !== id) {
+      const prev = handles.get(blockID.value);
+      prev?.blur();
+    }
+    blockID.value = id;
+    pendingFocus = { id, intent: { type: "range", x1, y1, x2, y2 } };
+  }
+
+  /**
    * Always stores a pending focus intent, even if a handle is already registered.
    * Used for structural mutations (block type changes) where the current editor
    * will be destroyed and a new one mounted.
@@ -134,6 +152,7 @@ export function useBlockFocus(blocks?: Ref<RenderNode[]>) {
     focusBlock,
     focusBlockDeferred,
     focusBlockAt,
+    focusBlockWithRange,
     blurAll,
     isFocused,
   };
