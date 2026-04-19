@@ -3,11 +3,12 @@
 //! convention as the app's store crate.
 
 use async_trait::async_trait;
+use domain::sync::{DeviceID, RealmID};
 use tokio::sync::Mutex;
 use turso::{Connection, Value};
 
 use super::store::{EnvelopeStore, GossipStore, StoreError, StoredEnvelope};
-use super::wire::EnvelopeHead;
+use super::wire::EnvelopeFace;
 
 const SCHEMA: &str = include_str!("../../../schema.sql");
 
@@ -41,23 +42,23 @@ impl EnvelopeStore for Storage {
     /// inserts and idempotent replays answer identically.
     async fn append(
         &self,
-        heads: &[EnvelopeHead],
+        faces: &[EnvelopeFace],
         payloads: &[&str],
         received_at: &str,
-    ) -> Result<Vec<(String, i64)>, StoreError> {
+    ) -> Result<Vec<(domain::sync::OpID, i64)>, StoreError> {
         let conn = self.conn.lock().await;
-        for (head, payload) in heads.iter().zip(payloads) {
+        for (face, payload) in faces.iter().zip(payloads) {
             conn.execute(
                 "INSERT INTO envelopes
                    (group_id, account_id, realm_id, device_id, hlc, payload, received_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT (group_id) DO NOTHING",
                 (
-                    head.group_id.as_str(),
-                    head.account_id.as_str(),
-                    head.realm_id.as_str(),
-                    head.device_id.as_str(),
-                    head.hlc_i64,
+                    face.group_id.to_string(),
+                    face.account_id.to_string(),
+                    face.realm_id.to_string(),
+                    face.device_id.to_string(),
+                    face.hlc.inner(),
                     *payload,
                     received_at,
                 ),
@@ -65,12 +66,12 @@ impl EnvelopeStore for Storage {
             .await?;
         }
 
-        let mut acks = Vec::with_capacity(heads.len());
-        for head in heads {
+        let mut acks = Vec::with_capacity(faces.len());
+        for face in faces {
             let mut rows = conn
                 .query(
                     "SELECT seq FROM envelopes WHERE group_id = ?",
-                    [head.group_id.as_str()],
+                    [face.group_id.to_string()],
                 )
                 .await?;
             let seq = match rows.next().await? {
@@ -80,7 +81,7 @@ impl EnvelopeStore for Storage {
                 },
                 None => 0,
             };
-            acks.push((head.group_id.clone(), seq));
+            acks.push((face.group_id, seq));
         }
         Ok(acks)
     }
@@ -90,7 +91,7 @@ impl EnvelopeStore for Storage {
     /// the window (and next_since) includes excluded envelopes.
     async fn page(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         since_seq: i64,
         limit: usize,
     ) -> Result<Vec<StoredEnvelope>, StoreError> {
@@ -101,7 +102,7 @@ impl EnvelopeStore for Storage {
                  WHERE realm_id = ? AND seq > ?
                  ORDER BY seq ASC
                  LIMIT ?",
-                (realm_id, since_seq, (limit + 1) as i64),
+                (realm_id.to_string(), since_seq, (limit + 1) as i64),
             )
             .await?;
 
@@ -112,7 +113,10 @@ impl EnvelopeStore for Storage {
                 _ => continue,
             };
             let device_id = match row.get_value(1)? {
-                Value::Text(s) => s,
+                Value::Text(s) => match uuid::Uuid::parse_str(&s) {
+                    Ok(uuid) => DeviceID::from(uuid),
+                    Err(_) => continue,
+                },
                 _ => continue,
             };
             let payload = match row.get_value(2)? {
@@ -131,12 +135,12 @@ impl EnvelopeStore for Storage {
 
 #[async_trait]
 impl GossipStore for Storage {
-    async fn peer_cursor(&self, peer_id: &str, realm_id: &str) -> Result<i64, StoreError> {
+    async fn peer_cursor(&self, peer_id: &str, realm_id: RealmID) -> Result<i64, StoreError> {
         let conn = self.conn.lock().await;
         let mut rows = conn
             .query(
                 "SELECT last_seq FROM peer_cursors WHERE peer_id = ? AND realm_id = ?",
-                (peer_id, realm_id),
+                (peer_id, realm_id.to_string()),
             )
             .await?;
         Ok(match rows.next().await? {
@@ -151,7 +155,7 @@ impl GossipStore for Storage {
     async fn set_peer_cursor(
         &self,
         peer_id: &str,
-        realm_id: &str,
+        realm_id: RealmID,
         last_seq: i64,
     ) -> Result<(), StoreError> {
         let conn = self.conn.lock().await;
@@ -159,21 +163,23 @@ impl GossipStore for Storage {
             "INSERT INTO peer_cursors (peer_id, realm_id, last_seq)
              VALUES (?, ?, ?)
              ON CONFLICT (peer_id, realm_id) DO UPDATE SET last_seq = excluded.last_seq",
-            (peer_id, realm_id, last_seq),
+            (peer_id, realm_id.to_string(), last_seq),
         )
         .await?;
         Ok(())
     }
 
-    async fn known_realms(&self) -> Result<Vec<String>, StoreError> {
+    async fn known_realms(&self) -> Result<Vec<RealmID>, StoreError> {
         let conn = self.conn.lock().await;
         let mut rows = conn
             .query("SELECT DISTINCT realm_id FROM envelopes", ())
             .await?;
         let mut out = Vec::new();
         while let Some(row) = rows.next().await? {
-            if let Value::Text(s) = row.get_value(0)? {
-                out.push(s);
+            if let Value::Text(s) = row.get_value(0)?
+                && let Ok(uuid) = uuid::Uuid::parse_str(&s)
+            {
+                out.push(RealmID::from(uuid));
             }
         }
         Ok(out)

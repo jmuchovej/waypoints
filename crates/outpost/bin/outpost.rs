@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
+use domain::sync::RealmID;
 
 use outpost::auth::Validator;
 use outpost::sync::peers::peer::HttpPeer;
@@ -121,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-type GossipConfig = (Vec<HttpPeer>, Vec<String>, Duration);
+type GossipConfig = (Vec<HttpPeer>, Vec<RealmID>, Duration);
 
 fn gossip_config(cli: &Cli) -> Result<Option<GossipConfig>, Box<dyn std::error::Error>> {
     let urls: Vec<&str> = cli
@@ -148,8 +149,12 @@ fn gossip_config(cli: &Cli) -> Result<Option<GossipConfig>, Box<dyn std::error::
         .iter()
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .map(String::from)
-        .collect();
+        .map(|s| {
+            uuid::Uuid::parse_str(s)
+                .map(RealmID::from)
+                .map_err(|e| format!("--peer-realm {s} is not a uuid: {e}"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Some((
         peers,

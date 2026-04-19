@@ -5,6 +5,7 @@
 
 use std::future::Future;
 
+use domain::sync::{DeviceID, RealmID};
 use serde::Serialize;
 use serde_json::value::RawValue;
 
@@ -27,7 +28,7 @@ pub trait Peer: Send + Sync {
     /// callers retry freely.
     fn upload(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         envelopes: Vec<Box<RawValue>>,
     ) -> impl Future<Output = Result<UploadResponse, PeerError>> + Send;
 
@@ -36,9 +37,9 @@ pub trait Peer: Send + Sync {
     /// relay passes `None`: it wants everything.
     fn fetch_since(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         since_seq: i64,
-        exclude_device: Option<&str>,
+        exclude_device: Option<DeviceID>,
         limit: usize,
     ) -> impl Future<Output = Result<FetchResponse, PeerError>> + Send;
 }
@@ -69,7 +70,7 @@ impl HttpPeer {
         &self.base_url
     }
 
-    fn envelopes_url(&self, realm_id: &str) -> String {
+    fn envelopes_url(&self, realm_id: RealmID) -> String {
         format!("{}/realms/{}/envelopes", self.base_url, realm_id)
     }
 
@@ -94,7 +95,7 @@ impl HttpPeer {
 impl Peer for HttpPeer {
     async fn upload(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         envelopes: Vec<Box<RawValue>>,
     ) -> Result<UploadResponse, PeerError> {
         #[derive(Serialize)]
@@ -115,9 +116,9 @@ impl Peer for HttpPeer {
 
     async fn fetch_since(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         since_seq: i64,
-        exclude_device: Option<&str>,
+        exclude_device: Option<DeviceID>,
         limit: usize,
     ) -> Result<FetchResponse, PeerError> {
         let mut query = vec![
@@ -169,7 +170,7 @@ impl LocalPeer<MemoryStore> {
 impl<S: EnvelopeStore> Peer for LocalPeer<S> {
     async fn upload(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         envelopes: Vec<Box<RawValue>>,
     ) -> Result<UploadResponse, PeerError> {
         let refs: Vec<&RawValue> = envelopes.iter().map(AsRef::as_ref).collect();
@@ -194,20 +195,14 @@ impl<S: EnvelopeStore> Peer for LocalPeer<S> {
 
     async fn fetch_since(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         since_seq: i64,
-        exclude_device: Option<&str>,
+        exclude_device: Option<DeviceID>,
         limit: usize,
     ) -> Result<FetchResponse, PeerError> {
-        serve_fetch(
-            &self.store,
-            realm_id,
-            since_seq,
-            exclude_device.unwrap_or(""),
-            limit,
-        )
-        .await
-        .map_err(|e| PeerError::Transport(e.to_string()))
+        serve_fetch(&self.store, realm_id, since_seq, exclude_device, limit)
+            .await
+            .map_err(|e| PeerError::Transport(e.to_string()))
     }
 }
 
@@ -221,7 +216,7 @@ pub struct NoopPeer;
 impl Peer for NoopPeer {
     async fn upload(
         &self,
-        _realm_id: &str,
+        _realm_id: RealmID,
         _envelopes: Vec<Box<RawValue>>,
     ) -> Result<UploadResponse, PeerError> {
         Ok(UploadResponse {
@@ -232,9 +227,9 @@ impl Peer for NoopPeer {
 
     async fn fetch_since(
         &self,
-        _realm_id: &str,
+        _realm_id: RealmID,
         since_seq: i64,
-        _exclude_device: Option<&str>,
+        _exclude_device: Option<DeviceID>,
         _limit: usize,
     ) -> Result<FetchResponse, PeerError> {
         Ok(FetchResponse {

@@ -1,7 +1,10 @@
 //! The §4 wire contract, shared by the serving side (serialize) and the
-//! client side (deserialize). Envelopes stay opaque throughout: a
-//! `Box<RawValue>` in, the same bytes out.
+//! client side (deserialize). Identity types are the frozen domain
+//! newtypes — stable forever, so the log plane may speak them. The
+//! `checkpoints` payload stays opaque throughout: a `Box<RawValue>` in,
+//! the same bytes out.
 
+use domain::sync::{AccountID, DeviceID, HLC, OpID, RealmID};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
@@ -12,33 +15,44 @@ pub const MAX_LIMIT: usize = 500;
 
 /// The routing fields a relay reads. Everything else in an envelope —
 /// `checkpoints` above all — passes through byte-verbatim.
-#[derive(Debug, Deserialize)]
-pub struct EnvelopeHead {
-    pub group_id: String,
-    pub account_id: String,
-    pub realm_id: String,
-    pub device_id: String,
-    pub hlc: String,
-    #[serde(skip)]
-    pub hlc_i64: i64,
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct EnvelopeFace {
+    pub group_id: OpID,
+    pub account_id: AccountID,
+    pub realm_id: RealmID,
+    pub device_id: DeviceID,
+    #[serde(with = "hlc_wire")]
+    pub hlc: HLC,
 }
 
-impl EnvelopeHead {
-    /// Parse the head fields out of a raw envelope, validating the HLC
-    /// (a decimal string; PROTOCOL.md §2).
+impl EnvelopeFace {
+    /// Parse the routing fields out of a raw envelope. IDs must be
+    /// UUIDs and the HLC a non-negative decimal string (PROTOCOL.md §2).
     pub fn parse(raw: &str) -> Result<Self, String> {
-        let mut head: Self =
-            serde_json::from_str(raw).map_err(|e| format!("malformed envelope: {e}"))?;
-        head.hlc_i64 = match head.hlc.parse::<i64>() {
-            Ok(v) if v >= 0 => v,
-            _ => {
-                return Err(format!(
-                    "envelope {} hlc must be a decimal string",
-                    head.group_id
-                ));
-            }
-        };
-        Ok(head)
+        serde_json::from_str(raw).map_err(|e| format!("malformed envelope: {e}"))
+    }
+}
+
+/// §2 wire form of an HLC: a decimal *string*. Packed values exceed
+/// `Number.MAX_SAFE_INTEGER`, so a bare JSON number would be silently
+/// corrupted by any JavaScript participant that re-parses the envelope.
+/// Shared by `EnvelopeFace` and the app's typed `Envelope`.
+pub mod hlc_wire {
+    use domain::sync::HLC;
+    use serde::de::Error;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(hlc: &HLC, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&hlc.inner().to_string())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<HLC, D::Error> {
+        let raw = String::deserialize(d)?;
+        let packed = raw.parse::<i64>().map_err(D::Error::custom)?;
+        if packed < 0 {
+            return Err(D::Error::custom("hlc must be non-negative"));
+        }
+        Ok(HLC(packed))
     }
 }
 
@@ -60,9 +74,9 @@ pub struct FetchResponse {
 
 /// The relay's acknowledgment of one envelope: the arrival seq it was
 /// assigned, or already had (idempotent re-upload).
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct UploadAck {
-    pub group_id: String,
+    pub group_id: OpID,
     pub seq: i64,
 }
 

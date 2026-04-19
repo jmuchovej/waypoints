@@ -4,8 +4,9 @@
 //! app's own `sync_log` for in-app serving (lives app-side; §8).
 
 use async_trait::async_trait;
+use domain::sync::{DeviceID, OpID, RealmID};
 
-use super::wire::EnvelopeHead;
+use super::wire::EnvelopeFace;
 
 /// Opaque storage failure. Callers log it and degrade; nothing
 /// protocol-level rides on the variant.
@@ -16,7 +17,7 @@ pub struct StoreError(pub String);
 /// A stored envelope header row (payload carried separately, verbatim).
 pub struct StoredEnvelope {
     pub seq: i64,
-    pub device_id: String,
+    pub device_id: DeviceID,
     pub payload: String,
 }
 
@@ -26,17 +27,17 @@ pub trait EnvelopeStore: Send + Sync {
     /// — fresh inserts and idempotent replays answer identically.
     async fn append(
         &self,
-        heads: &[EnvelopeHead],
+        faces: &[EnvelopeFace],
         payloads: &[&str],
         received_at: &str,
-    ) -> Result<Vec<(String, i64)>, StoreError>;
+    ) -> Result<Vec<(OpID, i64)>, StoreError>;
 
     /// Scan-window page: rows with `seq > since`, ascending, `limit + 1`
     /// so callers can detect has_more. Device filtering is the caller's
     /// job — the window (and next_since) must include excluded envelopes.
     async fn page(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         since_seq: i64,
         limit: usize,
     ) -> Result<Vec<StoredEnvelope>, StoreError>;
@@ -46,19 +47,19 @@ pub trait EnvelopeStore: Send + Sync {
 /// cursors and the set of realms worth pulling.
 #[async_trait]
 pub trait GossipStore: EnvelopeStore {
-    async fn peer_cursor(&self, peer_id: &str, realm_id: &str) -> Result<i64, StoreError>;
+    async fn peer_cursor(&self, peer_id: &str, realm_id: RealmID) -> Result<i64, StoreError>;
 
     async fn set_peer_cursor(
         &self,
         peer_id: &str,
-        realm_id: &str,
+        realm_id: RealmID,
         last_seq: i64,
     ) -> Result<(), StoreError>;
 
     /// Realms present in the local store. The pump pulls these plus any
     /// configured extras (the bootstrap case: a fresh mirror holds no
     /// realms yet).
-    async fn known_realms(&self) -> Result<Vec<String>, StoreError>;
+    async fn known_realms(&self) -> Result<Vec<RealmID>, StoreError>;
 }
 
 /// The always-on peer's log in miniature: an in-memory `EnvelopeStore`
@@ -72,9 +73,9 @@ pub struct MemoryStore {
 #[derive(Debug)]
 struct MemoryRow {
     seq: i64,
-    group_id: String,
-    realm_id: String,
-    device_id: String,
+    group_id: OpID,
+    realm_id: RealmID,
+    device_id: DeviceID,
     payload: String,
 }
 
@@ -82,35 +83,35 @@ struct MemoryRow {
 impl EnvelopeStore for MemoryStore {
     async fn append(
         &self,
-        heads: &[EnvelopeHead],
+        faces: &[EnvelopeFace],
         payloads: &[&str],
         _received_at: &str,
-    ) -> Result<Vec<(String, i64)>, StoreError> {
+    ) -> Result<Vec<(OpID, i64)>, StoreError> {
         let mut rows = self.rows.lock().unwrap();
-        let mut acks = Vec::with_capacity(heads.len());
-        for (head, payload) in heads.iter().zip(payloads) {
-            let seq = match rows.iter().find(|r| r.group_id == head.group_id) {
+        let mut acks = Vec::with_capacity(faces.len());
+        for (face, payload) in faces.iter().zip(payloads) {
+            let seq = match rows.iter().find(|r| r.group_id == face.group_id) {
                 Some(existing) => existing.seq,
                 None => {
                     let seq = rows.len() as i64 + 1;
                     rows.push(MemoryRow {
                         seq,
-                        group_id: head.group_id.clone(),
-                        realm_id: head.realm_id.clone(),
-                        device_id: head.device_id.clone(),
+                        group_id: face.group_id,
+                        realm_id: face.realm_id,
+                        device_id: face.device_id,
                         payload: (*payload).to_string(),
                     });
                     seq
                 }
             };
-            acks.push((head.group_id.clone(), seq));
+            acks.push((face.group_id, seq));
         }
         Ok(acks)
     }
 
     async fn page(
         &self,
-        realm_id: &str,
+        realm_id: RealmID,
         since_seq: i64,
         limit: usize,
     ) -> Result<Vec<StoredEnvelope>, StoreError> {
@@ -121,7 +122,7 @@ impl EnvelopeStore for MemoryStore {
             .take(limit + 1)
             .map(|r| StoredEnvelope {
                 seq: r.seq,
-                device_id: r.device_id.clone(),
+                device_id: r.device_id,
                 payload: r.payload.clone(),
             })
             .collect())

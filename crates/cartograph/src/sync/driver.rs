@@ -11,7 +11,7 @@
 //! owns the typed boundary — `Envelope`s are serialized on the way up
 //! and parsed on the way down, here and nowhere below.
 
-use domain::sync::{HLC, OpID};
+use domain::sync::HLC;
 use outpost::sync::peers::peer::{Peer, PeerError};
 use serde_json::value::RawValue;
 use store::DatabaseConnection;
@@ -68,20 +68,13 @@ where
             .iter()
             .map(raw_envelope)
             .collect::<EditorResult<Vec<_>>>()?;
-        let response = peer
-            .upload(&realm.to_string(), raw)
-            .await
-            .map_err(peer_error)?;
+        let response = peer.upload(realm, raw).await.map_err(peer_error)?;
         if response.results.is_empty() {
             // Offline (NoopPeer) or a peer that acked nothing: leave
             // the outbox pending and stop rather than spin.
             break;
         }
-        let ids = response
-            .results
-            .iter()
-            .map(|ack| acked_group_id(&ack.group_id))
-            .collect::<EditorResult<Vec<_>>>()?;
+        let ids: Vec<_> = response.results.iter().map(|ack| ack.group_id).collect();
         sync_log::mark_uploaded(db, &ids).await?;
         outcome.uploaded += ids.len();
         if batch_len < UPLOAD_BATCH as usize {
@@ -93,12 +86,7 @@ where
     loop {
         let cursor = relay_cursor::get(db, peer_id, realm).await?;
         let page = peer
-            .fetch_since(
-                &realm.to_string(),
-                cursor,
-                Some(&device.to_string()),
-                FETCH_LIMIT,
-            )
+            .fetch_since(realm, cursor, Some(device), FETCH_LIMIT)
             .await
             .map_err(peer_error)?;
         let made_progress = page.next_since > cursor;
@@ -152,13 +140,6 @@ fn raw_envelope(envelope: &Envelope) -> EditorResult<Box<RawValue>> {
     serde_json::to_string(envelope)
         .and_then(RawValue::from_string)
         .map_err(|e| EditorError::Serialization(e.to_string()))
-}
-
-/// Peers ack group_ids as strings; parse them back into OpIDs.
-fn acked_group_id(raw: &str) -> EditorResult<OpID> {
-    uuid::Uuid::parse_str(raw)
-        .map(OpID::from)
-        .map_err(|e| EditorError::Relay(format!("peer returned malformed group_id: {e}")))
 }
 
 fn peer_error(e: PeerError) -> EditorError {
