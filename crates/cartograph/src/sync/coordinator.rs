@@ -137,7 +137,11 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
             checkpoints: ops,
             touched_marks,
         };
-        sync_log::insert(db, log_entry(&group, SyncOrigin::Local)?).await?;
+        // Serialize once at mint: these are the canonical wire bytes,
+        // stored verbatim so upload (and serving) never re-serializes.
+        let payload =
+            serde_json::to_string(&group).map_err(|e| EditorError::Serialization(e.to_string()))?;
+        sync_log::insert(db, log_entry(&group, payload, SyncOrigin::Local)?).await?;
 
         for op in &group.checkpoints {
             match op.target() {
@@ -153,13 +157,19 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
         Ok(group)
     }
 
-    /// Apply a remote group through the resolver. Idempotent on `group_id`.
+    /// Apply a remote group through the resolver. Idempotent on
+    /// `group_id`; `payload` is the wire envelope, byte-verbatim, stored
+    /// so this device can serve (and carry) it later.
     pub async fn apply_remote(
         &mut self,
         db: &DatabaseConnection,
         group: Envelope,
+        payload: &str,
     ) -> EditorResult<ApplyOutcome> {
-        if sync_log::contains(db, group.face.group_id).await? {
+        // Tri-state: applied rows are done; carrier rows (stored via
+        // serving, never applied) still need their ops run.
+        let existing = sync_log::get(db, group.face.group_id).await?;
+        if existing.as_ref().is_some_and(|r| r.applied_at.is_some()) {
             return Ok(ApplyOutcome::Skipped(SkipReason::AlreadyApplied));
         }
         if group.face.realm_id != self.realm_id {
@@ -178,7 +188,27 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
         // recorded (it won't be re-fetched), which is the safe side —
         // re-applying half-applied groups would double-apply the ops
         // that did land.
-        sync_log::insert(db, log_entry(&group, SyncOrigin::Remote)?).await?;
+        match existing {
+            Some(_) => {
+                // Carrier row: backfill the parsed ops and stamp applied.
+                sync_log::mark_applied(
+                    db,
+                    group.face.group_id,
+                    serde_json::to_value(&group.checkpoints)
+                        .map_err(|e| EditorError::Serialization(e.to_string()))?,
+                    serde_json::to_value(&group.touched_marks)
+                        .map_err(|e| EditorError::Serialization(e.to_string()))?,
+                )
+                .await?;
+            }
+            None => {
+                sync_log::insert(
+                    db,
+                    log_entry(&group, payload.to_string(), SyncOrigin::Remote)?,
+                )
+                .await?;
+            }
+        }
 
         let (mut applied, mut dominated, mut merged) = (0usize, 0usize, 0usize);
         for op in &group.checkpoints {
@@ -200,13 +230,48 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
         })
     }
 
+    /// Apply carrier rows — envelopes accepted through serving (§4.1)
+    /// and stored face-and-payload only. One batch of at most `limit`,
+    /// arrival order; returns how many groups were applied. Rows whose
+    /// payload no longer parses stay pending: they are envelopes this
+    /// version can only carry, not apply.
+    pub async fn apply_pending(
+        &mut self,
+        db: &DatabaseConnection,
+        limit: u64,
+    ) -> EditorResult<usize> {
+        let rows = sync_log::pending_apply(db, self.realm_id, limit).await?;
+        let mut applied = 0usize;
+        for row in rows {
+            let Some(payload) = row.payload else {
+                // Unreachable in practice (carrier rows always carry a
+                // payload); leave it pending rather than guess.
+                continue;
+            };
+            let Ok(group) = serde_json::from_str::<Envelope>(&payload) else {
+                tracing::warn!(
+                    group_id = %row.group_id,
+                    "carrying envelope this version cannot parse; leaving pending"
+                );
+                continue;
+            };
+            if matches!(
+                self.apply_remote(db, group, &payload).await?,
+                ApplyOutcome::Applied { .. }
+            ) {
+                applied += 1;
+            }
+        }
+        Ok(applied)
+    }
+
     /// Cursor for "give me everything since X" queries against the relay.
     pub async fn last_remote_hlc(&self, db: &DatabaseConnection) -> EditorResult<HLC> {
         Ok(sync_log::max_remote_hlc(db, self.realm_id).await?)
     }
 }
 
-fn log_entry(group: &Envelope, origin: SyncOrigin) -> EditorResult<SyncLogEntry> {
+fn log_entry(group: &Envelope, payload: String, origin: SyncOrigin) -> EditorResult<SyncLogEntry> {
     Ok(SyncLogEntry {
         group_id: group.face.group_id,
         device_id: group.face.device_id,
@@ -217,6 +282,7 @@ fn log_entry(group: &Envelope, origin: SyncOrigin) -> EditorResult<SyncLogEntry>
             .map_err(|e| EditorError::Serialization(e.to_string()))?,
         touched_marks: serde_json::to_value(&group.touched_marks)
             .map_err(|e| EditorError::Serialization(e.to_string()))?,
+        payload,
         origin,
     })
 }
@@ -273,6 +339,17 @@ mod tests {
         MarkData::Content(Content::paragraph(RichText::from(text.to_string())))
     }
 
+    /// Test shorthand: apply a group whose wire payload is its own
+    /// serialization (what a relay would have carried).
+    async fn apply(
+        coord: &mut SyncCoordinator,
+        db: &DatabaseConnection,
+        group: Envelope,
+    ) -> ApplyOutcome {
+        let payload = serde_json::to_string(&group).unwrap();
+        coord.apply_remote(db, group, &payload).await.unwrap()
+    }
+
     fn remote_group(
         realm_id: RealmID,
         device_id: DeviceID,
@@ -318,8 +395,7 @@ mod tests {
         let marks = touched_marks(&ops);
         let group = coord.log_local(&db, ops, marks).await.unwrap();
 
-        let row = SyncLog::find_by_id(group.face.group_id.inner())
-            .one(&db)
+        let row = store::query::sync_log::get(&db, group.face.group_id)
             .await
             .unwrap()
             .expect("sync_log row for local group");
@@ -353,7 +429,7 @@ mod tests {
             }],
         );
 
-        let outcome = coord.apply_remote(&db, group).await.unwrap();
+        let outcome = apply(&mut coord, &db, group).await;
         assert_eq!(
             outcome,
             ApplyOutcome::Applied {
@@ -385,8 +461,8 @@ mod tests {
             }],
         );
 
-        coord.apply_remote(&db, group.clone()).await.unwrap();
-        let second = coord.apply_remote(&db, group.clone()).await.unwrap();
+        apply(&mut coord, &db, group.clone()).await;
+        let second = apply(&mut coord, &db, group.clone()).await;
         assert_eq!(second, ApplyOutcome::Skipped(SkipReason::AlreadyApplied));
 
         let rows = SyncLog::find().all(&db).await.unwrap();
@@ -404,7 +480,7 @@ mod tests {
             HLC::pack(1_750_000_000_000, 1),
             vec![],
         );
-        let outcome = coord.apply_remote(&db, group).await.unwrap();
+        let outcome = apply(&mut coord, &db, group).await;
         assert_eq!(outcome, ApplyOutcome::Skipped(SkipReason::WrongRealm));
         assert!(SyncLog::find().all(&db).await.unwrap().is_empty());
     }
@@ -442,7 +518,7 @@ mod tests {
                 new: paragraph("stale remote"),
             }],
         );
-        let outcome = coord.apply_remote(&db, group).await.unwrap();
+        let outcome = apply(&mut coord, &db, group).await;
         assert_eq!(
             outcome,
             ApplyOutcome::Applied {
@@ -488,7 +564,7 @@ mod tests {
             }],
         );
         assert_eq!(
-            coord.apply_remote(&db, winner).await.unwrap(),
+            apply(&mut coord, &db, winner).await,
             ApplyOutcome::Applied {
                 applied: 1,
                 dominated: 0,
@@ -512,7 +588,7 @@ mod tests {
             }],
         );
         assert_eq!(
-            coord.apply_remote(&db, loser).await.unwrap(),
+            apply(&mut coord, &db, loser).await,
             ApplyOutcome::Applied {
                 applied: 0,
                 dominated: 1,
@@ -540,7 +616,7 @@ mod tests {
             }],
         );
 
-        let outcome = coord.apply_remote(&db, group).await.unwrap();
+        let outcome = apply(&mut coord, &db, group).await;
         assert_eq!(outcome, ApplyOutcome::Skipped(SkipReason::ExcessiveDrift));
 
         // Nothing persisted, nothing applied, clock not dragged: a later
@@ -566,7 +642,7 @@ mod tests {
             }],
         );
 
-        let outcome = coord.apply_remote(&db, group).await.unwrap();
+        let outcome = apply(&mut coord, &db, group).await;
         assert_eq!(
             outcome,
             ApplyOutcome::Applied {
@@ -586,7 +662,7 @@ mod tests {
 
         let hlc = HLC::pack(1_750_000_000_000, 3);
         let group = remote_group(coord.realm_id(), DeviceID::new(), hlc, vec![]);
-        coord.apply_remote(&db, group).await.unwrap();
+        apply(&mut coord, &db, group).await;
         assert_eq!(coord.last_remote_hlc(&db).await.unwrap(), hlc);
     }
 }

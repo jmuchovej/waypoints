@@ -134,7 +134,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let db = open(&dir.path().join("test.db")).await.expect("open");
 
-        assert_eq!(count(&db, "refinery_schema_history").await, 6);
+        // At least every migration up to the sync_log envelope rebuild
+        // (V0008); ">=" so this doesn't go stale with each new migration.
+        assert!(count(&db, "refinery_schema_history").await >= 8);
         assert_eq!(count(&db, "charts").await, 9);
 
         // mock feature also seeds documents; without it, marks/terrains are 0.

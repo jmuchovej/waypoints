@@ -61,13 +61,15 @@ where
             break;
         }
         let batch_len = batch.len();
-        let envelopes = batch
+        // Ship the stored wire bytes verbatim; only rows predating the
+        // payload column (V0008) are reconstructed from parsed ops.
+        let raw = batch
             .into_iter()
-            .map(envelope_from_row)
-            .collect::<EditorResult<Vec<_>>>()?;
-        let raw = envelopes
-            .iter()
-            .map(raw_envelope)
+            .map(|row| match row.payload {
+                Some(payload) => RawValue::from_string(payload)
+                    .map_err(|e| EditorError::Serialization(e.to_string())),
+                None => raw_envelope(&envelope_from_row(row)?),
+            })
             .collect::<EditorResult<Vec<_>>>()?;
         let response = peer.upload(realm, raw).await.map_err(peer_error)?;
         if response.results.is_empty() {
@@ -95,9 +97,10 @@ where
 
         for sequenced in page.envelopes {
             outcome.fetched += 1;
-            let envelope: Envelope = serde_json::from_str(sequenced.envelope.get())
+            let raw = sequenced.envelope.get();
+            let envelope: Envelope = serde_json::from_str(raw)
                 .map_err(|e| EditorError::Relay(format!("malformed envelope from peer: {e}")))?;
-            match coordinator.apply_remote(db, envelope).await? {
+            match coordinator.apply_remote(db, envelope, raw).await? {
                 ApplyOutcome::Applied {
                     applied,
                     dominated,
@@ -122,8 +125,10 @@ where
     Ok(outcome)
 }
 
-/// Rebuild the wire envelope from its persisted `sync_log` row.
-fn envelope_from_row(row: store::entities::SyncLogModel) -> EditorResult<Envelope> {
+/// Rebuild the wire envelope from a pre-V0008 `sync_log` row (no stored
+/// payload; parsed ops are the only source).
+pub(crate) fn envelope_from_row(row: store::entities::SyncLogModel) -> EditorResult<Envelope> {
+    let missing = |what: &str| EditorError::Serialization(format!("row missing {what}"));
     Ok(Envelope {
         face: EnvelopeFace {
             group_id: row.group_id.into(),
@@ -132,10 +137,12 @@ fn envelope_from_row(row: store::entities::SyncLogModel) -> EditorResult<Envelop
             device_id: row.device_id.into(),
             hlc: HLC(row.hlc),
         },
-        checkpoints: serde_json::from_value(row.ops)
+        checkpoints: serde_json::from_value(row.ops.ok_or_else(|| missing("ops"))?)
             .map_err(|e| EditorError::Serialization(e.to_string()))?,
-        touched_marks: serde_json::from_value(row.touched_marks)
-            .map_err(|e| EditorError::Serialization(e.to_string()))?,
+        touched_marks: serde_json::from_value(
+            row.touched_marks.ok_or_else(|| missing("touched_marks"))?,
+        )
+        .map_err(|e| EditorError::Serialization(e.to_string()))?,
     })
 }
 
@@ -336,6 +343,44 @@ mod tests {
             on_a.data == paragraph("A's edit") || on_a.data == paragraph("B's edit"),
             "winner is one of the two edits"
         );
+    }
+
+    /// In-app serving in miniature (PROTOCOL.md §8): device B syncs
+    /// against device A's own database, served through
+    /// LocalPeer<AppEnvelopeStore> — no outpost anywhere. Uploads land
+    /// in A's log as carrier rows (face + verbatim payload, unapplied)
+    /// until A's apply_pending runs them through the resolver.
+    #[tokio::test]
+    async fn app_serves_its_own_log() {
+        let (account, realm) = (AccountID::new(), RealmID::new());
+        let (db_a, mut a) = joined_device(account, realm, "a").await;
+        let (db_b, mut b) = joined_device(account, realm, "b").await;
+
+        let id_a = create_mark(&db_a, &mut a, "made on A").await;
+        let id_b = create_mark(&db_b, &mut b, "made on B").await;
+
+        let peer_a = LocalPeer::new(crate::sync::AppEnvelopeStore::new(db_a.clone()));
+        let outcome = sync_once(&db_b, &mut b, &peer_a, "device-a").await.unwrap();
+        assert_eq!(outcome.uploaded, 1);
+        assert_eq!((outcome.fetched, outcome.applied), (1, 1));
+        assert_eq!(
+            mark_q::get(&db_b, id_a).await.unwrap().unwrap().data,
+            paragraph("made on A")
+        );
+
+        // B's envelope sits in A's log as a carrier row — stored, served,
+        // but not applied until A says so.
+        assert!(mark_q::get(&db_a, id_b).await.unwrap().is_none());
+        assert_eq!(a.apply_pending(&db_a, 100).await.unwrap(), 1);
+        assert_eq!(
+            mark_q::get(&db_a, id_b).await.unwrap().unwrap().data,
+            paragraph("made on B")
+        );
+
+        // Quiescent everywhere afterwards.
+        assert_eq!(a.apply_pending(&db_a, 100).await.unwrap(), 0);
+        let again = sync_once(&db_b, &mut b, &peer_a, "device-a").await.unwrap();
+        assert_eq!(again, SyncOutcome::default());
     }
 
     #[tokio::test]
