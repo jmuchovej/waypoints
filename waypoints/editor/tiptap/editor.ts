@@ -20,6 +20,7 @@ import {
   Superscript,
   Underline,
 } from "./bridge/_builtin";
+import { Highlight } from "./bridge/highlight";
 import { Math } from "./bridge/math";
 import { Mention } from "./bridge/mention";
 import { Spoiler } from "./bridge/spoiler";
@@ -81,6 +82,7 @@ export function createEditor(element: HTMLElement, options: EditorOptions): Edit
       Spoiler,
       Math,
       Mention,
+      Highlight,
       TipTapPlaceholder.configure({
         dataAttribute: "placeholder",
         placeholder: options.placeholder ?? "Type something…",

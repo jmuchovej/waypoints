@@ -18,6 +18,12 @@ export function toTipTapMark(mark: InlineMark): TipTapMark {
   if (mark.kind === InlineKind.Mention && mark.data) {
     return { type: mark.kind, attrs: { id: (mark.data as Record<string, unknown>).id } };
   }
+  if (
+    (mark.kind === InlineKind.Highlight) &&
+    typeof mark.data === "string"
+  ) {
+    return { type: mark.kind, attrs: { color: mark.data } };
+  }
   if (mark.kind === InlineKind.Math && mark.data && typeof mark.data === "object") {
     return { type: mark.kind, attrs: { engine: (mark.data as any).engine ?? "typst" } };
   }
@@ -31,6 +37,9 @@ export function toInlineMark(mark: TipTapMark): InlineMark {
   }
   if (mark.type === InlineKind.Mention && mark.attrs?.id) {
     return { kind: InlineKind.Mention, data: mark.attrs.id };
+  }
+  if ((mark.type === InlineKind.Highlight) && mark.attrs?.color) {
+    return { kind: mark.type as TextMarkKind, data: mark.attrs.color };
   }
   if (mark.type === InlineKind.Math) {
     return { kind: InlineKind.Math, data: { engine: mark.attrs?.engine ?? "typst" } };
