@@ -3,6 +3,9 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/ai-instruments",
+  "crates/ai-polaris",
+  "crates/ai-quartermaster",
   "crates/cartograph",
   "crates/domain",
   "crates/importer",
@@ -29,7 +32,10 @@ Waypoints = { path = "waypoints/src-tauri" }
 cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
-outpost = { path = "crates/outpost" }
+instruments = { path = "crates/ai-instruments" }
+outpost = { path = "crates/outpost", default-features = false }
+polaris = { path = "crates/ai-polaris" }
+quartermaster = { path = "crates/ai-quartermaster" }
 store = { path = "crates/store" }
 
 anyhow = "1.0.103"
