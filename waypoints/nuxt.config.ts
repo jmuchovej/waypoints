@@ -25,18 +25,10 @@ export default defineNuxtConfig({
     },
   },
 
-  alias: {
-    "~editor": "../editor",
-  },
+  alias: {},
 
-  css: ["~/assets/css/main.css", "~editor/assets/editor.css"],
-  components: [{ path: "~/components", pathPrefix: false }],
-
-  typescript: {
-    tsConfig: {
-      include: ["../editor/**/*"],
-    },
-  },
+  css: ["~/assets/css/main.css", "~/assets/css/editor.css"],
+  // components: [{ path: "~/components", pathPrefix: false }],
 
   ssr: false,
 
@@ -47,10 +39,6 @@ export default defineNuxtConfig({
     devProxy: {
       "/ipc": { target: "http://localhost:8123/ipc", changeOrigin: true },
     },
-  },
-
-  dir: {
-    modules: "app/modules",
   },
 
   router: {

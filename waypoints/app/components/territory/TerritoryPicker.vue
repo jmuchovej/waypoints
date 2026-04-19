@@ -2,7 +2,7 @@
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { open } from "@tauri-apps/plugin-dialog";
-import ipc from "~/ipc";
+import { ipc } from "#imports";
 
 const emit = defineEmits<{
   success: [];

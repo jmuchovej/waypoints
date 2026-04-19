@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { LazyUAvatar, LazyUCommandPalette } from "#components";
 import type { Chart } from "@waypoints/domain";
-import { iconName } from "~/utils/icon";
-import ipc from "~/ipc";
+import { iconName, ipc } from "#imports";
 
 const open = defineModel<boolean>("open", { default: false });
 
@@ -20,6 +19,10 @@ async function loadCharts() {
 
 onMounted(loadCharts);
 
+// Param and return are `any` to keep TS from instantiating `Chart` against
+// Nuxt UI's `CommandPaletteItem` type at the `.map` site — its recursive
+// Iconify icon union otherwise trips TS2589 (excessively deep instantiation,
+// and budget-sensitive/flaky). The shape is exercised by the template.
 function toPaletteItem(chart: Chart): any {
   return {
     label: chart.name,
@@ -30,7 +33,11 @@ function toPaletteItem(chart: Chart): any {
 }
 
 const groups = computed<any[]>(() => [
-  { id: "charts", label: "Create New", items: (charts.value as any[]).map(toPaletteItem) },
+  {
+    id: "charts",
+    label: "Create New",
+    items: (charts.value as any[]).map(toPaletteItem),
+  },
 ]);
 
 async function createLandmark(chart: Chart) {

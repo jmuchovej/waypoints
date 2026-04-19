@@ -2,8 +2,7 @@
 import type { DropdownMenuItem } from "@nuxt/ui";
 import type { Territory } from "@waypoints/cartograph";
 import { UDropdownMenu, UButton, LazyTerritoryPicker } from "#components";
-import { createLogger } from "~/utils/logger";
-import ipc from "~/ipc";
+import { ipc, createLogger } from "#imports";
 
 const logger = createLogger("TerritoryMenu");
 

@@ -1,4 +1,4 @@
-import ipc from "~/ipc";
+import { ipc } from "#imports";
 
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) return;

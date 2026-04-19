@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import type { Mark, Landmark, FeatureID, Reading, RichText, Chart } from "@waypoints/domain";
-import DocumentBody from "~editor/components/DocumentBody.vue";
-import RichTextEditor from "~editor/components/RichTextEditor.vue";
-import ReadingsTable from "~editor/components/ReadingsTable.vue";
-import ipc from "~/ipc";
+import { Document, RichTextEditor, DocumentReadingsTable } from "#components";
+import { ipc, listen } from "#imports";
 
-const log = createLogger("marks");
+const log = createLogger("marks:[markID]");
 
 const route = useRoute();
 const markID = route.params.markID as string;
@@ -92,9 +90,9 @@ function onTitleUpdate(richText: RichText) {
   });
 }
 
-const docBodyRef = ref<InstanceType<typeof DocumentBody> | null>(null);
+const docBodyRef = ref<InstanceType<typeof Document> | null>(null);
 
-/** Title → DocumentBody: Enter, ArrowDown, ArrowRight at end */
+/** Title → Document: Enter, ArrowDown, ArrowRight at end */
 function onTitleKeyDown(e: KeyboardEvent): boolean {
   if (e.key === "Enter" || e.key === "ArrowDown") {
     e.preventDefault();
@@ -115,7 +113,7 @@ async function focusFirstBlockOrCreate() {
   }
 }
 
-/** DocumentBody → Title: ArrowLeft at start, ArrowUp on first line */
+/** Document → Title: ArrowLeft at start, ArrowUp on first line */
 function onDocExitTop() {
   // Focus the title editor's ProseMirror at the end
   const titleEl = document.querySelector(".landmark-title .ProseMirror") as HTMLElement | null;
@@ -151,13 +149,17 @@ const uiPanel = {
     </div>
 
     <div v-if="landmark && chart" class="editor-content">
-      <ReadingsTable :chart="chart" :readings="landmark.readings" :on-update="onReadingUpdate" />
+      <DocumentReadingsTable
+        :chart="chart"
+        :readings="landmark.readings"
+        :on-update="onReadingUpdate"
+      />
     </div>
 
     <USeparator class="editor-content border-default my-4" />
 
     <div class="editor-content">
-      <DocumentBody ref="docBodyRef" :landmark-id="markID" :on-exit-top="onDocExitTop" />
+      <Document ref="docBodyRef" :landmark-id="markID" :on-exit-top="onDocExitTop" />
     </div>
   </div>
 </template>

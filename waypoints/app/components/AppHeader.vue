@@ -1,14 +1,15 @@
 <script lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
 import type { RichText } from "@waypoints/domain";
-import ReadonlyRichText from "~editor/components/RichText.vue";
-import { createLogger } from "~/utils/logger";
+import { RichTextReadonly } from "#components";
+import { createLogger } from "#imports";
 
 export interface AppHeaderProps {
   title: RichText;
   tabs: NavigationMenuItem[];
 }
 </script>
+
 <script setup lang="ts">
 import type { Ref } from "vue";
 const logger = createLogger("AppHeader");
@@ -37,7 +38,7 @@ logger.debug(props.title);
         @click="open = !open"
       />
 
-      <ReadonlyRichText :rich-text="title" class="text-lg font-semibold truncate" />
+      <RichTextReadonly :rich-text="title" class="text-lg font-semibold truncate" />
     </template>
 
     <template #right>
