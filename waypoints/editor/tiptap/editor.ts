@@ -24,6 +24,7 @@ import { Highlight } from "./bridge/highlight";
 import { Math } from "./bridge/math";
 import { Mention } from "./bridge/mention";
 import { Spoiler } from "./bridge/spoiler";
+import { TextColor } from "./bridge/text-color";
 import { toTipTap } from "./converters";
 
 export type { Editor } from "@tiptap/core";
@@ -83,6 +84,7 @@ export function createEditor(element: HTMLElement, options: EditorOptions): Edit
       Math,
       Mention,
       Highlight,
+      TextColor,
       TipTapPlaceholder.configure({
         dataAttribute: "placeholder",
         placeholder: options.placeholder ?? "Type something…",
