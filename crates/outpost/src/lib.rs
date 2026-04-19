@@ -37,7 +37,9 @@ pub mod sync {
         pub mod turso;
 
         pub use error::{PeerError, PeerResult};
-        pub use peer::{HttpPeer, LocalPeer, NoopPeer, Peer};
+        pub use peer::{HttpPeer, Peer};
+        #[cfg(feature = "testing")]
+        pub use peer::{LocalPeer, NoopPeer};
     }
 }
 

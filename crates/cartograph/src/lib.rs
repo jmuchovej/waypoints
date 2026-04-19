@@ -63,8 +63,10 @@ pub mod sync {
     pub use driver::{SyncOutcome, sync_once};
     pub use envelope::{Envelope, TextPayload};
     // The peer seam is outpost's (raw envelopes; see relay/PROTOCOL.md).
-    // Re-exported so app code has one import surface for sync.
-    pub use outpost::sync::peers::{HttpPeer, LocalPeer, NoopPeer, Peer, PeerError, PeerResult};
+    // Re-exported so app code has one import surface for sync. The test
+    // fixtures (LocalPeer, NoopPeer) are not re-exported: tests import
+    // them from outpost under its `testing` feature.
+    pub use outpost::sync::peers::{HttpPeer, Peer, PeerError, PeerResult};
     pub use resolver::{ConflictResolver, LastWriteResolver, Resolution};
 }
 

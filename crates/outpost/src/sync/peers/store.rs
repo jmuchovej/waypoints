@@ -56,13 +56,15 @@ pub trait GossipStore: EnvelopeStore {
 }
 
 /// The always-on peer's log in miniature: an in-memory `EnvelopeStore`
-/// for driver tests and `LocalPeer` loopbacks. Same contract as the
-/// turso store — arrival-ordered seqs, group_id idempotency.
+/// backing `LocalPeer::in_memory()` in driver tests. Same contract as
+/// the turso store — arrival-ordered seqs, group_id idempotency.
+#[cfg(feature = "testing")]
 #[derive(Debug, Default)]
 pub struct MemoryStore {
     rows: std::sync::Mutex<Vec<MemoryRow>>,
 }
 
+#[cfg(feature = "testing")]
 #[derive(Debug)]
 struct MemoryRow {
     seq: i64,
@@ -72,6 +74,7 @@ struct MemoryRow {
     payload: String,
 }
 
+#[cfg(feature = "testing")]
 #[async_trait::async_trait]
 impl EnvelopeStore for MemoryStore {
     async fn append(
@@ -120,10 +123,4 @@ impl EnvelopeStore for MemoryStore {
             })
             .collect())
     }
-}
-
-/// RFC 3339 UTC, second precision — `received_at` is informational,
-/// never protocol-load-bearing.
-pub fn rfc3339_now() -> String {
-    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
