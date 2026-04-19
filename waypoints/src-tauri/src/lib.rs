@@ -24,6 +24,8 @@ pub fn run() {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     tracing::info!("waypoints starting");
 
     TauriBuilder::default()
