@@ -6,6 +6,9 @@ const { isEnabled: isAssistantEnabled } = useAssistant();
 const { isEnabled, locales } = useDocusI18n();
 const { subNavigationMode } = useSubNavigation();
 
+const { data: session } = await useSession();
+const { signOut } = useAuth();
+
 defineShortcuts({
   d: () => navigateTo("/download"),
 });
@@ -42,6 +45,8 @@ defineShortcuts({
   </UContentSearchButton>
   <USeparator orientation="vertical" class="h-8" />
   <ClientOnly>
+    <UButton v-if="!session" label="Sign In" variant="subtle" color="neutral" to="/auth/login" />
+    <UButton v-else label="Sign Out" variant="subtle" color="neutral" @click="signOut()" />
   </ClientOnly>
   <UButton variant="subtle" color="primary" to="/download">
     <template #default> Download </template>
