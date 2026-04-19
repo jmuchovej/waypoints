@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@better-auth/passkey": "^1.2.0",
+    "@libsql/client": "^0.15.0",
     "@nuxt/a11y": "catalog:",
     "@nuxt/content": "catalog:",
     "@nuxt/hints": "catalog:",
@@ -21,7 +23,9 @@
     "@takumi-rs/core": "catalog:",
     "@valibot/to-json-schema": "catalog:",
     "@vueuse/nuxt": "catalog:",
+    "better-auth": "^1.2.0",
     "docus": "catalog:",
+    "drizzle-orm": "^0.44.0",
     "nuxt": "catalog:",
     "tailwindcss": "catalog:",
     "ufo": "catalog:",
@@ -33,6 +37,7 @@
     "@iconify-json/lucide": "catalog:",
     "@iconify-json/simple-icons": "catalog:",
     "better-sqlite3": "catalog:",
+    "drizzle-kit": "^0.31.0",
     "typescript": "catalog:",
     "vue-tsc": "catalog:"
   },
