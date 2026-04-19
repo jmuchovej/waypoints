@@ -48,4 +48,17 @@ export default defineNuxtConfig({
   site: {
     name: "Waypoints",
   },
+
+  vite: {
+    optimizeDeps: {
+      include: [
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
+        "tailwindcss/colors",
+        "better-auth/vue",
+        "better-auth/client/plugins",
+        "@better-auth/passkey/client",
+      ],
+    },
+  },
 });
