@@ -2,10 +2,15 @@
 import type { DropdownMenuItem } from "@nuxt/ui";
 import { commands } from "~/bindings.g";
 import type { Territory } from "~/bindings.g";
-import { UDropdownMenu, UButton } from "#components";
+import { UDropdownMenu, UButton, LazyTerritoryPicker } from "#components";
+import { createLogger } from "~/utils/logger";
 
-defineProps<{
-  collapsed?: boolean;
+const logger = createLogger("TerritoryMenu");
+
+type SidebarState = "expanded" | "collapsed";
+
+const props = defineProps<{
+  collapsed?: SidebarState;
 }>();
 
 const active = ref<Territory | null>(null);
@@ -13,13 +18,21 @@ const territories = ref<Territory[]>([]);
 const modalOpen = ref(false);
 
 async function load() {
-  const [activeResult, listResult] = await Promise.all([
-    commands.territoryGetActive(),
-    commands.territoryList(),
-  ]);
+  logger.debug("Attempting to load territories");
+  try {
+    logger.debug("Calling territoryGetActive...");
+    const activeResult = await commands.territoryGetActive();
+    logger.debug("territoryGetActive resolved:", activeResult);
 
-  if (activeResult.status === "ok") active.value = activeResult.data;
-  if (listResult.status === "ok") territories.value = listResult.data;
+    logger.debug("Calling territoryList...");
+    const listResult = await commands.territoryList();
+    logger.debug("territoryList resolved:", listResult);
+
+    if (activeResult.status === "ok") active.value = activeResult.data;
+    if (listResult.status === "ok") territories.value = listResult.data;
+  } catch (e) {
+    logger.error("IPC failed during territory load", e);
+  }
 }
 
 async function switchTerritory(id: string) {
@@ -58,6 +71,8 @@ const items = computed<DropdownMenuItem[][]>(() => [
     },
   ],
 ]);
+
+const collapsed = computed<boolean>(() => props.collapsed === "collapsed");
 </script>
 
 <template>
@@ -65,7 +80,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
     :items="items"
     :content="{ align: 'center', collisionPadding: 12 }"
     :ui="{
-      content: collapsed ? 'w-48' : 'w-(--reka-dropdown-menu-trigger-width)',
+      content: collapsed ? 'min-w-48' : 'w-(--reka-dropdown-menu-trigger-width)',
     }"
   >
     <UButton
@@ -98,7 +113,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
           class="absolute top-2 right-2"
           @click="modalOpen = false"
         />
-        <TerritoryPicker @success="onCreated" />
+        <LazyTerritoryPicker @success="onCreated" />
       </div>
     </template>
   </UModal>

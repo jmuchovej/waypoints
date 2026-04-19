@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
 
-defineProps<{
-  collapsed?: boolean;
+type SidebarState = "expanded" | "collapsed";
+
+const props = defineProps<{
+  collapsed?: SidebarState;
 }>();
 
 const colorMode = useColorMode();
@@ -178,6 +180,8 @@ const items = computed<DropdownMenuItem[][]>(() => [
     },
   ],
 ]);
+
+const collapsed = computed<boolean>(() => props.collapsed === "collapsed");
 </script>
 
 <template>

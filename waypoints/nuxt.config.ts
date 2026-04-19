@@ -9,6 +9,13 @@ const devPort = 9297;
 export default defineNuxtConfig({
   compatibilityDate: "2026-03-05",
 
+  app: {
+    head: {
+      htmlAttrs: { lang: "en" },
+      title: "Waypoints",
+    },
+  },
+
   modules: ["@nuxt/ui", "@nuxt/hints", "@nuxt/image", "@pinia/nuxt", "@vueuse/nuxt", "@nuxt/icon"],
 
   devtools: {
