@@ -55,8 +55,6 @@ impl EditorService {
         self.histories.clear();
     }
 
-    // ----- Read operations -----
-
     /// Fetch a single mark by ID.
     pub async fn get_mark(&self, mark_id: MarkID) -> EditorResult<Mark> {
         let db = self.db().await?;
@@ -68,7 +66,7 @@ impl EditorService {
     /// List all landmark marks (equivalent to old `mark_list`).
     pub async fn mark_list(&self) -> EditorResult<Vec<Mark>> {
         let db = self.db().await?;
-        Ok(store::query::mark::list(&db, Some("landmark")).await?)
+        Ok(store::query::mark::list(&db, Some("landmark"), None).await?)
     }
 
     /// Project a landmark into a flat block list.
@@ -80,8 +78,6 @@ impl EditorService {
         let db = self.db().await?;
         projection::project_landmark(&db, landmark_id, max_depth).await
     }
-
-    // ----- Write operations -----
 
     pub async fn update_mark(
         &mut self,

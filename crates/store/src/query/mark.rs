@@ -1,7 +1,8 @@
 use chrono::NaiveDateTime;
+use domain::chart::ChartID;
 use domain::mark::{Mark, MarkData, MarkID};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, DatabaseConnection, EntityTrait,
     IntoActiveModel, QueryFilter,
 };
 use uuid::Uuid;
@@ -18,14 +19,25 @@ pub async fn get(db: &DatabaseConnection, id: MarkID) -> StoreResult<Option<Mark
     model.map(Mark::try_from).transpose().map_err(Into::into)
 }
 
-/// List non-deleted marks, optionally filtered by type prefix.
+/// List non-deleted marks, optionally filtered by type prefix and/or chart IDs.
 ///
 /// When `prefix` is `None`, returns all non-deleted marks.
 /// When `prefix` is `Some("landmark")`, returns marks whose type starts with `"landmark."`.
-pub async fn list(db: &DatabaseConnection, prefix: Option<&str>) -> StoreResult<Vec<Mark>> {
+/// When `chart_ids` is provided, further filters to marks matching those chart types.
+pub async fn list(
+    db: &DatabaseConnection,
+    prefix: Option<&str>,
+    chart_ids: Option<&[ChartID]>,
+) -> StoreResult<Vec<Mark>> {
     let mut query = Marks::find().filter(MarkColumn::DeletedAt.is_null());
 
-    if let Some(p) = prefix {
+    if let Some(ids) = chart_ids {
+        // Filter by specific chart types: mark column is "landmark.{chart.name()}"
+        let condition = ids.iter().fold(Condition::any(), |cond, id| {
+            cond.add(MarkColumn::Mark.starts_with(&format!("landmark.{}", id.name())))
+        });
+        query = query.filter(condition);
+    } else if let Some(p) = prefix {
         query = query.filter(MarkColumn::Mark.starts_with(&format!("{p}.")));
     }
 

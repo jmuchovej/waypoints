@@ -1,4 +1,6 @@
-import type { Content, InlineMark, MarkData } from "./types.g";
+import type { Content, Feature, FeatureKind, InlineMark, Mark, MarkData } from "./types.g";
+
+export type MarkKind = MarkData["mark"];
 
 export type InlineMarkKind = InlineMark["kind"];
 export type ContentKind = Content["type"];
@@ -7,6 +9,20 @@ export type ContentData<K extends ContentKind = ContentKind> = Extract<
   { mark: "content"; type: K }
 >;
 export type LandmarkData = Extract<MarkData, { mark: "landmark" }>;
+export type LandmarkMark = Omit<Mark, "data"> & { data: LandmarkData };
+
+export type ContentMark<K extends ContentKind = ContentKind> = Omit<Mark, "data"> & {
+  data: ContentData<K>;
+};
+
+export type FeatureKindType = FeatureKind["type"];
+export type FeatureKindData<K extends FeatureKindType = FeatureKindType> = Extract<
+  FeatureKind,
+  { type: K }
+>;
+export type FeatureData<K extends FeatureKindType = FeatureKindType> = Omit<Feature, "kind"> & {
+  kind: FeatureKindData<K>;
+};
 
 const compoundTypes = ["blockquote", "callout"] as const;
 export type CompoundType = (typeof compoundTypes)[number];

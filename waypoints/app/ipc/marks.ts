@@ -1,8 +1,27 @@
-import type { Content, Mark, MarkID, RichText } from "@waypoints/domain";
+import type {
+  ChartID,
+  Content,
+  ContentMark,
+  LandmarkMark,
+  Mark,
+  MarkID,
+  MarkKind,
+  RichText,
+} from "@waypoints/domain";
 import { invoke } from "./invoke";
 
-export async function list(): Promise<Mark[]> {
-  return invoke<Mark[]>("mark_list");
+interface LandmarkListOptions {
+  allowedTypes?: ChartID[];
+}
+
+export function list(): Promise<Mark[]>;
+export function list(kind: "landmark", options?: LandmarkListOptions): Promise<LandmarkMark[]>;
+export function list(kind: "content"): Promise<ContentMark[]>;
+export function list(kind?: MarkKind, options?: LandmarkListOptions): Promise<Mark[]> {
+  return invoke<Mark[]>("mark_list", {
+    prefix: kind ?? null,
+    allowedTypes: options?.allowedTypes ?? null,
+  });
 }
 
 export async function create(

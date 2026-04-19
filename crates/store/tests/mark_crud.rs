@@ -82,7 +82,7 @@ async fn soft_delete_hides_from_list_landmarks(#[future] db: DatabaseConnection)
         .unwrap();
 
     assert!(
-        mark::list(&db, Some("landmark"))
+        mark::list(&db, Some("landmark"), None)
             .await
             .unwrap()
             .iter()
@@ -92,7 +92,7 @@ async fn soft_delete_hides_from_list_landmarks(#[future] db: DatabaseConnection)
     mark::soft_delete(&db, id).await.unwrap();
 
     assert!(
-        !mark::list(&db, Some("landmark"))
+        !mark::list(&db, Some("landmark"), None)
             .await
             .unwrap()
             .iter()
@@ -137,7 +137,7 @@ async fn list_landmarks_excludes_content_marks(#[future] db: DatabaseConnection)
         .await
         .unwrap();
 
-    let landmarks = mark::list(&db, Some("landmark")).await.unwrap();
+    let landmarks = mark::list(&db, Some("landmark"), None).await.unwrap();
     assert!(landmarks.iter().any(|m| m.id == landmark_id));
     assert!(!landmarks.iter().any(|m| m.id == content_id));
 }

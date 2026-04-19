@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { Mark, RichText, Chart, ChartID } from "@waypoints/domain";
-import { isLandmark, toRichText } from "@waypoints/domain";
+import type { RichText, Chart, ChartID, LandmarkMark } from "@waypoints/domain";
+import { toRichText } from "@waypoints/domain";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import ipc from "~/ipc";
 import { iconName } from "~/utils/icon";
 
 const log = createLogger("marks");
 
-const landmarks = ref<Mark[]>([]);
+const landmarks = ref<LandmarkMark[]>([]);
 const charts = ref<Map<ChartID, Chart>>(new Map());
 const loading = ref(true);
 const newLandmarkOpen = ref(false);
@@ -19,7 +19,10 @@ async function load() {
   loading.value = true;
 
   try {
-    const [markData, chartData] = await Promise.all([ipc.marks.list(), ipc.charts.list()]);
+    const [markData, chartData] = await Promise.all([
+      ipc.marks.list("landmark"),
+      ipc.charts.list(),
+    ]);
     landmarks.value = markData;
     charts.value = new Map(chartData.map((c) => [c.id, c]));
   } catch (e) {
@@ -31,14 +34,11 @@ async function load() {
 
 onMounted(load);
 
-function landmarkTitle(mark: Mark): RichText | null {
-  if (isLandmark(mark.data)) return mark.data.title;
-  return null;
+function landmarkTitle(mark: LandmarkMark): RichText {
+  return mark.data.title;
 }
 
-function landmarkIcon(mark: Mark): string {
-  if (!isLandmark(mark.data)) return FALLBACK_ICON;
-
+function landmarkIcon(mark: LandmarkMark): string {
   const own = iconName(mark.data.icon);
   if (own) return own;
 
@@ -49,8 +49,7 @@ function landmarkIcon(mark: Mark): string {
   return FALLBACK_ICON;
 }
 
-async function onTitleUpdate(mark: Mark, richText: RichText) {
-  if (!isLandmark(mark.data)) return;
+async function onTitleUpdate(mark: LandmarkMark, richText: RichText) {
   mark.data.title = richText;
   try {
     await ipc.editor.updateTitle(mark.id, richText);

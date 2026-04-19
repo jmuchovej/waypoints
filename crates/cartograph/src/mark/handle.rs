@@ -1,3 +1,4 @@
+use domain::chart::ChartID;
 use domain::fractional_index;
 use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
 use domain::terrain::TerrainKind;
@@ -20,9 +21,13 @@ impl MarkHandle<'_> {
             .ok_or(MarkError::NoActiveTerritory)
     }
 
-    pub async fn list(&self, prefix: Option<&str>) -> MarkResult<Vec<Mark>> {
+    pub async fn list(
+        &self,
+        prefix: Option<&str>,
+        chart_ids: Option<&[ChartID]>,
+    ) -> MarkResult<Vec<Mark>> {
         let db = self.db().await?;
-        let marks = store::query::mark::list(&db, prefix).await?;
+        let marks = store::query::mark::list(&db, prefix, chart_ids).await?;
         tracing::info!(count = marks.len(), ?prefix, "mark_list");
         Ok(marks)
     }

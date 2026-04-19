@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use domain::chart::ChartID;
 use domain::mark::{Content, Mark, RichText};
 use tauri::State;
 use uuid::Uuid;
@@ -8,8 +9,14 @@ use cartograph::WaypointsRuntime;
 use cartograph::mark::MarkResult;
 
 #[tauri::command]
-pub async fn mark_list(rt: State<'_, Arc<WaypointsRuntime>>) -> MarkResult<Vec<Mark>> {
-    rt.marks().list(Some("landmark")).await
+pub async fn mark_list(
+    rt: State<'_, Arc<WaypointsRuntime>>,
+    prefix: Option<String>,
+    allowed_types: Option<Vec<ChartID>>,
+) -> MarkResult<Vec<Mark>> {
+    rt.marks()
+        .list(prefix.as_deref(), allowed_types.as_deref())
+        .await
 }
 
 #[tauri::command]

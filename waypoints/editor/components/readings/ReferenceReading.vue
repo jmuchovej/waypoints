@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Reading, Feature } from "@waypoints/domain";
+import type { Reading, Feature, FeatureData } from "@waypoints/domain";
 
 export interface ReferenceReadingProps {
   value: Reading | undefined;
@@ -11,11 +11,13 @@ export interface ReferenceReadingEmits {
 }
 </script>
 <script setup lang="ts">
-import { type MarkID, type Mark, isLandmark } from "@waypoints/domain";
+import type { MarkID, LandmarkMark } from "@waypoints/domain";
 import ipc from "~/ipc";
 
 const props = defineProps<ReferenceReadingProps>();
 const emit = defineEmits<ReferenceReadingEmits>();
+
+const refKind = computed(() => props.feature.kind as FeatureData<"reference">["kind"]);
 
 interface RefItem {
   id: MarkID;
@@ -23,35 +25,33 @@ interface RefItem {
   icon: string;
 }
 
-const allMarks = ref<Mark[]>([]);
+const allLandmarks = ref<LandmarkMark[]>([]);
+const loadError = ref<string | null>(null);
+const loading = ref(true);
 
 async function loadMarks() {
+  loading.value = true;
+  loadError.value = null;
   try {
-    allMarks.value = await ipc.marks.list();
-  } catch {
-    // silently fail — dropdown will be empty
+    const allowedTypes = refKind.value.allowed_types ?? undefined;
+    allLandmarks.value = await ipc.marks.list("landmark", { allowedTypes });
+  } catch (e) {
+    loadError.value = e instanceof Error ? e.message : "Failed to load landmarks";
+  } finally {
+    loading.value = false;
   }
 }
 
 onMounted(loadMarks);
 
-// Filter by allowed_types from the feature kind
-const items = computed<RefItem[]>(() => {
-  const k = props.feature.kind;
-  const allowedTypes = k.type === "reference" ? k.allowed_types : null;
-
-  return allMarks.value
-    .filter((m): m is Mark & { data: Extract<Mark["data"], { mark: "landmark" }> } => {
-      if (!isLandmark(m)) return false;
-      if (!allowedTypes || allowedTypes.length === 0) return true;
-      return allowedTypes.includes(m.data.chart);
-    })
-    .map((m) => ({
-      id: m.id,
-      label: m.data.title.plain_text || m.data.title.segments.map((s) => s.text).join("") || "Untitled",
-      icon: "i-lucide-file-text",
-    }));
-});
+const items = computed<RefItem[]>(() =>
+  allLandmarks.value.map((m) => ({
+    id: m.id,
+    label:
+      m.data.title.plain_text || m.data.title.segments.map((s) => s.text).join("") || "Untitled",
+    icon: "i-lucide-file-text",
+  })),
+);
 
 const selectedIds = computed<MarkID[]>(() => {
   if (props.value?.type === "references") return props.value.value;
@@ -72,13 +72,20 @@ function onUpdate(val: MarkID[] | null) {
     :model-value="selectedIds"
     :items="items"
     multiple
+    size="md"
     variant="ghost"
     value-key="id"
     label-key="label"
-    placeholder="Pick references…"
-    delete-icon="i-lucide-trash"
+    delete-icon="i-lucide-x"
+    trailing-icon="i-lucide-plus"
     clear-icon="i-lucide-trash"
     open-on-click
     @update:model-value="onUpdate"
-  />
+  >
+    <template #empty>
+      <p v-if="loading" class="text-sm text-dimmed p-2">Loading…</p>
+      <p v-else-if="loadError" class="text-sm text-error p-2">{{ loadError }}</p>
+      <p v-else class="text-sm text-dimmed p-2">No landmarks found</p>
+    </template>
+  </UInputMenu>
 </template>

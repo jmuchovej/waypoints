@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import type { Mark, RichText, Chart, ChartID } from "@waypoints/domain";
-import { isLandmark } from "@waypoints/domain";
+import type { RichText, Chart, ChartID, LandmarkMark } from "@waypoints/domain";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import { iconName } from "~/utils/icon";
 import ipc from "~/ipc";
 
 const log = createLogger("library:recents");
 
-const landmarks = ref<Mark[]>([]);
+const landmarks = ref<LandmarkMark[]>([]);
 const charts = ref<Map<ChartID, Chart>>(new Map());
 const loading = ref(true);
 
@@ -18,7 +17,10 @@ async function load() {
   loading.value = true;
 
   try {
-    const [markData, chartData] = await Promise.all([ipc.marks.list(), ipc.charts.list()]);
+    const [markData, chartData] = await Promise.all([
+      ipc.marks.list("landmark"),
+      ipc.charts.list(),
+    ]);
 
     // TODO: sort by last-visited / last-modified once we track that
     landmarks.value = markData;
@@ -32,14 +34,11 @@ async function load() {
 
 onMounted(load);
 
-function landmarkTitle(mark: Mark): RichText | null {
-  if (isLandmark(mark.data)) return mark.data.title;
-  return null;
+function landmarkTitle(mark: LandmarkMark): RichText {
+  return mark.data.title;
 }
 
-function landmarkIcon(mark: Mark): string {
-  if (!isLandmark(mark.data)) return FALLBACK_ICON;
-
+function landmarkIcon(mark: LandmarkMark): string {
   const own = iconName(mark.data.icon);
   if (own) return own;
 
@@ -50,8 +49,7 @@ function landmarkIcon(mark: Mark): string {
   return FALLBACK_ICON;
 }
 
-async function onTitleUpdate(mark: Mark, richText: RichText) {
-  if (!isLandmark(mark.data)) return;
+async function onTitleUpdate(mark: LandmarkMark, richText: RichText) {
   mark.data.title = richText;
   try {
     await ipc.editor.updateTitle(mark.id, richText);
@@ -94,7 +92,7 @@ await getCurrentWindow().setTitle("Recents");
         <UIcon :name="landmarkIcon(mark)" class="size-5 text-dimmed" />
       </span>
       <RichTextEditor
-        :rich-text="landmarkTitle(mark)!"
+        :rich-text="landmarkTitle(mark)"
         :on-update="(rt: RichText) => onTitleUpdate(mark, rt)"
         placeholder="Untitled"
         class="min-w-0 shrink truncate"
