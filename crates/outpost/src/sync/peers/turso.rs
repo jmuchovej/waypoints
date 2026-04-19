@@ -2,14 +2,15 @@
 //! canonical DDL, applied idempotently at boot — same SQL-is-truth
 //! convention as the app's store crate.
 
-use async_trait::async_trait;
 use domain::sync::{DeviceID, RealmID};
 use tokio::sync::Mutex;
 use turso::{Connection, Value};
 
-use super::error::{PeerError, PeerResult};
-use super::store::{EnvelopeStore, GossipStore, StoredEnvelope};
-use super::wire::EnvelopeFace;
+use crate::sync::peers::{
+    error::{PeerError, PeerResult},
+    store::{EnvelopeStore, GossipStore, StoredEnvelope},
+    wire::EnvelopeFace,
+};
 
 const SCHEMA: &str = include_str!("../../../schema.sql");
 
@@ -37,7 +38,7 @@ impl Storage {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl EnvelopeStore for Storage {
     /// Insert-or-ignore each envelope, then read back every seq — fresh
     /// inserts and idempotent replays answer identically.
@@ -134,7 +135,7 @@ impl EnvelopeStore for Storage {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl GossipStore for Storage {
     async fn peer_cursor(&self, peer_id: &str, realm_id: RealmID) -> PeerResult<i64> {
         let conn = self.conn.lock().await;

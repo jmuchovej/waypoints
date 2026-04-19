@@ -7,9 +7,11 @@
 use domain::sync::{AccountID, DeviceID, RealmID};
 use serde_json::value::RawValue;
 
-use super::error::{PeerError, PeerResult};
-use super::store::{EnvelopeStore, rfc3339_now};
-use super::wire::{EnvelopeFace, FetchResponse, SequencedEnvelope, UploadAck, UploadResponse};
+use crate::sync::peers::{
+    PeerError, PeerResult,
+    store::EnvelopeStore,
+    wire::{EnvelopeFace, FetchResponse, SequencedEnvelope, UploadAck, UploadResponse},
+};
 
 /// §4.1 minus transport concerns: parse faces, guard realm (and account,
 /// when the caller's auth mode knows one), append idempotently, ack
@@ -43,7 +45,13 @@ where
     }
 
     let payloads: Vec<&str> = envelopes.iter().map(|r| r.get()).collect();
-    let acks = store.append(&faces, &payloads, &rfc3339_now()).await?;
+    let acks = store
+        .append(
+            &faces,
+            &payloads,
+            &chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        )
+        .await?;
 
     let results: Vec<UploadAck> = acks
         .into_iter()

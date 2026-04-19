@@ -22,6 +22,10 @@ peers = ["dep:reqwest", "dep:domain", "dep:uuid", "dep:chrono"]
 peers-serve = ["peers", "dep:axum", "dep:sha2", "tokio/net"]
 # The embedded turso envelope store (standalone outposts).
 store-turso = ["peers", "dep:turso"]
+# Test fixtures: LocalPeer, NoopPeer, MemoryStore. They run the real
+# protocol code in-process (never a re-implementation), but they are
+# fixtures — nothing in production consumes them.
+testing = ["peers"]
 # Everything the `outpost` binary needs.
 binary = [
   "peers-serve",

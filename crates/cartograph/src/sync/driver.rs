@@ -71,8 +71,9 @@ where
             .collect::<EditorResult<Vec<_>>>()?;
         let response = peer.upload(realm, raw).await.map_err(peer_error)?;
         if response.results.is_empty() {
-            // Offline (NoopPeer) or a peer that acked nothing: leave
-            // the outbox pending and stop rather than spin.
+            // A peer that acked nothing (a protocol violation, but
+            // cheap to survive): leave the outbox pending and stop
+            // rather than spin.
             break;
         }
         let ids: Vec<_> = response.results.iter().map(|ack| ack.group_id).collect();

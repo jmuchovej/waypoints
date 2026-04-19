@@ -35,6 +35,7 @@ tracing.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+outpost = { workspace = true, features = ["peers", "testing"] }
 rstest = { workspace = true }
 sea-orm = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

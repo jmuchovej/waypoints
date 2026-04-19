@@ -10,7 +10,7 @@ use tracing::warn;
 
 use super::error::PeerResult;
 use super::peer::{HttpPeer, Peer};
-use super::store::{GossipStore, rfc3339_now};
+use super::store::GossipStore;
 use super::wire::{DEFAULT_LIMIT, EnvelopeFace};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -67,7 +67,13 @@ where
         }
 
         if !faces.is_empty() {
-            let acks = store.append(&faces, &payloads, &rfc3339_now()).await?;
+            let acks = store
+                .append(
+                    &faces,
+                    &payloads,
+                    &chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                )
+                .await?;
             outcome.stored += acks.len();
         }
         if made_progress {
