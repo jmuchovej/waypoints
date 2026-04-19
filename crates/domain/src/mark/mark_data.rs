@@ -63,12 +63,15 @@ pub enum Content {
     Paragraph { rich_text: RichText },
 
     /// Level 1 Heading
+    #[serde(rename = "heading-1")]
     Heading1 { rich_text: RichText },
 
     /// Level 2 Heading
+    #[serde(rename = "heading-2")]
     Heading2 { rich_text: RichText },
 
     /// Level 3 Heading
+    #[serde(rename = "heading-3")]
     Heading3 { rich_text: RichText },
 
     /// A quote
@@ -165,9 +168,9 @@ impl Content {
     pub fn type_name(&self) -> &'static str {
         match self {
             Content::Paragraph { .. } => "paragraph",
-            Content::Heading1 { .. } => "heading1",
-            Content::Heading2 { .. } => "heading2",
-            Content::Heading3 { .. } => "heading3",
+            Content::Heading1 { .. } => "heading-1",
+            Content::Heading2 { .. } => "heading-2",
+            Content::Heading3 { .. } => "heading-3",
             Content::Blockquote => "blockquote",
             Content::ListItem { .. } => "list-item",
             Content::EnumItem { .. } => "enum-item",

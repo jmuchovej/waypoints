@@ -74,22 +74,22 @@
       @apply bg-primary/5;
       @apply rounded;
     }
-  }
 
-  &[data-type^="heading"] {
-    @apply text-highlighted font-bold flex leading-snug;
-  }
+    &[data-type^="heading"] {
+      @apply text-highlighted font-bold flex leading-snug;
+    }
 
-  &[data-type="heading1"] {
-    @apply text-3xl;
-  }
+    &[data-type="heading-1"] {
+      @apply text-3xl;
+    }
 
-  &[data-type="heading2"] {
-    @apply text-2xl;
-  }
+    &[data-type="heading-2"] {
+      @apply text-2xl;
+    }
 
-  &[data-type="heading3"] {
-    @apply text-xl;
+    &[data-type="heading-3"] {
+      @apply text-xl;
+    }
   }
 
   &[data-type="code"] {
