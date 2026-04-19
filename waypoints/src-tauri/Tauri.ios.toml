@@ -2,3 +2,6 @@
 # https://tauri.app/distribute/macos-application-bundle/
 # [bundle.resources]
 # "infoplist/**" = "./platforms/ios/"
+
+[bundle.iOS]
+developmentTeam = "D6NBHNJ93R"

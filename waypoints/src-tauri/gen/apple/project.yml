@@ -1,4 +1,4 @@
-name: waypoints
+name: Waypoints
 options:
   bundleIdPrefix: so.waypoints
   deploymentTarget:
@@ -12,6 +12,10 @@ settingGroups:
     base:
       PRODUCT_NAME: Waypoints
       PRODUCT_BUNDLE_IDENTIFIER: so.waypoints
+      DEVELOPMENT_TEAM: D6NBHNJ93R
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: "Apple Distribution"
+      PROVISIONING_PROFILE_SPECIFIER: "Waypoints App Store Connect"
 targetTemplates:
   app:
     type: application
@@ -24,20 +28,20 @@ targetTemplates:
     settings:
       groups: [app]
 targets:
-  iOS:
+  Waypoints_iOS:
     type: application
     platform: iOS
     sources:
       - path: Sources
       - path: Assets.xcassets
       - path: Externals
-      - path: iOS
+      - path: Waypoints_iOS
       - path: assets
         buildPhase: resources
         type: folder
       - path: LaunchScreen.storyboard
     info:
-      path: iOS/Info.plist
+      path: Waypoints_iOS/Info.plist
       properties:
         LSRequiresIPhoneOS: true
         UILaunchStoryboardName: LaunchScreen
@@ -54,7 +58,7 @@ targets:
         CFBundleShortVersionString: 1.5.1
         CFBundleVersion: "1.5.1"
     entitlements:
-      path: iOS/Entitlements.plist
+      path: Waypoints_iOS/Waypoints_iOS.entitlements
     scheme:
       environmentVariables:
         RUST_BACKTRACE: full
@@ -90,16 +94,17 @@ targets:
       - sdk: UIKit.framework
       - sdk: WebKit.framework
     preBuildScripts:
-      - script: >-
-          just tauri ios xcode-script -v
-            --platform ${PLATFORM_DISPLAY_NAME:?}
-            --sdk-root ${SDKROOT:?}
-            --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}"
-            --header-search-paths "${HEADER_SEARCH_PATHS:?}"
-            --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}"
-            --configuration ${CONFIGURATION:?}
-            ${FORCE_COLOR}
-            ${ARCHS:?}
+      - script: |
+          set -e
+          cargo tauri ios xcode-script -v \
+            --platform "${PLATFORM_DISPLAY_NAME:?}" \
+            --sdk-root "${SDKROOT:?}" \
+            --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" \
+            --header-search-paths "${HEADER_SEARCH_PATHS:?}" \
+            --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" \
+            --configuration "${CONFIGURATION:?}" \
+            ${FORCE_COLOR} \
+            "${ARCHS:?}"
         name: Build Rust Code
         basedOnDependencyAnalysis: false
         outputFiles:

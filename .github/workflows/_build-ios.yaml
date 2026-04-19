@@ -29,12 +29,14 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-15
+    env:
+      MISE_ENV: ios
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup mise (bun, just, sops, age, yq)
+      - name: Setup mise (bun, just, sops, age, yq, xcodegen)
         uses: jdx/mise-action@v2
 
       - name: Setup Rust
@@ -72,10 +74,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "${keychain_password}" "${keychain_path}"
           security list-keychains -d user -s "${keychain_path}" login.keychain
 
-          # Provisioning profile
+          # Provisioning profile — must be named by its UUID for Xcode to find it
           profile_path="${HOME}/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "${profile_path}"
-          echo "${secrets}" | yq '.distribution.profile' | base64 -d > "${profile_path}/waypoints.mobileprovision"
+          profile_tmp="${RUNNER_TEMP}/waypoints.mobileprovision"
+          echo "${secrets}" | yq '.distribution.profile' | base64 -d > "${profile_tmp}"
+          profile_uuid=$(security cms -D -i "${profile_tmp}" | plutil -extract UUID raw -)
+          profile_name=$(security cms -D -i "${profile_tmp}" | plutil -extract Name raw -)
+          cp "${profile_tmp}" "${profile_path}/${profile_uuid}.mobileprovision"
+          echo "Installed profile: ${profile_name} (${profile_uuid})"
 
           # App Store Connect API key (for fastlane)
           asc_key_path="${RUNNER_TEMP}/AuthKey.p8"
@@ -93,6 +100,12 @@ jobs:
       - name: Generate icons
         run: just icons::${{ inputs.flavor }}
         working-directory: waypoints/src-tauri
+
+      - name: Regenerate Xcode project
+        working-directory: waypoints/src-tauri/gen/apple
+        run: |
+          mkdir -p Externals/arm64 Externals/x86_64 assets
+          xcodegen generate
 
       - name: Build iOS
         working-directory: waypoints

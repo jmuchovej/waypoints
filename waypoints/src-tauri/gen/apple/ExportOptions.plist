@@ -3,6 +3,21 @@
 <plist version="1.0">
   <dict>
     <key>method</key>
-    <string>debugging</string>
+    <string>app-store-connect</string>
+    <key>teamID</key>
+    <string>D6NBHNJ93R</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>signingCertificate</key>
+    <string>Apple Distribution</string>
+    <key>provisioningProfiles</key>
+    <dict>
+      <key>so.waypoints</key>
+      <string>Waypoints App Store Connect</string>
+    </dict>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>uploadBitcode</key>
+    <false/>
   </dict>
 </plist>

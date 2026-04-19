@@ -37,11 +37,7 @@ useHead({
 
     <template #toggle>
       <ClientOnly>
-        <UDrawer
-          v-model:open="drawerOpen"
-          direction="bottom"
-          should-scale-background
-        >
+        <UDrawer v-model:open="drawerOpen" direction="bottom" should-scale-background>
           <IconMenuToggle :open="drawerOpen" class="lg:hidden" />
 
           <template #body>

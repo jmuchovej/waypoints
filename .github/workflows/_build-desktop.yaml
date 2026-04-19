@@ -9,8 +9,7 @@ on:
       flavor:
         required: true
         type: string
-        description:
-          "Build flavor — matches icons recipe and feature flag (preview,
+        description: "Build flavor — matches icons recipe and feature flag (preview,
           stable)"
       features:
         required: true
@@ -20,8 +19,7 @@ on:
         required: false
         type: string
         default: ""
-        description:
-          "Tauri config override file (e.g. Tauri.flavor=preview.toml); empty
+        description: "Tauri config override file (e.g. Tauri.flavor=preview.toml); empty
           for stable"
       tag:
         required: false
@@ -32,23 +30,40 @@ on:
         required: false
         type: boolean
         default: false
+      os-filter:
+        required: false
+        type: string
+        default: "all"
+        description: "Which desktop OSes to build (all | macos | linux | windows)"
     secrets:
       SOPS_AGE_KEY:
         required: true
         description: "Age private key for decrypting .secrets/*.sops.yaml"
 
 jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - id: gen
+        run: |
+          mac='{"platform":"macos","runner":"macos-15"}'
+          lnx='{"platform":"linux","runner":"ubuntu-22.04"}'
+          win='{"platform":"windows","runner":"windows-latest"}'
+          case "${{ inputs.os-filter }}" in
+            macOS)   m="$mac" ;;
+            Linux)   m="$lnx" ;;
+            Windows) m="$win" ;;
+            *)       m="$mac,$lnx,$win" ;;
+          esac
+          echo "matrix={\"include\":[$m]}" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: matrix
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: macos
-            runner: macos-latest
-          - platform: linux
-            runner: ubuntu-22.04
-          - platform: windows
-            runner: windows-latest
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
 
     runs-on: ${{ matrix.runner }}
 
@@ -140,3 +155,20 @@ jobs:
           tagName: ${{ inputs.tag }}
           releaseName: "Waypoints ${{ inputs.tag }}"
           prerelease: ${{ inputs.prerelease }}
+
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: waypoints-${{ matrix.platform }}-${{ inputs.flavor }}
+          path: |
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/macos/*.tar.gz
+            target/release/bundle/macos/*.tar.gz.sig
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/appimage/*.AppImage.tar.gz
+            target/release/bundle/appimage/*.AppImage.tar.gz.sig
+            target/release/bundle/deb/*.deb
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/nsis/*.nsis.zip
+            target/release/bundle/nsis/*.nsis.zip.sig
+          if-no-files-found: ignore

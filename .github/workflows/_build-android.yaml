@@ -90,13 +90,16 @@ jobs:
           WAYPOINTS_BUILD: "1"
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
         working-directory: waypoints
-        run: cargo tauri android build --features ${{ inputs.features }} --aab
+        run: cargo tauri android build --features ${{ inputs.features }} --apk --aab
 
-      - name: Upload AAB
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: waypoints-android-${{ inputs.flavor }}
-          path: waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
+          path: |
+            waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+            waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
+          if-no-files-found: error
 
       - name: Upload to GitHub Release
         if: inputs.tag != ''
@@ -104,7 +107,9 @@ jobs:
         with:
           tag_name: ${{ inputs.tag }}
           prerelease: ${{ inputs.prerelease }}
-          files: waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
+          files: |
+            waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+            waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
 
       - name: Setup Ruby + Fastlane
         uses: ruby/setup-ruby@v1
