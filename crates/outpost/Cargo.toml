@@ -15,7 +15,9 @@ publish.workspace = true
 default = ["peers"]
 # The store-and-forward peer engine: wire types, fetch client, the
 # EnvelopeStore seam, and the gossip pump. What an embedding app pulls in.
-peers = ["dep:reqwest"]
+# Depends on domain for the frozen identity newtypes (OpID & friends) —
+# the log-plane fence is "never parse checkpoints", not "no domain types".
+peers = ["dep:reqwest", "dep:domain", "dep:uuid"]
 # The §4 endpoints as an axum router, plus request auth.
 peers-serve = ["peers", "dep:axum", "dep:sha2", "tokio/net"]
 # The embedded turso envelope store (standalone outposts).
@@ -46,6 +48,7 @@ required-features = ["binary"]
 async-trait.workspace = true
 axum = { workspace = true, optional = true }
 clap = { workspace = true, features = ["env"], optional = true }
+domain = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
@@ -55,6 +58,7 @@ tokio = { workspace = true }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, optional = true }
 turso = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
 
 [dev-dependencies]
 cartograph.workspace = true

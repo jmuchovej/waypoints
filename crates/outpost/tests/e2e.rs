@@ -157,10 +157,7 @@ async fn pump_converges_two_outposts() {
 
     // B pulls from A.
     let peer_a = HttpPeer::new(&base_a, SECRET);
-    let realm_str = realm.to_string();
-    let pumped = pump_once(storage_b.as_ref(), &peer_a, &realm_str)
-        .await
-        .unwrap();
+    let pumped = pump_once(storage_b.as_ref(), &peer_a, realm).await.unwrap();
     assert_eq!((pumped.fetched, pumped.stored, pumped.dropped), (1, 1, 0));
 
     // Device 2 only ever talks to outpost B — and still converges.
@@ -173,9 +170,7 @@ async fn pump_converges_two_outposts() {
     assert_eq!(on_2.data, paragraph("via gossip"));
 
     // Re-pump is a no-op: the cursor is past everything A holds.
-    let again = pump_once(storage_b.as_ref(), &peer_a, &realm_str)
-        .await
-        .unwrap();
+    let again = pump_once(storage_b.as_ref(), &peer_a, realm).await.unwrap();
     assert_eq!(again.fetched, 0);
 }
 
@@ -202,30 +197,21 @@ async fn bidirectional_pump_reaches_fixpoint() {
 
     let peer_a = HttpPeer::new(&base_a, SECRET);
     let peer_b = HttpPeer::new(&base_b, SECRET);
-    let realm_str = realm.to_string();
 
     // A↔B gossip cycle: idempotency terminates propagation. Two laps
     // reach the fixpoint; a third fetches nothing anywhere.
     for _ in 0..2 {
-        pump_once(storage_b.as_ref(), &peer_a, &realm_str)
-            .await
-            .unwrap();
-        pump_once(storage_a.as_ref(), &peer_b, &realm_str)
-            .await
-            .unwrap();
+        pump_once(storage_b.as_ref(), &peer_a, realm).await.unwrap();
+        pump_once(storage_a.as_ref(), &peer_b, realm).await.unwrap();
     }
-    let quiet_b = pump_once(storage_b.as_ref(), &peer_a, &realm_str)
-        .await
-        .unwrap();
-    let quiet_a = pump_once(storage_a.as_ref(), &peer_b, &realm_str)
-        .await
-        .unwrap();
+    let quiet_b = pump_once(storage_b.as_ref(), &peer_a, realm).await.unwrap();
+    let quiet_a = pump_once(storage_a.as_ref(), &peer_b, realm).await.unwrap();
     assert_eq!(quiet_b.fetched, 0, "B has everything A holds");
     assert_eq!(quiet_a.fetched, 0, "A has everything B holds");
 
     // No envelope inflation: both hold exactly the two envelopes, once.
-    let on_a = storage_a.page(&realm_str, 0, 10).await.unwrap();
-    let on_b = storage_b.page(&realm_str, 0, 10).await.unwrap();
+    let on_a = storage_a.page(realm, 0, 10).await.unwrap();
+    let on_b = storage_b.page(realm, 0, 10).await.unwrap();
     assert_eq!((on_a.len(), on_b.len()), (2, 2));
 
     // Both devices converge through their own outpost only.
@@ -265,8 +251,7 @@ async fn pump_all_bootstraps_fresh_mirror_via_extra_realms() {
     let nothing = pump_all(storage_b.as_ref(), &peers, &[]).await;
     assert_eq!(nothing.fetched, 0, "no local realms, no extras: no pull");
 
-    let realm_str = realm.to_string();
-    let bootstrapped = pump_all(storage_b.as_ref(), &peers, std::slice::from_ref(&realm_str)).await;
+    let bootstrapped = pump_all(storage_b.as_ref(), &peers, &[realm]).await;
     assert_eq!((bootstrapped.fetched, bootstrapped.stored), (1, 1));
 
     // Once mirrored, the realm is locally known: extras no longer needed.
@@ -277,6 +262,6 @@ async fn pump_all_bootstraps_fresh_mirror_via_extra_realms() {
     let steady = pump_all(storage_b.as_ref(), &peers, &[]).await;
     assert_eq!((steady.fetched, steady.stored), (1, 1));
 
-    let held = storage_b.page(&realm_str, 0, 10).await.unwrap();
+    let held = storage_b.page(realm, 0, 10).await.unwrap();
     assert_eq!(held.len(), 2);
 }

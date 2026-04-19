@@ -6,15 +6,16 @@
 //!   validated against the global Turso accounts database over Hrana.
 //!   The accounts DB authenticates; it never stores sync data.
 
+use domain::sync::{AccountID, DeviceID};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
 /// Who a validated request is acting as. `SharedSecret` mode has no
 /// per-device identity, so envelope account checks are skipped there.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Identity {
-    pub account_id: Option<String>,
-    pub device_id: Option<String>,
+    pub account_id: Option<AccountID>,
+    pub device_id: Option<DeviceID>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -66,12 +67,17 @@ impl Validator {
                 let Some(row) = rows.first() else {
                     return Err(AuthError::Unknown);
                 };
+                // The accounts database stores UUIDs; anything else is
+                // upstream corruption, not a caller error.
                 let identity = Identity {
-                    account_id: row.first().cloned(),
-                    device_id: row.get(1).cloned(),
+                    account_id: parse_id(row.first(), "account_id")?.map(AccountID::from),
+                    device_id: parse_id(row.get(1), "device_id")?.map(DeviceID::from),
                 };
 
-                let account = identity.account_id.clone().unwrap_or_default();
+                let account = identity
+                    .account_id
+                    .map(|a| a.to_string())
+                    .unwrap_or_default();
                 let grants = hrana_query(
                     http,
                     url,
@@ -87,6 +93,14 @@ impl Validator {
             }
         }
     }
+}
+
+fn parse_id(cell: Option<&String>, column: &str) -> Result<Option<uuid::Uuid>, AuthError> {
+    cell.map(|s| {
+        uuid::Uuid::parse_str(s)
+            .map_err(|e| AuthError::Upstream(format!("malformed {column} in accounts db: {e}")))
+    })
+    .transpose()
 }
 
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
