@@ -12,8 +12,8 @@
 //! and parsed on the way down, here and nowhere below.
 
 use domain::sync::HLC;
-use outpost::sync::peers::peer::{Peer, PeerError};
 use outpost::sync::peers::wire::EnvelopeFace;
+use outpost::sync::peers::{Peer, PeerError};
 use serde_json::value::RawValue;
 use store::DatabaseConnection;
 use store::query::{relay_cursor, sync_log};

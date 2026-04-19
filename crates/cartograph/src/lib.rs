@@ -64,7 +64,7 @@ pub mod sync {
     pub use envelope::{Envelope, TextPayload};
     // The peer seam is outpost's (raw envelopes; see relay/PROTOCOL.md).
     // Re-exported so app code has one import surface for sync.
-    pub use outpost::sync::peers::peer::{HttpPeer, LocalPeer, NoopPeer, Peer, PeerError};
+    pub use outpost::sync::peers::{HttpPeer, LocalPeer, NoopPeer, Peer, PeerError, PeerResult};
     pub use resolver::{ConflictResolver, LastWriteResolver, Resolution};
 }
 

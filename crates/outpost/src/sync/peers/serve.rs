@@ -15,7 +15,8 @@ use serde_json::value::RawValue;
 
 use crate::auth::{AuthError, Identity, Validator};
 
-use super::service::{UploadRejection, accept_upload, serve_fetch};
+use super::error::PeerError;
+use super::service::{accept_upload, serve_fetch};
 use super::store::EnvelopeStore;
 use super::wire::{DEFAULT_LIMIT, MAX_BATCH, MAX_BODY_BYTES, MAX_LIMIT};
 
@@ -122,16 +123,10 @@ async fn upload(
     .await;
     match response {
         Ok(body) => Json(body).into_response(),
-        Err(UploadRejection::Malformed(message)) => problem(StatusCode::BAD_REQUEST, message),
-        Err(UploadRejection::RealmMismatch { group_id }) => problem(
-            StatusCode::BAD_REQUEST,
-            format!("envelope {group_id} realm mismatch"),
-        ),
-        Err(UploadRejection::AccountMismatch { group_id }) => problem(
-            StatusCode::FORBIDDEN,
-            format!("envelope {group_id} account mismatch"),
-        ),
-        Err(UploadRejection::Store(e)) => {
+        Err(e @ PeerError::Malformed(_)) => problem(StatusCode::BAD_REQUEST, e.to_string()),
+        Err(e @ PeerError::RealmMismatch { .. }) => problem(StatusCode::BAD_REQUEST, e.to_string()),
+        Err(e @ PeerError::AccountMismatch { .. }) => problem(StatusCode::FORBIDDEN, e.to_string()),
+        Err(e) => {
             tracing::error!(error = %e, "append failed");
             problem(StatusCode::INTERNAL_SERVER_ERROR, "storage failure")
         }
