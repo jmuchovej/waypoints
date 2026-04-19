@@ -75,7 +75,7 @@ function onClick(e: MouseEvent) {
   }
 
   // Compound/non-editable blocks: select
-  dragDrop?.blurAll();
+  focus?.blurAll();
   selection?.select(props.block.id);
 }
 

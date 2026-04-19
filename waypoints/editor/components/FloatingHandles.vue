@@ -5,14 +5,6 @@ export interface FloatingHandlesProps {
 
 import { isInGutter, handlePosition } from "../utils/floating-handle";
 import { getMarkID, getClosestBlock } from "../utils/elements";
-
-function positionFor(markEl: HTMLElement) {
-  const pos = handlePosition(markEl, props.container!);
-  handleTop.value = pos.top;
-  handleLeft.value = pos.left;
-  hoveredMarkId.value = getMarkID(markEl);
-  isVisible.value = true;
-}
 </script>
 
 <script setup lang="ts">
@@ -27,6 +19,14 @@ const hoveredMarkId = ref<MarkID | null>(null);
 const handleTop = ref(0);
 const handleLeft = ref(0);
 const isVisible = ref(false);
+
+function positionFor(markEl: HTMLElement) {
+  const pos = handlePosition(markEl, props.container!);
+  handleTop.value = pos.top;
+  handleLeft.value = pos.left;
+  hoveredMarkId.value = getMarkID(markEl);
+  isVisible.value = true;
+}
 
 // Non-reactive dedup ref — avoids recalculating when the cursor stays on the same block
 let lastMarkEl: HTMLElement | null = null;

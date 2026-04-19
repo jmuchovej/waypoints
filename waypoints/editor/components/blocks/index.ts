@@ -1,16 +1,26 @@
 import { ContentType, isLandmark, type MarkData } from "@waypoints/domain";
 import { defineAsyncComponent, type Component } from "vue";
 
-const LandmarkBlock = defineAsyncComponent(() => import("./LandmarkBlock.vue"));
-const ParagraphBlock = defineAsyncComponent(() => import("./ParagraphBlock.vue"));
-const HeadingBlock = defineAsyncComponent(() => import("./HeadingBlock.vue"));
-const ListItemBlock = defineAsyncComponent(() => import("./ListItemBlock.vue"));
-const DividerBlock = defineAsyncComponent(() => import("./DividerBlock.vue"));
-const CodeBlock = defineAsyncComponent(() => import("./CodeBlock.vue"));
-const MathBlock = defineAsyncComponent(() => import("./MathBlock.vue"));
-const TableBlock = defineAsyncComponent(() => import("./TableBlock.vue"));
-const BlockquoteBlock = defineAsyncComponent(() => import("./BlockquoteBlock.vue"));
-const CalloutBlock = defineAsyncComponent(() => import("./CalloutBlock.vue"));
+import LandmarkBlock from "./LandmarkBlock.vue";
+import ParagraphBlock from "./ParagraphBlock.vue";
+import HeadingBlock from "./HeadingBlock.vue";
+import ListItemBlock from "./ListItemBlock.vue";
+import DividerBlock from "./DividerBlock.vue";
+import CodeBlock from "./CodeBlock.vue";
+import MathBlock from "./MathBlock.vue";
+import TableBlock from "./TableBlock.vue";
+
+// Compound blocks import Block.vue (circular dependency) — use defineAsyncComponent
+// to defer resolution, with suspensible: false to avoid the <Suspense> wrapper
+// that causes DOM teardown on re-render.
+const BlockquoteBlock = defineAsyncComponent({
+  loader: () => import("./BlockquoteBlock.vue"),
+  suspensible: false,
+});
+const CalloutBlock = defineAsyncComponent({
+  loader: () => import("./CalloutBlock.vue"),
+  suspensible: false,
+});
 
 export const registry = (data: MarkData): Component => {
   if (isLandmark(data)) {

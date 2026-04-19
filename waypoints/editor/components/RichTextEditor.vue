@@ -24,7 +24,7 @@ export interface RichTextEditorEmits {
 import { emojis } from "@tiptap/extension-emoji";
 import { useInlineEditor, BlockOrchestratorKey, type OrchestratorContext } from "../composables";
 import { inlineToolbarItems } from "../tiptap/toolbar-items";
-import { LazyUEditorToolbar, LazyUEditorEmojiMenu } from "#components";
+import { UEditorToolbar, UEditorEmojiMenu } from "#components";
 import TextSegment from "./TextSegment.vue";
 import ReadonlyRichText from "./RichText.vue";
 
@@ -111,23 +111,59 @@ function onMousedown(e: MouseEvent) {
   emit("mousedown", e);
 
   if (editing.value || !props.blockId) return;
-  e.preventDefault();
-  focus?.focusBlockAt(props.blockId, e);
+  // No preventDefault — let the browser show native text selection during drag.
+  // On mouseup, the editor mounts and ProseMirror's selection replaces it.
+
+  const blockId = props.blockId;
+
+  // Measure 1ch from the target element's font for drag threshold.
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const ctx = document.createElement("canvas").getContext("2d");
+  const targetEl = e.target as HTMLElement;
+  const chPx = ctx ? ((ctx.font = getComputedStyle(targetEl).font), ctx.measureText("0").width) : 8;
+
+  let endX = startX;
+  let endY = startY;
+
+  function onMove(ev: MouseEvent) {
+    endX = ev.clientX;
+    endY = ev.clientY;
+  }
+
+  function onUp() {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist >= chPx) {
+      focus?.focusBlockWithRange(blockId, startX, startY, endX, endY);
+    } else {
+      focus?.focusBlockAt(blockId, { clientX: startX, clientY: startY } as MouseEvent);
+    }
+  }
+
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
 }
 </script>
 
 <template>
   <span class="block cursor-text" @click="onClick" @mousedown="onMousedown">
     <span v-if="editing" ref="editorEl" />
-    <LazyUEditorToolbar
-      v-if="editorRef"
-      :editor="editorRef"
-      layout="bubble"
-      :items="toolbarItems"
-      :update-delay="0"
-      size="xs"
-    />
-    <LazyUEditorEmojiMenu v-if="editorRef" :editor="editorRef" :items="emojis" :limit="50" />
     <ReadonlyRichText v-else :rich-text="richText" :placeholder="placeholder" />
+    <div v-if="editorRef" class="contents">
+      <UEditorToolbar
+        :editor="editorRef"
+        layout="bubble"
+        :items="toolbarItems"
+        :update-delay="0"
+        size="xs"
+      />
+      <UEditorEmojiMenu :editor="editorRef" :items="emojis" :limit="50" />
+    </div>
   </span>
 </template>
