@@ -6,7 +6,6 @@ mod settings;
 pub mod builders {
     #[cfg(desktop)]
     pub(crate) mod menus;
-    pub mod specta;
     pub(crate) mod territory;
     #[cfg(desktop)]
     pub(crate) mod tray;
@@ -27,26 +26,51 @@ pub fn run() {
 
     tracing::info!("waypoints starting");
 
-    let specta = {
-        let builder = builders::specta::build();
-
-        #[cfg(all(debug_assertions, desktop))]
-        builders::specta::export(&builder, "../app/bindings.g.ts");
-
-        builder
-    };
-
     TauriBuilder::default()
-        .invoke_handler(specta.invoke_handler())
+        .invoke_handler(tauri::generate_handler![
+            // chart
+            commands::chart::chart_list,
+            commands::chart::chart_get,
+            commands::chart::landmark_create,
+            // mark
+            commands::mark::mark_list,
+            commands::mark::mark_create,
+            commands::mark::mark_update,
+            commands::mark::mark_delete,
+            commands::mark::mark_move,
+            commands::mark::mark_update_title,
+            // territory
+            commands::territory::territory_get_active,
+            commands::territory::territory_list,
+            commands::territory::territory_open,
+            commands::territory::territory_close,
+            commands::territory::territory_create,
+            commands::territory::territory_remove,
+            // editor
+            commands::editor::editor_get_mark,
+            commands::editor::editor_mark_list,
+            commands::editor::editor_project_landmark,
+            commands::editor::editor_update_mark,
+            commands::editor::editor_delete_mark,
+            commands::editor::editor_move_marks,
+            commands::editor::editor_update_mark_title,
+            commands::editor::editor_update_mark_reading,
+            commands::editor::editor_create_mark_after,
+            commands::editor::editor_update_mark_text,
+            commands::editor::editor_split_mark,
+            commands::editor::editor_merge_marks,
+            commands::editor::editor_delete_marks,
+            commands::editor::editor_reparent_mark,
+            commands::editor::editor_undo,
+            commands::editor::editor_redo,
+            commands::editor::editor_render_math,
+        ])
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .setup(move |app: &mut App| {
-            tracing::info!("tauri setup: mounting specta events");
-            specta.mount_events(app);
-
             tracing::info!("tauri setup: initializing runtime");
             builders::territory::setup(app)?;
             tracing::info!("tauri setup: runtime ready");

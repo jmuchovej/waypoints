@@ -2,7 +2,7 @@
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { open } from "@tauri-apps/plugin-dialog";
-import { commands } from "~/bindings.g";
+import ipc from "~/ipc";
 
 const emit = defineEmits<{
   success: [];
@@ -53,14 +53,16 @@ async function importExisting() {
 }
 
 async function onSubmit(event: FormSubmitEvent<NameSchema>) {
-  let result;
-  if (locationType.value === "managed") {
-    result = await commands.territoryCreate(event.data.name);
-  } else {
-    result = await commands.territoryOpen(null, selectedPath.value, event.data.name);
-  }
-  if (result?.status === "ok") {
+  try {
+    if (locationType.value === "managed") {
+      await ipc.territory.create(event.data.name);
+    } else {
+      await ipc.territory.open(null, selectedPath.value, event.data.name);
+    }
     emit("success");
+  } catch (e) {
+    // TODO: surface error to user
+    console.error("Territory creation failed", e);
   }
 }
 

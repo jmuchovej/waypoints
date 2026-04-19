@@ -8,13 +8,11 @@ use cartograph::WaypointsRuntime;
 use cartograph::mark::MarkResult;
 
 #[tauri::command]
-#[specta::specta]
 pub async fn chart_list(rt: State<'_, Arc<WaypointsRuntime>>) -> MarkResult<Vec<Chart>> {
     rt.charts().list().await
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn chart_get(
     rt: State<'_, Arc<WaypointsRuntime>>,
     chart_id: ChartID,
@@ -23,7 +21,6 @@ pub async fn chart_get(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn landmark_create(
     rt: State<'_, Arc<WaypointsRuntime>>,
     chart_id: ChartID,

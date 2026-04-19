@@ -12,7 +12,7 @@ export interface ReferenceReadingEmits {
 </script>
 <script setup lang="ts">
 import { type MarkID, type Mark, isLandmark } from "@waypoints/domain";
-import { commands } from "~/bindings.g";
+import ipc from "~/ipc";
 
 const props = defineProps<ReferenceReadingProps>();
 const emit = defineEmits<ReferenceReadingEmits>();
@@ -26,9 +26,10 @@ interface RefItem {
 const allMarks = ref<Mark[]>([]);
 
 async function loadMarks() {
-  const result = await commands.markList();
-  if (result.status === "ok") {
-    allMarks.value = result.data;
+  try {
+    allMarks.value = await ipc.marks.list();
+  } catch {
+    // silently fail — dropdown will be empty
   }
 }
 

@@ -43,8 +43,9 @@
         "@tauri-apps/plugin-shell": "catalog:tauri",
         "@tauri-apps/plugin-store": "catalog:tauri",
         "@vueuse/nuxt": "catalog:",
-        "@waypoints/domain": "workspace:*",
-        "@waypoints/editor": "workspace:*",
+        "@waypoints/cartograph": "catalog:",
+        "@waypoints/domain": "catalog:",
+        "@waypoints/editor": "catalog:",
         "consola": "catalog:",
         "katex": "catalog:",
         "nuxt": "catalog:",
@@ -3473,6 +3474,12 @@
     "vue-docgen-api/lru-cache": ["lru-cache@8.0.5", "", {}, "sha512-MhWWlVnuab1RG5/zMRRcVGXZLCXrZTgfwMikgzCegsPnG62yDQo5JnqKkrK4jO5iKqDAZGItAqN5CtKBCBWRUA=="],
 
     "vue-i18n/@vue/devtools-api": ["@vue/devtools-api@6.6.4", "", {}, "sha512-sGhTPMuXqZ1rVOk32RylztWkfXTRhuS7vgAKv0zjqk8gbsHkJ7xfFf+jbySxt7tWObEJwyKaHMikV/WGDiQm8g=="],
+
+    "waypoints/@waypoints/cartograph": ["@waypoints/cartograph@link:@waypoints/cartograph", {}],
+
+    "waypoints/@waypoints/domain": ["@waypoints/domain@link:@waypoints/domain", {}],
+
+    "waypoints/@waypoints/editor": ["@waypoints/editor@link:@waypoints/editor", {}],
 
     "wrap-ansi/ansi-styles": ["ansi-styles@6.2.3", "", {}, "sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg=="],
 

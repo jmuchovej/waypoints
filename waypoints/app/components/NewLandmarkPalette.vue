@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { LazyUAvatar, LazyUCommandPalette } from "#components";
 import type { CommandPaletteItem } from "@nuxt/ui";
-import { commands } from "~/bindings.g";
-import type { Chart } from "~/bindings.g";
+import type { Chart } from "@waypoints/domain";
 import { iconName } from "~/utils/icon";
+import ipc from "~/ipc";
 
 const open = defineModel<boolean>("open", { default: false });
 
@@ -12,11 +12,10 @@ const log = createLogger("new-landmark");
 const charts = ref<Chart[]>([]);
 
 async function loadCharts() {
-  const result = await commands.chartList();
-  if (result.status === "ok") {
-    charts.value = result.data;
-  } else {
-    log.error("chart_list failed:", result.error);
+  try {
+    charts.value = await ipc.charts.list();
+  } catch (e) {
+    log.error("chart_list failed:", e);
   }
 }
 
@@ -39,11 +38,11 @@ const groups = computed(() => [
 
 async function createLandmark(chart: Chart) {
   open.value = false;
-  const result = await commands.landmarkCreate(chart.id);
-  if (result.status === "ok") {
-    await navigateTo(`/marks/${result.data.id}`);
-  } else {
-    log.error("landmark_create failed:", result.error);
+  try {
+    const mark = await ipc.charts.createLandmark(chart.id);
+    await navigateTo(`/marks/${mark.id}`);
+  } catch (e) {
+    log.error("landmark_create failed:", e);
   }
 }
 </script>

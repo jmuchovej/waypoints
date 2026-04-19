@@ -8,7 +8,7 @@ import {
   isIndentableType,
 } from "@waypoints/domain";
 import type { RenderNode } from "@waypoints/editor";
-import { commands } from "~/bindings.g";
+import ipc from "~/ipc";
 import { useBlockFocus } from "./useBlockFocus";
 import { useBlockSelection } from "./useBlockSelection";
 import { type BlockPosition, useBlockDragDrop } from "./useBlockDragDrop";
@@ -26,13 +26,12 @@ async function moveBlocks(
   landmarkID: string,
   pos: BlockPosition,
 ): Promise<RenderNode[] | undefined> {
-  const res = await commands.editorMoveMarks(parentID, childIDs, afterID, landmarkID);
-  switch (res.status) {
-    case "ok":
-      return res.data.blocks;
-    default:
-      log.error(`moveMarks(${pos}) failed: `, res.error);
-      return undefined;
+  try {
+    const res = await ipc.editor.moveMarks(parentID, childIDs, afterID, landmarkID);
+    return res.blocks;
+  } catch (e) {
+    log.error(`moveMarks(${pos}) failed:`, e);
+    return undefined;
   }
 }
 
@@ -142,46 +141,48 @@ export function useBlockOrchestrator(
 
   async function onUpdateBlockText(markId: MarkID, richText: RichText) {
     const versionAtCall = stateVersion;
-    const result = await commands.editorUpdateMarkText(markId, richText, landmarkID.value);
-    if (result.status === "ok" && stateVersion === versionAtCall) {
-      blocks.value = result.data.blocks;
-    } else if (result.status === "error") {
-      log.error("updateMarkText failed:", result.error);
+    try {
+      const result = await ipc.editor.updateText(markId, richText, landmarkID.value);
+      if (stateVersion === versionAtCall) {
+        blocks.value = result.blocks;
+      }
+    } catch (e) {
+      log.error("updateMarkText failed:", e);
     }
   }
 
   async function onSplitBlock(markId: MarkID, offset: number) {
     await flushPendingUpdates();
     stateVersion++;
-    const result = await commands.editorSplitMark(markId, offset, landmarkID.value);
-    if (result.status === "ok") {
-      blocks.value = result.data.blocks;
-      focus.focusBlock(result.data.new_mark_id, "start");
-    } else {
-      log.error("splitMark failed:", result.error);
+    try {
+      const result = await ipc.editor.split(markId, offset, landmarkID.value);
+      blocks.value = result.blocks;
+      focus.focusBlock(result.new_mark_id, "start");
+    } catch (e) {
+      log.error("splitMark failed:", e);
     }
   }
 
   async function onMergeBlocks(targetId: MarkID, sourceId: MarkID) {
     await flushPendingUpdates();
     stateVersion++;
-    const result = await commands.editorMergeMarks(targetId, sourceId, landmarkID.value);
-    if (result.status === "ok") {
-      blocks.value = result.data.blocks;
+    try {
+      const result = await ipc.editor.merge(targetId, sourceId, landmarkID.value);
+      blocks.value = result.blocks;
       focus.focusBlock(targetId, "end");
-    } else {
-      log.error("mergeMarks failed:", result.error);
+    } catch (e) {
+      log.error("mergeMarks failed:", e);
     }
   }
 
   async function onDeleteBlocks(markIds: MarkID[]) {
     await flushPendingUpdates();
     stateVersion++;
-    const result = await commands.editorDeleteMarks(markIds, landmarkID.value);
-    if (result.status === "ok") {
-      blocks.value = result.data.blocks;
-    } else {
-      log.error("deleteMarks failed:", result.error);
+    try {
+      const result = await ipc.editor.deleteMarks(markIds, landmarkID.value);
+      blocks.value = result.blocks;
+    } catch (e) {
+      log.error("deleteMarks failed:", e);
     }
   }
 
@@ -199,14 +200,16 @@ export function useBlockOrchestrator(
     // Otherwise, fall through to backend structural undo.
     await flushPendingUpdates();
     stateVersion++;
-    const result = await commands.editorUndo(landmarkID.value);
-    if (result.status === "ok" && result.data) {
-      blocks.value = result.data.blocks;
-      if (result.data.cursor) {
-        focus.focusBlock(result.data.cursor.block_id);
+    try {
+      const result = await ipc.editor.undo(landmarkID.value);
+      if (result) {
+        blocks.value = result.blocks;
+        if (result.cursor) {
+          focus.focusBlock(result.cursor.block_id);
+        }
       }
-    } else if (result.status === "error") {
-      log.error("undo failed:", result.error);
+    } catch (e) {
+      log.error("undo failed:", e);
     }
   }
 
@@ -224,14 +227,16 @@ export function useBlockOrchestrator(
     // Otherwise, fall through to backend structural redo.
     await flushPendingUpdates();
     stateVersion++;
-    const result = await commands.editorRedo(landmarkID.value);
-    if (result.status === "ok" && result.data) {
-      blocks.value = result.data.blocks;
-      if (result.data.cursor) {
-        focus.focusBlock(result.data.cursor.block_id);
+    try {
+      const result = await ipc.editor.redo(landmarkID.value);
+      if (result) {
+        blocks.value = result.blocks;
+        if (result.cursor) {
+          focus.focusBlock(result.cursor.block_id);
+        }
       }
-    } else if (result.status === "error") {
-      log.error("redo failed:", result.error);
+    } catch (e) {
+      log.error("redo failed:", e);
     }
   }
 
@@ -239,22 +244,12 @@ export function useBlockOrchestrator(
     await flushPendingUpdates();
     stateVersion++;
     const id = crypto.randomUUID();
-    const createResult = await commands.markCreate(
-      id,
-      landmarkID.value,
-      paragraph(),
-      new Date().toISOString(),
-      null,
-    );
-    if (createResult.status === "ok") {
-      // Re-project to get the updated block list
-      const projResult = await commands.editorProjectLandmark(landmarkID.value, null);
-      if (projResult.status === "ok") {
-        blocks.value = projResult.data;
-        focus.focusBlock(id, "start");
-      }
-    } else {
-      log.error("markCreate (first block) failed:", createResult.error);
+    try {
+      await ipc.marks.create(id, landmarkID.value, paragraph(), new Date().toISOString(), null);
+      blocks.value = await ipc.editor.projectLandmark(landmarkID.value, null);
+      focus.focusBlock(id, "start");
+    } catch (e) {
+      log.error("markCreate (first block) failed:", e);
     }
   }
 
@@ -263,17 +258,17 @@ export function useBlockOrchestrator(
     stateVersion++;
     const block = blocks.value.find((b) => b.id === afterId);
     const parentId = block?.parent_id ?? landmarkID.value;
-    const result = await commands.editorCreateMarkAfter(
-      afterId,
-      parentId,
-      contentData(paragraph()),
-      landmarkID.value,
-    );
-    if (result.status === "ok") {
-      blocks.value = result.data.blocks;
-      focus.focusBlock(result.data.new_mark_id, "start");
-    } else {
-      log.error("createMarkAfter failed:", result.error);
+    try {
+      const result = await ipc.editor.createAfter(
+        afterId,
+        parentId,
+        contentData(paragraph()),
+        landmarkID.value,
+      );
+      blocks.value = result.blocks;
+      focus.focusBlock(result.new_mark_id, "start");
+    } catch (e) {
+      log.error("createMarkAfter failed:", e);
     }
   }
 
@@ -281,18 +276,18 @@ export function useBlockOrchestrator(
     await flushPendingUpdates();
     stateVersion++;
     const block = blocks.value.find((b) => b.id === id);
-    if (block && !isIndentableType(block.data)) return; // headings can't be indented
+    if (block && !isIndentableType(block.data)) return;
     const siblings = getSiblings(id);
     const idx = siblings.findIndex((b) => b.id === id);
-    if (idx <= 0) return; // no previous sibling to nest under
+    if (idx <= 0) return;
     const prevSibling = siblings[idx - 1]!;
-    if (!isNestableType(prevSibling.data)) return; // only nestable types can accept children
-    const result = await commands.editorReparentMark(id, prevSibling.id, null, landmarkID.value);
-    if (result.status === "ok") {
-      blocks.value = result.data.blocks;
+    if (!isNestableType(prevSibling.data)) return;
+    try {
+      const result = await ipc.editor.reparent(id, prevSibling.id, null, landmarkID.value);
+      blocks.value = result.blocks;
       focus.focusBlock(id);
-    } else {
-      log.error("reparentMark (indent) failed:", result.error);
+    } catch (e) {
+      log.error("reparentMark (indent) failed:", e);
     }
   }
 
@@ -300,21 +295,16 @@ export function useBlockOrchestrator(
     await flushPendingUpdates();
     stateVersion++;
     const block = blocks.value.find((b) => b.id === id);
-    if (!block || block.depth === 0) return; // already at root
+    if (!block || block.depth === 0) return;
     const parent = blocks.value.find((b) => b.id === block.parent_id);
     if (!parent) return;
     const grandparentId = parent.parent_id ?? landmarkID.value;
-    const result = await commands.editorReparentMark(
-      id,
-      grandparentId,
-      parent.id,
-      landmarkID.value,
-    );
-    if (result.status === "ok") {
-      blocks.value = result.data.blocks;
+    try {
+      const result = await ipc.editor.reparent(id, grandparentId, parent.id, landmarkID.value);
+      blocks.value = result.blocks;
       focus.focusBlock(id);
-    } else {
-      log.error("reparentMark (dedent) failed:", result.error);
+    } catch (e) {
+      log.error("reparentMark (dedent) failed:", e);
     }
   }
 
@@ -355,12 +345,12 @@ export function useBlockOrchestrator(
   async function onChangeBlockType(id: MarkID, newContent: Content) {
     await flushPendingUpdates();
     stateVersion++;
-    const result = await commands.editorUpdateMark(id, newContent, landmarkID.value);
-    if (result.status === "ok") {
+    try {
+      const result = await ipc.editor.updateMark(id, newContent, landmarkID.value);
       focus.focusBlockDeferred(id, "start");
-      blocks.value = result.data.blocks;
-    } else {
-      log.error("updateMark (changeType) failed:", result.error);
+      blocks.value = result.blocks;
+    } catch (e) {
+      log.error("updateMark (changeType) failed:", e);
     }
   }
 

@@ -9,7 +9,6 @@ use cartograph::WaypointsRuntime;
 use editor::{CreateResult, EditorResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_get_mark(
     rt: State<'_, Arc<WaypointsRuntime>>,
     mark_id: MarkID,
@@ -18,13 +17,11 @@ pub async fn editor_get_mark(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_mark_list(rt: State<'_, Arc<WaypointsRuntime>>) -> EditorResult<Vec<Mark>> {
     rt.editor().await.mark_list().await
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_project_landmark(
     rt: State<'_, Arc<WaypointsRuntime>>,
     landmark_id: MarkID,
@@ -37,7 +34,6 @@ pub async fn editor_project_landmark(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_update_mark(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: MarkID,
@@ -51,7 +47,6 @@ pub async fn editor_update_mark(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_delete_mark(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: MarkID,
@@ -61,7 +56,6 @@ pub async fn editor_delete_mark(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_move_marks(
     rt: State<'_, Arc<WaypointsRuntime>>,
     parent_id: MarkID,
@@ -76,7 +70,6 @@ pub async fn editor_move_marks(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_update_mark_title(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: MarkID,
@@ -86,7 +79,6 @@ pub async fn editor_update_mark_title(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_update_mark_reading(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: MarkID,
@@ -100,7 +92,6 @@ pub async fn editor_update_mark_reading(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_create_mark_after(
     rt: State<'_, Arc<WaypointsRuntime>>,
     after_id: MarkID,
@@ -115,7 +106,6 @@ pub async fn editor_create_mark_after(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_update_mark_text(
     rt: State<'_, Arc<WaypointsRuntime>>,
     mark_id: MarkID,
@@ -129,7 +119,6 @@ pub async fn editor_update_mark_text(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_split_mark(
     rt: State<'_, Arc<WaypointsRuntime>>,
     mark_id: MarkID,
@@ -143,7 +132,6 @@ pub async fn editor_split_mark(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_merge_marks(
     rt: State<'_, Arc<WaypointsRuntime>>,
     target_id: MarkID,
@@ -157,7 +145,6 @@ pub async fn editor_merge_marks(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_delete_marks(
     rt: State<'_, Arc<WaypointsRuntime>>,
     mark_ids: Vec<MarkID>,
@@ -167,7 +154,6 @@ pub async fn editor_delete_marks(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_reparent_mark(
     rt: State<'_, Arc<WaypointsRuntime>>,
     mark_id: MarkID,
@@ -182,7 +168,6 @@ pub async fn editor_reparent_mark(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_undo(
     rt: State<'_, Arc<WaypointsRuntime>>,
     landmark_id: MarkID,
@@ -191,7 +176,6 @@ pub async fn editor_undo(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_redo(
     rt: State<'_, Arc<WaypointsRuntime>>,
     landmark_id: MarkID,
@@ -200,7 +184,6 @@ pub async fn editor_redo(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn editor_render_math(
     expression: String,
     engine: MathEngine,

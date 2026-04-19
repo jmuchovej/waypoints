@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { commands } from "~/bindings.g";
 import type { Mark, RichText, Chart, ChartID } from "@waypoints/domain";
 import { isLandmark, toRichText } from "@waypoints/domain";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
+import ipc from "~/ipc";
 import { iconName } from "~/utils/icon";
 
 const log = createLogger("marks");
@@ -18,18 +18,12 @@ const FALLBACK_ICON = "i-lucide-file-text";
 async function load() {
   loading.value = true;
 
-  const [markResult, chartResult] = await Promise.all([commands.markList(), commands.chartList()]);
-
-  if (markResult.status === "ok") {
-    landmarks.value = markResult.data;
-  } else {
-    log.warn("mark_list failed:", markResult.error);
-  }
-
-  if (chartResult.status === "ok") {
-    charts.value = new Map(chartResult.data.map((c) => [c.id, c]));
-  } else {
-    log.warn("chart_list failed:", chartResult.error);
+  try {
+    const [markData, chartData] = await Promise.all([ipc.marks.list(), ipc.charts.list()]);
+    landmarks.value = markData;
+    charts.value = new Map(chartData.map((c) => [c.id, c]));
+  } catch (e) {
+    log.warn("failed to load marks/charts:", e);
   }
 
   loading.value = false;
@@ -58,9 +52,10 @@ function landmarkIcon(mark: Mark): string {
 async function onTitleUpdate(mark: Mark, richText: RichText) {
   if (!isLandmark(mark.data)) return;
   mark.data.title = richText;
-  const result = await commands.editorUpdateMarkTitle(mark.id, richText);
-  if (result.status === "error") {
-    log.warn("update title failed:", result.error);
+  try {
+    await ipc.editor.updateTitle(mark.id, richText);
+  } catch (e) {
+    log.warn("update title failed:", e);
   }
 }
 

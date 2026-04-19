@@ -1,13 +1,12 @@
-import { commands } from "~/bindings.g";
+import ipc from "~/ipc";
 
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) return;
   if (import.meta.dev) return;
 
   try {
-    const result = await commands.territoryList();
-    if (result.status !== "ok") return;
-    const hasTerritory = result.data.length > 0;
+    const territories = await ipc.territory.list();
+    const hasTerritory = territories.length > 0;
 
     if (!hasTerritory && to.path !== "/onboarding") {
       return navigateTo("/onboarding");

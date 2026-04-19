@@ -8,13 +8,11 @@ use cartograph::WaypointsRuntime;
 use cartograph::mark::MarkResult;
 
 #[tauri::command]
-#[specta::specta]
 pub async fn mark_list(rt: State<'_, Arc<WaypointsRuntime>>) -> MarkResult<Vec<Mark>> {
     rt.marks().list(Some("landmark")).await
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn mark_create(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: Uuid,
@@ -29,7 +27,6 @@ pub async fn mark_create(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn mark_update(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: Uuid,
@@ -39,13 +36,11 @@ pub async fn mark_update(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn mark_delete(rt: State<'_, Arc<WaypointsRuntime>>, id: Uuid) -> MarkResult<()> {
     rt.marks().delete(id).await
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn mark_move(
     rt: State<'_, Arc<WaypointsRuntime>>,
     parent_id: Uuid,
@@ -56,7 +51,6 @@ pub async fn mark_move(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn mark_update_title(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: Uuid,

@@ -7,7 +7,6 @@ use cartograph::WaypointsRuntime;
 use cartograph::territory::{Territory, TerritoryResult};
 
 #[tauri::command]
-#[specta::specta]
 pub async fn territory_list(
     rt: State<'_, Arc<WaypointsRuntime>>,
 ) -> TerritoryResult<Vec<Territory>> {
@@ -15,7 +14,6 @@ pub async fn territory_list(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn territory_get_active(
     rt: State<'_, Arc<WaypointsRuntime>>,
 ) -> TerritoryResult<Option<Territory>> {
@@ -23,7 +21,6 @@ pub async fn territory_get_active(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn territory_create(
     rt: State<'_, Arc<WaypointsRuntime>>,
     name: String,
@@ -32,7 +29,6 @@ pub async fn territory_create(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn territory_open(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: Option<Uuid>,
@@ -43,13 +39,11 @@ pub async fn territory_open(
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn territory_close(rt: State<'_, Arc<WaypointsRuntime>>) -> TerritoryResult<()> {
     rt.territory().close().await
 }
 
 #[tauri::command]
-#[specta::specta]
 pub async fn territory_remove(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: Uuid,

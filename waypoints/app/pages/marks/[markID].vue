@@ -3,7 +3,7 @@ import type { Mark, Landmark, FeatureID, Reading, RichText, Chart } from "@waypo
 import DocumentBody from "~editor/components/DocumentBody.vue";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import ReadingsTable from "~editor/components/ReadingsTable.vue";
-import { commands } from "~/bindings.g";
+import ipc from "~/ipc";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const log = createLogger("marks");
@@ -37,11 +37,10 @@ const titlePlaceholder = computed(() => {
 const chart = ref<Chart | null>(null);
 
 async function loadChart(chartId: string) {
-  const result = await commands.chartGet(chartId);
-  if (result.status === "ok") {
-    chart.value = result.data;
-  } else {
-    log.error("chart_get failed:", result.error);
+  try {
+    chart.value = await ipc.charts.get(chartId);
+  } catch (e) {
+    log.error("chart_get failed:", e);
     chart.value = null;
   }
 }
@@ -57,12 +56,11 @@ watch(
 
 async function onReadingUpdate(featureId: FeatureID, reading: Reading) {
   log.info("onReadingUpdate", { featureId, reading });
-  const result = await commands.editorUpdateMarkReading(markID, featureId, reading);
-  if (result.status === "ok") {
-    log.info("onReadingUpdate → rawMark updated", result.data);
-    rawMark.value = result.data;
-  } else {
-    log.error("editor_update_mark_reading failed:", result.error);
+  try {
+    rawMark.value = await ipc.editor.updateReading(markID, featureId, reading);
+    log.info("onReadingUpdate → rawMark updated", rawMark.value);
+  } catch (e) {
+    log.error("editor_update_mark_reading failed:", e);
   }
 }
 
@@ -71,13 +69,8 @@ async function load() {
   error.value = null;
 
   try {
-    const result = await commands.editorMarkList();
-    if (result.status !== "ok") {
-      error.value = result.error;
-      return;
-    }
-
-    const mark = result.data.find((m) => m.id === markID);
+    const marks = await ipc.editor.listMarks();
+    const mark = marks.find((m) => m.id === markID);
     if (!mark) {
       error.value = `Mark "${markID}" not found`;
       return;
@@ -95,10 +88,8 @@ async function load() {
 onMounted(load);
 
 function onTitleUpdate(richText: RichText) {
-  commands.editorUpdateMarkTitle(markID, richText).then((res) => {
-    if (res.status === "error") {
-      log.error("editor_update_mark_title failed:", res.error);
-    }
+  ipc.editor.updateTitle(markID, richText).catch((e) => {
+    log.error("editor_update_mark_title failed:", e);
   });
 }
 

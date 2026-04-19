@@ -15,13 +15,9 @@ mod cartograph "crates/cartograph/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
-    cargo run -p Waypoints --features development --bin typegen
     @just domain::typegen
     @just editor::typegen
     @just cartograph::typegen
-    treefmt waypoints/app/bindings.g.ts
-    bun run scripts/patch-bindings.ts
-    treefmt waypoints/app/bindings.g.ts
 
 clean:
     cargo clean

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
-import { commands } from "~/bindings.g";
-import type { Territory } from "~/bindings.g";
+import type { Territory } from "@waypoints/cartograph";
 import { UDropdownMenu, UButton, LazyTerritoryPicker } from "#components";
 import { createLogger } from "~/utils/logger";
+import ipc from "~/ipc";
 
 const logger = createLogger("TerritoryMenu");
 
@@ -20,25 +20,19 @@ const modalOpen = ref(false);
 async function load() {
   logger.debug("Attempting to load territories");
   try {
-    logger.debug("Calling territoryGetActive...");
-    const activeResult = await commands.territoryGetActive();
-    logger.debug("territoryGetActive resolved:", activeResult);
-
-    logger.debug("Calling territoryList...");
-    const listResult = await commands.territoryList();
-    logger.debug("territoryList resolved:", listResult);
-
-    if (activeResult.status === "ok") active.value = activeResult.data;
-    if (listResult.status === "ok") territories.value = listResult.data;
+    active.value = (await ipc.territory.getActive()) ?? null;
+    territories.value = await ipc.territory.list();
   } catch (e) {
     logger.error("IPC failed during territory load", e);
   }
 }
 
 async function switchTerritory(id: string) {
-  const result = await commands.territoryOpen(id, null, null);
-  if (result.status === "ok") {
+  try {
+    await ipc.territory.open(id);
     reloadNuxtApp({ path: "/" });
+  } catch (e) {
+    logger.error("Failed to switch territory", e);
   }
 }
 

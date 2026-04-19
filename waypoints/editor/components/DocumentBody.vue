@@ -8,7 +8,7 @@ export interface DocumentBodyProps {
 
 <script setup lang="ts">
 import type { RenderNode } from "@waypoints/editor";
-import { commands } from "~/bindings.g";
+import ipc from "~/ipc";
 import { listen } from "@tauri-apps/api/event";
 import {
   useBlockOrchestrator,
@@ -117,12 +117,7 @@ async function load() {
   error.value = null;
 
   try {
-    const result = await commands.editorProjectLandmark(props.landmarkId, null);
-    if (result.status === "ok") {
-      blocks.value = result.data;
-    } else {
-      error.value = result.error;
-    }
+    blocks.value = await ipc.editor.projectLandmark(props.landmarkId, null);
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {
