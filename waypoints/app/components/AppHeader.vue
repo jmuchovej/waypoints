@@ -2,6 +2,7 @@
 import type { NavigationMenuItem } from "@nuxt/ui";
 import type { RichText } from "@waypoints/domain";
 import ReadonlyRichText from "~editor/components/RichText.vue";
+import { createLogger } from "~/utils/logger";
 
 export interface AppHeaderProps {
   title: RichText;
@@ -10,9 +11,11 @@ export interface AppHeaderProps {
 </script>
 <script setup lang="ts">
 import type { Ref } from "vue";
+const logger = createLogger("AppHeader");
 
 const open = inject<Ref<boolean>>("sidebar-open", ref(false));
 const props = defineProps<AppHeaderProps>();
+logger.debug(props.title);
 </script>
 
 <template>
@@ -32,10 +35,8 @@ const props = defineProps<AppHeaderProps>();
         color="neutral"
         @click="open = !open"
       />
-    </template>
 
-    <template #title>
-      <ReadonlyRichText :value="title" />
+      <ReadonlyRichText :rich-text="title" class="text-lg font-semibold truncate" />
     </template>
 
     <template #right>
@@ -54,7 +55,12 @@ const props = defineProps<AppHeaderProps>();
       <USeparator class="hidden lg:flex" />
 
       <UContainer class="hidden lg:flex items-center justify-between">
-        <UNavigationMenu :items="tabs" highlight variant="pill" class="-mx-2.5 -mb-px" />
+        <UNavigationMenu
+          :items="tabs"
+          highlight
+          variant="pill"
+          class="-mx-2.5 -mb-px"
+        />
       </UContainer>
     </template>
   </UHeader>

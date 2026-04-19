@@ -6,6 +6,10 @@ import type { Content, MarkData, MathEngine, RichText } from "./types.g";
 
 export const emptyRichText: RichText = { plain_text: "", segments: [] };
 
+export function toRichText(text: string): RichText {
+  return { plain_text: text, segments: [{ text, marks: [] }] };
+}
+
 export function paragraph(rt?: RichText): Content {
   return { type: "paragraph", rich_text: rt ?? emptyRichText };
 }
@@ -90,8 +94,6 @@ export function isEmpty(c: Content): boolean {
       return false;
   }
 }
-
-// ── MarkData ───────────────────────────────────────────────────────────────
 
 export function contentData(content?: Content): MarkData {
   return { mark: "content", ...(content ?? paragraph()) };
