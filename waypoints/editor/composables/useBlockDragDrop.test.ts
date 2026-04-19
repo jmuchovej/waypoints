@@ -1,16 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
-import { ref } from "vue";
-import type { RenderNode } from "@waypoints/editor";
 import type { MarkData } from "@waypoints/domain";
 import { emptyRichText } from "@waypoints/domain";
+import type { RenderNode } from "@waypoints/editor";
+import { describe, expect, it, vi } from "vitest";
+import { ref } from "vue";
 import {
   useBlockDragDrop,
   computeDropDepth,
   INDENT_UNIT_PX,
   type MoveBlocksFn,
 } from "./useBlockDragDrop";
-
-// ── Helpers ─────────────────────────────────────────────────────────────
 
 function paragraph(
   id: string,
@@ -45,8 +43,6 @@ function createDragDrop(blockList: RenderNode[] = []) {
   const dd = useBlockDragDrop(blocks, containerEl, doMove);
   return { blocks, containerEl, doMove, dd };
 }
-
-// ── Tests ───────────────────────────────────────────────────────────────
 
 describe("useBlockDragDrop", () => {
   describe("initial state", () => {

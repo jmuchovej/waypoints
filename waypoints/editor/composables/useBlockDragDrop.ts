@@ -1,4 +1,4 @@
-import { isCompoundType, isNestableType, isIndentableType, type MarkID } from "@waypoints/domain";
+import { isCompoundType, isIndentableType, isNestableType, type MarkID } from "@waypoints/domain";
 import type { RenderNode } from "@waypoints/editor";
 import { readonly, ref, type Ref } from "vue";
 import { createLogger } from "~/utils/logger";
@@ -89,8 +89,6 @@ export function useBlockDragDrop(
     }
     return false;
   }
-
-  // ── Ghost element (floating clone that follows the cursor) ──────────
 
   let ghostEl: HTMLElement | null = null;
   let ghostOffsetX = 0;
@@ -449,10 +447,10 @@ export function useBlockDragDrop(
     draggedSet = new Set();
   }
 
-  function isDragging(id: undefined): boolean;
-  function isDragging(id: MarkID | undefined): boolean {
+  function isDragging(): boolean;
+  function isDragging(id: MarkID): boolean;
+  function isDragging(id?: MarkID): boolean {
     if (id === undefined) return blockIDs.value.length > 0;
-
     return blockIDs.value.includes(id);
   }
 

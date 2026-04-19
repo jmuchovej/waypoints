@@ -16,8 +16,9 @@ import {
   useCommandMenu,
   useLongPressDrag,
 } from "../composables";
-import { ContentType, isCompoundType, isContent } from "@waypoints/domain";
+import { ContentType, isCompoundType, isContent, type MarkID } from "@waypoints/domain";
 import { indexFor } from "../utils/list-item";
+import { getBlocks, getMarkID } from "../utils/elements";
 import Block from "./Block.vue";
 import FloatingHandles from "./FloatingHandles.vue";
 import SlashMenu from "./SlashMenu.vue";
@@ -160,6 +161,105 @@ async function onOverscrollClick() {
   }
 }
 
+// ── Gutter sweep selection ─────────────────────────────────────────────
+// Pointerdown in the margin area (outside the content column) starts a
+// vertical sweep. As the cursor moves, all blocks whose Y range overlaps
+// the sweep are selected via selection.range().
+
+let sweeping = false;
+let sweepStartX = 0;
+let sweepStartY = 0;
+const sweepBox = ref<{ left: number; top: number; width: number; height: number } | null>(null);
+
+function isInMargin(e: PointerEvent): boolean {
+  if (!containerRef.value) return false;
+  const rect = containerRef.value.getBoundingClientRect();
+  return e.clientX < rect.left || e.clientX > rect.right;
+}
+
+function findBlocksInYRange(y1: number, y2: number): { first: MarkID; last: MarkID } | null {
+  const minY = Math.min(y1, y2);
+  const maxY = Math.max(y1, y2);
+
+  let first: MarkID | null = null;
+  let last: MarkID | null = null;
+
+  for (const el of getBlocks()) {
+    const rect = el.getBoundingClientRect();
+    // Block overlaps the sweep range if its top is above maxY and bottom is below minY
+    if (rect.bottom > minY && rect.top < maxY) {
+      const id = getMarkID(el);
+      if (!first) first = id;
+      last = id;
+    }
+  }
+
+  if (first && last) return { first, last };
+  return null;
+}
+
+function onSweepMove(e: PointerEvent) {
+  if (!sweeping) return;
+
+  // Update selection box
+  const left = Math.min(sweepStartX, e.clientX);
+  const top = Math.min(sweepStartY, e.clientY);
+  sweepBox.value = {
+    left,
+    top,
+    width: Math.abs(e.clientX - sweepStartX),
+    height: Math.abs(e.clientY - sweepStartY),
+  };
+
+  const range = findBlocksInYRange(sweepStartY, e.clientY);
+  if (range) {
+    selection.range(range.first, range.last);
+  }
+}
+
+function onSweepUp() {
+  if (!sweeping) return;
+  sweeping = false;
+  sweepBox.value = null;
+  document.removeEventListener("pointermove", onSweepMove);
+  document.removeEventListener("pointerup", onSweepUp);
+
+  // Focus the container so keyboard events (Backspace, Escape, arrows) work
+  nextTick(() => containerRef.value?.focus());
+}
+
+function onDocumentPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return;
+  if (!isInMargin(e)) return;
+
+  // Only start sweep if the click is vertically within the container
+  if (!containerRef.value) return;
+  const rect = containerRef.value.getBoundingClientRect();
+  if (e.clientY < rect.top || e.clientY > rect.bottom) return;
+
+  e.preventDefault();
+  focus.blurAll();
+  selection.clear();
+
+  sweeping = true;
+  sweepStartX = e.clientX;
+  sweepStartY = e.clientY;
+
+  document.addEventListener("pointermove", onSweepMove);
+  document.addEventListener("pointerup", onSweepUp);
+}
+
+onMounted(() => {
+  document.addEventListener("pointerdown", onDocumentPointerDown);
+});
+onUnmounted(() => {
+  document.removeEventListener("pointerdown", onDocumentPointerDown);
+  if (sweeping) {
+    document.removeEventListener("pointermove", onSweepMove);
+    document.removeEventListener("pointerup", onSweepUp);
+  }
+});
+
 defineExpose({
   blocks,
   loading,
@@ -203,5 +303,18 @@ defineExpose({
     <FloatingHandles :container="containerRef" />
     <SlashMenu ref="slashMenuRef" />
     <MentionMenu ref="mentionMenuRef" />
+
+    <Teleport to="body">
+      <div
+        v-if="sweepBox"
+        class="sweep-selection-box"
+        :style="{
+          left: `${sweepBox.left}px`,
+          top: `${sweepBox.top}px`,
+          width: `${sweepBox.width}px`,
+          height: `${sweepBox.height}px`,
+        }"
+      />
+    </Teleport>
   </div>
 </template>

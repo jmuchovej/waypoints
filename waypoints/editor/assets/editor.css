@@ -424,3 +424,8 @@
 .reading-description {
   @apply text-xs text-dimmed;
 }
+
+.sweep-selection-box {
+  @apply fixed pointer-events-none z-40;
+  @apply border border-primary/40 bg-primary/5 rounded-sm;
+}
