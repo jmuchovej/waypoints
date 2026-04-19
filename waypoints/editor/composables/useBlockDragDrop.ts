@@ -25,8 +25,8 @@ export function useBlockDragDrop(blocks: Ref<RenderNode[]>, doMove: MoveBlocksFn
 
   function isCompound(id: MarkID): boolean {
     const block = blocks.value.find((b) => b.id === id);
-    if (!block || isCompoundType(block.data)) return false;
-    return true;
+    if (!block) return false;
+    return isCompoundType(block.data);
   }
 
   function isEmptyCompound(id: MarkID): boolean {
