@@ -9,6 +9,9 @@
   "dependencies": {
     "@fontsource-variable/dm-sans": "catalog:",
     "@internationalized/date": "catalog:",
+    "@myriaddreamin/typst-ts-renderer": "^0.7.0-rc2",
+    "@myriaddreamin/typst-ts-web-compiler": "^0.7.0-rc2",
+    "@myriaddreamin/typst.ts": "^0.7.0-rc2",
     "@nuxt/content": "catalog:",
     "@nuxt/hints": "catalog:",
     "@nuxt/icon": "catalog:",

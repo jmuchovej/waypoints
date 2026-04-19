@@ -28,14 +28,10 @@ async function renderMathPreview(expression: string, engine: string): Promise<st
       return html;
     }
 
-    // For typst, try Tauri IPC if available
+    // For typst, use WASM-based client-side rendering
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      const svg = await invoke<string>("editor_render_math", {
-        expression,
-        engine: "typst",
-        displayMode: false,
-      });
+      const { $typst } = await import("@myriaddreamin/typst.ts/contrib/all-in-one-lite");
+      const svg = await $typst.svg({ mainContent: `$${expression}$` });
       cachedSvg.set(cacheKey, svg);
       return svg;
     } catch {

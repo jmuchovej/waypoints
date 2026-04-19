@@ -8,10 +8,14 @@ vi.mock("katex", () => ({
   },
 }));
 
-const mockInvoke = vi.fn(async () => "<svg>typst</svg>");
+const mockSvg = vi.fn(async () => "<svg>typst</svg>");
 
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (...args: any[]) => mockInvoke(...args),
+vi.mock("@myriaddreamin/typst.ts/contrib/all-in-one-lite", () => ({
+  $typst: {
+    setCompilerInitOptions: vi.fn(),
+    setRendererInitOptions: vi.fn(),
+    svg: (...args: any[]) => mockSvg(...args),
+  },
 }));
 
 // Import AFTER mocks are set up
@@ -19,7 +23,7 @@ const { useMathRenderer } = await import("./useMathRenderer");
 
 beforeEach(() => {
   mockRenderToString.mockClear();
-  mockInvoke.mockClear();
+  mockSvg.mockClear();
 });
 
 describe("useMathRenderer", () => {
@@ -83,42 +87,33 @@ describe("useMathRenderer", () => {
   });
 
   describe("typst rendering", () => {
-    it("calls Tauri IPC with correct args", async () => {
+    it("calls typst.ts with wrapped math content", async () => {
       const { render } = useMathRenderer();
       await render("x^2", "typst");
 
-      expect(mockInvoke).toHaveBeenCalledWith("editor_render_math", {
-        expression: "x^2",
-        engine: "typst",
-        displayMode: false,
-      });
+      expect(mockSvg).toHaveBeenCalledWith({ mainContent: "$x^2$" });
     });
 
-    it("passes displayMode flag", async () => {
+    it("wraps display mode with spaces", async () => {
       const { render } = useMathRenderer();
       await render("x^2", "typst", true);
 
-      expect(mockInvoke).toHaveBeenCalledWith("editor_render_math", {
-        expression: "x^2",
-        engine: "typst",
-        displayMode: true,
-      });
+      expect(mockSvg).toHaveBeenCalledWith({ mainContent: "$ x^2 $" });
     });
 
-    it("falls back to monospace code on IPC failure", async () => {
-      mockInvoke.mockRejectedValueOnce(new Error("IPC unavailable"));
+    it("falls back to monospace code on WASM failure", async () => {
+      mockSvg.mockRejectedValueOnce(new Error("WASM unavailable"));
 
       const { render } = useMathRenderer();
-      // Use unique expression to avoid cache hits from other tests
       const result = await render("fallback_expr_1", "typst");
 
       expect(result.html).toContain("<code");
       expect(result.html).toContain("fallback_expr_1");
-      expect(result.error).toContain("IPC unavailable");
+      expect(result.error).toContain("WASM unavailable");
     });
 
     it("escapes HTML in fallback to prevent XSS", async () => {
-      mockInvoke.mockRejectedValueOnce(new Error("fail"));
+      mockSvg.mockRejectedValueOnce(new Error("fail"));
 
       const { render } = useMathRenderer();
       const result = await render("<script>alert(1)</script>", "typst");
@@ -128,13 +123,12 @@ describe("useMathRenderer", () => {
     });
 
     it("allows display-mode expressions for typst", async () => {
-      mockInvoke.mockResolvedValueOnce("<svg>typst-display</svg>");
+      mockSvg.mockResolvedValueOnce("<svg>typst-display</svg>");
 
       const { render } = useMathRenderer();
-      // Use unique expression to avoid cache hits
       const result = await render("sum_(k=0)^n k", "typst", true);
 
-      expect(mockInvoke).toHaveBeenCalled();
+      expect(mockSvg).toHaveBeenCalled();
       expect(result.html).toBe("<svg>typst-display</svg>");
     });
   });
@@ -167,11 +161,10 @@ describe("useMathRenderer", () => {
   describe("defaults", () => {
     it("defaults to katex engine", async () => {
       const { render } = useMathRenderer();
-      // Unique expression to avoid cache hits
       await render("default_engine_test");
 
       expect(mockRenderToString).toHaveBeenCalled();
-      expect(mockInvoke).not.toHaveBeenCalled();
+      expect(mockSvg).not.toHaveBeenCalled();
     });
   });
 });

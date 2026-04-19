@@ -55,6 +55,35 @@ async function renderKatex(expression: string): Promise<RenderResult> {
   }
 }
 
+// Lazy-loaded typst.ts WASM compiler
+type TypstSnippet = Awaited<ReturnType<typeof initTypst>>;
+let typstReady: Promise<TypstSnippet> | null = null;
+
+async function initTypst() {
+  const { $typst } = await import("@myriaddreamin/typst.ts/contrib/all-in-one-lite");
+  $typst.setCompilerInitOptions({
+    getModule: () =>
+      fetch(
+        new URL(
+          "@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm",
+          import.meta.url,
+        ),
+      ).then((r) => r.arrayBuffer()),
+  });
+  $typst.setRendererInitOptions({
+    getModule: () =>
+      fetch(
+        new URL("@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm", import.meta.url),
+      ).then((r) => r.arrayBuffer()),
+  });
+  return $typst;
+}
+
+function loadTypst(): Promise<TypstSnippet> {
+  if (!typstReady) typstReady = initTypst();
+  return typstReady;
+}
+
 async function renderTypst(expression: string, displayMode = false): Promise<RenderResult> {
   const sanitized = displayMode ? expression.trim() : sanitizeForInline(expression);
   if (!sanitized) {
@@ -66,17 +95,15 @@ async function renderTypst(expression: string, displayMode = false): Promise<Ren
   if (cached) return cached;
 
   try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    const svg = await invoke<string>("editor_render_math", {
-      expression: sanitized,
-      engine: "typst",
-      displayMode,
-    });
+    const $typst = await loadTypst();
+    // Wrap expression in typst math delimiters
+    const content = displayMode ? `$ ${sanitized} $` : `$${sanitized}$`;
+    const svg = await $typst.svg({ mainContent: content });
     const result: RenderResult = { html: svg };
     renderCache.set(cacheKey, result);
     return result;
   } catch (e) {
-    // Fallback to monospace display if Tauri IPC is unavailable
+    // Fallback to monospace display if WASM compilation fails
     const escaped = sanitized.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return { html: `<code class="typst-fallback">${escaped}</code>`, error: String(e) };
   }
