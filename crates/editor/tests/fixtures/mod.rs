@@ -87,3 +87,30 @@ pub async fn seed_landmark(db: &DatabaseConnection, n: usize) -> (MarkID, Vec<Ma
 
     (lm, children)
 }
+
+/// Seed a landmark with `n` root-level paragraphs, then nest `nested` paragraphs under the
+/// specified root child (by index). Returns `(landmark_id, root_ids, nested_ids)`.
+pub async fn seed_nested(
+    db: &DatabaseConnection,
+    n: usize,
+    nest_under: usize,
+    nested: usize,
+) -> (MarkID, Vec<MarkID>, Vec<MarkID>) {
+    let (lm, roots) = seed_landmark(db, n).await;
+
+    let parent = roots[nest_under];
+    let keys = fractional_index::generate_n(nested);
+    let mut nested_ids = Vec::with_capacity(nested);
+    for (i, key) in keys.iter().enumerate() {
+        let child = new_id();
+        mark::insert(db, child, &paragraph(&format!("Nested {}", i + 1)), now())
+            .await
+            .unwrap();
+        terrain::insert_child_edge(db, parent, child, key)
+            .await
+            .unwrap();
+        nested_ids.push(child);
+    }
+
+    (lm, roots, nested_ids)
+}

@@ -254,7 +254,7 @@ export function useBlockOrchestrator(landmarkID: Ref<string>, blocks: Ref<Render
     const idx = siblings.findIndex((b) => b.id === id);
     if (idx <= 0) return; // no previous sibling to nest under
     const prevSibling = siblings[idx - 1]!;
-    const result = await commands.editorReparentMark(id, prevSibling.id, landmarkID.value);
+    const result = await commands.editorReparentMark(id, prevSibling.id, null, landmarkID.value);
     if (result.status === "ok") {
       blocks.value = result.data.blocks;
       focus.focusBlock(id);
@@ -271,7 +271,12 @@ export function useBlockOrchestrator(landmarkID: Ref<string>, blocks: Ref<Render
     const parent = blocks.value.find((b) => b.id === block.parent_id);
     if (!parent) return;
     const grandparentId = parent.parent_id ?? landmarkID.value;
-    const result = await commands.editorReparentMark(id, grandparentId, landmarkID.value);
+    const result = await commands.editorReparentMark(
+      id,
+      grandparentId,
+      parent.id,
+      landmarkID.value,
+    );
     if (result.status === "ok") {
       blocks.value = result.data.blocks;
       focus.focusBlock(id);

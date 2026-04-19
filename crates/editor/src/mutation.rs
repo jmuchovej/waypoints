@@ -539,14 +539,12 @@ pub async fn reparent_mark(
     history: &mut CommandHistory,
     mark_id: MarkID,
     new_parent_id: MarkID,
+    after_id: Option<MarkID>,
     landmark_id: MarkID,
 ) -> EditorResult<MutationResult> {
     let (old_parent, old_index) = find_parent_edge(db, mark_id).await?;
 
-    // Append at end of new parent's children
-    let edges = terrain::get_child_edges(db, new_parent_id).await?;
-    let new_order =
-        fractional_index::key_between(edges.last().and_then(|e| e.order.as_deref()), None);
+    let new_order = compute_order_excluding(db, new_parent_id, after_id, mark_id).await?;
 
     terrain::update_child_edge(db, mark_id, Some(new_parent_id), &new_order).await?;
 

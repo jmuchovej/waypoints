@@ -7,10 +7,6 @@ use store::DatabaseConnection;
 
 type Env = (::editor::EditorService, DatabaseConnection);
 
-// ---------------------------------------------------------------------------
-// create_mark_after
-// ---------------------------------------------------------------------------
-
 #[rstest]
 #[tokio::test]
 async fn create_mark_after_inserts_in_order(#[future] env: Env) {
@@ -28,10 +24,6 @@ async fn create_mark_after_inserts_in_order(#[future] env: Env) {
     assert_eq!(result.blocks[2].id, children[1]);
 }
 
-// ---------------------------------------------------------------------------
-// update_mark_text
-// ---------------------------------------------------------------------------
-
 #[rstest]
 #[tokio::test]
 async fn update_mark_text_changes_content(#[future] env: Env) {
@@ -48,10 +40,6 @@ async fn update_mark_text_changes_content(#[future] env: Env) {
         panic!("expected paragraph");
     }
 }
-
-// ---------------------------------------------------------------------------
-// update_mark (block type conversion)
-// ---------------------------------------------------------------------------
 
 #[rstest]
 #[tokio::test]
@@ -84,10 +72,6 @@ async fn update_mark_converts_block_type(#[future] env: Env) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// delete_mark
-// ---------------------------------------------------------------------------
-
 #[rstest]
 #[tokio::test]
 async fn delete_mark_removes_from_projection(#[future] env: Env) {
@@ -101,10 +85,6 @@ async fn delete_mark_removes_from_projection(#[future] env: Env) {
     assert_eq!(blocks[0].id, children[0]);
     assert_eq!(blocks[1].id, children[2]);
 }
-
-// ---------------------------------------------------------------------------
-// delete_marks (batch)
-// ---------------------------------------------------------------------------
 
 #[rstest]
 #[tokio::test]
@@ -120,10 +100,6 @@ async fn delete_marks_batch(#[future] env: Env) {
     let ids: Vec<MarkID> = blocks.iter().map(|b| b.id).collect();
     assert_eq!(ids, vec![children[0], children[2], children[4]]);
 }
-
-// ---------------------------------------------------------------------------
-// split_mark
-// ---------------------------------------------------------------------------
 
 #[rstest]
 #[tokio::test]
@@ -168,10 +144,6 @@ async fn split_preserves_sibling_order(#[future] env: Env) {
     assert_eq!(blocks[3].id, children[2]);
 }
 
-// ---------------------------------------------------------------------------
-// merge_marks
-// ---------------------------------------------------------------------------
-
 #[rstest]
 #[tokio::test]
 async fn merge_marks_combines_text(#[future] env: Env) {
@@ -190,10 +162,6 @@ async fn merge_marks_combines_text(#[future] env: Env) {
     };
     assert_eq!(text, "Block 1Block 2");
 }
-
-// ---------------------------------------------------------------------------
-// split then merge roundtrip
-// ---------------------------------------------------------------------------
 
 #[rstest]
 #[tokio::test]
@@ -223,10 +191,6 @@ async fn split_then_merge_roundtrips(#[future] env: Env) {
     assert_eq!(original_text, after_text);
 }
 
-// ---------------------------------------------------------------------------
-// move_marks
-// ---------------------------------------------------------------------------
-
 #[rstest]
 #[tokio::test]
 async fn move_marks_reorders(#[future] env: Env) {
@@ -245,10 +209,6 @@ async fn move_marks_reorders(#[future] env: Env) {
     );
 }
 
-// ---------------------------------------------------------------------------
-// reparent_mark
-// ---------------------------------------------------------------------------
-
 #[rstest]
 #[tokio::test]
 async fn reparent_mark_into_container(#[future] env: Env) {
@@ -261,7 +221,7 @@ async fn reparent_mark_into_container(#[future] env: Env) {
         .unwrap();
     let bq = result.new_mark_id;
 
-    svc.reparent_mark(children[1], bq, lm).await.unwrap();
+    svc.reparent_mark(children[1], bq, None, lm).await.unwrap();
 
     let blocks = svc.project_landmark(lm, None).await.unwrap();
     assert_eq!(blocks.len(), 3);
@@ -270,9 +230,61 @@ async fn reparent_mark_into_container(#[future] env: Env) {
     assert_eq!(blocks[2].depth, 1);
 }
 
-// ---------------------------------------------------------------------------
-// update_mark_title
-// ---------------------------------------------------------------------------
+#[rstest]
+#[tokio::test]
+async fn dedent_places_block_after_parent(#[future] env: Env) {
+    // Setup: root has [A, B, C]. B has [nested]. Dedenting nested should
+    // produce [A, B, nested, C] — not [A, B, C, nested].
+    let (mut svc, db) = env.await;
+    let (lm, roots, nested) = seed_nested(&db, 3, 1, 1).await;
+
+    // Dedent: move nested[0] from parent=roots[1] to grandparent=lm, after=roots[1]
+    svc.reparent_mark(nested[0], lm, Some(roots[1]), lm)
+        .await
+        .unwrap();
+
+    let blocks = svc.project_landmark(lm, None).await.unwrap();
+    let ids: Vec<MarkID> = blocks.iter().map(|b| b.id).collect();
+    assert_eq!(ids, vec![roots[0], roots[1], nested[0], roots[2]]);
+    assert_eq!(blocks[2].depth, 0, "dedented block should be at root depth");
+}
+
+#[rstest]
+#[tokio::test]
+async fn dedent_last_child_places_after_parent(#[future] env: Env) {
+    // Setup: root has [A, B]. B has [n1, n2]. Dedenting n2 should
+    // produce [A, B(n1), n2].
+    let (mut svc, db) = env.await;
+    let (lm, roots, nested) = seed_nested(&db, 2, 1, 2).await;
+
+    svc.reparent_mark(nested[1], lm, Some(roots[1]), lm)
+        .await
+        .unwrap();
+
+    let blocks = svc.project_landmark(lm, None).await.unwrap();
+    let ids: Vec<MarkID> = blocks.iter().map(|b| b.id).collect();
+    assert_eq!(ids, vec![roots[0], roots[1], nested[0], nested[1]]);
+    assert_eq!(blocks[2].depth, 1, "n1 stays nested");
+    assert_eq!(blocks[3].depth, 0, "n2 is dedented to root");
+}
+
+#[rstest]
+#[tokio::test]
+async fn reparent_with_none_after_appends(#[future] env: Env) {
+    // Passing after_id=None should append to end (indent behavior).
+    let (mut svc, db) = env.await;
+    let (lm, roots, nested) = seed_nested(&db, 3, 0, 1).await;
+
+    // Indent roots[2] under roots[1] (after_id=None → append)
+    svc.reparent_mark(roots[2], roots[1], None, lm)
+        .await
+        .unwrap();
+
+    let blocks = svc.project_landmark(lm, None).await.unwrap();
+    let ids: Vec<MarkID> = blocks.iter().map(|b| b.id).collect();
+    assert_eq!(ids, vec![roots[0], nested[0], roots[1], roots[2]]);
+    assert_eq!(blocks[3].parent_id, Some(roots[1]));
+}
 
 #[rstest]
 #[tokio::test]

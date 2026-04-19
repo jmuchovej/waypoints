@@ -172,11 +172,12 @@ pub async fn editor_reparent_mark(
     rt: State<'_, Arc<WaypointsRuntime>>,
     mark_id: MarkID,
     new_parent_id: MarkID,
+    after_id: Option<MarkID>,
     landmark_id: MarkID,
 ) -> EditorResult<MutationResult> {
     rt.editor()
         .await
-        .reparent_mark(mark_id, new_parent_id, landmark_id)
+        .reparent_mark(mark_id, new_parent_id, after_id, landmark_id)
         .await
 }
 

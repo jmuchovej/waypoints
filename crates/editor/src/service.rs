@@ -190,11 +190,12 @@ impl EditorService {
         &mut self,
         mark_id: MarkID,
         new_parent_id: MarkID,
+        after_id: Option<MarkID>,
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::reparent_mark(&db, h, mark_id, new_parent_id, landmark_id).await
+        mutation::reparent_mark(&db, h, mark_id, new_parent_id, after_id, landmark_id).await
     }
 
     pub async fn undo(&mut self, landmark_id: MarkID) -> EditorResult<Option<UndoRedoResult>> {
