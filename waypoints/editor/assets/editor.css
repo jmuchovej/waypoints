@@ -53,17 +53,39 @@
   @apply relative outline-none;
   @apply caret-primary;
 
-  .mark {
-    @apply relative py-1 px-1;
-    @apply first:mt-0 last:mb-0 my-1;
-    @apply rounded-sm;
-    @apply leading-snug;
-    @apply transition-[background-color,shadow,opacity] duration-150 ease-out;
+  .block {
+    @apply transition-colors duration-100 ease-in-out;
+    @apply px-1 py-1 first:pt-1 last:pb-1;
+    /*@apply first:mt-0 last:mb-0 my-1;*/
+    @apply transition-[background-color,shadow,opacity,border-color] duration-150 ease-out;
     @apply bg-elevated/0;
-    padding-inline-start: --spacing((var(--depth, 0) * 6 + 1));
+    @apply border border-transparent;
+    @apply rounded-sm;
+
+    &:has(.mark.selected) {
+      @apply bg-primary/10 border-primary/30;
+    }
+  }
+
+  .block:has(+ .block > .mark.selected) {
+    @apply mb-0 rounded-b-none border-b-transparent;
+  }
+
+  .block:has(> .mark.selected) + .block {
+    @apply mt-0 rounded-t-none border-t-transparent;
+  }
+
+  .mark {
+    @apply relative;
+    @apply rounded-sm;
+    /*@apply leading-snug;*/
+    /*@apply transition-[background-color,shadow,opacity,border-color] duration-150 ease-out;*/
+    /*@apply bg-elevated/0;
+    @apply border border-transparent;*/
+    padding-inline-start: --spacing((6 * var(--depth, 0)) + 1);
 
     &.selected {
-      @apply bg-primary/10 outline outline-primary/30;
+      /*@apply bg-primary/10 border-primary/30;*/
     }
 
     &.dragging {
@@ -91,19 +113,67 @@
     &[data-type="heading-3"] {
       @apply text-xl;
     }
-  }
 
-  &[data-type="code"] {
-    @apply text-sm leading-6;
-    @apply border border-muted bg-muted;
-    @apply rounded-md;
-    @apply px-4 py-3;
-    @apply whitespace-pre-wrap break-words;
-    @apply overflow-x-auto;
+    &[data-type="paragraph"] {
+      @apply leading-snug min-h-6;
+    }
 
-    code {
-      @apply p-0 rounded-none border-0 bg-transparent;
-      @apply text-inherit font-mono;
+    &[data-type="list-item"],
+    &[data-type="enum-item"] {
+      @apply relative py-0.5 leading-snug flex;
+
+      .prefix {
+        @apply select-none text-dimmed min-w-[2ch] pe-1 text-end;
+      }
+
+      .rich-text {
+        @apply ps-2 flex-1;
+      }
+    }
+
+    &[data-type="code"] {
+      @apply text-sm leading-6;
+      @apply border border-muted bg-muted;
+      @apply rounded-md;
+      @apply px-4 py-3;
+      @apply whitespace-pre-wrap break-words;
+      @apply overflow-x-auto;
+
+      code {
+        @apply p-0 rounded-none border-0 bg-transparent;
+        @apply text-inherit font-mono;
+      }
+    }
+
+    &[data-type="callout"] {
+      @apply rounded-md;
+      @apply px-4 py-3;
+      background: var(--ink-bg);
+      border: 1px solid var(--ink-bg-border);
+
+      .wrapper {
+        @apply flex flex-row gap-x-2;
+
+        .prefix {
+          @apply text-xl shrink-0;
+        }
+
+        .body {
+          @apply flex-1;
+        }
+      }
+    }
+
+    &[data-type="blockquote"] {
+      @apply flex gap-x-2 gap-y-1;
+
+      .prefix {
+        @apply bg-accented w-1.5 rounded-xs;
+      }
+
+      .body {
+        @apply italic flex-1;
+      }
     }
   }
 
@@ -138,25 +208,6 @@
   }
   .mark:has(+ .drop-indicator:last-child) {
     @apply mb-0;
-  }
-
-  &[data-type="paragraph"] {
-    @apply leading-snug min-h-6;
-  }
-
-  &[data-type="list-item"],
-  &[data-type="enum-item"] {
-    @apply relative py-0.5 leading-snug flex;
-
-    .prefix {
-      @apply select-none text-dimmed min-w-[2ch] pe-1 text-end;
-    }
-  }
-
-  &[data-type="list-item"] .prefix {
-  }
-
-  &[data-type="enum-item"] .prefix {
   }
 
   /* ── Selection ─────────────────────────────────────────────────────────── */
@@ -304,8 +355,6 @@
   }
 }
 
-/* ── Drag ghost (floating clone appended to <body>) ────────────────────── */
-
 .drag-ghost {
   @apply fixed pointer-events-none z-[1000];
   @apply py-1 px-1;
@@ -320,8 +369,6 @@
     @apply shadow-md;
   }
 }
-
-/* ── Multi-block drag ghost ──────────────────────────────────────────── */
 
 .drag-ghost.multi {
   @apply flex flex-col gap-0.5;

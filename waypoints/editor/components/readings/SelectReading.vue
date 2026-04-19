@@ -16,63 +16,29 @@ import type { InputMenuItem } from "@nuxt/ui";
 
 const log = createLogger("select-reading");
 
-// ── Color → Tailwind ───────────────────────────────────────────────────
+// ── Color → chip styling ──────────────────────────────────────────────
 //
-// Maps the domain `Color` enum onto a small bundle of Tailwind classes
-// for the chip background, border, and chip-dot color. We hand these
-// to UInputMenu via the per-item `ui` field so each option carries its
-// own visual identity in both the dropdown row and (in multi mode) the
-// rendered tag chip.
+// Maps the domain `Color` enum to Nuxt UI chip dot colors. Background
+// and border styling for tag chips uses the shared `data-ink-bg` CSS
+// custom properties defined in `editor/assets/colors.css`.
 
-interface ColorClasses {
-  /** Classes applied to the tag wrapper (chip background + border) */
-  tag: string;
-  /** Tailwind color name for the leading chip dot in the dropdown row */
-  chipDot: "primary" | "neutral" | "info" | "success" | "warning" | "error";
-}
+type ChipDotColor = "primary" | "neutral" | "info" | "success" | "warning" | "error";
 
-const COLOR_CLASSES: Record<Color, ColorClasses> = {
-  Default: { tag: "bg-elevated text-default ring-default", chipDot: "neutral" },
-  Gray: {
-    tag: "bg-neutral-100 text-neutral-700 ring-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-700",
-    chipDot: "neutral",
-  },
-  Brown: {
-    tag: "bg-amber-100 text-amber-900 ring-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:ring-amber-800",
-    chipDot: "warning",
-  },
-  Orange: {
-    tag: "bg-orange-100 text-orange-800 ring-orange-300 dark:bg-orange-950 dark:text-orange-200 dark:ring-orange-800",
-    chipDot: "warning",
-  },
-  Yellow: {
-    tag: "bg-yellow-100 text-yellow-800 ring-yellow-300 dark:bg-yellow-950 dark:text-yellow-200 dark:ring-yellow-800",
-    chipDot: "warning",
-  },
-  Green: {
-    tag: "bg-green-100 text-green-800 ring-green-300 dark:bg-green-950 dark:text-green-200 dark:ring-green-800",
-    chipDot: "success",
-  },
-  Blue: {
-    tag: "bg-blue-100 text-blue-800 ring-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:ring-blue-800",
-    chipDot: "info",
-  },
-  Purple: {
-    tag: "bg-purple-100 text-purple-800 ring-purple-300 dark:bg-purple-950 dark:text-purple-200 dark:ring-purple-800",
-    chipDot: "primary",
-  },
-  Pink: {
-    tag: "bg-pink-100 text-pink-800 ring-pink-300 dark:bg-pink-950 dark:text-pink-200 dark:ring-pink-800",
-    chipDot: "primary",
-  },
-  Red: {
-    tag: "bg-red-100 text-red-800 ring-red-300 dark:bg-red-950 dark:text-red-200 dark:ring-red-800",
-    chipDot: "error",
-  },
+const CHIP_DOT_MAP: Record<Color, ChipDotColor> = {
+  default: "neutral",
+  gray: "neutral",
+  brown: "warning",
+  orange: "warning",
+  yellow: "warning",
+  green: "success",
+  blue: "info",
+  purple: "primary",
+  pink: "primary",
+  red: "error",
 };
 
-function classesFor(color: Color | undefined): ColorClasses {
-  return COLOR_CLASSES[color ?? "Default"] ?? COLOR_CLASSES.Default;
+function chipDotFor(color: Color | undefined): ChipDotColor {
+  return CHIP_DOT_MAP[color ?? "default"] ?? "neutral";
 }
 
 const props = defineProps<SelectReadingProps>();
@@ -117,19 +83,16 @@ function isOption(item: InputMenuItem): item is OptionItem {
 }
 
 function optionToItem(id: GlyphID, opt: SelectOption, groupId?: GlyphID): OptionItem {
-  const colors = classesFor(opt.color);
+  const color = opt.color ?? "default";
   return {
     id,
     groupId,
     label: opt.name,
     icon: toNuxtIcon(opt.icon?.identifier),
     description: opt.description ?? undefined,
-    // A leading colored dot in the dropdown row, matching the option's color.
-    chip: { color: colors.chipDot, size: "md" },
-    // Per-item style overrides — InputMenu applies these to the tag chip
-    // (multi-select mode) so each tag carries its own color.
+    chip: { color: chipDotFor(color), size: "md" },
     ui: {
-      tagsItem: `${colors.tag} ring-1 ring-inset rounded-md px-1.5 py-0.5`,
+      tagsItem: `sur-${color} ring-1 ring-inset rounded-md px-1.5 py-0.5`,
       tagsItemText: "text-xs font-medium",
     },
   };

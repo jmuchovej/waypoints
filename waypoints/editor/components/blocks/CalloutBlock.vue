@@ -3,6 +3,8 @@ import type { ContentNode } from "~~/editor";
 import type { OrchestratorContext } from "../../composables";
 import Block from "../Block.vue";
 
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{ block: ContentNode<"callout"> }>();
 
 const orchestrator = inject<OrchestratorContext>("block-orchestrator");
@@ -35,9 +37,9 @@ const childBlocks = computed(() => {
 </script>
 
 <template>
-  <div :data-color="block.data.background_color" class="flex gap-x-4 border rounded-lg p-3">
-    <span class="text-xl shrink-0">{{ block.data.icon }}</span>
-    <div class="flex-1">
+  <div class="wrapper" :data-ink-bg="block.data.background_color">
+    <span class="prefix">{{ block.data.icon }}</span>
+    <div class="body">
       <Block v-for="child in childBlocks" :key="child.id" :block="child" />
       <p v-if="childBlocks.length === 0" class="text-dimmed text-sm italic">Empty callout</p>
     </div>
