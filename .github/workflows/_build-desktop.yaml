@@ -77,7 +77,7 @@ jobs:
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
-          secrets=$(sops -d .secrets/signing-apple.sops.yaml)
+          secrets=$(sops -d .secrets/apple.sops.yaml)
           key_path="${RUNNER_TEMP}/AuthKey.p8"
           echo "${secrets}" | yq '.developer-id.key-prv' > "${key_path}"
           echo "APPLE_API_KEY_PATH=${key_path}" >> "$GITHUB_ENV"

@@ -4,6 +4,11 @@ on:
   push:
     tags: ["v*-pre.*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (leave empty for build-only, no release)"
+        required: false
+        default: ""
 
 jobs:
   desktop:
@@ -12,7 +17,7 @@ jobs:
       flavor: preview
       features: preview
       config: Tauri.flavor=preview.toml
-      tag: ${{ github.ref_name }}
+      tag: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       prerelease: true
     secrets:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
@@ -22,7 +27,7 @@ jobs:
     with:
       flavor: preview
       features: preview
-      tag: ${{ github.ref_name }}
+      tag: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       prerelease: true
     secrets:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
@@ -32,7 +37,7 @@ jobs:
     with:
       flavor: preview
       features: preview
-      tag: ${{ github.ref_name }}
+      tag: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       prerelease: true
     secrets:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
