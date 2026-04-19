@@ -8,6 +8,7 @@ permissions = [
   "core:default",
 
   "core:window:allow-start-dragging",
+  "core:window:allow-set-title",
 
   "core:webview:allow-create-webview",
   "core:webview:allow-create-webview-window",

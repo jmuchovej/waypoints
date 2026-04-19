@@ -70,17 +70,34 @@ onMounted(async () => {
 onUnmounted(() => unlisten?.());
 
 useHead({
-  title: "Waypoints",
+  titleTemplate: (title) => (title ? `${title} — Waypoints` : "Waypoints"),
   charset: "utf-8",
   viewport: "width=device-width, initial-scale=1",
   meta: [
     { name: "format-detection", content: "no" },
     {
       name: "viewport",
-      content: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+      content: [
+        "width=device-width",
+        "initial-scale=1",
+        "maximum-scale=1",
+        "viewport-fit=cover",
+      ].join(", "),
     },
   ],
 });
+
+import { getCurrentWindow } from "@tauri-apps/api/window";
+const appWindow = getCurrentWindow();
+
+watch(
+  () => route.fullPath,
+  async () => {
+    await nextTick(); // let useHead flush the new document.title first
+    await appWindow.setTitle(document.title || "Waypoints");
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
