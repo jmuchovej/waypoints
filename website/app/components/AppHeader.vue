@@ -2,6 +2,7 @@
 import { useDocusColorMode, useDocusI18n, useSubNavigation } from "#imports";
 
 const appConfig = useAppConfig();
+const { header } = appConfig;
 const { forced: forcedColorMode } = useDocusColorMode();
 
 const { isEnabled: isAssistantEnabled } = useAssistant();
@@ -9,6 +10,10 @@ const { isEnabled, locales } = useDocusI18n();
 const { subNavigationMode } = useSubNavigation();
 
 const drawerOpen = ref(false);
+
+useHead({
+  link: [{ rel: "icon", type: "image/svg+xml", href: header.logo.favicon }],
+});
 </script>
 
 <template>
@@ -32,7 +37,11 @@ const drawerOpen = ref(false);
 
     <template #toggle>
       <ClientOnly>
-        <UDrawer v-model:open="drawerOpen" direction="bottom" should-scale-background>
+        <UDrawer
+          v-model:open="drawerOpen"
+          direction="bottom"
+          should-scale-background
+        >
           <IconMenuToggle :open="drawerOpen" class="lg:hidden" />
 
           <template #body>
