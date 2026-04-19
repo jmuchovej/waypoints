@@ -1,8 +1,11 @@
 //! The client half of §4 against a remote peer, envelopes kept opaque.
-//! Fetch-only for now: gossip is pull-only (PROTOCOL.md §1), and the
-//! app's typed upload path lives in cartograph until it migrates here.
+//! Typed envelope knowledge stays with the caller: cartograph converts
+//! at the apply boundary, the gossip pump never converts at all.
 
-use super::wire::FetchResponse;
+use serde::Serialize;
+use serde_json::value::RawValue;
+
+use super::wire::{FetchResponse, UploadResponse};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PeerError {
@@ -35,27 +38,64 @@ impl PeerClient {
         &self.base_url
     }
 
-    /// Fetch a page since `since_seq`. No `exclude_device`: a pulling
-    /// relay wants everything.
+    /// Fetch a page since `since_seq`. `exclude_device` is the device
+    /// echo filter (a bandwidth optimization only, §4.2) — a pulling
+    /// relay passes `None`: it wants everything.
     pub async fn fetch_since(
         &self,
         realm_id: &str,
         since_seq: i64,
+        exclude_device: Option<&str>,
         limit: usize,
     ) -> Result<FetchResponse, PeerError> {
-        let url = format!("{}/realms/{}/envelopes", self.base_url, realm_id);
+        let mut query = vec![
+            ("since_seq", since_seq.to_string()),
+            ("limit", limit.to_string()),
+        ];
+        if let Some(device) = exclude_device {
+            query.push(("exclude_device", device.to_string()));
+        }
         let response = self
             .http
-            .get(url)
+            .get(self.envelopes_url(realm_id))
             .bearer_auth(&self.token)
-            .query(&[
-                ("since_seq", since_seq.to_string()),
-                ("limit", limit.to_string()),
-            ])
+            .query(&query)
             .send()
             .await
             .map_err(|e| PeerError::Transport(e.to_string()))?;
+        Self::parse(response).await
+    }
 
+    /// Upload envelopes verbatim (§4.1). Idempotent on the relay side;
+    /// callers retry freely.
+    pub async fn upload(
+        &self,
+        realm_id: &str,
+        envelopes: Vec<Box<RawValue>>,
+    ) -> Result<UploadResponse, PeerError> {
+        #[derive(Serialize)]
+        struct UploadRequest {
+            envelopes: Vec<Box<RawValue>>,
+        }
+
+        let response = self
+            .http
+            .post(self.envelopes_url(realm_id))
+            .bearer_auth(&self.token)
+            .json(&UploadRequest { envelopes })
+            .send()
+            .await
+            .map_err(|e| PeerError::Transport(e.to_string()))?;
+        Self::parse(response).await
+    }
+
+    fn envelopes_url(&self, realm_id: &str) -> String {
+        format!("{}/realms/{}/envelopes", self.base_url, realm_id)
+    }
+
+    async fn parse<T: serde::de::DeserializeOwned>(
+        response: reqwest::Response,
+    ) -> Result<T, PeerError> {
         let status = response.status();
         if !status.is_success() {
             let message = response.text().await.unwrap_or_default();

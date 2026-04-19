@@ -1,8 +1,9 @@
 use std::future::Future;
 
 use domain::sync::{DeviceID, OpID, RealmID};
+use outpost::sync::peers::client::{PeerClient, PeerError};
 use serde::{Deserialize, Serialize};
-
+use serde_json::value::RawValue;
 
 use super::envelope::Envelope;
 
@@ -155,50 +156,28 @@ impl RelayClient for InMemoryRelayClient {
 }
 
 /// The client side of an always-on relay speaking relay/PROTOCOL.md over
-/// HTTPS. Endpoint shapes are tested; integration against a live relay
-/// is deferred (guide Phase 6).
+/// HTTPS — a typed adapter over the outpost engine's `PeerClient`. The
+/// wire carries raw envelopes; conversion to typed `Envelope`s happens
+/// here, at the apply boundary, and nowhere below it.
 #[derive(Debug, Clone)]
 pub struct HttpRelayClient {
-    base_url: String,
-    device_token: String,
-    http: reqwest::Client,
+    peer: PeerClient,
 }
 
 impl HttpRelayClient {
     /// `base_url` without a trailing slash, e.g. `https://relay.example.com`.
     pub fn new(base_url: impl Into<String>, device_token: impl Into<String>) -> Self {
         Self {
-            base_url: base_url.into().trim_end_matches('/').to_string(),
-            device_token: device_token.into(),
-            http: reqwest::Client::new(),
+            peer: PeerClient::new(base_url, device_token),
         }
-    }
-
-    fn envelopes_url(&self, realm: RealmID) -> String {
-        format!("{}/realms/{}/envelopes", self.base_url, realm)
-    }
-
-    async fn check(response: reqwest::Response) -> Result<reqwest::Response, RelayError> {
-        let status = response.status();
-        if status.is_success() {
-            return Ok(response);
-        }
-        let message = response.text().await.unwrap_or_default();
-        Err(RelayError::Rejected {
-            status: status.as_u16(),
-            message,
-        })
     }
 }
 
-#[derive(Serialize)]
-struct UploadRequest {
-    envelopes: Vec<Envelope>,
-}
-
-#[derive(Deserialize)]
-struct UploadResponse {
-    results: Vec<UploadAck>,
+fn peer_error(e: PeerError) -> RelayError {
+    match e {
+        PeerError::Transport(message) => RelayError::Transport(message),
+        PeerError::Rejected { status, message } => RelayError::Rejected { status, message },
+    }
 }
 
 impl RelayClient for HttpRelayClient {
@@ -207,20 +186,29 @@ impl RelayClient for HttpRelayClient {
         realm: RealmID,
         envelopes: Vec<Envelope>,
     ) -> Result<Vec<UploadAck>, RelayError> {
+        let raw: Vec<Box<RawValue>> = envelopes
+            .iter()
+            .map(|envelope| serde_json::to_string(envelope).and_then(RawValue::from_string))
+            .collect::<Result<_, _>>()
+            .map_err(|e| RelayError::Transport(format!("envelope serialization: {e}")))?;
         let response = self
-            .http
-            .post(self.envelopes_url(realm))
-            .bearer_auth(&self.device_token)
-            .json(&UploadRequest { envelopes })
-            .send()
+            .peer
+            .upload(&realm.to_string(), raw)
             .await
-            .map_err(|e| RelayError::Transport(e.to_string()))?;
-        let body: UploadResponse = Self::check(response)
-            .await?
-            .json()
-            .await
-            .map_err(|e| RelayError::Transport(e.to_string()))?;
-        Ok(body.results)
+            .map_err(peer_error)?;
+        response
+            .results
+            .into_iter()
+            .map(|ack| {
+                let group_id = uuid::Uuid::parse_str(&ack.group_id).map_err(|e| {
+                    RelayError::Transport(format!("relay returned malformed group_id: {e}"))
+                })?;
+                Ok(UploadAck {
+                    group_id: group_id.into(),
+                    seq: ack.seq,
+                })
+            })
+            .collect()
     }
 
     async fn fetch_since(
@@ -230,22 +218,34 @@ impl RelayClient for HttpRelayClient {
         exclude_device: DeviceID,
         limit: usize,
     ) -> Result<FetchPage, RelayError> {
-        let response = self
-            .http
-            .get(self.envelopes_url(realm))
-            .bearer_auth(&self.device_token)
-            .query(&[
-                ("since_seq", since_seq.to_string()),
-                ("exclude_device", exclude_device.to_string()),
-                ("limit", limit.to_string()),
-            ])
-            .send()
+        let page = self
+            .peer
+            .fetch_since(
+                &realm.to_string(),
+                since_seq,
+                Some(&exclude_device.to_string()),
+                limit,
+            )
             .await
-            .map_err(|e| RelayError::Transport(e.to_string()))?;
-        Self::check(response)
-            .await?
-            .json()
-            .await
-            .map_err(|e| RelayError::Transport(e.to_string()))
+            .map_err(peer_error)?;
+        let envelopes = page
+            .envelopes
+            .into_iter()
+            .map(|sequenced| {
+                let envelope: Envelope =
+                    serde_json::from_str(sequenced.envelope.get()).map_err(|e| {
+                        RelayError::Transport(format!("malformed envelope from relay: {e}"))
+                    })?;
+                Ok(SequencedEnvelope {
+                    seq: sequenced.seq,
+                    envelope,
+                })
+            })
+            .collect::<Result<_, RelayError>>()?;
+        Ok(FetchPage {
+            envelopes,
+            next_since: page.next_since,
+            has_more: page.has_more,
+        })
     }
 }

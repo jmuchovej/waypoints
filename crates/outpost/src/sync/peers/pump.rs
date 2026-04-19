@@ -43,7 +43,9 @@ where
     let mut outcome = PumpOutcome::default();
     loop {
         let cursor = store.peer_cursor(peer.peer_id(), realm_id).await?;
-        let page = peer.fetch_since(realm_id, cursor, DEFAULT_LIMIT).await?;
+        let page = peer
+            .fetch_since(realm_id, cursor, None, DEFAULT_LIMIT)
+            .await?;
         let made_progress = page.next_since > cursor;
 
         let mut heads = Vec::with_capacity(page.envelopes.len());
