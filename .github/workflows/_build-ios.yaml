@@ -42,6 +42,10 @@ jobs:
         with:
           targets: aarch64-apple-ios
 
+      - name: Install cargo-tauri
+        uses: cargo-bins/cargo-binstall@main
+      - run: cargo binstall -y tauri-cli@^2.10.1
+
       - name: Install JS deps
         run: bun install
 
@@ -87,6 +91,7 @@ jobs:
           echo "ASC_KEY_PATH=${asc_key_path}" >> "$GITHUB_ENV"
 
       - name: Build iOS
+        working-directory: waypoints
         run: cargo tauri ios build --features ${{ inputs.features }} --export-method
           app-store-connect
 

@@ -54,6 +54,10 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
+      - name: Install cargo-tauri
+        uses: cargo-bins/cargo-binstall@main
+      - run: cargo binstall -y tauri-cli@^2.10.1
+
       - name: Install JS deps
         run: bun install
 
@@ -81,6 +85,7 @@ jobs:
           WAYPOINTS_FLAVOR: ${{ inputs.flavor }}
           WAYPOINTS_BUILD: "1"
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
+        working-directory: waypoints
         run: cargo tauri android build --features ${{ inputs.features }} --aab
 
       - name: Upload AAB
