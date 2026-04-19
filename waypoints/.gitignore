@@ -1,3 +1,5 @@
+app/bindings.g.ts
+
 # Nuxt dev/build outputs
 .output
 .data

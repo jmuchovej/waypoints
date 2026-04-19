@@ -1,6 +1,8 @@
-/src/main/java/com/nicolaspadari/nuxtor/generated
+/src/main/java/**/generated
 /src/main/jniLibs/**/*.so
 /src/main/assets/tauri.conf.json
+/src/main/res/mipmap-*/ic_launcher*.webp
+/src/main/res/mipmap-anydpi-v26/ic_launcher*.xml
 /tauri.build.gradle.kts
 /proguard-tauri.pro
 /tauri.properties
