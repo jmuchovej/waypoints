@@ -171,9 +171,10 @@ async fn sync_log_serves_the_since_cursor_query(#[future] db: DatabaseConnection
             account_id: Set(account),
             realm_id: Set(realm),
             hlc: Set(hlc),
-            ops: Set(serde_json::json!([])),
-            touched_marks: Set(serde_json::json!([])),
-            applied_at: Set(now()),
+            ops: Set(Some(serde_json::json!([]))),
+            touched_marks: Set(Some(serde_json::json!([]))),
+            payload: Set(Some("{}".into())),
+            applied_at: Set(Some(now())),
             origin: Set(0),
             ..Default::default()
         }
@@ -209,9 +210,10 @@ async fn sync_log_rejects_duplicate_group_ids(#[future] db: DatabaseConnection) 
         account_id: Set(Uuid::new_v4()),
         realm_id: Set(Uuid::new_v4()),
         hlc: Set(1),
-        ops: Set(serde_json::json!([])),
-        touched_marks: Set(serde_json::json!([])),
-        applied_at: Set(now()),
+        ops: Set(Some(serde_json::json!([]))),
+        touched_marks: Set(Some(serde_json::json!([]))),
+        payload: Set(Some("{}".into())),
+        applied_at: Set(Some(now())),
         origin: Set(1),
         ..Default::default()
     };
@@ -263,6 +265,7 @@ async fn outbox_tracks_pending_and_acked_uploads(#[future] db: DatabaseConnectio
         hlc: HLC(hlc),
         ops: serde_json::json!([]),
         touched_marks: serde_json::json!([]),
+        payload: "{}".into(),
         origin,
     };
 
