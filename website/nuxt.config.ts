@@ -26,6 +26,8 @@ export default defineNuxtConfig({
 
   routeRules: {
     "/": { prerender: true },
+    "/download": { redirect: "/download/stable" },
+    "/download/**": { prerender: true },
     "/releases": { redirect: "/releases/stable" },
     "/releases/**": { prerender: true, experimentalNoScripts: false },
     "/api/v1/update/**": { prerender: true },

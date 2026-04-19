@@ -52,9 +52,7 @@ const stars = useState<{ slow: Star[]; normal: Star[]; fast: Star[] }>(
   () => {
     return {
       slow: generateStars(Math.floor(props.starCount * speedMap.slow.ratio)),
-      normal: generateStars(
-        Math.floor(props.starCount * speedMap.normal.ratio),
-      ),
+      normal: generateStars(Math.floor(props.starCount * speedMap.normal.ratio)),
       fast: generateStars(Math.floor(props.starCount * speedMap.fast.ratio)),
     };
   },

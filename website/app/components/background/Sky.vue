@@ -36,8 +36,7 @@ const generateStars = (count: number): Star[] => {
   return Array.from({ length: count }, () => {
     const x = Math.floor(Math.random() * 100);
     const y = Math.floor(Math.random() * 100);
-    const size =
-      Math.random() * (props.size.max - props.size.min) + props.size.min;
+    const size = Math.random() * (props.size.max - props.size.min) + props.size.min;
     const twinkleDelay = Math.random() * 5;
 
     return {
