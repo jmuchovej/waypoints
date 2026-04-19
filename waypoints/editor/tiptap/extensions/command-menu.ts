@@ -133,10 +133,16 @@ export const CommandMenu = Extension.create<CommandMenuOptions>({
                   }
                 };
 
-                menu.show(state.kind!, blockID, state.query, {
-                  x: coords.left,
-                  y: coords.bottom + 4,
-                }, onSelect);
+                menu.show(
+                  state.kind!,
+                  blockID,
+                  state.query,
+                  {
+                    x: coords.left,
+                    y: coords.bottom + 4,
+                  },
+                  onSelect,
+                );
                 wasActive = true;
               } else if (state.active && wasActive) {
                 menu.updateQuery(state.query);

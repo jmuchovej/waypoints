@@ -253,6 +253,42 @@ export function useBlockOrchestrator(
     }
   }
 
+  async function onCreateBlockBefore(beforeId: MarkID) {
+    await flushPendingUpdates();
+    stateVersion++;
+    const siblings = getSiblings(beforeId);
+    const idx = siblings.findIndex((b) => b.id === beforeId);
+    if (idx > 0) {
+      // Insert after the previous sibling (which places it before the target)
+      const prevSibling = siblings[idx - 1]!;
+      const parentId = prevSibling.parent_id ?? landmarkID.value;
+      try {
+        const result = await ipc.editor.createAfter(
+          prevSibling.id,
+          parentId,
+          contentData(paragraph()),
+          landmarkID.value,
+        );
+        blocks.value = result.blocks;
+        focus.focusBlock(result.new_mark_id, "start");
+      } catch (e) {
+        log.error("createBlockBefore failed:", e);
+      }
+    } else {
+      // Target is the first child — use marks.create with null afterId
+      const block = blocks.value.find((b) => b.id === beforeId);
+      const parentId = block?.parent_id ?? landmarkID.value;
+      const id = crypto.randomUUID();
+      try {
+        await ipc.marks.create(id, parentId, paragraph(), new Date().toISOString(), null);
+        blocks.value = await ipc.editor.projectLandmark(landmarkID.value, null);
+        focus.focusBlock(id, "start");
+      } catch (e) {
+        log.error("createBlockBefore (first child) failed:", e);
+      }
+    }
+  }
+
   async function onCreateBlockAfter(afterId: MarkID) {
     await flushPendingUpdates();
     stateVersion++;
@@ -373,6 +409,7 @@ export function useBlockOrchestrator(
     onUndo,
     onRedo,
     onCreateFirstBlock,
+    onCreateBlockBefore,
     onCreateBlockAfter,
     onIndentBlock,
     onDedentBlock,

@@ -14,7 +14,10 @@ const selectedIndex = ref(0);
 
 async function loadLandmarks() {
   try {
-    const [markData, chartData] = await Promise.all([ipc.marks.list("landmark"), ipc.charts.list()]);
+    const [markData, chartData] = await Promise.all([
+      ipc.marks.list("landmark"),
+      ipc.charts.list(),
+    ]);
     landmarks.value = markData;
     charts.value = new Map(chartData.map((c) => [c.id, c]));
   } catch {
@@ -126,10 +129,7 @@ defineExpose({ handleKeydown });
         @click="selectItem(item)"
         @mouseenter="selectedIndex = i"
       >
-        <UIcon
-          :name="landmarkIcon(item)"
-          class="size-4 shrink-0 text-dimmed"
-        />
+        <UIcon :name="landmarkIcon(item)" class="size-4 shrink-0 text-dimmed" />
         <span class="truncate">
           {{ item.data.title.plain_text || "Untitled" }}
         </span>

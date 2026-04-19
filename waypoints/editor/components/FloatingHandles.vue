@@ -76,13 +76,24 @@ function onDocumentPointerMove(event: PointerEvent) {
   isVisible.value = false;
 }
 
-function onHandlePointerDown(e: PointerEvent) {
+function onDragPointerDown(e: PointerEvent) {
   if (!hoveredMarkId.value) return;
   const { dragDrop, selection } = orchestrator;
   const ids = selection.isSelected(hoveredMarkId.value)
     ? sortByVisualOrder([...selection.selectedIDs.value])
     : [hoveredMarkId.value];
   dragDrop.onPointerDown(ids, e);
+}
+
+function onAddClick(e: MouseEvent) {
+  if (!hoveredMarkId.value) return;
+  if (e.altKey) {
+    // Alt+click: insert block above
+    orchestrator.onCreateBlockBefore(hoveredMarkId.value);
+  } else {
+    // Click: insert block below
+    orchestrator.onCreateBlockAfter(hoveredMarkId.value);
+  }
 }
 
 /** Sort IDs into the order they appear in the rendered block list. */
@@ -117,12 +128,11 @@ watchEffect((onCleanup) => {
       top: `${handleTop}px`,
       left: `${handleLeft}px`,
     }"
-    @pointerdown.stop="onHandlePointerDown"
   >
-    <div class="floating-handle handle-add">
+    <div class="floating-handle handle-add" @click.stop="onAddClick">
       <UIcon name="i-lucide-plus" />
     </div>
-    <div class="floating-handle handle-drag">
+    <div class="floating-handle handle-drag" @pointerdown.stop="onDragPointerDown">
       <UIcon name="i-lucide-grip-vertical" />
     </div>
   </div>
