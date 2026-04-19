@@ -4,7 +4,7 @@ use std::time::Duration;
 use clap::Parser;
 
 use outpost::auth::Validator;
-use outpost::sync::peers::client::PeerClient;
+use outpost::sync::peers::peer::HttpPeer;
 use outpost::sync::peers::pump::pump_all;
 use outpost::sync::peers::turso::Storage;
 use outpost::{AppState, router};
@@ -121,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-type GossipConfig = (Vec<PeerClient>, Vec<String>, Duration);
+type GossipConfig = (Vec<HttpPeer>, Vec<String>, Duration);
 
 fn gossip_config(cli: &Cli) -> Result<Option<GossipConfig>, Box<dyn std::error::Error>> {
     let urls: Vec<&str> = cli
@@ -140,7 +140,7 @@ fn gossip_config(cli: &Cli) -> Result<Option<GossipConfig>, Box<dyn std::error::
         .ok_or("--peer-token (OUTPOST_PEER_TOKEN) is required with --peer")?;
     let peers = urls
         .into_iter()
-        .map(|url| PeerClient::new(url, token.clone()))
+        .map(|url| HttpPeer::new(url, token.clone()))
         .collect();
 
     let extra_realms = cli
