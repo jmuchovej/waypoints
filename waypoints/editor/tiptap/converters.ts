@@ -1,20 +1,22 @@
 import type { JSONContent } from "@tiptap/core";
 import {
   InlineKind,
-  type RichText,
-  type TextSegment,
   type InlineMark,
+  type RichText,
   type TextMarkKind,
+  type TextSegment,
 } from "@waypoints/domain";
 
 /** A single TipTap inline mark (bold, link, etc.). */
 type TipTapMark = NonNullable<JSONContent["marks"]>[number];
 
-// ── InlineMark ↔ TipTap mark ────────────────────────────────────────────
-
+/** Convert a domain InlineMark to a TipTap mark object. */
 export function toTipTapMark(mark: InlineMark): TipTapMark {
   if (mark.kind === InlineKind.Link && typeof mark.data === "string") {
     return { type: mark.kind, attrs: { href: mark.data } };
+  }
+  if (mark.kind === InlineKind.Mention && mark.data && typeof mark.data === "string") {
+    return { type: mark.kind, attrs: { id: mark.data } };
   }
   if (mark.kind === InlineKind.Math && mark.data && typeof mark.data === "object") {
     return { type: mark.kind, attrs: { engine: (mark.data as any).engine ?? "typst" } };
@@ -22,17 +24,19 @@ export function toTipTapMark(mark: InlineMark): TipTapMark {
   return { type: mark.kind };
 }
 
+/** Convert a TipTap mark object back to a domain InlineMark. */
 export function toInlineMark(mark: TipTapMark): InlineMark {
   if (mark.type === InlineKind.Link && mark.attrs?.href) {
     return { kind: mark.type, data: mark.attrs.href };
+  }
+  if (mark.type === InlineKind.Mention && mark.attrs?.id) {
+    return { kind: InlineKind.Mention, data: mark.attrs.id };
   }
   if (mark.type === InlineKind.Math) {
     return { kind: InlineKind.Math, data: { engine: mark.attrs?.engine ?? "typst" } };
   }
   return { kind: mark.type as TextMarkKind };
 }
-
-// ── RichText ↔ TipTap paragraph content ─────────────────────────────────
 
 /** Convert domain RichText to an array of TipTap text nodes (paragraph content). */
 export function toTipTap(rt: RichText): JSONContent[] {

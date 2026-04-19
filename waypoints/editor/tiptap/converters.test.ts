@@ -3,8 +3,6 @@ import { InlineKind } from "@waypoints/domain";
 import type { RichText, InlineMark, TextSegment } from "@waypoints/domain";
 import { toTipTapMark, toInlineMark, toTipTap, toDomain } from "./converters";
 
-// ── Helpers ─────────────────────────────────────────────────────────────
-
 function seg(text: string, marks: InlineMark[] = []): TextSegment {
   return { text, marks };
 }
@@ -12,8 +10,6 @@ function seg(text: string, marks: InlineMark[] = []): TextSegment {
 function rt(segments: TextSegment[]): RichText {
   return { segments, plain_text: segments.map((s) => s.text).join("") };
 }
-
-// ── toTipTapMark / toInlineMark ─────────────────────────────────────────
 
 describe("toTipTapMark", () => {
   it("converts plain marks (no data)", () => {
@@ -26,6 +22,14 @@ describe("toTipTapMark", () => {
     expect(toTipTapMark(mark)).toEqual({
       type: "link",
       attrs: { href: "https://example.com" },
+    });
+  });
+
+  it("converts mention mark with id", () => {
+    const mark: InlineMark = { kind: InlineKind.Mention, data: "some-uuid" };
+    expect(toTipTapMark(mark)).toEqual({
+      type: "mention",
+      attrs: { id: "some-uuid" },
     });
   });
 
@@ -55,6 +59,13 @@ describe("toInlineMark", () => {
     expect(toInlineMark({ type: "link", attrs: { href: "https://example.com" } })).toEqual({
       kind: "link",
       data: "https://example.com",
+    });
+  });
+
+  it("converts mention mark with id", () => {
+    expect(toInlineMark({ type: "mention", attrs: { id: "some-uuid" } })).toEqual({
+      kind: "mention",
+      data: "some-uuid",
     });
   });
 
@@ -92,13 +103,16 @@ describe("mark round-trip", () => {
     expect(toInlineMark(toTipTapMark(mark))).toEqual(mark);
   });
 
+  it("round-trips mention mark", () => {
+    const mark: InlineMark = { kind: InlineKind.Mention, data: "some-uuid" };
+    expect(toInlineMark(toTipTapMark(mark))).toEqual(mark);
+  });
+
   it("round-trips math mark", () => {
     const mark: InlineMark = { kind: InlineKind.Math, data: { engine: "katex" } };
     expect(toInlineMark(toTipTapMark(mark))).toEqual(mark);
   });
 });
-
-// ── toTipTap ────────────────────────────────────────────────────────────
 
 describe("toTipTap", () => {
   it("returns empty array for empty RichText", () => {
@@ -137,8 +151,6 @@ describe("toTipTap", () => {
     expect(result[0]).not.toHaveProperty("marks");
   });
 });
-
-// ── toDomain ────────────────────────────────────────────────────────────
 
 describe("toDomain", () => {
   it("returns empty RichText for empty nodes", () => {

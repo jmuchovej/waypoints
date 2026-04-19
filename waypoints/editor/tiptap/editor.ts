@@ -21,6 +21,7 @@ import {
   Underline,
 } from "./bridge/_builtin";
 import { Math } from "./bridge/math";
+import { Mention } from "./bridge/mention";
 import { Spoiler } from "./bridge/spoiler";
 import { toTipTap } from "./converters";
 
@@ -78,6 +79,7 @@ export function createEditor(element: HTMLElement, options: EditorOptions): Edit
       Superscript,
       Spoiler,
       Math,
+      Mention,
       TipTapPlaceholder.configure({
         dataAttribute: "placeholder",
         placeholder: options.placeholder ?? "Type something…",
