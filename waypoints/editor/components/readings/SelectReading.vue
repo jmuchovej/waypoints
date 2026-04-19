@@ -92,7 +92,7 @@ function optionToItem(id: GlyphID, opt: SelectOption, groupId?: GlyphID): Option
     description: opt.description ?? undefined,
     chip: { color: chipDotFor(color), size: "md" },
     ui: {
-      tagsItem: `sur-${color} ring-1 ring-inset rounded-md px-1.5 py-0.5`,
+      tagsItem: `theme-${color} bg-(--theme-bg) border-(--theme-border) text-(--theme-fg) ring-1 ring-inset rounded-md px-1.5 py-0.5`,
       tagsItemText: "text-xs font-medium",
     },
   };

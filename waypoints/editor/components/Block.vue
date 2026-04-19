@@ -101,6 +101,12 @@ const blockType = computed(() => {
   return undefined;
 });
 
+const blockTheme = computed(() => {
+  const { data } = props.block;
+  if (isContent(data) && "theme" in data) return data.theme;
+  return null;
+});
+
 const effectiveDropDepth = computed(() => {
   const raw = dragDrop.dropDepth.value;
   if (parentDepth.value >= 0) {
@@ -132,6 +138,7 @@ const effectiveDropDepth = computed(() => {
       :data-mark-id="block.id"
       :data-depth="block.depth"
       :data-type="blockType"
+      :data-theme="blockTheme?.color ?? 'default'"
       v-bind="ariaSemantics(block.data)"
       @pointerdown.capture="onPointerDown"
       @click="onClick"
