@@ -12,7 +12,6 @@ export default defineNuxtConfig({
     // "@nuxt/hints",
     "@nuxt/scripts",
     "@nuxt/test-utils",
-    "@clerk/nuxt",
     // "@nuxtjs/plausible",
     "@nuxtjs/turnstile",
     // "@pinia/nuxt",
@@ -43,12 +42,6 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: "2025-01-15",
-
-  clerk: {
-    appearance: {
-      cssLayerName: "clerk",
-    },
-  },
 
   hints: {
     devtools: true,

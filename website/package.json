@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@clerk/nuxt": "catalog:",
     "@nuxt/a11y": "catalog:",
     "@nuxt/content": "catalog:",
     "@nuxt/hints": "catalog:",

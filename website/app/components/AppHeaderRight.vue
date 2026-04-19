@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Show, SignInButton, SignOutButton } from "@clerk/vue";
 import { useDocusColorMode, useDocusI18n, useSubNavigation } from "#imports";
 
 const { forced: forcedColorMode } = useDocusColorMode();
@@ -43,16 +42,6 @@ defineShortcuts({
   </UContentSearchButton>
   <USeparator orientation="vertical" class="h-8" />
   <ClientOnly>
-    <Show when="signed-out">
-      <SignInButton>
-        <UButton label="Sign In" variant="subtle" color="neutral" />
-      </SignInButton>
-    </Show>
-    <Show when="signed-in">
-      <SignOutButton>
-        <UButton label="Sign Out" />
-      </SignOutButton>
-    </Show>
   </ClientOnly>
   <UButton variant="subtle" color="primary" to="/download">
     <template #default> Download </template>
