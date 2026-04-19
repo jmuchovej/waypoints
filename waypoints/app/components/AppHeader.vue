@@ -1,9 +1,10 @@
 <script lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
-import RichText from "#components";
+import type { RichText } from "@waypoints/domain";
+import ReadonlyRichText from "~editor/components/RichText.vue";
 
 export interface AppHeaderProps {
-  title: string;
+  title: RichText;
   tabs: NavigationMenuItem[];
 }
 </script>
@@ -34,7 +35,7 @@ const props = defineProps<AppHeaderProps>();
     </template>
 
     <template #title>
-      <RichText :value="title" />
+      <ReadonlyRichText :value="title" />
     </template>
 
     <template #right>

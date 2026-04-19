@@ -26,6 +26,7 @@ import { useInlineEditor, BlockOrchestratorKey, type OrchestratorContext } from 
 import { inlineToolbarItems } from "../tiptap/toolbar-items";
 import { LazyUEditorToolbar, LazyUEditorEmojiMenu } from "#components";
 import TextSegment from "./TextSegment.vue";
+import ReadonlyRichText from "./RichText.vue";
 
 const props = defineProps<RichTextEditorProps>();
 const emit = defineEmits<RichTextEditorEmits>();
@@ -106,12 +107,6 @@ const toolbarItems = computed(() => {
   ];
 });
 
-const isEmpty = computed(() => {
-  const rt = props.richText;
-  if (!rt.segments.length) return true;
-  return rt.segments.every((s) => !s.text);
-});
-
 function onMousedown(e: MouseEvent) {
   emit("mousedown", e);
 
@@ -124,15 +119,6 @@ function onMousedown(e: MouseEvent) {
 <template>
   <span class="block cursor-text" @click="onClick" @mousedown="onMousedown">
     <span v-if="editing" ref="editorEl" />
-    <template v-else-if="isEmpty && placeholder">
-      <span class="text-dimmed">{{ placeholder }}</span>
-    </template>
-    <template v-else-if="richText.segments.every((s) => !s.marks?.length)">
-      {{ richText.plain_text || richText.segments.map((s) => s.text).join("") }}
-    </template>
-    <template v-else>
-      <TextSegment v-for="(seg, i) in richText.segments" :key="i" :segment="seg" />
-    </template>
     <LazyUEditorToolbar
       v-if="editorRef"
       :editor="editorRef"
@@ -142,5 +128,6 @@ function onMousedown(e: MouseEvent) {
       size="xs"
     />
     <LazyUEditorEmojiMenu v-if="editorRef" :editor="editorRef" :items="emojis" :limit="50" />
+    <ReadonlyRichText v-else :rich-text="richText" :placeholder="placeholder" />
   </span>
 </template>
