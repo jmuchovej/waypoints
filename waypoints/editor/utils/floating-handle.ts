@@ -1,9 +1,29 @@
 export const HANDLE_HEIGHT = 24; // h-6 = 1.5rem
 export const GUTTER_PX = 64; // 4rem — how far left of the block the handle stays visible
 
-/** Compute the vertical center of the first text line relative to the mark element's top edge.
- *  For zero-height content (e.g. dividers), falls back to centering on the mark's full height. */
+/** Compute the vertical center of the handle anchor relative to the mark element's top edge.
+ *
+ *  For compound blocks (callouts, blockquotes) aligns with the prefix/icon.
+ *  For code blocks, aligns with the header bar.
+ *  For zero-height content (e.g. dividers), centers on the mark's full height.
+ *  Otherwise, centers on the first text line. */
 export function firstLineCenter(markEl: HTMLElement): number {
+  // Callout/blockquote: align with the prefix element (icon / accent bar)
+  const prefix = markEl.querySelector<HTMLElement>(".prefix");
+  if (prefix) {
+    const markRect = markEl.getBoundingClientRect();
+    const prefixRect = prefix.getBoundingClientRect();
+    return prefixRect.top - markRect.top + prefixRect.height / 2;
+  }
+
+  // Code block: align with the header bar
+  const codeHeader = markEl.querySelector<HTMLElement>(".code-header");
+  if (codeHeader) {
+    const markRect = markEl.getBoundingClientRect();
+    const headerRect = codeHeader.getBoundingClientRect();
+    return headerRect.top - markRect.top + headerRect.height / 2;
+  }
+
   const contentEl = markEl.querySelector<HTMLElement>("[data-type]") ?? markEl;
 
   // Dividers / decorative blocks have no intrinsic line-height — center on the mark itself.
