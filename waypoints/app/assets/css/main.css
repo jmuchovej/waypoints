@@ -5,3 +5,31 @@
 @theme static {
   --font-sans: "DM Sans", sans-serif;
 }
+
+:root {
+  --ui-container: var(--container-8xl);
+}
+
+@media (min-width: 1024px) {
+  .root {
+    --ui-header-height: --spacing(7);
+  }
+}
+
+body {
+  @apply bg-neutral-50 dark:bg-neutral-950;
+}
+
+.page-content {
+  @apply flex-1 flex flex-col overflow-hidden;
+  @apply md:peer-data-[variant=floating]:my-4;
+  @apply peer-data-[variant=inset]:mt-1;
+  /*@apply peer-data-[variant=inset]:ms-4;*/
+  /*@apply lg:peer-data-[variant=inset]:not-peer-data-[collapsible=offcanvas]:ms-0;*/
+  /*@apply lg:peer-data-[variant=inset]:not-peer-data-[collapsible=offcanvas]:mb-0;*/
+  /*@apply lg:peer-data-[variant=inset]:not-peer-data-[collapsible=offcanvas]:me-0;*/
+  @apply lg:peer-data-[variant=inset]:rounded-tl-xl;
+  @apply peer-data-[variant=inset]:shadow-sm;
+  @apply peer-data-[variant=inset]:ring peer-data-[variant=inset]:ring-default;
+  @apply bg-default;
+}

@@ -18,8 +18,6 @@ const FALLBACK_ICON = "i-lucide-file-text";
 async function load() {
   loading.value = true;
 
-  // Fetch marks and charts in parallel — the chart lookup feeds the icon
-  // resolution path so we need both before rendering.
   const [markResult, chartResult] = await Promise.all([commands.markList(), commands.chartList()]);
 
   if (markResult.status === "ok") {
@@ -44,28 +42,16 @@ function landmarkTitle(mark: Mark): RichText | null {
   return null;
 }
 
-/**
- * Resolve the icon for a landmark list item. Priority:
- *   1. The landmark's own `icon` (user-chosen / instance-specific)
- *   2. The landmark's chart `icon` (schema default)
- *   3. A generic fallback
- *
- * This guarantees the list item always has an icon — every landmark is
- * backed by a chart, and every builtin chart has an icon.
- */
 function landmarkIcon(mark: Mark): string {
   if (!isLandmark(mark.data)) return FALLBACK_ICON;
 
-  // 1. Landmark's own icon
   const own = iconName(mark.data.icon);
   if (own) return own;
 
-  // 2. Chart's icon
   const chart = charts.value.get(mark.data.chart);
   const chartIcon = iconName(chart?.icon);
   if (chartIcon) return chartIcon;
 
-  // 3. Fallback
   return FALLBACK_ICON;
 }
 

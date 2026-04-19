@@ -4,6 +4,7 @@ import DocumentBody from "~editor/components/DocumentBody.vue";
 import RichTextEditor from "~editor/components/RichTextEditor.vue";
 import ReadingsTable from "~editor/components/ReadingsTable.vue";
 import { commands } from "~/bindings.g";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 const log = createLogger("marks");
 
@@ -65,10 +66,6 @@ async function onReadingUpdate(featureId: FeatureID, reading: Reading) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Load mark metadata (title, readings). Block list loaded by EditorDocument.
-// ---------------------------------------------------------------------------
-
 async function load() {
   loading.value = true;
   error.value = null;
@@ -87,6 +84,7 @@ async function load() {
     }
 
     rawMark.value = mark;
+    await getCurrentWindow().setTitle(mark.value.plain_text);
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -148,68 +146,32 @@ const uiPanel = {
 </script>
 
 <template>
-  <UDashboardPanel id="mark" :ui="uiPanel">
-    <template #header>
-      <UDashboardNavbar title="Waypoints">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
+  <AppHeader :tabs="[]" :title="titleRichText" />
 
-        <template #right>
-          <UTooltip text="Debug info">
-            <UButton
-              icon="i-lucide-bug"
-              variant="ghost"
-              size="xs"
-              :color="showDebug ? 'primary' : 'neutral'"
-              @click="showDebug = !showDebug"
-            />
-          </UTooltip>
-        </template>
-      </UDashboardNavbar>
-    </template>
+  <div class="flex-1 pt-8 overflow-y-auto editor-layout">
+    <!-- Title -->
+    <div class="editor-content landmark-title text-3xl font-bold">
+      <USkeleton v-if="loading" class="min-h-8 w-full" />
+      <RichTextEditor
+        v-else-if="landmark"
+        :rich-text="titleRichText"
+        :on-update="onTitleUpdate"
+        :placeholder="titlePlaceholder"
+        :on-key-down="onTitleKeyDown"
+      />
+    </div>
 
-    <template #body>
-      <div class="editor-layout">
-        <!-- Title -->
-        <div class="editor-content landmark-title text-3xl font-bold">
-          <USkeleton v-if="loading" class="min-h-8 w-full" />
-          <RichTextEditor
-            v-else-if="landmark"
-            :rich-text="titleRichText"
-            :on-update="onTitleUpdate"
-            :placeholder="titlePlaceholder"
-            :exclude="['bold']"
-            :on-key-down="onTitleKeyDown"
-          />
-        </div>
+    <!-- Readings table — schema-driven from the chart's features -->
+    <div v-if="landmark && chart" class="editor-content">
+      <ReadingsTable :chart="chart" :readings="landmark.readings" :on-update="onReadingUpdate" />
+    </div>
 
-        <!-- Readings table — schema-driven from the chart's features -->
-        <div v-if="landmark && chart" class="editor-content">
-          <ReadingsTable
-            :chart="chart"
-            :readings="landmark.readings"
-            :on-update="onReadingUpdate"
-          />
-        </div>
+    <!-- Divider -->
+    <USeparator class="editor-content border-default my-4" />
 
-        <!-- Divider -->
-        <USeparator class="editor-content border-default my-4" />
-
-        <div class="editor-content">
-          <!-- Block-based document editor -->
-          <DocumentBody ref="docBodyRef" :landmark-id="markID" :on-exit-top="onDocExitTop" />
-        </div>
-      </div>
-
-      <!-- Debug panel -->
-      <div
-        v-if="showDebug && !loading"
-        class="border-t border-default bg-elevated p-4 overflow-auto max-h-80 text-xs font-mono"
-      >
-        <p class="font-semibold mb-2 text-sm">Raw Mark:</p>
-        <pre>{{ JSON.stringify(rawMark, null, 2) }}</pre>
-      </div>
-    </template>
-  </UDashboardPanel>
+    <div class="editor-content">
+      <!-- Block-based document editor -->
+      <DocumentBody ref="docBodyRef" :landmark-id="markID" :on-exit-top="onDocExitTop" />
+    </div>
+  </div>
 </template>
