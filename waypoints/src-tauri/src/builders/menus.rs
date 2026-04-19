@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
-#[cfg(target_os = "macos")]
-use tauri::menu::Submenu;
 use tauri::{
     App, AppHandle, Emitter, Manager, Runtime, async_runtime,
     image::Image,
     menu::{
         AboutMetadata, AboutMetadataBuilder, IconMenuItemBuilder, MenuBuilder, MenuEvent,
-        MenuItemBuilder, SubmenuBuilder,
+        MenuItemBuilder, Submenu, SubmenuBuilder,
     },
 };
 
