@@ -39,13 +39,75 @@
 //! [F]: crate::chart::Feature
 //! [R]: crate::mark::Reading
 
-mod _shared;
-pub mod chart;
-pub mod mark;
-pub mod terrain;
+//! Shared utilities and types for the waypoints domain.
+mod _shared {
+    pub type Json = serde_json::Value;
+    pub type DateTime = chrono::NaiveDateTime;
+    pub type Uuid = uuid::Uuid;
 
+    pub mod color;
+    pub mod error;
+    pub mod fractional_index;
+    pub mod icon;
+
+    pub use color::Color;
+    pub use error::{DomainError, DomainResult};
+    pub use icon::{HasIcon, Icon, IconNamespace, presets as icon_presets};
+}
 pub use _shared::fractional_index;
 pub use _shared::*;
+
+pub mod mark {
+    #[allow(clippy::module_inception)]
+    pub mod mark;
+    pub mod mark_data;
+    pub mod reading;
+    pub mod rich_reference;
+    pub mod rich_text;
+
+    pub use mark::{Mark, MarkID};
+    pub use mark_data::{Content, Landmark, MarkData};
+    pub use reading::Reading;
+    pub use rich_reference::{ReferenceDisplayMode, RichReference};
+    pub use rich_text::{InlineMark, RichText, TextMarkKind, TextSegment};
+
+    pub mod reading_validators;
+
+    pub mod builders {
+        use super::mark;
+        pub use mark::MarkBuilder;
+    }
+}
+pub use mark::builders::MarkBuilder;
+pub use mark::{Mark, MarkID};
+
+pub mod chart {
+    pub mod ids;
+    pub use ids::{ChartID, FeatureID, GlyphID};
+
+    pub mod feature_kind;
+    pub use feature_kind::{
+        Date, DateGranularity, FeatureKind, Number, Reference, Select, SelectGroup, SelectOption,
+    };
+
+    pub mod feature;
+    pub use feature::Feature;
+
+    #[allow(clippy::module_inception)]
+    pub mod chart;
+    pub use chart::Chart;
+
+    pub mod builders {
+        use super::chart;
+        pub use chart::ChartBuilder;
+
+        use super::feature_kind;
+        pub use feature_kind::date_builder::DateBuilder;
+        pub use feature_kind::number_builder::NumberBuilder;
+        pub use feature_kind::reference_builder::ReferenceBuilder;
+        pub use feature_kind::select_builder::SelectBuilder;
+    }
+}
 pub use chart::builders::{
     ChartBuilder, DateBuilder, NumberBuilder, ReferenceBuilder, SelectBuilder,
 };
@@ -53,7 +115,20 @@ pub use chart::{
     Chart, ChartID, Date, DateGranularity, Feature, FeatureID, FeatureKind, GlyphID, Number,
     Reference, Select, SelectGroup, SelectOption,
 };
-pub use mark::builders::MarkBuilder;
-pub use mark::{Mark, MarkID};
+
+pub mod terrain {
+    #[allow(clippy::module_inception)]
+    pub mod terrain;
+    pub use terrain::Terrain;
+    pub mod terrain_id;
+    pub use terrain_id::TerrainID;
+    pub mod terrain_kind;
+    pub use terrain_kind::TerrainKind;
+
+    pub mod builders {
+        use super::terrain;
+        pub use terrain::TerrainBuilder;
+    }
+}
 pub use terrain::builders::TerrainBuilder;
 pub use terrain::{Terrain, TerrainID, TerrainKind};
