@@ -34,12 +34,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          curl -sS https://i.jpillora.com/getsops/sops@v3.9.1 | sudo bash
-          curl -sS https://i.jpillora.com/mikefarah/yq@v4.45.1 | sudo bash
-          curl -sS https://i.jpillora.com/FiloSottile/age@v1.2.1 | sudo bash
+      - name: Setup mise (bun, just, sops, age, yq)
+        uses: jdx/mise-action@v2
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -57,9 +53,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
 
       - name: Install JS deps
         run: bun install

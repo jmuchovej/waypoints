@@ -34,16 +34,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install sops + age + yq
-        run: brew install sops age yq
+      - name: Setup mise (bun, just, sops, age, yq)
+        uses: jdx/mise-action@v2
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
 
       - name: Install JS deps
         run: bun install
