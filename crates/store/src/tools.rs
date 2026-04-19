@@ -18,6 +18,24 @@ pub async fn open(path: &Path) -> StoreResult<DatabaseConnection> {
     let db = Database::connect(&db_url).await?;
     tracing::debug!("database connection established");
 
+    for (pragma, value) in [
+        ("page_size", "8192"), // 8 KB
+        ("journal_mode", "WAL"),
+        ("synchronous", "NORMAL"),
+        ("foreign_keys", "ON"),
+        ("busy_timeout", "5000"),
+        ("cache_size", "-65536"), // 64 MB
+        ("temp_store", "MEMORY"),
+        ("mmap_size", "134217728"), // 128 MB
+    ] {
+        db.execute(Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            format!("PRAGMA {} = {}", pragma, value),
+        ))
+        .await?;
+    }
+    tracing::debug!("SQLite pragmas configured");
+
     tracing::info!("running migrations");
     Migrator::up(&db, None).await?;
     tracing::debug!("migrations complete");
