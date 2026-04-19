@@ -11,17 +11,50 @@ repository.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+default = ["peers"]
+# The store-and-forward peer engine: wire types, fetch client, the
+# EnvelopeStore seam, and the gossip pump. What an embedding app pulls in.
+peers = ["dep:reqwest"]
+# The §4 endpoints as an axum router, plus request auth.
+peers-serve = ["peers", "dep:axum", "dep:sha2", "tokio/net"]
+# The embedded turso envelope store (standalone outposts).
+store-turso = ["peers", "dep:turso"]
+# Everything the `outpost` binary needs.
+binary = [
+  "peers-serve",
+  "store-turso",
+  "dep:clap",
+  "dep:tracing-subscriber",
+  "tokio/macros",
+  "tokio/rt-multi-thread",
+  "tokio/time",
+]
+# Reserved for future components (PROTOCOL.md §1): `relays` (live
+# forwarding) and `directory` (peer discovery). Names only — no code yet.
+
+[[bin]]
+name = "outpost"
+path = "bin/outpost.rs"
+required-features = ["binary"]
+
+[[test]]
+name = "e2e"
+required-features = ["binary"]
+
 [dependencies]
-axum = { workspace = true }
-reqwest.workspace = true
+async-trait.workspace = true
+axum = { workspace = true, optional = true }
+clap = { workspace = true, features = ["env"], optional = true }
+reqwest = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
-sha2.workspace = true
+sha2 = { workspace = true, optional = true }
 thiserror.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+tokio = { workspace = true }
 tracing.workspace = true
-tracing-subscriber = { workspace = true }
-turso.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
+turso = { workspace = true, optional = true }
 
 [dev-dependencies]
 cartograph.workspace = true

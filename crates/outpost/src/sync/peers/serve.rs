@@ -1,24 +1,37 @@
-use axum::Json;
-use axum::extract::{Path, Query, State};
+//! The §4 endpoints as an axum router. Deliberately dumb: stores
+//! envelope payloads byte-verbatim, assigns per-realm arrival seqs, and
+//! never parses `checkpoints`.
+
+use std::sync::Arc;
+
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
-use crate::auth::{AuthError, Identity};
-use crate::{AppState, DEFAULT_LIMIT, MAX_BATCH, MAX_LIMIT};
+use crate::auth::{AuthError, Identity, Validator};
 
-/// The routing fields the outpost reads. Everything else in an envelope —
-/// `checkpoints` above all — passes through byte-verbatim.
-#[derive(Debug, Deserialize)]
-pub struct EnvelopeHead {
-    pub group_id: String,
-    pub account_id: String,
-    pub realm_id: String,
-    pub device_id: String,
-    pub hlc: String,
-    #[serde(skip)]
-    pub hlc_i64: i64,
+use super::store::{EnvelopeStore, rfc3339_now};
+use super::wire::{
+    DEFAULT_LIMIT, EnvelopeHead, FetchResponse, MAX_BATCH, MAX_BODY_BYTES, MAX_LIMIT,
+    SequencedEnvelope, UploadAck, UploadResponse,
+};
+
+#[derive(Clone)]
+pub struct AppState {
+    pub storage: Arc<dyn EnvelopeStore>,
+    pub validator: Arc<Validator>,
+}
+
+pub fn router(state: AppState) -> Router {
+    Router::new()
+        .route("/realms/{realm_id}/envelopes", get(fetch).post(upload))
+        .route("/healthz", get(async || "ok"))
+        .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
+        .with_state(state)
 }
 
 #[derive(Serialize)]
@@ -27,7 +40,13 @@ struct ErrorBody {
 }
 
 fn problem(status: StatusCode, message: impl Into<String>) -> Response {
-    (status, Json(ErrorBody { error: message.into() })).into_response()
+    (
+        status,
+        Json(ErrorBody {
+            error: message.into(),
+        }),
+    )
+        .into_response()
 }
 
 fn bearer(headers: &HeaderMap) -> &str {
@@ -48,7 +67,9 @@ async fn authenticate(
         .validate(bearer(headers), realm_id)
         .await
         .map_err(|e| match e {
-            AuthError::Missing | AuthError::Unknown => problem(StatusCode::UNAUTHORIZED, e.to_string()),
+            AuthError::Missing | AuthError::Unknown => {
+                problem(StatusCode::UNAUTHORIZED, e.to_string())
+            }
             AuthError::NoGrant => problem(StatusCode::FORBIDDEN, e.to_string()),
             AuthError::Upstream(_) => problem(StatusCode::BAD_GATEWAY, e.to_string()),
         })
@@ -62,19 +83,7 @@ struct UploadBody<'a> {
     envelopes: Vec<&'a RawValue>,
 }
 
-#[derive(Serialize)]
-struct UploadAck {
-    group_id: String,
-    seq: i64,
-}
-
-#[derive(Serialize)]
-struct UploadResponse {
-    results: Vec<UploadAck>,
-    max_seq: i64,
-}
-
-pub async fn upload(
+async fn upload(
     State(state): State<AppState>,
     Path(realm_id): Path<String>,
     headers: HeaderMap,
@@ -98,9 +107,9 @@ pub async fn upload(
 
     let mut heads = Vec::with_capacity(parsed.envelopes.len());
     for raw in &parsed.envelopes {
-        let mut head: EnvelopeHead = match serde_json::from_str(raw.get()) {
+        let head = match EnvelopeHead::parse(raw.get()) {
             Ok(h) => h,
-            Err(e) => return problem(StatusCode::BAD_REQUEST, format!("malformed envelope: {e}")),
+            Err(e) => return problem(StatusCode::BAD_REQUEST, e),
         };
         if head.realm_id != realm_id {
             return problem(
@@ -108,28 +117,19 @@ pub async fn upload(
                 format!("envelope {} realm mismatch", head.group_id),
             );
         }
-        if let Some(account) = &identity.account_id {
-            if &head.account_id != account {
-                return problem(
-                    StatusCode::FORBIDDEN,
-                    format!("envelope {} account mismatch", head.group_id),
-                );
-            }
+        if let Some(account) = &identity.account_id
+            && &head.account_id != account
+        {
+            return problem(
+                StatusCode::FORBIDDEN,
+                format!("envelope {} account mismatch", head.group_id),
+            );
         }
-        head.hlc_i64 = match head.hlc.parse::<i64>() {
-            Ok(v) if v >= 0 => v,
-            _ => {
-                return problem(
-                    StatusCode::BAD_REQUEST,
-                    format!("envelope {} hlc must be a decimal string", head.group_id),
-                );
-            }
-        };
         heads.push(head);
     }
 
     let payloads: Vec<&str> = parsed.envelopes.iter().map(|r| r.get()).collect();
-    let received_at = chrono_free_timestamp();
+    let received_at = rfc3339_now();
     let acks = match state.storage.append(&heads, &payloads, &received_at).await {
         Ok(acks) => acks,
         Err(e) => {
@@ -149,7 +149,7 @@ pub async fn upload(
 // ── Fetch ───────────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
-pub struct FetchParams {
+struct FetchParams {
     #[serde(default)]
     since_seq: i64,
     #[serde(default)]
@@ -157,20 +157,7 @@ pub struct FetchParams {
     limit: Option<usize>,
 }
 
-#[derive(Serialize)]
-struct SequencedEnvelope {
-    seq: i64,
-    envelope: Box<RawValue>,
-}
-
-#[derive(Serialize)]
-struct FetchResponse {
-    envelopes: Vec<SequencedEnvelope>,
-    next_since: i64,
-    has_more: bool,
-}
-
-pub async fn fetch(
+async fn fetch(
     State(state): State<AppState>,
     Path(realm_id): Path<String>,
     Query(params): Query<FetchParams>,
@@ -214,26 +201,4 @@ pub async fn fetch(
         has_more,
     })
     .into_response()
-}
-
-/// RFC 3339 UTC without pulling chrono into the dependency tree.
-fn chrono_free_timestamp() -> String {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    let secs = now.as_secs();
-    let (days, rem) = (secs / 86_400, secs % 86_400);
-    let (h, m, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
-    // civil-from-days (Howard Hinnant's algorithm)
-    let z = days as i64 + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if mo <= 2 { y + 1 } else { y };
-    format!("{y:04}-{mo:02}-{d:02}T{h:02}:{m:02}:{s:02}Z")
 }
