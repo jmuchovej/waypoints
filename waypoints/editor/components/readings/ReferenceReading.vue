@@ -40,21 +40,16 @@ const items = computed<RefItem[]>(() => {
   const allowedTypes = k.type === "reference" ? k.allowed_types : null;
 
   return allMarks.value
-    .filter((m) => {
+    .filter((m): m is Mark & { data: Extract<Mark["data"], { mark: "landmark" }> } => {
       if (!isLandmark(m)) return false;
       if (!allowedTypes || allowedTypes.length === 0) return true;
       return allowedTypes.includes(m.data.chart);
     })
-    .map((m) => {
-      const title = isLandmark(m)
-        ? (m.data.title.plain_text ?? m.data.title.segments.map((s) => s.text).join(""))
-        : "";
-      return {
-        id: m.id,
-        label: title || "Untitled",
-        icon: "i-lucide-file-text",
-      };
-    });
+    .map((m) => ({
+      id: m.id,
+      label: m.data.title.plain_text || m.data.title.segments.map((s) => s.text).join("") || "Untitled",
+      icon: "i-lucide-file-text",
+    }));
 });
 
 const selectedIds = computed<MarkID[]>(() => {

@@ -1,8 +1,8 @@
-use domain::chart::FeatureID;
+use domain::chart::{FeatureID, FeatureKind};
 use domain::fractional_index;
 use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
 use store::DatabaseConnection;
-use store::query::{mark, terrain};
+use store::query::{chart, mark, terrain};
 
 use crate::error::{EditorError, EditorResult};
 use crate::history::CommandHistory;
@@ -234,6 +234,59 @@ pub async fn update_mark_reading(
         .ok_or(EditorError::NotFound(id.inner()))?;
 
     let mut mark_data = m.data;
+    let chart_id = match &mark_data {
+        MarkData::Landmark(l) => l.chart.clone(),
+        _ => return Err(EditorError::NotLandmark(id.inner())),
+    };
+
+    // Resolve the chart to validate the reading against the feature schema
+    let chart = chart::get(db, chart_id.clone())
+        .await?
+        .ok_or_else(|| EditorError::Validation(format!("chart not found: {chart_id}")))?;
+
+    let feature = chart
+        .features
+        .get(&feature_id)
+        .ok_or_else(|| EditorError::Validation(format!("feature not found: {feature_id}")))?;
+
+    // Run domain validation (max_references, type shape, etc.)
+    feature
+        .kind
+        .validate_reading(&reading)
+        .map_err(EditorError::Validation)?;
+
+    // Validate allowed_types for reference readings
+    if let (
+        FeatureKind::Reference {
+            allowed_types: Some(types),
+            ..
+        },
+        Reading::References(refs),
+    ) = (&feature.kind, &reading)
+    {
+        let ref_ids: Vec<uuid::Uuid> = refs.iter().map(|r| r.inner()).collect();
+        let ref_marks = mark::get_many(db, &ref_ids).await?;
+
+        for ref_mark in &ref_marks {
+            match &ref_mark.data {
+                MarkData::Landmark(l) => {
+                    if !types.contains(&l.chart) {
+                        return Err(EditorError::Validation(format!(
+                            "reference to {} not allowed (chart {} not in allowed_types)",
+                            ref_mark.id, l.chart
+                        )));
+                    }
+                }
+                _ => {
+                    return Err(EditorError::Validation(format!(
+                        "reference {} is not a landmark",
+                        ref_mark.id
+                    )));
+                }
+            }
+        }
+    }
+
     match &mut mark_data {
         MarkData::Landmark(landmark) => {
             if matches!(reading, Reading::Null) {
@@ -242,7 +295,7 @@ pub async fn update_mark_reading(
                 landmark.readings.insert(feature_id, reading);
             }
         }
-        _ => return Err(EditorError::NotLandmark(id.inner())),
+        _ => unreachable!(),
     }
 
     mark::update_data(db, id, &mark_data).await?;
