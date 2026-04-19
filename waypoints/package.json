@@ -13,6 +13,7 @@
     "@nuxt/hints": "catalog:",
     "@nuxt/icon": "catalog:",
     "@nuxt/image": "catalog:",
+    "@nuxt/kit": "catalog:",
     "@nuxt/ui": "catalog:",
     "@nuxtjs/mdc": "catalog:",
     "@pinia/nuxt": "catalog:",
@@ -30,6 +31,7 @@
     "consola": "catalog:",
     "katex": "catalog:",
     "nuxt": "catalog:",
+    "shiki": "^4.0.2",
     "tailwindcss": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
@@ -39,6 +41,7 @@
     "@iconify-json/ph": "catalog:",
     "@iconify-json/simple-icons": "catalog:",
     "@iconify-json/tabler": "catalog:",
+    "@iconify-json/vscode-icons": "^1.2.46",
     "@nuxt/eslint": "catalog:",
     "@nuxt/test-utils": "^4.0.2",
     "@nuxtjs/i18n": "catalog:",
@@ -75,11 +78,11 @@
     "@vueuse/core": "catalog:",
     "eslint": "catalog:",
     "eslint-plugin-storybook": "catalog:",
-    "happy-dom": "^20.9.0",
+    "happy-dom": "catalog:",
     "nuxt-mcp-dev": "catalog:",
     "typescript": "catalog:",
     "uuid": "catalog:",
-    "vitest": "^4.1.4",
+    "vitest": "catalog:",
     "vue-tsc": "catalog:"
   },
   "resolutions": {

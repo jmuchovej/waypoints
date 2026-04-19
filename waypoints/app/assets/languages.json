@@ -1,0 +1,1330 @@
+{
+  "abap": {
+    "name": "ABAP",
+    "icon": "i-vscode-icons-file-type-abap"
+  },
+  "actionscript-3": {
+    "name": "ActionScript",
+    "icon": "i-vscode-icons-file-type-actionscript-3"
+  },
+  "ada": {
+    "name": "Ada",
+    "icon": "i-vscode-icons-file-type-ada"
+  },
+  "angular-html": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-angular-html"
+  },
+  "angular-ts": {
+    "name": "angular-expression",
+    "icon": "i-vscode-icons-file-type-angular-ts"
+  },
+  "apache": {
+    "name": "Apache Conf",
+    "icon": "i-vscode-icons-file-type-apache"
+  },
+  "apex": {
+    "name": "Apex",
+    "icon": "i-vscode-icons-file-type-apex"
+  },
+  "apl": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-apl"
+  },
+  "applescript": {
+    "name": "AppleScript",
+    "icon": "i-vscode-icons-file-type-applescript"
+  },
+  "ara": {
+    "name": "Ara",
+    "icon": "i-vscode-icons-file-type-ara"
+  },
+  "asciidoc": {
+    "name": "AsciiDoc",
+    "icon": "i-vscode-icons-file-type-asciidoc"
+  },
+  "asm": {
+    "name": "Assembly",
+    "icon": "i-vscode-icons-file-type-asm"
+  },
+  "astro": {
+    "name": "JSON",
+    "icon": "i-vscode-icons-file-type-astro"
+  },
+  "awk": {
+    "name": "AWK",
+    "icon": "i-vscode-icons-file-type-awk"
+  },
+  "ballerina": {
+    "name": "Ballerina",
+    "icon": "i-vscode-icons-file-type-ballerina"
+  },
+  "bat": {
+    "name": "Batch File",
+    "icon": "i-vscode-icons-file-type-bat"
+  },
+  "beancount": {
+    "name": "Beancount",
+    "icon": "i-vscode-icons-file-type-beancount"
+  },
+  "berry": {
+    "name": "Berry",
+    "icon": "i-vscode-icons-file-type-berry"
+  },
+  "bibtex": {
+    "name": "BibTeX",
+    "icon": "i-vscode-icons-file-type-bibtex"
+  },
+  "bicep": {
+    "name": "Bicep",
+    "icon": "i-vscode-icons-file-type-bicep"
+  },
+  "bird2": {
+    "name": "BIRD2 Configuration",
+    "icon": "i-vscode-icons-file-type-bird2"
+  },
+  "blade": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-blade"
+  },
+  "bsl": {
+    "name": "1C (Query)",
+    "icon": "i-vscode-icons-file-type-bsl"
+  },
+  "c": {
+    "name": "C",
+    "icon": "i-vscode-icons-file-type-c"
+  },
+  "c3": {
+    "name": "C3",
+    "icon": "i-vscode-icons-file-type-c3"
+  },
+  "cadence": {
+    "name": "Cadence",
+    "icon": "i-vscode-icons-file-type-cadence"
+  },
+  "cairo": {
+    "name": "Python",
+    "icon": "i-vscode-icons-file-type-cairo"
+  },
+  "clarity": {
+    "name": "Clarity",
+    "icon": "i-vscode-icons-file-type-clarity"
+  },
+  "clojure": {
+    "name": "Clojure",
+    "icon": "i-vscode-icons-file-type-clojure"
+  },
+  "cmake": {
+    "name": "CMake",
+    "icon": "i-vscode-icons-file-type-cmake"
+  },
+  "cobol": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-cobol"
+  },
+  "codeowners": {
+    "name": "CODEOWNERS",
+    "icon": "i-vscode-icons-file-type-codeowners"
+  },
+  "codeql": {
+    "name": "CodeQL",
+    "icon": "i-vscode-icons-file-type-codeql"
+  },
+  "coffee": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-coffee"
+  },
+  "common-lisp": {
+    "name": "Common Lisp",
+    "icon": "i-vscode-icons-file-type-common-lisp"
+  },
+  "coq": {
+    "name": "Coq",
+    "icon": "i-vscode-icons-file-type-coq"
+  },
+  "cpp": {
+    "name": "RegExp",
+    "icon": "i-vscode-icons-file-type-cpp"
+  },
+  "crystal": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-crystal"
+  },
+  "csharp": {
+    "name": "C#",
+    "icon": "i-vscode-icons-file-type-csharp"
+  },
+  "css": {
+    "name": "CSS",
+    "icon": "i-vscode-icons-file-type-css"
+  },
+  "csv": {
+    "name": "CSV",
+    "icon": "i-vscode-icons-file-type-csv"
+  },
+  "cue": {
+    "name": "CUE",
+    "icon": "i-vscode-icons-file-type-cue"
+  },
+  "cypher": {
+    "name": "Cypher",
+    "icon": "i-vscode-icons-file-type-cypher"
+  },
+  "d": {
+    "name": "D",
+    "icon": "i-vscode-icons-file-type-d"
+  },
+  "dart": {
+    "name": "Dart",
+    "icon": "i-vscode-icons-file-type-dart"
+  },
+  "dax": {
+    "name": "DAX",
+    "icon": "i-vscode-icons-file-type-dax"
+  },
+  "desktop": {
+    "name": "Desktop",
+    "icon": "i-vscode-icons-file-type-desktop"
+  },
+  "diff": {
+    "name": "Diff",
+    "icon": "i-vscode-icons-file-type-diff"
+  },
+  "docker": {
+    "name": "Dockerfile",
+    "icon": "i-vscode-icons-file-type-docker"
+  },
+  "dotenv": {
+    "name": "dotEnv",
+    "icon": "i-vscode-icons-file-type-dotenv"
+  },
+  "dream-maker": {
+    "name": "Dream Maker",
+    "icon": "i-vscode-icons-file-type-dream-maker"
+  },
+  "edge": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-edge"
+  },
+  "elixir": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-elixir"
+  },
+  "elm": {
+    "name": "C",
+    "icon": "i-vscode-icons-file-type-elm"
+  },
+  "emacs-lisp": {
+    "name": "Emacs Lisp",
+    "icon": "i-vscode-icons-file-type-emacs-lisp"
+  },
+  "erb": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-erb"
+  },
+  "erlang": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-erlang"
+  },
+  "fennel": {
+    "name": "Fennel",
+    "icon": "i-vscode-icons-file-type-fennel"
+  },
+  "fish": {
+    "name": "Fish",
+    "icon": "i-vscode-icons-file-type-fish"
+  },
+  "fluent": {
+    "name": "Fluent",
+    "icon": "i-vscode-icons-file-type-fluent"
+  },
+  "fortran-fixed-form": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-fortran-fixed-form"
+  },
+  "fortran-free-form": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-fortran-free-form"
+  },
+  "fsharp": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-fsharp"
+  },
+  "gdresource": {
+    "name": "GDShader",
+    "icon": "i-vscode-icons-file-type-gdresource"
+  },
+  "gdscript": {
+    "name": "GDScript",
+    "icon": "i-vscode-icons-file-type-gdscript"
+  },
+  "gdshader": {
+    "name": "GDShader",
+    "icon": "i-vscode-icons-file-type-gdshader"
+  },
+  "genie": {
+    "name": "Genie",
+    "icon": "i-vscode-icons-file-type-genie"
+  },
+  "gherkin": {
+    "name": "Gherkin",
+    "icon": "i-vscode-icons-file-type-gherkin"
+  },
+  "git-commit": {
+    "name": "Diff",
+    "icon": "i-vscode-icons-file-type-git-commit"
+  },
+  "git-rebase": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-git-rebase"
+  },
+  "gleam": {
+    "name": "Gleam",
+    "icon": "i-vscode-icons-file-type-gleam"
+  },
+  "glimmer-js": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-glimmer-js"
+  },
+  "glimmer-ts": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-glimmer-ts"
+  },
+  "glsl": {
+    "name": "C",
+    "icon": "i-vscode-icons-file-type-glsl"
+  },
+  "gn": {
+    "name": "GN",
+    "icon": "i-vscode-icons-file-type-gn"
+  },
+  "gnuplot": {
+    "name": "Gnuplot",
+    "icon": "i-vscode-icons-file-type-gnuplot"
+  },
+  "go": {
+    "name": "Go",
+    "icon": "i-vscode-icons-file-type-go"
+  },
+  "graphql": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-graphql"
+  },
+  "groovy": {
+    "name": "Groovy",
+    "icon": "i-vscode-icons-file-type-groovy"
+  },
+  "hack": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-hack"
+  },
+  "haml": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-haml"
+  },
+  "handlebars": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-handlebars"
+  },
+  "haskell": {
+    "name": "Haskell",
+    "icon": "i-vscode-icons-file-type-haskell"
+  },
+  "haxe": {
+    "name": "Haxe",
+    "icon": "i-vscode-icons-file-type-haxe"
+  },
+  "hcl": {
+    "name": "HashiCorp HCL",
+    "icon": "i-vscode-icons-file-type-hcl"
+  },
+  "hjson": {
+    "name": "Hjson",
+    "icon": "i-vscode-icons-file-type-hjson"
+  },
+  "hlsl": {
+    "name": "HLSL",
+    "icon": "i-vscode-icons-file-type-hlsl"
+  },
+  "html": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-html"
+  },
+  "html-derivative": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-html-derivative"
+  },
+  "http": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-http"
+  },
+  "hurl": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-hurl"
+  },
+  "hxml": {
+    "name": "Haxe",
+    "icon": "i-vscode-icons-file-type-hxml"
+  },
+  "hy": {
+    "name": "Hy",
+    "icon": "i-vscode-icons-file-type-hy"
+  },
+  "imba": {
+    "name": "Imba",
+    "icon": "i-vscode-icons-file-type-imba"
+  },
+  "ini": {
+    "name": "INI",
+    "icon": "i-vscode-icons-file-type-ini"
+  },
+  "java": {
+    "name": "Java",
+    "icon": "i-vscode-icons-file-type-java"
+  },
+  "javascript": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-javascript"
+  },
+  "jinja": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-jinja"
+  },
+  "jison": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-jison"
+  },
+  "json": {
+    "name": "JSON",
+    "icon": "i-vscode-icons-file-type-json"
+  },
+  "json5": {
+    "name": "JSON5",
+    "icon": "i-vscode-icons-file-type-json5"
+  },
+  "jsonc": {
+    "name": "JSON with Comments",
+    "icon": "i-vscode-icons-file-type-jsonc"
+  },
+  "jsonl": {
+    "name": "JSON Lines",
+    "icon": "i-vscode-icons-file-type-jsonl"
+  },
+  "jsonnet": {
+    "name": "Jsonnet",
+    "icon": "i-vscode-icons-file-type-jsonnet"
+  },
+  "jssm": {
+    "name": "JSSM",
+    "icon": "i-vscode-icons-file-type-jssm"
+  },
+  "jsx": {
+    "name": "JSX",
+    "icon": "i-vscode-icons-file-type-jsx"
+  },
+  "julia": {
+    "name": "RegExp",
+    "icon": "i-vscode-icons-file-type-julia"
+  },
+  "just": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-just"
+  },
+  "kdl": {
+    "name": "KDL",
+    "icon": "i-vscode-icons-file-type-kdl"
+  },
+  "kotlin": {
+    "name": "Kotlin",
+    "icon": "i-vscode-icons-file-type-kotlin"
+  },
+  "kusto": {
+    "name": "Kusto",
+    "icon": "i-vscode-icons-file-type-kusto"
+  },
+  "latex": {
+    "name": "R",
+    "icon": "i-vscode-icons-file-type-latex"
+  },
+  "lean": {
+    "name": "Lean 4",
+    "icon": "i-vscode-icons-file-type-lean"
+  },
+  "less": {
+    "name": "Less",
+    "icon": "i-vscode-icons-file-type-less"
+  },
+  "liquid": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-liquid"
+  },
+  "llvm": {
+    "name": "LLVM IR",
+    "icon": "i-vscode-icons-file-type-llvm"
+  },
+  "log": {
+    "name": "Log file",
+    "icon": "i-vscode-icons-file-type-log"
+  },
+  "logo": {
+    "name": "Logo",
+    "icon": "i-vscode-icons-file-type-logo"
+  },
+  "lua": {
+    "name": "C",
+    "icon": "i-vscode-icons-file-type-lua"
+  },
+  "luau": {
+    "name": "Luau",
+    "icon": "i-vscode-icons-file-type-luau"
+  },
+  "make": {
+    "name": "Makefile",
+    "icon": "i-vscode-icons-file-type-make"
+  },
+  "markdown": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-markdown"
+  },
+  "marko": {
+    "name": "CSS",
+    "icon": "i-vscode-icons-file-type-marko"
+  },
+  "matlab": {
+    "name": "MATLAB",
+    "icon": "i-vscode-icons-file-type-matlab"
+  },
+  "mdc": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-mdc"
+  },
+  "mdx": {
+    "name": "MDX",
+    "icon": "i-vscode-icons-file-type-mdx"
+  },
+  "mermaid": {
+    "name": "Mermaid",
+    "icon": "i-vscode-icons-file-type-mermaid"
+  },
+  "mipsasm": {
+    "name": "MIPS Assembly",
+    "icon": "i-vscode-icons-file-type-mipsasm"
+  },
+  "mojo": {
+    "name": "Mojo",
+    "icon": "i-vscode-icons-file-type-mojo"
+  },
+  "moonbit": {
+    "name": "MoonBit",
+    "icon": "i-vscode-icons-file-type-moonbit"
+  },
+  "move": {
+    "name": "Move",
+    "icon": "i-vscode-icons-file-type-move"
+  },
+  "narrat": {
+    "name": "Narrat Language",
+    "icon": "i-vscode-icons-file-type-narrat"
+  },
+  "nextflow": {
+    "name": "Nextflow Groovy",
+    "icon": "i-vscode-icons-file-type-nextflow"
+  },
+  "nextflow-groovy": {
+    "name": "Nextflow Groovy",
+    "icon": "i-vscode-icons-file-type-nextflow-groovy"
+  },
+  "nginx": {
+    "name": "C",
+    "icon": "i-vscode-icons-file-type-nginx"
+  },
+  "nim": {
+    "name": "C",
+    "icon": "i-vscode-icons-file-type-nim"
+  },
+  "nix": {
+    "name": "markdown-nix",
+    "icon": "i-vscode-icons-file-type-nix"
+  },
+  "nushell": {
+    "name": "nushell",
+    "icon": "i-vscode-icons-file-type-nushell"
+  },
+  "objective-c": {
+    "name": "Objective-C",
+    "icon": "i-vscode-icons-file-type-objective-c"
+  },
+  "objective-cpp": {
+    "name": "Objective-C++",
+    "icon": "i-vscode-icons-file-type-objective-cpp"
+  },
+  "ocaml": {
+    "name": "OCaml",
+    "icon": "i-vscode-icons-file-type-ocaml"
+  },
+  "odin": {
+    "name": "Odin",
+    "icon": "i-vscode-icons-file-type-odin"
+  },
+  "openscad": {
+    "name": "OpenSCAD",
+    "icon": "i-vscode-icons-file-type-openscad"
+  },
+  "pascal": {
+    "name": "Pascal",
+    "icon": "i-vscode-icons-file-type-pascal"
+  },
+  "perl": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-perl"
+  },
+  "php": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-php"
+  },
+  "pkl": {
+    "name": "Pkl",
+    "icon": "i-vscode-icons-file-type-pkl"
+  },
+  "plsql": {
+    "name": "PL/SQL",
+    "icon": "i-vscode-icons-file-type-plsql"
+  },
+  "po": {
+    "name": "Gettext PO",
+    "icon": "i-vscode-icons-file-type-po"
+  },
+  "polar": {
+    "name": "Polar",
+    "icon": "i-vscode-icons-file-type-polar"
+  },
+  "postcss": {
+    "name": "PostCSS",
+    "icon": "i-vscode-icons-file-type-postcss"
+  },
+  "powerquery": {
+    "name": "PowerQuery",
+    "icon": "i-vscode-icons-file-type-powerquery"
+  },
+  "powershell": {
+    "name": "PowerShell",
+    "icon": "i-vscode-icons-file-type-powershell"
+  },
+  "prisma": {
+    "name": "Prisma",
+    "icon": "i-vscode-icons-file-type-prisma"
+  },
+  "prolog": {
+    "name": "Prolog",
+    "icon": "i-vscode-icons-file-type-prolog"
+  },
+  "proto": {
+    "name": "Protocol Buffer 3",
+    "icon": "i-vscode-icons-file-type-proto"
+  },
+  "pug": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-pug"
+  },
+  "puppet": {
+    "name": "Puppet",
+    "icon": "i-vscode-icons-file-type-puppet"
+  },
+  "purescript": {
+    "name": "PureScript",
+    "icon": "i-vscode-icons-file-type-purescript"
+  },
+  "python": {
+    "name": "Python",
+    "icon": "i-vscode-icons-file-type-python"
+  },
+  "qml": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-qml"
+  },
+  "qmldir": {
+    "name": "QML Directory",
+    "icon": "i-vscode-icons-file-type-qmldir"
+  },
+  "qss": {
+    "name": "Qt Style Sheets",
+    "icon": "i-vscode-icons-file-type-qss"
+  },
+  "r": {
+    "name": "R",
+    "icon": "i-vscode-icons-file-type-r"
+  },
+  "racket": {
+    "name": "Racket",
+    "icon": "i-vscode-icons-file-type-racket"
+  },
+  "raku": {
+    "name": "Raku",
+    "icon": "i-vscode-icons-file-type-raku"
+  },
+  "razor": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-razor"
+  },
+  "reg": {
+    "name": "Windows Registry Script",
+    "icon": "i-vscode-icons-file-type-reg"
+  },
+  "regexp": {
+    "name": "RegExp",
+    "icon": "i-vscode-icons-file-type-regexp"
+  },
+  "rel": {
+    "name": "Rel",
+    "icon": "i-vscode-icons-file-type-rel"
+  },
+  "riscv": {
+    "name": "RISC-V",
+    "icon": "i-vscode-icons-file-type-riscv"
+  },
+  "ron": {
+    "name": "RON",
+    "icon": "i-vscode-icons-file-type-ron"
+  },
+  "rosmsg": {
+    "name": "ROS Interface",
+    "icon": "i-vscode-icons-file-type-rosmsg"
+  },
+  "rst": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-rst"
+  },
+  "ruby": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-ruby"
+  },
+  "rust": {
+    "name": "Rust",
+    "icon": "i-vscode-icons-file-type-rust"
+  },
+  "sas": {
+    "name": "SQL",
+    "icon": "i-vscode-icons-file-type-sas"
+  },
+  "sass": {
+    "name": "Sass",
+    "icon": "i-vscode-icons-file-type-sass"
+  },
+  "scala": {
+    "name": "Scala",
+    "icon": "i-vscode-icons-file-type-scala"
+  },
+  "scheme": {
+    "name": "Scheme",
+    "icon": "i-vscode-icons-file-type-scheme"
+  },
+  "scss": {
+    "name": "CSS",
+    "icon": "i-vscode-icons-file-type-scss"
+  },
+  "sdbl": {
+    "name": "1C (Query)",
+    "icon": "i-vscode-icons-file-type-sdbl"
+  },
+  "shaderlab": {
+    "name": "HLSL",
+    "icon": "i-vscode-icons-file-type-shaderlab"
+  },
+  "shellscript": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-shellscript"
+  },
+  "shellsession": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-shellsession"
+  },
+  "smalltalk": {
+    "name": "Smalltalk",
+    "icon": "i-vscode-icons-file-type-smalltalk"
+  },
+  "solidity": {
+    "name": "Solidity",
+    "icon": "i-vscode-icons-file-type-solidity"
+  },
+  "soy": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-soy"
+  },
+  "sparql": {
+    "name": "Turtle",
+    "icon": "i-vscode-icons-file-type-sparql"
+  },
+  "splunk": {
+    "name": "Splunk Query Language",
+    "icon": "i-vscode-icons-file-type-splunk"
+  },
+  "sql": {
+    "name": "SQL",
+    "icon": "i-vscode-icons-file-type-sql"
+  },
+  "ssh-config": {
+    "name": "SSH Config",
+    "icon": "i-vscode-icons-file-type-ssh-config"
+  },
+  "stata": {
+    "name": "SQL",
+    "icon": "i-vscode-icons-file-type-stata"
+  },
+  "stylus": {
+    "name": "Stylus",
+    "icon": "i-vscode-icons-file-type-stylus"
+  },
+  "surrealql": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-surrealql"
+  },
+  "svelte": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-svelte"
+  },
+  "swift": {
+    "name": "Swift",
+    "icon": "i-vscode-icons-file-type-swift"
+  },
+  "system-verilog": {
+    "name": "SystemVerilog",
+    "icon": "i-vscode-icons-file-type-system-verilog"
+  },
+  "systemd": {
+    "name": "Systemd Units",
+    "icon": "i-vscode-icons-file-type-systemd"
+  },
+  "talonscript": {
+    "name": "TalonScript",
+    "icon": "i-vscode-icons-file-type-talonscript"
+  },
+  "tasl": {
+    "name": "Tasl",
+    "icon": "i-vscode-icons-file-type-tasl"
+  },
+  "tcl": {
+    "name": "Tcl",
+    "icon": "i-vscode-icons-file-type-tcl"
+  },
+  "templ": {
+    "name": "Go",
+    "icon": "i-vscode-icons-file-type-templ"
+  },
+  "terraform": {
+    "name": "Terraform",
+    "icon": "i-vscode-icons-file-type-terraform"
+  },
+  "tex": {
+    "name": "R",
+    "icon": "i-vscode-icons-file-type-tex"
+  },
+  "toml": {
+    "name": "TOML",
+    "icon": "i-vscode-icons-file-type-toml"
+  },
+  "ts-tags": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-ts-tags"
+  },
+  "tsv": {
+    "name": "TSV",
+    "icon": "i-vscode-icons-file-type-tsv"
+  },
+  "tsx": {
+    "name": "TSX",
+    "icon": "i-vscode-icons-file-type-tsx"
+  },
+  "turtle": {
+    "name": "Turtle",
+    "icon": "i-vscode-icons-file-type-turtle"
+  },
+  "twig": {
+    "name": "CSS",
+    "icon": "i-vscode-icons-file-type-twig"
+  },
+  "typescript": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-typescript"
+  },
+  "typespec": {
+    "name": "TypeSpec",
+    "icon": "i-vscode-icons-file-type-typespec"
+  },
+  "typst": {
+    "name": "Typst",
+    "icon": "i-vscode-icons-file-type-typst"
+  },
+  "v": {
+    "name": "V",
+    "icon": "i-vscode-icons-file-type-v"
+  },
+  "vala": {
+    "name": "Vala",
+    "icon": "i-vscode-icons-file-type-vala"
+  },
+  "vb": {
+    "name": "Visual Basic",
+    "icon": "i-vscode-icons-file-type-vb"
+  },
+  "verilog": {
+    "name": "Verilog",
+    "icon": "i-vscode-icons-file-type-verilog"
+  },
+  "vhdl": {
+    "name": "VHDL",
+    "icon": "i-vscode-icons-file-type-vhdl"
+  },
+  "viml": {
+    "name": "Vim Script",
+    "icon": "i-vscode-icons-file-type-viml"
+  },
+  "vue": {
+    "name": "CSS",
+    "icon": "i-vscode-icons-file-type-vue"
+  },
+  "vue-html": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-vue-html"
+  },
+  "vue-vine": {
+    "name": "CSS",
+    "icon": "i-vscode-icons-file-type-vue-vine"
+  },
+  "vyper": {
+    "name": "Vyper",
+    "icon": "i-vscode-icons-file-type-vyper"
+  },
+  "wasm": {
+    "name": "WebAssembly",
+    "icon": "i-vscode-icons-file-type-wasm"
+  },
+  "wenyan": {
+    "name": "Wenyan",
+    "icon": "i-vscode-icons-file-type-wenyan"
+  },
+  "wgsl": {
+    "name": "WGSL",
+    "icon": "i-vscode-icons-file-type-wgsl"
+  },
+  "wikitext": {
+    "name": "Wikitext",
+    "icon": "i-vscode-icons-file-type-wikitext"
+  },
+  "wit": {
+    "name": "WebAssembly Interface Types",
+    "icon": "i-vscode-icons-file-type-wit"
+  },
+  "wolfram": {
+    "name": "Wolfram",
+    "icon": "i-vscode-icons-file-type-wolfram"
+  },
+  "xml": {
+    "name": "Java",
+    "icon": "i-vscode-icons-file-type-xml"
+  },
+  "xsl": {
+    "name": "Java",
+    "icon": "i-vscode-icons-file-type-xsl"
+  },
+  "yaml": {
+    "name": "YAML",
+    "icon": "i-vscode-icons-file-type-yaml"
+  },
+  "zenscript": {
+    "name": "ZenScript",
+    "icon": "i-vscode-icons-file-type-zenscript"
+  },
+  "zig": {
+    "name": "Zig",
+    "icon": "i-vscode-icons-file-type-zig"
+  },
+  "adoc": {
+    "name": "AsciiDoc",
+    "icon": "i-vscode-icons-file-type-adoc"
+  },
+  "batch": {
+    "name": "Batch File",
+    "icon": "i-vscode-icons-file-type-batch"
+  },
+  "be": {
+    "name": "Berry",
+    "icon": "i-vscode-icons-file-type-be"
+  },
+  "bird": {
+    "name": "BIRD2 Configuration",
+    "icon": "i-vscode-icons-file-type-bird"
+  },
+  "1c": {
+    "name": "1C (Query)",
+    "icon": "i-vscode-icons-file-type-1c"
+  },
+  "cdc": {
+    "name": "Cadence",
+    "icon": "i-vscode-icons-file-type-cdc"
+  },
+  "clj": {
+    "name": "Clojure",
+    "icon": "i-vscode-icons-file-type-clj"
+  },
+  "ql": {
+    "name": "CodeQL",
+    "icon": "i-vscode-icons-file-type-ql"
+  },
+  "coffeescript": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-coffeescript"
+  },
+  "lisp": {
+    "name": "Common Lisp",
+    "icon": "i-vscode-icons-file-type-lisp"
+  },
+  "c++": {
+    "name": "RegExp",
+    "icon": "i-vscode-icons-file-type-c++"
+  },
+  "c#": {
+    "name": "C#",
+    "icon": "i-vscode-icons-file-type-c#"
+  },
+  "cs": {
+    "name": "C#",
+    "icon": "i-vscode-icons-file-type-cs"
+  },
+  "cql": {
+    "name": "Cypher",
+    "icon": "i-vscode-icons-file-type-cql"
+  },
+  "dockerfile": {
+    "name": "Dockerfile",
+    "icon": "i-vscode-icons-file-type-dockerfile"
+  },
+  "elisp": {
+    "name": "Emacs Lisp",
+    "icon": "i-vscode-icons-file-type-elisp"
+  },
+  "erl": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-erl"
+  },
+  "ftl": {
+    "name": "Fluent",
+    "icon": "i-vscode-icons-file-type-ftl"
+  },
+  "f": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-f"
+  },
+  "for": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-for"
+  },
+  "f77": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-f77"
+  },
+  "f90": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-f90"
+  },
+  "f95": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-f95"
+  },
+  "f03": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-f03"
+  },
+  "f08": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-f08"
+  },
+  "f18": {
+    "name": "Fortran (Free Form)",
+    "icon": "i-vscode-icons-file-type-f18"
+  },
+  "f#": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-f#"
+  },
+  "fs": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-fs"
+  },
+  "tscn": {
+    "name": "GDShader",
+    "icon": "i-vscode-icons-file-type-tscn"
+  },
+  "tres": {
+    "name": "GDShader",
+    "icon": "i-vscode-icons-file-type-tres"
+  },
+  "gd": {
+    "name": "GDScript",
+    "icon": "i-vscode-icons-file-type-gd"
+  },
+  "gjs": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-gjs"
+  },
+  "gts": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-gts"
+  },
+  "gql": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-gql"
+  },
+  "hbs": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-hbs"
+  },
+  "hs": {
+    "name": "Haskell",
+    "icon": "i-vscode-icons-file-type-hs"
+  },
+  "properties": {
+    "name": "INI",
+    "icon": "i-vscode-icons-file-type-properties"
+  },
+  "js": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-js"
+  },
+  "cjs": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-cjs"
+  },
+  "mjs": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-mjs"
+  },
+  "fsl": {
+    "name": "JSSM",
+    "icon": "i-vscode-icons-file-type-fsl"
+  },
+  "jl": {
+    "name": "RegExp",
+    "icon": "i-vscode-icons-file-type-jl"
+  },
+  "kt": {
+    "name": "Kotlin",
+    "icon": "i-vscode-icons-file-type-kt"
+  },
+  "kts": {
+    "name": "Kotlin",
+    "icon": "i-vscode-icons-file-type-kts"
+  },
+  "kql": {
+    "name": "Kusto",
+    "icon": "i-vscode-icons-file-type-kql"
+  },
+  "lean4": {
+    "name": "Lean 4",
+    "icon": "i-vscode-icons-file-type-lean4"
+  },
+  "makefile": {
+    "name": "Makefile",
+    "icon": "i-vscode-icons-file-type-makefile"
+  },
+  "md": {
+    "name": "Markdown",
+    "icon": "i-vscode-icons-file-type-md"
+  },
+  "mmd": {
+    "name": "Mermaid",
+    "icon": "i-vscode-icons-file-type-mmd"
+  },
+  "mips": {
+    "name": "MIPS Assembly",
+    "icon": "i-vscode-icons-file-type-mips"
+  },
+  "mbt": {
+    "name": "MoonBit",
+    "icon": "i-vscode-icons-file-type-mbt"
+  },
+  "mbti": {
+    "name": "MoonBit",
+    "icon": "i-vscode-icons-file-type-mbti"
+  },
+  "nar": {
+    "name": "Narrat Language",
+    "icon": "i-vscode-icons-file-type-nar"
+  },
+  "nf": {
+    "name": "Nextflow Groovy",
+    "icon": "i-vscode-icons-file-type-nf"
+  },
+  "nu": {
+    "name": "nushell",
+    "icon": "i-vscode-icons-file-type-nu"
+  },
+  "objc": {
+    "name": "Objective-C",
+    "icon": "i-vscode-icons-file-type-objc"
+  },
+  "scad": {
+    "name": "OpenSCAD",
+    "icon": "i-vscode-icons-file-type-scad"
+  },
+  "pot": {
+    "name": "Gettext PO",
+    "icon": "i-vscode-icons-file-type-pot"
+  },
+  "potx": {
+    "name": "Gettext PO",
+    "icon": "i-vscode-icons-file-type-potx"
+  },
+  "ps": {
+    "name": "PowerShell",
+    "icon": "i-vscode-icons-file-type-ps"
+  },
+  "ps1": {
+    "name": "PowerShell",
+    "icon": "i-vscode-icons-file-type-ps1"
+  },
+  "protobuf": {
+    "name": "Protocol Buffer 3",
+    "icon": "i-vscode-icons-file-type-protobuf"
+  },
+  "jade": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-jade"
+  },
+  "py": {
+    "name": "Python",
+    "icon": "i-vscode-icons-file-type-py"
+  },
+  "perl6": {
+    "name": "Raku",
+    "icon": "i-vscode-icons-file-type-perl6"
+  },
+  "regex": {
+    "name": "RegExp",
+    "icon": "i-vscode-icons-file-type-regex"
+  },
+  "rb": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-rb"
+  },
+  "rs": {
+    "name": "Rust",
+    "icon": "i-vscode-icons-file-type-rs"
+  },
+  "1c-query": {
+    "name": "1C (Query)",
+    "icon": "i-vscode-icons-file-type-1c-query"
+  },
+  "shader": {
+    "name": "HLSL",
+    "icon": "i-vscode-icons-file-type-shader"
+  },
+  "bash": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-bash"
+  },
+  "sh": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-sh"
+  },
+  "shell": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-shell"
+  },
+  "zsh": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-zsh"
+  },
+  "console": {
+    "name": "Shell",
+    "icon": "i-vscode-icons-file-type-console"
+  },
+  "closure-templates": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-closure-templates"
+  },
+  "spl": {
+    "name": "Splunk Query Language",
+    "icon": "i-vscode-icons-file-type-spl"
+  },
+  "styl": {
+    "name": "Stylus",
+    "icon": "i-vscode-icons-file-type-styl"
+  },
+  "surql": {
+    "name": "JavaScript",
+    "icon": "i-vscode-icons-file-type-surql"
+  },
+  "talon": {
+    "name": "TalonScript",
+    "icon": "i-vscode-icons-file-type-talon"
+  },
+  "tf": {
+    "name": "Terraform",
+    "icon": "i-vscode-icons-file-type-tf"
+  },
+  "tfvars": {
+    "name": "Terraform",
+    "icon": "i-vscode-icons-file-type-tfvars"
+  },
+  "lit": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-lit"
+  },
+  "ts": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-ts"
+  },
+  "cts": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-cts"
+  },
+  "mts": {
+    "name": "TypeScript",
+    "icon": "i-vscode-icons-file-type-mts"
+  },
+  "tsp": {
+    "name": "TypeSpec",
+    "icon": "i-vscode-icons-file-type-tsp"
+  },
+  "typ": {
+    "name": "Typst",
+    "icon": "i-vscode-icons-file-type-typ"
+  },
+  "cmd": {
+    "name": "Visual Basic",
+    "icon": "i-vscode-icons-file-type-cmd"
+  },
+  "vim": {
+    "name": "Vim Script",
+    "icon": "i-vscode-icons-file-type-vim"
+  },
+  "vimscript": {
+    "name": "Vim Script",
+    "icon": "i-vscode-icons-file-type-vimscript"
+  },
+  "vy": {
+    "name": "Vyper",
+    "icon": "i-vscode-icons-file-type-vy"
+  },
+  "文言": {
+    "name": "Wenyan",
+    "icon": "i-vscode-icons-file-type-文言"
+  },
+  "mediawiki": {
+    "name": "Wikitext",
+    "icon": "i-vscode-icons-file-type-mediawiki"
+  },
+  "wiki": {
+    "name": "Wikitext",
+    "icon": "i-vscode-icons-file-type-wiki"
+  },
+  "wl": {
+    "name": "Wolfram",
+    "icon": "i-vscode-icons-file-type-wl"
+  },
+  "yml": {
+    "name": "YAML",
+    "icon": "i-vscode-icons-file-type-yml"
+  }
+}
