@@ -1,0 +1,54 @@
+{
+  "lsp": {
+    "vue": {
+      "settings": {
+        // Display inlay hints for the `$event` parameter in inline event handlers.
+        "vue.inlayHints.inlineHandlerLeading": true,
+        // Display hints when required component props are missing in templates.
+        "vue.inlayHints.missingProps": true,
+        // Display inlay hints for patterns that wrap component options.
+        "vue.inlayHints.optionsWrapper": true,
+        // Display inlay hints related to `v-bind` shorthand (`:`).
+        "vue.inlayHints.vBindShorthand": true
+      }
+    },
+    "tailwindcss-language-server": {
+      "settings": {
+        "includeLanguages": {
+          "vue": "html"
+        },
+        "experimental": {
+          "classRegex": [
+            "class=\"([^\"]*)\"",
+            "class='([^']*)'",
+            ":class=\"([^\"]*)\"",
+            ":class='([^']*)'",
+            "\\.className\\s*[+]?=\\s*['\"]([^'\"]*)['\"]",
+            "\\.setAttributeNS\\(.*,\\s*['\"]class['\"],\\s*['\"]([^'\"]*)['\"]",
+            "\\.setAttribute\\(['\"]class['\"],\\s*['\"]([^'\"]*)['\"]",
+            "\\.classList\\.add\\(['\"]([^'\"]*)['\"]",
+            "\\.classList\\.remove\\(['\"]([^'\"]*)['\"]",
+            "\\.classList\\.toggle\\(['\"]([^'\"]*)['\"]",
+            "\\.classList\\.contains\\(['\"]([^'\"]*)['\"]",
+            "\\.classList\\.replace\\(\\s*['\"]([^'\"]*)['\"]",
+            "\\.classList\\.replace\\([^,)]+,\\s*['\"]([^'\"]*)['\"]"
+          ]
+        }
+      }
+    }
+  },
+  "languages": {
+    "TypeScript": {
+      "language_servers": ["typescript-language-server", "!vtsls", "!biome"]
+    },
+    "TSX": {
+      "language_servers": ["typescript-language-server", "!vtsls", "!biome"]
+    },
+    "JavaScript": {
+      "language_servers": ["typescript-language-server", "!vtsls", "!biome"]
+    },
+    "CSS": {
+      "language_servers": ["tailwindcss-intellisense-css", "!vscode-css-language-server", "!biome"]
+    }
+  }
+}
