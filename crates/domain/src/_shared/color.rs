@@ -6,6 +6,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
+#[serde(rename_all = "lowercase")]
 pub enum Color {
     Default,
     Gray,

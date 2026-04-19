@@ -1,4 +1,5 @@
 @reference "~/assets/css/main.css";
+@import "./colors.css";
 
 .editor-layout {
   --margin-width: minmax(--spacing(4), 1fr);

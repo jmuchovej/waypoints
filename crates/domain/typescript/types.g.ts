@@ -45,16 +45,16 @@ export type Chart = {
 export type ChartID = string;
 
 export type Color =
-  | "Default"
-  | "Gray"
-  | "Brown"
-  | "Orange"
-  | "Yellow"
-  | "Green"
-  | "Blue"
-  | "Purple"
-  | "Pink"
-  | "Red";
+  | "default"
+  | "gray"
+  | "brown"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "purple"
+  | "pink"
+  | "red";
 
 /**
  * Content blocks - the actual content pieces users work with.

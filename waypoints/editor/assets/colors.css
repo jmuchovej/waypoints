@@ -1,0 +1,255 @@
+/* ── Ink Background (surface) colors ────────────────────────────────────
+   Applied via `data-ink-bg="color"` attribute. Sets CSS custom properties
+   for background and border that consuming components reference.
+   Used by callouts, select chips, table cell backgrounds, etc. */
+
+[data-ink-bg="default"] {
+  --ink-bg: var(--color-elevated);
+  --ink-bg-border: var(--color-default-border);
+}
+
+[data-ink-bg="gray"] {
+  --ink-bg: var(--color-neutral-100);
+  --ink-bg-border: var(--color-neutral-300);
+}
+
+[data-ink-bg="brown"] {
+  --ink-bg: var(--color-amber-100);
+  --ink-bg-border: var(--color-amber-300);
+}
+
+[data-ink-bg="orange"] {
+  --ink-bg: var(--color-orange-100);
+  --ink-bg-border: var(--color-orange-300);
+}
+
+[data-ink-bg="yellow"] {
+  --ink-bg: var(--color-yellow-100);
+  --ink-bg-border: var(--color-yellow-300);
+}
+
+[data-ink-bg="green"] {
+  --ink-bg: var(--color-green-100);
+  --ink-bg-border: var(--color-green-300);
+}
+
+[data-ink-bg="blue"] {
+  --ink-bg: var(--color-blue-100);
+  --ink-bg-border: var(--color-blue-300);
+}
+
+[data-ink-bg="purple"] {
+  --ink-bg: var(--color-purple-100);
+  --ink-bg-border: var(--color-purple-300);
+}
+
+[data-ink-bg="pink"] {
+  --ink-bg: var(--color-pink-100);
+  --ink-bg-border: var(--color-pink-300);
+}
+
+[data-ink-bg="red"] {
+  --ink-bg: var(--color-red-100);
+  --ink-bg-border: var(--color-red-300);
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  [data-ink-bg="gray"] {
+    --ink-bg: var(--color-neutral-800);
+    --ink-bg-border: var(--color-neutral-700);
+  }
+  [data-ink-bg="brown"] {
+    --ink-bg: var(--color-amber-950);
+    --ink-bg-border: var(--color-amber-800);
+  }
+  [data-ink-bg="orange"] {
+    --ink-bg: var(--color-orange-950);
+    --ink-bg-border: var(--color-orange-800);
+  }
+  [data-ink-bg="yellow"] {
+    --ink-bg: var(--color-yellow-950);
+    --ink-bg-border: var(--color-yellow-800);
+  }
+  [data-ink-bg="green"] {
+    --ink-bg: var(--color-green-950);
+    --ink-bg-border: var(--color-green-800);
+  }
+  [data-ink-bg="blue"] {
+    --ink-bg: var(--color-blue-950);
+    --ink-bg-border: var(--color-blue-800);
+  }
+  [data-ink-bg="purple"] {
+    --ink-bg: var(--color-purple-950);
+    --ink-bg-border: var(--color-purple-800);
+  }
+  [data-ink-bg="pink"] {
+    --ink-bg: var(--color-pink-950);
+    --ink-bg-border: var(--color-pink-800);
+  }
+  [data-ink-bg="red"] {
+    --ink-bg: var(--color-red-950);
+    --ink-bg-border: var(--color-red-800);
+  }
+}
+
+/* ── Ink Foreground (text) colors ──────────────────────────────────────
+   Applied via `data-ink-fg="color"` attribute. Sets text/foreground color. */
+
+[data-ink-fg="default"] {
+  --ink-fg: var(--color-default);
+}
+
+[data-ink-fg="gray"] {
+  --ink-fg: var(--color-neutral-500);
+}
+
+[data-ink-fg="brown"] {
+  --ink-fg: var(--color-amber-700);
+}
+
+[data-ink-fg="orange"] {
+  --ink-fg: var(--color-orange-600);
+}
+
+[data-ink-fg="yellow"] {
+  --ink-fg: var(--color-yellow-600);
+}
+
+[data-ink-fg="green"] {
+  --ink-fg: var(--color-green-600);
+}
+
+[data-ink-fg="blue"] {
+  --ink-fg: var(--color-blue-600);
+}
+
+[data-ink-fg="purple"] {
+  --ink-fg: var(--color-purple-600);
+}
+
+[data-ink-fg="pink"] {
+  --ink-fg: var(--color-pink-600);
+}
+
+[data-ink-fg="red"] {
+  --ink-fg: var(--color-red-600);
+}
+
+/* ── Ink/Surface utility classes ────────────────────────────────────────
+   `ink-{color}` sets foreground text color.
+   `sur-{color}` sets background + border color.
+   These mirror the data-ink-fg / data-ink-bg attribute system but work
+   as CSS classes for contexts where data attributes can't be set
+   (e.g., Nuxt UI component slot overrides). */
+
+.sur-default {
+  background: var(--color-elevated);
+  border-color: var(--color-default-border);
+}
+.sur-gray {
+  background: var(--color-neutral-100);
+  border-color: var(--color-neutral-300);
+}
+.sur-brown {
+  background: var(--color-amber-100);
+  border-color: var(--color-amber-300);
+}
+.sur-orange {
+  background: var(--color-orange-100);
+  border-color: var(--color-orange-300);
+}
+.sur-yellow {
+  background: var(--color-yellow-100);
+  border-color: var(--color-yellow-300);
+}
+.sur-green {
+  background: var(--color-green-100);
+  border-color: var(--color-green-300);
+}
+.sur-blue {
+  background: var(--color-blue-100);
+  border-color: var(--color-blue-300);
+}
+.sur-purple {
+  background: var(--color-purple-100);
+  border-color: var(--color-purple-300);
+}
+.sur-pink {
+  background: var(--color-pink-100);
+  border-color: var(--color-pink-300);
+}
+.sur-red {
+  background: var(--color-red-100);
+  border-color: var(--color-red-300);
+}
+
+.ink-default {
+  color: var(--color-default);
+}
+.ink-gray {
+  color: var(--color-neutral-500);
+}
+.ink-brown {
+  color: var(--color-amber-700);
+}
+.ink-orange {
+  color: var(--color-orange-600);
+}
+.ink-yellow {
+  color: var(--color-yellow-600);
+}
+.ink-green {
+  color: var(--color-green-600);
+}
+.ink-blue {
+  color: var(--color-blue-600);
+}
+.ink-purple {
+  color: var(--color-purple-600);
+}
+.ink-pink {
+  color: var(--color-pink-600);
+}
+.ink-red {
+  color: var(--color-red-600);
+}
+
+@media (prefers-color-scheme: dark) {
+  .sur-gray {
+    background: var(--color-neutral-800);
+    border-color: var(--color-neutral-700);
+  }
+  .sur-brown {
+    background: var(--color-amber-950);
+    border-color: var(--color-amber-800);
+  }
+  .sur-orange {
+    background: var(--color-orange-950);
+    border-color: var(--color-orange-800);
+  }
+  .sur-yellow {
+    background: var(--color-yellow-950);
+    border-color: var(--color-yellow-800);
+  }
+  .sur-green {
+    background: var(--color-green-950);
+    border-color: var(--color-green-800);
+  }
+  .sur-blue {
+    background: var(--color-blue-950);
+    border-color: var(--color-blue-800);
+  }
+  .sur-purple {
+    background: var(--color-purple-950);
+    border-color: var(--color-purple-800);
+  }
+  .sur-pink {
+    background: var(--color-pink-950);
+    border-color: var(--color-pink-800);
+  }
+  .sur-red {
+    background: var(--color-red-950);
+    border-color: var(--color-red-800);
+  }
+}
