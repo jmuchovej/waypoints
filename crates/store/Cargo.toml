@@ -24,7 +24,6 @@ derive_more = { workspace = true, features = [
 ] }
 indexmap.workspace = true
 sea-orm.workspace = true
-sea-orm-migration = { workspace = true, default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -33,6 +32,10 @@ tracing.workspace = true
 domain.workspace = true
 
 importer = { workspace = true, optional = true }
+refinery.workspace = true
+refinery-core.workspace = true
+time.workspace = true
+turso.workspace = true
 
 [features]
 default = []
@@ -44,6 +47,7 @@ test-utils = []
 
 [dev-dependencies]
 rstest = { workspace = true }
+tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]

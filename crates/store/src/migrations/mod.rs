@@ -1,37 +1,39 @@
-mod m20251118_203548_create_marks_table;
-mod m20251118_203608_create_charts_table;
-mod m20251118_203617_create_terrains_table;
-mod m20251121_202043_seed_charts;
+//! Database migration entry point.
+//!
+//! Two phases:
+//!
+//! 1. **DDL** via refinery — SQL files in `migrations/sql/`, embedded at
+//!    compile time, tracked in `refinery_schema_history`. A custom
+//!    [`turso_adapter::TursoConn`] bridges refinery's async traits to the
+//!    [`turso::Connection`].
+//! 2. **Seeds** via [`seeds::run`] — runtime Rust seeders (charts, mock
+//!    documents) that probe for stable UUIDs and skip themselves on
+//!    subsequent boots.
+
+mod seed_charts;
 #[cfg(feature = "mock")]
-mod m20251121_202202_seed_documents;
-mod utils;
+mod seed_documents;
+mod seeds;
+mod turso_adapter;
 
-pub use sea_orm_migration::MigratorTrait;
-use sea_orm_migration::{
-    async_trait,
-    prelude::{DynIden, IntoIden, MigrationTrait},
-};
+use turso::Connection;
 
-pub struct Migrator;
+use crate::error::StoreResult;
 
-#[async_trait::async_trait]
-impl MigratorTrait for Migrator {
-    fn migration_table_name() -> DynIden {
-        "_migrations".into_iden()
-    }
+mod embedded {
+    refinery::embed_migrations!("src/migrations/sql");
+}
 
-    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        #[allow(unused_mut)]
-        let mut migrations: Vec<Box<dyn MigrationTrait>> = vec![
-            Box::new(m20251118_203548_create_marks_table::Migration),
-            Box::new(m20251118_203608_create_charts_table::Migration),
-            Box::new(m20251118_203617_create_terrains_table::Migration),
-            Box::new(m20251121_202043_seed_charts::Migration),
-        ];
+pub async fn run(conn: &Connection) -> StoreResult<()> {
+    let mut adapter = turso_adapter::TursoConn(conn.clone());
+    let report = embedded::migrations::runner()
+        .run_async(&mut adapter)
+        .await?;
+    tracing::info!(
+        applied = report.applied_migrations().len(),
+        "refinery: ddl migrations applied"
+    );
 
-        #[cfg(feature = "mock")]
-        migrations.push(Box::new(m20251121_202202_seed_documents::Migration));
-
-        migrations
-    }
+    seeds::run(conn).await?;
+    Ok(())
 }

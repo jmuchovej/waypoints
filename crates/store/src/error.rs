@@ -11,6 +11,10 @@ pub type StoreResult<T> = ::std::result::Result<T, StoreError>;
 pub enum StoreError {
     #[error("database error: {0}")]
     Database(#[from] sea_orm::DbErr),
+    #[error("turso error: {0}")]
+    Turso(#[from] turso::Error),
+    #[error("migration error: {0}")]
+    Migration(#[from] refinery_core::Error),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("domain error: {0}")]

@@ -86,13 +86,29 @@ impl WaypointsRuntime {
     /// Reset the active database (drop all tables, re-run migrations).
     /// Clears editor undo histories afterward.
     pub async fn reset_db(&self) -> Result<(), store::StoreError> {
-        let mut db_guard = self.manager.active_db.lock().await;
-        let Some(db) = db_guard.take() else {
+        let Some(active_id) = *self.manager.active_id.lock().await else {
             tracing::warn!("reset_db: no active territory");
             return Ok(());
         };
 
-        match store::reset(db).await {
+        let registry = self
+            .registry
+            .load()
+            .await
+            .map_err(|e| store::StoreError::Custom(format!("failed to load registry: {e}")))?;
+        let Some(entry) = registry.registry.iter().find(|e| e.id == active_id) else {
+            tracing::warn!(id = %active_id, "reset_db: active territory missing from registry");
+            return Ok(());
+        };
+        let db_path = self.manager.entry_path(entry).join("waypoints.db");
+
+        let mut db_guard = self.manager.active_db.lock().await;
+        let Some(db) = db_guard.take() else {
+            tracing::warn!("reset_db: no active db");
+            return Ok(());
+        };
+
+        match store::reset(db, &db_path).await {
             Ok(fresh_db) => {
                 *db_guard = Some(fresh_db);
                 drop(db_guard);

@@ -40,18 +40,12 @@ pest_derive = "2.8.3"
 pretty_assertions = "1.4.1"
 pulldown-cmark = { version = "0.13", default-features = false }
 rand = "0.8"
+refinery = { version = "0.9", default-features = false }
+refinery-core = { version = "0.9", default-features = false }
 regex = "1.11.1"
 rstest = "0.26.1"
 sea-orm = { version = "1.1.16", default-features = false, features = [
   "macros",
-  "runtime-tokio",
-  "sqlx-sqlite",
-  "with-chrono",
-  "with-json",
-  "with-uuid",
-] }
-sea-orm-migration = { version = "1.1.16", default-features = false, features = [
-  "cli",
   "runtime-tokio",
   "sqlx-sqlite",
   "with-chrono",
@@ -73,10 +67,13 @@ serde_json = { version = "1.0.145", features = [
   "preserve_order",
   "raw_value",
 ] }
+tempfile = "3"
 thiserror = "2.0.15"
+time = { version = "0.3", features = ["formatting", "parsing"] }
 tokio = { version = "1.47.1", features = ["sync"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+turso = "0.5.3"
 typed-builder = "0.23.2"
 uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
 
