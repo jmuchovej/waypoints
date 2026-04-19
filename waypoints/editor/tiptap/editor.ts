@@ -55,6 +55,7 @@ export function createEditor(element: HTMLElement, options: EditorOptions): Edit
     menu: options.menu,
     triggers: {
       slash: /(?:^|\s)\/(\S*)$/,
+      mention: /(?:^|\s)@(\S*)$/,
     },
   });
   const md = MarkdownShortcuts.configure({

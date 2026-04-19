@@ -21,6 +21,7 @@ import { indexFor } from "../utils/list-item";
 import Block from "./Block.vue";
 import FloatingHandles from "./FloatingHandles.vue";
 import SlashMenu from "./SlashMenu.vue";
+import MentionMenu from "./MentionMenu.vue";
 
 const props = defineProps<DocumentBodyProps>();
 
@@ -41,6 +42,7 @@ orchestrator.onExitTop = props.onExitTop;
 const { handleKeydown: baseHandleKeydown } = useBlockKeymap(orchestrator);
 const { pressing, pressMarkId } = useLongPressDrag(containerRef, dragDrop);
 const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null);
+const mentionMenuRef = ref<InstanceType<typeof MentionMenu> | null>(null);
 
 // Listen for native menu undo/redo events (Cmd+Z / Cmd+Shift+Z are intercepted by
 // the Tauri menu before they reach the web view's keydown handler).
@@ -84,7 +86,11 @@ watch([selection.hasSingleSelect, focus.blockID], ([hasSelection, focusedId]) =>
 function handleKeydown(e: KeyboardEvent) {
   // Let the slash menu consume arrow/enter/escape when open
   if (commandMenu.isOpen.value && commandMenu.handleKey(e)) {
-    slashMenuRef.value?.handleKeydown(e);
+    if (commandMenu.menuKind.value === "mention") {
+      mentionMenuRef.value?.handleKeydown(e);
+    } else {
+      slashMenuRef.value?.handleKeydown(e);
+    }
     return;
   }
   baseHandleKeydown(e);
@@ -196,5 +202,6 @@ defineExpose({
 
     <FloatingHandles :container="containerRef" />
     <SlashMenu ref="slashMenuRef" />
+    <MentionMenu ref="mentionMenuRef" />
   </div>
 </template>

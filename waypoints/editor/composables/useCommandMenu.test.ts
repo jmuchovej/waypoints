@@ -92,11 +92,12 @@ describe("useCommandMenu", () => {
       expect(menu.handleKey(new KeyboardEvent("keydown", { key: "ArrowDown" }))).toBe(true);
     });
 
-    it("consumes Enter and Escape when menu is open", () => {
+    it("consumes Enter, Tab, and Escape when menu is open", () => {
       const menu = useCommandMenu();
       menu.show("slash", "b1", "", { x: 0, y: 0 });
 
       expect(menu.handleKey(new KeyboardEvent("keydown", { key: "Enter" }))).toBe(true);
+      expect(menu.handleKey(new KeyboardEvent("keydown", { key: "Tab" }))).toBe(true);
       expect(menu.handleKey(new KeyboardEvent("keydown", { key: "Escape" }))).toBe(true);
     });
 
@@ -105,7 +106,6 @@ describe("useCommandMenu", () => {
       menu.show("slash", "b1", "", { x: 0, y: 0 });
 
       expect(menu.handleKey(new KeyboardEvent("keydown", { key: "a" }))).toBe(false);
-      expect(menu.handleKey(new KeyboardEvent("keydown", { key: "Tab" }))).toBe(false);
       expect(menu.handleKey(new KeyboardEvent("keydown", { key: "Backspace" }))).toBe(false);
     });
   });

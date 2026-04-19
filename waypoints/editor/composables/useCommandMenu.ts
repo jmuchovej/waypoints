@@ -1,7 +1,7 @@
 import { readonly, ref } from "vue";
-import type { CommandMenuKind } from "../tiptap/extensions/command-menu";
+import type { CommandMenuKind, OnSelectCallback } from "../tiptap/extensions/command-menu";
 
-export type { CommandMenuKind };
+export type { CommandMenuKind, OnSelectCallback };
 
 export type MenuPosition = {
   x: number;
@@ -21,8 +21,14 @@ export const CommandMenuKey = "command-menu";
 export function useCommandMenu() {
   const activeMenu = ref<CommandMenuState | null>(null);
 
-  function show(kind: CommandMenuKind, blockID: string, query: string, position: MenuPosition) {
-    activeMenu.value = { kind, blockID, query, position };
+  function show(
+    kind: CommandMenuKind,
+    blockID: string,
+    query: string,
+    position: MenuPosition,
+    onSelect?: OnSelectCallback,
+  ) {
+    activeMenu.value = { kind, blockID, query, position, onSelect };
   }
 
   function updateQuery(query: string) {
@@ -44,7 +50,7 @@ export function useCommandMenu() {
   /** Returns true if the overlay consumed the key event. */
   function handleKey(event: KeyboardEvent): boolean {
     if (!activeMenu.value) return false;
-    return ["ArrowUp", "ArrowDown", "Enter", "Escape"].includes(event.key);
+    return ["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"].includes(event.key);
   }
 
   const isOpen = computed(() => activeMenu.value !== null);
