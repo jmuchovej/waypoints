@@ -14,12 +14,18 @@ pub const DEFAULT_LIMIT: usize = 200;
 pub const MAX_LIMIT: usize = 500;
 
 /// The routing fields a relay reads. Everything else in an envelope —
-/// `checkpoints` above all — passes through byte-verbatim.
-#[derive(Debug, Clone, Copy, Deserialize)]
+/// `checkpoints` above all — passes through byte-verbatim. The app's
+/// typed `Envelope` flattens this same struct, so the routing contract
+/// exists exactly once.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EnvelopeFace {
+    /// Group-level idempotency key.
     pub group_id: OpID,
     pub account_id: AccountID,
     pub realm_id: RealmID,
+    /// The originating device's real ID at origination time. Never
+    /// rewritten, even when devices are aliased later — that would
+    /// retroactively change LWW outcomes.
     pub device_id: DeviceID,
     #[serde(with = "hlc_wire")]
     pub hlc: HLC,
