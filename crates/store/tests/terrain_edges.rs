@@ -390,6 +390,7 @@ async fn insert_edge(
         kind: Set(kind_to_string(&kind)),
         order: Set(order.map(str::to_string)),
         extra: Set(None),
+        ..Default::default()
     }
     .insert(db)
     .await

@@ -41,6 +41,11 @@ pub struct Model {
     pub deleted_at: Option<DateTime>,
     /// Has the user marked this Mark as "archived"?
     pub archived_at: Option<DateTime>,
+    /// Sync row clock: packed HLC of the last sync-visible write.
+    /// 0 = never touched by sync (any incoming op dominates).
+    pub updated_hlc: i64,
+    /// Sync row clock: device that produced the winning write.
+    pub updated_by_device: Option<Uuid>,
 }
 
 #[derive(Debug, Copy, Clone, EnumIter, DeriveRelation)]
