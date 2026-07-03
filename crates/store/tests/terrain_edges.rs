@@ -635,11 +635,22 @@ async fn insert_edge_round_trips_caller_provided_id(#[future] db: DatabaseConnec
         .unwrap();
 
     let edge_id = TerrainID::new();
-    terrain::insert_edge(&db, edge_id, src, dst, &TerrainKind::Child, Some("i000"), None)
-        .await
-        .unwrap();
+    terrain::insert_edge(
+        &db,
+        edge_id,
+        src,
+        dst,
+        &TerrainKind::Child,
+        Some("i000"),
+        None,
+    )
+    .await
+    .unwrap();
 
-    let edge = terrain::get_edge_by_id(&db, edge_id).await.unwrap().unwrap();
+    let edge = terrain::get_edge_by_id(&db, edge_id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(edge.id, edge_id);
     assert_eq!(edge.src_id, src);
     assert_eq!(edge.dst_id, dst);
@@ -665,12 +676,28 @@ async fn update_edge_by_id_is_multigraph_safe(#[future] db: DatabaseConnection) 
 
     let edge_a = TerrainID::new();
     let edge_b = TerrainID::new();
-    terrain::insert_edge(&db, edge_a, src, dst, &TerrainKind::Child, Some("a000"), None)
-        .await
-        .unwrap();
-    terrain::insert_edge(&db, edge_b, src, dst, &TerrainKind::Child, Some("b000"), None)
-        .await
-        .unwrap();
+    terrain::insert_edge(
+        &db,
+        edge_a,
+        src,
+        dst,
+        &TerrainKind::Child,
+        Some("a000"),
+        None,
+    )
+    .await
+    .unwrap();
+    terrain::insert_edge(
+        &db,
+        edge_b,
+        src,
+        dst,
+        &TerrainKind::Child,
+        Some("b000"),
+        None,
+    )
+    .await
+    .unwrap();
 
     terrain::update_edge_by_id(&db, edge_a, other, Some("c000"))
         .await
@@ -712,16 +739,42 @@ async fn delete_edge_by_id_deletes_one_edge_idempotently(#[future] db: DatabaseC
 
     let edge_a = TerrainID::new();
     let edge_b = TerrainID::new();
-    terrain::insert_edge(&db, edge_a, src, dst, &TerrainKind::Child, Some("a000"), None)
-        .await
-        .unwrap();
-    terrain::insert_edge(&db, edge_b, src, dst, &TerrainKind::Child, Some("b000"), None)
-        .await
-        .unwrap();
+    terrain::insert_edge(
+        &db,
+        edge_a,
+        src,
+        dst,
+        &TerrainKind::Child,
+        Some("a000"),
+        None,
+    )
+    .await
+    .unwrap();
+    terrain::insert_edge(
+        &db,
+        edge_b,
+        src,
+        dst,
+        &TerrainKind::Child,
+        Some("b000"),
+        None,
+    )
+    .await
+    .unwrap();
 
     terrain::delete_edge_by_id(&db, edge_a).await.unwrap();
-    assert!(terrain::get_edge_by_id(&db, edge_a).await.unwrap().is_none());
-    assert!(terrain::get_edge_by_id(&db, edge_b).await.unwrap().is_some());
+    assert!(
+        terrain::get_edge_by_id(&db, edge_a)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        terrain::get_edge_by_id(&db, edge_b)
+            .await
+            .unwrap()
+            .is_some()
+    );
 
     // Second delete of the same edge succeeds silently.
     terrain::delete_edge_by_id(&db, edge_a).await.unwrap();
@@ -745,7 +798,10 @@ async fn insert_child_edge_returns_generated_id(#[future] db: DatabaseConnection
         .await
         .unwrap();
 
-    let edge = terrain::get_edge_by_id(&db, edge_id).await.unwrap().unwrap();
+    let edge = terrain::get_edge_by_id(&db, edge_id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(edge.src_id, parent);
     assert_eq!(edge.dst_id, child);
 }

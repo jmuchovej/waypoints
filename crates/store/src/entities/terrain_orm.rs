@@ -1,8 +1,10 @@
 use domain::chart::{ChartID, FeatureID};
 use domain::terrain::{Terrain, TerrainID, TerrainKind};
 use sea_orm::{
-    ActiveModelBehavior, ActiveValue::Set, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
-    EntityTrait, EnumIter, PrimaryKeyTrait, prelude::Json,
+    ActiveModelBehavior,
+    ActiveValue::Set,
+    DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait, EnumIter, PrimaryKeyTrait,
+    prelude::{DateTime, Json},
 };
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -45,6 +47,10 @@ pub struct Model {
 
     /// Extra metadata that belongs to this particular edge
     pub extra: Option<Json>,
+
+    /// Deletion tombstone. Soft so the row keeps carrying its sync clock
+    /// (see the sync layer's LWW rules).
+    pub deleted_at: Option<DateTime>,
 
     /// Sync row clock: packed HLC of the last sync-visible write.
     /// 0 = never touched by sync (any incoming op dominates).
