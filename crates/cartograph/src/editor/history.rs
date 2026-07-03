@@ -4,7 +4,7 @@ use domain::mark::MarkID;
 use store::DatabaseConnection;
 
 use super::error::EditorResult;
-use super::ops::AtomicOp;
+use super::maneuver::Maneuver;
 use super::types::CursorState;
 
 const MAX_HISTORY_DEPTH: usize = 200;
@@ -13,7 +13,7 @@ const COALESCE_WINDOW_MS: u128 = 500;
 /// A group of atomic operations that are undone/redone together.
 #[derive(Debug, Clone)]
 pub struct CommandGroup {
-    pub ops: Vec<AtomicOp>,
+    pub ops: Vec<Maneuver>,
     pub last_timestamp: Instant,
     pub primary_mark_id: MarkID,
     pub cursor_before: CursorState,
@@ -38,7 +38,7 @@ impl CommandHistory {
     /// are merged into the current group; structural ops always start a new group.
     pub fn push(
         &mut self,
-        ops: Vec<AtomicOp>,
+        ops: Vec<Maneuver>,
         primary_mark_id: MarkID,
         cursor_before: CursorState,
         cursor_after: CursorState,
