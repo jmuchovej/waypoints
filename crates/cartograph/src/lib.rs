@@ -48,12 +48,20 @@ pub mod mark {
 }
 
 pub mod sync {
+    mod resolver {
+        pub mod lww;
+        pub mod resolver;
+
+        pub use lww::LastWriteResolver;
+        pub use resolver::{ConflictResolver, Resolution};
+    }
     mod coordinator;
     mod envelope;
-    mod lww;
     mod relay;
 
+    pub use coordinator::{ApplyOutcome, SkipReason, SyncCoordinator, touched_marks};
     pub use envelope::{Envelope, TextPayload};
+    pub use resolver::{ConflictResolver, LastWriteResolver, Resolution};
 }
 
 pub mod territory {

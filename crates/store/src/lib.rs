@@ -79,7 +79,9 @@ pub mod entities {
 
 pub mod query {
     pub mod chart;
+    pub mod device;
     pub mod mark;
+    pub mod sync_log;
     pub mod terrain;
 }
 
