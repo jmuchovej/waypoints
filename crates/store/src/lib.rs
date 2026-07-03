@@ -3,6 +3,8 @@ pub mod error;
 mod macros;
 mod migrations;
 pub mod query;
+#[cfg(feature = "test-utils")]
+pub mod test_utils;
 pub mod tools;
 
 pub use error::{StoreError, StoreResult};
