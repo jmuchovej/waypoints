@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Display, Type,
+)]
 #[display("{}", self.inner().to_string().to_lowercase())]
 #[debug("AccountID({})", self.inner().to_string().to_lowercase())]
 #[serde(transparent)]
@@ -31,7 +33,9 @@ impl Default for AccountID {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Display, Type,
+)]
 #[display("{}", self.inner().to_string().to_lowercase())]
 #[debug("RealmID({})", self.inner().to_string().to_lowercase())]
 #[serde(transparent)]
@@ -59,7 +63,9 @@ impl Default for RealmID {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Display, Type,
+)]
 #[display("{}", self.inner().to_string().to_lowercase())]
 #[debug("DeviceID({})", self.inner().to_string().to_lowercase())]
 #[serde(transparent)]
@@ -87,7 +93,9 @@ impl Default for DeviceID {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Display, Type,
+)]
 #[display("{}", self.inner().to_string().to_lowercase())]
 #[debug("OpID({})", self.inner().to_string().to_lowercase())]
 #[serde(transparent)]

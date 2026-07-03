@@ -77,8 +77,13 @@ impl CommandHistory {
     }
 
     /// Undo the last group: invert each op, apply in reverse, move to redo stack.
-    /// Returns the cursor state to restore (cursor_before of the undone group).
-    pub async fn undo(&mut self, db: &DatabaseConnection) -> EditorResult<Option<CursorState>> {
+    /// Returns the cursor state to restore (cursor_before of the undone group)
+    /// and the inverted ops that were applied — the caller logs those to sync,
+    /// since an undo mutates the database like any other command.
+    pub async fn undo(
+        &mut self,
+        db: &DatabaseConnection,
+    ) -> EditorResult<Option<(CursorState, Vec<Maneuver>)>> {
         let group = match self.undo_stack.pop() {
             Some(g) => g,
             None => return Ok(None),
@@ -87,17 +92,24 @@ impl CommandHistory {
         let cursor = group.cursor_before.clone();
 
         // Apply inverted ops in reverse order
+        let mut applied = Vec::with_capacity(group.ops.len());
         for op in group.ops.iter().rev() {
-            op.invert().apply(db).await?;
+            let inverse = op.invert();
+            inverse.apply(db).await?;
+            applied.push(inverse);
         }
 
         self.redo_stack.push(group);
-        Ok(Some(cursor))
+        Ok(Some((cursor, applied)))
     }
 
     /// Redo the last undone group: re-apply ops, move back to undo stack.
-    /// Returns the cursor state to restore (cursor_after of the redone group).
-    pub async fn redo(&mut self, db: &DatabaseConnection) -> EditorResult<Option<CursorState>> {
+    /// Returns the cursor state to restore (cursor_after of the redone group)
+    /// and the re-applied ops for sync logging.
+    pub async fn redo(
+        &mut self,
+        db: &DatabaseConnection,
+    ) -> EditorResult<Option<(CursorState, Vec<Maneuver>)>> {
         let group = match self.redo_stack.pop() {
             Some(g) => g,
             None => return Ok(None),
@@ -110,7 +122,8 @@ impl CommandHistory {
             op.apply(db).await?;
         }
 
+        let applied = group.ops.clone();
         self.undo_stack.push(group);
-        Ok(Some(cursor))
+        Ok(Some((cursor, applied)))
     }
 }

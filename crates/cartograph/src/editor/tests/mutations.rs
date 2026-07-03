@@ -298,3 +298,29 @@ async fn update_mark_title_on_content_errors(#[future] env: Env) {
         .await;
     assert!(result.is_err());
 }
+
+/// Every mutation through the editor service is also logged to sync
+/// (#131 acceptance): one local-origin `sync_log` group per command.
+#[rstest]
+#[tokio::test]
+async fn mutations_log_local_sync_groups(#[future] env: Env) {
+    use sea_orm::EntityTrait;
+    use store::entities::SyncLog;
+
+    let (mut svc, db) = env.await;
+    let (lm, children) = seed_landmark(&db, 2).await;
+
+    svc.create_mark_after(children[0], lm, paragraph("synced"), lm)
+        .await
+        .unwrap();
+    svc.delete_mark(children[1], lm).await.unwrap();
+
+    let rows = SyncLog::find().all(&db).await.unwrap();
+    assert_eq!(rows.len(), 2, "one group per mutation");
+    assert!(rows.iter().all(|r| r.origin == 0), "local origin");
+
+    // Undo is a synced write too.
+    svc.undo(lm).await.unwrap();
+    let rows = SyncLog::find().all(&db).await.unwrap();
+    assert_eq!(rows.len(), 3);
+}

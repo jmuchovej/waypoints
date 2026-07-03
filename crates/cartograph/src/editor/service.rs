@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
 use store::DatabaseConnection;
+use tokio::sync::{Mutex, OwnedMutexGuard};
 
 use super::error::{EditorError, EditorResult};
 use super::history::CommandHistory;
@@ -9,14 +11,19 @@ use super::types::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRe
 use super::{mutation, projection};
 
 use crate::Database;
+use crate::sync::{SyncCoordinator, touched_marks};
 
-/// The editor service holds a shared database connection and per-landmark undo histories.
+/// The editor service holds a shared database connection, per-landmark undo
+/// histories, and the sync coordinator every mutation logs through.
 ///
 /// The [`Database`](crate::Database) Arc is shared with `TerritoryManager` so territory switches
 /// only need to swap the inner `Option` — no EditorService reconstruction required.
 pub struct EditorService {
     db: Database,
     histories: HashMap<MarkID, CommandHistory>,
+    /// Lazily loaded on first mutation (needs a live territory DB) and
+    /// reset on territory switch — device identity is per-territory.
+    sync: Arc<Mutex<Option<SyncCoordinator>>>,
 }
 
 /// Get or create a `CommandHistory` for `landmark_id` from the map.
@@ -31,11 +38,24 @@ fn history_entry(
         .or_insert_with(CommandHistory::new)
 }
 
+/// Lock the coordinator, loading it from the device table on first use.
+async fn sync_guard(
+    sync: &Arc<Mutex<Option<SyncCoordinator>>>,
+    db: &DatabaseConnection,
+) -> EditorResult<OwnedMutexGuard<Option<SyncCoordinator>>> {
+    let mut guard = sync.clone().lock_owned().await;
+    if guard.is_none() {
+        *guard = Some(SyncCoordinator::load(db).await?);
+    }
+    Ok(guard)
+}
+
 impl EditorService {
     pub fn new(db: Database) -> Self {
         Self {
             db,
             histories: HashMap::new(),
+            sync: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -48,9 +68,14 @@ impl EditorService {
             .ok_or(EditorError::NoActiveTerritory)
     }
 
-    /// Clear all undo histories (e.g. on territory switch).
+    /// Clear all undo histories and sync state (e.g. on territory switch).
     pub fn clear_histories(&mut self) {
         self.histories.clear();
+        // Fresh territory = fresh device identity; drop the coordinator so
+        // it reloads lazily from the new database. Replacing the Arc is
+        // fine while nothing else holds a clone (the relay driver will,
+        // once Phase 6 lands — revisit then).
+        self.sync = Arc::new(Mutex::new(None));
     }
 
     /// Fetch a single mark by ID.
@@ -84,8 +109,10 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::update_mark(&db, h, id, content, landmark_id).await
+        mutation::update_mark(&db, h, sync, id, content, landmark_id).await
     }
 
     pub async fn delete_mark(
@@ -94,8 +121,10 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::delete_mark(&db, h, id, landmark_id).await
+        mutation::delete_mark(&db, h, sync, id, landmark_id).await
     }
 
     pub async fn move_marks(
@@ -106,13 +135,17 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::move_marks(&db, h, parent_id, child_ids, after_id, landmark_id).await
+        mutation::move_marks(&db, h, sync, parent_id, child_ids, after_id, landmark_id).await
     }
 
     pub async fn update_mark_title(&self, id: MarkID, title: RichText) -> EditorResult<()> {
         let db = self.db().await?;
-        mutation::update_mark_title(&db, id, title).await
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
+        mutation::update_mark_title(&db, sync, id, title).await
     }
 
     pub async fn update_mark_reading(
@@ -122,7 +155,9 @@ impl EditorService {
         reading: domain::mark::Reading,
     ) -> EditorResult<Mark> {
         let db = self.db().await?;
-        mutation::update_mark_reading(&db, id, feature_id, reading).await
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
+        mutation::update_mark_reading(&db, sync, id, feature_id, reading).await
     }
 
     pub async fn create_mark_after(
@@ -133,8 +168,10 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<CreateResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::create_mark_after(&db, h, after_id, parent_id, data, landmark_id).await
+        mutation::create_mark_after(&db, h, sync, after_id, parent_id, data, landmark_id).await
     }
 
     pub async fn wrap_in_compound(
@@ -146,10 +183,13 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<CreateResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
         mutation::wrap_in_compound(
             &db,
             h,
+            sync,
             compound_data,
             child_ids,
             after_id,
@@ -166,8 +206,10 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::update_mark_text(&db, h, mark_id, rich_text, landmark_id).await
+        mutation::update_mark_text(&db, h, sync, mark_id, rich_text, landmark_id).await
     }
 
     pub async fn split_mark(
@@ -177,8 +219,10 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<SplitResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::split_mark(&db, h, mark_id, offset as usize, landmark_id).await
+        mutation::split_mark(&db, h, sync, mark_id, offset as usize, landmark_id).await
     }
 
     pub async fn merge_marks(
@@ -188,8 +232,10 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::merge_marks(&db, h, target_id, source_id, landmark_id).await
+        mutation::merge_marks(&db, h, sync, target_id, source_id, landmark_id).await
     }
 
     pub async fn delete_marks(
@@ -198,8 +244,10 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::delete_marks(&db, h, mark_ids, landmark_id).await
+        mutation::delete_marks(&db, h, sync, mark_ids, landmark_id).await
     }
 
     pub async fn reparent_mark(
@@ -210,20 +258,27 @@ impl EditorService {
         landmark_id: MarkID,
     ) -> EditorResult<MutationResult> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        mutation::reparent_mark(&db, h, mark_id, new_parent_id, after_id, landmark_id).await
+        mutation::reparent_mark(&db, h, sync, mark_id, new_parent_id, after_id, landmark_id).await
     }
 
     pub async fn undo(&mut self, landmark_id: MarkID) -> EditorResult<Option<UndoRedoResult>> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        let cursor = h.undo(&db).await?;
-        match cursor {
-            Some(c) => {
+        match h.undo(&db).await? {
+            Some((cursor, ops)) => {
+                // An undo mutates the database like any other command
+                // group — it must reach other devices too.
+                let marks = touched_marks(&ops);
+                sync.log_local(&db, ops, marks).await?;
                 let blocks = projection::project_landmark(&db, landmark_id, None).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,
-                    cursor: Some(c),
+                    cursor: Some(cursor),
                 }))
             }
             None => Ok(None),
@@ -232,14 +287,17 @@ impl EditorService {
 
     pub async fn redo(&mut self, landmark_id: MarkID) -> EditorResult<Option<UndoRedoResult>> {
         let db = self.db().await?;
+        let mut guard = sync_guard(&self.sync, &db).await?;
+        let sync = guard.as_mut().expect("coordinator loaded above");
         let h = history_entry(&mut self.histories, landmark_id);
-        let cursor = h.redo(&db).await?;
-        match cursor {
-            Some(c) => {
+        match h.redo(&db).await? {
+            Some((cursor, ops)) => {
+                let marks = touched_marks(&ops);
+                sync.log_local(&db, ops, marks).await?;
                 let blocks = projection::project_landmark(&db, landmark_id, None).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,
-                    cursor: Some(c),
+                    cursor: Some(cursor),
                 }))
             }
             None => Ok(None),
