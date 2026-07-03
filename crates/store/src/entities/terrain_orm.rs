@@ -17,7 +17,7 @@ use uuid::Uuid;
 /// between the same `(src, dst)` pair can coexist, each with their own
 /// `id`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DeriveEntityModel)]
-#[sea_orm(table_name = "terrains", rename_all = "kebab-case")]
+#[sea_orm(table_name = "terrains")]
 pub struct Model {
     /// Stable edge identity. Generated on insert.
     #[sea_orm(primary_key, auto_increment = false)]
@@ -38,7 +38,9 @@ pub struct Model {
     #[sea_orm(indexed)]
     pub kind: String,
 
-    /// Lexicographic ordering string (only meaningful for certain edge kinds)
+    /// Lexicographic ordering string (only meaningful for certain edge kinds).
+    /// Stored as `sequence` — ORDER is a reserved word.
+    #[sea_orm(column_name = "sequence")]
     pub order: Option<String>,
 
     /// Extra metadata that belongs to this particular edge
