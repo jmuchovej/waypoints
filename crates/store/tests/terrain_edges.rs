@@ -613,3 +613,138 @@ async fn schema_allows_duplicate_child_edges_for_future_block_embeds(
     assert_eq!(all.len(), 2, "schema must allow duplicate same-kind edges");
     assert_ne!(all[0].id, all[1].id, "edge IDs must be distinct");
 }
+
+// ── Multigraph by-ID helpers (sync v1, #129) ────────────────────────────
+
+use domain::terrain::TerrainID;
+
+/// `insert_edge` must store the caller-provided `TerrainID` exactly — sync
+/// requires the same edge identity on every device.
+#[rstest]
+#[tokio::test]
+async fn insert_edge_round_trips_caller_provided_id(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let src = new_id();
+    let dst = new_id();
+    mark::insert(&db, src, &landmark("page", "Src"), now())
+        .await
+        .unwrap();
+    mark::insert(&db, dst, &paragraph("dst"), now())
+        .await
+        .unwrap();
+
+    let edge_id = TerrainID::new();
+    terrain::insert_edge(&db, edge_id, src, dst, &TerrainKind::Child, Some("i000"), None)
+        .await
+        .unwrap();
+
+    let edge = terrain::get_edge_by_id(&db, edge_id).await.unwrap().unwrap();
+    assert_eq!(edge.id, edge_id);
+    assert_eq!(edge.src_id, src);
+    assert_eq!(edge.dst_id, dst);
+    assert_eq!(edge.order.as_deref(), Some("i000"));
+}
+
+/// `update_edge_by_id` must touch only the addressed edge, even when
+/// multiple same-kind edges share the same `(src, dst)` pair.
+#[rstest]
+#[tokio::test]
+async fn update_edge_by_id_is_multigraph_safe(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let src = new_id();
+    let other = new_id();
+    let dst = new_id();
+    for (id, data) in [
+        (src, landmark("page", "Src")),
+        (other, landmark("page", "Other")),
+        (dst, paragraph("dst")),
+    ] {
+        mark::insert(&db, id, &data, now()).await.unwrap();
+    }
+
+    let edge_a = TerrainID::new();
+    let edge_b = TerrainID::new();
+    terrain::insert_edge(&db, edge_a, src, dst, &TerrainKind::Child, Some("a000"), None)
+        .await
+        .unwrap();
+    terrain::insert_edge(&db, edge_b, src, dst, &TerrainKind::Child, Some("b000"), None)
+        .await
+        .unwrap();
+
+    terrain::update_edge_by_id(&db, edge_a, other, Some("c000"))
+        .await
+        .unwrap();
+
+    let a = terrain::get_edge_by_id(&db, edge_a).await.unwrap().unwrap();
+    let b = terrain::get_edge_by_id(&db, edge_b).await.unwrap().unwrap();
+    assert_eq!(a.src_id, other);
+    assert_eq!(a.order.as_deref(), Some("c000"));
+    assert_eq!(b.src_id, src, "sibling edge must be untouched");
+    assert_eq!(b.order.as_deref(), Some("b000"));
+}
+
+#[rstest]
+#[tokio::test]
+async fn update_edge_by_id_errors_on_missing_edge(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let missing = TerrainID::new();
+    let result = terrain::update_edge_by_id(&db, missing, new_id(), Some("i000")).await;
+    assert!(matches!(
+        result,
+        Err(store::StoreError::EdgeNotFound(id)) if id == missing
+    ));
+}
+
+/// `delete_edge_by_id` removes only the addressed edge and is idempotent.
+#[rstest]
+#[tokio::test]
+async fn delete_edge_by_id_deletes_one_edge_idempotently(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let src = new_id();
+    let dst = new_id();
+    mark::insert(&db, src, &landmark("page", "Src"), now())
+        .await
+        .unwrap();
+    mark::insert(&db, dst, &paragraph("dst"), now())
+        .await
+        .unwrap();
+
+    let edge_a = TerrainID::new();
+    let edge_b = TerrainID::new();
+    terrain::insert_edge(&db, edge_a, src, dst, &TerrainKind::Child, Some("a000"), None)
+        .await
+        .unwrap();
+    terrain::insert_edge(&db, edge_b, src, dst, &TerrainKind::Child, Some("b000"), None)
+        .await
+        .unwrap();
+
+    terrain::delete_edge_by_id(&db, edge_a).await.unwrap();
+    assert!(terrain::get_edge_by_id(&db, edge_a).await.unwrap().is_none());
+    assert!(terrain::get_edge_by_id(&db, edge_b).await.unwrap().is_some());
+
+    // Second delete of the same edge succeeds silently.
+    terrain::delete_edge_by_id(&db, edge_a).await.unwrap();
+}
+
+/// `insert_child_edge` returns the `TerrainID` it generated for the row.
+#[rstest]
+#[tokio::test]
+async fn insert_child_edge_returns_generated_id(#[future] db: DatabaseConnection) {
+    let db = db.await;
+    let parent = new_id();
+    let child = new_id();
+    mark::insert(&db, parent, &landmark("page", "Parent"), now())
+        .await
+        .unwrap();
+    mark::insert(&db, child, &paragraph("child"), now())
+        .await
+        .unwrap();
+
+    let edge_id = terrain::insert_child_edge(&db, parent, child, "i000")
+        .await
+        .unwrap();
+
+    let edge = terrain::get_edge_by_id(&db, edge_id).await.unwrap().unwrap();
+    assert_eq!(edge.src_id, parent);
+    assert_eq!(edge.dst_id, child);
+}
