@@ -209,7 +209,9 @@ impl Maneuver {
                 order,
                 extra,
             } => {
-                terrain::insert_edge(db, *edge_id, *src, *dst, kind, order.as_deref(), extra.clone())
+                // Upsert: redoing a create (or a remote create winning LWW
+                // over a tombstone) revives the existing row.
+                terrain::upsert_edge(db, *edge_id, *src, *dst, kind, order.as_deref(), extra.clone())
                     .await?;
                 Ok(())
             }

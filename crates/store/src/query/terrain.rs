@@ -23,7 +23,7 @@ pub async fn get_edges(
     dst_id: Option<MarkID>,
     kind: Option<&TerrainKind>,
 ) -> StoreResult<Vec<Terrain>> {
-    let mut query = Terrains::find();
+    let mut query = Terrains::find().filter(TerrainColumn::DeletedAt.is_null());
 
     if let Some(src) = src_id {
         query = query.filter(TerrainColumn::SrcId.eq(src.inner()));
@@ -93,12 +93,45 @@ pub async fn insert_edge(
     Ok(())
 }
 
-/// Fetch a single edge by its stable `TerrainID`.
+/// Insert an edge, or revive it if the row already exists (tombstoned or
+/// not) — redoing a create, or a remote create winning LWW over a local
+/// tombstone, must restore the existing row rather than conflict on the
+/// primary key.
+#[allow(clippy::too_many_arguments)]
+pub async fn upsert_edge(
+    db: &DatabaseConnection,
+    edge_id: TerrainID,
+    src: MarkID,
+    dst: MarkID,
+    kind: &TerrainKind,
+    order: Option<&str>,
+    extra: Option<Json>,
+) -> StoreResult<()> {
+    match Terrains::find_by_id(edge_id.inner()).one(db).await? {
+        Some(model) => {
+            let mut active: ActiveTerrain = model.into_active_model();
+            active.src_id = Set(src.inner());
+            active.dst_id = Set(dst.inner());
+            active.kind = Set(kind_to_string(kind));
+            active.order = Set(order.map(str::to_string));
+            active.extra = Set(extra);
+            active.deleted_at = Set(None);
+            active.update(db).await?;
+            Ok(())
+        }
+        None => insert_edge(db, edge_id, src, dst, kind, order, extra).await,
+    }
+}
+
+/// Fetch a single live (non-tombstoned) edge by its stable `TerrainID`.
 pub async fn get_edge_by_id(
     db: &DatabaseConnection,
     edge_id: TerrainID,
 ) -> StoreResult<Option<Terrain>> {
-    let model = Terrains::find_by_id(edge_id.inner()).one(db).await?;
+    let model = Terrains::find_by_id(edge_id.inner())
+        .filter(TerrainColumn::DeletedAt.is_null())
+        .one(db)
+        .await?;
     Ok(model.map(Terrain::from))
 }
 
@@ -106,6 +139,9 @@ pub async fn get_edge_by_id(
 ///
 /// `new_order` overwrites the stored order, including clearing it with
 /// `None` (order is only meaningful for certain kinds like `Child`).
+/// Clears any tombstone: when an update wins LWW over a deletion, the
+/// edge is live again — otherwise the losing delete would still win
+/// observably.
 pub async fn update_edge_by_id(
     db: &DatabaseConnection,
     edge_id: TerrainID,
@@ -120,14 +156,23 @@ pub async fn update_edge_by_id(
     let mut active: ActiveTerrain = model.into_active_model();
     active.src_id = Set(new_src.inner());
     active.order = Set(new_order.map(str::to_string));
+    active.deleted_at = Set(None);
     active.update(db).await?;
     Ok(())
 }
 
-/// Delete an edge by its stable `TerrainID`. Succeeds silently if the edge
-/// is already gone (deletes are idempotent for sync's benefit).
+/// Tombstone an edge by its stable `TerrainID`. Soft so the row keeps
+/// carrying its sync clock. Succeeds silently if the edge is already
+/// gone (deletes are idempotent for sync's benefit).
 pub async fn delete_edge_by_id(db: &DatabaseConnection, edge_id: TerrainID) -> StoreResult<()> {
-    Terrains::delete_by_id(edge_id.inner()).exec(db).await?;
+    Terrains::update_many()
+        .col_expr(
+            TerrainColumn::DeletedAt,
+            Expr::value(chrono::Local::now().naive_utc()),
+        )
+        .filter(TerrainColumn::Id.eq(edge_id.inner()))
+        .exec(db)
+        .await?;
     Ok(())
 }
 
@@ -153,7 +198,7 @@ pub async fn insert_child_edge(
     Ok(edge_id)
 }
 
-/// Delete edges where dst_id matches.
+/// Tombstone edges where dst_id matches.
 ///
 /// When `kind` is `None`, deletes all edges regardless of kind.
 /// When `kind` is `Some(k)`, only deletes edges of that kind.
@@ -162,7 +207,13 @@ pub async fn delete_edges_by_dst(
     dst_id: MarkID,
     kind: Option<&TerrainKind>,
 ) -> StoreResult<()> {
-    let mut query = Terrains::delete_many().filter(TerrainColumn::DstId.eq(dst_id.inner()));
+    let mut query = Terrains::update_many()
+        .col_expr(
+            TerrainColumn::DeletedAt,
+            Expr::value(chrono::Local::now().naive_utc()),
+        )
+        .filter(TerrainColumn::DstId.eq(dst_id.inner()))
+        .filter(TerrainColumn::DeletedAt.is_null());
 
     if let Some(k) = kind {
         query = query.filter(TerrainColumn::Kind.eq(kind_to_string(k)));
@@ -211,10 +262,12 @@ pub async fn get_row_clock(
     edge_id: TerrainID,
 ) -> StoreResult<Option<(HLC, DeviceID)>> {
     let model = Terrains::find_by_id(edge_id.inner()).one(db).await?;
-    Ok(model.and_then(|m| match (m.updated_hlc, m.updated_by_device) {
-        (0, _) | (_, None) => None,
-        (hlc, Some(device)) => Some((HLC(hlc), DeviceID::from(device))),
-    }))
+    Ok(
+        model.and_then(|m| match (m.updated_hlc, m.updated_by_device) {
+            (0, _) | (_, None) => None,
+            (hlc, Some(device)) => Some((HLC(hlc), DeviceID::from(device))),
+        }),
+    )
 }
 
 /// Set the sync row clock for an edge. Uses a direct column update so it
