@@ -50,7 +50,7 @@ use serde::{Deserialize, Serialize};
 ///
 // TODO add page-extending chart examples
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DeriveEntityModel)]
-#[sea_orm(table_name = "charts", rename_all = "kebab-case")]
+#[sea_orm(table_name = "charts")]
 pub struct Model {
     /// Unique identifier for this type
     #[sea_orm(primary_key, auto_increment = false)]

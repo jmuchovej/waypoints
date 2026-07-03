@@ -56,13 +56,13 @@ pub async fn run(conn: &Connection) -> StoreResult<()> {
 
 async fn probe_chart(conn: &Connection, id: &str) -> StoreResult<bool> {
     let mut rows = conn
-        .query("SELECT 1 FROM charts WHERE \"id\" = ?", [id])
+        .query("SELECT 1 FROM charts WHERE id = ?", [id])
         .await?;
     Ok(rows.next().await?.is_some())
 }
 
 async fn insert_charts(conn: &Connection, charts: &[Chart]) -> StoreResult<()> {
-    const SQL: &str = r#"INSERT OR FAIL INTO charts ("id", "name", "description", "icon", "features")
+    const SQL: &str = r#"INSERT OR FAIL INTO charts (id, name, description, icon, features)
                         VALUES (?, ?, ?, ?, ?)"#;
 
     for chart in charts {

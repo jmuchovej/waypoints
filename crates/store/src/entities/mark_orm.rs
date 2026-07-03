@@ -16,7 +16,7 @@ use crate::{StoreResult, impl_timestamps};
 
 /// Core block structure representing any piece of content.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, DeriveEntityModel)]
-#[sea_orm(table_name = "marks", rename_all = "kebab-case")]
+#[sea_orm(table_name = "marks")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,

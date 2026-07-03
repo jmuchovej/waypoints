@@ -72,7 +72,7 @@ pub async fn run(conn: &Connection) -> StoreResult<()> {
 
 async fn probe_mark(conn: &Connection, id: &Uuid) -> StoreResult<bool> {
     let mut rows = conn
-        .query("SELECT 1 FROM marks WHERE \"id\" = ?", [uuid_to_blob(id)])
+        .query("SELECT 1 FROM marks WHERE id = ?", [uuid_to_blob(id)])
         .await?;
     Ok(rows.next().await?.is_some())
 }
@@ -83,9 +83,7 @@ async fn load_chart_features(
     conn: &Connection,
 ) -> StoreResult<HashMap<ChartID, IndexMap<FeatureID, Feature>>> {
     let mut out = HashMap::new();
-    let mut rows = conn
-        .query("SELECT \"id\", \"features\" FROM charts", ())
-        .await?;
+    let mut rows = conn.query("SELECT id, features FROM charts", ()).await?;
     while let Some(row) = rows.next().await? {
         let id_str: String = row.get(0)?;
         let features_json: String = row.get(1)?;
@@ -149,10 +147,10 @@ async fn insert_all(
 
 async fn insert_mark(conn: &Connection, mark: &Mark) -> StoreResult<()> {
     const SQL: &str = r#"INSERT OR FAIL INTO marks
-        ("id", "mark", "data", "extra",
-         "created-at", "updated-at",
-         "created-by", "updated-by",
-         "deleted-at", "archived-at")
+        (id, mark, data, extra,
+         created_at, updated_at,
+         created_by, updated_by,
+         deleted_at, archived_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#;
 
     let now = datetime_now();
@@ -182,7 +180,7 @@ async fn insert_mark(conn: &Connection, mark: &Mark) -> StoreResult<()> {
 
 async fn insert_terrain(conn: &Connection, terrain: &Terrain) -> StoreResult<()> {
     const SQL: &str = r#"INSERT OR FAIL INTO terrains
-        ("id", "src-id", "dst-id", "kind", "order", "extra")
+        (id, src_id, dst_id, kind, sequence, extra)
         VALUES (?, ?, ?, ?, ?, ?)"#;
 
     let id = uuid_to_blob(&terrain.id.inner());
