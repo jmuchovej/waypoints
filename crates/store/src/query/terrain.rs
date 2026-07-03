@@ -1,10 +1,10 @@
+use domain::Json;
 use domain::mark::MarkID;
-use domain::terrain::{Terrain, TerrainKind};
+use domain::terrain::{Terrain, TerrainID, TerrainKind};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
     IntoActiveModel, ModelTrait, QueryFilter, QueryOrder,
 };
-use uuid::Uuid;
 
 use crate::entities::{
     ActiveTerrain, TerrainColumn, Terrains, terrain_kind_to_string as kind_to_string,
@@ -51,6 +51,9 @@ pub async fn get_child_edges(
 /// mark. Under the multigraph schema a child *can* in principle have
 /// more than one parent (block embeds / synced blocks). For now we
 /// assume the one-parent invariant that the editor relies on.
+///
+/// SYNC: this function is not multigraph-safe; sync paths must use
+/// `get_edge_by_id`.
 pub async fn find_parent_edge(
     db: &DatabaseConnection,
     child_id: MarkID,
@@ -59,23 +62,91 @@ pub async fn find_parent_edge(
     Ok(edges.pop())
 }
 
-/// Insert a child edge. Generates a fresh `id` for the edge.
+/// Insert an edge with a caller-provided `TerrainID`.
+///
+/// The caller provides the ID on purpose: sync requires the edge to have the
+/// same identity on every device, so the originating device generates it and
+/// embeds it in the `CreateEdge` op. Do not generate an ID inside this
+/// function.
+pub async fn insert_edge(
+    db: &DatabaseConnection,
+    edge_id: TerrainID,
+    src: MarkID,
+    dst: MarkID,
+    kind: &TerrainKind,
+    order: Option<&str>,
+    extra: Option<Json>,
+) -> StoreResult<()> {
+    let active = ActiveTerrain {
+        id: Set(edge_id.inner()),
+        src_id: Set(src.inner()),
+        dst_id: Set(dst.inner()),
+        kind: Set(kind_to_string(kind)),
+        order: Set(order.map(str::to_string)),
+        extra: Set(extra),
+    };
+    active.insert(db).await?;
+    Ok(())
+}
+
+/// Fetch a single edge by its stable `TerrainID`.
+pub async fn get_edge_by_id(
+    db: &DatabaseConnection,
+    edge_id: TerrainID,
+) -> StoreResult<Option<Terrain>> {
+    let model = Terrains::find_by_id(edge_id.inner()).one(db).await?;
+    Ok(model.map(Terrain::from))
+}
+
+/// Update an edge's `src` and `order` by its stable `TerrainID`.
+///
+/// `new_order` overwrites the stored order, including clearing it with
+/// `None` (order is only meaningful for certain kinds like `Child`).
+pub async fn update_edge_by_id(
+    db: &DatabaseConnection,
+    edge_id: TerrainID,
+    new_src: MarkID,
+    new_order: Option<&str>,
+) -> StoreResult<()> {
+    let model = Terrains::find_by_id(edge_id.inner())
+        .one(db)
+        .await?
+        .ok_or(StoreError::EdgeNotFound(edge_id))?;
+
+    let mut active: ActiveTerrain = model.into_active_model();
+    active.src_id = Set(new_src.inner());
+    active.order = Set(new_order.map(str::to_string));
+    active.update(db).await?;
+    Ok(())
+}
+
+/// Delete an edge by its stable `TerrainID`. Succeeds silently if the edge
+/// is already gone (deletes are idempotent for sync's benefit).
+pub async fn delete_edge_by_id(db: &DatabaseConnection, edge_id: TerrainID) -> StoreResult<()> {
+    Terrains::delete_by_id(edge_id.inner()).exec(db).await?;
+    Ok(())
+}
+
+/// Insert a child edge. Generates a fresh `TerrainID` and returns it so the
+/// caller can record it in ops (sync addresses edges by ID).
 pub async fn insert_child_edge(
     db: &DatabaseConnection,
     parent_id: MarkID,
     child_id: MarkID,
     order: &str,
-) -> StoreResult<()> {
-    let active = ActiveTerrain {
-        id: Set(Uuid::new_v4()),
-        src_id: Set(parent_id.inner()),
-        dst_id: Set(child_id.inner()),
-        kind: Set(kind_to_string(&TerrainKind::Child)),
-        order: Set(Some(order.to_string())),
-        extra: Set(None),
-    };
-    active.insert(db).await?;
-    Ok(())
+) -> StoreResult<TerrainID> {
+    let edge_id = TerrainID::new();
+    insert_edge(
+        db,
+        edge_id,
+        parent_id,
+        child_id,
+        &TerrainKind::Child,
+        Some(order),
+        None,
+    )
+    .await?;
+    Ok(edge_id)
 }
 
 /// Delete edges where dst_id matches.

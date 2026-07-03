@@ -1,6 +1,7 @@
 use domain::DomainError;
 use domain::chart::{ChartID, FeatureID, GlyphID};
 use domain::mark::MarkID;
+use domain::terrain::TerrainID;
 use thiserror::Error;
 
 use crate::entities::MarkModel;
@@ -27,6 +28,8 @@ pub enum StoreError {
     GlyphNotFound(GlyphID),
     #[error("Feature not found: {0}")]
     FeatureNotFound(FeatureID),
+    #[error("Edge not found: {0}")]
+    EdgeNotFound(TerrainID),
     #[error("serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
     #[error("unknown mark: {0}, [type={1}]")]
