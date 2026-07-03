@@ -2,16 +2,18 @@ use domain::chart::ChartID;
 use domain::fractional_index;
 use domain::mark::{Content, Landmark, MarkData, MarkID, RichText};
 use rstest::fixture;
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::DatabaseConnection;
 use store::query::{mark, terrain};
-use store::{Migrator, MigratorTrait};
 
-/// rstest fixture — each test gets a fresh in-memory SQLite with migrations applied.
+/// rstest fixture — each test gets a fresh migrated SQLite in a tempdir.
+///
+/// Refinery migrations run through turso against a file path, so tests
+/// can't use `sqlite::memory:`. The tempdir is kept (not cleaned up) so
+/// lazily-opened pool connections stay valid; the OS reclaims it.
 #[fixture]
 pub async fn db() -> DatabaseConnection {
-    let db = Database::connect("sqlite::memory:").await.unwrap();
-    Migrator::up(&db, None).await.unwrap();
-    db
+    let dir = tempfile::tempdir().unwrap().keep();
+    store::open(&dir.join("test.db")).await.unwrap()
 }
 
 /// A paragraph content mark with the given plain text.

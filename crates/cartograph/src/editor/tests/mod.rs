@@ -8,8 +8,8 @@ use domain::chart::ChartID;
 use domain::fractional_index;
 use domain::mark::{Content, Landmark, MarkData, MarkID, RichText};
 use rstest::fixture;
+use store::DatabaseConnection;
 use store::query::{mark, terrain};
-use store::{DatabaseConnection, Migrator, MigratorTrait};
 
 use crate::Database;
 use crate::editor::service::EditorService;
@@ -17,10 +17,7 @@ use crate::editor::service::EditorService;
 type Env = (EditorService, DatabaseConnection);
 
 async fn test_db() -> DatabaseConnection {
-    use sea_orm::Database;
-    let db = Database::connect("sqlite::memory:").await.unwrap();
-    Migrator::up(&db, None).await.unwrap();
-    db
+    store::test_utils::temp_db().await
 }
 
 fn shared(db: DatabaseConnection) -> Database {
