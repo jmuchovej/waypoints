@@ -134,7 +134,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let db = open(&dir.path().join("test.db")).await.expect("open");
 
-        assert_eq!(count(&db, "refinery_schema_history").await, 3);
+        assert_eq!(count(&db, "refinery_schema_history").await, 6);
         assert_eq!(count(&db, "charts").await, 9);
 
         // mock feature also seeds documents; without it, marks/terrains are 0.

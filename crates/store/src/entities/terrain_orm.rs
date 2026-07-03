@@ -45,6 +45,12 @@ pub struct Model {
 
     /// Extra metadata that belongs to this particular edge
     pub extra: Option<Json>,
+
+    /// Sync row clock: packed HLC of the last sync-visible write.
+    /// 0 = never touched by sync (any incoming op dominates).
+    pub updated_hlc: i64,
+    /// Sync row clock: device that produced the winning write.
+    pub updated_by_device: Option<Uuid>,
 }
 
 use super::{MarkColumn, Marks};
@@ -138,6 +144,9 @@ impl From<Terrain> for ActiveModel {
             kind: Set(kind_to_string(&terrain.kind)),
             order: Set(terrain.order),
             extra: Set(terrain.extra),
+            // Row clocks are managed by the sync layer, never by the
+            // domain conversion.
+            ..Default::default()
         }
     }
 }
