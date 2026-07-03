@@ -10,8 +10,8 @@ pub(crate) mod editor {
     pub(crate) mod error;
     mod handle;
     mod history;
+    pub(crate) mod maneuver;
     pub(crate) mod mutation;
-    pub(crate) mod ops;
     pub(crate) mod projection;
     pub(crate) mod rich_text;
     pub(crate) mod service;
@@ -21,12 +21,17 @@ pub(crate) mod editor {
 
     pub use error::{EditorError, EditorResult};
     pub use handle::EditorHandle;
+    pub use maneuver::{Maneuver, ManeuverTarget};
     pub use types::{
         CreateResult, CursorState, MutationResult, RenderNode, SplitResult, UndoRedoResult,
     };
 
     pub(crate) use service::EditorService;
 }
+pub use editor::{
+    CreateResult, CursorState, EditorError, EditorHandle, EditorResult, MutationResult, RenderNode,
+    SplitResult, UndoRedoResult,
+};
 
 pub mod chart {
     mod handle;
@@ -48,7 +53,7 @@ pub mod sync {
     mod lww;
     mod relay;
 
-    pub use envelope::TextPayload;
+    pub use envelope::{Envelope, TextPayload};
 }
 
 pub mod territory {
@@ -67,9 +72,4 @@ pub mod territory {
 }
 
 mod runtime;
-
-pub use editor::{
-    CreateResult, CursorState, EditorError, EditorHandle, EditorResult, MutationResult, RenderNode,
-    SplitResult, UndoRedoResult,
-};
 pub use runtime::WaypointsRuntime;

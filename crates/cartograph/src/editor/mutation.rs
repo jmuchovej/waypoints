@@ -1,12 +1,15 @@
 use domain::chart::{FeatureID, FeatureKind};
 use domain::fractional_index;
 use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
+use domain::terrain::{Terrain, TerrainKind};
 use store::DatabaseConnection;
 use store::query::{chart, mark, terrain};
 
+use crate::sync::TextPayload;
+
 use super::error::{EditorError, EditorResult};
 use super::history::CommandHistory;
-use super::ops::AtomicOp;
+use super::maneuver::Maneuver;
 use super::projection;
 use super::types::{CreateResult, CursorState, MutationResult, RenderNode, SplitResult};
 
@@ -73,14 +76,22 @@ async fn compute_order_excluding(
 }
 
 /// Find the parent edge for a mark.
-async fn find_parent_edge(
-    db: &DatabaseConnection,
-    mark_id: MarkID,
-) -> EditorResult<(MarkID, String)> {
-    let edge = terrain::find_parent_edge(db, mark_id)
+async fn find_parent_edge(db: &DatabaseConnection, mark_id: MarkID) -> EditorResult<Terrain> {
+    terrain::find_parent_edge(db, mark_id)
         .await?
-        .ok_or(EditorError::NotFound(mark_id.inner()))?;
-    Ok((edge.src_id, edge.order.unwrap_or_default()))
+        .ok_or(EditorError::NotFound(mark_id.inner()))
+}
+
+/// Snapshot an edge into a `DeleteTerrain` op (full snapshot for invertibility).
+fn delete_edge_op(edge: Terrain) -> Maneuver {
+    Maneuver::DeleteTerrain {
+        edge_id: edge.id,
+        src: edge.src_id,
+        dst: edge.dst_id,
+        kind: edge.kind,
+        order: edge.order,
+        extra: edge.extra,
+    }
 }
 
 /// Update a mark's content (ported from `mark_update` command).
@@ -105,7 +116,7 @@ pub async fn update_mark(
         offset: None,
     };
     history.push(
-        vec![AtomicOp::UpdateContent {
+        vec![Maneuver::UpdateMarkData {
             mark_id: id,
             old: old_data,
             new: new_data,
@@ -127,31 +138,28 @@ pub async fn delete_mark(
     id: MarkID,
     landmark_id: MarkID,
 ) -> EditorResult<MutationResult> {
-    let m = mark::get(db, id)
+    mark::get(db, id)
         .await?
         .ok_or(EditorError::NotFound(id.inner()))?;
 
-    let (parent_id, frac_idx) = find_parent_edge(db, id).await.ok().unzip();
+    // Snapshot incoming edges before deleting them so undo can recreate
+    // each with its original TerrainID.
+    let edges = terrain::get_edges(db, None, Some(id), None).await?;
 
     mark::soft_delete(db, id).await?;
     terrain::delete_edges_by_dst(db, id, None).await?;
+
+    let mut ops = vec![Maneuver::SoftDeleteMark {
+        mark_id: id,
+        deleted_at: chrono::Local::now().naive_utc(),
+    }];
+    ops.extend(edges.into_iter().map(delete_edge_op));
 
     let cursor = CursorState {
         block_id: id,
         offset: None,
     };
-    history.push(
-        vec![AtomicOp::DeleteMark {
-            mark_id: id,
-            data: m.data,
-            parent_id,
-            fractional_index: frac_idx.unwrap_or_default(),
-        }],
-        id,
-        cursor.clone(),
-        cursor,
-        false,
-    );
+    history.push(ops, id, cursor.clone(), cursor, false);
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -174,16 +182,16 @@ pub async fn move_marks(
     let mut prev_id = after_id;
 
     for &child_id in child_ids {
-        let (old_parent, old_index) = find_parent_edge(db, child_id).await?;
+        let edge = find_parent_edge(db, child_id).await?;
         let new_order = compute_order_excluding(db, parent_id, prev_id, child_id).await?;
-        terrain::update_child_edge(db, child_id, Some(parent_id), &new_order).await?;
+        terrain::update_edge_by_id(db, edge.id, parent_id, Some(&new_order)).await?;
 
-        ops.push(AtomicOp::Reparent {
-            mark_id: child_id,
-            old_parent,
-            new_parent: parent_id,
-            old_index,
-            new_index: new_order,
+        ops.push(Maneuver::UpdateTerrain {
+            edge_id: edge.id,
+            old_src: edge.src_id,
+            old_order: edge.order,
+            new_src: parent_id,
+            new_order: Some(new_order),
         });
         prev_id = Some(child_id);
     }
@@ -321,19 +329,27 @@ pub async fn create_mark_after(
     let now = chrono::Local::now().naive_utc();
 
     mark::insert(db, new_id, &data, now).await?;
-    terrain::insert_child_edge(db, parent_id, new_id, &new_order).await?;
+    let edge_id = terrain::insert_child_edge(db, parent_id, new_id, &new_order).await?;
 
     let cursor = CursorState {
         block_id: new_id,
         offset: Some(0),
     };
     history.push(
-        vec![AtomicOp::CreateMark {
-            mark_id: new_id,
-            data,
-            parent_id: Some(parent_id),
-            fractional_index: new_order,
-        }],
+        vec![
+            Maneuver::CreateMark {
+                mark_id: new_id,
+                data,
+            },
+            Maneuver::CreateTerrain {
+                edge_id,
+                src: parent_id,
+                dst: new_id,
+                kind: TerrainKind::Child,
+                order: Some(new_order),
+                extra: None,
+            },
+        ],
         new_id,
         cursor.clone(),
         cursor,
@@ -421,12 +437,12 @@ pub async fn split_mark(
     right_content.set_rich_text(right_rt);
     let right_data = MarkData::Content(right_content);
 
-    let (parent_id, _) = find_parent_edge(db, mark_id).await?;
+    let parent_id = find_parent_edge(db, mark_id).await?.src_id;
     let new_order = compute_order(db, parent_id, Some(mark_id)).await?;
     let now = chrono::Local::now().naive_utc();
 
     mark::insert(db, new_id, &right_data, now).await?;
-    terrain::insert_child_edge(db, parent_id, new_id, &new_order).await?;
+    let edge_id = terrain::insert_child_edge(db, parent_id, new_id, &new_order).await?;
 
     // Record ops
     let cursor_before = CursorState {
@@ -439,16 +455,22 @@ pub async fn split_mark(
     };
     history.push(
         vec![
-            AtomicOp::UpdateRichText {
+            Maneuver::UpdateRichText {
                 mark_id,
                 old: old_rt,
-                new: left_rt,
+                new: TextPayload::Snapshot { rich_text: left_rt },
             },
-            AtomicOp::CreateMark {
+            Maneuver::CreateMark {
                 mark_id: new_id,
                 data: right_data,
-                parent_id: Some(parent_id),
-                fractional_index: new_order,
+            },
+            Maneuver::CreateTerrain {
+                edge_id,
+                src: parent_id,
+                dst: new_id,
+                kind: TerrainKind::Child,
+                order: Some(new_order),
+                extra: None,
             },
         ],
         mark_id,
@@ -509,8 +531,8 @@ pub async fn merge_marks(
     }
     mark::update_data(db, target_id, &new_target_data).await?;
 
-    // Delete source
-    let (source_parent, source_idx) = find_parent_edge(db, source_id).await?;
+    // Delete source — snapshot its edges first so undo can recreate them.
+    let source_edges = terrain::get_edges(db, None, Some(source_id), None).await?;
     mark::soft_delete(db, source_id).await?;
     terrain::delete_edges_by_dst(db, source_id, None).await?;
 
@@ -523,25 +545,21 @@ pub async fn merge_marks(
         block_id: target_id,
         offset: Some(merge_offset as u32),
     };
-    history.push(
-        vec![
-            AtomicOp::UpdateRichText {
-                mark_id: target_id,
-                old: old_target_rt,
-                new: new_target_rt,
+    let mut ops = vec![
+        Maneuver::UpdateRichText {
+            mark_id: target_id,
+            old: old_target_rt,
+            new: TextPayload::Snapshot {
+                rich_text: new_target_rt,
             },
-            AtomicOp::DeleteMark {
-                mark_id: source_id,
-                data: source.data,
-                parent_id: Some(source_parent),
-                fractional_index: source_idx,
-            },
-        ],
-        target_id,
-        cursor_before,
-        cursor_after,
-        false,
-    );
+        },
+        Maneuver::SoftDeleteMark {
+            mark_id: source_id,
+            deleted_at: chrono::Local::now().naive_utc(),
+        },
+    ];
+    ops.extend(source_edges.into_iter().map(delete_edge_op));
+    history.push(ops, target_id, cursor_before, cursor_after, false);
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -569,8 +587,10 @@ pub async fn wrap_in_compound(
     // Determine where to place the compound in the parent's child list.
     let compound_order = if let Some(first_child) = child_ids.first() {
         // Place at the first child's current position
-        let (_, old_index) = find_parent_edge(db, *first_child).await?;
-        old_index
+        find_parent_edge(db, *first_child)
+            .await?
+            .order
+            .unwrap_or_default()
     } else if let Some(after) = after_id {
         compute_order(db, parent_id, Some(after)).await?
     } else {
@@ -579,12 +599,19 @@ pub async fn wrap_in_compound(
 
     // Create the compound block
     mark::insert(db, compound_id, &compound_data, now).await?;
-    terrain::insert_child_edge(db, parent_id, compound_id, &compound_order).await?;
-    ops.push(AtomicOp::CreateMark {
+    let compound_edge_id =
+        terrain::insert_child_edge(db, parent_id, compound_id, &compound_order).await?;
+    ops.push(Maneuver::CreateMark {
         mark_id: compound_id,
         data: compound_data,
-        parent_id: Some(parent_id),
-        fractional_index: compound_order,
+    });
+    ops.push(Maneuver::CreateTerrain {
+        edge_id: compound_edge_id,
+        src: parent_id,
+        dst: compound_id,
+        kind: TerrainKind::Child,
+        order: Some(compound_order),
+        extra: None,
     });
 
     let focus_id;
@@ -596,28 +623,34 @@ pub async fn wrap_in_compound(
         let para_order = fractional_index::key_between(None, None);
 
         mark::insert(db, para_id, &para_data, now).await?;
-        terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
-        ops.push(AtomicOp::CreateMark {
+        let para_edge_id = terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
+        ops.push(Maneuver::CreateMark {
             mark_id: para_id,
             data: para_data,
-            parent_id: Some(compound_id),
-            fractional_index: para_order,
+        });
+        ops.push(Maneuver::CreateTerrain {
+            edge_id: para_edge_id,
+            src: compound_id,
+            dst: para_id,
+            kind: TerrainKind::Child,
+            order: Some(para_order),
+            extra: None,
         });
         focus_id = para_id;
     } else {
         // Reparent each child under the compound
         let mut prev_id: Option<MarkID> = None;
         for &child_id in child_ids {
-            let (old_parent, old_index) = find_parent_edge(db, child_id).await?;
+            let edge = find_parent_edge(db, child_id).await?;
             let new_order = compute_order_excluding(db, compound_id, prev_id, child_id).await?;
 
-            terrain::update_child_edge(db, child_id, Some(compound_id), &new_order).await?;
-            ops.push(AtomicOp::Reparent {
-                mark_id: child_id,
-                old_parent,
-                new_parent: compound_id,
-                old_index,
-                new_index: new_order.into(),
+            terrain::update_edge_by_id(db, edge.id, compound_id, Some(&new_order)).await?;
+            ops.push(Maneuver::UpdateTerrain {
+                edge_id: edge.id,
+                old_src: edge.src_id,
+                old_order: edge.order,
+                new_src: compound_id,
+                new_order: Some(new_order),
             });
             prev_id = Some(child_id);
         }
@@ -647,21 +680,20 @@ pub async fn delete_marks(
     let mut ops = Vec::new();
 
     for &mid in mark_ids {
-        let m = mark::get(db, mid)
+        mark::get(db, mid)
             .await?
             .ok_or(EditorError::NotFound(mid.inner()))?;
 
-        let (parent_id, frac_idx) = find_parent_edge(db, mid).await.ok().unzip();
+        let edges = terrain::get_edges(db, None, Some(mid), None).await?;
 
         mark::soft_delete(db, mid).await?;
         terrain::delete_edges_by_dst(db, mid, None).await?;
 
-        ops.push(AtomicOp::DeleteMark {
+        ops.push(Maneuver::SoftDeleteMark {
             mark_id: mid,
-            data: m.data,
-            parent_id,
-            fractional_index: frac_idx.unwrap_or_default(),
+            deleted_at: chrono::Local::now().naive_utc(),
         });
+        ops.extend(edges.into_iter().map(delete_edge_op));
     }
 
     if let Some(&first) = mark_ids.first() {
@@ -685,23 +717,23 @@ pub async fn reparent_mark(
     after_id: Option<MarkID>,
     landmark_id: MarkID,
 ) -> EditorResult<MutationResult> {
-    let (old_parent, old_index) = find_parent_edge(db, mark_id).await?;
+    let edge = find_parent_edge(db, mark_id).await?;
 
     let new_order = compute_order_excluding(db, new_parent_id, after_id, mark_id).await?;
 
-    terrain::update_child_edge(db, mark_id, Some(new_parent_id), &new_order).await?;
+    terrain::update_edge_by_id(db, edge.id, new_parent_id, Some(&new_order)).await?;
 
     let cursor = CursorState {
         block_id: mark_id,
         offset: None,
     };
     history.push(
-        vec![AtomicOp::Reparent {
-            mark_id,
-            old_parent,
-            new_parent: new_parent_id,
-            old_index,
-            new_index: new_order.into(),
+        vec![Maneuver::UpdateTerrain {
+            edge_id: edge.id,
+            old_src: edge.src_id,
+            old_order: edge.order,
+            new_src: new_parent_id,
+            new_order: Some(new_order),
         }],
         mark_id,
         cursor.clone(),
