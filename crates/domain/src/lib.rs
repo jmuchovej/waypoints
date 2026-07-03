@@ -79,7 +79,7 @@ pub mod mark {
     }
 }
 pub use mark::builders::MarkBuilder;
-pub use mark::{Mark, MarkID};
+pub use mark::{Content, Landmark, Mark, MarkData, MarkID, Reading, RichText};
 
 pub mod chart {
     pub mod ids;
@@ -132,3 +132,11 @@ pub mod terrain {
 }
 pub use terrain::builders::TerrainBuilder;
 pub use terrain::{Terrain, TerrainID, TerrainKind};
+
+pub mod sync {
+    pub mod hlc;
+    pub use hlc::{Clock, HLC, SystemClock};
+    pub mod identity;
+    pub use identity::{AccountID, DeviceID, OpID, RealmID};
+}
+pub use sync::{AccountID, DeviceID, HLC, OpID, RealmID};

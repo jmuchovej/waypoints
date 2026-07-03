@@ -42,6 +42,15 @@ pub mod mark {
     pub use handle::MarkHandle;
 }
 
+pub mod sync {
+    mod coordinator;
+    mod envelope;
+    mod lww;
+    mod relay;
+
+    pub use envelope::TextPayload;
+}
+
 pub mod territory {
     mod error;
     mod handle;
