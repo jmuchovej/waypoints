@@ -5,6 +5,7 @@ members = [
   "crates/domain",
   "crates/importer",
   "crates/store",
+  "crates/outpost",
   "crates/server",
   "waypoints/src-tauri",
 ]
@@ -84,6 +85,7 @@ uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }
 Waypoints = { path = "waypoints/src-tauri" }
 # keep-sorted start
 cartograph = { path = "crates/cartograph" }
+outpost = { path = "crates/outpost" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
 store = { path = "crates/store" }

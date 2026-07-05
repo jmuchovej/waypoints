@@ -29,8 +29,8 @@ pub(crate) mod editor {
     pub(crate) use service::EditorService;
 }
 pub use editor::{
-    CreateResult, CursorState, EditorError, EditorHandle, EditorResult, MutationResult, RenderNode,
-    SplitResult, UndoRedoResult,
+    CreateResult, CursorState, EditorError, EditorHandle, EditorResult, Maneuver, ManeuverTarget,
+    MutationResult, RenderNode, SplitResult, UndoRedoResult,
 };
 
 pub mod chart {
