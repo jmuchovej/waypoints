@@ -2,7 +2,7 @@ use domain::Json;
 use domain::sync::{AccountID, DeviceID, HLC, OpID, RealmID};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-    QueryOrder,
+    QueryOrder, QuerySelect, sea_query::Expr,
 };
 
 use crate::entities::{ActiveSyncLog, SyncLog, SyncLogColumn, SyncLogModel};
@@ -50,6 +50,7 @@ pub async fn insert(db: &DatabaseConnection, entry: SyncLogEntry) -> StoreResult
         touched_marks: Set(entry.touched_marks),
         applied_at: Set(chrono::Local::now().naive_utc()),
         origin: Set(entry.origin as i32),
+        uploaded_at: Set(None),
     }
     .insert(db)
     .await?;
@@ -67,4 +68,39 @@ pub async fn max_remote_hlc(db: &DatabaseConnection, realm_id: RealmID) -> Store
         .one(db)
         .await?;
     Ok(row.map(|r| HLC(r.hlc)).unwrap_or(HLC::ZERO))
+}
+
+/// Local-origin envelopes the relay has not yet acknowledged, oldest
+/// HLC first. The upload loop drains this in batches; at-least-once is
+/// fine because the relay dedupes on group_id.
+pub async fn pending_upload(
+    db: &DatabaseConnection,
+    realm_id: RealmID,
+    limit: u64,
+) -> StoreResult<Vec<SyncLogModel>> {
+    Ok(SyncLog::find()
+        .filter(SyncLogColumn::RealmId.eq(realm_id.inner()))
+        .filter(SyncLogColumn::Origin.eq(SyncOrigin::Local as i32))
+        .filter(SyncLogColumn::UploadedAt.is_null())
+        .order_by_asc(SyncLogColumn::Hlc)
+        .limit(limit)
+        .all(db)
+        .await?)
+}
+
+/// Record the relay's acknowledgment for the given groups.
+pub async fn mark_uploaded(db: &DatabaseConnection, group_ids: &[OpID]) -> StoreResult<()> {
+    if group_ids.is_empty() {
+        return Ok(());
+    }
+    let ids: Vec<_> = group_ids.iter().map(|g| g.inner()).collect();
+    SyncLog::update_many()
+        .col_expr(
+            SyncLogColumn::UploadedAt,
+            Expr::value(chrono::Local::now().naive_utc()),
+        )
+        .filter(SyncLogColumn::GroupId.is_in(ids))
+        .exec(db)
+        .await?;
+    Ok(())
 }

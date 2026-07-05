@@ -53,6 +53,7 @@ pub mod entities {
     mod chart_orm;
     mod device_orm;
     mod mark_orm;
+    mod relay_cursor_orm;
     mod sync_log_orm;
     mod terrain_orm;
 
@@ -65,6 +66,10 @@ pub mod entities {
     };
     pub use mark_orm::{
         ActiveModel as ActiveMark, Column as MarkColumn, Entity as Marks, Model as MarkModel,
+    };
+    pub use relay_cursor_orm::{
+        ActiveModel as ActiveRelayCursor, Column as RelayCursorColumn, Entity as RelayCursors,
+        Model as RelayCursorModel,
     };
     pub use sync_log_orm::{
         ActiveModel as ActiveSyncLog, Column as SyncLogColumn, Entity as SyncLog,
@@ -81,6 +86,7 @@ pub mod query {
     pub mod chart;
     pub mod device;
     pub mod mark;
+    pub mod relay_cursor;
     pub mod sync_log;
     pub mod terrain;
 }
