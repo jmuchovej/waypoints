@@ -1,7 +1,7 @@
 # Waypoints Sync Protocol — v1
 
 How Waypoints installations exchange edits. This document is the
-specification; the Cloudflare Worker in this directory is *one*
+specification; the `outpost` binary in this crate is the reference
 implementation of it.
 
 ## 1. Topology: peers, not servers
@@ -203,18 +203,19 @@ A peer consuming a relay must:
 **Official relay (v1):** requests authenticate with a per-device token
 minted at device registration and stored in the accounts database
 (`device_tokens`: token hash → `account_id`, `device_id`, `revoked_at`).
-The Worker validates the token and checks the account may access the
+Outpost validates the token and checks the account may access the
 realm. This is the only place the accounts database appears in the sync
 path — as an *authenticator*, never as a store.
 
-**Self-hosted relays (future, tabled):** must not depend on the global
-accounts database. The Worker's validator is a single pluggable
-function; the self-host story swaps it for something realm-local (a
-shared relay secret, or realm-membership proofs). Protocol unchanged.
+**Self-hosted relays:** must not depend on the global accounts
+database. Outpost's validator is a single pluggable seam; self-hosted
+instances run `OUTPOST_SHARED_SECRET` mode (realm-membership proofs are
+a possible future refinement). Protocol unchanged.
 
 ## 7. Reference storage schema
 
-What the Cloudflare Worker stores in Turso (any SQLite works):
+What outpost stores in its embedded turso/SQLite file (any SQLite
+works — this is `schema.sql` in this crate):
 
 ```sql
 CREATE TABLE IF NOT EXISTS envelopes (
