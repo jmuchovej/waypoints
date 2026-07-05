@@ -15,6 +15,10 @@ pub struct Envelope {
     /// even when devices are aliased later — that would retroactively change
     /// LWW outcomes.
     pub device_id: DeviceID,
+    /// Serialized as a decimal string: packed HLCs exceed
+    /// `Number.MAX_SAFE_INTEGER`, so a bare JSON number would be silently
+    /// corrupted by any JavaScript relay or tool that re-parses it.
+    #[serde(with = "hlc_wire")]
     pub hlc: HLC,
     pub checkpoints: Vec<Maneuver>,
     /// Mark IDs touched by this group. Used for cheap dependency checks
@@ -22,6 +26,20 @@ pub struct Envelope {
     /// Not load-bearing in v1 (LWW handles missing marks gracefully via
     /// CreateMark forward-fill), but cheap to populate and useful later.
     pub touched_marks: Vec<MarkID>,
+}
+
+mod hlc_wire {
+    use domain::sync::HLC;
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+
+    pub fn serialize<S: Serializer>(hlc: &HLC, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&hlc.inner().to_string())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<HLC, D::Error> {
+        let raw = String::deserialize(d)?;
+        raw.parse::<i64>().map(HLC).map_err(D::Error::custom)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -93,6 +111,11 @@ mod tests {
         // defaults, so compare the wire representation, not the structs.
         let rewire = serde_json::to_value(&back).unwrap();
         assert_eq!(json, rewire);
+
+        assert!(
+            json["hlc"].is_string(),
+            "hlc must be a string on the wire: JS number precision"
+        );
 
         // Non-skipped fields survive intact.
         assert_eq!(back.group_id, group.group_id);
