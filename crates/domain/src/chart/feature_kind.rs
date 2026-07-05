@@ -85,6 +85,7 @@ pub enum FeatureKind {
         display_field: String,
         #[serde(rename = "as", default)]
         display_mode: ReferenceDisplayMode,
+        #[specta(type = Option<specta_typescript::Unknown>)]
         filter_criteria: Option<Json>,
     },
 

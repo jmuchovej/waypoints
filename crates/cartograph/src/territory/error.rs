@@ -24,10 +24,7 @@ impl Serialize for TerritoryError {
 }
 
 impl specta::Type for TerritoryError {
-    fn inline(
-        _type_map: &mut specta::TypeCollection,
-        _generics: specta::Generics,
-    ) -> specta::datatype::DataType {
-        specta::datatype::DataType::Primitive(specta::datatype::PrimitiveType::String)
+    fn definition(_types: &mut specta::Types) -> specta::datatype::DataType {
+        specta::datatype::DataType::Primitive(specta::datatype::Primitive::str)
     }
 }

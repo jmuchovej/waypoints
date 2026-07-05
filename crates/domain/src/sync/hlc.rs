@@ -2,6 +2,7 @@ use chrono::Utc;
 use derive_more::{Debug, Display};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use specta_typescript::BigInt;
 
 /// Injectable time source for HLC operations. Production code uses
 /// [`SystemClock`]; tests use a mock so HLC behavior is deterministic
@@ -44,7 +45,7 @@ impl Clock for SystemClock {
 #[display("{}", self.inner())]
 #[debug("HLC({}+{})", self.physical(), self.logical())]
 #[serde(transparent)]
-pub struct HLC(pub i64);
+pub struct HLC(#[specta(type = BigInt)] pub i64);
 
 impl HLC {
     pub const ZERO: HLC = HLC(0);

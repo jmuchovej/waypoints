@@ -22,34 +22,32 @@ license = "Apache-2.0"
 publish = false
 
 [workspace.dependencies]
-anyhow = "1.0.99"
+anyhow = "1.0.103"
 async-trait = "0.1.89"
-axum = "0.8.4"
-chrono = { version = "0.4.42", default-features = false, features = ["serde"] }
-chrono-tz = { version = "0.10.4", default-features = false, features = [
-  "serde",
-] }
-clap = { version = "4.5.41", features = ["derive"] }
-derive_more = "2.0.1"
+axum = "0.8.9"
+chrono = { version = "0.4.45", default-features = false, features = ["serde"] }
+chrono-tz = { version = "0.10.4", default-features = false, features = ["serde"] }
+clap = { version = "4.6.1", features = ["derive"] }
+derive_more = "2.1.1"
 directories = "6.0.0"
 eyre = "0.6.12"
-fake = { version = "4.4.0", default-features = false }
-geo = { version = "0.30.0", features = ["use-serde"] }
-iana-time-zone = "0.1.64"
+fake = { version = "5.1.0", default-features = false }
+geo = { version = "0.33.1", features = ["use-serde"] }
+iana-time-zone = "0.1.65"
 hostname = "0.4"
-indexmap = { version = "2.0", features = ["serde"] }
+indexmap = { version = "2.14", features = ["serde"] }
 open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
 paste = "1.0.15"
-pest = "2.8.3"
-pest_derive = "2.8.3"
+pest = "2.8.6"
+pest_derive = "2.8.6"
 pretty_assertions = "1.4.1"
 pulldown-cmark = { version = "0.13", default-features = false }
-rand = "0.8"
+rand = "0.10"
 refinery = { version = "0.9", default-features = false }
 refinery-core = { version = "0.9", default-features = false }
-regex = "1.11.1"
+regex = "1.12.4"
 rstest = "0.26.1"
-sea-orm = { version = "1.1.16", default-features = false, features = [
+sea-orm = { version = "1.1.20", default-features = false, features = [
   "macros",
   "runtime-tokio",
   "sqlx-sqlite",
@@ -57,7 +55,7 @@ sea-orm = { version = "1.1.16", default-features = false, features = [
   "with-json",
   "with-uuid",
 ] }
-sea-query = { version = "0.32.7", default-features = false, features = [
+sea-query = { version = "1.0.1", default-features = false, features = [
   "backend-sqlite",
   "derive",
   "sea-query-derive",
@@ -65,23 +63,19 @@ sea-query = { version = "0.32.7", default-features = false, features = [
   "with-json",
   "with-uuid",
 ] }
-sha2 = "0.10"
-serde = { version = "1.0.224", features = ["derive"] }
-serde_json = { version = "1.0.145", features = [
-  "indexmap",
-  "preserve_order",
-  "raw_value",
-] }
+sha2 = "0.11"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = { version = "1.0.150", features = ["indexmap", "preserve_order", "raw_value"] }
 tempfile = "3"
-thiserror = "2.0.15"
+thiserror = "2.0.18"
 time = { version = "0.3", features = ["formatting", "parsing"] }
-tokio = { version = "1.47.1", features = ["sync"] }
-tower-http = { version = "0.6.6", features = ["fs", "trace"] }
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-turso = "0.5.3"
+tokio = { version = "1.52.3", features = ["sync"] }
+tower-http = { version = "0.7.0", features = ["fs", "trace"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+turso = "0.6.1"
 typed-builder = "0.23.2"
-uuid = { version = "1.18.1", features = ["js", "serde", "v4"] }
+uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }
 
 Waypoints = { path = "waypoints/src-tauri" }
 # keep-sorted start
@@ -91,24 +85,21 @@ importer = { path = "crates/importer" }
 store = { path = "crates/store" }
 # keep-sorted end
 
-tauri = { version = "2.10.3", features = ["unstable"] }
-tauri-build = { version = "2.5.6", features = ["config-toml"] }
-tauri-plugin-dialog = "2.2.0"
-tauri-plugin-fs = "2.4.5"
+tauri = { version = "2.11.5", features = ["unstable"] }
+tauri-build = { version = "2.6.3", features = ["config-toml"] }
+tauri-plugin-dialog = "2.7.1"
+tauri-plugin-fs = "2.5.1"
 tauri-plugin-notification = "2.3.3"
 tauri-plugin-os = "2.3.2"
-tauri-plugin-shell = "2.3.4"
-tauri-plugin-store = "2.4.2"
-wry = { version = "0.54.4", features = [
-  "drag-drop",
-  "os-webview",
-  "protocol",
-  "serde",
-  "tracing",
-] }
+tauri-plugin-shell = "2.3.5"
+tauri-plugin-store = "2.4.3"
+tauri-plugin-updater = "2.10.1"
+wry = { version = "0.55.1", features = ["os-webview", "protocol", "serde", "tracing"] }
 
-
-specta = { version = "=2.0.0-rc.22", features = [
+validator = { version = "0.20.0", features = ["derive", "indexmap"] }
+resvg = "0.47.0"
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+specta = { version = "=2.0.0-rc.25", features = [
   "chrono",
   "derive",
   "function",
@@ -116,13 +107,24 @@ specta = { version = "=2.0.0-rc.22", features = [
   "serde_json",
   "uuid",
 ] }
-specta-typescript = "0.0.9"
-tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
+specta-typescript = "0.0.12"
+specta-serde = "0.0.12"
+tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
 
-objc2-app-kit = { version = "0.3", default-features = false, features = [
-  "NSScrollView",
-  "NSView",
-] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["NSScrollView", "NSView"] }
+
+# Local fork of specta-macros 2.0.0-rc.25: upstream's derive eagerly parses every
+# list-attribute (incl. foreign ones like derive_more `#[display]` / typed_builder
+# `#[builder(mutators(...))]`) as specta's grammar and errors. The patch skips
+# unparseable non-`specta` attributes. Drop this once upstream ships a fix.
+[patch.crates-io]
+specta-macros = { path = "vendor/specta-macros" }
+# Local fork of specta-serde 0.0.12: PhasesFormat re-nests internally-tagged
+# newtype-variant enums (e.g. `MarkData`) under the variant name on its second
+# rewrite pass, because it fails to detect the already-merged tag intersection.
+# The patch teaches `variant_repr_already_rewritten` to recognise that shape.
+# Drop once upstream ships a fix.
+specta-serde = { path = "vendor/specta-serde" }
 
 [workspace.lints.clippy]
 blocks_in_conditions = "allow"
@@ -144,8 +146,8 @@ unused = { level = "allow", priority = -1 }
 incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
-opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
-strip = true      # Ensures debug symbols are removed.
-lto = true        # Enables link-time-optimizations.
-panic = "abort"   # Higher performance by disabling panic handlers.
+opt-level = "s" # Prioritizes small binary size. Use `3` if you prefer speed.
+strip = true # Ensures debug symbols are removed.
+lto = true # Enables link-time-optimizations.
+panic = "abort" # Higher performance by disabling panic handlers.
 codegen-units = 1 # Allows LLVM to perform better optimization.

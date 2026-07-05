@@ -10,7 +10,7 @@ pub struct RichText {
 }
 
 /// Deserialization DTO that routes through `RichText::new()`.
-#[derive(Deserialize)]
+#[derive(Deserialize, Type)]
 struct RichTextDTO {
     segments: Vec<TextSegment>,
 }
@@ -77,7 +77,8 @@ pub struct TextSegment {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct InlineMark {
     pub kind: TextMarkKind,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(type = Option<specta_typescript::Unknown>)]
     pub data: Option<Json>,
 }
 

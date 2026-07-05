@@ -6,55 +6,113 @@ import type {
   ChartID,
   Color,
   Content,
+  Content_Deserialize,
+  Content_Serialize,
   FeatureID,
   GlyphID,
   Icon,
+  Icon_Deserialize,
+  Icon_Serialize,
   InlineMark,
-  JsonValue,
+  InlineMark_Deserialize,
+  InlineMark_Serialize,
   Landmark,
+  Landmark_Deserialize,
+  Landmark_Serialize,
   MarkData,
+  MarkData_Deserialize,
+  MarkData_Serialize,
   MarkID,
   MathEngine,
   Reading,
+  Reading_Deserialize,
+  Reading_Serialize,
   ReferenceDisplayMode,
   RichReference,
   RichText,
+  RichTextDTO,
+  RichTextDTO_Deserialize,
+  RichTextDTO_Serialize,
+  RichText_Deserialize,
+  RichText_Serialize,
   Size,
   TextMarkKind,
   TextSegment,
+  TextSegment_Deserialize,
+  TextSegment_Serialize,
 } from "@waypoints/domain";
 
-/**
- * Result of a create operation.
- */
-export type CreateResult = { new_mark_id: MarkID; blocks: RenderNode[] };
+/**  Result of a create operation. */
+export type CreateResult = CreateResult_Serialize;
 
-/**
- * Cursor position within the editor.
- */
-export type CursorState = { block_id: MarkID; offset: number | null };
+/**  Result of a create operation. */
+export type CreateResult_Deserialize = {
+  new_mark_id: MarkID;
+  blocks: RenderNode_Deserialize[];
+};
 
-/**
- * Result of a mutation that re-projects the block list.
- */
-export type MutationResult = { blocks: RenderNode[] };
+/**  Result of a create operation. */
+export type CreateResult_Serialize = {
+  new_mark_id: MarkID;
+  blocks: RenderNode_Serialize[];
+};
 
-/**
- * A flattened block node for rendering, produced by `project_landmark`.
- */
-export type RenderNode = {
+/**  Cursor position within the editor. */
+export type CursorState = {
+  block_id: MarkID;
+  offset: number | null;
+};
+
+/**  Result of a mutation that re-projects the block list. */
+export type MutationResult = MutationResult_Serialize;
+
+/**  Result of a mutation that re-projects the block list. */
+export type MutationResult_Deserialize = {
+  blocks: RenderNode_Deserialize[];
+};
+
+/**  Result of a mutation that re-projects the block list. */
+export type MutationResult_Serialize = {
+  blocks: RenderNode_Serialize[];
+};
+
+/**  A flattened block node for rendering, produced by `project_landmark`. */
+export type RenderNode = RenderNode_Serialize;
+
+/**  A flattened block node for rendering, produced by `project_landmark`. */
+export type RenderNode_Deserialize = {
   id: MarkID;
-  data: MarkData;
+  data: MarkData_Deserialize;
   depth: number;
   fractional_index: string;
   parent_id: MarkID | null;
   is_leaf_landmark: boolean;
 };
 
-/**
- * Result of a split operation.
- */
-export type SplitResult = { new_mark_id: MarkID; blocks: RenderNode[] };
+/**  A flattened block node for rendering, produced by `project_landmark`. */
+export type RenderNode_Serialize = {
+  id: MarkID;
+  data: MarkData_Serialize;
+  depth: number;
+  fractional_index: string;
+  parent_id: MarkID | null;
+  is_leaf_landmark: boolean;
+};
+
+/**  Result of a split operation. */
+export type SplitResult = SplitResult_Serialize;
+
+/**  Result of a split operation. */
+export type SplitResult_Deserialize = {
+  new_mark_id: MarkID;
+  blocks: RenderNode_Deserialize[];
+};
+
+/**  Result of a split operation. */
+export type SplitResult_Serialize = {
+  new_mark_id: MarkID;
+  blocks: RenderNode_Serialize[];
+};
 
 export type Territory = {
   id: string;
@@ -67,7 +125,17 @@ export type Territory = {
 
 export type TerritoryKind = "managed" | "external";
 
-/**
- * Result of an undo/redo operation.
- */
-export type UndoRedoResult = { blocks: RenderNode[]; cursor: CursorState | null };
+/**  Result of an undo/redo operation. */
+export type UndoRedoResult = UndoRedoResult_Serialize;
+
+/**  Result of an undo/redo operation. */
+export type UndoRedoResult_Deserialize = {
+  blocks: RenderNode_Deserialize[];
+  cursor: CursorState | null;
+};
+
+/**  Result of an undo/redo operation. */
+export type UndoRedoResult_Serialize = {
+  blocks: RenderNode_Serialize[];
+  cursor: CursorState | null;
+};
