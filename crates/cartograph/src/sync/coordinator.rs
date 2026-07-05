@@ -1,3 +1,4 @@
+use domain::sync::{Clock, SystemClock};
 use domain::{AccountID, DeviceID, HLC, MarkID, OpID, RealmID};
 use store::{
     DatabaseConnection,
@@ -27,6 +28,12 @@ pub struct SyncCoordinator<R: ConflictResolver = LastWriteResolver> {
     resolver: R,
 }
 
+/// Maximum tolerated future-drift of an incoming envelope's HLC relative
+/// to the local wall clock. Healthy NTP-disciplined devices skew by
+/// milliseconds; this only catches genuinely broken clocks, whose writes
+/// would otherwise dominate LWW realm-wide until real time caught up.
+pub const MAX_HLC_DRIFT_MS: i64 = 15 * 60 * 1000;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ApplyOutcome {
     Skipped(SkipReason),
@@ -45,6 +52,10 @@ pub enum SkipReason {
     AlreadyApplied,
     /// Defense-in-depth against a misconfigured relay.
     WrongRealm,
+    /// The envelope's HLC is implausibly far ahead of our wall clock —
+    /// the sender's clock is broken. Applying it would poison LWW (and
+    /// receive() would drag our own clock forward, spreading it).
+    ExcessiveDrift,
 }
 
 impl SyncCoordinator {
@@ -149,6 +160,11 @@ impl<R: ConflictResolver> SyncCoordinator<R> {
         }
         if group.realm_id != self.realm_id {
             return Ok(ApplyOutcome::Skipped(SkipReason::WrongRealm));
+        }
+        // Before receive(): adopting a poisoned HLC would drag our own
+        // clock into the future and spread the drift to our next writes.
+        if group.hlc.physical() > SystemClock.now_ms() + MAX_HLC_DRIFT_MS {
+            return Ok(ApplyOutcome::Skipped(SkipReason::ExcessiveDrift));
         }
 
         self.last_hlc = HLC::receive(self.last_hlc, group.hlc);
@@ -320,7 +336,7 @@ mod tests {
 
         let remote_device = DeviceID::new();
         let id = MarkID::new();
-        let hlc = HLC::pack(1_800_000_000_000, 1);
+        let hlc = HLC::pack(1_750_000_000_000, 1);
         let group = remote_group(
             coord.realm_id(),
             remote_device,
@@ -356,7 +372,7 @@ mod tests {
         let group = remote_group(
             coord.realm_id(),
             DeviceID::new(),
-            HLC::pack(1_800_000_000_000, 1),
+            HLC::pack(1_750_000_000_000, 1),
             vec![Maneuver::CreateMark {
                 mark_id: id,
                 data: paragraph("once"),
@@ -379,7 +395,7 @@ mod tests {
         let group = remote_group(
             RealmID::new(), // not ours
             DeviceID::new(),
-            HLC::pack(1_800_000_000_000, 1),
+            HLC::pack(1_750_000_000_000, 1),
             vec![],
         );
         let outcome = coord.apply_remote(&db, group).await.unwrap();
@@ -441,7 +457,7 @@ mod tests {
 
         let low = DeviceID::from(Uuid::from_u128(1));
         let high = DeviceID::from(Uuid::from_u128(u128::MAX));
-        let hlc = HLC::pack(1_800_000_000_000, 7);
+        let hlc = HLC::pack(1_750_000_000_000, 7);
 
         let id = MarkID::new();
         mark_q::insert(
@@ -502,12 +518,67 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn far_future_hlc_is_quarantined() {
+        let db = temp_db().await;
+        let mut coord = SyncCoordinator::load(&db).await.unwrap();
+
+        let id = MarkID::new();
+        let poisoned = HLC::pack(SystemClock.now_ms() + 2 * MAX_HLC_DRIFT_MS, 0);
+        let group = remote_group(
+            coord.realm_id(),
+            DeviceID::new(),
+            poisoned,
+            vec![Maneuver::CreateMark {
+                mark_id: id,
+                data: paragraph("from the future"),
+            }],
+        );
+
+        let outcome = coord.apply_remote(&db, group).await.unwrap();
+        assert_eq!(outcome, ApplyOutcome::Skipped(SkipReason::ExcessiveDrift));
+
+        // Nothing persisted, nothing applied, clock not dragged: a later
+        // legitimate envelope still applies with its own key.
+        assert!(SyncLog::find().all(&db).await.unwrap().is_empty());
+        assert!(mark_q::get(&db, id).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn plausible_clock_skew_still_applies() {
+        let db = temp_db().await;
+        let mut coord = SyncCoordinator::load(&db).await.unwrap();
+
+        let id = MarkID::new();
+        let skewed = HLC::pack(SystemClock.now_ms() + MAX_HLC_DRIFT_MS / 2, 0);
+        let group = remote_group(
+            coord.realm_id(),
+            DeviceID::new(),
+            skewed,
+            vec![Maneuver::CreateMark {
+                mark_id: id,
+                data: paragraph("slightly ahead"),
+            }],
+        );
+
+        let outcome = coord.apply_remote(&db, group).await.unwrap();
+        assert_eq!(
+            outcome,
+            ApplyOutcome::Applied {
+                applied: 1,
+                dominated: 0,
+                merged: 0
+            }
+        );
+        assert!(mark_q::get(&db, id).await.unwrap().is_some());
+    }
+
+    #[tokio::test]
     async fn last_remote_hlc_tracks_received_groups() {
         let db = temp_db().await;
         let mut coord = SyncCoordinator::load(&db).await.unwrap();
         assert_eq!(coord.last_remote_hlc(&db).await.unwrap(), HLC::ZERO);
 
-        let hlc = HLC::pack(1_800_000_000_000, 3);
+        let hlc = HLC::pack(1_750_000_000_000, 3);
         let group = remote_group(coord.realm_id(), DeviceID::new(), hlc, vec![]);
         coord.apply_remote(&db, group).await.unwrap();
         assert_eq!(coord.last_remote_hlc(&db).await.unwrap(), hlc);
