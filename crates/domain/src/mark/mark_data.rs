@@ -1,7 +1,5 @@
 use super::{MarkID, Reading, ReferenceDisplayMode, RichReference, RichText};
-use crate::Color;
-use crate::chart::{ChartID, FeatureID};
-use crate::{HasIcon, Icon, Json};
+use crate::{ChartID, Color, FeatureID, Icon};
 use derive_more::{IsVariant, Unwrap};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};

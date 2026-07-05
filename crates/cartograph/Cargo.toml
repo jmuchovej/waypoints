@@ -26,6 +26,7 @@ serde.workspace = true
 serde_json.workspace = true
 specta.workspace = true
 specta-typescript.workspace = true
+specta-serde.workspace = true
 store.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

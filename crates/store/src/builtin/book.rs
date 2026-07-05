@@ -56,7 +56,7 @@ mod tests {
         let bookmark = chart();
         assert_eq!(bookmark.name, "Book");
         assert!(bookmark.is_builtin());
-        assert_eq!(bookmark.features.len(), 4);
+        assert_eq!(bookmark.features.len(), 3);
         assert!(bookmark.features.values().any(|f| f.name == "Author(s)"));
         assert!(bookmark.features.values().any(|f| f.name == "Summary"));
         // assert!(bookmark.features.values().any(|f| f.name == "Files"));

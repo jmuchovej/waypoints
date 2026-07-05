@@ -1,5 +1,5 @@
 use super::{MarkID, RichText, reading_validators as validators};
-use crate::chart::{Feature, FeatureKind, GlyphID};
+use crate::{Feature, FeatureKind, GlyphID};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use specta::Type;

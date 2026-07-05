@@ -1,6 +1,5 @@
 use super::{Content, Landmark, MarkData};
-use crate::Json;
-use crate::{DomainError, DomainResult};
+use crate::{DomainError, DomainResult, Json};
 use derive_more::{Debug, Display, FromStr};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -76,6 +75,7 @@ pub struct Mark {
         }
       )
     )]
+    #[specta(type = Option<specta_typescript::Unknown>)]
     pub extra: Option<Json>,
 }
 

@@ -38,5 +38,6 @@ pub struct Terrain {
         self.extra = Some(extra);
       }
     ))]
+    #[specta(type = Option<specta_typescript::Unknown>)]
     pub extra: Option<Json>,
 }

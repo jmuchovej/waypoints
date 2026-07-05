@@ -1,4 +1,4 @@
-use specta::TypeCollection;
+use specta::Types;
 use specta_typescript::Typescript;
 
 use domain::{
@@ -13,78 +13,91 @@ use domain::{
         RichReference, RichText, TextMarkKind, TextSegment,
         mark_data::{MathEngine, Size},
     },
+    sync::{AccountID, DeviceID, HLC, OpID, RealmID},
     terrain::{Terrain, TerrainKind},
 };
 
 fn main() {
-    let mut collection = TypeCollection::default();
+    let mut collection = Types::default();
 
     // _shared
-    collection.register::<Color>();
-    collection.register::<Icon>();
-    collection.register::<IconNamespace>();
+    collection.register_mut::<Color>();
+    collection.register_mut::<Icon>();
+    collection.register_mut::<IconNamespace>();
 
     // chart
-    collection.register::<Base36ID>();
-    collection.register::<ChartID>();
-    collection.register::<FeatureID>();
-    collection.register::<GlyphID>();
-    collection.register::<Chart>();
-    collection.register::<Feature>();
-    collection.register::<FeatureKind>();
-    collection.register::<DateGranularity>();
-    collection.register::<SelectOption>();
-    collection.register::<SelectGroup>();
+    collection.register_mut::<Base36ID>();
+    collection.register_mut::<ChartID>();
+    collection.register_mut::<FeatureID>();
+    collection.register_mut::<GlyphID>();
+    collection.register_mut::<Chart>();
+    collection.register_mut::<Feature>();
+    collection.register_mut::<FeatureKind>();
+    collection.register_mut::<DateGranularity>();
+    collection.register_mut::<SelectOption>();
+    collection.register_mut::<SelectGroup>();
 
     // mark
-    collection.register::<MarkID>();
-    collection.register::<Mark>();
-    collection.register::<MarkData>();
-    collection.register::<Content>();
-    collection.register::<Size>();
-    collection.register::<MathEngine>();
-    collection.register::<Landmark>();
-    collection.register::<Reading>();
-    collection.register::<RichText>();
-    collection.register::<TextSegment>();
-    collection.register::<InlineMark>();
-    collection.register::<TextMarkKind>();
-    collection.register::<RichReference>();
-    collection.register::<ReferenceDisplayMode>();
+    collection.register_mut::<MarkID>();
+    collection.register_mut::<Mark>();
+    collection.register_mut::<MarkData>();
+    collection.register_mut::<Content>();
+    collection.register_mut::<Size>();
+    collection.register_mut::<MathEngine>();
+    collection.register_mut::<Landmark>();
+    collection.register_mut::<Reading>();
+    collection.register_mut::<RichText>();
+    collection.register_mut::<TextSegment>();
+    collection.register_mut::<InlineMark>();
+    collection.register_mut::<TextMarkKind>();
+    collection.register_mut::<RichReference>();
+    collection.register_mut::<ReferenceDisplayMode>();
 
     // terrain
-    collection.register::<Terrain>();
-    collection.register::<TerrainKind>();
+    collection.register_mut::<Terrain>();
+    collection.register_mut::<TerrainKind>();
+
+    // sync
+    collection.register_mut::<AccountID>();
+    collection.register_mut::<RealmID>();
+    collection.register_mut::<DeviceID>();
+    collection.register_mut::<OpID>();
+    collection.register_mut::<HLC>();
 
     let out = format!("{}/typescript/types.g.ts", env!("CARGO_MANIFEST_DIR"));
     Typescript::default()
-        .export_to(&out, &collection)
+        .export_to(&out, &collection, specta_serde::PhasesFormat)
         .expect("failed to export domain types");
 
-    simplify_json_value(&out);
-
+    // `serde_json::Value` fields are annotated `#[specta(type = Option<Unknown>)]`
+    // at the source, so they render directly as `unknown` — no post-processing
+    // needed. (This also sidesteps specta-typescript's BigInt-forbidden guard,
+    // which rejects the `i64`/`u64` inside `serde_json::Number`.)
+    collapse_phase_aliases(&out);
     println!("wrote {out}");
 }
 
-/// Rewrite the generated `export type JsonValue = …` declaration to `unknown`.
-fn simplify_json_value(path: &str) {
+/// specta-serde's `PhasesFormat` emits `X = X_Serialize | X_Deserialize` for every
+/// type whose serialize/deserialize shapes diverge. The frontend only ever holds
+/// serialize-shaped data (the backend serializes across the IPC/HTTP boundary), so
+/// collapse each base alias to its serialize phase — otherwise the union blocks
+/// property access on divergent types (`RichText`, `MarkData`, …). The
+/// `_Deserialize` types remain exported for code that constructs send-payloads.
+fn collapse_phase_aliases(path: &str) {
     let contents = std::fs::read_to_string(path).expect("read generated types.g.ts");
-    let anchor = "export type JsonValue =";
-    let start = contents
-        .find(anchor)
-        .expect("JsonValue declaration not found in generated output");
-    // Specta emits each type alias on a single line (and without a trailing
-    // semicolon — that's added later by treefmt), so replace through the end of
-    // the declaration's line. (Matching on `;` is unsafe: the next type's doc
-    // comment contains `&ndash;`, whose entity semicolon would match first.)
-    let end = start
-        + contents[start..]
-            .find('\n')
-            .unwrap_or(contents.len() - start);
-    let rewritten = format!(
-        "{}export type JsonValue = unknown;{}",
-        &contents[..start],
-        &contents[end..],
-    );
-    std::fs::write(path, rewritten).expect("write simplified types.g.ts");
+    let collapsed = contents
+        .lines()
+        .map(|line| {
+            if let Some(rest) = line.strip_prefix("export type ")
+                && let Some((name, rhs)) = rest.split_once(" = ")
+                && rhs == format!("{name}_Serialize | {name}_Deserialize;")
+            {
+                format!("export type {name} = {name}_Serialize;")
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(path, collapsed).expect("write collapsed types.g.ts");
 }

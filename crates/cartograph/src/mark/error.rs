@@ -1,7 +1,10 @@
 use serde::Serialize;
 use uuid::Uuid;
 
-use specta::{Generics, Type, TypeCollection, datatype as dtype};
+use specta::{
+    Type, Types,
+    datatype::{DataType, Primitive},
+};
 
 pub type MarkResult<T> = ::std::result::Result<T, MarkError>;
 
@@ -30,8 +33,7 @@ impl Serialize for MarkError {
 }
 
 impl Type for MarkError {
-    fn inline(_type_map: &mut TypeCollection, _generics: Generics) -> dtype::DataType {
-        use dtype::{DataType, PrimitiveType};
-        DataType::Primitive(PrimitiveType::String)
+    fn definition(_types: &mut Types) -> DataType {
+        DataType::Primitive(Primitive::str)
     }
 }

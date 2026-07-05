@@ -1,5 +1,8 @@
 use serde::Serialize;
-use specta::{Generics, Type, TypeCollection, datatype as dtype};
+use specta::{
+    Type, Types,
+    datatype::{DataType, Primitive},
+};
 use uuid::Uuid;
 
 pub type EditorResult<T> = ::std::result::Result<T, EditorError>;
@@ -29,8 +32,7 @@ impl Serialize for EditorError {
 }
 
 impl Type for EditorError {
-    fn inline(_type_map: &mut TypeCollection, _generics: Generics) -> dtype::DataType {
-        use dtype::{DataType, PrimitiveType};
-        DataType::Primitive(PrimitiveType::String)
+    fn definition(_types: &mut Types) -> DataType {
+        DataType::Primitive(Primitive::str)
     }
 }

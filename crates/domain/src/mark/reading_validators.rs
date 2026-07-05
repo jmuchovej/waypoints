@@ -9,7 +9,7 @@
 #![allow(clippy::iter_over_hash_type)]
 
 use super::Reading;
-use crate::chart::{FeatureID, FeatureKind};
+use crate::{FeatureID, FeatureKind};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use std::str::FromStr;
 use validator::{ValidateEmail, ValidateUrl};

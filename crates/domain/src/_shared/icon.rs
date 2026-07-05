@@ -63,15 +63,16 @@ pub struct Icon {
     pub identifier: String,
 
     /// Alternative text for accessibility
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alt_text: Option<String>,
 
     /// Cached colorability information (determined by UI layer)
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub colorable: Option<bool>,
 
     /// Additional metadata for UI layer
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(type = Option<specta_typescript::Unknown>)]
     pub metadata: Option<serde_json::Value>,
 }
 

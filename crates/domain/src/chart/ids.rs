@@ -5,7 +5,7 @@
 //! [S]: super::Select
 use crate::error::{DomainError, DomainResult};
 use derive_more::{Debug, Display, FromStr};
-use rand::Rng;
+use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use uuid::Uuid;
@@ -24,12 +24,12 @@ pub struct Base36ID(pub String);
 impl Base36ID {
     /// Generate a new random N-character base-36 ID
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut id = String::with_capacity(BASE36ID_LEN);
 
         const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
         for _ in 0..BASE36ID_LEN {
-            let idx = rng.gen_range(0..CHARS.len());
+            let idx = rng.random_range(0..CHARS.len());
             id.push(CHARS[idx] as char);
         }
 
