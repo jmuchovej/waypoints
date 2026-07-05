@@ -56,11 +56,17 @@ pub mod sync {
         pub use resolver::{ConflictResolver, Resolution};
     }
     mod coordinator;
+    mod driver;
     mod envelope;
     mod relay;
 
     pub use coordinator::{ApplyOutcome, SkipReason, SyncCoordinator, touched_marks};
+    pub use driver::{SyncOutcome, sync_once};
     pub use envelope::{Envelope, TextPayload};
+    pub use relay::{
+        FetchPage, HttpRelayClient, InMemoryRelayClient, NoopRelayClient, RelayClient,
+        RelayError, SequencedEnvelope, UploadAck,
+    };
     pub use resolver::{ConflictResolver, LastWriteResolver, Resolution};
 }
 

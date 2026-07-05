@@ -21,6 +21,8 @@ pub enum EditorError {
     Serialization(String),
     #[error("no active territory")]
     NoActiveTerritory,
+    #[error("relay error: {0}")]
+    Relay(String),
     #[error("store error: {0}")]
     Store(#[from] store::StoreError),
 }
