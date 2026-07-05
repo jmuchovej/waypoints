@@ -175,6 +175,7 @@ async fn sync_log_serves_the_since_cursor_query(#[future] db: DatabaseConnection
             touched_marks: Set(serde_json::json!([])),
             applied_at: Set(now()),
             origin: Set(0),
+            ..Default::default()
         }
         .insert(&db)
         .await
@@ -212,8 +213,75 @@ async fn sync_log_rejects_duplicate_group_ids(#[future] db: DatabaseConnection) 
         touched_marks: Set(serde_json::json!([])),
         applied_at: Set(now()),
         origin: Set(1),
+        ..Default::default()
     };
 
     row().insert(&db).await.unwrap();
     assert!(row().insert(&db).await.is_err());
+}
+
+// ── Relay sync state (#132) ─────────────────────────────────────────────
+
+#[rstest]
+#[tokio::test]
+async fn relay_cursors_are_per_source(#[future] db: DatabaseConnection) {
+    use domain::sync::RealmID;
+    use store::query::relay_cursor;
+
+    let db = db.await;
+    let realm = RealmID::new();
+
+    assert_eq!(relay_cursor::get(&db, "official", realm).await.unwrap(), 0);
+
+    relay_cursor::set(&db, "official", realm, 42).await.unwrap();
+    relay_cursor::set(&db, "homelab", realm, 7).await.unwrap();
+
+    assert_eq!(relay_cursor::get(&db, "official", realm).await.unwrap(), 42);
+    assert_eq!(relay_cursor::get(&db, "homelab", realm).await.unwrap(), 7);
+
+    // upsert overwrites
+    relay_cursor::set(&db, "official", realm, 43).await.unwrap();
+    assert_eq!(relay_cursor::get(&db, "official", realm).await.unwrap(), 43);
+}
+
+#[rstest]
+#[tokio::test]
+async fn outbox_tracks_pending_and_acked_uploads(#[future] db: DatabaseConnection) {
+    use domain::sync::{AccountID, DeviceID, HLC, OpID, RealmID};
+    use store::query::sync_log::{self, SyncLogEntry, SyncOrigin};
+
+    let db = db.await;
+    let realm = RealmID::new();
+    let device = DeviceID::new();
+    let account = AccountID::new();
+
+    let entry = |hlc: i64, origin: SyncOrigin| SyncLogEntry {
+        group_id: OpID::new(),
+        device_id: device,
+        account_id: account,
+        realm_id: realm,
+        hlc: HLC(hlc),
+        ops: serde_json::json!([]),
+        touched_marks: serde_json::json!([]),
+        origin,
+    };
+
+    let local_a = entry(10, SyncOrigin::Local);
+    let local_b = entry(20, SyncOrigin::Local);
+    let remote = entry(15, SyncOrigin::Remote);
+    let (a_id, b_id) = (local_a.group_id, local_b.group_id);
+    for e in [&local_a, &local_b, &remote] {
+        sync_log::insert(&db, e.clone()).await.unwrap();
+    }
+
+    // Only local-origin, unacked rows, oldest HLC first.
+    let pending = sync_log::pending_upload(&db, realm, 10).await.unwrap();
+    assert_eq!(pending.len(), 2);
+    assert_eq!(pending[0].group_id, a_id.inner());
+    assert_eq!(pending[1].group_id, b_id.inner());
+
+    sync_log::mark_uploaded(&db, &[a_id]).await.unwrap();
+    let pending = sync_log::pending_upload(&db, realm, 10).await.unwrap();
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].group_id, b_id.inner());
 }

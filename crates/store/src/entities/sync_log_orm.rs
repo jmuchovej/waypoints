@@ -44,6 +44,10 @@ pub struct Model {
     /// 0 = local-origin (we made it), 1 = remote-origin (received from peer).
     /// Useful for "show me only my changes" or filtering during debugging.
     pub origin: i32,
+
+    /// When the relay acknowledged this local-origin envelope.
+    /// NULL = pending upload. Remote-origin rows stay NULL forever.
+    pub uploaded_at: Option<DateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
