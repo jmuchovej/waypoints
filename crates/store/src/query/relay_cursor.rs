@@ -7,11 +7,7 @@ use crate::error::StoreResult;
 
 /// Last seq fetched from this (relay, realm) source. 0 = never fetched;
 /// the relay's seqs start at 1.
-pub async fn get(
-    db: &DatabaseConnection,
-    relay_id: &str,
-    realm_id: RealmID,
-) -> StoreResult<i64> {
+pub async fn get(db: &DatabaseConnection, relay_id: &str, realm_id: RealmID) -> StoreResult<i64> {
     let row = RelayCursors::find_by_id((relay_id.to_string(), realm_id.inner()))
         .one(db)
         .await?;

@@ -11,7 +11,13 @@ pub mod hub;
 pub mod registry;
 pub mod session;
 
+pub use hub::{Hub, ModelArtifacts, Progress};
 pub use registry::{License, ModelID, ModelSpec};
+pub use session::LoadedModel;
+
+// Re-exported so `instruments` drives inference against the same ort version
+// without declaring its own dependency (quartermaster owns the runtime).
+pub use ort;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -21,4 +27,7 @@ pub enum Error {
     /// Download or filesystem failure while materializing model artifacts.
     #[error("failed to fetch model artifacts: {0}")]
     Fetch(String),
+    /// ONNX Runtime failure while loading or configuring a session.
+    #[error(transparent)]
+    Ort(#[from] ort::Error),
 }

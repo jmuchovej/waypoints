@@ -23,27 +23,15 @@ autobenches = false
 description = "Serde support for Specta"
 documentation = "https://docs.rs/specta-serde/latest/specta-serde"
 readme = "README.md"
-keywords = [
-    "async",
-    "specta",
-    "rspc",
-    "typescript",
-    "typesafe",
-]
-categories = [
-    "web-programming",
-    "asynchronous",
-]
+keywords = ["async", "specta", "rspc", "typescript", "typesafe"]
+categories = ["web-programming", "asynchronous"]
 license = "MIT"
 repository = "https://github.com/specta-rs/specta"
 resolver = "2"
 
 [package.metadata."docs.rs"]
 all-features = true
-rustdoc-args = [
-    "--cfg",
-    "docsrs",
-]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
 name = "specta_serde"

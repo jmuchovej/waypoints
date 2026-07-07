@@ -11,6 +11,11 @@ imports:
 inputs:
   nixpkgs:
     url: github:cachix/devenv-nixpkgs/rolling
+  # Upstream nixpkgs for ML runtime libraries (onnxruntime): the rolling
+  # devenv-nixpkgs snapshot builds onnxruntime with CUDA even on darwin
+  # (unbuildable there, and uncached), while upstream is hydra-cached.
+  nixpkgs-ml:
+    url: github:NixOS/nixpkgs/nixos-unstable
   git-hooks:
     url: github:cachix/git-hooks.nix
     inputs:

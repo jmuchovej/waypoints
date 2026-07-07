@@ -13,8 +13,14 @@ publish.workspace = true
 
 [dependencies]
 derive_more = { workspace = true, features = ["display"] }
+directories.workspace = true
+hf-hub.workspace = true
+ort.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

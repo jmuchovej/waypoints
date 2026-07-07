@@ -660,7 +660,8 @@ pub async fn wrap_in_compound(
         let para_order = fractional_index::key_between(None, None);
 
         mark::insert(db, para_id, &para_data, now).await?;
-        let para_edge_id = terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
+        let para_edge_id =
+            terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
         ops.push(Maneuver::CreateMark {
             mark_id: para_id,
             data: para_data,

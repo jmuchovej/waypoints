@@ -2,12 +2,29 @@
   pkgs,
   lib,
   config,
+  inputs,
   ...
 }:
+let
+  # From nixpkgs-ml, not the default nixpkgs — see the note in devenv.yaml.
+  inherit (inputs.nixpkgs-ml.legacyPackages.${pkgs.stdenv.system}) onnxruntime;
+in
 {
   stdenv = pkgs.clangStdenv;
   env.LD_LIBRARY_PATH = lib.mkForce "";
   env.PROJECT_ROOT = config.env.DEVENV_ROOT;
+
+  # ort (crates/ai-quartermaster) links against the devenv-provided ONNX
+  # Runtime instead of downloading pyke's prebuilt binaries. The state-dir
+  # symlink (created in enterShell) gives ORT_LIB_LOCATION a stable path
+  # across nixpkgs updates. ort is pinned to the ONNX Runtime 1.23 C API;
+  # a newer runtime here is fine (the C API is forward-compatible), an older
+  # one is not.
+  env.ORT_LIB_LOCATION = "${config.env.DEVENV_STATE}/ort";
+  env.ORT_PREFER_DYNAMIC_LINK = "1";
+  enterShell = ''
+    ln -sfn ${onnxruntime}/lib "$DEVENV_STATE/ort"
+  '';
 
   packages = with pkgs; [
     git

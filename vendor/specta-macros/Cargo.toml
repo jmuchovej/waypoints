@@ -23,17 +23,8 @@ autobenches = false
 description = "Macros for specta. Don't use directly!"
 documentation = "https://docs.rs/specta/latest/specta"
 readme = "README.md"
-keywords = [
-    "async",
-    "specta",
-    "rspc",
-    "typescript",
-    "typesafe",
-]
-categories = [
-    "web-programming",
-    "asynchronous",
-]
+keywords = ["async", "specta", "rspc", "typescript", "typesafe"]
+categories = ["web-programming", "asynchronous"]
 license = "MIT"
 repository = "https://github.com/specta-rs/specta"
 resolver = "2"
@@ -62,13 +53,13 @@ version = "1"
 [dependencies.syn]
 version = "2"
 features = [
-    "clone-impls",
-    "derive",
-    "parsing",
-    "printing",
-    "proc-macro",
-    "visit",
-    "visit-mut",
+  "clone-impls",
+  "derive",
+  "parsing",
+  "printing",
+  "proc-macro",
+  "visit",
+  "visit-mut",
 ]
 default-features = false
 
