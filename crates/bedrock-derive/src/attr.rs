@@ -14,23 +14,70 @@ pub(crate) fn serde_rename(attrs: &[Attribute]) -> syn::Result<Option<String>> {
     extract_serde_string(attrs, "rename")
 }
 
-/// Whether a field carries `#[bedrock(id)]`. Errors on any other `#[bedrock(..)]`.
-pub(crate) fn has_bedrock_id(attrs: &[Attribute]) -> syn::Result<bool> {
-    let mut is_id = false;
+/// Bedrock's field-level attributes: `#[bedrock(id)]`, `#[bedrock(index)]`,
+/// `#[bedrock(unique)]`.
+#[derive(Default)]
+pub(crate) struct FieldAttrs {
+    pub is_id: bool,
+    /// `Some(unique)` if the field is singly indexed; `None` otherwise.
+    pub index: Option<bool>,
+}
+
+pub(crate) fn field_attrs(attrs: &[Attribute]) -> syn::Result<FieldAttrs> {
+    let mut out = FieldAttrs::default();
     for attr in attrs {
         if !attr.path().is_ident("bedrock") {
             continue;
         }
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("id") {
-                is_id = true;
+                out.is_id = true;
+                Ok(())
+            } else if meta.path.is_ident("index") {
+                out.index.get_or_insert(false);
+                Ok(())
+            } else if meta.path.is_ident("unique") {
+                out.index = Some(true);
                 Ok(())
             } else {
-                Err(meta.error("unknown bedrock attribute; the only field attribute is `id`"))
+                Err(meta
+                    .error("unknown bedrock field attribute; expected `id`, `index`, or `unique`"))
             }
         })?;
     }
-    Ok(is_id)
+    Ok(out)
+}
+
+/// Composite indexes declared at the container level: `#[bedrock(index("a", "b"))]`
+/// and `#[bedrock(unique("a", "b"))]`. Returns `(columns, unique)` per entry.
+pub(crate) fn container_indexes(attrs: &[Attribute]) -> syn::Result<Vec<(Vec<String>, bool)>> {
+    let mut indexes = Vec::new();
+    for attr in attrs {
+        if !attr.path().is_ident("bedrock") {
+            continue;
+        }
+        attr.parse_nested_meta(|meta| {
+            let unique = if meta.path.is_ident("unique") {
+                true
+            } else if meta.path.is_ident("index") {
+                false
+            } else {
+                return Err(meta.error(
+                    "unknown bedrock container attribute; expected `index(...)` or `unique(...)`",
+                ));
+            };
+            let content;
+            syn::parenthesized!(content in meta.input);
+            let columns: syn::punctuated::Punctuated<LitStr, syn::Token![,]> =
+                syn::punctuated::Punctuated::parse_terminated(&content)?;
+            if columns.is_empty() {
+                return Err(meta.error("a composite index needs at least one column"));
+            }
+            indexes.push((columns.iter().map(LitStr::value).collect(), unique));
+            Ok(())
+        })?;
+    }
+    Ok(indexes)
 }
 
 /// Apply a serde `rename_all` rule to an identifier.

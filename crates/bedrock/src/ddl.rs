@@ -1,4 +1,4 @@
-use bedrock_core::{CollectionSpec, ColumnType, FieldKind};
+use bedrock_core::{CollectionSpec, ColumnType, FieldKind, IndexSpec};
 
 /// The engine storage type for a field.
 ///
@@ -123,4 +123,22 @@ pub(crate) fn delete_by_id(spec: &CollectionSpec) -> String {
 /// `SELECT COUNT(*)` over the collection.
 pub(crate) fn count(spec: &CollectionSpec) -> String {
     format!("SELECT COUNT(*) FROM {}", quote(&spec.name))
+}
+
+/// `CREATE [UNIQUE] INDEX IF NOT EXISTS` for one declared index.
+pub(crate) fn create_index(spec: &CollectionSpec, index: &IndexSpec) -> String {
+    let unique = if index.unique { "UNIQUE " } else { "" };
+    let columns = index
+        .columns
+        .iter()
+        .map(|c| quote(c))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "CREATE {}INDEX IF NOT EXISTS {} ON {} ({})",
+        unique,
+        quote(&index.name),
+        quote(&spec.name),
+        columns
+    )
 }

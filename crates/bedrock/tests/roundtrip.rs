@@ -22,9 +22,11 @@ struct Body {
 }
 
 #[derive(Debug, Clone, PartialEq, Collection)]
+#[bedrock(index("pinned", "rank"))]
 struct Note {
     #[bedrock(id)]
     id: NoteId,
+    #[bedrock(index)]
     status: Status,
     body: Body,
     pinned: bool,
@@ -173,4 +175,54 @@ async fn insert_all_is_atomic() {
             .unwrap()
             .is_none()
     );
+}
+
+#[derive(Debug, Clone, PartialEq, Scalar)]
+struct TagId(Uuid);
+
+#[derive(Debug, Clone, PartialEq, Collection)]
+struct Tag {
+    #[bedrock(id)]
+    id: TagId,
+    #[bedrock(unique)]
+    slug: String,
+}
+
+#[test]
+fn note_spec_declares_indexes() {
+    let spec = Note::spec();
+    assert!(
+        spec.indexes
+            .iter()
+            .any(|i| i.name == "note_status_idx" && i.columns == ["status"] && !i.unique)
+    );
+    assert!(
+        spec.indexes
+            .iter()
+            .any(|i| i.name == "note_pinned_rank_idx" && i.columns == ["pinned", "rank"])
+    );
+}
+
+#[tokio::test]
+async fn indexes_are_created_and_unique_is_enforced() {
+    let db = Database::open(":memory:").await.expect("open");
+    db.ensure_collection::<Note>().await.expect("ensure note");
+    db.ensure_collection::<Note>().await.expect("idempotent");
+    db.ensure_collection::<Tag>().await.expect("ensure tag");
+
+    db.insert(&Tag {
+        id: TagId(Uuid::from_u128(1)),
+        slug: "a".into(),
+    })
+    .await
+    .expect("first slug");
+
+    // same slug, different id → the unique index rejects it.
+    let duplicate = db
+        .insert(&Tag {
+            id: TagId(Uuid::from_u128(2)),
+            slug: "a".into(),
+        })
+        .await;
+    assert!(duplicate.is_err());
 }

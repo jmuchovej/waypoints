@@ -29,6 +29,11 @@ impl Database {
         let spec = C::spec();
         spec.validate()?;
         self.conn.execute(ddl::create_table(&spec), ()).await?;
+        for index in &spec.indexes {
+            self.conn
+                .execute(ddl::create_index(&spec, index), ())
+                .await?;
+        }
         Ok(())
     }
 

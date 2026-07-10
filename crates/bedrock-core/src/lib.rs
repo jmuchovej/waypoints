@@ -14,5 +14,5 @@ mod value;
 
 pub use collection::Collection;
 pub use field::{DecodeError, EncodeError, Field, FieldKind};
-pub use spec::{CollectionSpec, FieldSpec, IdSpec, SpecError};
+pub use spec::{CollectionSpec, FieldSpec, IdSpec, IndexSpec, SpecError};
 pub use value::{ColumnType, StoredValue};
