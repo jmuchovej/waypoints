@@ -1,4 +1,4 @@
-use bedrock_core::{Collection, Field, StoredValue, ViewSpec};
+use bedrock_core::{Collection, Field, Query, StoredValue, ViewSpec};
 
 use crate::error::BedrockError;
 use crate::{ddl, value};
@@ -168,7 +168,43 @@ impl Database {
 
     /// Read every row of a view: `[id, projected columns…]` per row, in view order.
     pub async fn view_rows(&self, name: &str) -> Result<Vec<Vec<StoredValue>>, BedrockError> {
-        let mut rows = self.conn.query(ddl::select_view(name), ()).await?;
+        self.projected_rows(ddl::select_view(name), &Query::new())
+            .await
+    }
+
+    /// Query a collection: filter, sort, and limit over its base columns, reading
+    /// back full entities.
+    pub async fn query<C: Collection>(&self, query: &Query) -> Result<Vec<C>, BedrockError> {
+        let spec = C::spec();
+        let is_document: Vec<bool> = spec.fields.iter().map(|f| f.is_document()).collect();
+        let (suffix, params) = crate::query::suffix(query);
+        let sql = format!("{}{}", ddl::select_all(&spec), suffix);
+        let mut rows = self.conn.query(sql, params).await?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().await? {
+            out.push(C::from_row(value::read_row(&row, &is_document)?)?);
+        }
+        Ok(out)
+    }
+
+    /// Query a materialized view: filter/sort/limit over its projected columns,
+    /// returning projected rows (`[id, columns…]`).
+    pub async fn query_view(
+        &self,
+        name: &str,
+        query: &Query,
+    ) -> Result<Vec<Vec<StoredValue>>, BedrockError> {
+        self.projected_rows(ddl::select_view(name), query).await
+    }
+
+    /// Run a `SELECT` head + query suffix and read each row as scalar values.
+    async fn projected_rows(
+        &self,
+        head: String,
+        query: &Query,
+    ) -> Result<Vec<Vec<StoredValue>>, BedrockError> {
+        let (suffix, params) = crate::query::suffix(query);
+        let mut rows = self.conn.query(format!("{head}{suffix}"), params).await?;
         let mut out = Vec::new();
         while let Some(row) = rows.next().await? {
             let count = row.column_count();
