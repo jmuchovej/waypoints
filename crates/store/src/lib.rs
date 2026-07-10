@@ -3,6 +3,10 @@ pub use sea_orm::DatabaseConnection;
 pub mod error;
 pub use error::{StoreError, StoreResult};
 
+pub mod collections;
+mod store;
+pub use store::Store;
+
 mod macros;
 
 /// Database migration entry point.
