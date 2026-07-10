@@ -35,9 +35,9 @@ impl Store {
         }
 
         let db = bedrock::Database::open(&path.display().to_string()).await?;
-        db.ensure_collection::<collections::MarkRow>().await?;
-        db.ensure_collection::<collections::ChartRow>().await?;
-        db.ensure_collection::<collections::TerrainRow>().await?;
+        db.ensure_collection::<domain::mark::Mark>().await?;
+        db.ensure_collection::<domain::chart::Chart>().await?;
+        db.ensure_collection::<domain::terrain::Terrain>().await?;
         collections::seed::run(&db).await?;
 
         Ok(Store { db: Arc::new(db) })

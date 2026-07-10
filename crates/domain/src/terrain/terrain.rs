@@ -1,5 +1,6 @@
 use super::{TerrainID, TerrainKind};
 use crate::{Json, mark::MarkID};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use typed_builder::TypedBuilder;
@@ -10,23 +11,29 @@ use typed_builder::TypedBuilder;
 /// This enables a true multigraph: multiple edges — including multiple edges
 /// of the same `kind` — can exist between the same `(src_id, dst_id)` pair,
 /// distinguished by their `id`.
-#[derive(Debug, Clone, PartialEq, TypedBuilder, Deserialize, Serialize, Type)]
+#[derive(
+    Debug, Clone, PartialEq, TypedBuilder, Deserialize, Serialize, Type, bedrock::Collection,
+)]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Terrain {
     /// Stable edge identity. Generated on creation, never changes. Use this
     /// to address a specific edge unambiguously (e.g., when deleting or
     /// updating a single edge among several of the same kind between the
     /// same endpoints).
+    #[bedrock(id)]
     #[builder(default, setter(skip))]
     pub id: TerrainID,
 
     /// The directed edge this block is coming from
+    #[bedrock(index)]
     pub src_id: MarkID,
 
     /// The directed edge this block is going to
+    #[bedrock(index)]
     pub dst_id: MarkID,
 
-    /// What kind of edge is this?
+    /// What kind of edge is this? Stored as an indexed flattened string.
+    #[bedrock(index)]
     pub kind: TerrainKind,
 
     /// Lexicographic ordering string (only meaningful for certain edge kinds like `Child`)
@@ -40,4 +47,7 @@ pub struct Terrain {
     ))]
     #[specta(type = Option<specta_typescript::Unknown>)]
     pub extra: Option<Json>,
+
+    /// Soft-delete tombstone: set when the edge is removed; live reads exclude it.
+    pub deleted_at: Option<NaiveDateTime>,
 }

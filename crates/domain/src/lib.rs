@@ -65,7 +65,7 @@ pub mod mark {
     pub mod rich_reference;
     pub mod rich_text;
 
-    pub use mark::{Mark, MarkID};
+    pub use mark::{Mark, MarkID, now_ms};
     pub use mark_data::{Content, Landmark, MarkData};
     pub use reading::Reading;
     pub use rich_reference::{ReferenceDisplayMode, RichReference};

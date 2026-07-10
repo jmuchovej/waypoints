@@ -6,13 +6,16 @@ use specta::Type;
 use std::str::FromStr;
 use typed_builder::TypedBuilder;
 
-#[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
+#[derive(
+    Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type, bedrock::Collection,
+)]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Chart {
     /// A unique identifier for the [`Chart`]. This is more thoroughly detailed in
     /// [`ChartID`], but the aim here is to have a compact, unique identifier that allows
     /// Waypoints to reference [`Charts`][Chart] in a way that's not contingent names
     /// (which a user could arbitrarily change).
+    #[bedrock(id)]
     #[builder(setter(skip))]
     pub id: ChartID,
 
