@@ -1,0 +1,5 @@
+error: Scalar enums must have only fieldless (unit) variants; use Document for data-carrying enums
+ --> tests/compile_fail/scalar_data_enum.rs:7:5
+  |
+7 |     WithData(u32),
+  |     ^^^^^^^^^^^^^

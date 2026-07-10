@@ -1,0 +1,5 @@
+error: Scalar can only be derived for a newtype struct (one unnamed field) or a fieldless enum
+ --> tests/compile_fail/scalar_multi_field.rs:5:8
+  |
+5 | struct TwoFields(u32, u32);
+  |        ^^^^^^^^^

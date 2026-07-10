@@ -1,0 +1,5 @@
+error[E0080]: evaluation panicked: the #[bedrock(id)] field must be a scalar column, not a document
+  --> tests/compile_fail/document_id.rs:10:10
+   |
+10 | #[derive(Collection)]
+   |          ^^^^^^^^^^ evaluation of `_` failed here
