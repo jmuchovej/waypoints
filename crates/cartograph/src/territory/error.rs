@@ -7,8 +7,6 @@ pub type TerritoryResult<T> = ::std::result::Result<T, TerritoryError>;
 pub enum TerritoryError {
     #[error("territory not found: {0}")]
     NotFound(Uuid),
-    #[error("database error: {0}")]
-    Database(#[from] sea_orm::DbErr),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("store error: {0}")]
