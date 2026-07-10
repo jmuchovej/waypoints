@@ -8,7 +8,9 @@
 //! [`Document`](FieldKind::Document)) and round-trips through a [`StoredValue`].
 
 mod field;
+mod spec;
 mod value;
 
 pub use field::{DecodeError, Field, FieldKind};
+pub use spec::{CollectionSpec, FieldSpec, IdSpec, SpecError};
 pub use value::{ColumnType, StoredValue};
