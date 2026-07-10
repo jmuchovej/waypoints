@@ -76,6 +76,33 @@ fn filter_sql(filter: &Filter, params: &mut Vec<turso::Value>) -> String {
                 format!("{} IS NULL", quote(column))
             }
         }
+        Filter::JsonCompare {
+            document,
+            path,
+            op,
+            value,
+        } => {
+            // json_extract("<doc>", '$.<path>'). The path is a single-quoted SQL
+            // string literal, so double any embedded single quotes.
+            let extract = format!(
+                "json_extract({}, '$.{}')",
+                quote(document),
+                path.replace('\'', "''")
+            );
+            if matches!(value, ScalarValue::Null) {
+                return match op {
+                    CompareOp::Eq => format!("{extract} IS NULL"),
+                    CompareOp::Ne => format!("{extract} IS NOT NULL"),
+                    _ => "0".into(),
+                };
+            }
+            params.push(scalar_to_turso(value));
+            if matches!(op, CompareOp::Ne) {
+                format!("({extract} <> ? OR {extract} IS NULL)")
+            } else {
+                format!("{} {} ?", extract, op.sql())
+            }
+        }
     }
 }
 
