@@ -164,6 +164,35 @@ impl Field for serde_json::Value {
     }
 }
 
+/// An `IndexMap` is a document — round-tripped through serde as `jsonb`. A
+/// generic impl so a typed, order-preserving map (e.g. a Chart's `features`)
+/// can be a collection field directly, with no newtype wrapper.
+impl<K, V, S> Field for indexmap::IndexMap<K, V, S>
+where
+    indexmap::IndexMap<K, V, S>: serde::Serialize + serde::de::DeserializeOwned,
+{
+    const KIND: FieldKind = FieldKind::Document;
+
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        serde_json::to_value(self)
+            .map(StoredValue::Json)
+            .map_err(|e| EncodeError::Serialize {
+                target: "IndexMap",
+                message: e.to_string(),
+            })
+    }
+
+    fn decode(value: StoredValue) -> Result<Self, DecodeError> {
+        match value {
+            StoredValue::Json(v) => serde_json::from_value(v).map_err(|e| DecodeError::Document {
+                target: "IndexMap",
+                message: e.to_string(),
+            }),
+            other => Err(DecodeError::type_mismatch("IndexMap", &other)),
+        }
+    }
+}
+
 impl Field for Uuid {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Uuid);
 

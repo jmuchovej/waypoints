@@ -368,10 +368,8 @@ async fn unwrap_container_promotes_children() {
 
 use bedrock::{Filter, Query};
 use domain::chart::{ChartID, FeatureID};
-use domain::terrain::TerrainKind;
+use domain::terrain::{Terrain, TerrainKind};
 use std::str::FromStr;
-use store::collections::TerrainRow;
-use store::entities::terrain_kind_to_string as kind_to_string;
 
 /// Insert a terrain edge of arbitrary kind via bedrock — tests only.
 /// Production code should use the query-layer helpers.
@@ -383,24 +381,24 @@ async fn insert_edge_raw(
     order: Option<&str>,
 ) {
     use domain::terrain::TerrainID;
-    let row = TerrainRow {
+    let terrain = Terrain {
         id: TerrainID::new(),
         src_id: src,
         dst_id: dst,
-        kind: kind_to_string(&kind),
-        sequence: order.map(str::to_string),
+        kind,
+        order: order.map(str::to_string),
         extra: None,
         deleted_at: None,
     };
-    store.db().insert(row).await.unwrap();
+    store.db().insert(terrain).await.unwrap();
 }
 
-/// Fetch all terrain rows where src_id = src AND dst_id = dst (including
+/// Fetch all terrain edges where src_id = src AND dst_id = dst (including
 /// tombstoned rows) — mirrors the old `Terrains::find().filter(…).all()`.
-async fn all_edges_between(store: &Store, src: MarkID, dst: MarkID) -> Vec<TerrainRow> {
+async fn all_edges_between(store: &Store, src: MarkID, dst: MarkID) -> Vec<Terrain> {
     store
         .db()
-        .query::<TerrainRow>(&Query::new().filter(Filter::all([
+        .query::<Terrain>(&Query::new().filter(Filter::all([
             Filter::eq("src_id", src.inner().to_string()),
             Filter::eq("dst_id", dst.inner().to_string()),
         ])))
@@ -430,9 +428,9 @@ async fn child_and_reference_between_same_pair_coexist(#[future] db: Store) {
     let all = all_edges_between(&db, src, dst).await;
     assert_eq!(all.len(), 2, "both edges should coexist");
 
-    let kinds: Vec<&str> = all.iter().map(|m| m.kind.as_str()).collect();
-    assert!(kinds.contains(&"child"));
-    assert!(kinds.contains(&"reference"));
+    let kinds: Vec<&TerrainKind> = all.iter().map(|t| &t.kind).collect();
+    assert!(kinds.contains(&&TerrainKind::Child));
+    assert!(kinds.contains(&&TerrainKind::Reference));
 }
 
 /// Two Reading edges on the same (src, dst) pair but for different features
@@ -519,10 +517,10 @@ async fn reading_edges_queryable_by_kind_prefix(#[future] db: Store) {
 
     // Backlink query: who references this person via ANY reading feature?
     // bedrock Filter::eq does exact match, so we use a manual prefix scan via
-    // Filter::gte / Filter::lt on the kind string.
+    // Filter::gte / Filter::lt on the kind string (the Field stores a TEXT).
     let readings = db
         .db()
-        .query::<TerrainRow>(&Query::new().filter(Filter::all([
+        .query::<Terrain>(&Query::new().filter(Filter::all([
             Filter::eq("dst_id", person.inner().to_string()),
             Filter::gte("kind", "reading::"),
             Filter::lt("kind", "reading:;"), // ";" is the char after ":" in ASCII
@@ -533,8 +531,8 @@ async fn reading_edges_queryable_by_kind_prefix(#[future] db: Store) {
     assert_eq!(readings.len(), 3, "exactly three reading edges, no noise");
     for r in &readings {
         assert!(
-            r.kind.starts_with("reading::"),
-            "unexpected kind: {}",
+            matches!(&r.kind, TerrainKind::Reading(_, _)),
+            "unexpected kind: {:?}",
             r.kind
         );
     }
@@ -568,17 +566,16 @@ async fn reading_edge_db_roundtrip_preserves_enum_variant(#[future] db: Store) {
 
     let all = all_edges_between(&db, src, dst).await;
     assert_eq!(all.len(), 1);
-    let row = all.into_iter().next().unwrap();
+    let terrain = all.into_iter().next().unwrap();
 
-    // DB string should preserve the "builtin." prefix that ChartID::Display
-    // would strip. This is the whole reason kind_to_string bypasses Display.
-    assert_eq!(row.kind, "reading::builtin.meeting::attn");
-
-    let terrain: domain::terrain::Terrain = row.into();
-    match terrain.kind {
+    // The Field impl encodes to the storage string internally; the round-tripped
+    // Terrain should carry the typed variant directly.
+    match &terrain.kind {
         TerrainKind::Reading(c, f) => {
-            assert_eq!(c, chart);
-            assert_eq!(f, feature);
+            assert_eq!(c, &chart);
+            assert_eq!(f, &feature);
+            // Also verify the storage string preserves the "builtin." prefix.
+            assert_eq!(terrain.kind.to_storage(), "reading::builtin.meeting::attn");
         }
         other => panic!("expected Reading variant, got {other:?}"),
     }

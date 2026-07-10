@@ -3,12 +3,8 @@ use domain::Json;
 use domain::mark::MarkID;
 use domain::terrain::{Terrain, TerrainID, TerrainKind};
 
-use bedrock::{Filter, Query, Update};
+use bedrock::{Filter, Query, ScalarValue, Update};
 
-use crate::collections::TerrainRow;
-use crate::entities::{
-    terrain_kind_to_string as kind_to_string, terrain_string_to_kind as string_to_kind,
-};
 use crate::error::{StoreError, StoreResult};
 use crate::store::Store;
 
@@ -43,19 +39,16 @@ pub async fn get_edges(
         clauses.push(Filter::eq("dst_id", dst.inner().to_string()));
     }
     if let Some(k) = kind {
-        clauses.push(Filter::eq("kind", kind_to_string(k)));
+        // `kind` is stored as its flattened string via `TerrainKind::Field`.
+        // Filter must match the storage representation.
+        clauses.push(Filter::eq("kind", ScalarValue::Text(k.to_storage())));
     }
 
-    let rows = store
+    store
         .db()
-        .query::<TerrainRow>(
-            &Query::new()
-                .filter(Filter::all(clauses))
-                .sort_asc("sequence"),
-        )
-        .await?;
-
-    Ok(rows.into_iter().map(Terrain::from).collect())
+        .query::<Terrain>(&Query::new().filter(Filter::all(clauses)).sort_asc("order"))
+        .await
+        .map_err(Into::into)
 }
 
 /// Get all child edges for a parent, ordered by fractional index ASC.
@@ -92,16 +85,16 @@ pub async fn insert_edge(
     order: Option<&str>,
     extra: Option<Json>,
 ) -> StoreResult<()> {
-    let row = TerrainRow {
+    let terrain = Terrain {
         id: edge_id,
         src_id: src,
         dst_id: dst,
-        kind: kind_to_string(kind),
-        sequence: order.map(str::to_string),
+        kind: kind.clone(),
+        order: order.map(str::to_string),
         extra,
         deleted_at: None,
     };
-    store.db().insert(row).await?;
+    store.db().insert(terrain).await?;
     Ok(())
 }
 
@@ -119,14 +112,14 @@ pub async fn upsert_edge(
     order: Option<&str>,
     extra: Option<Json>,
 ) -> StoreResult<()> {
-    match store.db().get::<TerrainRow>(&edge_id).await? {
-        Some(row) => {
-            let updated = TerrainRow {
-                id: row.id,
+    match store.db().get::<Terrain>(&edge_id).await? {
+        Some(existing) => {
+            let updated = Terrain {
+                id: existing.id,
                 src_id: src,
                 dst_id: dst,
-                kind: kind_to_string(kind),
-                sequence: order.map(str::to_string),
+                kind: kind.clone(),
+                order: order.map(str::to_string),
                 extra,
                 deleted_at: None,
             };
@@ -139,8 +132,8 @@ pub async fn upsert_edge(
 
 /// Fetch a single live (non-tombstoned) edge by its stable `TerrainID`.
 pub async fn get_edge_by_id(store: &Store, edge_id: TerrainID) -> StoreResult<Option<Terrain>> {
-    let row = store.db().get::<TerrainRow>(&edge_id).await?;
-    Ok(row.filter(|r| r.deleted_at.is_none()).map(Terrain::from))
+    let terrain = store.db().get::<Terrain>(&edge_id).await?;
+    Ok(terrain.filter(|t| t.deleted_at.is_none()))
 }
 
 /// Update an edge's `src` and `order` by its stable `TerrainID`.
@@ -156,17 +149,17 @@ pub async fn update_edge_by_id(
     new_src: MarkID,
     new_order: Option<&str>,
 ) -> StoreResult<()> {
-    let row = store
+    let terrain = store
         .db()
-        .get::<TerrainRow>(&edge_id)
+        .get::<Terrain>(&edge_id)
         .await?
         .ok_or(StoreError::EdgeNotFound(edge_id))?;
 
-    let updated = TerrainRow {
+    let updated = Terrain {
         src_id: new_src,
-        sequence: new_order.map(str::to_string),
+        order: new_order.map(str::to_string),
         deleted_at: None,
-        ..row
+        ..terrain
     };
     store.db().update(updated).await?;
     Ok(())
@@ -176,16 +169,15 @@ pub async fn update_edge_by_id(
 /// carrying its sync clock. Succeeds silently if the edge is already
 /// gone (deletes are idempotent for sync's benefit).
 pub async fn delete_edge_by_id(store: &Store, edge_id: TerrainID) -> StoreResult<()> {
-    let Some(row) = store.db().get::<TerrainRow>(&edge_id).await? else {
+    let Some(terrain) = store.db().get::<Terrain>(&edge_id).await? else {
         // Already absent — idempotent, no error.
         return Ok(());
     };
-    let now_ms = trunc_millis(chrono::Local::now().naive_utc());
-    let tombstoned = TerrainRow {
-        deleted_at: Some(now_ms),
-        ..row
+    let updated = Terrain {
+        deleted_at: Some(trunc_millis(chrono::Local::now().naive_utc())),
+        ..terrain
     };
-    store.db().update(tombstoned).await?;
+    store.db().update(updated).await?;
     Ok(())
 }
 
@@ -225,16 +217,16 @@ pub async fn delete_edges_by_dst(
         Filter::missing("deleted_at"),
     ];
     if let Some(k) = kind {
-        clauses.push(Filter::eq("kind", kind_to_string(k)));
+        clauses.push(Filter::eq("kind", ScalarValue::Text(k.to_storage())));
     }
 
     let now_ms = trunc_millis(chrono::Local::now().naive_utc());
     // Use update_where to tombstone all matching edges in one go.
     // Encode the timestamp as bedrock would: TIMESTAMP_FMT text.
-    let ts_text = bedrock::ScalarValue::Text(now_ms.format("%Y-%m-%d %H:%M:%S%.f").to_string());
+    let ts_text = ScalarValue::Text(now_ms.format("%Y-%m-%d %H:%M:%S%.f").to_string());
     store
         .db()
-        .update_where::<TerrainRow>(
+        .update_where::<Terrain>(
             &Filter::all(clauses),
             &Update::new().set("deleted_at", ts_text),
         )
@@ -255,24 +247,24 @@ pub async fn update_child_edge(
     new_parent: Option<MarkID>,
     new_order: &str,
 ) -> StoreResult<()> {
-    let rows = store
+    let terrains = store
         .db()
-        .query::<TerrainRow>(&Query::new().filter(Filter::all([
+        .query::<Terrain>(&Query::new().filter(Filter::all([
             Filter::eq("dst_id", dst_id.inner().to_string()),
-            Filter::eq("kind", "child"),
+            Filter::eq("kind", ScalarValue::Text(TerrainKind::Child.to_storage())),
             Filter::missing("deleted_at"),
         ])))
         .await?;
 
-    let row = rows
+    let terrain = terrains
         .into_iter()
         .next()
         .ok_or(StoreError::MarkNotFound(dst_id))?;
 
-    let updated = TerrainRow {
-        src_id: new_parent.unwrap_or(row.src_id),
-        sequence: Some(new_order.to_string()),
-        ..row
+    let updated = Terrain {
+        src_id: new_parent.unwrap_or(terrain.src_id),
+        order: Some(new_order.to_string()),
+        ..terrain
     };
     store.db().update(updated).await?;
     Ok(())

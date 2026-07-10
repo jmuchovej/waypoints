@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::chart::{ChartID, FeatureID};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -41,6 +43,64 @@ pub enum TerrainKind {
     /// feature of a `Meeting`" without scanning every landmark's readings
     /// JSON.
     Reading(ChartID, FeatureID),
+}
+
+impl TerrainKind {
+    /// Flatten to the single-string form persisted in the indexed `kind`
+    /// column. Lossless — [`from_storage`](Self::from_storage) reconstructs the
+    /// exact kind. `ChartID`'s raw value (incl. any `builtin.` prefix) is used
+    /// so the round-trip is exact; `FeatureID`'s `Display` is not lossy.
+    pub fn to_storage(&self) -> String {
+        match self {
+            TerrainKind::Child => "child".to_string(),
+            TerrainKind::Reference => "reference".to_string(),
+            TerrainKind::Custom => "custom".to_string(),
+            TerrainKind::Reading(chart, feature) => format!("reading::{}::{}", chart.0, feature),
+        }
+    }
+
+    /// Parse the persisted `kind` string. Unknown prefixes and malformed
+    /// `reading::*` strings degrade to [`Custom`](TerrainKind::Custom) — lossy
+    /// but safe (only `to_storage` produces these, so it shouldn't happen).
+    pub fn from_storage(s: &str) -> Self {
+        if let Some(rest) = s.strip_prefix("reading::") {
+            if let Some((chart_str, feature_str)) = rest.split_once("::") {
+                if let (Ok(chart), Ok(feature)) = (
+                    ChartID::from_str(chart_str),
+                    FeatureID::from_str(feature_str),
+                ) {
+                    return TerrainKind::Reading(chart, feature);
+                }
+            }
+            return TerrainKind::Custom;
+        }
+        match s {
+            "child" => TerrainKind::Child,
+            "reference" => TerrainKind::Reference,
+            _ => TerrainKind::Custom,
+        }
+    }
+}
+
+/// A data-carrying enum that can't be a `Scalar`, but is stored as its flattened
+/// string in an **indexed `TEXT` column** — so `TerrainKind` stays typed in Rust
+/// while remaining a filterable, indexed discriminator in storage.
+impl bedrock::Field for TerrainKind {
+    const KIND: bedrock::FieldKind = bedrock::FieldKind::Column(bedrock::ColumnType::Text);
+
+    fn encode(&self) -> Result<bedrock::StoredValue, bedrock::EncodeError> {
+        Ok(bedrock::StoredValue::Text(self.to_storage()))
+    }
+
+    fn decode(value: bedrock::StoredValue) -> Result<Self, bedrock::DecodeError> {
+        match value {
+            bedrock::StoredValue::Text(s) => Ok(TerrainKind::from_storage(&s)),
+            other => Err(bedrock::DecodeError::TypeMismatch {
+                expected: "TerrainKind",
+                found: other.type_name(),
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
