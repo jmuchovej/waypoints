@@ -113,6 +113,8 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
         );
 
         impl ::bedrock_core::Collection for #name {
+            type Id = #id_ty;
+
             fn spec() -> ::bedrock_core::CollectionSpec {
                 ::bedrock_core::CollectionSpec {
                     name: ::std::string::String::from(#table),

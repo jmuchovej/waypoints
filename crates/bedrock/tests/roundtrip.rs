@@ -106,3 +106,71 @@ async fn rejects_submillisecond_timestamp() {
     let err = db.insert(&note).await.unwrap_err();
     assert!(matches!(err, bedrock::BedrockError::SubMillisecond { .. }));
 }
+
+fn note(n: u128) -> Note {
+    Note {
+        id: NoteId(Uuid::from_u128(n)),
+        status: Status::Draft,
+        body: Body {
+            text: "x".into(),
+            tags: vec![],
+        },
+        pinned: false,
+        rank: None,
+        created: at(0),
+    }
+}
+
+#[tokio::test]
+async fn crud_operations() {
+    let db = Database::open(":memory:").await.expect("open");
+    db.ensure_collection::<Note>().await.expect("ensure");
+
+    let mut n = note(7);
+    n.rank = Some(1);
+
+    db.insert(&n).await.expect("insert");
+    assert_eq!(db.count::<Note>().await.unwrap(), 1);
+    assert_eq!(db.get::<Note>(&n.id).await.unwrap().as_ref(), Some(&n));
+
+    // update in place
+    n.status = Status::Published;
+    n.body.text = "published".into();
+    assert!(db.update(&n).await.unwrap());
+    assert_eq!(db.get::<Note>(&n.id).await.unwrap().as_ref(), Some(&n));
+
+    // upsert replaces, does not duplicate
+    n.rank = Some(99);
+    db.upsert(&n).await.expect("upsert");
+    assert_eq!(db.count::<Note>().await.unwrap(), 1);
+    assert_eq!(db.get::<Note>(&n.id).await.unwrap().unwrap().rank, Some(99));
+
+    // delete
+    assert!(db.delete::<Note>(&n.id).await.unwrap());
+    assert!(db.get::<Note>(&n.id).await.unwrap().is_none());
+    assert!(!db.delete::<Note>(&n.id).await.unwrap()); // already gone
+    assert_eq!(db.count::<Note>().await.unwrap(), 0);
+}
+
+#[tokio::test]
+async fn insert_all_is_atomic() {
+    let db = Database::open(":memory:").await.expect("open");
+    db.ensure_collection::<Note>().await.expect("ensure");
+
+    db.insert_all(&[note(10), note(11)])
+        .await
+        .expect("insert_all");
+    assert_eq!(db.count::<Note>().await.unwrap(), 2);
+
+    // note(10) already exists → primary-key violation → the whole batch rolls back,
+    // so note(12) must not survive.
+    let result = db.insert_all(&[note(12), note(10)]).await;
+    assert!(result.is_err());
+    assert_eq!(db.count::<Note>().await.unwrap(), 2);
+    assert!(
+        db.get::<Note>(&NoteId(Uuid::from_u128(12)))
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
