@@ -63,7 +63,7 @@ async fn materialized_view_projects_scopes_and_drops() {
     let db = Database::open(":memory:").await.expect("open");
     db.ensure_collection::<Item>().await.expect("ensure");
 
-    db.insert_all(&[
+    db.insert_all(vec![
         item(1, "a", 10, "x"),
         item(2, "a", 20, "y"),
         item(3, "b", 30, "z"),
@@ -100,7 +100,7 @@ async fn materialized_view_projects_scopes_and_drops() {
 async fn view_lifecycle_ensure_list_and_cascade() {
     let db = Database::open(":memory:").await.expect("open");
     db.ensure_collection::<Item>().await.expect("ensure");
-    db.insert_all(&[item(1, "a", 10, "x")])
+    db.insert_all(vec![item(1, "a", 10, "x")])
         .await
         .expect("insert");
 

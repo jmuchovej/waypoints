@@ -23,7 +23,7 @@ fn item(n: u128, kind: &str) -> Item {
 
 async fn seeded(db: &Database) {
     db.ensure_collection::<Item>().await.expect("ensure");
-    db.insert_all(&[item(1, "a"), item(2, "a"), item(3, "b")])
+    db.insert_all(vec![item(1, "a"), item(2, "a"), item(3, "b")])
         .await
         .expect("insert");
 }
@@ -118,7 +118,7 @@ async fn dropped_transaction_is_rolled_back_on_reacquire() {
 
     // The next write acquisition rolls the abandoned transaction back, so the
     // "z" row never landed.
-    db.insert(&item(21, "kept")).await.expect("later insert");
+    db.insert(item(21, "kept")).await.expect("later insert");
     let z = db
         .query::<Item>(&Query::new().filter(Filter::eq("kind", "z")))
         .await

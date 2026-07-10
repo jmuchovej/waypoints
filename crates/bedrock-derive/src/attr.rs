@@ -48,36 +48,52 @@ pub(crate) fn field_attrs(attrs: &[Attribute]) -> syn::Result<FieldAttrs> {
     Ok(out)
 }
 
-/// Composite indexes declared at the container level: `#[bedrock(index("a", "b"))]`
-/// and `#[bedrock(unique("a", "b"))]`. Returns `(columns, unique)` per entry.
-pub(crate) fn container_indexes(attrs: &[Attribute]) -> syn::Result<Vec<(Vec<String>, bool)>> {
-    let mut indexes = Vec::new();
+/// Bedrock's container-level attributes, parsed in one pass (the parser rejects
+/// unknown keys, so every recognized key must be handled here together):
+/// composite indexes `#[bedrock(index("a", "b"))]` / `#[bedrock(unique("a", "b"))]`
+/// and the write hook `#[bedrock(before_save = path)]`.
+#[derive(Default)]
+pub(crate) struct ContainerAttrs {
+    /// `(columns, unique)` per composite index.
+    pub indexes: Vec<(Vec<String>, bool)>,
+    /// The `#[bedrock(before_save = path)]` function, if declared.
+    pub before_save: Option<syn::Path>,
+}
+
+pub(crate) fn container_attrs(attrs: &[Attribute]) -> syn::Result<ContainerAttrs> {
+    let mut out = ContainerAttrs::default();
     for attr in attrs {
         if !attr.path().is_ident("bedrock") {
             continue;
         }
         attr.parse_nested_meta(|meta| {
-            let unique = if meta.path.is_ident("unique") {
-                true
-            } else if meta.path.is_ident("index") {
-                false
+            if meta.path.is_ident("before_save") {
+                if out.before_save.is_some() {
+                    return Err(meta.error("duplicate #[bedrock(before_save = ...)]"));
+                }
+                out.before_save = Some(meta.value()?.parse()?);
+                Ok(())
+            } else if meta.path.is_ident("index") || meta.path.is_ident("unique") {
+                let unique = meta.path.is_ident("unique");
+                let content;
+                syn::parenthesized!(content in meta.input);
+                let columns: syn::punctuated::Punctuated<LitStr, syn::Token![,]> =
+                    syn::punctuated::Punctuated::parse_terminated(&content)?;
+                if columns.is_empty() {
+                    return Err(meta.error("a composite index needs at least one column"));
+                }
+                out.indexes
+                    .push((columns.iter().map(LitStr::value).collect(), unique));
+                Ok(())
             } else {
-                return Err(meta.error(
-                    "unknown bedrock container attribute; expected `index(...)` or `unique(...)`",
-                ));
-            };
-            let content;
-            syn::parenthesized!(content in meta.input);
-            let columns: syn::punctuated::Punctuated<LitStr, syn::Token![,]> =
-                syn::punctuated::Punctuated::parse_terminated(&content)?;
-            if columns.is_empty() {
-                return Err(meta.error("a composite index needs at least one column"));
+                Err(meta.error(
+                    "unknown bedrock container attribute; expected `index(...)`, \
+                     `unique(...)`, or `before_save = path`",
+                ))
             }
-            indexes.push((columns.iter().map(LitStr::value).collect(), unique));
-            Ok(())
         })?;
     }
-    Ok(indexes)
+    Ok(out)
 }
 
 /// Apply a serde `rename_all` rule to an identifier.
