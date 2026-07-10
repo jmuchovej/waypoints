@@ -3,6 +3,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/bedrock-core",
   "crates/cartograph",
   "crates/domain",
   "crates/importer",
@@ -29,7 +30,7 @@ Waypoints = { path = "waypoints/src-tauri" }
 cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
-outpost = { path = "crates/outpost" }
+outpost = { path = "crates/outpost", default-features = false }
 store = { path = "crates/store" }
 
 anyhow = "1.0.103"
@@ -85,6 +86,7 @@ sea-query = { version = "1.0.1", default-features = false, features = [
 ] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.150", features = [
+  "arbitrary_precision",
   "indexmap",
   "preserve_order",
   "raw_value"
