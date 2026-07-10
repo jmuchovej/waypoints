@@ -1,0 +1,5 @@
+error: Collection requires exactly one field marked #[bedrock(id)]
+ --> tests/compile_fail/missing_id.rs:5:8
+  |
+5 | struct NoId {
+  |        ^^^^
