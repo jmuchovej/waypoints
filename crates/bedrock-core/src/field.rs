@@ -22,8 +22,12 @@ pub enum FieldKind {
 
 /// A type that can occupy a field in a bedrock collection.
 ///
-/// Every field type declares its [`FieldKind`] and knows how to round-trip
-/// through a [`StoredValue`].
+/// A proc macro sees tokens, not resolved types — it cannot know that `MarkId`
+/// is a `Uuid` newtype and therefore a scalar column. Classification lives here
+/// instead, at the type level: every field type declares its [`FieldKind`] and
+/// knows how to round-trip through a [`StoredValue`]. A field whose type does
+/// not implement `Field` is a compile error, so strictness falls out of the
+/// trait system for free.
 pub trait Field: Sized {
     /// How this type maps into storage.
     const KIND: FieldKind;
@@ -31,8 +35,11 @@ pub trait Field: Sized {
     /// Whether the storage column admits `NULL`. True only for `Option<_>`.
     const NULLABLE: bool = false;
 
-    /// Project a value into its storage wire form. Infallible for every scalar.
-    fn encode(&self) -> StoredValue;
+    /// Project a value into its storage wire form.
+    ///
+    /// Infallible for scalars; document fields serialize through serde and may
+    /// fail, which is why the signature is fallible.
+    fn encode(&self) -> Result<StoredValue, EncodeError>;
 
     /// Reconstruct a value from its storage wire form.
     fn decode(value: StoredValue) -> Result<Self, DecodeError>;
@@ -52,8 +59,8 @@ macro_rules! impl_field_integer {
         impl Field for $ty {
             const KIND: FieldKind = FieldKind::Column(ColumnType::Integer);
 
-            fn encode(&self) -> StoredValue {
-                StoredValue::Integer(i64::from(*self))
+            fn encode(&self) -> Result<StoredValue, EncodeError> {
+                Ok(StoredValue::Integer(i64::from(*self)))
             }
 
             fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -77,8 +84,8 @@ macro_rules! impl_field_real {
         impl Field for $ty {
             const KIND: FieldKind = FieldKind::Column(ColumnType::Real);
 
-            fn encode(&self) -> StoredValue {
-                StoredValue::Real(f64::from(*self))
+            fn encode(&self) -> Result<StoredValue, EncodeError> {
+                Ok(StoredValue::Real(f64::from(*self)))
             }
 
             fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -96,8 +103,8 @@ impl_field_real!(f32, f64);
 impl Field for bool {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Boolean);
 
-    fn encode(&self) -> StoredValue {
-        StoredValue::Integer(i64::from(*self))
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Integer(i64::from(*self)))
     }
 
     fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -111,8 +118,8 @@ impl Field for bool {
 impl Field for String {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Text);
 
-    fn encode(&self) -> StoredValue {
-        StoredValue::Text(self.clone())
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Text(self.clone()))
     }
 
     fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -126,8 +133,8 @@ impl Field for String {
 impl Field for Vec<u8> {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Blob);
 
-    fn encode(&self) -> StoredValue {
-        StoredValue::Blob(self.clone())
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Blob(self.clone()))
     }
 
     fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -141,8 +148,8 @@ impl Field for Vec<u8> {
 impl Field for Uuid {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Uuid);
 
-    fn encode(&self) -> StoredValue {
-        StoredValue::Text(self.to_string())
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Text(self.to_string()))
     }
 
     fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -158,8 +165,8 @@ impl Field for Uuid {
 impl Field for NaiveDate {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Date);
 
-    fn encode(&self) -> StoredValue {
-        StoredValue::Text(self.format(DATE_FORMAT).to_string())
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Text(self.format(DATE_FORMAT).to_string()))
     }
 
     fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -174,8 +181,8 @@ impl Field for NaiveDate {
 impl Field for NaiveTime {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Time);
 
-    fn encode(&self) -> StoredValue {
-        StoredValue::Text(self.format(TIME_FORMAT).to_string())
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Text(self.format(TIME_FORMAT).to_string()))
     }
 
     fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -190,8 +197,8 @@ impl Field for NaiveTime {
 impl Field for NaiveDateTime {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Timestamp);
 
-    fn encode(&self) -> StoredValue {
-        StoredValue::Text(self.format(TIMESTAMP_FORMAT).to_string())
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Text(self.format(TIMESTAMP_FORMAT).to_string()))
     }
 
     fn decode(value: StoredValue) -> Result<Self, DecodeError> {
@@ -209,10 +216,10 @@ impl<T: Field> Field for Option<T> {
     const KIND: FieldKind = T::KIND;
     const NULLABLE: bool = true;
 
-    fn encode(&self) -> StoredValue {
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
         match self {
             Some(value) => value.encode(),
-            None => StoredValue::Null,
+            None => Ok(StoredValue::Null),
         }
     }
 
@@ -224,11 +231,24 @@ impl<T: Field> Field for Option<T> {
     }
 }
 
+/// Failure to project a Rust value into its stored wire form.
+///
+/// Scalar encoding is infallible; only document fields — which serialize through
+/// serde — can fail here.
+#[derive(Debug, thiserror::Error)]
+pub enum EncodeError {
+    /// A document field could not be serialized to its stored form.
+    #[error("could not serialize {target} to a document: {message}")]
+    Serialize {
+        target: &'static str,
+        message: String,
+    },
+}
+
 /// Failure to reconstruct a Rust value from its stored wire form.
 ///
-/// Encoding is currently infallible for every [`Field`] impl, so only the
-/// decode direction is fallible: the wire form arrives untyped from the engine
-/// and may not match what the target type expects.
+/// The wire form arrives untyped from the engine and may not match what the
+/// target type expects.
 #[derive(Debug, thiserror::Error)]
 pub enum DecodeError {
     /// The stored value's variant did not match the target type.
@@ -248,6 +268,21 @@ pub enum DecodeError {
         target: &'static str,
         input: String,
         message: String,
+    },
+
+    /// A stored document could not be deserialized into the target type.
+    #[error("could not deserialize {target} from its stored document: {message}")]
+    Document {
+        target: &'static str,
+        message: String,
+    },
+
+    /// A row carried the wrong number of columns for the target collection.
+    #[error("collection {collection} expected {expected} columns, found {found}")]
+    ColumnCount {
+        collection: &'static str,
+        expected: usize,
+        found: usize,
     },
 }
 
@@ -283,7 +318,8 @@ mod tests {
     where
         T: Field + Clone + PartialEq + core::fmt::Debug,
     {
-        let decoded = T::decode(value.encode()).expect("decode");
+        let encoded = value.encode().expect("encode");
+        let decoded = T::decode(encoded).expect("decode");
         assert_eq!(value, decoded);
     }
 
@@ -329,7 +365,10 @@ mod tests {
 
         roundtrip(Some(5i32));
         roundtrip(Option::<i32>::None);
-        assert_eq!(Option::<i32>::None.encode(), StoredValue::Null);
+        assert_eq!(
+            Option::<i32>::None.encode().expect("encode"),
+            StoredValue::Null
+        );
     }
 
     #[test]

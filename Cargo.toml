@@ -4,6 +4,7 @@
 resolver = "3"
 members = [
   "crates/bedrock-core",
+  "crates/bedrock-derive",
   "crates/cartograph",
   "crates/domain",
   "crates/importer",
@@ -44,6 +45,7 @@ directories = "6.0.0"
 eyre = "0.6.12"
 fake = { version = "5.1.0", default-features = false }
 geo = { version = "0.33.1", features = ["use-serde"] }
+heck = "0.5"
 hostname = "0.4"
 iana-time-zone = "0.1.65"
 indexmap = { version = "2.14", features = ["serde"] }
@@ -56,7 +58,9 @@ paste = "1.0.15"
 pest = "2.8.6"
 pest_derive = "2.8.6"
 pretty_assertions = "1.4.1"
+proc-macro2 = "1"
 pulldown-cmark = { version = "0.13", default-features = false }
+quote = "1"
 rand = "0.10"
 refinery = { version = "0.9", default-features = false }
 refinery-core = { version = "0.9", default-features = false }
@@ -102,6 +106,7 @@ specta = { version = "=2.0.0-rc.25", features = [
 ] }
 specta-serde = "0.0.12"
 specta-typescript = "0.0.12"
+syn = { version = "2", features = ["full"] }
 tauri = { version = "2.11.5", features = ["unstable"] }
 tauri-build = { version = "2.6.3", features = ["config-toml"] }
 tauri-plugin-dialog = "2.7.1"
@@ -119,6 +124,7 @@ tokio = { version = "1.52.3", features = ["sync"] }
 tower-http = { version = "0.7.0", features = ["fs", "trace"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+trybuild = "1"
 turso = "0.6.1"
 typed-builder = "0.23.2"
 uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }

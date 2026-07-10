@@ -1,0 +1,6 @@
+error: duplicate #[bedrock(id)]; a collection has exactly one id
+  --> tests/compile_fail/duplicate_id.rs:12:5
+   |
+12 | /     #[bedrock(id)]
+13 | |     b: Id,
+   | |_________^
