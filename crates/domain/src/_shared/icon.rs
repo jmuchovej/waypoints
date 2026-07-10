@@ -57,7 +57,7 @@ use specta::Type;
 /// type, and specific icon. The UI layer is responsible for resolving these identifiers
 /// to actual rendered icons and determining colorability via appropriate APIs.
 /// flutter_rust_bridge:non_opaque
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type, bedrock::Document)]
 pub struct Icon {
     /// Hierarchical icon identifier (e.g., "iconify:mdi:home", "system:emoji:house")
     pub identifier: String,

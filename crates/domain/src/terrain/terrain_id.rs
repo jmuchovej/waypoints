@@ -14,7 +14,9 @@ use uuid::Uuid;
 /// into the PK itself and makes future extensions painful.
 ///
 /// Generated as a random [`Uuid::new_v4`] on edge creation. Never changes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type, bedrock::Scalar,
+)]
 #[display("{}", self.inner().to_string().to_lowercase())]
 #[debug("TerrainID({})", self.inner().to_string().to_lowercase())]
 #[serde(transparent)]
