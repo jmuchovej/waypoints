@@ -7,14 +7,25 @@
 //! does CRUD, provisions materialized views, and runs queries. All
 //! engine-specific behavior lives behind this crate's boundary; nothing leaks
 //! into the core vocabulary.
+//!
+//! Connections are pooled: one serialized writer, several lazily-created
+//! readers (see [`Config`]). [`Database::flush`] exposes the durability
+//! primitive; scheduling it is the caller's policy.
 
+mod config;
 mod database;
 mod ddl;
+mod durability;
 mod error;
 mod migrate;
+mod pool;
 mod query;
+mod tx;
 mod value;
 
+pub use config::Config;
 pub use database::Database;
+pub use durability::FlushMode;
 pub use error::BedrockError;
 pub use migrate::MigrationError;
+pub use tx::{ReadTx, Savepoint, WriteTx};

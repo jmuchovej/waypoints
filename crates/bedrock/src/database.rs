@@ -1,30 +1,83 @@
 use bedrock_core::{
     Collection, CollectionSpec, Field, Filter, Query, StoredValue, Update, ViewSpec,
 };
+use turso::Connection;
 
+use crate::config::Config;
+use crate::durability::{self, FlushMode};
 use crate::error::BedrockError;
+use crate::pool::Pool;
+use crate::tx::{ReadTx, WriteTx};
 use crate::{ddl, migrate, value};
 
-/// A bedrock database: a turso connection plus collection-aware operations.
+/// A bedrock database: a pooled turso engine plus collection-aware operations.
+///
+/// Reads borrow a pooled read connection; writes serialize on the single write
+/// connection. The pool shares one engine handle, so every connection sees the
+/// same data (including for `:memory:`).
 pub struct Database {
-    // The connection keeps the engine alive on its own: turso_core::Connection
-    // holds `db: Arc<Database>`, so no handle to `turso::Database` is needed.
-    conn: turso::Connection,
+    pool: Pool,
 }
 
 impl Database {
-    /// Open (or create) a database at `path`. Use `":memory:"` for an ephemeral one.
-    ///
-    /// Custom column types (uuid/jsonb/boolean/date/time/timestamp) are enabled
-    /// here; STRICT is applied per-table in the DDL.
+    /// Open (or create) a database at `path` with default [`Config`]. Use
+    /// `":memory:"` for an ephemeral one.
     pub async fn open(path: &str) -> Result<Self, BedrockError> {
+        Self::open_with(path, Config::default()).await
+    }
+
+    /// Open (or create) a database at `path` with an explicit [`Config`]:
+    /// read-pool size, per-connection pragmas, and the enforced schema version.
+    ///
+    /// Custom column types (uuid/jsonb/boolean/date/time/timestamp) and
+    /// materialized views are enabled here; STRICT is applied per-table in the
+    /// DDL. The `bedrock_collections` and `bedrock_views` bookkeeping tables are
+    /// created once, so ordinary reads never issue DDL.
+    pub async fn open_with(path: &str, config: Config) -> Result<Self, BedrockError> {
+        // Determine freshness before building: `build` creates the file.
+        let is_new = path == ":memory:" || !std::path::Path::new(path).exists();
         let engine = turso::Builder::new_local(path)
             .experimental_custom_types(true)
             .experimental_materialized_views(true)
             .build()
             .await?;
-        let conn = engine.connect()?;
-        Ok(Self { conn })
+        let pool = Pool::open(path, engine, config, is_new).await?;
+        {
+            let conn = pool.write().await?;
+            conn.execute(ddl::create_meta_table(), ()).await?;
+            conn.execute(ddl::create_views_table(), ()).await?;
+        }
+        Ok(Self { pool })
+    }
+
+    /// Close the pool, dropping every connection. Subsequent operations fail
+    /// with [`BedrockError::Closed`].
+    pub async fn close(&self) {
+        self.pool.close().await;
+    }
+
+    /// Begin an explicit read-only transaction (`BEGIN`) on a pooled read
+    /// connection, for multi-statement reads that need a stable snapshot.
+    pub async fn begin_read(&self) -> Result<ReadTx, BedrockError> {
+        ReadTx::begin(self.pool.read().await?).await
+    }
+
+    /// Begin an explicit read-write transaction (`BEGIN IMMEDIATE`) on the write
+    /// connection. Supports nested [`savepoint`](WriteTx::savepoint)s.
+    pub async fn begin_write(&self) -> Result<WriteTx, BedrockError> {
+        WriteTx::begin(self.pool.write().await?).await
+    }
+
+    /// Flush durable state to disk with the default mode
+    /// ([`FlushMode::Passive`]).
+    pub async fn flush(&self) -> Result<(), BedrockError> {
+        self.flush_with(FlushMode::default()).await
+    }
+
+    /// Flush durable state to disk with an explicit [`FlushMode`].
+    pub async fn flush_with(&self, mode: FlushMode) -> Result<(), BedrockError> {
+        let conn = self.pool.write().await?;
+        durability::flush(&conn, mode).await
     }
 
     /// Create the collection's table if it is new, or migrate it to the current
@@ -38,66 +91,34 @@ impl Database {
     /// for collections defined as data rather than through the derive.
     pub async fn ensure_spec(&self, spec: &CollectionSpec) -> Result<(), BedrockError> {
         spec.validate()?;
-        self.conn.execute(ddl::create_meta_table(), ()).await?;
-        match self.stored_spec(&spec.name).await? {
+        let conn = self.pool.write().await?;
+        match stored_spec(&conn, &spec.name).await? {
             None => {
-                self.conn.execute(ddl::create_table(spec), ()).await?;
+                conn.execute(ddl::create_table(spec), ()).await?;
                 for index in &spec.indexes {
-                    self.conn
-                        .execute(ddl::create_index(spec, index), ())
-                        .await?;
+                    conn.execute(ddl::create_index(spec, index), ()).await?;
                 }
-                self.record_spec(spec).await?;
+                record_spec(&conn, spec).await?;
             }
             Some(ref stored) if stored == spec => {}
             Some(ref stored) => {
                 let statements = migrate::plan(stored, spec)?;
-                self.conn.execute("BEGIN IMMEDIATE", ()).await?;
+                conn.execute("BEGIN IMMEDIATE", ()).await?;
                 let applied = async {
                     for statement in &statements {
-                        self.conn.execute(statement, ()).await?;
+                        conn.execute(statement, ()).await?;
                     }
-                    self.record_spec(spec).await?;
+                    record_spec(&conn, spec).await?;
                     Ok::<(), BedrockError>(())
                 }
                 .await;
                 if let Err(error) = applied {
-                    let _ = self.conn.execute("ROLLBACK", ()).await;
+                    let _ = conn.execute("ROLLBACK", ()).await;
                     return Err(error);
                 }
-                self.conn.execute("COMMIT", ()).await?;
+                conn.execute("COMMIT", ()).await?;
             }
         }
-        Ok(())
-    }
-
-    /// The last-recorded spec for a collection, if any.
-    async fn stored_spec(&self, name: &str) -> Result<Option<CollectionSpec>, BedrockError> {
-        let mut rows = self
-            .conn
-            .query(ddl::read_spec(), vec![turso::Value::Text(name.to_owned())])
-            .await?;
-        match rows.next().await? {
-            Some(row) => match row.get_value(0)? {
-                turso::Value::Text(json) => Ok(Some(serde_json::from_str(&json)?)),
-                _ => Ok(None),
-            },
-            None => Ok(None),
-        }
-    }
-
-    /// Upsert a collection's spec into the meta table.
-    async fn record_spec(&self, spec: &CollectionSpec) -> Result<(), BedrockError> {
-        let json = serde_json::to_string(spec)?;
-        self.conn
-            .execute(
-                ddl::store_spec(),
-                vec![
-                    turso::Value::Text(spec.name.clone()),
-                    turso::Value::Text(json),
-                ],
-            )
-            .await?;
         Ok(())
     }
 
@@ -105,7 +126,8 @@ impl Database {
     pub async fn insert<C: Collection>(&self, entity: &C) -> Result<(), BedrockError> {
         let spec = C::spec();
         let params = value::to_params(&spec, &entity.to_row()?)?;
-        self.conn.execute(ddl::insert(&spec, false), params).await?;
+        let conn = self.pool.write().await?;
+        conn.execute(ddl::insert(&spec, false), params).await?;
         Ok(())
     }
 
@@ -113,22 +135,14 @@ impl Database {
     pub async fn insert_all<C: Collection>(&self, entities: &[C]) -> Result<(), BedrockError> {
         let spec = C::spec();
         let sql = ddl::insert(&spec, false);
-        self.conn.execute("BEGIN IMMEDIATE", ()).await?;
+        let tx = self.begin_write().await?;
         for entity in entities {
-            // Any failure between BEGIN and COMMIT must ROLLBACK before returning,
-            // otherwise the connection is left mid-transaction.
-            let step = async {
-                let params = value::to_params(&spec, &entity.to_row()?)?;
-                self.conn.execute(&sql, params).await?;
-                Ok::<(), BedrockError>(())
-            }
-            .await;
-            if let Err(error) = step {
-                let _ = self.conn.execute("ROLLBACK", ()).await;
-                return Err(error);
-            }
+            // Any failure drops `tx` before commit; the pool rolls the
+            // connection back on its next acquisition.
+            let params = value::to_params(&spec, &entity.to_row()?)?;
+            tx.execute(&sql, params).await?;
         }
-        self.conn.execute("COMMIT", ()).await?;
+        tx.commit().await?;
         Ok(())
     }
 
@@ -136,7 +150,8 @@ impl Database {
     pub async fn upsert<C: Collection>(&self, entity: &C) -> Result<(), BedrockError> {
         let spec = C::spec();
         let params = value::to_params(&spec, &entity.to_row()?)?;
-        self.conn.execute(ddl::insert(&spec, true), params).await?;
+        let conn = self.pool.write().await?;
+        conn.execute(ddl::insert(&spec, true), params).await?;
         Ok(())
     }
 
@@ -152,7 +167,8 @@ impl Database {
             .expect("the derive puts the id among the fields");
         let mut params = value::to_params(&spec, &row)?;
         params.push(value::to_turso(&row[id_index])?);
-        let affected = self.conn.execute(ddl::update(&spec), params).await?;
+        let conn = self.pool.write().await?;
+        let affected = conn.execute(ddl::update(&spec), params).await?;
         Ok(affected > 0)
     }
 
@@ -192,7 +208,8 @@ impl Database {
             }
         }
         let (sql, params) = crate::query::update_statement(&spec.name, filter, update);
-        Ok(self.conn.execute(sql, params).await?)
+        let conn = self.pool.write().await?;
+        Ok(conn.execute(sql, params).await?)
     }
 
     /// Fetch one entity by primary key.
@@ -200,10 +217,8 @@ impl Database {
         let spec = C::spec();
         let is_document: Vec<bool> = spec.fields.iter().map(|f| f.is_document()).collect();
         let param = value::to_turso(&id.encode()?)?;
-        let mut rows = self
-            .conn
-            .query(ddl::select_by_id(&spec), vec![param])
-            .await?;
+        let conn = self.pool.read().await?;
+        let mut rows = conn.query(ddl::select_by_id(&spec), vec![param]).await?;
         match rows.next().await? {
             Some(row) => Ok(Some(C::from_row(value::read_row(&row, &is_document)?)?)),
             None => Ok(None),
@@ -214,17 +229,16 @@ impl Database {
     pub async fn delete<C: Collection>(&self, id: &C::Id) -> Result<bool, BedrockError> {
         let spec = C::spec();
         let param = value::to_turso(&id.encode()?)?;
-        let affected = self
-            .conn
-            .execute(ddl::delete_by_id(&spec), vec![param])
-            .await?;
+        let conn = self.pool.write().await?;
+        let affected = conn.execute(ddl::delete_by_id(&spec), vec![param]).await?;
         Ok(affected > 0)
     }
 
     /// Count the rows in the collection.
     pub async fn count<C: Collection>(&self) -> Result<u64, BedrockError> {
         let spec = C::spec();
-        let mut rows = self.conn.query(ddl::count(&spec), ()).await?;
+        let conn = self.pool.read().await?;
+        let mut rows = conn.query(ddl::count(&spec), ()).await?;
         let count = match rows.next().await? {
             Some(row) => match row.get_value(0)? {
                 turso::Value::Integer(n) => n.max(0) as u64,
@@ -239,7 +253,8 @@ impl Database {
     pub async fn all<C: Collection>(&self) -> Result<Vec<C>, BedrockError> {
         let spec = C::spec();
         let is_document: Vec<bool> = spec.fields.iter().map(|f| f.is_document()).collect();
-        let mut rows = self.conn.query(ddl::select_all(&spec), ()).await?;
+        let conn = self.pool.read().await?;
+        let mut rows = conn.query(ddl::select_all(&spec), ()).await?;
         let mut out = Vec::new();
         while let Some(row) = rows.next().await? {
             out.push(C::from_row(value::read_row(&row, &is_document)?)?);
@@ -258,40 +273,31 @@ impl Database {
     /// base updates).
     pub async fn declare_view<C: Collection>(&self, view: &ViewSpec) -> Result<(), BedrockError> {
         let spec = C::spec();
-        self.conn.execute(ddl::create_views_table(), ()).await?;
-        self.conn.execute(ddl::drop_view(&view.name), ()).await?;
-        self.conn.execute(ddl::create_view(&spec, view), ()).await?;
-        self.record_view(&spec.name, view).await?;
-        Ok(())
+        let conn = self.pool.write().await?;
+        declare_view_on(&conn, &spec, view).await
     }
 
     /// Declare the view only if it differs from what's recorded — a no-op when
     /// the stored spec already matches, avoiding an unnecessary rebuild.
     pub async fn ensure_view<C: Collection>(&self, view: &ViewSpec) -> Result<(), BedrockError> {
-        self.conn.execute(ddl::create_views_table(), ()).await?;
-        if self.stored_view(&view.name).await?.as_ref() == Some(view) {
+        let conn = self.pool.write().await?;
+        if stored_view(&conn, &view.name).await?.as_ref() == Some(view) {
             return Ok(());
         }
-        self.declare_view::<C>(view).await
+        let spec = C::spec();
+        declare_view_on(&conn, &spec, view).await
     }
 
     /// Drop a materialized view (and its record) if it exists.
     pub async fn drop_view(&self, name: &str) -> Result<(), BedrockError> {
-        self.conn.execute(ddl::create_views_table(), ()).await?;
-        self.conn.execute(ddl::drop_view(name), ()).await?;
-        self.conn
-            .execute(
-                ddl::delete_view(),
-                vec![turso::Value::Text(name.to_owned())],
-            )
-            .await?;
-        Ok(())
+        let conn = self.pool.write().await?;
+        drop_view_on(&conn, name).await
     }
 
     /// Every declared view's spec.
     pub async fn views(&self) -> Result<Vec<ViewSpec>, BedrockError> {
-        self.conn.execute(ddl::create_views_table(), ()).await?;
-        let mut rows = self.conn.query(ddl::list_views(), ()).await?;
+        let conn = self.pool.read().await?;
+        let mut rows = conn.query(ddl::list_views(), ()).await?;
         let mut out = Vec::new();
         while let Some(row) = rows.next().await? {
             if let turso::Value::Text(json) = row.get_value(0)? {
@@ -305,13 +311,12 @@ impl Database {
     /// and both records. A no-op if the collection does not exist.
     pub async fn drop_collection<C: Collection>(&self) -> Result<(), BedrockError> {
         let name = C::spec().name;
-        self.conn.execute(ddl::create_views_table(), ()).await?;
+        let conn = self.pool.write().await?;
 
         // Collect the collection's view names first (draining the query before
         // issuing further statements on the same connection), then drop each.
         let mut view_names = Vec::new();
-        let mut rows = self
-            .conn
+        let mut rows = conn
             .query(
                 ddl::views_for_collection(),
                 vec![turso::Value::Text(name.clone())],
@@ -324,46 +329,13 @@ impl Database {
         }
         drop(rows);
         for view_name in view_names {
-            self.drop_view(&view_name).await?;
+            drop_view_on(&conn, &view_name).await?;
         }
 
-        self.conn.execute(ddl::drop_table(&name), ()).await?;
-        self.conn.execute(ddl::create_meta_table(), ()).await?;
-        self.conn
-            .execute(ddl::delete_spec(), vec![turso::Value::Text(name)])
+        conn.execute(ddl::drop_table(&name), ()).await?;
+        conn.execute(ddl::delete_spec(), vec![turso::Value::Text(name)])
             .await?;
         Ok(())
-    }
-
-    /// Upsert a view's spec into the meta table.
-    async fn record_view(&self, collection: &str, view: &ViewSpec) -> Result<(), BedrockError> {
-        let json = serde_json::to_string(view)?;
-        self.conn
-            .execute(
-                ddl::store_view(),
-                vec![
-                    turso::Value::Text(view.name.clone()),
-                    turso::Value::Text(collection.to_owned()),
-                    turso::Value::Text(json),
-                ],
-            )
-            .await?;
-        Ok(())
-    }
-
-    /// The recorded spec for a view, if any.
-    async fn stored_view(&self, name: &str) -> Result<Option<ViewSpec>, BedrockError> {
-        let mut rows = self
-            .conn
-            .query(ddl::read_view(), vec![turso::Value::Text(name.to_owned())])
-            .await?;
-        match rows.next().await? {
-            Some(row) => match row.get_value(0)? {
-                turso::Value::Text(json) => Ok(Some(serde_json::from_str(&json)?)),
-                _ => Ok(None),
-            },
-            None => Ok(None),
-        }
     }
 
     /// Read every row of a view: `[id, projected columns…]` per row, in view order.
@@ -379,7 +351,8 @@ impl Database {
         let is_document: Vec<bool> = spec.fields.iter().map(|f| f.is_document()).collect();
         let (suffix, params) = crate::query::suffix(query);
         let sql = format!("{}{}", ddl::select_all(&spec), suffix);
-        let mut rows = self.conn.query(sql, params).await?;
+        let conn = self.pool.read().await?;
+        let mut rows = conn.query(sql, params).await?;
         let mut out = Vec::new();
         while let Some(row) = rows.next().await? {
             out.push(C::from_row(value::read_row(&row, &is_document)?)?);
@@ -404,7 +377,8 @@ impl Database {
         query: &Query,
     ) -> Result<Vec<Vec<StoredValue>>, BedrockError> {
         let (suffix, params) = crate::query::suffix(query);
-        let mut rows = self.conn.query(format!("{head}{suffix}"), params).await?;
+        let conn = self.pool.read().await?;
+        let mut rows = conn.query(format!("{head}{suffix}"), params).await?;
         let mut out = Vec::new();
         while let Some(row) = rows.next().await? {
             let count = row.column_count();
@@ -416,4 +390,90 @@ impl Database {
         }
         Ok(out)
     }
+}
+
+/// The last-recorded spec for a collection, if any.
+async fn stored_spec(
+    conn: &Connection,
+    name: &str,
+) -> Result<Option<CollectionSpec>, BedrockError> {
+    let mut rows = conn
+        .query(ddl::read_spec(), vec![turso::Value::Text(name.to_owned())])
+        .await?;
+    match rows.next().await? {
+        Some(row) => match row.get_value(0)? {
+            turso::Value::Text(json) => Ok(Some(serde_json::from_str(&json)?)),
+            _ => Ok(None),
+        },
+        None => Ok(None),
+    }
+}
+
+/// Upsert a collection's spec into the meta table.
+async fn record_spec(conn: &Connection, spec: &CollectionSpec) -> Result<(), BedrockError> {
+    let json = serde_json::to_string(spec)?;
+    conn.execute(
+        ddl::store_spec(),
+        vec![
+            turso::Value::Text(spec.name.clone()),
+            turso::Value::Text(json),
+        ],
+    )
+    .await?;
+    Ok(())
+}
+
+/// The recorded spec for a view, if any.
+async fn stored_view(conn: &Connection, name: &str) -> Result<Option<ViewSpec>, BedrockError> {
+    let mut rows = conn
+        .query(ddl::read_view(), vec![turso::Value::Text(name.to_owned())])
+        .await?;
+    match rows.next().await? {
+        Some(row) => match row.get_value(0)? {
+            turso::Value::Text(json) => Ok(Some(serde_json::from_str(&json)?)),
+            _ => Ok(None),
+        },
+        None => Ok(None),
+    }
+}
+
+/// Upsert a view's spec into the meta table.
+async fn record_view(
+    conn: &Connection,
+    collection: &str,
+    view: &ViewSpec,
+) -> Result<(), BedrockError> {
+    let json = serde_json::to_string(view)?;
+    conn.execute(
+        ddl::store_view(),
+        vec![
+            turso::Value::Text(view.name.clone()),
+            turso::Value::Text(collection.to_owned()),
+            turso::Value::Text(json),
+        ],
+    )
+    .await?;
+    Ok(())
+}
+
+/// Drop and recreate a view on `conn`, then record it.
+async fn declare_view_on(
+    conn: &Connection,
+    spec: &CollectionSpec,
+    view: &ViewSpec,
+) -> Result<(), BedrockError> {
+    conn.execute(ddl::drop_view(&view.name), ()).await?;
+    conn.execute(ddl::create_view(spec, view), ()).await?;
+    record_view(conn, &spec.name, view).await
+}
+
+/// Drop a view (and its record) on `conn` if it exists.
+async fn drop_view_on(conn: &Connection, name: &str) -> Result<(), BedrockError> {
+    conn.execute(ddl::drop_view(name), ()).await?;
+    conn.execute(
+        ddl::delete_view(),
+        vec![turso::Value::Text(name.to_owned())],
+    )
+    .await?;
+    Ok(())
 }

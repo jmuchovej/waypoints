@@ -15,6 +15,7 @@ publish.workspace = true
 bedrock-core = { path = "../bedrock-core" }
 serde_json.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true }
 turso.workspace = true
 
 [dev-dependencies]
