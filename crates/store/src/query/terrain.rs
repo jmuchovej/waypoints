@@ -1,48 +1,66 @@
+use chrono::NaiveDateTime;
 use domain::Json;
 use domain::mark::MarkID;
 use domain::terrain::{Terrain, TerrainID, TerrainKind};
-use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, sea_query::Expr,
-};
 
+use bedrock::{Filter, Query, Update};
+
+use crate::collections::TerrainRow;
 use crate::entities::{
-    ActiveTerrain, TerrainColumn, Terrains, terrain_kind_to_string as kind_to_string,
+    terrain_kind_to_string as kind_to_string, terrain_string_to_kind as string_to_kind,
 };
 use crate::error::{StoreError, StoreResult};
+use crate::store::Store;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/// Truncate a `NaiveDateTime` to millisecond precision.
+fn trunc_millis(dt: NaiveDateTime) -> NaiveDateTime {
+    let millis = dt.and_utc().timestamp_millis();
+    chrono::DateTime::from_timestamp_millis(millis)
+        .map(|d| d.naive_utc())
+        .unwrap_or(dt)
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
 
 /// Query edges with optional filters on src, dst, and kind.
 ///
 /// Results are ordered by fractional index ASC (meaningful for Child and
 /// Reading edges). Pass `None` for any filter you don't want to constrain.
 pub async fn get_edges(
-    db: &DatabaseConnection,
+    store: &Store,
     src_id: Option<MarkID>,
     dst_id: Option<MarkID>,
     kind: Option<&TerrainKind>,
 ) -> StoreResult<Vec<Terrain>> {
-    let mut query = Terrains::find().filter(TerrainColumn::DeletedAt.is_null());
+    let mut clauses = vec![Filter::missing("deleted_at")];
 
     if let Some(src) = src_id {
-        query = query.filter(TerrainColumn::SrcId.eq(src.inner()));
+        clauses.push(Filter::eq("src_id", src.inner().to_string()));
     }
     if let Some(dst) = dst_id {
-        query = query.filter(TerrainColumn::DstId.eq(dst.inner()));
+        clauses.push(Filter::eq("dst_id", dst.inner().to_string()));
     }
     if let Some(k) = kind {
-        query = query.filter(TerrainColumn::Kind.eq(kind_to_string(k)));
+        clauses.push(Filter::eq("kind", kind_to_string(k)));
     }
 
-    let models = query.order_by_asc(TerrainColumn::Order).all(db).await?;
-    Ok(models.into_iter().map(Terrain::from).collect())
+    let rows = store
+        .db()
+        .query::<TerrainRow>(
+            &Query::new()
+                .filter(Filter::all(clauses))
+                .sort_asc("sequence"),
+        )
+        .await?;
+
+    Ok(rows.into_iter().map(Terrain::from).collect())
 }
 
 /// Get all child edges for a parent, ordered by fractional index ASC.
-pub async fn get_child_edges(
-    db: &DatabaseConnection,
-    parent_id: MarkID,
-) -> StoreResult<Vec<Terrain>> {
-    get_edges(db, Some(parent_id), None, Some(&TerrainKind::Child)).await
+pub async fn get_child_edges(store: &Store, parent_id: MarkID) -> StoreResult<Vec<Terrain>> {
+    get_edges(store, Some(parent_id), None, Some(&TerrainKind::Child)).await
 }
 
 /// Find the parent (child-kind) edge pointing to child_id. None if orphan.
@@ -54,11 +72,8 @@ pub async fn get_child_edges(
 ///
 /// SYNC: this function is not multigraph-safe; sync paths must use
 /// `get_edge_by_id`.
-pub async fn find_parent_edge(
-    db: &DatabaseConnection,
-    child_id: MarkID,
-) -> StoreResult<Option<Terrain>> {
-    let mut edges = get_edges(db, None, Some(child_id), Some(&TerrainKind::Child)).await?;
+pub async fn find_parent_edge(store: &Store, child_id: MarkID) -> StoreResult<Option<Terrain>> {
+    let mut edges = get_edges(store, None, Some(child_id), Some(&TerrainKind::Child)).await?;
     Ok(edges.pop())
 }
 
@@ -69,7 +84,7 @@ pub async fn find_parent_edge(
 /// embeds it in the `CreateEdge` op. Do not generate an ID inside this
 /// function.
 pub async fn insert_edge(
-    db: &DatabaseConnection,
+    store: &Store,
     edge_id: TerrainID,
     src: MarkID,
     dst: MarkID,
@@ -77,17 +92,16 @@ pub async fn insert_edge(
     order: Option<&str>,
     extra: Option<Json>,
 ) -> StoreResult<()> {
-    let active = ActiveTerrain {
-        id: Set(edge_id.inner()),
-        src_id: Set(src.inner()),
-        dst_id: Set(dst.inner()),
-        kind: Set(kind_to_string(kind)),
-        order: Set(order.map(str::to_string)),
-        extra: Set(extra),
-        // Row clocks are managed by the sync layer via set_row_clock.
-        ..Default::default()
+    let row = TerrainRow {
+        id: edge_id,
+        src_id: src,
+        dst_id: dst,
+        kind: kind_to_string(kind),
+        sequence: order.map(str::to_string),
+        extra,
+        deleted_at: None,
     };
-    active.insert(db).await?;
+    store.db().insert(row).await?;
     Ok(())
 }
 
@@ -97,7 +111,7 @@ pub async fn insert_edge(
 /// primary key.
 #[allow(clippy::too_many_arguments)]
 pub async fn upsert_edge(
-    db: &DatabaseConnection,
+    store: &Store,
     edge_id: TerrainID,
     src: MarkID,
     dst: MarkID,
@@ -105,32 +119,28 @@ pub async fn upsert_edge(
     order: Option<&str>,
     extra: Option<Json>,
 ) -> StoreResult<()> {
-    match Terrains::find_by_id(edge_id.inner()).one(db).await? {
-        Some(model) => {
-            let mut active: ActiveTerrain = model.into_active_model();
-            active.src_id = Set(src.inner());
-            active.dst_id = Set(dst.inner());
-            active.kind = Set(kind_to_string(kind));
-            active.order = Set(order.map(str::to_string));
-            active.extra = Set(extra);
-            active.deleted_at = Set(None);
-            active.update(db).await?;
+    match store.db().get::<TerrainRow>(&edge_id).await? {
+        Some(row) => {
+            let updated = TerrainRow {
+                id: row.id,
+                src_id: src,
+                dst_id: dst,
+                kind: kind_to_string(kind),
+                sequence: order.map(str::to_string),
+                extra,
+                deleted_at: None,
+            };
+            store.db().update(updated).await?;
             Ok(())
         }
-        None => insert_edge(db, edge_id, src, dst, kind, order, extra).await,
+        None => insert_edge(store, edge_id, src, dst, kind, order, extra).await,
     }
 }
 
 /// Fetch a single live (non-tombstoned) edge by its stable `TerrainID`.
-pub async fn get_edge_by_id(
-    db: &DatabaseConnection,
-    edge_id: TerrainID,
-) -> StoreResult<Option<Terrain>> {
-    let model = Terrains::find_by_id(edge_id.inner())
-        .filter(TerrainColumn::DeletedAt.is_null())
-        .one(db)
-        .await?;
-    Ok(model.map(Terrain::from))
+pub async fn get_edge_by_id(store: &Store, edge_id: TerrainID) -> StoreResult<Option<Terrain>> {
+    let row = store.db().get::<TerrainRow>(&edge_id).await?;
+    Ok(row.filter(|r| r.deleted_at.is_none()).map(Terrain::from))
 }
 
 /// Update an edge's `src` and `order` by its stable `TerrainID`.
@@ -141,50 +151,55 @@ pub async fn get_edge_by_id(
 /// edge is live again — otherwise the losing delete would still win
 /// observably.
 pub async fn update_edge_by_id(
-    db: &DatabaseConnection,
+    store: &Store,
     edge_id: TerrainID,
     new_src: MarkID,
     new_order: Option<&str>,
 ) -> StoreResult<()> {
-    let model = Terrains::find_by_id(edge_id.inner())
-        .one(db)
+    let row = store
+        .db()
+        .get::<TerrainRow>(&edge_id)
         .await?
         .ok_or(StoreError::EdgeNotFound(edge_id))?;
 
-    let mut active: ActiveTerrain = model.into_active_model();
-    active.src_id = Set(new_src.inner());
-    active.order = Set(new_order.map(str::to_string));
-    active.deleted_at = Set(None);
-    active.update(db).await?;
+    let updated = TerrainRow {
+        src_id: new_src,
+        sequence: new_order.map(str::to_string),
+        deleted_at: None,
+        ..row
+    };
+    store.db().update(updated).await?;
     Ok(())
 }
 
 /// Tombstone an edge by its stable `TerrainID`. Soft so the row keeps
 /// carrying its sync clock. Succeeds silently if the edge is already
 /// gone (deletes are idempotent for sync's benefit).
-pub async fn delete_edge_by_id(db: &DatabaseConnection, edge_id: TerrainID) -> StoreResult<()> {
-    Terrains::update_many()
-        .col_expr(
-            TerrainColumn::DeletedAt,
-            Expr::value(chrono::Local::now().naive_utc()),
-        )
-        .filter(TerrainColumn::Id.eq(edge_id.inner()))
-        .exec(db)
-        .await?;
+pub async fn delete_edge_by_id(store: &Store, edge_id: TerrainID) -> StoreResult<()> {
+    let Some(row) = store.db().get::<TerrainRow>(&edge_id).await? else {
+        // Already absent — idempotent, no error.
+        return Ok(());
+    };
+    let now_ms = trunc_millis(chrono::Local::now().naive_utc());
+    let tombstoned = TerrainRow {
+        deleted_at: Some(now_ms),
+        ..row
+    };
+    store.db().update(tombstoned).await?;
     Ok(())
 }
 
 /// Insert a child edge. Generates a fresh `TerrainID` and returns it so the
 /// caller can record it in ops (sync addresses edges by ID).
 pub async fn insert_child_edge(
-    db: &DatabaseConnection,
+    store: &Store,
     parent_id: MarkID,
     child_id: MarkID,
     order: &str,
 ) -> StoreResult<TerrainID> {
     let edge_id = TerrainID::new();
     insert_edge(
-        db,
+        store,
         edge_id,
         parent_id,
         child_id,
@@ -201,52 +216,64 @@ pub async fn insert_child_edge(
 /// When `kind` is `None`, deletes all edges regardless of kind.
 /// When `kind` is `Some(k)`, only deletes edges of that kind.
 pub async fn delete_edges_by_dst(
-    db: &DatabaseConnection,
+    store: &Store,
     dst_id: MarkID,
     kind: Option<&TerrainKind>,
 ) -> StoreResult<()> {
-    let mut query = Terrains::update_many()
-        .col_expr(
-            TerrainColumn::DeletedAt,
-            Expr::value(chrono::Local::now().naive_utc()),
-        )
-        .filter(TerrainColumn::DstId.eq(dst_id.inner()))
-        .filter(TerrainColumn::DeletedAt.is_null());
-
+    let mut clauses = vec![
+        Filter::eq("dst_id", dst_id.inner().to_string()),
+        Filter::missing("deleted_at"),
+    ];
     if let Some(k) = kind {
-        query = query.filter(TerrainColumn::Kind.eq(kind_to_string(k)));
+        clauses.push(Filter::eq("kind", kind_to_string(k)));
     }
 
-    query.exec(db).await?;
+    let now_ms = trunc_millis(chrono::Local::now().naive_utc());
+    // Use update_where to tombstone all matching edges in one go.
+    // Encode the timestamp as bedrock would: TIMESTAMP_FMT text.
+    let ts_text = bedrock::ScalarValue::Text(now_ms.format("%Y-%m-%d %H:%M:%S%.f").to_string());
+    store
+        .db()
+        .update_where::<TerrainRow>(
+            &Filter::all(clauses),
+            &Update::new().set("deleted_at", ts_text),
+        )
+        .await?;
     Ok(())
 }
 
 /// Update the child edge pointing to `dst_id`.
 /// Always sets a new fractional order; optionally re-parents to a new `src_id`.
 ///
-/// With the new `id`-based PK, SeaORM can update `src_id` in-place without
-/// the old "delete-and-insert" dance — the primary key doesn't change.
+/// With the `id`-based PK, we can update `src_id` in-place without the old
+/// "delete-and-insert" dance — the primary key doesn't change.
 /// We still have to pick a single edge to modify; see `find_parent_edge`'s
 /// caveat about the one-parent assumption.
 pub async fn update_child_edge(
-    db: &DatabaseConnection,
+    store: &Store,
     dst_id: MarkID,
     new_parent: Option<MarkID>,
     new_order: &str,
 ) -> StoreResult<()> {
-    let model = Terrains::find()
-        .filter(TerrainColumn::DstId.eq(dst_id.inner()))
-        .filter(TerrainColumn::Kind.eq("child"))
-        .one(db)
-        .await?
+    let rows = store
+        .db()
+        .query::<TerrainRow>(&Query::new().filter(Filter::all([
+            Filter::eq("dst_id", dst_id.inner().to_string()),
+            Filter::eq("kind", "child"),
+            Filter::missing("deleted_at"),
+        ])))
+        .await?;
+
+    let row = rows
+        .into_iter()
+        .next()
         .ok_or(StoreError::MarkNotFound(dst_id))?;
 
-    let mut active: ActiveTerrain = model.into_active_model();
-    if let Some(parent) = new_parent {
-        active.src_id = Set(parent.inner());
-    }
-    active.order = Set(Some(new_order.to_string()));
-    active.update(db).await?;
+    let updated = TerrainRow {
+        src_id: new_parent.unwrap_or(row.src_id),
+        sequence: Some(new_order.to_string()),
+        ..row
+    };
+    store.db().update(updated).await?;
     Ok(())
 }
-

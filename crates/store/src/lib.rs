@@ -1,5 +1,3 @@
-pub use sea_orm::DatabaseConnection;
-
 pub mod error;
 pub use error::{StoreError, StoreResult};
 

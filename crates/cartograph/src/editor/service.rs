@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
-use store::DatabaseConnection;
+use store::Store;
 
 use super::error::{EditorError, EditorResult};
 use super::history::CommandHistory;
@@ -10,7 +10,7 @@ use super::{mutation, projection};
 
 use crate::Database;
 
-/// The editor service holds a shared database connection and per-landmark undo
+/// The editor service holds a shared store handle and per-landmark undo
 /// histories.
 ///
 /// The [`Database`](crate::Database) Arc is shared with `TerritoryManager` so territory switches
@@ -40,8 +40,8 @@ impl EditorService {
         }
     }
 
-    /// Lock the shared Arc, clone the connection (cheap pool handle), release lock.
-    async fn db(&self) -> EditorResult<DatabaseConnection> {
+    /// Lock the shared Arc, clone the store handle (cheap Arc clone), release lock.
+    async fn db(&self) -> EditorResult<Store> {
         self.db
             .lock()
             .await

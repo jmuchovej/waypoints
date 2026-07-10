@@ -1,19 +1,28 @@
+use std::sync::Arc;
+
 use crate::collections;
 use crate::error::{StoreError, StoreResult};
 
 /// Bedrock-backed store. The `db` handle is the single point of contact with
 /// the turso engine; all collection operations go through it.
 ///
-/// This runs ALONGSIDE the sea-orm stack — `store::open` (in `tools.rs`)
-/// continues to return a `DatabaseConnection`. `Store::open` here is the
-/// bedrock replacement, wired in parallel until the swap is ready.
+/// Cheaply cloneable: the inner `Arc` lets the shared database pool be held by
+/// multiple owners (e.g. `TerritoryManager` and the per-handle structs in
+/// cartograph) without requiring the caller to wrap in a second Arc.
+#[derive(Clone)]
 pub struct Store {
-    db: bedrock::Database,
+    db: Arc<bedrock::Database>,
 }
 
 impl Store {
     pub fn db(&self) -> &bedrock::Database {
         &self.db
+    }
+
+    /// Consume `self` and return the underlying `bedrock::Database` handle.
+    /// Only succeeds if this is the last owner; otherwise returns the Store back.
+    pub fn try_into_db(self) -> Result<bedrock::Database, Self> {
+        Arc::try_unwrap(self.db).map_err(|db| Store { db })
     }
 
     /// Open (or create) the bedrock store at `path`.
@@ -31,6 +40,6 @@ impl Store {
         db.ensure_collection::<collections::TerrainRow>().await?;
         collections::seed::run(&db).await?;
 
-        Ok(Store { db })
+        Ok(Store { db: Arc::new(db) })
     }
 }

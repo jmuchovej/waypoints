@@ -4,8 +4,6 @@ use domain::mark::MarkID;
 use domain::terrain::TerrainID;
 use thiserror::Error;
 
-use crate::entities::MarkModel;
-
 pub type StoreResult<T> = ::std::result::Result<T, StoreError>;
 
 #[derive(Debug, Error)]
