@@ -1,4 +1,4 @@
-use crate::field::{DecodeError, EncodeError};
+use crate::field::{DecodeError, EncodeError, Field};
 use crate::spec::CollectionSpec;
 use crate::value::StoredValue;
 
@@ -13,6 +13,9 @@ use crate::value::StoredValue;
 /// the spec and the split/merge, so `to_row`, `from_row`, and `spec().fields`
 /// share one column order by construction.
 pub trait Collection: Sized {
+    /// The primary-key field's type, so callers can look up and delete by id.
+    type Id: Field;
+
     /// The collection's schema.
     fn spec() -> CollectionSpec;
 
