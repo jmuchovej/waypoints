@@ -8,14 +8,10 @@ pub type StoreResult<T> = ::std::result::Result<T, StoreError>;
 
 #[derive(Debug, Error)]
 pub enum StoreError {
-    #[error("database error: {0}")]
-    Database(#[from] sea_orm::DbErr),
     #[error("bedrock error: {0}")]
     Bedrock(#[from] bedrock::BedrockError),
     #[error("turso error: {0}")]
     Turso(#[from] turso::Error),
-    #[error("migration error: {0}")]
-    Migration(#[from] refinery_core::Error),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("domain error: {0}")]
@@ -36,13 +32,4 @@ pub enum StoreError {
     UnknownMark(MarkID, String),
     #[error("{0}")]
     Custom(String),
-}
-
-impl From<StoreError> for sea_orm::DbErr {
-    fn from(err: StoreError) -> Self {
-        match err {
-            StoreError::Database(db_err) => db_err,
-            _ => sea_orm::DbErr::Custom(err.to_string()),
-        }
-    }
 }

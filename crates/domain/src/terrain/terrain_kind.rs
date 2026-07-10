@@ -23,11 +23,10 @@ use specta::Type;
 ///
 /// # DB format
 ///
-/// When persisted to the `terrains.kind` column we flatten to a single
+/// When persisted to the `terrain.kind` column we flatten to a single
 /// string: `"child"`, `"reference"`, `"custom"`, or
-/// `"reading::{chart}::{feature}"`. See the helpers in
-/// `store::query::terrain` / `store::entities::terrain_orm` for the
-/// bidirectional conversion.
+/// `"reading::{chart}::{feature}"`. See [`TerrainKind::to_storage`] /
+/// [`TerrainKind::from_storage`] for the bidirectional conversion.
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "value", rename_all = "kebab-case")]
 pub enum TerrainKind {
