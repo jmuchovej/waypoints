@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use domain::mark::MarkID;
-use store::DatabaseConnection;
+use store::Store;
 
 use super::error::EditorResult;
 use super::maneuver::Maneuver;
@@ -80,10 +80,7 @@ impl CommandHistory {
     /// Returns the cursor state to restore (cursor_before of the undone group)
     /// and the inverted ops that were applied — the caller logs those to sync,
     /// since an undo mutates the database like any other command.
-    pub async fn undo(
-        &mut self,
-        db: &DatabaseConnection,
-    ) -> EditorResult<Option<(CursorState, Vec<Maneuver>)>> {
+    pub async fn undo(&mut self, db: &Store) -> EditorResult<Option<(CursorState, Vec<Maneuver>)>> {
         let group = match self.undo_stack.pop() {
             Some(g) => g,
             None => return Ok(None),
@@ -106,10 +103,7 @@ impl CommandHistory {
     /// Redo the last undone group: re-apply ops, move back to undo stack.
     /// Returns the cursor state to restore (cursor_after of the redone group)
     /// and the re-applied ops for sync logging.
-    pub async fn redo(
-        &mut self,
-        db: &DatabaseConnection,
-    ) -> EditorResult<Option<(CursorState, Vec<Maneuver>)>> {
+    pub async fn redo(&mut self, db: &Store) -> EditorResult<Option<(CursorState, Vec<Maneuver>)>> {
         let group = match self.redo_stack.pop() {
             Some(g) => g,
             None => return Ok(None),

@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use domain::mark::{MarkData, MarkID, RichText};
 use domain::{Json, TerrainID, TerrainKind};
 use serde::{Deserialize, Serialize};
-use store::DatabaseConnection;
+use store::Store;
 use store::query::{mark, terrain};
 
 use super::error::{EditorError, EditorResult};
@@ -188,7 +188,7 @@ impl Maneuver {
     }
 
     /// Execute this operation against the database.
-    pub async fn apply(&self, db: &DatabaseConnection) -> EditorResult<()> {
+    pub async fn apply(&self, db: &Store) -> EditorResult<()> {
         match self {
             Maneuver::CreateMark { mark_id, data } => apply_create_mark(db, *mark_id, data).await,
             Maneuver::UpdateMarkData { mark_id, new, .. } => {
@@ -247,11 +247,7 @@ impl Maneuver {
 
 /// Create a mark, or restore it if it already exists soft-deleted
 /// (e.g. redoing a create after an undo).
-async fn apply_create_mark(
-    db: &DatabaseConnection,
-    mark_id: MarkID,
-    data: &MarkData,
-) -> EditorResult<()> {
+async fn apply_create_mark(db: &Store, mark_id: MarkID, data: &MarkData) -> EditorResult<()> {
     match mark::restore(db, mark_id).await {
         Ok(()) => {
             // Restored a soft-deleted mark — update its data to match
@@ -268,7 +264,7 @@ async fn apply_create_mark(
 
 /// Update the full MarkData of a mark.
 async fn apply_mark_data_update(
-    db: &DatabaseConnection,
+    db: &Store,
     mark_id: MarkID,
     new_data: &MarkData,
 ) -> EditorResult<()> {
@@ -283,7 +279,7 @@ async fn apply_mark_data_update(
 
 /// Update the RichText content of a mark (for Content variants that have RichText).
 async fn apply_rich_text_update(
-    db: &DatabaseConnection,
+    db: &Store,
     mark_id: MarkID,
     new_rt: &RichText,
 ) -> EditorResult<()> {

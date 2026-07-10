@@ -2,13 +2,13 @@ mod fixtures;
 
 use fixtures::*;
 use rstest::rstest;
-use sea_orm::DatabaseConnection;
+use store::Store;
 use store::StoreError;
 use store::query::mark;
 
 #[rstest]
 #[tokio::test]
-async fn insert_and_get(#[future] db: DatabaseConnection) {
+async fn insert_and_get(#[future] db: Store) {
     let db = db.await;
     let id = new_id();
     let data = paragraph("hello world");
@@ -25,7 +25,7 @@ async fn insert_and_get(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn get_nonexistent_returns_none(#[future] db: DatabaseConnection) {
+async fn get_nonexistent_returns_none(#[future] db: Store) {
     let db = db.await;
     let result = mark::get(&db, new_id()).await.unwrap();
     assert!(result.is_none());
@@ -33,7 +33,7 @@ async fn get_nonexistent_returns_none(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn update_data_changes_content(#[future] db: DatabaseConnection) {
+async fn update_data_changes_content(#[future] db: Store) {
     let db = db.await;
     let id = new_id();
     mark::insert(&db, id, &paragraph("before"), now())
@@ -49,7 +49,7 @@ async fn update_data_changes_content(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn update_nonexistent_mark_errors(#[future] db: DatabaseConnection) {
+async fn update_nonexistent_mark_errors(#[future] db: Store) {
     let db = db.await;
     let err = mark::update_data(&db, new_id(), &paragraph("x"))
         .await
@@ -59,7 +59,7 @@ async fn update_nonexistent_mark_errors(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn soft_delete_hides_from_get(#[future] db: DatabaseConnection) {
+async fn soft_delete_hides_from_get(#[future] db: Store) {
     let db = db.await;
     let id = new_id();
     mark::insert(&db, id, &paragraph("doomed"), now())
@@ -74,7 +74,7 @@ async fn soft_delete_hides_from_get(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn soft_delete_hides_from_list_landmarks(#[future] db: DatabaseConnection) {
+async fn soft_delete_hides_from_list_landmarks(#[future] db: Store) {
     let db = db.await;
     let id = new_id();
     mark::insert(&db, id, &landmark("page", "My Page"), now())
@@ -102,7 +102,7 @@ async fn soft_delete_hides_from_list_landmarks(#[future] db: DatabaseConnection)
 
 #[rstest]
 #[tokio::test]
-async fn hard_delete_removes_permanently(#[future] db: DatabaseConnection) {
+async fn hard_delete_removes_permanently(#[future] db: Store) {
     let db = db.await;
     let id = new_id();
     mark::insert(&db, id, &paragraph("gone"), now())
@@ -116,7 +116,7 @@ async fn hard_delete_removes_permanently(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn hard_delete_nonexistent_errors(#[future] db: DatabaseConnection) {
+async fn hard_delete_nonexistent_errors(#[future] db: Store) {
     let db = db.await;
     let err = mark::hard_delete(&db, new_id()).await.unwrap_err();
     assert!(matches!(err, StoreError::MarkNotFound(_)));
@@ -124,7 +124,7 @@ async fn hard_delete_nonexistent_errors(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn list_landmarks_excludes_content_marks(#[future] db: DatabaseConnection) {
+async fn list_landmarks_excludes_content_marks(#[future] db: Store) {
     let db = db.await;
 
     let content_id = new_id();
@@ -144,7 +144,7 @@ async fn list_landmarks_excludes_content_marks(#[future] db: DatabaseConnection)
 
 #[rstest]
 #[tokio::test]
-async fn get_many_returns_subset(#[future] db: DatabaseConnection) {
+async fn get_many_returns_subset(#[future] db: Store) {
     let db = db.await;
 
     let ids: Vec<_> = (0..5).map(|_| new_id()).collect();
@@ -161,7 +161,7 @@ async fn get_many_returns_subset(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn get_many_skips_deleted(#[future] db: DatabaseConnection) {
+async fn get_many_skips_deleted(#[future] db: Store) {
     let db = db.await;
     let a = new_id();
     let b = new_id();
@@ -180,7 +180,7 @@ async fn get_many_skips_deleted(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn insert_preserves_content_variant(#[future] db: DatabaseConnection) {
+async fn insert_preserves_content_variant(#[future] db: Store) {
     let db = db.await;
     let id = new_id();
     let data = heading("Title");

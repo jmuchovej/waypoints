@@ -8,19 +8,19 @@ use domain::chart::ChartID;
 use domain::fractional_index;
 use domain::mark::{Content, Landmark, MarkData, MarkID, RichText};
 use rstest::fixture;
-use store::DatabaseConnection;
+use store::Store;
 use store::query::{mark, terrain};
 
 use crate::Database;
 use crate::editor::service::EditorService;
 
-type Env = (EditorService, DatabaseConnection);
+type Env = (EditorService, Store);
 
-async fn test_db() -> DatabaseConnection {
+async fn test_db() -> Store {
     store::test_utils::temp_db().await
 }
 
-fn shared(db: DatabaseConnection) -> Database {
+fn shared(db: Store) -> Database {
     Arc::new(tokio::sync::Mutex::new(Some(db)))
 }
 
@@ -57,7 +57,7 @@ fn now() -> chrono::NaiveDateTime {
     chrono::Local::now().naive_utc()
 }
 
-async fn seed_landmark(db: &DatabaseConnection, n: usize) -> (MarkID, Vec<MarkID>) {
+async fn seed_landmark(db: &Store, n: usize) -> (MarkID, Vec<MarkID>) {
     let lm = new_id();
     mark::insert(db, lm, &landmark("page", "Test Page"), now())
         .await
@@ -80,7 +80,7 @@ async fn seed_landmark(db: &DatabaseConnection, n: usize) -> (MarkID, Vec<MarkID
 }
 
 async fn seed_nested(
-    db: &DatabaseConnection,
+    db: &Store,
     n: usize,
     nest_under: usize,
     nested: usize,

@@ -4,12 +4,12 @@ use domain::fractional_index;
 use domain::mark::MarkID;
 use fixtures::*;
 use rstest::rstest;
-use sea_orm::DatabaseConnection;
+use store::Store;
 use store::query::{mark, terrain};
 
 #[rstest]
 #[tokio::test]
-async fn insert_and_get_child_edges(#[future] db: DatabaseConnection) {
+async fn insert_and_get_child_edges(#[future] db: Store) {
     let db = db.await;
     let parent = new_id();
     let child = new_id();
@@ -32,7 +32,7 @@ async fn insert_and_get_child_edges(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn find_parent_edge(#[future] db: DatabaseConnection) {
+async fn find_parent_edge(#[future] db: Store) {
     let db = db.await;
     let parent = new_id();
     let child = new_id();
@@ -53,7 +53,7 @@ async fn find_parent_edge(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn find_parent_edge_orphan_returns_none(#[future] db: DatabaseConnection) {
+async fn find_parent_edge_orphan_returns_none(#[future] db: Store) {
     let db = db.await;
     let orphan = new_id();
     mark::insert(&db, orphan, &paragraph("alone"), now())
@@ -66,7 +66,7 @@ async fn find_parent_edge_orphan_returns_none(#[future] db: DatabaseConnection) 
 
 #[rstest]
 #[tokio::test]
-async fn child_edges_ordered_by_fractional_index(#[future] db: DatabaseConnection) {
+async fn child_edges_ordered_by_fractional_index(#[future] db: Store) {
     let db = db.await;
     let parent = new_id();
     mark::insert(&db, parent, &landmark("page", "P"), now())
@@ -95,7 +95,7 @@ async fn child_edges_ordered_by_fractional_index(#[future] db: DatabaseConnectio
 
 #[rstest]
 #[tokio::test]
-async fn delete_edges_by_dst(#[future] db: DatabaseConnection) {
+async fn delete_edges_by_dst(#[future] db: Store) {
     let db = db.await;
     let parent = new_id();
     let child = new_id();
@@ -119,7 +119,7 @@ async fn delete_edges_by_dst(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn reorder_within_same_parent(#[future] db: DatabaseConnection) {
+async fn reorder_within_same_parent(#[future] db: Store) {
     let db = db.await;
     let parent = new_id();
     let child = new_id();
@@ -144,7 +144,7 @@ async fn reorder_within_same_parent(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn reparent_to_new_parent(#[future] db: DatabaseConnection) {
+async fn reparent_to_new_parent(#[future] db: Store) {
     let db = db.await;
     let old_parent = new_id();
     let new_parent = new_id();
@@ -176,7 +176,7 @@ async fn reparent_to_new_parent(#[future] db: DatabaseConnection) {
 
 #[rstest]
 #[tokio::test]
-async fn reparent_preserves_extra_metadata(#[future] db: DatabaseConnection) {
+async fn reparent_preserves_extra_metadata(#[future] db: Store) {
     let db = db.await;
     let old_parent = new_id();
     let new_parent = new_id();
@@ -214,7 +214,7 @@ async fn reparent_preserves_extra_metadata(#[future] db: DatabaseConnection) {
 /// Expected result: M1, M4, M7, M8, M2, M3, M5, M6, M9.
 #[rstest]
 #[tokio::test]
-async fn multi_mark_reorder_noncontiguous(#[future] db: DatabaseConnection) {
+async fn multi_mark_reorder_noncontiguous(#[future] db: Store) {
     let db = db.await;
     let (parent, m, keys) = parent_with_children(&db, 9).await;
 
@@ -259,7 +259,7 @@ async fn multi_mark_reorder_noncontiguous(#[future] db: DatabaseConnection) {
 /// become children of the blockquote.
 #[rstest]
 #[tokio::test]
-async fn reparent_marks_into_container(#[future] db: DatabaseConnection) {
+async fn reparent_marks_into_container(#[future] db: Store) {
     let db = db.await;
     let (parent, m, keys) = parent_with_children(&db, 5).await;
 
@@ -302,7 +302,7 @@ async fn reparent_marks_into_container(#[future] db: DatabaseConnection) {
 /// a blockquote, preserving their relative order inside it.
 #[rstest]
 #[tokio::test]
-async fn reparent_noncontiguous_into_container(#[future] db: DatabaseConnection) {
+async fn reparent_noncontiguous_into_container(#[future] db: Store) {
     let db = db.await;
     let (parent, m, keys) = parent_with_children(&db, 5).await;
 
@@ -366,35 +366,46 @@ async fn unwrap_container_promotes_children() {
 // Multigraph: same (src, dst) with multiple edges of different kinds
 // ---------------------------------------------------------------------------
 
+use bedrock::{Filter, Query};
 use domain::chart::{ChartID, FeatureID};
 use domain::terrain::TerrainKind;
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 use std::str::FromStr;
-use store::entities::{
-    ActiveTerrain, TerrainColumn, Terrains, terrain_kind_to_string as kind_to_string,
-};
+use store::collections::TerrainRow;
+use store::entities::terrain_kind_to_string as kind_to_string;
 
-/// Insert a terrain edge of arbitrary kind. Tests only — production code
-/// should use the query-layer helpers as they get added per-kind.
-async fn insert_edge(
-    db: &sea_orm::DatabaseConnection,
+/// Insert a terrain edge of arbitrary kind via bedrock — tests only.
+/// Production code should use the query-layer helpers.
+async fn insert_edge_raw(
+    store: &Store,
     src: MarkID,
     dst: MarkID,
     kind: TerrainKind,
     order: Option<&str>,
 ) {
-    ActiveTerrain {
-        id: Set(uuid::Uuid::new_v4()),
-        src_id: Set(src.inner()),
-        dst_id: Set(dst.inner()),
-        kind: Set(kind_to_string(&kind)),
-        order: Set(order.map(str::to_string)),
-        extra: Set(None),
-        ..Default::default()
-    }
-    .insert(db)
-    .await
-    .unwrap();
+    use domain::terrain::TerrainID;
+    let row = TerrainRow {
+        id: TerrainID::new(),
+        src_id: src,
+        dst_id: dst,
+        kind: kind_to_string(&kind),
+        sequence: order.map(str::to_string),
+        extra: None,
+        deleted_at: None,
+    };
+    store.db().insert(row).await.unwrap();
+}
+
+/// Fetch all terrain rows where src_id = src AND dst_id = dst (including
+/// tombstoned rows) — mirrors the old `Terrains::find().filter(…).all()`.
+async fn all_edges_between(store: &Store, src: MarkID, dst: MarkID) -> Vec<TerrainRow> {
+    store
+        .db()
+        .query::<TerrainRow>(&Query::new().filter(Filter::all([
+            Filter::eq("src_id", src.inner().to_string()),
+            Filter::eq("dst_id", dst.inner().to_string()),
+        ])))
+        .await
+        .unwrap()
 }
 
 /// A Child edge AND a Reference edge between the same (src, dst) pair must
@@ -402,7 +413,7 @@ async fn insert_edge(
 /// impossible — the whole point of adding `id` as the PK is to enable this.
 #[rstest]
 #[tokio::test]
-async fn child_and_reference_between_same_pair_coexist(#[future] db: DatabaseConnection) {
+async fn child_and_reference_between_same_pair_coexist(#[future] db: Store) {
     let db = db.await;
     let src = new_id();
     let dst = new_id();
@@ -413,15 +424,10 @@ async fn child_and_reference_between_same_pair_coexist(#[future] db: DatabaseCon
         .await
         .unwrap();
 
-    insert_edge(&db, src, dst, TerrainKind::Child, Some("i000")).await;
-    insert_edge(&db, src, dst, TerrainKind::Reference, None).await;
+    insert_edge_raw(&db, src, dst, TerrainKind::Child, Some("i000")).await;
+    insert_edge_raw(&db, src, dst, TerrainKind::Reference, None).await;
 
-    let all = Terrains::find()
-        .filter(TerrainColumn::SrcId.eq(src.inner()))
-        .filter(TerrainColumn::DstId.eq(dst.inner()))
-        .all(&db)
-        .await
-        .unwrap();
+    let all = all_edges_between(&db, src, dst).await;
     assert_eq!(all.len(), 2, "both edges should coexist");
 
     let kinds: Vec<&str> = all.iter().map(|m| m.kind.as_str()).collect();
@@ -434,7 +440,7 @@ async fn child_and_reference_between_same_pair_coexist(#[future] db: DatabaseCon
 /// point at the same Person" case.
 #[rstest]
 #[tokio::test]
-async fn multiple_reading_edges_same_pair_different_features(#[future] db: DatabaseConnection) {
+async fn multiple_reading_edges_same_pair_different_features(#[future] db: Store) {
     let db = db.await;
     let meeting = new_id();
     let person = new_id();
@@ -449,7 +455,7 @@ async fn multiple_reading_edges_same_pair_different_features(#[future] db: Datab
     let attendees = FeatureID::from_str("attn").unwrap();
     let organizer = FeatureID::from_str("orgz").unwrap();
 
-    insert_edge(
+    insert_edge_raw(
         &db,
         meeting,
         person,
@@ -457,7 +463,7 @@ async fn multiple_reading_edges_same_pair_different_features(#[future] db: Datab
         None,
     )
     .await;
-    insert_edge(
+    insert_edge_raw(
         &db,
         meeting,
         person,
@@ -466,12 +472,7 @@ async fn multiple_reading_edges_same_pair_different_features(#[future] db: Datab
     )
     .await;
 
-    let all = Terrains::find()
-        .filter(TerrainColumn::SrcId.eq(meeting.inner()))
-        .filter(TerrainColumn::DstId.eq(person.inner()))
-        .all(&db)
-        .await
-        .unwrap();
+    let all = all_edges_between(&db, meeting, person).await;
     assert_eq!(all.len(), 2, "both reading edges should coexist");
 
     // Distinct edge IDs — the PK disambiguates them.
@@ -482,7 +483,7 @@ async fn multiple_reading_edges_same_pair_different_features(#[future] db: Datab
 /// the backlink query fast (no JSON scanning, just an indexed string filter).
 #[rstest]
 #[tokio::test]
-async fn reading_edges_queryable_by_kind_prefix(#[future] db: DatabaseConnection) {
+async fn reading_edges_queryable_by_kind_prefix(#[future] db: Store) {
     let db = db.await;
     let person = new_id();
     mark::insert(&db, person, &landmark("person", "Target"), now())
@@ -497,7 +498,7 @@ async fn reading_edges_queryable_by_kind_prefix(#[future] db: DatabaseConnection
         mark::insert(&db, src, &landmark("meeting", &format!("M{i}")), now())
             .await
             .unwrap();
-        insert_edge(
+        insert_edge_raw(
             &db,
             src,
             person,
@@ -513,16 +514,22 @@ async fn reading_edges_queryable_by_kind_prefix(#[future] db: DatabaseConnection
     mark::insert(&db, noise_src, &landmark("page", "Noise"), now())
         .await
         .unwrap();
-    insert_edge(&db, noise_src, person, TerrainKind::Child, Some("i000")).await;
-    insert_edge(&db, noise_src, person, TerrainKind::Reference, None).await;
+    insert_edge_raw(&db, noise_src, person, TerrainKind::Child, Some("i000")).await;
+    insert_edge_raw(&db, noise_src, person, TerrainKind::Reference, None).await;
 
     // Backlink query: who references this person via ANY reading feature?
-    let readings = Terrains::find()
-        .filter(TerrainColumn::DstId.eq(person.inner()))
-        .filter(TerrainColumn::Kind.starts_with("reading::"))
-        .all(&db)
+    // bedrock Filter::eq does exact match, so we use a manual prefix scan via
+    // Filter::gte / Filter::lt on the kind string.
+    let readings = db
+        .db()
+        .query::<TerrainRow>(&Query::new().filter(Filter::all([
+            Filter::eq("dst_id", person.inner().to_string()),
+            Filter::gte("kind", "reading::"),
+            Filter::lt("kind", "reading:;"), // ";" is the char after ":" in ASCII
+        ])))
         .await
         .unwrap();
+
     assert_eq!(readings.len(), 3, "exactly three reading edges, no noise");
     for r in &readings {
         assert!(
@@ -534,10 +541,10 @@ async fn reading_edges_queryable_by_kind_prefix(#[future] db: DatabaseConnection
 }
 
 /// Round-trip: insert a Reading edge, fetch it back, verify the enum
-/// variant is reconstructed correctly via the `From<Model>` impl.
+/// variant is reconstructed correctly via the `From<TerrainRow>` impl.
 #[rstest]
 #[tokio::test]
-async fn reading_edge_db_roundtrip_preserves_enum_variant(#[future] db: DatabaseConnection) {
+async fn reading_edge_db_roundtrip_preserves_enum_variant(#[future] db: Store) {
     let db = db.await;
     let src = new_id();
     let dst = new_id();
@@ -550,7 +557,7 @@ async fn reading_edge_db_roundtrip_preserves_enum_variant(#[future] db: Database
 
     let chart = ChartID::builtin("meeting");
     let feature = FeatureID::from_str("attn").unwrap();
-    insert_edge(
+    insert_edge_raw(
         &db,
         src,
         dst,
@@ -559,19 +566,15 @@ async fn reading_edge_db_roundtrip_preserves_enum_variant(#[future] db: Database
     )
     .await;
 
-    let model = Terrains::find()
-        .filter(TerrainColumn::SrcId.eq(src.inner()))
-        .filter(TerrainColumn::DstId.eq(dst.inner()))
-        .one(&db)
-        .await
-        .unwrap()
-        .expect("edge should exist");
+    let all = all_edges_between(&db, src, dst).await;
+    assert_eq!(all.len(), 1);
+    let row = all.into_iter().next().unwrap();
 
     // DB string should preserve the "builtin." prefix that ChartID::Display
     // would strip. This is the whole reason kind_to_string bypasses Display.
-    assert_eq!(model.kind, "reading::builtin.meeting::attn");
+    assert_eq!(row.kind, "reading::builtin.meeting::attn");
 
-    let terrain: domain::terrain::Terrain = model.into();
+    let terrain: domain::terrain::Terrain = row.into();
     match terrain.kind {
         TerrainKind::Reading(c, f) => {
             assert_eq!(c, chart);
@@ -583,15 +586,10 @@ async fn reading_edge_db_roundtrip_preserves_enum_variant(#[future] db: Database
 
 /// Two Child edges with the same src/dst but different edge IDs can be
 /// inserted at the schema level — this is the "block embeds / synced
-/// blocks" case that the `id`-based PK unlocks. The editor's query layer
-/// still assumes one-parent-per-child (see `find_parent_edge` comment),
-/// so this isn't yet wired up in production, but the schema doesn't
-/// prevent it.
+/// blocks" case that the `id`-based PK unlocks.
 #[rstest]
 #[tokio::test]
-async fn schema_allows_duplicate_child_edges_for_future_block_embeds(
-    #[future] db: DatabaseConnection,
-) {
+async fn schema_allows_duplicate_child_edges_for_future_block_embeds(#[future] db: Store) {
     let db = db.await;
     let parent = new_id();
     let child = new_id();
@@ -602,15 +600,10 @@ async fn schema_allows_duplicate_child_edges_for_future_block_embeds(
         .await
         .unwrap();
 
-    insert_edge(&db, parent, child, TerrainKind::Child, Some("a000")).await;
-    insert_edge(&db, parent, child, TerrainKind::Child, Some("m000")).await;
+    insert_edge_raw(&db, parent, child, TerrainKind::Child, Some("a000")).await;
+    insert_edge_raw(&db, parent, child, TerrainKind::Child, Some("m000")).await;
 
-    let all = Terrains::find()
-        .filter(TerrainColumn::SrcId.eq(parent.inner()))
-        .filter(TerrainColumn::DstId.eq(child.inner()))
-        .all(&db)
-        .await
-        .unwrap();
+    let all = all_edges_between(&db, parent, child).await;
     assert_eq!(all.len(), 2, "schema must allow duplicate same-kind edges");
     assert_ne!(all[0].id, all[1].id, "edge IDs must be distinct");
 }
@@ -623,7 +616,7 @@ use domain::terrain::TerrainID;
 /// requires the same edge identity on every device.
 #[rstest]
 #[tokio::test]
-async fn insert_edge_round_trips_caller_provided_id(#[future] db: DatabaseConnection) {
+async fn insert_edge_round_trips_caller_provided_id(#[future] db: Store) {
     let db = db.await;
     let src = new_id();
     let dst = new_id();
@@ -661,7 +654,7 @@ async fn insert_edge_round_trips_caller_provided_id(#[future] db: DatabaseConnec
 /// multiple same-kind edges share the same `(src, dst)` pair.
 #[rstest]
 #[tokio::test]
-async fn update_edge_by_id_is_multigraph_safe(#[future] db: DatabaseConnection) {
+async fn update_edge_by_id_is_multigraph_safe(#[future] db: Store) {
     let db = db.await;
     let src = new_id();
     let other = new_id();
@@ -713,7 +706,7 @@ async fn update_edge_by_id_is_multigraph_safe(#[future] db: DatabaseConnection) 
 
 #[rstest]
 #[tokio::test]
-async fn update_edge_by_id_errors_on_missing_edge(#[future] db: DatabaseConnection) {
+async fn update_edge_by_id_errors_on_missing_edge(#[future] db: Store) {
     let db = db.await;
     let missing = TerrainID::new();
     let result = terrain::update_edge_by_id(&db, missing, new_id(), Some("i000")).await;
@@ -726,7 +719,7 @@ async fn update_edge_by_id_errors_on_missing_edge(#[future] db: DatabaseConnecti
 /// `delete_edge_by_id` removes only the addressed edge and is idempotent.
 #[rstest]
 #[tokio::test]
-async fn delete_edge_by_id_deletes_one_edge_idempotently(#[future] db: DatabaseConnection) {
+async fn delete_edge_by_id_deletes_one_edge_idempotently(#[future] db: Store) {
     let db = db.await;
     let src = new_id();
     let dst = new_id();
@@ -783,7 +776,7 @@ async fn delete_edge_by_id_deletes_one_edge_idempotently(#[future] db: DatabaseC
 /// `insert_child_edge` returns the `TerrainID` it generated for the row.
 #[rstest]
 #[tokio::test]
-async fn insert_child_edge_returns_generated_id(#[future] db: DatabaseConnection) {
+async fn insert_child_edge_returns_generated_id(#[future] db: Store) {
     let db = db.await;
     let parent = new_id();
     let child = new_id();

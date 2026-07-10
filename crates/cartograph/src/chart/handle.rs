@@ -11,7 +11,7 @@ pub struct ChartHandle<'a> {
 }
 
 impl ChartHandle<'_> {
-    async fn db(&self) -> MarkResult<store::DatabaseConnection> {
+    async fn db(&self) -> MarkResult<store::Store> {
         self.db
             .lock()
             .await

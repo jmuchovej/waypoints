@@ -2,16 +2,12 @@ use domain::chart::ChartID;
 use domain::fractional_index;
 use domain::mark::{Content, Landmark, MarkData, MarkID, RichText};
 use rstest::fixture;
-use sea_orm::DatabaseConnection;
+use store::Store;
 use store::query::{mark, terrain};
 
-/// rstest fixture — each test gets a fresh migrated SQLite in a tempdir.
-///
-/// Refinery migrations run through turso against a file path, so tests
-/// can't use `sqlite::memory:`. The tempdir is kept (not cleaned up) so
-/// lazily-opened pool connections stay valid; the OS reclaims it.
+/// rstest fixture — each test gets a fresh bedrock Store in a tempdir.
 #[fixture]
-pub async fn db() -> DatabaseConnection {
+pub async fn db() -> Store {
     let dir = tempfile::tempdir().unwrap().keep();
     store::open(&dir.join("test.db")).await.unwrap()
 }
@@ -53,10 +49,7 @@ pub fn now() -> chrono::NaiveDateTime {
 
 /// Insert a parent landmark with `n` paragraph children (M1..Mn).
 /// Returns `(parent_id, child_ids, fractional_keys)`.
-pub async fn parent_with_children(
-    db: &DatabaseConnection,
-    n: usize,
-) -> (MarkID, Vec<MarkID>, Vec<String>) {
+pub async fn parent_with_children(db: &Store, n: usize) -> (MarkID, Vec<MarkID>, Vec<String>) {
     let parent = new_id();
     mark::insert(db, parent, &landmark("page", "Parent"), now())
         .await

@@ -12,7 +12,7 @@ use domain::mark::{
 };
 use fixtures::*;
 use rstest::rstest;
-use sea_orm::DatabaseConnection;
+use store::Store;
 use store::query::mark;
 
 // ---------------------------------------------------------------------------
@@ -125,7 +125,7 @@ fn landmark_with_readings_roundtrip() {
 }
 
 // ---------------------------------------------------------------------------
-// Database roundtrips — data survives the full ORM path (insert → fetch)
+// Database roundtrips — data survives the full bedrock path (insert → fetch)
 // ---------------------------------------------------------------------------
 
 #[rstest]
@@ -148,7 +148,7 @@ fn landmark_with_readings_roundtrip() {
     },
 ]))))]
 #[tokio::test]
-async fn database_roundtrip(#[future] db: DatabaseConnection, #[case] data: MarkData) {
+async fn database_roundtrip(#[future] db: Store, #[case] data: MarkData) {
     let db = db.await;
     let id = new_id();
     mark::insert(&db, id, &data, now()).await.unwrap();

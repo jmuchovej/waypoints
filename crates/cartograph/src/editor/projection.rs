@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use domain::mark::{Content, Mark, MarkData, MarkID, RichText, TextMarkKind};
-use store::DatabaseConnection;
+use store::Store;
 use store::query::{mark, terrain};
 
 use super::error::{EditorError, EditorResult};
@@ -11,7 +11,7 @@ const MAX_DEPTH: u32 = 20;
 
 /// Project a landmark into a flat list of `RenderNode`s with depth tracking.
 pub async fn project_landmark(
-    db: &DatabaseConnection,
+    db: &Store,
     landmark_id: MarkID,
     max_depth: Option<u32>,
 ) -> EditorResult<Vec<RenderNode>> {
@@ -32,7 +32,7 @@ pub async fn project_landmark(
 
 /// Recursively walk child terrain edges and collect `RenderNode`s.
 async fn walk_children(
-    db: &DatabaseConnection,
+    db: &Store,
     parent_id: MarkID,
     depth: u32,
     max_depth: u32,
@@ -123,7 +123,7 @@ fn collect_rich_texts_mut(data: &mut MarkData) -> Vec<&mut RichText> {
 
 /// Hydrate mention marks in-place: replace bare UUID data with `{ id, mark }`
 /// and set segment text to the referenced landmark's title.
-async fn hydrate_mentions(db: &DatabaseConnection, nodes: &mut [RenderNode]) -> EditorResult<()> {
+async fn hydrate_mentions(db: &Store, nodes: &mut [RenderNode]) -> EditorResult<()> {
     // Pass 1: collect unique mention IDs across all nodes.
     let mut ids = HashSet::new();
     for node in nodes.iter() {
