@@ -2,7 +2,7 @@ use domain::chart::{FeatureID, FeatureKind};
 use domain::fractional_index;
 use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
 use domain::terrain::{Terrain, TerrainKind};
-use store::DatabaseConnection;
+use store::Store;
 use store::query::{chart, mark, terrain};
 
 use super::error::{EditorError, EditorResult};
@@ -13,7 +13,7 @@ use super::types::{CreateResult, CursorState, MutationResult, SplitResult};
 
 /// Compute a fractional index for inserting after `after_id` among `parent_id`'s children.
 async fn compute_order(
-    db: &DatabaseConnection,
+    db: &Store,
     parent_id: MarkID,
     after_id: Option<MarkID>,
 ) -> EditorResult<String> {
@@ -41,7 +41,7 @@ async fn compute_order(
 
 /// Compute a fractional index for inserting, skipping `exclude_id` in the ordering.
 async fn compute_order_excluding(
-    db: &DatabaseConnection,
+    db: &Store,
     parent_id: MarkID,
     after_id: Option<MarkID>,
     exclude_id: MarkID,
@@ -74,7 +74,7 @@ async fn compute_order_excluding(
 }
 
 /// Find the parent edge for a mark.
-async fn find_parent_edge(db: &DatabaseConnection, mark_id: MarkID) -> EditorResult<Terrain> {
+async fn find_parent_edge(db: &Store, mark_id: MarkID) -> EditorResult<Terrain> {
     terrain::find_parent_edge(db, mark_id)
         .await?
         .ok_or(EditorError::NotFound(mark_id.inner()))
@@ -94,7 +94,7 @@ fn delete_edge_op(edge: Terrain) -> Maneuver {
 
 /// Update a mark's content (ported from `mark_update` command).
 pub async fn update_mark(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     id: MarkID,
     content: Content,
@@ -126,7 +126,7 @@ pub async fn update_mark(
 
 /// Delete a mark (ported from `mark_delete` command).
 pub async fn delete_mark(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     id: MarkID,
     landmark_id: MarkID,
@@ -164,7 +164,7 @@ pub async fn delete_mark(
 /// sequentially after the previous one, so `compute_order_excluding` always
 /// sees the updated position of the preceding block.
 pub async fn move_marks(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     parent_id: MarkID,
     child_ids: &[MarkID],
@@ -202,11 +202,7 @@ pub async fn move_marks(
 }
 
 /// Update a landmark's title (ported from `mark_update_title` command).
-pub async fn update_mark_title(
-    db: &DatabaseConnection,
-    id: MarkID,
-    title: RichText,
-) -> EditorResult<()> {
+pub async fn update_mark_title(db: &Store, id: MarkID, title: RichText) -> EditorResult<()> {
     let m = mark::get(db, id)
         .await?
         .ok_or(EditorError::NotFound(id.inner()))?;
@@ -225,7 +221,7 @@ pub async fn update_mark_title(
 
 /// Set or remove a reading on a landmark. If `reading` is `Reading::Null`, the entry is removed.
 pub async fn update_mark_reading(
-    db: &DatabaseConnection,
+    db: &Store,
     id: MarkID,
     feature_id: FeatureID,
     reading: Reading,
@@ -310,7 +306,7 @@ pub async fn update_mark_reading(
 
 /// Create a mark after a specified sibling.
 pub async fn create_mark_after(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     after_id: MarkID,
     parent_id: MarkID,
@@ -355,7 +351,7 @@ pub async fn create_mark_after(
 /// record in the undo history — text undo is handled by Tiptap's local History
 /// extension on the frontend.
 pub async fn update_mark_text(
-    db: &DatabaseConnection,
+    db: &Store,
     _history: &mut CommandHistory,
     mark_id: MarkID,
     rich_text: RichText,
@@ -387,7 +383,7 @@ pub async fn update_mark_text(
 /// Split a mark at an offset: the original keeps content before the offset,
 /// a new sibling is created with content after.
 pub async fn split_mark(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     mark_id: MarkID,
     offset: usize,
@@ -471,7 +467,7 @@ pub async fn split_mark(
 
 /// Merge source mark's RichText into target, then delete source.
 pub async fn merge_marks(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     target_id: MarkID,
     source_id: MarkID,
@@ -555,7 +551,7 @@ pub async fn merge_marks(
 /// The compound block is placed at the position of the first child (or after
 /// `after_id` if no children are given).
 pub async fn wrap_in_compound(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     compound_data: MarkData,
     child_ids: &[MarkID],
@@ -656,7 +652,7 @@ pub async fn wrap_in_compound(
 
 /// Batch soft-delete multiple marks.
 pub async fn delete_marks(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     mark_ids: &[MarkID],
     landmark_id: MarkID,
@@ -694,7 +690,7 @@ pub async fn delete_marks(
 
 /// Reparent a mark (indent/dedent).
 pub async fn reparent_mark(
-    db: &DatabaseConnection,
+    db: &Store,
     history: &mut CommandHistory,
     mark_id: MarkID,
     new_parent_id: MarkID,

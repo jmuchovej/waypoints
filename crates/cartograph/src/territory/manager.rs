@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use sea_orm::DatabaseConnection;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -9,7 +8,7 @@ use super::{Territory, TerritoryKind};
 
 pub struct TerritoryManager {
     managed_root: PathBuf,
-    pub active_db: Arc<Mutex<Option<DatabaseConnection>>>,
+    pub active_db: Arc<Mutex<Option<store::Store>>>,
     pub active_id: Arc<Mutex<Option<Uuid>>>,
 }
 

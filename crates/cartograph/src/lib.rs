@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use sea_orm::DatabaseConnection;
 use tokio::sync::Mutex;
 
-/// Shared database connection, swapped by territory lifecycle.
-pub type Database = Arc<Mutex<Option<DatabaseConnection>>>;
+/// Shared store handle, swapped by territory lifecycle.
+pub type Database = Arc<Mutex<Option<store::Store>>>;
 
 pub(crate) mod editor {
     pub(crate) mod error;
@@ -46,7 +45,6 @@ pub mod mark {
     pub use error::{MarkError, MarkResult};
     pub use handle::MarkHandle;
 }
-
 
 pub mod territory {
     mod error;
