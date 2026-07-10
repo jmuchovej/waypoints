@@ -15,8 +15,14 @@ pub struct Database {
 
 impl Database {
     /// Open (or create) a database at `path`. Use `":memory:"` for an ephemeral one.
+    ///
+    /// Custom column types (uuid/jsonb/boolean/date/time/timestamp) are enabled
+    /// here; STRICT is applied per-table in the DDL.
     pub async fn open(path: &str) -> Result<Self, BedrockError> {
-        let engine = turso::Builder::new_local(path).build().await?;
+        let engine = turso::Builder::new_local(path)
+            .experimental_custom_types(true)
+            .build()
+            .await?;
         let conn = engine.connect()?;
         Ok(Self { conn })
     }
@@ -32,11 +38,12 @@ impl Database {
     /// Insert one entity.
     pub async fn insert<C: Collection>(&self, entity: &C) -> Result<(), BedrockError> {
         let spec = C::spec();
-        let params = entity
-            .to_row()?
-            .into_iter()
-            .map(value::to_turso)
-            .collect::<Result<Vec<_>, _>>()?;
+        let row = entity.to_row()?;
+        let mut params = Vec::with_capacity(row.len());
+        for (field, value) in spec.fields.iter().zip(row) {
+            value::reject_submillis(field.kind, &value, &field.name)?;
+            params.push(value::to_turso(value)?);
+        }
         self.conn.execute(ddl::insert(&spec), params).await?;
         Ok(())
     }
