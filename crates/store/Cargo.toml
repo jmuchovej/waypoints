@@ -13,43 +13,46 @@ publish.workspace = true
 
 [dependencies]
 async-trait.workspace = true
-uuid.workspace = true
+bedrock = { workspace = true }
 chrono.workspace = true
 chrono-tz.workspace = true
-derive_more = { workspace = true, features = [
-  "debug",
-  "display",
-  "error",
-  "from",
-] }
+derive_more = {
+  workspace = true,
+  features = [
+    "debug",
+    "display",
+    "error",
+    "from",
+  ]
+}
+domain.workspace = true
+importer = { workspace = true, optional = true }
 indexmap.workspace = true
+refinery.workspace = true
+refinery-core.workspace = true
 sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
+time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-domain.workspace = true
-
-importer = { workspace = true, optional = true }
-refinery.workspace = true
-refinery-core.workspace = true
-tempfile = { workspace = true, optional = true }
-time.workspace = true
 turso.workspace = true
-
-[features]
-default = []
-stable = []
-preview = []
-development = ["mock"]
-mock = ["importer"]
-test-utils = ["dep:tempfile"]
+uuid.workspace = true
 
 [dev-dependencies]
 rstest = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[features]
+default = []
+development = ["mock"]
+mock = ["importer"]
+preview = []
+stable = []
+test-utils = ["dep:tempfile"]
 
 [lints]
 workspace = true
