@@ -24,6 +24,8 @@ derive_more = {
   ]
 }
 domain.workspace = true
+importer = { workspace = true, optional = true }
+indexmap = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 tempfile = { workspace = true, optional = true }
@@ -40,7 +42,8 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = []
-development = []
+development = ["mock"]
+mock = ["dep:importer", "dep:indexmap"]
 preview = []
 stable = []
 test-utils = ["dep:tempfile"]

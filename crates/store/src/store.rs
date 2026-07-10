@@ -40,6 +40,12 @@ impl Store {
         db.ensure_collection::<domain::terrain::Terrain>().await?;
         collections::seed::run(&db).await?;
 
+        // Dev-only: seed the demo document corpus so a fresh DB has something
+        // to work with. Runs after chart seeding (readings resolve against
+        // chart features) and is idempotent.
+        #[cfg(feature = "mock")]
+        collections::demo::run(&db).await?;
+
         Ok(Store { db: Arc::new(db) })
     }
 }
