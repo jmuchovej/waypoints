@@ -23,6 +23,10 @@ pub enum BedrockError {
     #[error("field {field:?} has sub-millisecond precision that the engine would truncate")]
     SubMillisecond { field: String },
 
+    /// A schema change could not be applied automatically (it was destructive).
+    #[error(transparent)]
+    Migration(#[from] crate::migrate::MigrationError),
+
     /// The turso engine reported an error.
     #[error("engine error: {0}")]
     Engine(#[from] turso::Error),

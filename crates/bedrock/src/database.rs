@@ -1,7 +1,7 @@
-use bedrock_core::{Collection, Field, Query, StoredValue, ViewSpec};
+use bedrock_core::{Collection, CollectionSpec, Field, Query, StoredValue, ViewSpec};
 
 use crate::error::BedrockError;
-use crate::{ddl, value};
+use crate::{ddl, migrate, value};
 
 /// A bedrock database: a turso connection plus collection-aware operations.
 pub struct Database {
@@ -25,16 +25,77 @@ impl Database {
         Ok(Self { conn })
     }
 
-    /// Create the collection's table if it does not already exist.
+    /// Create the collection's table if it is new, or migrate it to the current
+    /// spec if it already exists — safe-additive changes (new nullable columns,
+    /// index add/drop) are applied; destructive ones are refused. Idempotent.
     pub async fn ensure_collection<C: Collection>(&self) -> Result<(), BedrockError> {
-        let spec = C::spec();
+        self.ensure_spec(&C::spec()).await
+    }
+
+    /// The runtime-spec form of [`ensure_collection`](Self::ensure_collection),
+    /// for collections defined as data rather than through the derive.
+    pub async fn ensure_spec(&self, spec: &CollectionSpec) -> Result<(), BedrockError> {
         spec.validate()?;
-        self.conn.execute(ddl::create_table(&spec), ()).await?;
-        for index in &spec.indexes {
-            self.conn
-                .execute(ddl::create_index(&spec, index), ())
-                .await?;
+        self.conn.execute(ddl::create_meta_table(), ()).await?;
+        match self.stored_spec(&spec.name).await? {
+            None => {
+                self.conn.execute(ddl::create_table(spec), ()).await?;
+                for index in &spec.indexes {
+                    self.conn
+                        .execute(ddl::create_index(spec, index), ())
+                        .await?;
+                }
+                self.record_spec(spec).await?;
+            }
+            Some(ref stored) if stored == spec => {}
+            Some(ref stored) => {
+                let statements = migrate::plan(stored, spec)?;
+                self.conn.execute("BEGIN IMMEDIATE", ()).await?;
+                let applied = async {
+                    for statement in &statements {
+                        self.conn.execute(statement, ()).await?;
+                    }
+                    self.record_spec(spec).await?;
+                    Ok::<(), BedrockError>(())
+                }
+                .await;
+                if let Err(error) = applied {
+                    let _ = self.conn.execute("ROLLBACK", ()).await;
+                    return Err(error);
+                }
+                self.conn.execute("COMMIT", ()).await?;
+            }
         }
+        Ok(())
+    }
+
+    /// The last-recorded spec for a collection, if any.
+    async fn stored_spec(&self, name: &str) -> Result<Option<CollectionSpec>, BedrockError> {
+        let mut rows = self
+            .conn
+            .query(ddl::read_spec(), vec![turso::Value::Text(name.to_owned())])
+            .await?;
+        match rows.next().await? {
+            Some(row) => match row.get_value(0)? {
+                turso::Value::Text(json) => Ok(Some(serde_json::from_str(&json)?)),
+                _ => Ok(None),
+            },
+            None => Ok(None),
+        }
+    }
+
+    /// Upsert a collection's spec into the meta table.
+    async fn record_spec(&self, spec: &CollectionSpec) -> Result<(), BedrockError> {
+        let json = serde_json::to_string(spec)?;
+        self.conn
+            .execute(
+                ddl::store_spec(),
+                vec![
+                    turso::Value::Text(spec.name.clone()),
+                    turso::Value::Text(json),
+                ],
+            )
+            .await?;
         Ok(())
     }
 
