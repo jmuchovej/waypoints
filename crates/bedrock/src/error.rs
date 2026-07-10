@@ -18,6 +18,11 @@ pub enum BedrockError {
     #[error(transparent)]
     Decode(#[from] DecodeError),
 
+    /// A temporal value carried sub-millisecond precision, which the engine's
+    /// `date`/`time`/`timestamp` columns would silently truncate.
+    #[error("field {field:?} has sub-millisecond precision that the engine would truncate")]
+    SubMillisecond { field: String },
+
     /// The turso engine reported an error.
     #[error("engine error: {0}")]
     Engine(#[from] turso::Error),

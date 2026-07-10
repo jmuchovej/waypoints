@@ -1,15 +1,15 @@
 [package]
 name = "bedrock"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description.workspace = true
 documentation.workspace = true
-edition.workspace = true
+readme.workspace = true
 homepage.workspace = true
+repository.workspace = true
 license.workspace = true
 publish.workspace = true
-readme.workspace = true
-repository.workspace = true
-rust-version.workspace = true
-version.workspace = true
 
 [dependencies]
 bedrock-core = { path = "../bedrock-core" }
@@ -19,6 +19,7 @@ turso.workspace = true
 
 [dev-dependencies]
 bedrock-derive = { path = "../bedrock-derive" }
+chrono.workspace = true
 serde.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 uuid.workspace = true
