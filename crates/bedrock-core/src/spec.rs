@@ -50,7 +50,8 @@ pub struct IdSpec {
 /// A secondary index on one or more of a collection's scalar columns.
 ///
 /// Indexes cover base *columns* only — a `jsonb` document has nothing
-/// indexable here. A multi-column entry is a composite index.
+/// indexable here; document paths become queryable by projection into a
+/// materialized view. A multi-column entry is a composite index.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexSpec {
     /// The index name, unique within the database.

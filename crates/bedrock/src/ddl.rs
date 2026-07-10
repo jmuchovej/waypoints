@@ -1,4 +1,4 @@
-use bedrock_core::{CollectionSpec, ColumnType, FieldKind, IndexSpec};
+use bedrock_core::{CollectionSpec, ColumnType, FieldKind, IndexSpec, ViewSpec};
 
 /// The engine storage type for a field.
 ///
@@ -141,4 +141,61 @@ pub(crate) fn create_index(spec: &CollectionSpec, index: &IndexSpec) -> String {
         quote(&spec.name),
         columns
     )
+}
+
+/// A dotted path as a JSON path expression: `readings.abc` → `$.readings.abc`.
+/// Segments are bare object keys; array indices and wildcards are not supported.
+///
+/// The result is inlined into a single-quoted SQL string literal, so embedded
+/// single quotes are escaped here — the same reason a scope's discriminant value
+/// is escaped where it is inlined.
+fn json_path(path: &str) -> String {
+    let mut out = String::from("$");
+    for segment in path.split('.') {
+        out.push('.');
+        out.push_str(segment);
+    }
+    out.replace('\'', "''")
+}
+
+/// `CREATE MATERIALIZED VIEW` projecting document paths into typed columns.
+///
+/// The base id is projected first, so a query can narrow on the base table and
+/// join to the view. An optional scope inlines a discriminant equality — DDL
+/// cannot bind parameters, so the value is escaped and inlined.
+pub(crate) fn create_view(spec: &CollectionSpec, view: &ViewSpec) -> String {
+    let mut projections = vec![quote(&spec.id.field)];
+    for column in &view.columns {
+        projections.push(format!(
+            "json_extract({}, '{}') AS {}",
+            quote(&column.document),
+            json_path(&column.path),
+            quote(&column.name)
+        ));
+    }
+    let mut sql = format!(
+        "CREATE MATERIALIZED VIEW {} AS SELECT {} FROM {}",
+        quote(&view.name),
+        projections.join(", "),
+        quote(&spec.name)
+    );
+    if let Some(scope) = &view.scope {
+        sql.push_str(&format!(
+            " WHERE json_extract({}, '{}') = '{}'",
+            quote(&scope.document),
+            json_path(&scope.path),
+            scope.equals.replace('\'', "''")
+        ));
+    }
+    sql
+}
+
+/// `DROP VIEW IF EXISTS` (materialized views drop with the plain form).
+pub(crate) fn drop_view(name: &str) -> String {
+    format!("DROP VIEW IF EXISTS {}", quote(name))
+}
+
+/// `SELECT *` over a view.
+pub(crate) fn select_view(name: &str) -> String {
+    format!("SELECT * FROM {}", quote(name))
 }
