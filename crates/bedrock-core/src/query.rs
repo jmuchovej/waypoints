@@ -30,6 +30,18 @@ pub enum Filter {
     },
     /// A column is non-null (`present = true`) or null (`false`).
     Exists { column: String, present: bool },
+    /// A JSON path inside a document column compares to a value —
+    /// `json_extract(document, '$.path') <op> value`. Reaches a discriminant
+    /// *inside* a `jsonb` document without projecting a view first. Unindexed
+    /// (a full scan) — but a view over the same path can't be indexed either
+    /// (the engine desyncs MV secondary indexes), so for a hot discriminant
+    /// filter this is the simpler equal.
+    JsonCompare {
+        document: String,
+        path: String,
+        op: CompareOp,
+        value: ScalarValue,
+    },
 }
 
 /// A scalar comparison operator.
@@ -146,6 +158,21 @@ impl Filter {
         Filter::Exists {
             column: column.into(),
             present: false,
+        }
+    }
+
+    /// A JSON path inside a document column equals a value —
+    /// `json_extract(document, '$.path') = value`.
+    pub fn json_eq(
+        document: impl Into<String>,
+        path: impl Into<String>,
+        value: impl Into<ScalarValue>,
+    ) -> Self {
+        Filter::JsonCompare {
+            document: document.into(),
+            path: path.into(),
+            op: CompareOp::Eq,
+            value: value.into(),
         }
     }
 
