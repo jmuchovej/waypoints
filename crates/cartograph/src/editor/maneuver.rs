@@ -5,9 +5,16 @@ use serde::{Deserialize, Serialize};
 use store::DatabaseConnection;
 use store::query::{mark, terrain};
 
-use crate::sync::TextPayload;
-
 use super::error::{EditorError, EditorResult};
+
+/// Wire-stable wrapper for rich-text content in ops: the tagged enum lets a
+/// new payload kind (e.g. char-level deltas) join without breaking the wire
+/// format. `Snapshot` — a full replacement — is the only variant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum TextPayload {
+    Snapshot { rich_text: RichText },
+}
 
 fn empty_rich_text() -> RichText {
     RichText::new(Vec::new())
@@ -39,8 +46,6 @@ pub enum Maneuver {
         /// Local-only, for CommandHistory undo.
         #[serde(skip, default = "empty_rich_text")]
         old: RichText,
-        /// Wire-stable wrapper — the forward-compat hook for char-level
-        /// CRDT deltas in a future version.
         new: TextPayload,
     },
     SoftDeleteMark {
@@ -211,8 +216,16 @@ impl Maneuver {
             } => {
                 // Upsert: redoing a create (or a remote create winning LWW
                 // over a tombstone) revives the existing row.
-                terrain::upsert_edge(db, *edge_id, *src, *dst, kind, order.as_deref(), extra.clone())
-                    .await?;
+                terrain::upsert_edge(
+                    db,
+                    *edge_id,
+                    *src,
+                    *dst,
+                    kind,
+                    order.as_deref(),
+                    extra.clone(),
+                )
+                .await?;
                 Ok(())
             }
             Maneuver::UpdateTerrain {
