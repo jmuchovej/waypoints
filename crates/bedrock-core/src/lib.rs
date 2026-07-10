@@ -9,6 +9,7 @@
 
 mod collection;
 mod field;
+mod modify;
 mod query;
 mod spec;
 mod value;
@@ -16,6 +17,7 @@ mod view;
 
 pub use collection::Collection;
 pub use field::{DecodeError, EncodeError, Field, FieldKind};
+pub use modify::{Assignment, Update};
 pub use query::{CompareOp, Filter, Query, QueryError, ScalarValue, Sort};
 pub use spec::{CollectionSpec, FieldSpec, IdSpec, IndexSpec, SpecError};
 pub use value::{ColumnType, StoredValue};

@@ -1,4 +1,6 @@
-use bedrock_core::{Collection, CollectionSpec, Field, Query, StoredValue, ViewSpec};
+use bedrock_core::{
+    Collection, CollectionSpec, Field, Filter, Query, StoredValue, Update, ViewSpec,
+};
 
 use crate::error::BedrockError;
 use crate::{ddl, migrate, value};
@@ -152,6 +154,45 @@ impl Database {
         params.push(value::to_turso(&row[id_index])?);
         let affected = self.conn.execute(ddl::update(&spec), params).await?;
         Ok(affected > 0)
+    }
+
+    /// Apply a field-level update (`$set`/`$unset`) to every row of `C` matching
+    /// `filter`, returning the number of rows affected. Columns are validated
+    /// against the spec: `$set`/`$unset` on an unknown column, or `$unset` on a
+    /// non-nullable column, is refused.
+    pub async fn update_where<C: Collection>(
+        &self,
+        filter: &Filter,
+        update: &Update,
+    ) -> Result<u64, BedrockError> {
+        if update.is_empty() {
+            return Ok(0);
+        }
+        let spec = C::spec();
+        for assignment in &update.set {
+            if spec.field(&assignment.column).is_none() {
+                return Err(BedrockError::UnknownColumn {
+                    column: assignment.column.clone(),
+                });
+            }
+        }
+        for column in &update.unset {
+            match spec.field(column) {
+                None => {
+                    return Err(BedrockError::UnknownColumn {
+                        column: column.clone(),
+                    });
+                }
+                Some(field) if !field.nullable => {
+                    return Err(BedrockError::UnsetNonNullable {
+                        column: column.clone(),
+                    });
+                }
+                Some(_) => {}
+            }
+        }
+        let (sql, params) = crate::query::update_statement(&spec.name, filter, update);
+        Ok(self.conn.execute(sql, params).await?)
     }
 
     /// Fetch one entity by primary key.

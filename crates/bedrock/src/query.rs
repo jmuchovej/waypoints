@@ -1,4 +1,4 @@
-use bedrock_core::{CompareOp, Filter, Query, ScalarValue};
+use bedrock_core::{CompareOp, Filter, Query, ScalarValue, Update};
 
 /// Quote an identifier for SQL, escaping embedded quotes.
 fn quote(name: &str) -> String {
@@ -113,5 +113,33 @@ pub(crate) fn suffix(query: &Query) -> (String, Vec<turso::Value>) {
         sql.push_str(&format!(" LIMIT {limit}"));
     }
 
+    (sql, params)
+}
+
+/// Build the `UPDATE … SET … WHERE …` statement (with its bound parameters) for a
+/// field-level update over `table`, restricted to rows matching `filter`. The
+/// `SET` parameters precede the `WHERE` parameters. Column existence and
+/// nullability are validated by the caller against the collection spec.
+pub(crate) fn update_statement(
+    table: &str,
+    filter: &Filter,
+    update: &Update,
+) -> (String, Vec<turso::Value>) {
+    let mut params = Vec::new();
+    let mut assignments = Vec::new();
+    for assignment in &update.set {
+        assignments.push(format!("{} = ?", quote(&assignment.column)));
+        params.push(scalar_to_turso(&assignment.value));
+    }
+    for column in &update.unset {
+        assignments.push(format!("{} = NULL", quote(column)));
+    }
+
+    let mut sql = format!(
+        "UPDATE {} SET {} WHERE ",
+        quote(table),
+        assignments.join(", ")
+    );
+    sql.push_str(&filter_sql(filter, &mut params));
     (sql, params)
 }
