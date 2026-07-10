@@ -45,6 +45,12 @@ pub(crate) fn read_row(
     Ok(stored)
 }
 
+/// Read a scalar (non-document) turso value into a stored value — used for
+/// materialized-view rows, whose columns are all `json_extract` scalars.
+pub(crate) fn from_turso_scalar(value: turso::Value) -> Result<StoredValue, serde_json::Error> {
+    from_turso(value, false)
+}
+
 /// Reject a sub-millisecond temporal value before binding.
 ///
 /// The engine's `time`/`timestamp` columns truncate to milliseconds, so finer

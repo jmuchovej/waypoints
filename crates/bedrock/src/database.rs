@@ -1,4 +1,4 @@
-use bedrock_core::{Collection, Field};
+use bedrock_core::{Collection, Field, StoredValue, ViewSpec};
 
 use crate::error::BedrockError;
 use crate::{ddl, value};
@@ -18,6 +18,7 @@ impl Database {
     pub async fn open(path: &str) -> Result<Self, BedrockError> {
         let engine = turso::Builder::new_local(path)
             .experimental_custom_types(true)
+            .experimental_materialized_views(true)
             .build()
             .await?;
         let conn = engine.connect()?;
@@ -140,6 +141,42 @@ impl Database {
         let mut out = Vec::new();
         while let Some(row) = rows.next().await? {
             out.push(C::from_row(value::read_row(&row, &is_document)?)?);
+        }
+        Ok(out)
+    }
+
+    /// Declare (or replace) a materialized view over collection `C`.
+    ///
+    /// Idempotent: any existing view of the same name is dropped and recreated,
+    /// backfilling from the collection's current rows. This is recompute-based —
+    /// the pinned engine's incremental view maintenance is unreliable under
+    /// explicit write transactions, so a view is refreshed by re-declaring it,
+    /// not kept live per-write. The view carries no secondary indexes for the
+    /// same reason (they desync on base updates).
+    pub async fn declare_view<C: Collection>(&self, view: &ViewSpec) -> Result<(), BedrockError> {
+        let spec = C::spec();
+        self.conn.execute(ddl::drop_view(&view.name), ()).await?;
+        self.conn.execute(ddl::create_view(&spec, view), ()).await?;
+        Ok(())
+    }
+
+    /// Drop a materialized view if it exists.
+    pub async fn drop_view(&self, name: &str) -> Result<(), BedrockError> {
+        self.conn.execute(ddl::drop_view(name), ()).await?;
+        Ok(())
+    }
+
+    /// Read every row of a view: `[id, projected columns…]` per row, in view order.
+    pub async fn view_rows(&self, name: &str) -> Result<Vec<Vec<StoredValue>>, BedrockError> {
+        let mut rows = self.conn.query(ddl::select_view(name), ()).await?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().await? {
+            let count = row.column_count();
+            let mut projected = Vec::with_capacity(count);
+            for index in 0..count {
+                projected.push(value::from_turso_scalar(row.get_value(index)?)?);
+            }
+            out.push(projected);
         }
         Ok(out)
     }
