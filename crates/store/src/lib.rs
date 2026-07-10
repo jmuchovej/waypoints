@@ -51,29 +51,14 @@ pub use tools::{checkpoint, open, reset};
 
 pub mod entities {
     mod chart_orm;
-    mod device_orm;
     mod mark_orm;
-    mod relay_cursor_orm;
-    mod sync_log_orm;
     mod terrain_orm;
 
     pub use chart_orm::{
         ActiveModel as ActiveChart, Column as ChartColumn, Entity as Charts, Model as ChartModel,
     };
-    pub use device_orm::{
-        ActiveModel as ActiveDevice, Column as DeviceColumn, Entity as Devices,
-        Model as DeviceModel,
-    };
     pub use mark_orm::{
         ActiveModel as ActiveMark, Column as MarkColumn, Entity as Marks, Model as MarkModel,
-    };
-    pub use relay_cursor_orm::{
-        ActiveModel as ActiveRelayCursor, Column as RelayCursorColumn, Entity as RelayCursors,
-        Model as RelayCursorModel,
-    };
-    pub use sync_log_orm::{
-        ActiveModel as ActiveSyncLog, Column as SyncLogColumn, Entity as SyncLog,
-        Model as SyncLogModel,
     };
     pub use terrain_orm::{
         ActiveModel as ActiveTerrain, Column as TerrainColumn, Entity as Terrains,
@@ -84,10 +69,7 @@ pub mod entities {
 
 pub mod query {
     pub mod chart;
-    pub mod device;
     pub mod mark;
-    pub mod relay_cursor;
-    pub mod sync_log;
     pub mod terrain;
 }
 

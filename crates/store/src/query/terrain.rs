@@ -1,12 +1,10 @@
 use domain::Json;
 use domain::mark::MarkID;
-use domain::sync::{DeviceID, HLC};
 use domain::terrain::{Terrain, TerrainID, TerrainKind};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
     IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, sea_query::Expr,
 };
-use uuid::Uuid;
 
 use crate::entities::{
     ActiveTerrain, TerrainColumn, Terrains, terrain_kind_to_string as kind_to_string,
@@ -252,40 +250,3 @@ pub async fn update_child_edge(
     Ok(())
 }
 
-// ── Sync row clocks (#130) ──────────────────────────────────────────────
-
-/// Read the sync row clock for an edge. `None` means the row is missing
-/// or has never been touched by sync (`updated_hlc = 0`) — either way,
-/// any incoming op dominates it.
-pub async fn get_row_clock(
-    db: &DatabaseConnection,
-    edge_id: TerrainID,
-) -> StoreResult<Option<(HLC, DeviceID)>> {
-    let model = Terrains::find_by_id(edge_id.inner()).one(db).await?;
-    Ok(
-        model.and_then(|m| match (m.updated_hlc, m.updated_by_device) {
-            (0, _) | (_, None) => None,
-            (hlc, Some(device)) => Some((HLC(hlc), DeviceID::from(device))),
-        }),
-    )
-}
-
-/// Set the sync row clock for an edge. Uses a direct column update so it
-/// never triggers entity save hooks.
-pub async fn set_row_clock(
-    db: &DatabaseConnection,
-    edge_id: TerrainID,
-    hlc: HLC,
-    device: DeviceID,
-) -> StoreResult<()> {
-    let result = Terrains::update_many()
-        .col_expr(TerrainColumn::UpdatedHlc, Expr::value(hlc.inner()))
-        .col_expr(TerrainColumn::UpdatedByDevice, Expr::value(device.inner()))
-        .filter(TerrainColumn::Id.eq(edge_id.inner()))
-        .exec(db)
-        .await?;
-    if result.rows_affected == 0 {
-        return Err(StoreError::EdgeNotFound(edge_id));
-    }
-    Ok(())
-}
