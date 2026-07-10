@@ -206,25 +206,123 @@ impl Database {
         Ok(out)
     }
 
-    /// Declare (or replace) a materialized view over collection `C`.
+    /// Declare (or replace) a materialized view over collection `C`, recording it
+    /// so it can be listed and cascaded on collection drop.
     ///
-    /// Idempotent: any existing view of the same name is dropped and recreated,
-    /// backfilling from the collection's current rows. This is recompute-based —
+    /// Idempotent by name: any existing view of the same name is dropped and
+    /// recreated, backfilling from the collection's current rows. Recompute-based —
     /// the pinned engine's incremental view maintenance is unreliable under
     /// explicit write transactions, so a view is refreshed by re-declaring it,
-    /// not kept live per-write. The view carries no secondary indexes for the
-    /// same reason (they desync on base updates).
+    /// not kept live per-write, and carries no secondary indexes (they desync on
+    /// base updates).
     pub async fn declare_view<C: Collection>(&self, view: &ViewSpec) -> Result<(), BedrockError> {
         let spec = C::spec();
+        self.conn.execute(ddl::create_views_table(), ()).await?;
         self.conn.execute(ddl::drop_view(&view.name), ()).await?;
         self.conn.execute(ddl::create_view(&spec, view), ()).await?;
+        self.record_view(&spec.name, view).await?;
         Ok(())
     }
 
-    /// Drop a materialized view if it exists.
+    /// Declare the view only if it differs from what's recorded — a no-op when
+    /// the stored spec already matches, avoiding an unnecessary rebuild.
+    pub async fn ensure_view<C: Collection>(&self, view: &ViewSpec) -> Result<(), BedrockError> {
+        self.conn.execute(ddl::create_views_table(), ()).await?;
+        if self.stored_view(&view.name).await?.as_ref() == Some(view) {
+            return Ok(());
+        }
+        self.declare_view::<C>(view).await
+    }
+
+    /// Drop a materialized view (and its record) if it exists.
     pub async fn drop_view(&self, name: &str) -> Result<(), BedrockError> {
+        self.conn.execute(ddl::create_views_table(), ()).await?;
         self.conn.execute(ddl::drop_view(name), ()).await?;
+        self.conn
+            .execute(
+                ddl::delete_view(),
+                vec![turso::Value::Text(name.to_owned())],
+            )
+            .await?;
         Ok(())
+    }
+
+    /// Every declared view's spec.
+    pub async fn views(&self) -> Result<Vec<ViewSpec>, BedrockError> {
+        self.conn.execute(ddl::create_views_table(), ()).await?;
+        let mut rows = self.conn.query(ddl::list_views(), ()).await?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().await? {
+            if let turso::Value::Text(json) = row.get_value(0)? {
+                out.push(serde_json::from_str(&json)?);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Drop collection `C` — its table, every view declared over it (cascade),
+    /// and both records. A no-op if the collection does not exist.
+    pub async fn drop_collection<C: Collection>(&self) -> Result<(), BedrockError> {
+        let name = C::spec().name;
+        self.conn.execute(ddl::create_views_table(), ()).await?;
+
+        // Collect the collection's view names first (draining the query before
+        // issuing further statements on the same connection), then drop each.
+        let mut view_names = Vec::new();
+        let mut rows = self
+            .conn
+            .query(
+                ddl::views_for_collection(),
+                vec![turso::Value::Text(name.clone())],
+            )
+            .await?;
+        while let Some(row) = rows.next().await? {
+            if let turso::Value::Text(view_name) = row.get_value(0)? {
+                view_names.push(view_name);
+            }
+        }
+        drop(rows);
+        for view_name in view_names {
+            self.drop_view(&view_name).await?;
+        }
+
+        self.conn.execute(ddl::drop_table(&name), ()).await?;
+        self.conn.execute(ddl::create_meta_table(), ()).await?;
+        self.conn
+            .execute(ddl::delete_spec(), vec![turso::Value::Text(name)])
+            .await?;
+        Ok(())
+    }
+
+    /// Upsert a view's spec into the meta table.
+    async fn record_view(&self, collection: &str, view: &ViewSpec) -> Result<(), BedrockError> {
+        let json = serde_json::to_string(view)?;
+        self.conn
+            .execute(
+                ddl::store_view(),
+                vec![
+                    turso::Value::Text(view.name.clone()),
+                    turso::Value::Text(collection.to_owned()),
+                    turso::Value::Text(json),
+                ],
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// The recorded spec for a view, if any.
+    async fn stored_view(&self, name: &str) -> Result<Option<ViewSpec>, BedrockError> {
+        let mut rows = self
+            .conn
+            .query(ddl::read_view(), vec![turso::Value::Text(name.to_owned())])
+            .await?;
+        match rows.next().await? {
+            Some(row) => match row.get_value(0)? {
+                turso::Value::Text(json) => Ok(Some(serde_json::from_str(&json)?)),
+                _ => Ok(None),
+            },
+            None => Ok(None),
+        }
     }
 
     /// Read every row of a view: `[id, projected columns…]` per row, in view order.
