@@ -95,3 +95,26 @@ async fn materialized_view_projects_scopes_and_drops() {
     db.drop_view("item_a_view").await.expect("drop");
     assert!(db.view_rows("item_a_view").await.is_err());
 }
+
+#[tokio::test]
+async fn view_lifecycle_ensure_list_and_cascade() {
+    let db = Database::open(":memory:").await.expect("open");
+    db.ensure_collection::<Item>().await.expect("ensure");
+    db.insert_all(&[item(1, "a", 10, "x")])
+        .await
+        .expect("insert");
+
+    let view = kind_a_view();
+    db.ensure_view::<Item>(&view).await.expect("ensure view");
+    // same spec → no-op (still exactly one recorded view)
+    db.ensure_view::<Item>(&view).await.expect("ensure again");
+
+    let listed = db.views().await.unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].name, "item_a_view");
+
+    // dropping the collection cascades to its views
+    db.drop_collection::<Item>().await.expect("drop collection");
+    assert!(db.views().await.unwrap().is_empty());
+    assert!(db.view_rows("item_a_view").await.is_err());
+}
