@@ -73,7 +73,7 @@ async fn create_insert_readback_roundtrips() {
         },
     ];
     for note in &notes {
-        db.insert(note).await.expect("insert");
+        db.insert(note.clone()).await.expect("insert");
     }
 
     let mut got = db.all::<Note>().await.expect("all");
@@ -105,7 +105,7 @@ async fn rejects_submillisecond_timestamp() {
             .unwrap(),
     };
 
-    let err = db.insert(&note).await.unwrap_err();
+    let err = db.insert(note).await.unwrap_err();
     assert!(matches!(err, bedrock::BedrockError::SubMillisecond { .. }));
 }
 
@@ -131,19 +131,19 @@ async fn crud_operations() {
     let mut n = note(7);
     n.rank = Some(1);
 
-    db.insert(&n).await.expect("insert");
+    db.insert(n.clone()).await.expect("insert");
     assert_eq!(db.count::<Note>().await.unwrap(), 1);
     assert_eq!(db.get::<Note>(&n.id).await.unwrap().as_ref(), Some(&n));
 
     // update in place
     n.status = Status::Published;
     n.body.text = "published".into();
-    assert!(db.update(&n).await.unwrap());
+    assert!(db.update(n.clone()).await.unwrap());
     assert_eq!(db.get::<Note>(&n.id).await.unwrap().as_ref(), Some(&n));
 
     // upsert replaces, does not duplicate
     n.rank = Some(99);
-    db.upsert(&n).await.expect("upsert");
+    db.upsert(n.clone()).await.expect("upsert");
     assert_eq!(db.count::<Note>().await.unwrap(), 1);
     assert_eq!(db.get::<Note>(&n.id).await.unwrap().unwrap().rank, Some(99));
 
@@ -159,14 +159,14 @@ async fn insert_all_is_atomic() {
     let db = Database::open(":memory:").await.expect("open");
     db.ensure_collection::<Note>().await.expect("ensure");
 
-    db.insert_all(&[note(10), note(11)])
+    db.insert_all(vec![note(10), note(11)])
         .await
         .expect("insert_all");
     assert_eq!(db.count::<Note>().await.unwrap(), 2);
 
     // note(10) already exists → primary-key violation → the whole batch rolls back,
     // so note(12) must not survive.
-    let result = db.insert_all(&[note(12), note(10)]).await;
+    let result = db.insert_all(vec![note(12), note(10)]).await;
     assert!(result.is_err());
     assert_eq!(db.count::<Note>().await.unwrap(), 2);
     assert!(
@@ -210,7 +210,7 @@ async fn indexes_are_created_and_unique_is_enforced() {
     db.ensure_collection::<Note>().await.expect("idempotent");
     db.ensure_collection::<Tag>().await.expect("ensure tag");
 
-    db.insert(&Tag {
+    db.insert(Tag {
         id: TagId(Uuid::from_u128(1)),
         slug: "a".into(),
     })
@@ -219,7 +219,7 @@ async fn indexes_are_created_and_unique_is_enforced() {
 
     // same slug, different id → the unique index rejects it.
     let duplicate = db
-        .insert(&Tag {
+        .insert(Tag {
             id: TagId(Uuid::from_u128(2)),
             slug: "a".into(),
         })

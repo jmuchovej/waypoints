@@ -38,7 +38,7 @@ fn rec(n: u128, kind: &str, rank: i64, note: &str, weight: i64) -> Rec {
 async fn seeded() -> Database {
     let db = Database::open(":memory:").await.expect("open");
     db.ensure_collection::<Rec>().await.expect("ensure");
-    db.insert_all(&[
+    db.insert_all(vec![
         rec(1, "a", 10, "x", 100),
         rec(2, "a", 30, "y", 200),
         rec(3, "b", 20, "z", 300),
@@ -147,7 +147,7 @@ struct Tagged {
 async fn ne_and_nin_include_null_rows() {
     let db = Database::open(":memory:").await.expect("open");
     db.ensure_collection::<Tagged>().await.expect("ensure");
-    db.insert_all(&[
+    db.insert_all(vec![
         Tagged {
             id: TagId(Uuid::from_u128(1)),
             tag: Some("a".into()),
@@ -202,7 +202,7 @@ async fn update_where_applies_set_and_unset() {
 async fn update_where_unset_clears_nullable_column() {
     let db = Database::open(":memory:").await.expect("open");
     db.ensure_collection::<Tagged>().await.expect("ensure");
-    db.insert_all(&[
+    db.insert_all(vec![
         Tagged {
             id: TagId(Uuid::from_u128(1)),
             tag: Some("a".into()),

@@ -32,7 +32,7 @@ async fn json_value_columns_roundtrip_through_the_engine() {
         data: serde_json::Value::Null,
         extra: None,
     };
-    db.insert_all(&[full.clone(), empty.clone()])
+    db.insert_all(vec![full.clone(), empty.clone()])
         .await
         .expect("insert");
 

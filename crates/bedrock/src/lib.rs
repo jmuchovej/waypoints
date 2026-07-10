@@ -46,7 +46,7 @@ pub use tx::{ReadTx, Savepoint, WriteTx};
 pub use bedrock_core::{
     Assignment, Collection, CollectionSpec, ColumnType, CompareOp, DecodeError, EncodeError, Field,
     FieldKind, FieldSpec, Filter, IdSpec, IndexSpec, Query, QueryError, ScalarValue, Sort,
-    SpecError, StoredValue, Update, ViewColumn, ViewScope, ViewSpec,
+    SpecError, StoredValue, Update, ViewColumn, ViewScope, ViewSpec, WriteOp,
 };
 
 // Façade: the derives. `Collection` names both a trait (above) and this derive
