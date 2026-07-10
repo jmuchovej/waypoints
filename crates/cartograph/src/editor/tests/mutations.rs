@@ -299,16 +299,16 @@ async fn update_mark_title_on_content_errors(#[future] env: Env) {
     assert!(result.is_err());
 }
 
-/// Every mutation through the editor service is also logged to sync
-/// (#131 acceptance): one local-origin `sync_log` group per command.
+/// Every mutation through the editor service is also logged to sync: one
+/// local-origin `sync_log` group per command.
 ///
-/// Skipped: SyncLog is a sea-orm entity that does not exist in the bedrock
-/// layer; this test will be re-enabled when the sync layer is ported.
-#[ignore = "sync_log entity not yet ported to bedrock"]
+/// Skipped: the legacy sync_log surface was removed with the old sync layer.
+/// TODO: re-enable against outpost's sync layer.
+#[ignore = "legacy sync_log surface removed; awaiting outpost sync layer"]
 #[rstest]
 #[tokio::test]
 async fn mutations_log_local_sync_groups(#[future] env: Env) {
-    // SyncLog entity not yet ported to bedrock — test body is a stub.
+    // The legacy sync surface is gone — test body is a stub.
     let (_svc, _db) = env.await;
-    todo!("re-enable when sync_log is ported to bedrock");
+    todo!("re-enable against outpost's sync layer");
 }

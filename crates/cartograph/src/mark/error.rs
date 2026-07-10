@@ -20,8 +20,6 @@ pub enum MarkError {
     InvalidTimestamp(String),
     #[error("serialization error: {0}")]
     Serialization(String),
-    #[error("database error: {0}")]
-    Database(#[from] sea_orm::DbErr),
     #[error("store error: {0}")]
     Store(#[from] store::StoreError),
 }
