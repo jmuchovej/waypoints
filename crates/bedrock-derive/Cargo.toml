@@ -20,12 +20,9 @@ proc-macro2.workspace = true
 quote.workspace = true
 syn.workspace = true
 
-[dev-dependencies]
-bedrock-core = { path = "../bedrock-core" }
-serde.workspace = true
-serde_json.workspace = true
-trybuild.workspace = true
-uuid.workspace = true
+# No dev-dependencies: the derives emit `::bedrock::…` paths, so they're
+# exercised from `bedrock`'s own test suite (crates/bedrock/tests), where the
+# façade crate is available.
 
 [lints]
 workspace = true

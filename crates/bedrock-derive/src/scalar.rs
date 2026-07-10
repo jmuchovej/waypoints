@@ -24,16 +24,16 @@ fn expand_newtype(input: &DeriveInput, inner: &Type) -> syn::Result<TokenStream>
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics ::bedrock_core::Field for #name #ty_generics #where_clause {
-            const KIND: ::bedrock_core::FieldKind = <#inner as ::bedrock_core::Field>::KIND;
-            const NULLABLE: bool = <#inner as ::bedrock_core::Field>::NULLABLE;
+        impl #impl_generics ::bedrock::Field for #name #ty_generics #where_clause {
+            const KIND: ::bedrock::FieldKind = <#inner as ::bedrock::Field>::KIND;
+            const NULLABLE: bool = <#inner as ::bedrock::Field>::NULLABLE;
 
-            fn encode(&self) -> ::core::result::Result<::bedrock_core::StoredValue, ::bedrock_core::EncodeError> {
-                <#inner as ::bedrock_core::Field>::encode(&self.0)
+            fn encode(&self) -> ::core::result::Result<::bedrock::StoredValue, ::bedrock::EncodeError> {
+                <#inner as ::bedrock::Field>::encode(&self.0)
             }
 
-            fn decode(value: ::bedrock_core::StoredValue) -> ::core::result::Result<Self, ::bedrock_core::DecodeError> {
-                <#inner as ::bedrock_core::Field>::decode(value).map(Self)
+            fn decode(value: ::bedrock::StoredValue) -> ::core::result::Result<Self, ::bedrock::DecodeError> {
+                <#inner as ::bedrock::Field>::decode(value).map(Self)
             }
         }
     })
@@ -61,26 +61,26 @@ fn expand_fieldless_enum(input: &DeriveInput, data: &DataEnum) -> syn::Result<To
     }
 
     Ok(quote! {
-        impl ::bedrock_core::Field for #name {
-            const KIND: ::bedrock_core::FieldKind =
-                ::bedrock_core::FieldKind::Column(::bedrock_core::ColumnType::Text);
+        impl ::bedrock::Field for #name {
+            const KIND: ::bedrock::FieldKind =
+                ::bedrock::FieldKind::Column(::bedrock::ColumnType::Text);
 
-            fn encode(&self) -> ::core::result::Result<::bedrock_core::StoredValue, ::bedrock_core::EncodeError> {
+            fn encode(&self) -> ::core::result::Result<::bedrock::StoredValue, ::bedrock::EncodeError> {
                 let name: &'static str = match self { #(#encode_arms),* };
-                ::core::result::Result::Ok(::bedrock_core::StoredValue::Text(::std::string::String::from(name)))
+                ::core::result::Result::Ok(::bedrock::StoredValue::Text(::std::string::String::from(name)))
             }
 
-            fn decode(value: ::bedrock_core::StoredValue) -> ::core::result::Result<Self, ::bedrock_core::DecodeError> {
+            fn decode(value: ::bedrock::StoredValue) -> ::core::result::Result<Self, ::bedrock::DecodeError> {
                 match value {
-                    ::bedrock_core::StoredValue::Text(s) => match s.as_str() {
+                    ::bedrock::StoredValue::Text(s) => match s.as_str() {
                         #(#decode_arms,)*
-                        _ => ::core::result::Result::Err(::bedrock_core::DecodeError::Parse {
+                        _ => ::core::result::Result::Err(::bedrock::DecodeError::Parse {
                             target: #name_str,
                             input: s,
                             message: ::std::string::String::from("unknown variant"),
                         }),
                     },
-                    other => ::core::result::Result::Err(::bedrock_core::DecodeError::TypeMismatch {
+                    other => ::core::result::Result::Err(::bedrock::DecodeError::TypeMismatch {
                         expected: #name_str,
                         found: other.type_name(),
                     }),

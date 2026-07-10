@@ -1,4 +1,4 @@
-use bedrock_derive::Scalar;
+use bedrock::Scalar;
 
 // Scalar is for newtypes (one field), not multi-field tuple structs.
 #[derive(Scalar)]

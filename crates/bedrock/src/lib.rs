@@ -11,6 +11,14 @@
 //! Connections are pooled: one serialized writer, several lazily-created
 //! readers (see [`Config`]). [`Database::flush`] exposes the durability
 //! primitive; scheduling it is the caller's policy.
+//!
+//! # Façade
+//!
+//! `bedrock` is the single crate a consumer needs. It re-exports the whole
+//! `bedrock-core` vocabulary and the [`Scalar`]/[`Document`]/[`Collection`]
+//! derives, and the derives emit `::bedrock::…` paths — so a crate that depends
+//! only on `bedrock` can define and store its types without ever naming
+//! `bedrock-core` or `bedrock-derive`.
 
 mod config;
 mod database;
@@ -24,6 +32,7 @@ mod query;
 mod tx;
 mod value;
 
+// Engine surface (this crate).
 pub use config::Config;
 pub use database::Database;
 pub use durability::FlushMode;
@@ -31,3 +40,15 @@ pub use error::BedrockError;
 pub use explain::QueryPlan;
 pub use migrate::MigrationError;
 pub use tx::{ReadTx, Savepoint, WriteTx};
+
+// Façade: the core vocabulary. Re-exported so consumers depend only on `bedrock`
+// and so the derives' generated `::bedrock::…` paths resolve.
+pub use bedrock_core::{
+    Assignment, Collection, CollectionSpec, ColumnType, CompareOp, DecodeError, EncodeError, Field,
+    FieldKind, FieldSpec, Filter, IdSpec, IndexSpec, Query, QueryError, ScalarValue, Sort,
+    SpecError, StoredValue, Update, ViewColumn, ViewScope, ViewSpec,
+};
+
+// Façade: the derives. `Collection` names both a trait (above) and this derive
+// macro — they live in different namespaces, mirroring `serde::Serialize`.
+pub use bedrock_derive::{Collection, Document, Scalar};

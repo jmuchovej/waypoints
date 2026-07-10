@@ -13,16 +13,17 @@ publish.workspace = true
 
 [dependencies]
 bedrock-core = { path = "../bedrock-core" }
+bedrock-derive = { path = "../bedrock-derive" }
 serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true }
 turso.workspace = true
 
 [dev-dependencies]
-bedrock-derive = { path = "../bedrock-derive" }
 chrono.workspace = true
 serde.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+trybuild.workspace = true
 uuid.workspace = true
 
 [lints]

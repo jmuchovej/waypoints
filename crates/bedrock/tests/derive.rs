@@ -1,5 +1,8 @@
-use bedrock_core::{Collection, ColumnType, Field, FieldKind, StoredValue};
-use bedrock_derive::{Collection, Document, Scalar};
+//! Façade proof: this test defines and stores types using ONLY `bedrock::…`
+//! paths — no `bedrock_core` / `bedrock_derive` imports — exercising that the
+//! derives' generated `::bedrock::…` code resolves through the single façade.
+
+use bedrock::{Collection, ColumnType, Document, Field, FieldKind, Scalar, StoredValue};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -116,7 +119,7 @@ fn from_row_rejects_wrong_column_count() {
     let err = Thing::from_row(vec![StoredValue::Null]).unwrap_err();
     assert!(matches!(
         err,
-        bedrock_core::DecodeError::ColumnCount {
+        bedrock::DecodeError::ColumnCount {
             expected: 4,
             found: 1,
             ..
