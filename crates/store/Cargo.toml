@@ -12,10 +12,8 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-async-trait.workspace = true
 bedrock = { workspace = true }
 chrono.workspace = true
-chrono-tz.workspace = true
 derive_more = {
   workspace = true,
   features = [
@@ -26,16 +24,10 @@ derive_more = {
   ]
 }
 domain.workspace = true
-importer = { workspace = true, optional = true }
-indexmap.workspace = true
-refinery.workspace = true
-refinery-core.workspace = true
-sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
-time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 turso.workspace = true
@@ -48,8 +40,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = []
-development = ["mock"]
-mock = ["importer"]
+development = []
 preview = []
 stable = []
 test-utils = ["dep:tempfile"]
