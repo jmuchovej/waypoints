@@ -231,3 +231,44 @@ pub(crate) fn store_spec() -> &'static str {
 pub(crate) fn read_spec() -> &'static str {
     "SELECT \"spec\" FROM \"bedrock_collections\" WHERE \"name\" = ?"
 }
+
+/// Delete a collection's stored spec. Param: name.
+pub(crate) fn delete_spec() -> &'static str {
+    "DELETE FROM \"bedrock_collections\" WHERE \"name\" = ?"
+}
+
+/// `DROP TABLE IF EXISTS`.
+pub(crate) fn drop_table(name: &str) -> String {
+    format!("DROP TABLE IF EXISTS {}", quote(name))
+}
+
+/// The system table storing each materialized view's spec, for idempotent
+/// re-declare and cascade on collection drop.
+pub(crate) fn create_views_table() -> &'static str {
+    "CREATE TABLE IF NOT EXISTS \"bedrock_views\" (\"name\" TEXT PRIMARY KEY, \"collection\" TEXT NOT NULL, \"spec\" TEXT NOT NULL) STRICT"
+}
+
+/// Upsert a view's stored spec. Params: name, collection, spec-json.
+pub(crate) fn store_view() -> &'static str {
+    "INSERT OR REPLACE INTO \"bedrock_views\" (\"name\", \"collection\", \"spec\") VALUES (?, ?, ?)"
+}
+
+/// Read a view's stored spec. Param: name.
+pub(crate) fn read_view() -> &'static str {
+    "SELECT \"spec\" FROM \"bedrock_views\" WHERE \"name\" = ?"
+}
+
+/// List every stored view spec.
+pub(crate) fn list_views() -> &'static str {
+    "SELECT \"spec\" FROM \"bedrock_views\""
+}
+
+/// The view names belonging to a collection. Param: collection.
+pub(crate) fn views_for_collection() -> &'static str {
+    "SELECT \"name\" FROM \"bedrock_views\" WHERE \"collection\" = ?"
+}
+
+/// Delete a view's stored spec. Param: name.
+pub(crate) fn delete_view() -> &'static str {
+    "DELETE FROM \"bedrock_views\" WHERE \"name\" = ?"
+}
