@@ -2,6 +2,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
 
+use crate::attr;
+
 /// A document is stored as a `jsonb` blob, round-tripped through serde. The type
 /// is assumed to be `Serialize` + `Deserialize`; if it is not, the generated
 /// `serde_json` calls fail to compile — which is the intended feedback.
@@ -10,7 +12,20 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
     let name_str = name.to_string();
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
+    // When the type is a serde-tagged enum, record the tag as its discriminant
+    // path, so a `#[bedrock(discriminant)]` field of this type can infer it.
+    let discriminant_impl = match attr::serde_tag(&input.attrs)? {
+        Some(tag) => quote! {
+            impl #impl_generics ::bedrock::Discriminant for #name #ty_generics #where_clause {
+                const TAG: &'static str = #tag;
+            }
+        },
+        None => quote! {},
+    };
+
     Ok(quote! {
+        #discriminant_impl
+
         impl #impl_generics ::bedrock::Field for #name #ty_generics #where_clause {
             const KIND: ::bedrock::FieldKind = ::bedrock::FieldKind::Document;
 

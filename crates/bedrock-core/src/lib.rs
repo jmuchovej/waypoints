@@ -21,4 +21,4 @@ pub use modify::{Assignment, Update};
 pub use query::{CompareOp, Filter, Query, QueryError, ScalarValue, Sort};
 pub use spec::{CollectionSpec, FieldSpec, IdSpec, IndexSpec, SpecError};
 pub use value::{ColumnType, StoredValue};
-pub use view::{ViewColumn, ViewScope, ViewSpec};
+pub use view::{Discriminant, ViewColumn, ViewScope, ViewSpec};

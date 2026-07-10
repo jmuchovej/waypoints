@@ -1,0 +1,11 @@
+error[E0080]: evaluation panicked: the #[bedrock(discriminant)] field must be a document column
+ --> tests/compile_fail/discriminant_on_scalar.rs:9:10
+  |
+9 | #[derive(Collection)]
+  |          ^^^^^^^^^^ evaluation of `_` failed here
+
+error[E0277]: the trait bound `String: bedrock::Discriminant` is not satisfied
+  --> tests/compile_fail/discriminant_on_scalar.rs:14:11
+   |
+14 |     kind: String,
+   |           ^^^^^^ the trait `bedrock::Discriminant` is not implemented for `String`
