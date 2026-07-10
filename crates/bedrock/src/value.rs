@@ -1,4 +1,33 @@
-use bedrock_core::StoredValue;
+use bedrock_core::{ColumnType, FieldKind, StoredValue};
+
+use crate::error::BedrockError;
+
+/// Reject a sub-millisecond temporal value before binding.
+///
+/// The engine's `time`/`timestamp` columns truncate to milliseconds, so finer
+/// precision would be silently lost. Encoded temporals are `HH:MM:SS.fff…` with
+/// trailing zeros trimmed, so a fractional part longer than three digits is
+/// sub-millisecond.
+pub(crate) fn reject_submillis(
+    kind: FieldKind,
+    value: &StoredValue,
+    field: &str,
+) -> Result<(), BedrockError> {
+    let temporal = matches!(
+        kind,
+        FieldKind::Column(ColumnType::Time | ColumnType::Timestamp)
+    );
+    if temporal
+        && let StoredValue::Text(text) = value
+        && let Some(dot) = text.find('.')
+        && text[dot + 1..].len() > 3
+    {
+        return Err(BedrockError::SubMillisecond {
+            field: field.to_owned(),
+        });
+    }
+    Ok(())
+}
 
 /// Convert a stored value into a turso parameter value.
 ///

@@ -1,18 +1,23 @@
 use bedrock_core::{CollectionSpec, ColumnType, FieldKind};
 
-/// The SQLite storage type for a field.
+/// The engine storage type for a field.
+///
+/// Behind `experimental_custom_types` + STRICT, uuid/boolean/jsonb and the
+/// temporal types are real engine types (raw-SQL-inspectable, and `json_extract`
+/// reaches into `jsonb`).
 fn sql_type(kind: FieldKind) -> &'static str {
     match kind {
-        FieldKind::Document => "TEXT",
+        FieldKind::Document => "jsonb",
         FieldKind::Column(column) => match column {
-            ColumnType::Integer | ColumnType::Boolean => "INTEGER",
+            ColumnType::Integer => "INTEGER",
             ColumnType::Real => "REAL",
+            ColumnType::Text => "TEXT",
             ColumnType::Blob => "BLOB",
-            ColumnType::Text
-            | ColumnType::Uuid
-            | ColumnType::Date
-            | ColumnType::Time
-            | ColumnType::Timestamp => "TEXT",
+            ColumnType::Boolean => "boolean",
+            ColumnType::Uuid => "uuid",
+            ColumnType::Date => "date",
+            ColumnType::Time => "time",
+            ColumnType::Timestamp => "timestamp",
         },
     }
 }
@@ -39,7 +44,7 @@ pub(crate) fn create_table(spec: &CollectionSpec) -> String {
         })
         .collect();
     format!(
-        "CREATE TABLE IF NOT EXISTS {} (\n  {}\n)",
+        "CREATE TABLE IF NOT EXISTS {} (\n  {}\n) STRICT",
         quote(&spec.name),
         columns.join("\n, ")
     )
