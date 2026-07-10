@@ -1,4 +1,4 @@
-use bedrock_derive::{Collection, Scalar};
+use bedrock::{Collection, Scalar};
 use uuid::Uuid;
 
 #[derive(Scalar)]

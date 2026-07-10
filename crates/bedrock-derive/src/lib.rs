@@ -1,17 +1,15 @@
 //! Derive macros for bedrock's schema vocabulary.
 //!
-//! Three derives turn a Rust type into something bedrock can store. They all
-//! generate code against `::bedrock_core`, so a consumer depends on both this
-//! crate and `bedrock-core`.
+//! Three derives turn a Rust type into something bedrock can store. They emit
+//! code against `::bedrock` (the façade crate), which re-exports both these
+//! derives and the core vocabulary — so a consumer depends only on `bedrock`.
 //!
 //! - [`Scalar`](macro@Scalar) — a newtype over a scalar, or a fieldless enum,
 //!   that promotes to a single indexable column.
 //! - [`Document`](macro@Document) — a composite type stored as a `jsonb`
 //!   document, round-tripped through serde.
 //! - [`Collection`](macro@Collection) — an entity mapped to a whole collection
-//!   (table), producing its [`CollectionSpec`] and row split/merge.
-//!
-//! [`CollectionSpec`]: bedrock_core::CollectionSpec
+//!   (table), producing its `CollectionSpec` and row split/merge.
 
 use proc_macro::TokenStream;
 use syn::{DeriveInput, parse_macro_input};
@@ -21,7 +19,7 @@ mod collection;
 mod document;
 mod scalar;
 
-/// Derive [`Field`](bedrock_core::Field) for a scalar type.
+/// Derive `bedrock::Field` for a scalar type.
 ///
 /// Applies to a newtype struct (one unnamed field), forwarding to the inner
 /// type's `Field` impl, or to a fieldless enum, which maps to a `TEXT` column
@@ -35,8 +33,7 @@ pub fn derive_scalar(input: TokenStream) -> TokenStream {
         .into()
 }
 
-/// Derive [`Field`](bedrock_core::Field) for a composite type stored as a
-/// `jsonb` document.
+/// Derive `bedrock::Field` for a composite type stored as a `jsonb` document.
 ///
 /// The type must also be `serde::Serialize` + `serde::Deserialize`; encoding and
 /// decoding round-trip through `serde_json`.
@@ -48,7 +45,7 @@ pub fn derive_document(input: TokenStream) -> TokenStream {
         .into()
 }
 
-/// Derive [`Collection`](bedrock_core::Collection) for an entity struct.
+/// Derive `bedrock::Collection` for an entity struct.
 ///
 /// Exactly one field must be marked `#[bedrock(id)]` — there is no implicit id.
 /// The id field must be a scalar column (enforced at compile time). Field names
