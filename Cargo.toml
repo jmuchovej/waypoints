@@ -3,6 +3,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/bedrock",
   "crates/bedrock-core",
   "crates/bedrock-derive",
   "crates/cartograph",
@@ -28,6 +29,7 @@ publish = false
 
 [workspace.dependencies]
 Waypoints = { path = "waypoints/src-tauri" }
+bedrock = { path = "crates/bedrock" }
 cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
@@ -125,7 +127,7 @@ tower-http = { version = "0.7.0", features = ["fs", "trace"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 trybuild = "1"
-turso = "0.6.1"
+turso = "=0.7.0-pre.18"
 typed-builder = "0.23.2"
 uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }
 validator = { version = "0.20.0", features = ["derive", "indexmap"] }

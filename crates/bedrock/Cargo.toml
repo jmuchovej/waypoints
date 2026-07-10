@@ -1,0 +1,27 @@
+[package]
+name = "bedrock"
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+bedrock-core = { path = "../bedrock-core" }
+serde_json.workspace = true
+thiserror.workspace = true
+turso.workspace = true
+
+[dev-dependencies]
+bedrock-derive = { path = "../bedrock-derive" }
+serde.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+uuid.workspace = true
+
+[lints]
+workspace = true
