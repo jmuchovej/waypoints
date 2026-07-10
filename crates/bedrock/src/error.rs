@@ -23,6 +23,14 @@ pub enum BedrockError {
     #[error("field {field:?} has sub-millisecond precision that the engine would truncate")]
     SubMillisecond { field: String },
 
+    /// An update referenced a column the collection does not have.
+    #[error("unknown column {column:?}")]
+    UnknownColumn { column: String },
+
+    /// An `$unset` targeted a non-nullable column, which cannot hold NULL.
+    #[error("cannot unset non-nullable column {column:?}")]
+    UnsetNonNullable { column: String },
+
     /// A schema change could not be applied automatically (it was destructive).
     #[error(transparent)]
     Migration(#[from] crate::migrate::MigrationError),
