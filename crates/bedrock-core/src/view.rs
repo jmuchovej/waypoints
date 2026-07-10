@@ -20,6 +20,18 @@ pub struct ViewSpec {
     pub columns: Vec<ViewColumn>,
 }
 
+/// A document type that carries a discriminant at a known path — its serde tag.
+///
+/// `#[derive(Document)]` implements this when the type has `#[serde(tag = "…")]`,
+/// recording that tag as [`TAG`](Discriminant::TAG). A collection field marked
+/// `#[bedrock(discriminant)]` reads it to derive a scoped [`ViewScope`] without
+/// the caller restating the path; a field whose type has no serde tag must give
+/// the path explicitly (`#[bedrock(discriminant = "…")]`).
+pub trait Discriminant {
+    /// The document path (serde tag) whose value discriminates rows.
+    const TAG: &'static str;
+}
+
 /// Scope a view to rows whose document path equals a value — the discriminant
 /// (e.g. a chart id or a serde tag).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

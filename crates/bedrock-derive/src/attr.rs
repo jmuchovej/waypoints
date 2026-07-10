@@ -14,13 +14,29 @@ pub(crate) fn serde_rename(attrs: &[Attribute]) -> syn::Result<Option<String>> {
     extract_serde_string(attrs, "rename")
 }
 
+/// The `tag` value from `#[serde(tag = "...")]`, if present — a document type's
+/// discriminant path.
+pub(crate) fn serde_tag(attrs: &[Attribute]) -> syn::Result<Option<String>> {
+    extract_serde_string(attrs, "tag")
+}
+
+/// How a field's `#[bedrock(discriminant)]` names its path.
+pub(crate) enum DiscriminantAttr {
+    /// `#[bedrock(discriminant)]` — infer the path from the field type's serde tag.
+    Inferred,
+    /// `#[bedrock(discriminant = "path")]` — the path stated explicitly.
+    Explicit(String),
+}
+
 /// Bedrock's field-level attributes: `#[bedrock(id)]`, `#[bedrock(index)]`,
-/// `#[bedrock(unique)]`.
+/// `#[bedrock(unique)]`, `#[bedrock(discriminant)]`.
 #[derive(Default)]
 pub(crate) struct FieldAttrs {
     pub is_id: bool,
     /// `Some(unique)` if the field is singly indexed; `None` otherwise.
     pub index: Option<bool>,
+    /// Set when the field carries `#[bedrock(discriminant)]`.
+    pub discriminant: Option<DiscriminantAttr>,
 }
 
 pub(crate) fn field_attrs(attrs: &[Attribute]) -> syn::Result<FieldAttrs> {
@@ -39,9 +55,18 @@ pub(crate) fn field_attrs(attrs: &[Attribute]) -> syn::Result<FieldAttrs> {
             } else if meta.path.is_ident("unique") {
                 out.index = Some(true);
                 Ok(())
+            } else if meta.path.is_ident("discriminant") {
+                out.discriminant = Some(if meta.input.peek(syn::Token![=]) {
+                    DiscriminantAttr::Explicit(meta.value()?.parse::<LitStr>()?.value())
+                } else {
+                    DiscriminantAttr::Inferred
+                });
+                Ok(())
             } else {
-                Err(meta
-                    .error("unknown bedrock field attribute; expected `id`, `index`, or `unique`"))
+                Err(meta.error(
+                    "unknown bedrock field attribute; expected `id`, `index`, `unique`, or \
+                     `discriminant`",
+                ))
             }
         })?;
     }
