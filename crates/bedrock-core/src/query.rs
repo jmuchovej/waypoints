@@ -247,7 +247,7 @@ fn scalar_array(value: &serde_json::Value) -> Result<Vec<ScalarValue>, QueryErro
         .collect()
 }
 
-fn scalar_from_json(value: &serde_json::Value) -> Result<ScalarValue, QueryError> {
+pub(crate) fn scalar_from_json(value: &serde_json::Value) -> Result<ScalarValue, QueryError> {
     use serde_json::Value;
     Ok(match value {
         Value::Null => ScalarValue::Null,

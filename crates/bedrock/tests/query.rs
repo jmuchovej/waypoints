@@ -1,5 +1,5 @@
 use bedrock::Database;
-use bedrock_core::{ColumnType, Filter, Query, StoredValue, ViewColumn, ViewSpec};
+use bedrock_core::{ColumnType, Filter, Query, StoredValue, Update, ViewColumn, ViewSpec};
 use bedrock_derive::{Collection, Document, Scalar};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -179,4 +179,74 @@ async fn ne_and_nin_include_null_rows() {
         .unwrap();
     assert_eq!(got.len(), 2);
     assert!(got.iter().any(|t| t.tag.is_none()));
+}
+
+#[tokio::test]
+async fn update_where_applies_set_and_unset() {
+    let db = seeded().await;
+
+    // $set: rewrite kind "a" -> "z" for both matching rows.
+    let affected = db
+        .update_where::<Rec>(&Filter::eq("kind", "a"), &Update::new().set("kind", "z"))
+        .await
+        .unwrap();
+    assert_eq!(affected, 2);
+    let got = db
+        .query::<Rec>(&Query::new().filter(Filter::eq("kind", "z")))
+        .await
+        .unwrap();
+    assert_eq!(got.len(), 2);
+}
+
+#[tokio::test]
+async fn update_where_unset_clears_nullable_column() {
+    let db = Database::open(":memory:").await.expect("open");
+    db.ensure_collection::<Tagged>().await.expect("ensure");
+    db.insert_all(&[
+        Tagged {
+            id: TagId(Uuid::from_u128(1)),
+            tag: Some("a".into()),
+        },
+        Tagged {
+            id: TagId(Uuid::from_u128(2)),
+            tag: Some("b".into()),
+        },
+    ])
+    .await
+    .expect("insert");
+
+    // $unset clears tag on the "b" row; it then reads back as missing.
+    let affected = db
+        .update_where::<Tagged>(&Filter::eq("tag", "b"), &Update::new().unset("tag"))
+        .await
+        .unwrap();
+    assert_eq!(affected, 1);
+    let cleared = db
+        .query::<Tagged>(&Query::new().filter(Filter::missing("tag")))
+        .await
+        .unwrap();
+    assert_eq!(cleared.len(), 1);
+    assert_eq!(cleared[0].id, TagId(Uuid::from_u128(2)));
+}
+
+#[tokio::test]
+async fn update_where_refuses_invalid_columns() {
+    let db = seeded().await;
+
+    // $set on a column the collection does not have.
+    let err = db
+        .update_where::<Rec>(&Filter::eq("kind", "a"), &Update::new().set("nope", 1i64))
+        .await
+        .unwrap_err();
+    assert!(matches!(err, bedrock::BedrockError::UnknownColumn { .. }));
+
+    // $unset on a non-nullable column (the primary key).
+    let err = db
+        .update_where::<Rec>(&Filter::eq("kind", "a"), &Update::new().unset("id"))
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        bedrock::BedrockError::UnsetNonNullable { .. }
+    ));
 }
