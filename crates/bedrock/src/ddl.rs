@@ -1,4 +1,4 @@
-use bedrock_core::{CollectionSpec, ColumnType, FieldKind, IndexSpec, ViewSpec};
+use bedrock_core::{CollectionSpec, ColumnType, FieldKind, FieldSpec, IndexSpec, ViewSpec};
 
 /// The engine storage type for a field.
 ///
@@ -198,4 +198,36 @@ pub(crate) fn drop_view(name: &str) -> String {
 /// `SELECT *` over a view.
 pub(crate) fn select_view(name: &str) -> String {
     format!("SELECT * FROM {}", quote(name))
+}
+
+/// `ALTER TABLE … ADD COLUMN` for a new nullable column (migrations only add
+/// nullable columns, so there is no `NOT NULL`).
+pub(crate) fn alter_add_column(spec: &CollectionSpec, field: &FieldSpec) -> String {
+    format!(
+        "ALTER TABLE {} ADD COLUMN {} {}",
+        quote(&spec.name),
+        quote(&field.name),
+        sql_type(field.kind)
+    )
+}
+
+/// `DROP INDEX IF EXISTS`.
+pub(crate) fn drop_index(name: &str) -> String {
+    format!("DROP INDEX IF EXISTS {}", quote(name))
+}
+
+/// The system table storing each collection's last-applied spec, for migration
+/// diffing across opens.
+pub(crate) fn create_meta_table() -> &'static str {
+    "CREATE TABLE IF NOT EXISTS \"bedrock_collections\" (\"name\" TEXT PRIMARY KEY, \"spec\" TEXT NOT NULL) STRICT"
+}
+
+/// Upsert a collection's stored spec. Params: name, spec-json.
+pub(crate) fn store_spec() -> &'static str {
+    "INSERT OR REPLACE INTO \"bedrock_collections\" (\"name\", \"spec\") VALUES (?, ?)"
+}
+
+/// Read a collection's stored spec. Param: name.
+pub(crate) fn read_spec() -> &'static str {
+    "SELECT \"spec\" FROM \"bedrock_collections\" WHERE \"name\" = ?"
 }

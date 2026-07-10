@@ -11,8 +11,10 @@
 mod database;
 mod ddl;
 mod error;
+mod migrate;
 mod query;
 mod value;
 
 pub use database::Database;
 pub use error::BedrockError;
+pub use migrate::MigrationError;
