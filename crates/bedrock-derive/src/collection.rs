@@ -77,13 +77,15 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
     let table = input.ident.to_string().to_snake_case();
     let column_count = infos.len();
 
+    let container = attr::container_attrs(&input.attrs)?;
+
     let mut index_defs: Vec<(Vec<String>, bool)> = Vec::new();
     for info in &infos {
         if let Some(unique) = info.index {
             index_defs.push((vec![info.name.clone()], unique));
         }
     }
-    index_defs.extend(attr::container_indexes(&input.attrs)?);
+    index_defs.extend(container.indexes);
     let index_specs = index_defs.iter().map(|(columns, unique)| {
         let index_name = format!("{}_{}_idx", table, columns.join("_"));
         let column_lits = columns
@@ -124,6 +126,19 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
             )?
         }
     });
+
+    // The write hook, wired to `#[bedrock(before_save = path)]` when present. The
+    // `let f: fn(...) = #path;` binding enforces the hook's signature — a wrong
+    // one is a compile error, not a silent mismatch.
+    let before_save_impl = match container.before_save {
+        Some(path) => quote! {
+            fn before_save(self, op: ::bedrock::WriteOp) -> Self {
+                let f: fn(Self, ::bedrock::WriteOp) -> Self = #path;
+                f(self, op)
+            }
+        },
+        None => quote! {},
+    };
 
     Ok(quote! {
         // The id must be a scalar column, not a document — enforced at compile time
@@ -176,6 +191,8 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
                 let mut columns = ::core::iter::IntoIterator::into_iter(row);
                 ::core::result::Result::Ok(Self { #(#decode_fields),* })
             }
+
+            #before_save_impl
         }
     })
 }

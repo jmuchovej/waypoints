@@ -1,5 +1,5 @@
 use bedrock_core::{
-    Collection, CollectionSpec, Field, Filter, Query, StoredValue, Update, ViewSpec,
+    Collection, CollectionSpec, Field, Filter, Query, StoredValue, Update, ViewSpec, WriteOp,
 };
 use turso::Connection;
 
@@ -123,42 +123,55 @@ impl Database {
         Ok(())
     }
 
-    /// Insert one entity.
-    pub async fn insert<C: Collection>(&self, entity: &C) -> Result<(), BedrockError> {
+    /// Insert one entity, returning it as stored — the value after its
+    /// [`before_save`](Collection::before_save) hook has run.
+    pub async fn insert<C: Collection>(&self, entity: C) -> Result<C, BedrockError> {
+        let entity = entity.before_save(WriteOp::Insert);
         let spec = C::spec();
         let params = value::to_params(&spec, &entity.to_row()?)?;
         let conn = self.pool.write().await?;
         conn.execute(ddl::insert(&spec, false), params).await?;
-        Ok(())
+        Ok(entity)
     }
 
-    /// Insert many entities atomically — all or nothing.
-    pub async fn insert_all<C: Collection>(&self, entities: &[C]) -> Result<(), BedrockError> {
+    /// Insert many entities atomically — all or nothing — returning them as
+    /// stored (each after its `before_save` hook).
+    pub async fn insert_all<C: Collection>(
+        &self,
+        entities: Vec<C>,
+    ) -> Result<Vec<C>, BedrockError> {
         let spec = C::spec();
         let sql = ddl::insert(&spec, false);
         let tx = self.begin_write().await?;
+        let mut stored = Vec::with_capacity(entities.len());
         for entity in entities {
             // Any failure drops `tx` before commit; the pool rolls the
             // connection back on its next acquisition.
+            let entity = entity.before_save(WriteOp::Insert);
             let params = value::to_params(&spec, &entity.to_row()?)?;
             tx.execute(&sql, params).await?;
+            stored.push(entity);
         }
         tx.commit().await?;
-        Ok(())
+        Ok(stored)
     }
 
-    /// Insert or replace one entity, keyed on the primary key.
-    pub async fn upsert<C: Collection>(&self, entity: &C) -> Result<(), BedrockError> {
+    /// Insert or replace one entity, keyed on the primary key; returns it as
+    /// stored (after its `before_save` hook).
+    pub async fn upsert<C: Collection>(&self, entity: C) -> Result<C, BedrockError> {
+        let entity = entity.before_save(WriteOp::Insert);
         let spec = C::spec();
         let params = value::to_params(&spec, &entity.to_row()?)?;
         let conn = self.pool.write().await?;
         conn.execute(ddl::insert(&spec, true), params).await?;
-        Ok(())
+        Ok(entity)
     }
 
-    /// Update one entity in place, matched by its primary key. Returns whether a
-    /// row was affected.
-    pub async fn update<C: Collection>(&self, entity: &C) -> Result<bool, BedrockError> {
+    /// Update one entity in place, matched by its primary key. Runs the entity's
+    /// [`before_save`](Collection::before_save) hook, then returns whether a row
+    /// was affected.
+    pub async fn update<C: Collection>(&self, entity: C) -> Result<bool, BedrockError> {
+        let entity = entity.before_save(WriteOp::Update);
         let spec = C::spec();
         let row = entity.to_row()?;
         let id_index = spec

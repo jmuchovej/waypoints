@@ -15,7 +15,7 @@ mod spec;
 mod value;
 mod view;
 
-pub use collection::Collection;
+pub use collection::{Collection, WriteOp};
 pub use field::{DecodeError, EncodeError, Field, FieldKind};
 pub use modify::{Assignment, Update};
 pub use query::{CompareOp, Filter, Query, QueryError, ScalarValue, Sort};

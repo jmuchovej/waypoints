@@ -46,7 +46,7 @@ fn rec(n: u128, kind: &str, rank: i64, tag: Option<&str>) -> Rec {
 async fn seeded() -> Database {
     let db = Database::open(":memory:").await.expect("open");
     db.ensure_collection::<Rec>().await.expect("ensure");
-    db.insert_all(&[
+    db.insert_all(vec![
         rec(1, "a", 10, Some("x")),
         rec(2, "a", 30, Some("y")),
         rec(3, "b", 20, None),
