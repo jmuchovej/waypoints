@@ -11,6 +11,8 @@ struct FieldInfo<'a> {
     name: String,
     /// `Some(unique)` if the field carries `#[bedrock(index)]`/`#[bedrock(unique)]`.
     index: Option<bool>,
+    /// Set when the field carries `#[bedrock(discriminant)]`.
+    discriminant: Option<attr::DiscriminantAttr>,
 }
 
 pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -61,6 +63,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
             ty: &field.ty,
             name: field_name(field, ident, struct_rename_all.as_deref())?,
             index: field_attrs.index,
+            discriminant: field_attrs.discriminant,
         });
     }
 
@@ -126,6 +129,79 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
             )?
         }
     });
+
+    // View-scope helpers for the `#[bedrock(discriminant)]` field, if any (at
+    // most one). The field must be a document column; the scope's path is the
+    // field type's serde tag (inferred) or the explicit `= "…"` value.
+    let mut discriminant_field: Option<&FieldInfo> = None;
+    for info in &infos {
+        if info.discriminant.is_some() {
+            if discriminant_field.is_some() {
+                return Err(syn::Error::new_spanned(
+                    &input.ident,
+                    "a collection has at most one #[bedrock(discriminant)] field",
+                ));
+            }
+            discriminant_field = Some(info);
+        }
+    }
+    let discriminant_impl = match discriminant_field {
+        Some(info) => {
+            let field_name = &info.name;
+            let field_ty = info.ty;
+            let tag_expr = match info.discriminant.as_ref().expect("checked Some above") {
+                attr::DiscriminantAttr::Explicit(path) => {
+                    quote! { ::std::string::String::from(#path) }
+                }
+                attr::DiscriminantAttr::Inferred => quote! {
+                    ::std::string::String::from(<#field_ty as ::bedrock::Discriminant>::TAG)
+                },
+            };
+            quote! {
+                // The discriminant must be a document column — a view scopes into
+                // its JSON, so a scalar/id field is a build error.
+                #[allow(clippy::assertions_on_constants)]
+                const _: () = ::core::assert!(
+                    ::core::matches!(
+                        <#field_ty as ::bedrock::Field>::KIND,
+                        ::bedrock::FieldKind::Document
+                    ),
+                    "the #[bedrock(discriminant)] field must be a document column",
+                );
+
+                impl #name {
+                    /// The document column carrying this collection's discriminant.
+                    pub const DISCRIMINANT_DOCUMENT: &'static str = #field_name;
+
+                    /// A view scope selecting rows whose discriminant (the
+                    /// document's serde tag) equals `value`.
+                    pub fn discriminant_scope(
+                        value: impl ::core::convert::Into<::std::string::String>,
+                    ) -> ::bedrock::ViewScope {
+                        ::bedrock::ViewScope {
+                            document: ::std::string::String::from(#field_name),
+                            path: #tag_expr,
+                            equals: ::core::convert::Into::into(value),
+                        }
+                    }
+
+                    /// A view scope on an arbitrary `path` within the discriminant
+                    /// document — finer granularity than the top-level tag.
+                    pub fn scope(
+                        path: impl ::core::convert::Into<::std::string::String>,
+                        value: impl ::core::convert::Into<::std::string::String>,
+                    ) -> ::bedrock::ViewScope {
+                        ::bedrock::ViewScope {
+                            document: ::std::string::String::from(#field_name),
+                            path: ::core::convert::Into::into(path),
+                            equals: ::core::convert::Into::into(value),
+                        }
+                    }
+                }
+            }
+        }
+        None => quote! {},
+    };
 
     // The write hook, wired to `#[bedrock(before_save = path)]` when present. The
     // `let f: fn(...) = #path;` binding enforces the hook's signature — a wrong
@@ -194,6 +270,8 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
 
             #before_save_impl
         }
+
+        #discriminant_impl
     })
 }
 

@@ -44,9 +44,9 @@ pub use tx::{ReadTx, Savepoint, WriteTx};
 // Façade: the core vocabulary. Re-exported so consumers depend only on `bedrock`
 // and so the derives' generated `::bedrock::…` paths resolve.
 pub use bedrock_core::{
-    Assignment, Collection, CollectionSpec, ColumnType, CompareOp, DecodeError, EncodeError, Field,
-    FieldKind, FieldSpec, Filter, IdSpec, IndexSpec, Query, QueryError, ScalarValue, Sort,
-    SpecError, StoredValue, Update, ViewColumn, ViewScope, ViewSpec, WriteOp,
+    Assignment, Collection, CollectionSpec, ColumnType, CompareOp, DecodeError, Discriminant,
+    EncodeError, Field, FieldKind, FieldSpec, Filter, IdSpec, IndexSpec, Query, QueryError,
+    ScalarValue, Sort, SpecError, StoredValue, Update, ViewColumn, ViewScope, ViewSpec, WriteOp,
 };
 
 // Façade: the derives. `Collection` names both a trait (above) and this derive
