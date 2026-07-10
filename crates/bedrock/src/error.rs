@@ -35,6 +35,15 @@ pub enum BedrockError {
     #[error(transparent)]
     Migration(#[from] crate::migrate::MigrationError),
 
+    /// The database on disk was stamped with a different `user_version` than the
+    /// one the caller requires.
+    #[error("incompatible database version: want {want}, found {got}")]
+    IncompatibleVersion { want: i64, got: i64 },
+
+    /// An operation was attempted on a database whose pool has been closed.
+    #[error("database is closed")]
+    Closed,
+
     /// The turso engine reported an error.
     #[error("engine error: {0}")]
     Engine(#[from] turso::Error),
