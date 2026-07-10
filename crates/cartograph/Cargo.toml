@@ -38,7 +38,8 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = []
-development = []
+# Dev-only: forwards to store's demo-data seeding (importer + corpus).
+development = ["store/development"]
 
 [lints]
 workspace = true
