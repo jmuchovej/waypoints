@@ -5,12 +5,8 @@ use uuid::Uuid;
 
 use bedrock::{Filter, Query, ScalarValue, Update};
 
-use crate::collections::MarkRow;
 use crate::error::{StoreError, StoreResult};
 use crate::store::Store;
-
-/// Bedrock timestamp format — must match `bedrock_core::field::TIMESTAMP_FORMAT`.
-const TIMESTAMP_FMT: &str = "%Y-%m-%d %H:%M:%S%.f";
 
 /// Truncate a `NaiveDateTime` to millisecond precision.
 ///
@@ -23,20 +19,10 @@ fn trunc_millis(dt: NaiveDateTime) -> NaiveDateTime {
         .unwrap_or(dt)
 }
 
-/// Encode a `NaiveDateTime` (already truncated to ms) as the text form bedrock
-/// uses internally: `"%Y-%m-%d %H:%M:%S%.f"` with trailing fractional-second
-/// zeros trimmed. Using `ScalarValue::Text` so `update_where` can bind it.
-fn encode_ts(dt: NaiveDateTime) -> ScalarValue {
-    ScalarValue::Text(dt.format(TIMESTAMP_FMT).to_string())
-}
-
 /// Fetch a single non-deleted mark by ID.
 pub async fn get(store: &Store, id: MarkID) -> StoreResult<Option<Mark>> {
-    let row = store.db().get::<MarkRow>(&id).await?;
-    match row {
-        Some(r) if r.deleted_at.is_none() => Mark::try_from(r).map(Some),
-        _ => Ok(None),
-    }
+    let mark = store.db().get::<Mark>(&id).await?;
+    Ok(mark.filter(|m| m.deleted_at.is_none()))
 }
 
 /// List non-deleted marks, optionally filtered by type prefix and/or chart IDs.
@@ -78,14 +64,11 @@ pub async fn list(
         }
     }
 
-    let rows = store
+    store
         .db()
-        .query::<MarkRow>(&Query::new().filter(Filter::all(clauses)))
-        .await?;
-
-    rows.into_iter()
-        .map(Mark::try_from)
-        .collect::<StoreResult<_>>()
+        .query::<Mark>(&Query::new().filter(Filter::all(clauses)))
+        .await
+        .map_err(Into::into)
 }
 
 /// Batch-fetch non-deleted marks by IDs (arbitrary order).
@@ -98,16 +81,11 @@ pub async fn get_many(store: &Store, ids: &[Uuid]) -> StoreResult<Vec<Mark>> {
             .map(|u| Filter::eq("id", ScalarValue::Text(u.to_string()))),
     );
 
-    let rows = store
+    store
         .db()
-        .query::<MarkRow>(
-            &Query::new().filter(Filter::all([any_id, Filter::missing("deleted_at")])),
-        )
-        .await?;
-
-    rows.into_iter()
-        .map(Mark::try_from)
-        .collect::<StoreResult<_>>()
+        .query::<Mark>(&Query::new().filter(Filter::all([any_id, Filter::missing("deleted_at")])))
+        .await
+        .map_err(Into::into)
 }
 
 /// Insert a new mark, returning the created [`Mark`].
@@ -118,66 +96,77 @@ pub async fn insert(
     created_at: NaiveDateTime,
 ) -> StoreResult<Mark> {
     // Truncate to milliseconds: bedrock rejects sub-millisecond datetimes.
-    let created_at_ms = trunc_millis(created_at);
-    let row = MarkRow::from_parts(id, data.clone(), created_at_ms);
-    let returned = store.db().insert(row).await?;
-    Mark::try_from(returned)
+    let ts = trunc_millis(created_at);
+    let mark = Mark {
+        id,
+        data: data.clone(),
+        extra: None,
+        created_at: ts,
+        updated_at: ts,
+        deleted_at: None,
+    };
+    store.db().insert(mark).await.map_err(Into::into)
 }
 
 /// Update the data column. Errors with NotFound if missing/deleted.
 pub async fn update_data(store: &Store, id: MarkID, data: &MarkData) -> StoreResult<()> {
-    let row = store
+    let mark = store
         .db()
-        .get::<MarkRow>(&id)
+        .get::<Mark>(&id)
         .await?
-        .filter(|r| r.deleted_at.is_none())
+        .filter(|m| m.deleted_at.is_none())
         .ok_or(StoreError::MarkNotFound(id))?;
 
-    let mut updated = row;
-    updated.data = data.clone();
+    let updated = Mark {
+        data: data.clone(),
+        ..mark
+    };
     store.db().update(updated).await?;
     Ok(())
 }
 
 /// Soft-delete (set deleted_at). Errors with NotFound if missing or already deleted.
 pub async fn soft_delete(store: &Store, id: MarkID) -> StoreResult<()> {
-    let row = store
+    let mark = store
         .db()
-        .get::<MarkRow>(&id)
+        .get::<Mark>(&id)
         .await?
-        .filter(|r| r.deleted_at.is_none())
+        .filter(|m| m.deleted_at.is_none())
         .ok_or(StoreError::MarkNotFound(id))?;
 
-    let now_ms = trunc_millis(chrono::Local::now().naive_utc());
-    let mut updated = row;
-    updated.deleted_at = Some(now_ms);
+    let updated = Mark {
+        deleted_at: Some(trunc_millis(chrono::Local::now().naive_utc())),
+        ..mark
+    };
     store.db().update(updated).await?;
     Ok(())
 }
 
 /// Restore a soft-deleted mark (clear deleted_at). Errors if not found.
 pub async fn restore(store: &Store, id: MarkID) -> StoreResult<()> {
-    let row = store
+    let mark = store
         .db()
-        .get::<MarkRow>(&id)
+        .get::<Mark>(&id)
         .await?
         .ok_or(StoreError::MarkNotFound(id))?;
 
-    let mut updated = row;
-    updated.deleted_at = None;
+    let updated = Mark {
+        deleted_at: None,
+        ..mark
+    };
     store.db().update(updated).await?;
     Ok(())
 }
 
 /// Hard-delete (actually deletes). Errors if the record is absent.
 pub async fn hard_delete(store: &Store, id: MarkID) -> StoreResult<()> {
-    let _row = store
+    store
         .db()
-        .get::<MarkRow>(&id)
+        .get::<Mark>(&id)
         .await?
         .ok_or(StoreError::MarkNotFound(id))?;
 
-    store.db().delete::<MarkRow>(&id).await?;
+    store.db().delete::<Mark>(&id).await?;
     Ok(())
 }
 

@@ -530,6 +530,7 @@ fn import(input: &str) -> ImportResult {
     let doc_id = MarkID::from(doc_uuid);
 
     // The landmark mark
+    let now = domain::mark::now_ms();
     let landmark_mark = Mark {
         id: doc_id,
         data: MarkData::Landmark(
@@ -539,6 +540,9 @@ fn import(input: &str) -> ImportResult {
                 .build(),
         ),
         extra: None,
+        created_at: now,
+        updated_at: now,
+        deleted_at: None,
     };
 
     let mut marks = vec![landmark_mark];

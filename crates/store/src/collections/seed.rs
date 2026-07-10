@@ -1,4 +1,4 @@
-use crate::{builtin, collections::chart::ChartRow, error::StoreResult};
+use crate::{builtin, error::StoreResult};
 
 /// Seed the builtin charts into the bedrock database.
 ///
@@ -20,8 +20,7 @@ pub async fn run(db: &bedrock::Database) -> StoreResult<()> {
 
     let count = charts.len();
     for chart in charts {
-        let row = ChartRow::from_chart(&chart);
-        db.upsert::<ChartRow>(row).await?;
+        db.upsert::<domain::chart::Chart>(chart).await?;
     }
 
     tracing::info!(count, "seed: upserted builtin charts");
