@@ -47,6 +47,20 @@ pub struct IdSpec {
     pub column_type: ColumnType,
 }
 
+/// A secondary index on one or more of a collection's scalar columns.
+///
+/// Indexes cover base *columns* only — a `jsonb` document has nothing
+/// indexable here. A multi-column entry is a composite index.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IndexSpec {
+    /// The index name, unique within the database.
+    pub name: String,
+    /// The indexed columns, in order.
+    pub columns: Vec<String>,
+    /// Whether the index enforces uniqueness.
+    pub unique: bool,
+}
+
 /// A collection's schema, expressed as data.
 ///
 /// Pure data: no engine, no SQL. The `fields` are in virtual-document order and
@@ -59,6 +73,9 @@ pub struct CollectionSpec {
     pub id: IdSpec,
     /// Every field, in virtual-document order, the id field included.
     pub fields: Vec<FieldSpec>,
+    /// Secondary indexes on scalar columns (the PK is implicitly indexed).
+    #[serde(default)]
+    pub indexes: Vec<IndexSpec>,
 }
 
 impl CollectionSpec {
@@ -129,6 +146,31 @@ impl CollectionSpec {
             });
         }
 
+        for index in &self.indexes {
+            if index.columns.is_empty() {
+                return Err(SpecError::EmptyIndex {
+                    name: index.name.clone(),
+                });
+            }
+            for column in &index.columns {
+                match self.field(column) {
+                    None => {
+                        return Err(SpecError::UnknownIndexColumn {
+                            index: index.name.clone(),
+                            column: column.clone(),
+                        });
+                    }
+                    Some(field) if field.is_document() => {
+                        return Err(SpecError::IndexOnDocument {
+                            index: index.name.clone(),
+                            column: column.clone(),
+                        });
+                    }
+                    Some(_) => {}
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -160,6 +202,15 @@ pub enum SpecError {
 
     #[error("id field {field:?} must not be nullable")]
     NullableId { field: String },
+
+    #[error("index {name:?} has no columns")]
+    EmptyIndex { name: String },
+
+    #[error("index {index:?} references unknown column {column:?}")]
+    UnknownIndexColumn { index: String, column: String },
+
+    #[error("index {index:?} column {column:?} is a document; index scalar columns only")]
+    IndexOnDocument { index: String, column: String },
 }
 
 #[cfg(test)]
@@ -197,6 +248,11 @@ mod tests {
                     nullable: true,
                 },
             ],
+            indexes: vec![IndexSpec {
+                name: "things_kind_idx".into(),
+                columns: vec!["kind".into()],
+                unique: false,
+            }],
         }
     }
 
@@ -301,6 +357,31 @@ mod tests {
             spec.validate(),
             Err(SpecError::NullableId { field: "id".into() })
         );
+    }
+
+    #[test]
+    fn rejects_bad_indexes() {
+        let mut spec = thing_spec();
+        spec.indexes.push(IndexSpec {
+            name: "bad".into(),
+            columns: vec!["missing".into()],
+            unique: false,
+        });
+        assert!(matches!(
+            spec.validate(),
+            Err(SpecError::UnknownIndexColumn { .. })
+        ));
+
+        let mut spec = thing_spec();
+        spec.indexes.push(IndexSpec {
+            name: "on_doc".into(),
+            columns: vec!["data".into()],
+            unique: false,
+        });
+        assert!(matches!(
+            spec.validate(),
+            Err(SpecError::IndexOnDocument { .. })
+        ));
     }
 
     #[test]

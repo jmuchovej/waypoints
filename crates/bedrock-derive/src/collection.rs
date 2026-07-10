@@ -9,6 +9,8 @@ struct FieldInfo<'a> {
     ident: &'a Ident,
     ty: &'a Type,
     name: String,
+    /// `Some(unique)` if the field carries `#[bedrock(index)]`/`#[bedrock(unique)]`.
+    index: Option<bool>,
 }
 
 pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -42,21 +44,23 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
 
     let mut infos: Vec<FieldInfo> = Vec::with_capacity(fields.len());
     let mut id: Option<usize> = None;
-    for (index, field) in fields.iter().enumerate() {
+    for (position, field) in fields.iter().enumerate() {
         let ident = field.ident.as_ref().expect("named field has an ident");
-        if attr::has_bedrock_id(&field.attrs)? {
+        let field_attrs = attr::field_attrs(&field.attrs)?;
+        if field_attrs.is_id {
             if id.is_some() {
                 return Err(syn::Error::new_spanned(
                     field,
                     "duplicate #[bedrock(id)]; a collection has exactly one id",
                 ));
             }
-            id = Some(index);
+            id = Some(position);
         }
         infos.push(FieldInfo {
             ident,
             ty: &field.ty,
             name: field_name(field, ident, struct_rename_all.as_deref())?,
+            index: field_attrs.index,
         });
     }
 
@@ -72,6 +76,27 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
     let name = &input.ident;
     let table = input.ident.to_string().to_snake_case();
     let column_count = infos.len();
+
+    let mut index_defs: Vec<(Vec<String>, bool)> = Vec::new();
+    for info in &infos {
+        if let Some(unique) = info.index {
+            index_defs.push((vec![info.name.clone()], unique));
+        }
+    }
+    index_defs.extend(attr::container_indexes(&input.attrs)?);
+    let index_specs = index_defs.iter().map(|(columns, unique)| {
+        let index_name = format!("{}_{}_idx", table, columns.join("_"));
+        let column_lits = columns
+            .iter()
+            .map(|c| quote! { ::std::string::String::from(#c) });
+        quote! {
+            ::bedrock_core::IndexSpec {
+                name: ::std::string::String::from(#index_name),
+                columns: ::std::vec![ #(#column_lits),* ],
+                unique: #unique,
+            }
+        }
+    });
 
     let field_specs = infos.iter().map(|f| {
         let fname = &f.name;
@@ -127,6 +152,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
                         },
                     },
                     fields: ::std::vec![ #(#field_specs),* ],
+                    indexes: ::std::vec![ #(#index_specs),* ],
                 }
             }
 
