@@ -47,30 +47,6 @@ pub mod mark {
     pub use handle::MarkHandle;
 }
 
-pub mod sync {
-    mod resolver {
-        pub mod lww;
-        pub mod resolver;
-
-        pub use lww::LastWriteResolver;
-        pub use resolver::{ConflictResolver, Resolution};
-    }
-    mod coordinator;
-    mod driver;
-    mod envelope;
-    mod peer_store;
-
-    pub use coordinator::{ApplyOutcome, SkipReason, SyncCoordinator, touched_marks};
-    pub use driver::{SyncOutcome, sync_once};
-    pub use envelope::{Envelope, TextPayload};
-    pub use peer_store::AppEnvelopeStore;
-    // The peer seam is outpost's (raw envelopes; see relay/PROTOCOL.md).
-    // Re-exported so app code has one import surface for sync. The test
-    // fixtures (LocalPeer, NoopPeer) are not re-exported: tests import
-    // them from outpost under its `testing` feature.
-    pub use outpost::sync::peers::{HttpPeer, Peer, PeerError, PeerResult};
-    pub use resolver::{ConflictResolver, LastWriteResolver, Resolution};
-}
 
 pub mod territory {
     mod error;

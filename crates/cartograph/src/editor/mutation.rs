@@ -5,13 +5,11 @@ use domain::terrain::{Terrain, TerrainKind};
 use store::DatabaseConnection;
 use store::query::{chart, mark, terrain};
 
-use crate::sync::{SyncCoordinator, TextPayload, touched_marks};
-
 use super::error::{EditorError, EditorResult};
 use super::history::CommandHistory;
-use super::maneuver::Maneuver;
+use super::maneuver::{Maneuver, TextPayload};
 use super::projection;
-use super::types::{CreateResult, CursorState, MutationResult, RenderNode, SplitResult};
+use super::types::{CreateResult, CursorState, MutationResult, SplitResult};
 
 /// Compute a fractional index for inserting after `after_id` among `parent_id`'s children.
 async fn compute_order(
@@ -98,7 +96,6 @@ fn delete_edge_op(edge: Terrain) -> Maneuver {
 pub async fn update_mark(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     id: MarkID,
     content: Content,
     landmark_id: MarkID,
@@ -122,8 +119,6 @@ pub async fn update_mark(
         new: new_data,
     }];
     history.push(ops.clone(), id, cursor.clone(), cursor, false);
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -133,7 +128,6 @@ pub async fn update_mark(
 pub async fn delete_mark(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     id: MarkID,
     landmark_id: MarkID,
 ) -> EditorResult<MutationResult> {
@@ -159,8 +153,6 @@ pub async fn delete_mark(
         offset: None,
     };
     history.push(ops.clone(), id, cursor.clone(), cursor, false);
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -174,7 +166,6 @@ pub async fn delete_mark(
 pub async fn move_marks(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     parent_id: MarkID,
     child_ids: &[MarkID],
     after_id: Option<MarkID>,
@@ -204,8 +195,6 @@ pub async fn move_marks(
             offset: None,
         };
         history.push(ops.clone(), first, cursor.clone(), cursor, false);
-        let marks = touched_marks(&ops);
-        sync.log_local(db, ops, marks).await?;
     }
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
@@ -215,7 +204,6 @@ pub async fn move_marks(
 /// Update a landmark's title (ported from `mark_update_title` command).
 pub async fn update_mark_title(
     db: &DatabaseConnection,
-    sync: &mut SyncCoordinator,
     id: MarkID,
     title: RichText,
 ) -> EditorResult<()> {
@@ -223,7 +211,6 @@ pub async fn update_mark_title(
         .await?
         .ok_or(EditorError::NotFound(id.inner()))?;
 
-    let old_data = m.data.clone();
     let mut mark_data = m.data;
     match &mut mark_data {
         MarkData::Landmark(landmark) => {
@@ -233,22 +220,12 @@ pub async fn update_mark_title(
     }
 
     mark::update_data(db, id, &mark_data).await?;
-
-    // Not undoable (no history push), but still a synced write.
-    let ops = vec![Maneuver::UpdateMarkData {
-        mark_id: id,
-        old: old_data,
-        new: mark_data,
-    }];
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
     Ok(())
 }
 
 /// Set or remove a reading on a landmark. If `reading` is `Reading::Null`, the entry is removed.
 pub async fn update_mark_reading(
     db: &DatabaseConnection,
-    sync: &mut SyncCoordinator,
     id: MarkID,
     feature_id: FeatureID,
     reading: Reading,
@@ -257,7 +234,6 @@ pub async fn update_mark_reading(
         .await?
         .ok_or(EditorError::NotFound(id.inner()))?;
 
-    let old_data = m.data.clone();
     let mut mark_data = m.data;
     let chart_id = match &mark_data {
         MarkData::Landmark(l) => l.chart.clone(),
@@ -325,15 +301,6 @@ pub async fn update_mark_reading(
 
     mark::update_data(db, id, &mark_data).await?;
 
-    // Not undoable (no history push), but still a synced write.
-    let ops = vec![Maneuver::UpdateMarkData {
-        mark_id: id,
-        old: old_data,
-        new: mark_data,
-    }];
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
-
     // Re-fetch and return the updated mark
     let updated = mark::get(db, id)
         .await?
@@ -345,7 +312,6 @@ pub async fn update_mark_reading(
 pub async fn create_mark_after(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     after_id: MarkID,
     parent_id: MarkID,
     data: MarkData,
@@ -377,8 +343,6 @@ pub async fn create_mark_after(
         },
     ];
     history.push(ops.clone(), new_id, cursor.clone(), cursor, false);
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(CreateResult {
@@ -393,7 +357,6 @@ pub async fn create_mark_after(
 pub async fn update_mark_text(
     db: &DatabaseConnection,
     _history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     mark_id: MarkID,
     rich_text: RichText,
     landmark_id: MarkID,
@@ -403,7 +366,7 @@ pub async fn update_mark_text(
         .ok_or(EditorError::NotFound(mark_id.inner()))?;
 
     let mut mark_data = m.data;
-    let old_rt = match &mark_data {
+    match &mark_data {
         MarkData::Content(c) => c
             .rich_text()
             .cloned()
@@ -417,16 +380,6 @@ pub async fn update_mark_text(
 
     mark::update_data(db, mark_id, &mark_data).await?;
 
-    // Text undo is handled by Tiptap's local History extension, so this
-    // never enters CommandHistory — but it's still a synced write.
-    let ops = vec![Maneuver::UpdateRichText {
-        mark_id,
-        old: old_rt,
-        new: TextPayload::Snapshot { rich_text },
-    }];
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
-
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
 }
@@ -436,7 +389,6 @@ pub async fn update_mark_text(
 pub async fn split_mark(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     mark_id: MarkID,
     offset: usize,
     landmark_id: MarkID,
@@ -509,8 +461,6 @@ pub async fn split_mark(
         },
     ];
     history.push(ops.clone(), mark_id, cursor_before, cursor_after, false);
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(SplitResult {
@@ -523,7 +473,6 @@ pub async fn split_mark(
 pub async fn merge_marks(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     target_id: MarkID,
     source_id: MarkID,
     landmark_id: MarkID,
@@ -594,8 +543,6 @@ pub async fn merge_marks(
     ];
     ops.extend(source_edges.into_iter().map(delete_edge_op));
     history.push(ops.clone(), target_id, cursor_before, cursor_after, false);
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -610,7 +557,6 @@ pub async fn merge_marks(
 pub async fn wrap_in_compound(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     compound_data: MarkData,
     child_ids: &[MarkID],
     after_id: Option<MarkID>,
@@ -660,7 +606,8 @@ pub async fn wrap_in_compound(
         let para_order = fractional_index::key_between(None, None);
 
         mark::insert(db, para_id, &para_data, now).await?;
-        let para_edge_id = terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
+        let para_edge_id =
+            terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
         ops.push(Maneuver::CreateMark {
             mark_id: para_id,
             data: para_data,
@@ -699,8 +646,6 @@ pub async fn wrap_in_compound(
         offset: Some(0),
     };
     history.push(ops.clone(), compound_id, cursor.clone(), cursor, false);
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(CreateResult {
@@ -713,7 +658,6 @@ pub async fn wrap_in_compound(
 pub async fn delete_marks(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     mark_ids: &[MarkID],
     landmark_id: MarkID,
 ) -> EditorResult<MutationResult> {
@@ -742,8 +686,6 @@ pub async fn delete_marks(
             offset: None,
         };
         history.push(ops.clone(), first, cursor.clone(), cursor, false);
-        let marks = touched_marks(&ops);
-        sync.log_local(db, ops, marks).await?;
     }
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
@@ -754,7 +696,6 @@ pub async fn delete_marks(
 pub async fn reparent_mark(
     db: &DatabaseConnection,
     history: &mut CommandHistory,
-    sync: &mut SyncCoordinator,
     mark_id: MarkID,
     new_parent_id: MarkID,
     after_id: Option<MarkID>,
@@ -778,8 +719,6 @@ pub async fn reparent_mark(
         new_order: Some(new_order),
     }];
     history.push(ops.clone(), mark_id, cursor.clone(), cursor, false);
-    let marks = touched_marks(&ops);
-    sync.log_local(db, ops, marks).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })

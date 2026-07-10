@@ -1,10 +1,9 @@
 use chrono::NaiveDateTime;
 use domain::chart::ChartID;
 use domain::mark::{Mark, MarkData, MarkID};
-use domain::sync::{DeviceID, HLC};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::Set, ColumnTrait, Condition, DatabaseConnection, EntityTrait,
-    IntoActiveModel, QueryFilter, sea_query::Expr,
+    IntoActiveModel, QueryFilter,
 };
 use uuid::Uuid;
 
@@ -139,42 +138,3 @@ pub async fn hard_delete(db: &DatabaseConnection, id: MarkID) -> StoreResult<()>
     Ok(())
 }
 
-// ── Sync row clocks (#130) ──────────────────────────────────────────────
-
-/// Read the sync row clock for a mark. `None` means the row is missing
-/// or has never been touched by sync (`updated_hlc = 0`) — either way,
-/// any incoming op dominates it. Soft-deleted rows keep their clock:
-/// deletion is itself a synced write.
-pub async fn get_row_clock(
-    db: &DatabaseConnection,
-    id: MarkID,
-) -> StoreResult<Option<(HLC, DeviceID)>> {
-    let model = Marks::find_by_id(id.inner()).one(db).await?;
-    Ok(
-        model.and_then(|m| match (m.updated_hlc, m.updated_by_device) {
-            (0, _) | (_, None) => None,
-            (hlc, Some(device)) => Some((HLC(hlc), DeviceID::from(device))),
-        }),
-    )
-}
-
-/// Set the sync row clock for a mark (including soft-deleted ones). Uses
-/// a direct column update so it never triggers entity save hooks or
-/// touches `updated_at`.
-pub async fn set_row_clock(
-    db: &DatabaseConnection,
-    id: MarkID,
-    hlc: HLC,
-    device: DeviceID,
-) -> StoreResult<()> {
-    let result = Marks::update_many()
-        .col_expr(MarkColumn::UpdatedHlc, Expr::value(hlc.inner()))
-        .col_expr(MarkColumn::UpdatedByDevice, Expr::value(device.inner()))
-        .filter(MarkColumn::Id.eq(id.inner()))
-        .exec(db)
-        .await?;
-    if result.rows_affected == 0 {
-        return Err(StoreError::MarkNotFound(id));
-    }
-    Ok(())
-}
