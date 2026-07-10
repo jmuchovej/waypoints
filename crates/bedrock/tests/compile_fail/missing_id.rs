@@ -1,4 +1,4 @@
-use bedrock_derive::Collection;
+use bedrock::Collection;
 
 // No field is marked `#[bedrock(id)]` — there is no implicit id.
 #[derive(Collection)]

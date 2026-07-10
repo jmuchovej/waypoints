@@ -1,4 +1,4 @@
-use bedrock_derive::Scalar;
+use bedrock::Scalar;
 
 // A data-carrying variant is not a scalar; it belongs in a Document.
 #[derive(Scalar)]

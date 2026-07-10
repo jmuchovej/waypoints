@@ -90,7 +90,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
             .iter()
             .map(|c| quote! { ::std::string::String::from(#c) });
         quote! {
-            ::bedrock_core::IndexSpec {
+            ::bedrock::IndexSpec {
                 name: ::std::string::String::from(#index_name),
                 columns: ::std::vec![ #(#column_lits),* ],
                 unique: #unique,
@@ -102,24 +102,24 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
         let fname = &f.name;
         let fty = f.ty;
         quote! {
-            ::bedrock_core::FieldSpec {
+            ::bedrock::FieldSpec {
                 name: ::std::string::String::from(#fname),
-                kind: <#fty as ::bedrock_core::Field>::KIND,
-                nullable: <#fty as ::bedrock_core::Field>::NULLABLE,
+                kind: <#fty as ::bedrock::Field>::KIND,
+                nullable: <#fty as ::bedrock::Field>::NULLABLE,
             }
         }
     });
 
     let encode_fields = infos.iter().map(|f| {
         let ident = f.ident;
-        quote! { ::bedrock_core::Field::encode(&self.#ident)? }
+        quote! { ::bedrock::Field::encode(&self.#ident)? }
     });
 
     let decode_fields = infos.iter().map(|f| {
         let ident = f.ident;
         let fty = f.ty;
         quote! {
-            #ident: <#fty as ::bedrock_core::Field>::decode(
+            #ident: <#fty as ::bedrock::Field>::decode(
                 ::core::iter::Iterator::next(&mut columns).expect("row length checked above"),
             )?
         }
@@ -131,24 +131,24 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
         #[allow(clippy::assertions_on_constants)]
         const _: () = ::core::assert!(
             ::core::matches!(
-                <#id_ty as ::bedrock_core::Field>::KIND,
-                ::bedrock_core::FieldKind::Column(_)
+                <#id_ty as ::bedrock::Field>::KIND,
+                ::bedrock::FieldKind::Column(_)
             ),
             "the #[bedrock(id)] field must be a scalar column, not a document",
         );
 
-        impl ::bedrock_core::Collection for #name {
+        impl ::bedrock::Collection for #name {
             type Id = #id_ty;
 
-            fn spec() -> ::bedrock_core::CollectionSpec {
-                ::bedrock_core::CollectionSpec {
+            fn spec() -> ::bedrock::CollectionSpec {
+                ::bedrock::CollectionSpec {
                     name: ::std::string::String::from(#table),
-                    id: ::bedrock_core::IdSpec {
+                    id: ::bedrock::IdSpec {
                         field: ::std::string::String::from(#id_name),
-                        column_type: match <#id_ty as ::bedrock_core::Field>::KIND {
-                            ::bedrock_core::FieldKind::Column(ct) => ct,
+                        column_type: match <#id_ty as ::bedrock::Field>::KIND {
+                            ::bedrock::FieldKind::Column(ct) => ct,
                             // Unreachable: the const assertion above rejects a document id.
-                            ::bedrock_core::FieldKind::Document => ::core::unreachable!(),
+                            ::bedrock::FieldKind::Document => ::core::unreachable!(),
                         },
                     },
                     fields: ::std::vec![ #(#field_specs),* ],
@@ -157,17 +157,17 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
             }
 
             fn to_row(&self) -> ::core::result::Result<
-                ::std::vec::Vec<::bedrock_core::StoredValue>,
-                ::bedrock_core::EncodeError,
+                ::std::vec::Vec<::bedrock::StoredValue>,
+                ::bedrock::EncodeError,
             > {
                 ::core::result::Result::Ok(::std::vec![ #(#encode_fields),* ])
             }
 
             fn from_row(
-                row: ::std::vec::Vec<::bedrock_core::StoredValue>,
-            ) -> ::core::result::Result<Self, ::bedrock_core::DecodeError> {
+                row: ::std::vec::Vec<::bedrock::StoredValue>,
+            ) -> ::core::result::Result<Self, ::bedrock::DecodeError> {
                 if row.len() != #column_count {
-                    return ::core::result::Result::Err(::bedrock_core::DecodeError::ColumnCount {
+                    return ::core::result::Result::Err(::bedrock::DecodeError::ColumnCount {
                         collection: #table,
                         expected: #column_count,
                         found: row.len(),

@@ -1,4 +1,4 @@
-use bedrock_derive::{Collection, Document};
+use bedrock::{Collection, Document};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Document)]
