@@ -9,12 +9,14 @@
 
 mod collection;
 mod field;
+mod query;
 mod spec;
 mod value;
 mod view;
 
 pub use collection::Collection;
 pub use field::{DecodeError, EncodeError, Field, FieldKind};
+pub use query::{CompareOp, Filter, Query, QueryError, ScalarValue, Sort};
 pub use spec::{CollectionSpec, FieldSpec, IdSpec, IndexSpec, SpecError};
 pub use value::{ColumnType, StoredValue};
 pub use view::{ViewColumn, ViewScope, ViewSpec};
