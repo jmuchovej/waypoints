@@ -6,6 +6,7 @@ use turso::Connection;
 use crate::config::Config;
 use crate::durability::{self, FlushMode};
 use crate::error::BedrockError;
+use crate::explain::{self, QueryPlan};
 use crate::pool::Pool;
 use crate::tx::{ReadTx, WriteTx};
 use crate::{ddl, migrate, value};
@@ -368,6 +369,48 @@ impl Database {
         query: &Query,
     ) -> Result<Vec<Vec<StoredValue>>, BedrockError> {
         self.projected_rows(ddl::select_view(name), query).await
+    }
+
+    /// Explain a collection query: the SQL it lowers to, its bound parameters,
+    /// and turso's `EXPLAIN QUERY PLAN` for it. The plan is produced by running
+    /// the exact SQL `query::<C>` would run, so it doubles as proof the lowering
+    /// is valid turso SQL.
+    pub async fn explain_query<C: Collection>(
+        &self,
+        query: &Query,
+    ) -> Result<QueryPlan, BedrockError> {
+        let spec = C::spec();
+        let (suffix, params) = crate::query::suffix(query);
+        let sql = format!("{}{}", ddl::select_all(&spec), suffix);
+        let conn = self.pool.read().await?;
+        explain::plan(&conn, sql, params).await
+    }
+
+    /// Explain a materialized-view query — the [`explain_query`](Self::explain_query)
+    /// analogue for [`query_view`](Self::query_view).
+    pub async fn explain_view_query(
+        &self,
+        name: &str,
+        query: &Query,
+    ) -> Result<QueryPlan, BedrockError> {
+        let (suffix, params) = crate::query::suffix(query);
+        let sql = format!("{}{}", ddl::select_view(name), suffix);
+        let conn = self.pool.read().await?;
+        explain::plan(&conn, sql, params).await
+    }
+
+    /// Explain a field-level update — the [`explain_query`](Self::explain_query)
+    /// analogue for [`update_where`](Self::update_where). Columns are not
+    /// re-validated here; this reflects the SQL as it would run.
+    pub async fn explain_update<C: Collection>(
+        &self,
+        filter: &Filter,
+        update: &Update,
+    ) -> Result<QueryPlan, BedrockError> {
+        let spec = C::spec();
+        let (sql, params) = crate::query::update_statement(&spec.name, filter, update);
+        let conn = self.pool.read().await?;
+        explain::plan(&conn, sql, params).await
     }
 
     /// Run a `SELECT` head + query suffix and read each row as scalar values.
