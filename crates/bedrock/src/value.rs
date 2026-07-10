@@ -1,6 +1,49 @@
-use bedrock_core::{ColumnType, FieldKind, StoredValue};
+use bedrock_core::{CollectionSpec, ColumnType, FieldKind, StoredValue};
 
 use crate::error::BedrockError;
+
+/// Bind a row of stored values into turso parameters, in `spec.fields` order,
+/// rejecting sub-millisecond temporals first.
+pub(crate) fn to_params(
+    spec: &CollectionSpec,
+    row: &[StoredValue],
+) -> Result<Vec<turso::Value>, BedrockError> {
+    let mut params = Vec::with_capacity(row.len());
+    for (field, value) in spec.fields.iter().zip(row) {
+        reject_submillis(field.kind, value, &field.name)?;
+        params.push(to_turso(value)?);
+    }
+    Ok(params)
+}
+
+/// Convert a single stored value into a turso parameter value.
+///
+/// Documents ride as compact JSON text (a `jsonb` column ENCODEs it); every
+/// other variant maps one-to-one onto a storage class.
+pub(crate) fn to_turso(value: &StoredValue) -> Result<turso::Value, serde_json::Error> {
+    Ok(match value {
+        StoredValue::Null => turso::Value::Null,
+        StoredValue::Integer(n) => turso::Value::Integer(*n),
+        StoredValue::Real(n) => turso::Value::Real(*n),
+        StoredValue::Text(s) => turso::Value::Text(s.clone()),
+        StoredValue::Blob(b) => turso::Value::Blob(b.clone()),
+        StoredValue::Json(v) => turso::Value::Text(serde_json::to_string(v)?),
+    })
+}
+
+/// Read a full result row into stored values, using the spec's per-column
+/// document flags (a `jsonb` column is physically text but reassembles as
+/// [`StoredValue::Json`]).
+pub(crate) fn read_row(
+    row: &turso::Row,
+    is_document: &[bool],
+) -> Result<Vec<StoredValue>, BedrockError> {
+    let mut stored = Vec::with_capacity(is_document.len());
+    for (index, &is_doc) in is_document.iter().enumerate() {
+        stored.push(from_turso(row.get_value(index)?, is_doc)?);
+    }
+    Ok(stored)
+}
 
 /// Reject a sub-millisecond temporal value before binding.
 ///
@@ -8,11 +51,7 @@ use crate::error::BedrockError;
 /// precision would be silently lost. Encoded temporals are `HH:MM:SS.fff…` with
 /// trailing zeros trimmed, so a fractional part longer than three digits is
 /// sub-millisecond.
-pub(crate) fn reject_submillis(
-    kind: FieldKind,
-    value: &StoredValue,
-    field: &str,
-) -> Result<(), BedrockError> {
+fn reject_submillis(kind: FieldKind, value: &StoredValue, field: &str) -> Result<(), BedrockError> {
     let temporal = matches!(
         kind,
         FieldKind::Column(ColumnType::Time | ColumnType::Timestamp)
@@ -29,31 +68,7 @@ pub(crate) fn reject_submillis(
     Ok(())
 }
 
-/// Convert a stored value into a turso parameter value.
-///
-/// Documents ride as compact JSON text; every other variant maps one-to-one
-/// onto a SQLite storage class.
-pub(crate) fn to_turso(value: StoredValue) -> Result<turso::Value, serde_json::Error> {
-    Ok(match value {
-        StoredValue::Null => turso::Value::Null,
-        StoredValue::Integer(n) => turso::Value::Integer(n),
-        StoredValue::Real(n) => turso::Value::Real(n),
-        StoredValue::Text(s) => turso::Value::Text(s),
-        StoredValue::Blob(b) => turso::Value::Blob(b),
-        StoredValue::Json(v) => turso::Value::Text(serde_json::to_string(&v)?),
-    })
-}
-
-/// Convert a turso column value back into a stored value.
-///
-/// The caller passes `is_document` because a document column is physically TEXT
-/// (JSON) but must reassemble as [`StoredValue::Json`] for the field's decoder;
-/// the column's spec is the only thing that distinguishes it from a plain text
-/// scalar.
-pub(crate) fn from_turso(
-    value: turso::Value,
-    is_document: bool,
-) -> Result<StoredValue, serde_json::Error> {
+fn from_turso(value: turso::Value, is_document: bool) -> Result<StoredValue, serde_json::Error> {
     Ok(match value {
         turso::Value::Null => StoredValue::Null,
         turso::Value::Integer(n) => StoredValue::Integer(n),
