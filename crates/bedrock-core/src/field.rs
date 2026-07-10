@@ -145,6 +145,25 @@ impl Field for Vec<u8> {
     }
 }
 
+/// Arbitrary JSON is a document — a genuinely schemaless field (e.g. a
+/// metadata bag), stored as `jsonb` without a Rust type to shape it. Unlike a
+/// derived [`Document`](FieldKind::Document), it needs no serde round-trip: the
+/// value already *is* the wire form.
+impl Field for serde_json::Value {
+    const KIND: FieldKind = FieldKind::Document;
+
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Json(self.clone()))
+    }
+
+    fn decode(value: StoredValue) -> Result<Self, DecodeError> {
+        match value {
+            StoredValue::Json(v) => Ok(v),
+            other => Err(DecodeError::type_mismatch("serde_json::Value", &other)),
+        }
+    }
+}
+
 impl Field for Uuid {
     const KIND: FieldKind = FieldKind::Column(ColumnType::Uuid);
 
@@ -369,6 +388,21 @@ mod tests {
             Option::<i32>::None.encode().expect("encode"),
             StoredValue::Null
         );
+    }
+
+    #[test]
+    fn json_value_is_a_document_and_roundtrips() {
+        assert_eq!(<serde_json::Value>::KIND, FieldKind::Document);
+
+        // A nested, heterogeneous blob — the schemaless (`extra`) case.
+        let value = serde_json::json!({ "a": 1, "b": [true, null, "x"], "c": { "d": 2.5 } });
+        let encoded = value.encode().expect("encode");
+        assert!(matches!(encoded, StoredValue::Json(_)));
+        assert_eq!(<serde_json::Value>::decode(encoded).expect("decode"), value);
+
+        // Wrapped in `Option`, it's a nullable document column.
+        const { assert!(<Option<serde_json::Value>>::NULLABLE) };
+        assert_eq!(<Option<serde_json::Value>>::KIND, FieldKind::Document);
     }
 
     #[test]
