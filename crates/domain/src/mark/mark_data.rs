@@ -7,7 +7,7 @@ use specta::Type;
 use typed_builder::TypedBuilder;
 
 /// A wrapper for [`Content`] and [`Landmark`] data.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, IsVariant, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, IsVariant, Type, bedrock::Document)]
 #[serde(tag = "mark", rename_all = "kebab-case")]
 pub enum MarkData {
     /// [`Content`] marks. These hold most user-generated data (i.e., paragraphs, headings, etc.).

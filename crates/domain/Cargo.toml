@@ -11,39 +11,43 @@ repository.workspace = true
 license.workspace = true
 publish.workspace = true
 
-[dependencies]
-chrono.workspace = true
-derive_more = { workspace = true, features = [
-  "as_ref",
-  "debug",
-  "display",
-  "from_str",
-  "is_variant",
-  "try_unwrap",
-  "unwrap",
-] }
-indexmap.workspace = true
-rand.workspace = true
-serde.workspace = true
-specta.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-typed-builder.workspace = true
-uuid.workspace = true
-specta-typescript.workspace = true
-specta-serde.workspace = true
-validator.workspace = true
-
 [[bin]]
 name = "typegen"
 path = "bin/typegen.rs"
 required-features = ["development"]
 
-[lints]
-workspace = true
+[dependencies]
+bedrock.workspace = true
+chrono.workspace = true
+derive_more = {
+  workspace = true,
+  features = [
+    "as_ref",
+    "debug",
+    "display",
+    "from_str",
+    "is_variant",
+    "try_unwrap",
+    "unwrap",
+  ]
+}
+indexmap.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+specta.workspace = true
+specta-serde.workspace = true
+specta-typescript.workspace = true
+thiserror.workspace = true
+typed-builder.workspace = true
+uuid.workspace = true
+validator.workspace = true
 
 [features]
 default = []
 development = []
 preview = []
 stable = []
+
+[lints]
+workspace = true

@@ -85,7 +85,9 @@ impl std::str::FromStr for Base36ID {
 /// or special `"builtin.*"` identifiers for built-in chart types.
 ///
 /// [C]: super::Chart
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type, bedrock::Scalar,
+)]
 #[display("{}", self.name())]
 #[debug("ChartID({})", self.name())]
 #[serde(transparent)]
