@@ -47,7 +47,7 @@ async fn seed_acl(hold: &TerritoryHold) -> (AclIndex, SigningKey) {
     );
     let mut fold = AclIndex::new();
     fold.push(&root).unwrap();
-    hold.append_acl(&root, 0).await.unwrap();
+    hold.append_acl(&root, 0, None).await.unwrap();
 
     let invite_secret = key(9);
     let invite = InviteKey::from_bytes(invite_secret.verifying_key().to_bytes());
@@ -60,7 +60,7 @@ async fn seed_acl(hold: &TerritoryHold) -> (AclIndex, SigningKey) {
         },
     );
     fold.push(&inv).unwrap();
-    hold.append_acl(&inv, 1).await.unwrap();
+    hold.append_acl(&inv, 1, None).await.unwrap();
 
     let writer_kem = KemSecretKey::from_seed([2; 32]).public_key();
     let proof = invite_secret.sign(&join_binding(&invite, &writer.verifying_key(), &writer_kem));
@@ -74,7 +74,7 @@ async fn seed_acl(hold: &TerritoryHold) -> (AclIndex, SigningKey) {
         },
     );
     fold.push(&join).unwrap();
-    hold.append_acl(&join, 2).await.unwrap();
+    hold.append_acl(&join, 2, None).await.unwrap();
 
     let approve = acl_record(
         &owner,
@@ -86,7 +86,7 @@ async fn seed_acl(hold: &TerritoryHold) -> (AclIndex, SigningKey) {
         },
     );
     fold.push(&approve).unwrap();
-    hold.append_acl(&approve, 3).await.unwrap();
+    hold.append_acl(&approve, 3, None).await.unwrap();
 
     (fold, writer)
 }

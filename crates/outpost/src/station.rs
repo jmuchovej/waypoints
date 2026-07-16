@@ -17,9 +17,9 @@
 
 use crate::replica::{Replica, ReplicaError};
 use ed25519_dalek::SigningKey;
-use outpost_fabric::{Endpoint, TransportError, serve};
-use outpost_protocol::RecordID;
-use outpost_protocol::acl::{ACLRecord, OrderProof};
+use outpost_fabric::{Endpoint, TransportError, read_frame, serve_sync, write_frame};
+use outpost_protocol::acl::ACLRecord;
+use outpost_protocol::sync::SyncMessage;
 
 pub use outpost_fabric::fleet;
 
@@ -31,58 +31,44 @@ pub enum StationError {
     Replica(#[from] ReplicaError),
 }
 
-/// The per-Fleet orderer (§8.4): assigns each ACL record its position and
-/// countersigns `(record, position)` with the fleet key. Holds the fleet
-/// *signing* key — the only secret a Station carries, and it can neither
-/// read payloads nor author records with it.
-pub struct Orderer {
-    fleet_key: SigningKey,
-    next_position: u64,
-}
-
-impl Orderer {
-    pub fn new(fleet_key: SigningKey) -> Self {
-        Self {
-            fleet_key,
-            next_position: 0,
-        }
-    }
-
-    /// Resume an orderer whose log already has `assigned` records.
-    pub fn resume(fleet_key: SigningKey, assigned: u64) -> Self {
-        Self {
-            fleet_key,
-            next_position: assigned,
-        }
-    }
-
-    /// Assign the next position to `record` and countersign it. The caller
-    /// has already checked chaining against the current head; the orderer
-    /// only sequences (it cannot author or read, §8.4).
-    pub fn order(&mut self, record: RecordID) -> OrderProof {
-        let position = self.next_position;
-        self.next_position += 1;
-        OrderProof::sign(&self.fleet_key, record, position)
-    }
-
-    pub fn next_position(&self) -> u64 {
-        self.next_position
-    }
-}
-
 /// A running Station: an iroh endpoint plus the shared replica. Storage and
-/// orderer roles compose here; the blob role layers on later (§10.3).
+/// serving are always on; the **orderer** role (§8.4) is present only when a
+/// fleet signing key is supplied ([`orderer`](Self::orderer)) — that key is
+/// the sole secret a Station carries, and it can neither read payloads nor
+/// author records with it. The blob role layers on later (§10.3).
 pub struct Station {
     endpoint: Endpoint,
     replica: Replica,
+    /// The fleet signing key, for the orderer role. `None` on a
+    /// storage-only Station.
+    fleet_key: Option<SigningKey>,
 }
 
 impl Station {
-    /// Bind a Station on `secret` (its roster peer key, §10.2) serving
-    /// `replica`.
+    /// Bind a storage-only Station on `secret` (its roster peer key, §10.2)
+    /// serving `replica`.
     pub async fn new(secret: &SigningKey, replica: Replica) -> Result<Self, StationError> {
         let endpoint = Endpoint::bind_identity(secret).await?;
-        Ok(Self { endpoint, replica })
+        Ok(Self {
+            endpoint,
+            replica,
+            fleet_key: None,
+        })
+    }
+
+    /// Bind a Station that also runs the per-Fleet **orderer** (§8.4),
+    /// holding `fleet_key` to countersign ACL submissions.
+    pub async fn orderer(
+        secret: &SigningKey,
+        fleet_key: SigningKey,
+        replica: Replica,
+    ) -> Result<Self, StationError> {
+        let endpoint = Endpoint::bind_identity(secret).await?;
+        Ok(Self {
+            endpoint,
+            replica,
+            fleet_key: Some(fleet_key),
+        })
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -93,9 +79,9 @@ impl Station {
         &self.replica
     }
 
-    /// Accept and serve exactly one inbound session, then return. A Station
-    /// loops this; tests drive a single exchange. In-flight frames are
-    /// drained before the connection closes.
+    /// Accept one inbound session, dispatch on its first frame — an ACL
+    /// submission to the orderer, otherwise the sync flow — then return. A
+    /// Station loops this; tests drive a single exchange.
     pub async fn serve_once(&self) -> Result<(), StationError> {
         let Some(mut session) = self.endpoint.accept().await? else {
             return Ok(());
@@ -103,11 +89,25 @@ impl Station {
         // A Vessel and a Station never implicitly trust each other; the
         // authenticated `session.remote_key()` is what a roster admission
         // check keys on (§10.2). Admission policy layers on here.
-        if serve(&self.replica, &mut session.send, &mut session.recv)
-            .await
-            .is_err()
-        {
-            tracing::warn!("station session ended early");
+        match read_frame::<SyncMessage>(&mut session.recv).await {
+            Ok(SyncMessage::OrderRequest { record }) => {
+                // Order the submission (§8.4): assign a position and
+                // countersign — only possible if we hold the fleet key.
+                let proof = match &self.fleet_key {
+                    Some(key) => self.replica.order(key, &record).await.ok().flatten(),
+                    None => None,
+                };
+                let _ = write_frame(&mut session.send, &SyncMessage::OrderResponse { proof }).await;
+            }
+            Ok(SyncMessage::AclRequest { len }) => {
+                if serve_sync(&self.replica, len, &mut session.send, &mut session.recv)
+                    .await
+                    .is_err()
+                {
+                    tracing::warn!("station session ended early");
+                }
+            }
+            _ => tracing::warn!("station: unexpected leading frame"),
         }
         session.drain().await;
         Ok(())
