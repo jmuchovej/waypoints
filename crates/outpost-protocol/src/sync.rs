@@ -118,17 +118,31 @@ pub enum SyncMessage {
         cert: crate::auth::DeviceCert,
     },
     /// Vessel → Station: register a Territory so the Station will hold and
-    /// serve it (§13, the coordinator role absorbed into Stations).
+    /// serve it (§13, the coordinator role absorbed into Stations). Carries
+    /// the Territory's root ACL record so a Station that does not yet hold it
+    /// can bootstrap a fresh hold from it (`TerritoryID` is the root's hash,
+    /// so the Station verifies the two agree before serving).
     Register {
         territory: crate::TerritoryID,
+        root: crate::acl::ACLRecord,
     },
     /// Station → Vessel: acknowledge a registration (or handshake) — `true`
     /// if accepted.
     Ack {
         ok: bool,
     },
-    /// Vessel → orderer Station: order this record (§8.4).
+    /// Vessel → Station: scope this session to `territory` before the sync
+    /// flow (§9 — sessions are keyed by `(FleetID, TerritoryID)`). The Station
+    /// acks `true` if it serves that Territory and then runs the sync flow;
+    /// `false` if it does not (the Vessel must `Register` first).
+    Open {
+        territory: crate::TerritoryID,
+    },
+    /// Vessel → orderer Station: order this record for `territory` (§8.4). The
+    /// Territory is named explicitly because a non-root record's log cannot be
+    /// cheaply recovered from the record alone.
     OrderRequest {
+        territory: crate::TerritoryID,
         record: crate::acl::ACLRecord,
     },
     /// Orderer → vessel: the countersigned proof, or `None` if the orderer

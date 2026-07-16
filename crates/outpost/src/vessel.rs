@@ -74,6 +74,8 @@ pub enum VesselError {
     UntrustedStation,
     #[error("the Station refused the territory registration")]
     RegisterRejected,
+    #[error("the Station does not serve that Territory — register it first")]
+    NotServed,
 }
 
 /// A Vessel: the user's identity (authors + decrypts), a per-device key
@@ -331,11 +333,24 @@ impl Vessel {
         self.run_sync(&mut session).await
     }
 
-    /// Register `territory` with a rostered Station so it will hold and serve
-    /// it (§13) — the "connect to a fleet's servers" step. Verifies the
-    /// Station's roster membership, presents the identity handshake, and
-    /// waits for the acknowledgement.
+    /// Register `territory` with a Station so it will hold and serve it (§13) —
+    /// the "connect to a fleet's servers" step. Presents the Territory's root
+    /// ACL record (so a Station that does not yet hold it can bootstrap), the
+    /// identity handshake, and waits for the acknowledgement. Does **not**
+    /// verify the Station's roster membership — use
+    /// [`register_with_fleet`](Self::register_with_fleet) for that.
     pub async fn register(
+        &self,
+        station: impl Into<outpost_fabric::EndpointAddr>,
+        territory: TerritoryID,
+    ) -> Result<(), VesselError> {
+        let mut session = self.endpoint.connect(station).await?;
+        self.do_register(&mut session, territory).await
+    }
+
+    /// Like [`register`](Self::register), but first verifies the Station is in
+    /// the trusted `config`'s roster (§10.2).
+    pub async fn register_with_fleet(
         &self,
         config: &fleet::FleetConfig,
         station: impl Into<outpost_fabric::EndpointAddr>,
@@ -343,9 +358,20 @@ impl Vessel {
     ) -> Result<(), VesselError> {
         let mut session = self.endpoint.connect(station).await?;
         self.check_roster(config, &session)?;
-        self.send_hello(&mut session).await?;
-        frame_write(&mut session, &SyncMessage::Register { territory }).await?;
-        let ack = frame_read(&mut session).await?;
+        self.do_register(&mut session, territory).await
+    }
+
+    /// The shared registration exchange: handshake, present the root, await
+    /// the ack.
+    async fn do_register(
+        &self,
+        session: &mut outpost_fabric::Session,
+        territory: TerritoryID,
+    ) -> Result<(), VesselError> {
+        self.send_hello(session).await?;
+        let root = self.root_record().await?;
+        frame_write(session, &SyncMessage::Register { territory, root }).await?;
+        let ack = frame_read(session).await?;
         session.close();
         match ack {
             SyncMessage::Ack { ok: true } => Ok(()),
@@ -353,13 +379,42 @@ impl Vessel {
         }
     }
 
-    /// The shared post-connect flow: handshake, reconcile, refresh keys.
+    /// This Territory's root ACL record (log position 0), presented on
+    /// registration so a Station can bootstrap a fresh hold (§13).
+    async fn root_record(&self) -> Result<ACLRecord, VesselError> {
+        self.replica
+            .hold()
+            .acl_records()
+            .await?
+            .into_iter()
+            .next()
+            .ok_or(VesselError::Replica(ReplicaError::NoAcl))
+    }
+
+    /// The shared post-connect flow: handshake, scope to the Territory,
+    /// reconcile, refresh keys.
     async fn run_sync(&mut self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
         self.send_hello(session).await?;
+        self.open_territory(session).await?;
         let _ = initiate(&self.replica, &mut session.send, &mut session.recv).await;
         session.close();
         self.refresh_keys().await?;
         Ok(())
+    }
+
+    /// Scope the session to this Vessel's Territory (§9) and confirm the
+    /// Station serves it — a Station that does not returns
+    /// [`NotServed`](VesselError::NotServed) (register it first).
+    async fn open_territory(
+        &self,
+        session: &mut outpost_fabric::Session,
+    ) -> Result<(), VesselError> {
+        let territory = self.replica.territory_id().await?;
+        frame_write(session, &SyncMessage::Open { territory }).await?;
+        match frame_read(session).await? {
+            SyncMessage::Ack { ok: true } => Ok(()),
+            _ => Err(VesselError::NotServed),
+        }
     }
 
     /// Verify a Station is one the fleet vouches for (§10.2).
@@ -460,10 +515,12 @@ impl Vessel {
         orderer: impl Into<outpost_fabric::EndpointAddr>,
         record: &ACLRecord,
     ) -> Result<outpost_protocol::acl::OrderProof, VesselError> {
+        let territory = self.replica.territory_id().await?;
         let mut session = self.endpoint.connect(orderer).await?;
         outpost_fabric::write_frame(
             &mut session.send,
             &outpost_protocol::sync::SyncMessage::OrderRequest {
+                territory,
                 record: record.clone(),
             },
         )

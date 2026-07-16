@@ -72,7 +72,7 @@ async fn a_vessel_registers_with_a_rostered_station_and_syncs() {
         station
     });
     owner
-        .register(&config, station_addr.clone(), territory)
+        .register_with_fleet(&config, station_addr.clone(), territory)
         .await
         .unwrap();
     let station = serve.await.unwrap();
