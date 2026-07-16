@@ -18,9 +18,10 @@
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicI64, Ordering};
 
+use ed25519_dalek::VerifyingKey;
 use outpost_fabric::SyncPeer;
 use outpost_hold::{AclIndex, HoldError, NoticeIndex, TerritoryHold};
-use outpost_protocol::acl::{ACLRecord, ACLReject};
+use outpost_protocol::acl::{ACLRecord, ACLReject, OrderProof, OrderedRecord};
 use outpost_protocol::sync::TallyDigest;
 use outpost_protocol::{NoticeID, RecordID, SignedNotice, TrackID, Validated, validate};
 
@@ -41,27 +42,64 @@ pub enum ReplicaError {
 pub struct Replica {
     hold: TerritoryHold,
     next_topo: AtomicI64,
+    /// The fleet's verifying key, when this Territory is homed to a fleet
+    /// (§8.4). When set, ACL records arriving over sync must carry a valid
+    /// orderer proof; when `None` (self-hosted solo, or tests), ordering is
+    /// not verified.
+    fleet_key: Option<VerifyingKey>,
 }
 
 impl Replica {
-    /// Open a Territory from a bootstrap ACL log (in order). The log must be
-    /// non-empty — a Territory is defined by its root ACL record (§9).
+    /// Open a Territory from a bootstrap ACL log (in order), unfleeted —
+    /// order proofs are not verified. The log must be non-empty; a Territory
+    /// is defined by its root ACL record (§9).
     pub async fn bootstrap(path: &str, acl_log: &[ACLRecord]) -> Result<Self, ReplicaError> {
-        let hold = TerritoryHold::open(path).await?;
-        for (position, record) in acl_log.iter().enumerate() {
-            hold.append_acl(record, position as u64).await?;
-        }
-        Self::reopen(hold).await
+        Self::bootstrap_inner(path, acl_log, None).await
     }
 
-    /// Reopen a Replica over an already-populated hold.
+    /// [`bootstrap`](Self::bootstrap) homed to a fleet: ACL records received
+    /// over sync are verified against `fleet_key` (§8.4). The bootstrap log
+    /// itself is trusted seed and is not re-verified — home a fleeted
+    /// Territory with just its Root and let ordered records arrive by sync.
+    pub async fn bootstrap_with_fleet(
+        path: &str,
+        acl_log: &[ACLRecord],
+        fleet_key: VerifyingKey,
+    ) -> Result<Self, ReplicaError> {
+        Self::bootstrap_inner(path, acl_log, Some(fleet_key)).await
+    }
+
+    async fn bootstrap_inner(
+        path: &str,
+        acl_log: &[ACLRecord],
+        fleet_key: Option<VerifyingKey>,
+    ) -> Result<Self, ReplicaError> {
+        let hold = TerritoryHold::open(path).await?;
+        for (position, record) in acl_log.iter().enumerate() {
+            hold.append_acl(record, position as u64, None).await?;
+        }
+        Self::reopen_inner(hold, fleet_key).await
+    }
+
+    /// Reopen a Replica over an already-populated hold (unfleeted).
     pub async fn reopen(hold: TerritoryHold) -> Result<Self, ReplicaError> {
+        Self::reopen_inner(hold, None).await
+    }
+
+    async fn reopen_inner(
+        hold: TerritoryHold,
+        fleet_key: Option<VerifyingKey>,
+    ) -> Result<Self, ReplicaError> {
         // A Territory must have a root; fail fast if the hold is empty.
         if hold.acl_index().await?.head().is_none() {
             return Err(ReplicaError::NoAcl);
         }
         let next_topo = AtomicI64::new(hold.max_topo().await? + 1);
-        Ok(Self { hold, next_topo })
+        Ok(Self {
+            hold,
+            next_topo,
+            fleet_key,
+        })
     }
 
     /// The current head of the ACL log — what a locally-authored Notice pins
@@ -93,23 +131,24 @@ impl Replica {
         Ok(self.hold.acl_records().await?.len() as u64)
     }
 
-    /// The ACL records at or after log position `from` — the suffix a peer
-    /// that is behind needs.
-    pub async fn acl_suffix(&self, from: u64) -> Result<Vec<ACLRecord>, ReplicaError> {
+    /// The ordered ACL records at or after log position `from` — the suffix a
+    /// peer that is behind needs, each carrying its order proof (§8.4).
+    pub async fn acl_suffix(&self, from: u64) -> Result<Vec<OrderedRecord>, ReplicaError> {
         Ok(self
             .hold
-            .acl_records()
+            .ordered_records()
             .await?
             .into_iter()
             .skip(from as usize)
             .collect())
     }
 
-    /// Append newly-received ACL records to the log (§8.4). Each is folded
-    /// (validating chaining and authority) before it is persisted; a record
-    /// that does not chain stops ingestion (the linear log cannot skip a
-    /// gap). Already-held records are skipped, so re-delivery is idempotent.
-    pub async fn ingest_acl(&self, incoming: Vec<ACLRecord>) -> Result<(), ReplicaError> {
+    /// Append newly-received **ordered** ACL records to the log (§8.4). Each
+    /// is verified against the fleet key (when this Territory is fleeted),
+    /// then folded (chaining + authority) before it is persisted. A record
+    /// that fails either check stops ingestion — the linear log cannot skip a
+    /// gap. Already-held records are skipped, so re-delivery is idempotent.
+    pub async fn ingest_ordered(&self, incoming: Vec<OrderedRecord>) -> Result<(), ReplicaError> {
         let existing = self.hold.acl_records().await?;
         let mut fold = AclIndex::from_ordered(&existing)?;
         let mut known: HashSet<RecordID> = existing
@@ -117,37 +156,86 @@ impl Replica {
             .map(RecordID::of)
             .collect::<Result<_, _>>()?;
         let mut position = existing.len() as u64;
-        for record in incoming {
-            let id = RecordID::of(&record)?;
+        for ordered in incoming {
+            let id = RecordID::of(&ordered.record)?;
             if known.contains(&id) {
                 continue; // already held
             }
-            // Fold to validate chaining/authority; a break here means the
-            // record does not extend our head (invalid or out of order), and
-            // nothing after it in a linear log can apply either.
-            if fold.push(&record).is_err() {
+            // Ordering: a fleeted Territory rejects records lacking a valid
+            // orderer proof (§8.4); the Root is exempt.
+            if let Some(fleet_key) = &self.fleet_key
+                && ordered.verify(fleet_key).is_err()
+            {
                 break;
             }
-            self.hold.append_acl(&record, position).await?;
+            // Content: chaining + authority. A break means the record does
+            // not extend our head, and nothing after it can apply either.
+            if fold.push(&ordered.record).is_err() {
+                break;
+            }
+            self.hold
+                .append_acl(&ordered.record, position, ordered.proof.as_ref())
+                .await?;
             known.insert(id);
             position += 1;
         }
         Ok(())
     }
 
-    /// Append a locally-authored ACL record to the log (§8), fold-validating
-    /// it first — unlike [`ingest_acl`](Self::ingest_acl), an invalid record
-    /// (broken chain, insufficient authority) is returned as an **error**,
-    /// not silently dropped, so a membership operation can report why it was
-    /// refused. Positions are assigned by count here; the orderer
-    /// submission flow replaces this in a later phase.
-    pub async fn apply_local(&self, record: &ACLRecord) -> Result<RecordID, ReplicaError> {
+    /// Append newly-received bare ACL records (no proofs) — the local /
+    /// unfleeted path, e.g. handing records directly between vessels in a
+    /// test. Wraps each as an unproven [`OrderedRecord`]; on a fleeted
+    /// Replica these would be rejected, which is the point.
+    pub async fn ingest_acl(&self, incoming: Vec<ACLRecord>) -> Result<(), ReplicaError> {
+        let ordered = incoming
+            .into_iter()
+            .map(|record| OrderedRecord {
+                record,
+                proof: None,
+            })
+            .collect();
+        self.ingest_ordered(ordered).await
+    }
+
+    /// Append a locally-authored ACL record with its (optional) order proof,
+    /// fold-validating it first — unlike ingestion, an invalid record (broken
+    /// chain, insufficient authority) is returned as an **error**, not
+    /// silently dropped, so a membership operation can report why it was
+    /// refused. `Root` and single-writer records pass `None`; an
+    /// orderer-proven record passes its proof.
+    pub async fn apply_local(
+        &self,
+        record: &ACLRecord,
+        proof: Option<&OrderProof>,
+    ) -> Result<RecordID, ReplicaError> {
         let existing = self.hold.acl_records().await?;
         let mut fold = AclIndex::from_ordered(&existing)?;
         fold.push(record)?; // chaining + authority; surfaces the reject
         let position = existing.len() as u64;
-        self.hold.append_acl(record, position).await?;
+        self.hold.append_acl(record, position, proof).await?;
         RecordID::of(record).map_err(ReplicaError::from)
+    }
+
+    /// Order a locally-chained ACL record: assign it the next position and
+    /// countersign with the fleet key (§8.4). Only an orderer-role Station
+    /// holds the fleet **signing** key, so only it can call this. Returns the
+    /// proof; the caller persists the ordered record. `None` if the record
+    /// does not chain from the current head.
+    pub async fn order(
+        &self,
+        fleet_signing: &ed25519_dalek::SigningKey,
+        record: &ACLRecord,
+    ) -> Result<Option<OrderProof>, ReplicaError> {
+        let existing = self.hold.acl_records().await?;
+        let mut fold = AclIndex::from_ordered(&existing)?;
+        if fold.push(record).is_err() {
+            return Ok(None); // does not chain / unauthorized
+        }
+        let position = existing.len() as u64;
+        let id = RecordID::of(record)?;
+        let proof = OrderProof::sign(fleet_signing, id, position);
+        self.hold.append_acl(record, position, Some(&proof)).await?;
+        Ok(Some(proof))
     }
 
     /// Apply a batch of received Notices: validate each (§5.4), append the
@@ -232,12 +320,12 @@ impl SyncPeer for Replica {
         Replica::acl_len(self).await.unwrap_or(0)
     }
 
-    async fn acl_suffix(&self, from: u64) -> Vec<ACLRecord> {
+    async fn acl_suffix(&self, from: u64) -> Vec<OrderedRecord> {
         Replica::acl_suffix(self, from).await.unwrap_or_default()
     }
 
-    async fn ingest_acl(&self, records: Vec<ACLRecord>) {
-        if let Err(e) = Replica::ingest_acl(self, records).await {
+    async fn ingest_ordered_acl(&self, records: Vec<OrderedRecord>) {
+        if let Err(e) = Replica::ingest_ordered(self, records).await {
             tracing::warn!("replica acl ingest failed: {e}");
         }
     }

@@ -49,6 +49,9 @@ pub struct AclRow {
     pub position: i64,
     /// The canonical encoded `ACLRecord`.
     pub bytes: Vec<u8>,
+    /// The orderer's countersignature (§8.4), postcard-encoded `OrderProof`.
+    /// Empty for the `Root`, which is self-authenticating (position 0).
+    pub proof: Vec<u8>,
 }
 
 /// A parent edge awaiting its parent: the child cannot be accepted until

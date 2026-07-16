@@ -22,7 +22,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use async_trait::async_trait;
-use outpost_protocol::acl::ACLRecord;
+use outpost_protocol::acl::OrderedRecord;
 use outpost_protocol::sync::{SyncMessage, TallyDigest, wanted};
 use outpost_protocol::{NoticeID, SignedNotice, TrackID};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -46,11 +46,11 @@ pub trait SyncPeer {
 
     /// Length of this peer's ACL log — its position in the linear log (§8.4).
     async fn acl_len(&self) -> u64;
-    /// The ACL records at or after log position `from` (the suffix a peer
-    /// that is behind needs).
-    async fn acl_suffix(&self, from: u64) -> Vec<ACLRecord>;
-    /// Apply received ACL records (fold-validate → append, §8).
-    async fn ingest_acl(&self, records: Vec<ACLRecord>);
+    /// The ordered ACL records at or after log position `from` (the suffix a
+    /// peer that is behind needs), each with its order proof (§8.4).
+    async fn acl_suffix(&self, from: u64) -> Vec<OrderedRecord>;
+    /// Apply received ordered ACL records (verify proof → fold → append, §8).
+    async fn ingest_ordered_acl(&self, records: Vec<OrderedRecord>);
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -81,7 +81,7 @@ where
             });
         }
     };
-    peer.ingest_acl(acl_records).await;
+    peer.ingest_ordered_acl(acl_records).await;
     // Push our own suffix if we are ahead of the responder.
     let push_acl = if my_acl_len > responder_acl_len {
         peer.acl_suffix(responder_acl_len).await
@@ -132,15 +132,13 @@ where
 }
 
 /// The responding half of a session (a Station serving, or a peer being
-/// gossiped to).
+/// gossiped to). Reads the leading `AclRequest`, then reconciles.
 pub async fn serve<P, S, R>(peer: &P, send: &mut S, recv: &mut R) -> Result<(), SessionError>
 where
     P: SyncPeer + Sync,
     S: AsyncWrite + Unpin + Send,
     R: AsyncRead + Unpin + Send,
 {
-    // ACL phase first (mirrors `initiate`): answer with the records the
-    // initiator lacks, then apply what it pushes.
     let init_acl_len = match read_frame::<SyncMessage>(recv).await? {
         SyncMessage::AclRequest { len } => len,
         _ => {
@@ -149,6 +147,26 @@ where
             });
         }
     };
+    serve_sync(peer, init_acl_len, send, recv).await
+}
+
+/// The sync reconciliation, given the initiator's ACL length (its leading
+/// `AclRequest` already read). A Station dispatches the first frame itself —
+/// an [`OrderRequest`](SyncMessage::OrderRequest) goes to the orderer, an
+/// `AclRequest` here — so it calls this directly rather than [`serve`].
+pub async fn serve_sync<P, S, R>(
+    peer: &P,
+    init_acl_len: u64,
+    send: &mut S,
+    recv: &mut R,
+) -> Result<(), SessionError>
+where
+    P: SyncPeer + Sync,
+    S: AsyncWrite + Unpin + Send,
+    R: AsyncRead + Unpin + Send,
+{
+    // ACL phase first (mirrors `initiate`): answer with the records the
+    // initiator lacks, then apply what it pushes.
     let my_acl_len = peer.acl_len().await;
     let records = if my_acl_len > init_acl_len {
         peer.acl_suffix(init_acl_len).await
@@ -164,7 +182,7 @@ where
     )
     .await?;
     match read_frame::<SyncMessage>(recv).await? {
-        SyncMessage::AclPush { records } => peer.ingest_acl(records).await,
+        SyncMessage::AclPush { records } => peer.ingest_ordered_acl(records).await,
         _ => {
             return Err(SessionError::Unexpected {
                 expected: "acl-push",

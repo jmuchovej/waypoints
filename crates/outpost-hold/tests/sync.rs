@@ -106,7 +106,9 @@ impl Peer {
     async fn new(records: &[ACLRecord]) -> Self {
         let hold = TerritoryHold::open(":memory:").await.unwrap();
         for (position, record) in records.iter().enumerate() {
-            hold.append_acl(record, position as u64).await.unwrap();
+            hold.append_acl(record, position as u64, None)
+                .await
+                .unwrap();
         }
         let acl = hold.acl_index().await.unwrap();
         let acl_head = acl.head().unwrap();

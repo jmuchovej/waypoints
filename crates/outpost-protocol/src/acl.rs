@@ -232,6 +232,59 @@ impl OrderProof {
     }
 }
 
+/// An ACL record together with its orderer countersignature (§8.4) — the
+/// unit that travels the wire and is stored, once ordered. The `Root` record
+/// carries no proof: it defines the Territory before any ordering exists, so
+/// its authenticity is the owner's own signature (position 0, `prev = None`).
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct OrderedRecord {
+    pub record: ACLRecord,
+    pub proof: Option<OrderProof>,
+}
+
+impl OrderedRecord {
+    /// The log position this record claims: the proof's, or 0 for the
+    /// unproven `Root`.
+    pub fn position(&self) -> u64 {
+        self.proof.as_ref().map_or(0, |p| p.position)
+    }
+
+    /// Verify the record against the fleet key (§8.4). The `Root` (no proof)
+    /// is accepted on its own author signature; every other record must
+    /// carry a proof that verifies for its content address.
+    pub fn verify(&self, fleet_key: &VerifyingKey) -> Result<(), OrderError> {
+        let body = self
+            .record
+            .parse_and_verify()
+            .map_err(|_| OrderError::BadRecord)?;
+        match (&body.prev, &self.proof) {
+            // Root: no prior record, no proof — self-authenticating.
+            (None, None) => Ok(()),
+            (None, Some(_)) => Err(OrderError::RootProven),
+            (Some(_), None) => Err(OrderError::Unproven),
+            (Some(_), Some(proof)) => {
+                let id = RecordID::of(&self.record).map_err(|_| OrderError::BadRecord)?;
+                proof
+                    .verify(fleet_key, id)
+                    .map_err(|_| OrderError::BadProof)
+            }
+        }
+    }
+}
+
+/// Why an [`OrderedRecord`] failed its ordering check (§8.4).
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum OrderError {
+    #[error("record bytes or author signature invalid")]
+    BadRecord,
+    #[error("non-root record carries no order proof")]
+    Unproven,
+    #[error("the root record must not carry an order proof")]
+    RootProven,
+    #[error("order proof does not verify against the fleet key")]
+    BadProof,
+}
+
 /// Why the fold refused a record. Every variant is a distinct, tested
 /// behavior; rejection is terminal (§5.4 note applies to ACL records too).
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]

@@ -105,20 +105,30 @@ pub fn wanted<'a>(
 /// treats them identically to reconciled records (§10.2).
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum SyncMessage {
+    /// Vessel → orderer Station: order this record (§8.4).
+    OrderRequest {
+        record: crate::acl::ACLRecord,
+    },
+    /// Orderer → vessel: the countersigned proof, or `None` if the orderer
+    /// refused (e.g. the record does not chain from the current head).
+    OrderResponse {
+        proof: Option<crate::acl::OrderProof>,
+    },
     AclRequest {
         /// The initiator's ACL log length (its position in the linear log).
         len: u64,
     },
     AclResponse {
-        /// ACL records the initiator lacks (the responder's suffix).
-        records: Vec<crate::acl::ACLRecord>,
+        /// Ordered ACL records the initiator lacks (the responder's suffix),
+        /// each carrying its order proof (§8.4).
+        records: Vec<crate::acl::OrderedRecord>,
         /// The responder's own log length, so the initiator knows whether to
         /// push its own suffix.
         len: u64,
     },
     AclPush {
-        /// ACL records the responder lacked (empty if none).
-        records: Vec<crate::acl::ACLRecord>,
+        /// Ordered ACL records the responder lacked (empty if none).
+        records: Vec<crate::acl::OrderedRecord>,
     },
     TallyRequest(TallyDigest),
     TallyResponse {

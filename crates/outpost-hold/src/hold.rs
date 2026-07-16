@@ -12,7 +12,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use bedrock::{Database, Filter, Query};
-use outpost_protocol::acl::ACLRecord;
+use outpost_protocol::acl::{ACLRecord, OrderProof, OrderedRecord};
 use outpost_protocol::{NoticeID, NoticeStore, RecordID, SignedNotice, TrackID};
 
 use crate::acl_index::AclIndex;
@@ -61,26 +61,34 @@ impl TerritoryHold {
 
     // ---- ACL log -------------------------------------------------------
 
-    /// Append an ACL record at `position` (§8.4). The caller has already
-    /// validated it against the fold; the hold persists the bytes and the
-    /// position that lets a later fold replay them in order.
+    /// Append an ACL record at `position` with its orderer proof (§8.4). The
+    /// caller has already validated it against the fold; the hold persists the
+    /// bytes, position, and proof that let a later fold replay and re-verify
+    /// them. `proof` is `None` only for the self-authenticating `Root`.
     pub async fn append_acl(
         &self,
         record: &ACLRecord,
         position: u64,
+        proof: Option<&OrderProof>,
     ) -> Result<RecordID, HoldError> {
         let id = RecordID::of(record)?;
+        let proof_bytes = match proof {
+            Some(p) => postcard::to_stdvec(p)?,
+            None => Vec::new(),
+        };
         self.db
             .insert(AclRow {
                 id: RecordKey(*id.as_bytes()),
                 position: position as i64,
                 bytes: record.encode()?.to_vec(),
+                proof: proof_bytes,
             })
             .await?;
         Ok(id)
     }
 
-    /// Every ACL record, in log order.
+    /// Every ACL record, in log order (proofs dropped — for the fold, which
+    /// re-verifies content, not ordering).
     pub async fn acl_records(&self) -> Result<Vec<ACLRecord>, HoldError> {
         let rows = self
             .db
@@ -88,6 +96,26 @@ impl TerritoryHold {
             .await?;
         rows.iter()
             .map(|row| ACLRecord::decode(&row.bytes).map_err(HoldError::from))
+            .collect()
+    }
+
+    /// Every ACL record with its order proof, in log order — what sync
+    /// transfers so a peer can re-verify ordering (§8.4).
+    pub async fn ordered_records(&self) -> Result<Vec<OrderedRecord>, HoldError> {
+        let rows = self
+            .db
+            .query::<AclRow>(&Query::new().sort_asc("position"))
+            .await?;
+        rows.iter()
+            .map(|row| {
+                let record = ACLRecord::decode(&row.bytes)?;
+                let proof = if row.proof.is_empty() {
+                    None
+                } else {
+                    Some(postcard::from_bytes::<OrderProof>(&row.proof)?)
+                };
+                Ok(OrderedRecord { record, proof })
+            })
             .collect()
     }
 
