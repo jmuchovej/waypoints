@@ -64,8 +64,9 @@ async fn station_holds_ciphertext_but_cannot_obtain_the_key() {
     let sealed_box = seal_key_to_member(&mut rng, &member_kem.public_key(), &read_key).unwrap();
     let acl = sealed_root(&member, &member_kem, &sealed_box);
 
-    // A member Vessel unseals the key (proven below), authors an encrypted
-    // Notice, and it reaches the Station's store.
+    // A member Vessel derives the key from the ACL log (the real path —
+    // `refresh_keys` unseals the Root box it is the owner of), authors an
+    // encrypted Notice, and it reaches the Station's store.
     let mut vessel = Vessel::new(
         member.clone(),
         KemSecretKey::from_seed([2; 32]),
@@ -73,7 +74,7 @@ async fn station_holds_ciphertext_but_cannot_obtain_the_key() {
     )
     .await
     .unwrap();
-    vessel.cache_read_key(EpochID::ZERO, read_key.clone());
+    vessel.refresh_keys().await.unwrap();
     let notice = vessel
         .author(
             &mut rng,
