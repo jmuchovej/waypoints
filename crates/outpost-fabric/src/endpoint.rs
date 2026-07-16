@@ -85,7 +85,35 @@ impl Endpoint {
     /// or a Vessel's device key (§10.2). The `Minimal` preset is LAN-only
     /// (no relay, no DNS): the right posture for air-gapped Fleets (§10.2)
     /// and for loopback tests. Relay-assisted presets layer on later.
+    ///
+    /// Binds **loopback only** (`127.0.0.1`/`[::1]`), replacing iroh's
+    /// default wildcard sockets, and disables the UPnP/NAT-PMP portmapper
+    /// (whose SSDP probe binds its own wildcard socket): every current
+    /// posture is same-host ([`direct_addr`](Self::direct_addr) rewrites a
+    /// wildcard to loopback before publishing anyway), and both wildcard
+    /// binds make macOS's application firewall prompt for every unsigned
+    /// rebuilt binary. A deployment that must be reachable off-host uses
+    /// [`bind_routable`](Self::bind_routable).
     pub async fn bind(secret: SecretKey) -> Result<Self, TransportError> {
+        let inner = iroh::Endpoint::builder(iroh::endpoint::presets::Minimal)
+            .secret_key(secret)
+            .alpns(vec![ALPN.to_vec()])
+            .portmapper_config(iroh::endpoint::PortmapperConfig::Disabled)
+            .clear_ip_transports()
+            .bind_addr("127.0.0.1:0")
+            .map_err(err)?
+            .bind_addr("[::1]:0")
+            .map_err(err)?
+            .bind()
+            .await
+            .map_err(err)?;
+        Ok(Self { inner })
+    }
+
+    /// [`bind`](Self::bind) on the wildcard address (`0.0.0.0`/`[::]`) —
+    /// reachable from other hosts. The posture for a deployed Station whose
+    /// roster entry publishes real addresses; nothing same-host needs it.
+    pub async fn bind_routable(secret: SecretKey) -> Result<Self, TransportError> {
         let inner = iroh::Endpoint::builder(iroh::endpoint::presets::Minimal)
             .secret_key(secret)
             .alpns(vec![ALPN.to_vec()])
