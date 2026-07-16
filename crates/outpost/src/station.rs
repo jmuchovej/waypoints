@@ -15,9 +15,13 @@
 //! What a Station does not do — originate edits, hold read keys, materialize
 //! a library — is the Vessel's or nobody's (§3 rules 4–5).
 
+use std::collections::BTreeSet;
+use std::sync::Mutex;
+
 use crate::replica::{Replica, ReplicaError};
 use ed25519_dalek::SigningKey;
-use outpost_fabric::{Endpoint, TransportError, read_frame, serve_sync, write_frame};
+use outpost_fabric::{Endpoint, Session, TransportError, read_frame, serve_sync, write_frame};
+use outpost_protocol::TerritoryID;
 use outpost_protocol::acl::ACLRecord;
 use outpost_protocol::sync::SyncMessage;
 
@@ -42,18 +46,16 @@ pub struct Station {
     /// The fleet signing key, for the orderer role. `None` on a
     /// storage-only Station.
     fleet_key: Option<SigningKey>,
+    /// Territories this Station has agreed to hold and serve (§13). In-memory
+    /// for now; a persistent fleet-scope registry is a later refinement.
+    registry: Mutex<BTreeSet<TerritoryID>>,
 }
 
 impl Station {
     /// Bind a storage-only Station on `secret` (its roster peer key, §10.2)
     /// serving `replica`.
     pub async fn new(secret: &SigningKey, replica: Replica) -> Result<Self, StationError> {
-        let endpoint = Endpoint::bind_identity(secret).await?;
-        Ok(Self {
-            endpoint,
-            replica,
-            fleet_key: None,
-        })
+        Self::build(secret, replica, None).await
     }
 
     /// Bind a Station that also runs the per-Fleet **orderer** (§8.4),
@@ -63,11 +65,20 @@ impl Station {
         fleet_key: SigningKey,
         replica: Replica,
     ) -> Result<Self, StationError> {
+        Self::build(secret, replica, Some(fleet_key)).await
+    }
+
+    async fn build(
+        secret: &SigningKey,
+        replica: Replica,
+        fleet_key: Option<SigningKey>,
+    ) -> Result<Self, StationError> {
         let endpoint = Endpoint::bind_identity(secret).await?;
         Ok(Self {
             endpoint,
             replica,
-            fleet_key: Some(fleet_key),
+            fleet_key,
+            registry: Mutex::new(BTreeSet::new()),
         })
     }
 
@@ -79,17 +90,56 @@ impl Station {
         &self.replica
     }
 
-    /// Accept one inbound session, dispatch on its first frame — an ACL
-    /// submission to the orderer, otherwise the sync flow — then return. A
-    /// Station loops this; tests drive a single exchange.
+    /// Whether this Station has agreed to hold `territory` (§13).
+    pub fn serves(&self, territory: &TerritoryID) -> bool {
+        self.registry.lock().unwrap().contains(territory)
+    }
+
+    /// Accept one inbound session and handle it: an optional [`Hello`]
+    /// handshake (§10.2) verifying which identity is behind the device
+    /// connection, then a request — register a Territory, order an ACL
+    /// submission, or run the sync flow. A Station loops this; tests drive a
+    /// single exchange.
+    ///
+    /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
     pub async fn serve_once(&self) -> Result<(), StationError> {
         let Some(mut session) = self.endpoint.accept().await? else {
             return Ok(());
         };
-        // A Vessel and a Station never implicitly trust each other; the
-        // authenticated `session.remote_key()` is what a roster admission
-        // check keys on (§10.2). Admission policy layers on here.
-        match read_frame::<SyncMessage>(&mut session.recv).await {
+        let first = read_frame::<SyncMessage>(&mut session.recv).await;
+
+        // Optional handshake: verify the cert binds the connection's device
+        // key to the claimed identity (§10.2). A Vessel and a Station never
+        // implicitly trust each other; this is how the Station learns who is
+        // calling. On failure, ack false and stop.
+        let request = match first {
+            Ok(SyncMessage::Hello { identity, cert }) => {
+                let ok = cert.verify(&identity).is_ok() && cert.device == session.remote_key();
+                let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok }).await;
+                if !ok {
+                    session.drain().await;
+                    return Ok(());
+                }
+                read_frame::<SyncMessage>(&mut session.recv).await
+            }
+            other => other,
+        };
+
+        self.dispatch(request, &mut session).await;
+        session.drain().await;
+        Ok(())
+    }
+
+    async fn dispatch(
+        &self,
+        request: Result<SyncMessage, outpost_fabric::FrameError>,
+        session: &mut Session,
+    ) {
+        match request {
+            Ok(SyncMessage::Register { territory }) => {
+                self.registry.lock().unwrap().insert(territory);
+                let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: true }).await;
+            }
             Ok(SyncMessage::OrderRequest { record }) => {
                 // Order the submission (§8.4): assign a position and
                 // countersign — only possible if we hold the fleet key.
@@ -107,10 +157,8 @@ impl Station {
                     tracing::warn!("station session ended early");
                 }
             }
-            _ => tracing::warn!("station: unexpected leading frame"),
+            _ => tracing::warn!("station: unexpected request frame"),
         }
-        session.drain().await;
-        Ok(())
     }
 }
 

@@ -103,8 +103,30 @@ pub fn wanted<'a>(
 ///
 /// Live updates ride the same push shapes over an open session — a receiver
 /// treats them identically to reconciled records (§10.2).
+// A protocol frame sent one at a time; the size spread between the small
+// control variants and the record-carrying ones is inherent, and boxing the
+// wire types would only obscure framing for no real gain.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum SyncMessage {
+    /// The leading frame a Vessel sends on connect (§10.2): its identity and
+    /// the certificate proving the connection's device key belongs to that
+    /// identity. The Station verifies the cert and that its device key is the
+    /// connection's authenticated key.
+    Hello {
+        identity: ed25519_dalek::VerifyingKey,
+        cert: crate::auth::DeviceCert,
+    },
+    /// Vessel → Station: register a Territory so the Station will hold and
+    /// serve it (§13, the coordinator role absorbed into Stations).
+    Register {
+        territory: crate::TerritoryID,
+    },
+    /// Station → Vessel: acknowledge a registration (or handshake) — `true`
+    /// if accepted.
+    Ack {
+        ok: bool,
+    },
     /// Vessel → orderer Station: order this record (§8.4).
     OrderRequest {
         record: crate::acl::ACLRecord,
