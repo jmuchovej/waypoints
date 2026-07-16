@@ -12,7 +12,7 @@ use ed25519_dalek::{Signer, SigningKey};
 use outpost_fabric::{SyncPeer, initiate, serve};
 use outpost_hold::{AclIndex, NoticeIndex, TerritoryHold};
 use outpost_protocol::acl::{
-    ACLPayload, ACLRecord, InviteKey, Permissions, RecordBody, join_binding,
+    ACLPayload, ACLRecord, InviteKey, OrderedRecord, Permissions, RecordBody, join_binding,
 };
 use outpost_protocol::crypto::KemSecretKey;
 use outpost_protocol::sync::TallyDigest;
@@ -34,7 +34,9 @@ impl HoldPeer {
     async fn new(records: &[ACLRecord]) -> Self {
         let hold = TerritoryHold::open(":memory:").await.unwrap();
         for (position, record) in records.iter().enumerate() {
-            hold.append_acl(record, position as u64).await.unwrap();
+            hold.append_acl(record, position as u64, None)
+                .await
+                .unwrap();
         }
         let acl = hold.acl_index().await.unwrap();
         let acl_head = acl.head().unwrap();
@@ -154,9 +156,9 @@ impl SyncPeer for HoldPeer {
             .unwrap_or(0)
     }
 
-    async fn acl_suffix(&self, from: u64) -> Vec<ACLRecord> {
+    async fn acl_suffix(&self, from: u64) -> Vec<OrderedRecord> {
         self.hold
-            .acl_records()
+            .ordered_records()
             .await
             .unwrap_or_default()
             .into_iter()
@@ -164,7 +166,7 @@ impl SyncPeer for HoldPeer {
             .collect()
     }
 
-    async fn ingest_acl(&self, records: Vec<ACLRecord>) {
+    async fn ingest_ordered_acl(&self, records: Vec<OrderedRecord>) {
         // Test stub: append records we do not already hold, by id. Both peers
         // in these tests start from the same ACL, so this is typically empty.
         let existing = self.hold.acl_records().await.unwrap_or_default();
@@ -173,11 +175,14 @@ impl SyncPeer for HoldPeer {
             .filter_map(|r| RecordID::of(r).ok())
             .collect();
         let mut pos = existing.len() as u64;
-        for record in records {
-            if let Ok(id) = RecordID::of(&record)
+        for ordered in records {
+            if let Ok(id) = RecordID::of(&ordered.record)
                 && !known.contains(&id)
             {
-                let _ = self.hold.append_acl(&record, pos).await;
+                let _ = self
+                    .hold
+                    .append_acl(&ordered.record, pos, ordered.proof.as_ref())
+                    .await;
                 pos += 1;
             }
         }

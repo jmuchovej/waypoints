@@ -15,6 +15,7 @@ publish.workspace = true
 bedrock = { workspace = true }
 bytes = { workspace = true }
 outpost-protocol = { workspace = true }
+postcard = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

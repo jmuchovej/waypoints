@@ -46,6 +46,10 @@ pub enum VesselError {
     NoKey(EpochID),
     #[error("no pending join for that member — nothing to approve")]
     UnknownJoin,
+    #[error("orderer exchange failed: {0}")]
+    Order(String),
+    #[error("the orderer refused to order the record")]
+    OrderRejected,
 }
 
 /// A Vessel: the user's identity (authors + decrypts), a per-device key
@@ -343,8 +347,39 @@ impl Vessel {
             payload,
         }
         .sign(&self.identity)?;
-        self.replica.apply_local(&record).await?;
+        self.replica.apply_local(&record, None).await?;
         Ok(record)
+    }
+
+    /// Submit an ACL record to a fleet orderer Station (§8.4): the orderer
+    /// assigns it a position and returns a countersigned proof. The ordered
+    /// record then propagates to peers with the proof, which they verify.
+    /// Errors if the orderer refuses (e.g. the record does not chain).
+    pub async fn submit_acl(
+        &self,
+        orderer: impl Into<outpost_fabric::EndpointAddr>,
+        record: &ACLRecord,
+    ) -> Result<outpost_protocol::acl::OrderProof, VesselError> {
+        let mut session = self.endpoint.connect(orderer).await?;
+        outpost_fabric::write_frame(
+            &mut session.send,
+            &outpost_protocol::sync::SyncMessage::OrderRequest {
+                record: record.clone(),
+            },
+        )
+        .await
+        .map_err(|e| VesselError::Order(e.to_string()))?;
+        let proof = match outpost_fabric::read_frame::<outpost_protocol::sync::SyncMessage>(
+            &mut session.recv,
+        )
+        .await
+        .map_err(|e| VesselError::Order(e.to_string()))?
+        {
+            outpost_protocol::sync::SyncMessage::OrderResponse { proof } => proof,
+            _ => None,
+        };
+        session.close();
+        proof.ok_or(VesselError::OrderRejected)
     }
 
     /// Issue an invite at `permissions` (Admin+ only). Returns the invite

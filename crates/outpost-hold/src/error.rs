@@ -10,6 +10,10 @@ pub enum HoldError {
     #[error(transparent)]
     Wire(#[from] WireError),
 
+    /// Encoding/decoding a stored order proof failed.
+    #[error("order-proof codec: {0}")]
+    Codec(#[from] postcard::Error),
+
     /// A record already in the store failed to fold — the store is
     /// internally inconsistent, which is a bug, not a rejected input.
     #[error("stored ACL log does not fold: {0}")]

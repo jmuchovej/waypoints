@@ -17,7 +17,7 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use iroh::SecretKey;
 use outpost_fabric::fleet::{FleetId, RosterBody, StationEntry, StationRoles};
 use outpost_fabric::{Endpoint, SyncPeer, initiate, serve};
-use outpost_protocol::acl::ACLRecord;
+use outpost_protocol::acl::OrderedRecord;
 use outpost_protocol::sync::TallyDigest;
 use outpost_protocol::{NoticeID, SignedNotice, TrackID};
 
@@ -40,10 +40,10 @@ impl SyncPeer for EmptyPeer {
     async fn acl_len(&self) -> u64 {
         0
     }
-    async fn acl_suffix(&self, _from: u64) -> Vec<ACLRecord> {
+    async fn acl_suffix(&self, _from: u64) -> Vec<OrderedRecord> {
         Vec::new()
     }
-    async fn ingest_acl(&self, _records: Vec<ACLRecord>) {}
+    async fn ingest_ordered_acl(&self, _records: Vec<OrderedRecord>) {}
 }
 
 #[tokio::test]
