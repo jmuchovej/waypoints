@@ -20,6 +20,7 @@
 //! identical (§10.2).
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::future::Future;
 
 use async_trait::async_trait;
 use outpost_protocol::acl::OrderedRecord;
@@ -59,6 +60,11 @@ pub enum SessionError {
     Frame(#[from] FrameError),
     #[error("unexpected message in {expected} phase")]
     Unexpected { expected: &'static str },
+    /// The responder ended the session after the ACL phase — admission
+    /// refused the Notice phase (not a member). The ACL records exchanged up
+    /// to that point are already ingested and stay.
+    #[error("the responder refused the notice phase")]
+    Refused,
 }
 
 /// The initiating half of a session (a Vessel arriving at a Station, or a
@@ -93,9 +99,12 @@ where
     // 1. Announce our state.
     write_frame(send, &SyncMessage::TallyRequest(peer.digest().await)).await?;
 
-    // 2. Receive the responder's per-track offer for divergent tracks.
+    // 2. Receive the responder's per-track offer for divergent tracks — or
+    //    its refusal: an admission-gated responder that reconciled the ACL
+    //    but will not serve Notices answers the tally with `Ack { false }`.
     let offer = match read_frame::<SyncMessage>(recv).await? {
         SyncMessage::TallyResponse { offer } => offer,
+        SyncMessage::Ack { ok: false } => return Err(SessionError::Refused),
         _ => {
             return Err(SessionError::Unexpected {
                 expected: "tally-response",
@@ -139,6 +148,30 @@ where
     S: AsyncWrite + Unpin + Send,
     R: AsyncRead + Unpin + Send,
 {
+    serve_gated(peer, send, recv, || async { true }).await
+}
+
+/// [`serve`] with an **admission gate between the phases**: the ACL phase
+/// runs unconditionally, then `gate` decides whether the Notice phase is
+/// served. Called *after* the ACL reconcile, so a gate that consults the
+/// peer's folded state sees the just-exchanged records — an invited joiner
+/// whose approval arrived in this very session passes. On refusal the
+/// initiator's tally is answered with `Ack { false }`
+/// ([`SessionError::Refused`] on its side) and the session ends; the ACL
+/// records already exchanged stay.
+pub async fn serve_gated<P, S, R, G, Fut>(
+    peer: &P,
+    send: &mut S,
+    recv: &mut R,
+    gate: G,
+) -> Result<(), SessionError>
+where
+    P: SyncPeer + Sync,
+    S: AsyncWrite + Unpin + Send,
+    R: AsyncRead + Unpin + Send,
+    G: FnOnce() -> Fut + Send,
+    Fut: Future<Output = bool> + Send,
+{
     let init_acl_len = match read_frame::<SyncMessage>(recv).await? {
         SyncMessage::AclRequest { len } => len,
         _ => {
@@ -147,10 +180,10 @@ where
             });
         }
     };
-    serve_sync(peer, init_acl_len, send, recv).await
+    serve_sync_gated(peer, init_acl_len, send, recv, gate).await
 }
 
-/// The sync reconciliation, given the initiator's ACL length (its leading
+/// The ungated reconciliation, given the initiator's ACL length (its leading
 /// `AclRequest` already read). A Station dispatches the first frame itself —
 /// an [`OrderRequest`](SyncMessage::OrderRequest) goes to the orderer, an
 /// `AclRequest` here — so it calls this directly rather than [`serve`].
@@ -164,6 +197,24 @@ where
     P: SyncPeer + Sync,
     S: AsyncWrite + Unpin + Send,
     R: AsyncRead + Unpin + Send,
+{
+    serve_sync_gated(peer, init_acl_len, send, recv, || async { true }).await
+}
+
+/// [`serve_sync`] with the [`serve_gated`] admission gate.
+pub async fn serve_sync_gated<P, S, R, G, Fut>(
+    peer: &P,
+    init_acl_len: u64,
+    send: &mut S,
+    recv: &mut R,
+    gate: G,
+) -> Result<(), SessionError>
+where
+    P: SyncPeer + Sync,
+    S: AsyncWrite + Unpin + Send,
+    R: AsyncRead + Unpin + Send,
+    G: FnOnce() -> Fut + Send,
+    Fut: Future<Output = bool> + Send,
 {
     // ACL phase first (mirrors `initiate`): answer with the records the
     // initiator lacks, then apply what it pushes.
@@ -190,7 +241,10 @@ where
         }
     }
 
-    // 1. Receive the initiator's digest, find divergent tracks.
+    // 1. Receive the initiator's digest — then the admission gate (§10.2):
+    //    the ACL phase above ran for anyone; the Notice phase below is
+    //    served only if the gate (now looking at the post-reconcile fold)
+    //    admits the caller.
     let init_digest = match read_frame::<SyncMessage>(recv).await? {
         SyncMessage::TallyRequest(digest) => digest,
         _ => {
@@ -199,6 +253,10 @@ where
             });
         }
     };
+    if !gate().await {
+        write_frame(send, &SyncMessage::Ack { ok: false }).await?;
+        return Ok(());
+    }
     let divergent = peer.digest().await.divergent(&init_digest);
 
     // 2. Offer our ids for each divergent track (empty list ⇒ we hold none
