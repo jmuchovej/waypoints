@@ -24,6 +24,9 @@
 /// The protocol vocabulary — always available.
 pub use outpost_protocol as protocol;
 
+#[cfg(feature = "cli")]
+pub mod cli;
+
 #[cfg(any(feature = "vessel", feature = "station"))]
 pub mod replica;
 
