@@ -22,3 +22,26 @@ pub enum WireError {
     #[error("invalid signature: {0}")]
     Signature(#[from] ed25519_dalek::SignatureError),
 }
+
+/// Failures sealing or opening encrypted material (§7). Deliberately
+/// coarse: AEAD failures are indistinguishable by construction, and finer
+/// reporting would only help an attacker.
+#[derive(Debug, thiserror::Error)]
+pub enum CryptoError {
+    /// Authenticated decryption failed: wrong key, tampered ciphertext, or
+    /// mismatched associated data.
+    #[error("authenticated decryption failed")]
+    Aead,
+
+    /// Key material has the wrong shape (length or encoding).
+    #[error("malformed key material")]
+    BadKey,
+
+    /// The sealed byte string is shorter than its fixed-size framing.
+    #[error("sealed data is truncated")]
+    Truncated,
+
+    /// Encoding the AAD (envelope header) failed.
+    #[error(transparent)]
+    Wire(#[from] WireError),
+}
