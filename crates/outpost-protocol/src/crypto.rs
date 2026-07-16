@@ -14,6 +14,9 @@
 use chacha20poly1305::aead::{Aead, Payload};
 use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce};
 use rand_core::CryptoRng;
+/// The RNG bound every randomized operation here takes, re-exported so
+/// callers need not depend on `rand_core` directly.
+pub use rand_core::CryptoRng as CryptoRngExport;
 use serde::{Deserialize, Serialize};
 use x_wing::{Decapsulate, Decapsulator, Encapsulate, KeyExport};
 use zeroize::{Zeroize, ZeroizeOnDrop};

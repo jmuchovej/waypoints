@@ -13,7 +13,7 @@ pub mod fleet;
 pub mod framing;
 pub mod session;
 
-pub use endpoint::{ALPN, Endpoint, TransportError};
+pub use endpoint::{ALPN, Endpoint, EndpointAddr, Session, TransportError};
 pub use fleet::{FleetConfig, FleetError, FleetId, StationEntry, StationRoles};
 pub use framing::{FrameError, MAX_FRAME, read_frame, write_frame};
 pub use session::{SessionError, SyncPeer, initiate, serve};

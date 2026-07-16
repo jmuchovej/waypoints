@@ -14,8 +14,9 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use ed25519_dalek::VerifyingKey;
+pub use iroh::EndpointAddr;
 use iroh::endpoint::{Connection, RecvStream, SendStream};
-use iroh::{EndpointAddr, EndpointId, SecretKey, TransportAddr};
+use iroh::{EndpointId, SecretKey, TransportAddr};
 
 /// One protocol, one ALPN; wire-version negotiation happens inside the
 /// session, not here (§10.3).
@@ -92,6 +93,14 @@ impl Endpoint {
             .await
             .map_err(err)?;
         Ok(Self { inner })
+    }
+
+    /// [`bind`](Self::bind) from an Ed25519 identity key. The 32-byte seed
+    /// is shared, so the endpoint's authenticated id equals the key's public
+    /// half — the roster peer key. Lets the role crates bind without
+    /// touching iroh directly (design doc §12: only fabric knows iroh).
+    pub async fn bind_identity(key: &ed25519_dalek::SigningKey) -> Result<Self, TransportError> {
+        Self::bind(SecretKey::from_bytes(&key.to_bytes())).await
     }
 
     /// This endpoint's dialable address (id + discovered socket hints).
