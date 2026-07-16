@@ -98,10 +98,22 @@ pub struct KeyRoot {
 }
 
 impl KeyRoot {
-    /// Generate a fresh 24-word mnemonic and its key root. The returned
+    /// Generate a fresh 12-word mnemonic and its key root. The returned
     /// phrase is the user's only backup — surface it, then drop it.
+    ///
+    /// 12 words = 128 bits of entropy — matching Ed25519's ~128-bit security
+    /// level, which caps the identity's strength regardless of seed size
+    /// (John, 2026-07-17: halve the transcription burden of the one artifact
+    /// meant to be hand-copied; recovery flows verify the derived identity
+    /// against an expected `MemberID`, which neutralizes the shorter
+    /// checksum). [`from_mnemonic`](Self::from_mnemonic) accepts any valid
+    /// length, so earlier 24-word phrases keep working. Deliberately **no**
+    /// BIP-39 passphrase parameter: it is a pure KDF input that can never be
+    /// changed or removed without becoming a different identity — changeable
+    /// protection belongs in the at-rest wrapping layer (app custody, §14.1
+    /// escrow), not in derivation.
     pub fn generate() -> (Self, String) {
-        let mnemonic = bip39::Mnemonic::generate(24).expect("24 is a valid word count");
+        let mnemonic = bip39::Mnemonic::generate(12).expect("12 is a valid word count");
         let root = Self {
             seed: mnemonic.to_seed(""),
         };
