@@ -10,6 +10,7 @@ members = [
   "crates/domain",
   "crates/importer",
   "crates/outpost",
+  "crates/outpost-protocol",
   "crates/server",
   "crates/store",
   "waypoints/src-tauri",
@@ -34,31 +35,41 @@ cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
 outpost = { path = "crates/outpost", default-features = false }
+outpost-protocol = { path = "crates/outpost-protocol" }
 store = { path = "crates/store" }
 
 anyhow = "1.0.103"
 async-trait = "0.1.89"
 axum = "0.8.9"
+blake3 = "1.8"
+bytes = { version = "1.11", features = ["serde"] }
 chrono = { version = "0.4.45", default-features = false, features = ["serde"] }
-chrono-tz = { version = "0.10.4", default-features = false, features = ["serde"] }
+chrono-tz = { version = "0.10.4", default-features = false, features = [
+  "serde",
+] }
 clap = { version = "4.6.1", features = ["derive"] }
 derive_more = "2.1.1"
 directories = "6.0.0"
+# iroh 1.0.x pins ed25519-dalek exactly; keep in lockstep and upgrade the
+# whole curve25519-family set together.
+ed25519-dalek = { version = "=3.0.0-rc.0", features = ["serde"] }
 eyre = "0.6.12"
 fake = { version = "5.1.0", default-features = false }
 geo = { version = "0.33.1", features = ["use-serde"] }
 heck = "0.5"
+hex = "0.4"
 hostname = "0.4"
 iana-time-zone = "0.1.65"
 indexmap = { version = "2.14", features = ["serde"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = [
   "NSScrollView",
-  "NSView"
+  "NSView",
 ] }
 open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
 paste = "1.0.15"
 pest = "2.8.6"
 pest_derive = "2.8.6"
+postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 pretty_assertions = "1.4.1"
 proc-macro2 = "1"
 pulldown-cmark = { version = "0.13", default-features = false }
@@ -69,7 +80,7 @@ refinery-core = { version = "0.9", default-features = false }
 regex = "1.12.4"
 reqwest = { version = "0.12", default-features = false, features = [
   "json",
-  "rustls-tls"
+  "rustls-tls",
 ] }
 resvg = "0.47.0"
 rstest = "0.26.1"
@@ -95,7 +106,7 @@ serde_json = { version = "1.0.150", features = [
   "arbitrary_precision",
   "indexmap",
   "preserve_order",
-  "raw_value"
+  "raw_value",
 ] }
 sha2 = "0.11"
 specta = { version = "=2.0.0-rc.25", features = [
@@ -135,7 +146,7 @@ wry = { version = "0.55.1", features = [
   "os-webview",
   "protocol",
   "serde",
-  "tracing"
+  "tracing",
 ] }
 
 [workspace.lints.clippy]
@@ -168,11 +179,11 @@ specta-macros = { path = "vendor/specta-macros" }
 specta-serde = { path = "vendor/specta-serde" }
 
 [profile.dev]
-incremental = true  # Compile your binary in smaller steps.
+incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
-opt-level = "s"  # Prioritizes small binary size. Use `3` if you prefer speed.
-strip = true  # Ensures debug symbols are removed.
-lto = true  # Enables link-time-optimizations.
-panic = "abort"  # Higher performance by disabling panic handlers.
-codegen-units = 1  # Allows LLVM to perform better optimization.
+opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
+strip = true      # Ensures debug symbols are removed.
+lto = true        # Enables link-time-optimizations.
+panic = "abort"   # Higher performance by disabling panic handlers.
+codegen-units = 1 # Allows LLVM to perform better optimization.
