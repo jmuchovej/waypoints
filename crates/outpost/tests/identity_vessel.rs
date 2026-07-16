@@ -48,7 +48,10 @@ async fn a_mnemonic_derived_vessel_authors_and_reads() {
     // Phase-4 handshake; the endpoint is the device key (VesselID), distinct
     // from the identity key.
     assert_eq!(vessel.readable_epochs(), vec![EpochID::ZERO]);
-    assert!(vessel.device_cert().is_some());
+    vessel
+        .device_cert()
+        .verify(&identity.verifying_key())
+        .expect("the vessel presents the device cert");
     device
         .cert
         .verify(&identity.verifying_key())

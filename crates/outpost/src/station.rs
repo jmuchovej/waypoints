@@ -32,9 +32,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::replica::{Replica, ReplicaError};
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use outpost_fabric::{Endpoint, Session, TransportError, read_frame, serve, write_frame};
-use outpost_hold::{StationHold, TerritoryHold};
-use outpost_protocol::acl::ACLRecord;
+use outpost_fabric::{Endpoint, Session, TransportError, read_frame, serve_gated, write_frame};
+use outpost_hold::{AclIndex, StationHold, TerritoryHold};
+use outpost_protocol::acl::{ACLRecord, OrderedRecord, Permissions};
 use outpost_protocol::auth::DeviceCert;
 use outpost_protocol::sync::{DeviceSighting, SyncMessage};
 use outpost_protocol::{MemberID, TerritoryID};
@@ -93,6 +93,46 @@ pub struct Station {
     /// vanish from the registry. `None` on a storage-less seeded Station —
     /// embeds and tests stay memory-only.
     hold: Option<StationHold>,
+    register_policy: RegisterPolicy,
+    sync_policy: SyncPolicy,
+}
+
+/// Who may home a **new** Territory on this Station (design doc
+/// `docs/dev/outpost-live-push-and-station-persistence.md` §3.1).
+/// Re-registering an already-served Territory is an idempotent no-op either
+/// way; members and secondary devices never register at all.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RegisterPolicy {
+    /// The authenticated registrant must hold **Owner** permission in the
+    /// presented ACL log's fold. The root author is the degenerate case (the
+    /// root makes its author Owner); a later-promoted Owner presents the log
+    /// that promoted them and passes identically — authority comes from the
+    /// ACL, not from who created the Territory.
+    #[default]
+    Owner,
+    /// Any vessel presenting a valid log may register (tests, throwaway dev).
+    Anyone,
+}
+
+/// Who may `Open`/sync a Territory this Station homes (§3.2). Extensible
+/// (`#[non_exhaustive]`) — a roster-peer arm lands with station↔station
+/// replication.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SyncPolicy {
+    /// Requires an authenticated [`Hello`]. The **ACL phase is served to any
+    /// authenticated identity** (it is what admits an invited joiner); the
+    /// Notice phase is gated on membership checked *after* the ACL
+    /// reconcile — a joiner approved in this very session passes, a stranger
+    /// stops with the ACL and never sees envelopes or ciphertext.
+    ///
+    /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
+    #[default]
+    Members,
+    /// Anyone may pull ciphertext + envelopes (metadata is visible to any
+    /// caller holding the TerritoryID).
+    Everyone,
 }
 
 /// One Territory's sightings, keyed by `(member, device key bytes)` — one
@@ -196,7 +236,21 @@ impl Station {
             territories: Mutex::new(territories),
             sightings: Mutex::new(sightings),
             hold,
+            register_policy: RegisterPolicy::default(),
+            sync_policy: SyncPolicy::default(),
         })
+    }
+
+    /// Override the [`RegisterPolicy`] (default: [`RegisterPolicy::Owner`]).
+    pub fn with_register_policy(mut self, policy: RegisterPolicy) -> Self {
+        self.register_policy = policy;
+        self
+    }
+
+    /// Override the [`SyncPolicy`] (default: [`SyncPolicy::Members`]).
+    pub fn with_sync_policy(mut self, policy: SyncPolicy) -> Self {
+        self.sync_policy = policy;
+        self
     }
 
     /// Load a Replica for every Territory hold already in `dir` (§9 restart
@@ -253,23 +307,52 @@ impl Station {
         self.territories.lock().unwrap().contains_key(territory)
     }
 
-    /// Home a Territory from its root ACL record (§13): idempotent if already
-    /// served; otherwise verify the id is the root's hash and — if this
-    /// Station has a storage directory — bootstrap a fresh hold from the root.
-    /// A first registration is remembered in the Station database (who, when)
-    /// when the registrant authenticated. Returns whether the Station now
-    /// serves it.
+    /// Home a Territory from its presented ACL log (§13): idempotent if
+    /// already served; otherwise verify the id is the root's hash, fold the
+    /// log (chaining + authority must hold), apply the [`RegisterPolicy`],
+    /// and — if this Station has a storage directory — bootstrap a fresh
+    /// hold that is *current with the whole log*, not root-only. A first
+    /// registration is remembered in the Station database (who, when) when
+    /// the registrant authenticated. Returns whether the Station now serves
+    /// it.
     async fn register(
         &self,
         territory: TerritoryID,
-        root: ACLRecord,
+        acl: Vec<OrderedRecord>,
         caller: Option<&Caller>,
     ) -> Result<bool, StationError> {
         if self.serves(&territory) {
             return Ok(true);
         }
+        let Some(root) = acl.first().map(|o| o.record.clone()) else {
+            return Ok(false); // an empty log defines nothing
+        };
         if TerritoryID::of_root(&root)? != territory {
             return Ok(false); // the id must be the root's hash (§9)
+        }
+        // Fold the presented log — a log that does not chain or exceeds its
+        // authors' authority is refused before any policy question.
+        let records: Vec<ACLRecord> = acl.iter().map(|o| o.record.clone()).collect();
+        let Ok(fold) = AclIndex::from_ordered(&records) else {
+            return Ok(false);
+        };
+        // Who may home a new Territory here (design doc §3.1): the fold is
+        // the authority — a later-promoted Owner passes identically to the
+        // creator.
+        match self.register_policy {
+            RegisterPolicy::Anyone => {}
+            RegisterPolicy::Owner => {
+                let Some(caller) = caller else {
+                    return Ok(false); // Owner policy requires the handshake
+                };
+                let member = MemberID::from(&caller.identity);
+                let is_owner = fold
+                    .head_state()
+                    .is_some_and(|s| s.members.get(&member) == Some(&Permissions::Owner));
+                if !is_owner {
+                    return Ok(false);
+                }
+            }
         }
         let Some(dir) = &self.storage else {
             return Ok(false); // a fixed-replica Station bootstraps nothing new
@@ -278,7 +361,10 @@ impl Station {
         let path = path.to_str().ok_or(StationError::BadPath)?;
         let hold = TerritoryHold::open(path).await?;
         if hold.acl_records().await?.is_empty() {
-            hold.append_acl(&root, 0, None).await?;
+            for (position, ordered) in acl.iter().enumerate() {
+                hold.append_acl(&ordered.record, position as u64, ordered.proof.as_ref())
+                    .await?;
+            }
         }
         let replica = Replica::reopen(hold).await?;
         self.territories
@@ -364,8 +450,8 @@ impl Station {
         session: &mut Session,
     ) {
         match request {
-            Ok(SyncMessage::Register { territory, root }) => {
-                let ok = match self.register(territory, root, caller).await {
+            Ok(SyncMessage::Register { territory, acl }) => {
+                let ok = match self.register(territory, acl, caller).await {
                     Ok(ok) => ok,
                     Err(e) => {
                         tracing::warn!("station: registration failed: {e}");
@@ -377,23 +463,47 @@ impl Station {
                 }
                 let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok }).await;
             }
-            Ok(SyncMessage::Open { territory }) => match self.replica_for(&territory) {
-                Some(replica) => {
-                    if let Some(caller) = caller {
-                        self.record_sighting(territory, caller).await;
-                    }
-                    let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: true }).await;
-                    if serve(&*replica, &mut session.send, &mut session.recv)
-                        .await
-                        .is_err()
-                    {
-                        tracing::warn!("station session ended early");
-                    }
-                }
-                None => {
+            Ok(SyncMessage::Open { territory }) => {
+                let replica = self.replica_for(&territory);
+                // Members admission needs an authenticated caller before
+                // anything is served; the *membership* check itself waits
+                // until after the ACL phase (see the gate below).
+                let admitted = replica.is_some()
+                    && match self.sync_policy {
+                        SyncPolicy::Everyone => true,
+                        SyncPolicy::Members => caller.is_some(),
+                    };
+                if !admitted {
                     let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: false }).await;
+                    return;
                 }
-            },
+                let replica = replica.expect("admitted implies present");
+                if let Some(caller) = caller {
+                    self.record_sighting(territory, caller).await;
+                }
+                let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: true }).await;
+                // The two-phase gate (design doc §3.2): ACL phase for any
+                // authenticated identity, Notice phase only for a member of
+                // the *post-reconcile* fold — an invited joiner approved in
+                // this very session passes; a stranger stops with the ACL.
+                let policy = self.sync_policy;
+                let identity = caller.map(|c| c.identity);
+                let gate = || async {
+                    match policy {
+                        SyncPolicy::Everyone => true,
+                        SyncPolicy::Members => match identity {
+                            Some(identity) => self.is_member(&territory, &identity).await,
+                            None => false,
+                        },
+                    }
+                };
+                if serve_gated(&*replica, &mut session.send, &mut session.recv, gate)
+                    .await
+                    .is_err()
+                {
+                    tracing::warn!("station session ended early");
+                }
+            }
             Ok(SyncMessage::OrderRequest { territory, record }) => {
                 // Order the submission (§8.4): assign a position and
                 // countersign — only possible if we hold the fleet key and
