@@ -7,6 +7,7 @@
 //! vectors, and the crate boundary keeps it that way (§12).
 
 pub mod acl;
+pub mod auth;
 pub mod crypto;
 mod envelope;
 mod error;

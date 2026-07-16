@@ -26,9 +26,12 @@
 //! - SLIP-10 is hand-rolled over `hmac`/`sha2`; it is short and pinned to the
 //!   SLIP-0010 spec test vectors.
 
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{SigningKey, VerifyingKey};
 use hmac::{Hmac, KeyInit, Mac};
 use outpost_protocol::MemberID;
+/// The device certificate type, re-exported from `outpost-protocol` (where
+/// it lives so it can ride a connection handshake).
+pub use outpost_protocol::auth::DeviceCert;
 use outpost_protocol::crypto::{KemPublicKey, KemSecretKey};
 use sha2::Sha512;
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -39,16 +42,10 @@ const HARDENED: u32 = 0x8000_0000;
 const PURPOSE: u32 = 44;
 const COIN: u32 = 9297;
 
-/// Domain tag separating device-certification signatures from every other
-/// use of the identity key.
-pub const DEVICE_CERT_CONTEXT: &[u8] = b"outpost/vessel-cert/v1";
-
 #[derive(Debug, thiserror::Error)]
 pub enum IdentityError {
     #[error("invalid mnemonic: {0}")]
     Mnemonic(#[from] bip39::Error),
-    #[error("device certificate does not verify against the identity")]
-    BadCert,
 }
 
 /// One SLIP-10 Ed25519 node: 32 bytes of key material and a 32-byte chain
@@ -181,12 +178,11 @@ impl Identity {
         self.kem_secret().public_key()
     }
 
-    /// Certify a device key as belonging to this identity (§4).
+    /// Certify a device key as belonging to this identity (§4). The cert
+    /// type lives in `outpost-protocol` so it can ride a connection
+    /// handshake (§10.2).
     pub fn certify(&self, device: &VerifyingKey) -> DeviceCert {
-        DeviceCert {
-            device: *device,
-            signature: self.signing.sign(&cert_message(device)),
-        }
+        DeviceCert::issue(&self.signing, device)
     }
 }
 
@@ -202,30 +198,6 @@ pub struct DeviceKey {
     pub signing: SigningKey,
     pub cert: DeviceCert,
     pub index: u32,
-}
-
-/// An identity-signed statement "this device key is mine" (§4). Serializable
-/// so it can travel in a connection handshake (§10.2).
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub struct DeviceCert {
-    pub device: VerifyingKey,
-    pub signature: Signature,
-}
-
-impl DeviceCert {
-    /// Verify this certificate against a claimed identity public key.
-    pub fn verify(&self, identity: &VerifyingKey) -> Result<(), IdentityError> {
-        identity
-            .verify(&cert_message(&self.device), &self.signature)
-            .map_err(|_| IdentityError::BadCert)
-    }
-}
-
-fn cert_message(device: &VerifyingKey) -> Vec<u8> {
-    let mut message = Vec::with_capacity(DEVICE_CERT_CONTEXT.len() + 32);
-    message.extend_from_slice(DEVICE_CERT_CONTEXT);
-    message.extend_from_slice(device.as_bytes());
-    message
 }
 
 #[cfg(test)]
