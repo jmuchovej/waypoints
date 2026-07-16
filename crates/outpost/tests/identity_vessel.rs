@@ -4,10 +4,10 @@
 
 use outpost::protocol::acl::{ACLPayload, ACLRecord, RecordBody};
 use outpost::protocol::crypto::{ReadKey, seal_key_to_member};
+use outpost::protocol::identity::KeyRoot;
 use outpost::protocol::{EpochID, NoticeID};
 use outpost::replica::Replica;
 use outpost::vessel::Vessel;
-use outpost_identity::KeyRoot;
 use rand::SeedableRng;
 
 #[tokio::test]

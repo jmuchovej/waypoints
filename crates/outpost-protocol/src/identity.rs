@@ -15,26 +15,28 @@
 //! `MemberID` is an identity, never a device — validation keys on it, §5.4).
 //! Each **device** gets its own signing key, whose public half is the
 //! `VesselID` that binds the transport connection; the identity certifies it
-//! so a Station can learn which identity is behind a device (§10.2, wired in
-//! a later phase). All of a user's devices share the one identity signing +
-//! KEM key, so onboarding a new device from the same mnemonic can read all
-//! history the identity is entitled to.
+//! ([`auth::DeviceCert`](crate::auth::DeviceCert)) so a Station can learn
+//! which identity is behind a device (§10.2). All of a user's devices share
+//! the one identity signing + KEM key, so a new device from the same mnemonic
+//! can read all history the identity is entitled to.
 //!
 //! Subordinate decisions (recorded here, not contradicting the design doc):
 //! - Coin type 9297 is "WAYP" on a phone keypad — unregistered in SLIP-44,
 //!   which is fine: these paths never interoperate with wallet software.
-//! - SLIP-10 is hand-rolled over `hmac`/`sha2`; it is short and pinned to the
-//!   SLIP-0010 spec test vectors.
+//! - SLIP-10 is hand-rolled over `hmac`/`sha2` — not novel crypto, just the
+//!   spec's byte-plumbing over vetted HMAC, pinned to the SLIP-0010 vectors.
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use hmac::{Hmac, KeyInit, Mac};
-use outpost_protocol::MemberID;
-/// The device certificate type, re-exported from `outpost-protocol` (where
-/// it lives so it can ride a connection handshake).
-pub use outpost_protocol::auth::DeviceCert;
-use outpost_protocol::crypto::{KemPublicKey, KemSecretKey};
 use sha2::Sha512;
 use zeroize::{Zeroize, ZeroizeOnDrop};
+
+use crate::MemberID;
+use crate::crypto::{KemPublicKey, KemSecretKey};
+
+/// The device certificate type lives in [`auth`](crate::auth) (so it can ride
+/// a connection handshake); re-exported here for the identity API surface.
+pub use crate::auth::DeviceCert;
 
 type HmacSha512 = Hmac<Sha512>;
 
@@ -178,9 +180,7 @@ impl Identity {
         self.kem_secret().public_key()
     }
 
-    /// Certify a device key as belonging to this identity (§4). The cert
-    /// type lives in `outpost-protocol` so it can ride a connection
-    /// handshake (§10.2).
+    /// Certify a device key as belonging to this identity (§4).
     pub fn certify(&self, device: &VerifyingKey) -> DeviceCert {
         DeviceCert::issue(&self.signing, device)
     }
@@ -278,7 +278,6 @@ mod tests {
             a.identity().kem_public().as_bytes(),
             b.identity().kem_public().as_bytes()
         );
-        // Identity, its KEM key, and device keys must all be distinct.
         assert_ne!(
             a.identity().verifying_key(),
             a.device(0).signing.verifying_key()
