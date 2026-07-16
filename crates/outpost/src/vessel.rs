@@ -56,20 +56,25 @@ pub struct Vessel {
 }
 
 impl Vessel {
-    /// Open a Vessel with the given identity and KEM seed over `replica`.
+    /// Open a Vessel with the given identity and KEM seed over `replica`,
+    /// deriving whatever read keys the current ACL log already seals to this
+    /// member ([`refresh_keys`](Self::refresh_keys)) — so a freshly-opened
+    /// Vessel can read history it is entitled to without a separate call.
     pub async fn new(
         identity: SigningKey,
         kem: KemSecretKey,
         replica: Replica,
     ) -> Result<Self, VesselError> {
         let endpoint = Endpoint::bind_identity(&identity).await?;
-        Ok(Self {
+        let mut vessel = Self {
             identity,
             kem,
             endpoint,
             replica,
             read_keys: BTreeMap::new(),
-        })
+        };
+        vessel.refresh_keys().await?;
+        Ok(vessel)
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -194,7 +199,7 @@ impl Vessel {
         };
         let header = EnvelopeHeader {
             parents,
-            acl_head: self.replica.acl_head(),
+            acl_head: self.replica.acl_head().await?,
             epoch,
             author: self.identity.verifying_key(),
             snapshot_base,
@@ -220,10 +225,12 @@ impl Vessel {
         Ok(open_payload(key, &envelope.header, &envelope.payload)?)
     }
 
-    /// Dial a Station and run one full sync (§10): reconciles both
-    /// directions and applies received Notices through the replica.
+    /// Dial a Station and run one full sync (§10): reconciles the ACL log
+    /// and both directions of the Notice DAG, then **auto-refreshes read
+    /// keys** — any membership change the sync delivered (new epoch, a key
+    /// newly sealed to this member) takes effect without a separate call.
     pub async fn sync_with(
-        &self,
+        &mut self,
         station: impl Into<outpost_fabric::EndpointAddr>,
     ) -> Result<(), VesselError> {
         let mut session = self.endpoint.connect(station).await?;
@@ -231,6 +238,9 @@ impl Vessel {
         // the caller supplies the trusted FleetConfig.
         let _ = initiate(&self.replica, &mut session.send, &mut session.recv).await;
         session.close();
+        // The session may have appended ACL records to the hold; pick up any
+        // keys they sealed to us.
+        self.refresh_keys().await?;
         Ok(())
     }
 }
