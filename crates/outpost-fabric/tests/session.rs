@@ -145,6 +145,43 @@ impl SyncPeer for HoldPeer {
             }
         }
     }
+
+    async fn acl_len(&self) -> u64 {
+        self.hold
+            .acl_records()
+            .await
+            .map(|r| r.len() as u64)
+            .unwrap_or(0)
+    }
+
+    async fn acl_suffix(&self, from: u64) -> Vec<ACLRecord> {
+        self.hold
+            .acl_records()
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .skip(from as usize)
+            .collect()
+    }
+
+    async fn ingest_acl(&self, records: Vec<ACLRecord>) {
+        // Test stub: append records we do not already hold, by id. Both peers
+        // in these tests start from the same ACL, so this is typically empty.
+        let existing = self.hold.acl_records().await.unwrap_or_default();
+        let known: std::collections::HashSet<_> = existing
+            .iter()
+            .filter_map(|r| RecordID::of(r).ok())
+            .collect();
+        let mut pos = existing.len() as u64;
+        for record in records {
+            if let Ok(id) = RecordID::of(&record)
+                && !known.contains(&id)
+            {
+                let _ = self.hold.append_acl(&record, pos).await;
+                pos += 1;
+            }
+        }
+    }
 }
 
 fn key(seed: u8) -> SigningKey {

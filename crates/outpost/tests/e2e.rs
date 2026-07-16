@@ -40,6 +40,8 @@ async fn vessel_station_vessel_converges_over_quic() {
     let station_addr = station.endpoint().direct_addr();
 
     // --- Vessel A: derives its key from the log, authors an encrypted Notice. ---
+    // `Vessel::new` auto-derives keys from the bootstrap ACL — no explicit
+    // refresh needed.
     let mut vessel_a = Vessel::new(
         signing(2),
         kem(2),
@@ -47,7 +49,6 @@ async fn vessel_station_vessel_converges_over_quic() {
     )
     .await
     .unwrap();
-    vessel_a.refresh_keys().await.unwrap();
 
     let mut rng = rand::rngs::StdRng::from_seed([7; 32]);
     let notice = vessel_a
@@ -89,7 +90,6 @@ async fn vessel_station_vessel_converges_over_quic() {
     )
     .await
     .unwrap();
-    vessel_b.refresh_keys().await.unwrap();
 
     let station_serve = tokio::spawn(async move {
         station.serve_once().await.unwrap();
