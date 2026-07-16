@@ -81,6 +81,39 @@ pub fn wanted<'a>(
         .collect()
 }
 
+/// One observed device of one identity, as a Station saw it (§4): the
+/// device key that bound a connection, the certificate tying it to the
+/// identity that authored through it, and when. This is *attribution*, not
+/// authorization — a user reads it to answer "which devices have touched my
+/// Territory"; nothing grants or revokes through it. The viewer verifies
+/// `cert` against `identity` (and derives the `MemberID` from `identity`)
+/// rather than trusting the reporting Station.
+///
+/// Timestamps are the Station's clock (seconds since the Unix epoch) —
+/// presence metadata a Station already observes, same trust class as the
+/// envelope. `connected` is live-session presence: `true` only while a
+/// session from that device is open.
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct DeviceSighting {
+    /// The identity behind the device (its `MemberID` is derived from this).
+    pub identity: ed25519_dalek::VerifyingKey,
+    /// The identity's certificate over the device key — verify it. The
+    /// certified key (`cert.device`) *is* the sighted device (the
+    /// `VesselID`); a Station only records a sighting after checking it was
+    /// the connection's authenticated key.
+    pub cert: crate::auth::DeviceCert,
+    pub first_seen: u64,
+    pub last_seen: u64,
+    pub connected: bool,
+}
+
+impl DeviceSighting {
+    /// The sighted device key (the `VesselID`) — the key `cert` certifies.
+    pub fn device(&self) -> &ed25519_dalek::VerifyingKey {
+        &self.cert.device
+    }
+}
+
 /// One message in a sync session (§10). A session first reconciles the ACL
 /// log (which is linear and must be current before Notices can validate, as
 /// each Notice pins an `acl_head`), then the Notice DAG:
@@ -165,6 +198,20 @@ pub enum SyncMessage {
     AclPush {
         /// Ordered ACL records the responder lacked (empty if none).
         records: Vec<crate::acl::OrderedRecord>,
+    },
+    /// Vessel → Station: list the device sightings for `territory` (§4 —
+    /// which devices, behind which identities, have touched it). Requires a
+    /// preceding [`Hello`](SyncMessage::Hello); the Station answers only if
+    /// the authenticated identity is a **member** of the Territory (viewing
+    /// is gated; being sighted is not).
+    DevicesRequest {
+        territory: crate::TerritoryID,
+    },
+    /// Station → Vessel: the sightings. Each carries its device cert so the
+    /// *viewer* verifies attribution — the Station's word is never trusted
+    /// for a security judgment.
+    DevicesResponse {
+        devices: Vec<DeviceSighting>,
     },
     TallyRequest(TallyDigest),
     TallyResponse {
