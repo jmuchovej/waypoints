@@ -9,6 +9,8 @@
 //! Notice whose bytes do not decode, but "well-formed bytes" is the only
 //! judgment it makes; authority is the validator's job.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use bedrock::{Database, Filter, Query};
 use outpost_protocol::acl::ACLRecord;
 use outpost_protocol::{NoticeID, NoticeStore, RecordID, SignedNotice, TrackID};
@@ -159,6 +161,49 @@ impl TerritoryHold {
             ])))
             .await?;
         rows.into_iter().map(StoredNotice::from_row).collect()
+    }
+
+    /// The whole Territory's `(Track → head ids)` map — the input to a
+    /// [`TallyDigest`](outpost_protocol::sync::TallyDigest) (§10.1).
+    pub async fn all_heads(&self) -> Result<BTreeMap<TrackID, BTreeSet<NoticeID>>, HoldError> {
+        let rows = self
+            .db
+            .query::<NoticeRow>(&Query::new().filter(Filter::eq("is_head", true)))
+            .await?;
+        let mut heads: BTreeMap<TrackID, BTreeSet<NoticeID>> = BTreeMap::new();
+        for row in rows {
+            let stored = StoredNotice::from_row(row)?;
+            heads.entry(stored.track).or_default().insert(stored.id);
+        }
+        Ok(heads)
+    }
+
+    /// Every Notice belonging to one Track (its whole DAG, not just heads)
+    /// — a resupply offer for a divergent Track (§10.2).
+    pub async fn track_notices(&self, track: TrackID) -> Result<Vec<StoredNotice>, HoldError> {
+        let rows = self
+            .db
+            .query::<NoticeRow>(
+                &Query::new()
+                    .filter(Filter::eq(
+                        "track",
+                        track.root_notice().as_bytes().to_owned(),
+                    ))
+                    .sort_asc("topo"),
+            )
+            .await?;
+        rows.into_iter().map(StoredNotice::from_row).collect()
+    }
+
+    /// Every Notice id the hold currently holds — the `have` set a resupply
+    /// filters an offer against (§10.2).
+    pub async fn held_ids(&self) -> Result<BTreeSet<NoticeID>, HoldError> {
+        Ok(self
+            .notices_after(-1)
+            .await?
+            .into_iter()
+            .map(|s| s.id)
+            .collect())
     }
 
     /// Every Notice with topo cursor greater than `after`, in cursor order
