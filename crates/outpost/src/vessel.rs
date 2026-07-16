@@ -15,9 +15,14 @@ use std::collections::BTreeMap;
 use crate::replica::{Replica, ReplicaError};
 use ed25519_dalek::SigningKey;
 use outpost_fabric::{Endpoint, TransportError, initiate};
-use outpost_protocol::crypto::{KemSecretKey, ReadKey, open_payload};
+use outpost_hold::AclIndex;
+use outpost_protocol::acl::ACLPayload;
+use outpost_protocol::crypto::{
+    KemSecretKey, ReadKey, open_payload, open_sealed_key, unwrap_prev_key,
+};
 use outpost_protocol::{
-    CryptoError, Envelope, EnvelopeHeader, EpochID, NoticeID, SignedNotice, TrackID, WireError,
+    CryptoError, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, SignedNotice, TrackID,
+    WireError,
 };
 
 pub use outpost_fabric::fleet;
@@ -29,6 +34,8 @@ pub enum VesselError {
     Transport(#[from] TransportError),
     #[error(transparent)]
     Replica(#[from] ReplicaError),
+    #[error(transparent)]
+    Hold(#[from] outpost_hold::HoldError),
     #[error(transparent)]
     Wire(#[from] WireError),
     #[error(transparent)]
@@ -77,11 +84,90 @@ impl Vessel {
         self.kem.public_key()
     }
 
-    /// Cache a read key the Vessel obtained by unsealing an ACL record's
-    /// sealed box with its KEM secret (§7.1). Slice-7 scope keeps key
-    /// acquisition explicit; wiring it to the ACL fold is a later step.
+    /// Cache a read key directly — an escape hatch for keys obtained out of
+    /// band. The normal path is [`refresh_keys`](Self::refresh_keys), which
+    /// derives keys from the ACL log.
     pub fn cache_read_key(&mut self, epoch: EpochID, key: ReadKey) {
         self.read_keys.insert(epoch, key);
+    }
+
+    /// Populate the read-key cache from the ACL log (§7.2–7.3): for every
+    /// record that sealed a key to *this* Vessel's member identity, unseal
+    /// it with the KEM secret; then walk the backwards key chain so a member
+    /// admitted at a later epoch recovers every earlier epoch it is entitled
+    /// to read. Idempotent — call after opening a Territory and after any
+    /// sync that delivered new ACL records.
+    ///
+    /// This is a Vessel-only operation: it is exactly the key acquisition a
+    /// Station cannot perform (it is not a member, so no box is sealed to
+    /// it). A box sealed to someone else simply fails to open — that is
+    /// expected, not an error, so those failures are skipped silently.
+    pub async fn refresh_keys(&mut self) -> Result<(), VesselError> {
+        let me = MemberID::from(&self.identity.verifying_key());
+        let records = self.replica.hold().acl_records().await?;
+
+        // Forward pass: unseal the one key sealed directly to me, and record
+        // each rotation so the backward pass can chain through it. `fold`
+        // tracks the epoch in force *before* each record is applied.
+        let mut fold = AclIndex::new();
+        let mut rotations: Vec<(EpochID, EpochID, Vec<u8>)> = Vec::new();
+        for record in &records {
+            let body = record.parse_and_verify()?;
+            let epoch_before = fold.head_state().map_or(EpochID::ZERO, |s| s.epoch);
+            match &body.payload {
+                ACLPayload::Root {
+                    epoch0_key_wrapped, ..
+                } if MemberID::from(&body.author) == me => {
+                    if let Ok(key) = open_sealed_key(&self.kem, epoch0_key_wrapped) {
+                        self.read_keys.insert(EpochID::ZERO, key);
+                    }
+                }
+                ACLPayload::Approve {
+                    member,
+                    current_key_wrapped,
+                    ..
+                } if *member == me => {
+                    // Approve does not rotate: the key it seals is the epoch
+                    // already in force.
+                    if let Ok(key) = open_sealed_key(&self.kem, current_key_wrapped) {
+                        self.read_keys.insert(epoch_before, key);
+                    }
+                }
+                ACLPayload::Remove {
+                    new_epoch,
+                    new_key_wrapped,
+                    prev_key_wrapped,
+                    ..
+                } => {
+                    if let Some((_, sealed)) = new_key_wrapped.iter().find(|(m, _)| *m == me)
+                        && let Ok(key) = open_sealed_key(&self.kem, sealed)
+                    {
+                        self.read_keys.insert(*new_epoch, key);
+                    }
+                    rotations.push((*new_epoch, epoch_before, prev_key_wrapped.clone()));
+                }
+                _ => {}
+            }
+            fold.push(record)?;
+        }
+
+        // Backward pass: newest rotation first, so a key acquired at a high
+        // epoch cascades down. Each Remove wraps epoch N−1's key under epoch
+        // N's (§7.3); if we hold N, we can recover N−1, and so on to genesis.
+        for (new_epoch, epoch_before, prev_wrapped) in rotations.into_iter().rev() {
+            if let Some(newer) = self.read_keys.get(&new_epoch).cloned()
+                && let Ok(prev) = unwrap_prev_key(&newer, &prev_wrapped)
+            {
+                self.read_keys.entry(epoch_before).or_insert(prev);
+            }
+        }
+        Ok(())
+    }
+
+    /// Which epochs this Vessel currently holds a read key for — the history
+    /// it can decrypt (§7.2). Useful for tests and diagnostics.
+    pub fn readable_epochs(&self) -> Vec<EpochID> {
+        self.read_keys.keys().copied().collect()
     }
 
     /// Author a Notice: seal `plaintext` under the current epoch's read
