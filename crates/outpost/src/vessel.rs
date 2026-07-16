@@ -16,12 +16,12 @@ use crate::replica::{Replica, ReplicaError};
 use ed25519_dalek::{Signer, SigningKey};
 use outpost_fabric::{Endpoint, TransportError, initiate};
 use outpost_hold::AclIndex;
-use outpost_identity::{DeviceKey, Identity};
 use outpost_protocol::acl::{ACLPayload, InviteKey, Permissions, RecordBody, join_binding};
 use outpost_protocol::crypto::{
     KemSecretKey, ReadKey, open_payload, open_sealed_key, seal_key_to_member, unwrap_prev_key,
     wrap_prev_key,
 };
+use outpost_protocol::identity::{DeviceKey, Identity};
 use outpost_protocol::sync::SyncMessage;
 use outpost_protocol::{
     CryptoError, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, SignedNotice, TerritoryID,
@@ -93,7 +93,7 @@ pub struct Vessel {
     /// Certificate binding the endpoint's device key to `identity` (§4).
     /// `None` for the low-level [`new`](Self::new) constructor, whose
     /// endpoint is bound with the identity key itself.
-    cert: Option<outpost_identity::DeviceCert>,
+    cert: Option<outpost_protocol::identity::DeviceCert>,
     replica: Replica,
     read_keys: BTreeMap<EpochID, ReadKey>,
 }
@@ -105,11 +105,11 @@ impl Vessel {
     /// already seals to this identity are derived immediately
     /// ([`refresh_keys`](Self::refresh_keys)).
     ///
-    /// [`Identity`]: outpost_identity::Identity
-    /// [`DeviceKey`]: outpost_identity::DeviceKey
+    /// [`Identity`]: outpost_protocol::identity::Identity
+    /// [`DeviceKey`]: outpost_protocol::identity::DeviceKey
     pub async fn from_identity(
-        identity: &outpost_identity::Identity,
-        device: &outpost_identity::DeviceKey,
+        identity: &outpost_protocol::identity::Identity,
+        device: &outpost_protocol::identity::DeviceKey,
         replica: Replica,
     ) -> Result<Self, VesselError> {
         let endpoint = Endpoint::bind_identity(&device.signing).await?;
@@ -150,7 +150,7 @@ impl Vessel {
     /// The device certificate proving the endpoint key belongs to this
     /// identity (§4) — presented in the connection handshake (Phase 4).
     /// `None` when the Vessel was opened via [`new`](Self::new).
-    pub fn device_cert(&self) -> Option<&outpost_identity::DeviceCert> {
+    pub fn device_cert(&self) -> Option<&outpost_protocol::identity::DeviceCert> {
         self.cert.as_ref()
     }
 

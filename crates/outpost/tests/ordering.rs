@@ -7,14 +7,19 @@
 use ed25519_dalek::SigningKey;
 use outpost::protocol::acl::{ACLPayload, OrderProof, OrderedRecord, Permissions, RecordBody};
 use outpost::protocol::crypto::ReadKey;
+use outpost::protocol::identity::KeyRoot;
 use outpost::protocol::{RecordID, acl};
 use outpost::replica::Replica;
 use outpost::station::Station;
 use outpost::vessel::Vessel;
-use outpost_identity::KeyRoot;
 use rand::SeedableRng;
 
-fn identity(seed: u8) -> (outpost_identity::Identity, outpost_identity::DeviceKey) {
+fn identity(
+    seed: u8,
+) -> (
+    outpost::protocol::identity::Identity,
+    outpost::protocol::identity::DeviceKey,
+) {
     let root = KeyRoot::from_seed([seed; 64]);
     (root.identity(), root.device(0))
 }

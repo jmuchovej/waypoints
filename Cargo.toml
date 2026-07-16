@@ -12,7 +12,6 @@ members = [
   "crates/outpost",
   "crates/outpost-fabric",
   "crates/outpost-hold",
-  "crates/outpost-identity",
   "crates/outpost-protocol",
   "crates/server",
   "crates/store",
@@ -40,7 +39,6 @@ importer = { path = "crates/importer" }
 outpost = { path = "crates/outpost", default-features = false }
 outpost-fabric = { path = "crates/outpost-fabric" }
 outpost-hold = { path = "crates/outpost-hold" }
-outpost-identity = { path = "crates/outpost-identity" }
 outpost-protocol = { path = "crates/outpost-protocol" }
 store = { path = "crates/store" }
 

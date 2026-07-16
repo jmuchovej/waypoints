@@ -12,6 +12,7 @@ pub mod crypto;
 mod envelope;
 mod error;
 mod id;
+pub mod identity;
 pub mod sync;
 mod validate;
 
