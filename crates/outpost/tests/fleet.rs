@@ -4,14 +4,19 @@
 //! identity handshake proves which identity is behind the device.
 
 use ed25519_dalek::SigningKey;
+use outpost::protocol::identity::KeyRoot;
 use outpost::replica::Replica;
 use outpost::station::Station;
 use outpost::station::fleet::{FleetId, RosterBody, StationEntry, StationRoles};
 use outpost::vessel::Vessel;
-use outpost_identity::KeyRoot;
 use rand::SeedableRng;
 
-fn identity(seed: u8) -> (outpost_identity::Identity, outpost_identity::DeviceKey) {
+fn identity(
+    seed: u8,
+) -> (
+    outpost::protocol::identity::Identity,
+    outpost::protocol::identity::DeviceKey,
+) {
     let root = KeyRoot::from_seed([seed; 64]);
     (root.identity(), root.device(0))
 }

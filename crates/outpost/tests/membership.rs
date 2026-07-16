@@ -9,12 +9,17 @@
 //! focused on the authoring APIs.
 
 use outpost::protocol::acl::Permissions;
+use outpost::protocol::identity::KeyRoot;
 use outpost::protocol::{EpochID, NoticeID};
 use outpost::vessel::Vessel;
-use outpost_identity::KeyRoot;
 use rand::SeedableRng;
 
-fn identity(seed: u8) -> (outpost_identity::Identity, outpost_identity::DeviceKey) {
+fn identity(
+    seed: u8,
+) -> (
+    outpost::protocol::identity::Identity,
+    outpost::protocol::identity::DeviceKey,
+) {
     let root = KeyRoot::from_seed([seed; 64]);
     (root.identity(), root.device(0))
 }
