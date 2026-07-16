@@ -1,15 +1,21 @@
 //! The shared replication engine (design doc §12). A [`Replica`] composes a
-//! per-Territory [`TerritoryHold`] with the folded ACL state and the §5.4
-//! validation loop, and implements the fabric [`SyncPeer`] seam. Both
-//! roles — [`station`](crate::station) and [`vessel`](crate::vessel) — run
-//! *this same engine* (§3 rule 5); it lives in its own module so the
-//! identical replication code is shared, not duplicated in each role.
+//! per-Territory [`TerritoryHold`] with the §5.4 validation loop, and
+//! implements the fabric [`SyncPeer`] seam. Both roles —
+//! [`station`](crate::station) and [`vessel`](crate::vessel) — run *this
+//! same engine* (§3 rule 5); it lives in its own module so the identical
+//! replication code is shared, not duplicated in each role.
 //!
 //! What a Replica does not do is role-specific: it never originates edits
 //! (that is the Vessel's alone), it holds no read keys or decryption
 //! (Vessel-only), and it assigns no ACL order (the Station orderer's job).
 //! It ingests, validates, stores, and answers sync — the common half.
+//!
+//! The ACL state is *derived from the hold* on demand rather than cached, so
+//! newly-synced ACL records take effect immediately with no interior
+//! mutability. The ACL log is short (membership changes are rare), so
+//! refolding it per ingest is cheap.
 
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicI64, Ordering};
 
 use outpost_fabric::SyncPeer;
@@ -30,12 +36,10 @@ pub enum ReplicaError {
     Acl(#[from] ACLReject),
 }
 
-/// A Territory replica: the hold, the folded ACL, and the topo cursor.
-/// Cheap-cloneless — one per open Territory per peer.
+/// A Territory replica: the hold and the topo cursor. ACL and head state are
+/// derived from the hold as needed.
 pub struct Replica {
     hold: TerritoryHold,
-    acl: AclIndex,
-    acl_head: RecordID,
     next_topo: AtomicI64,
 }
 
@@ -50,28 +54,26 @@ impl Replica {
         Self::reopen(hold).await
     }
 
-    /// Reopen a Replica over an already-populated hold (its ACL log is read
-    /// back and refolded).
+    /// Reopen a Replica over an already-populated hold.
     pub async fn reopen(hold: TerritoryHold) -> Result<Self, ReplicaError> {
-        let acl = hold.acl_index().await?;
-        let acl_head = acl.head().ok_or(ReplicaError::NoAcl)?;
+        // A Territory must have a root; fail fast if the hold is empty.
+        if hold.acl_index().await?.head().is_none() {
+            return Err(ReplicaError::NoAcl);
+        }
         let next_topo = AtomicI64::new(hold.max_topo().await? + 1);
-        Ok(Self {
-            hold,
-            acl,
-            acl_head,
-            next_topo,
-        })
+        Ok(Self { hold, next_topo })
     }
 
-    /// The ACL head every locally-authored Notice pins (§8.3).
-    pub fn acl_head(&self) -> RecordID {
-        self.acl_head
+    /// The current head of the ACL log — what a locally-authored Notice pins
+    /// (§8.3).
+    pub async fn acl_head(&self) -> Result<RecordID, ReplicaError> {
+        self.acl_index().await?.head().ok_or(ReplicaError::NoAcl)
     }
 
-    /// The folded ACL state provider, for authoring/validation decisions.
-    pub fn acl(&self) -> &AclIndex {
-        &self.acl
+    /// The folded ACL state, materialized from the hold (§8). Fresh each
+    /// call, so it always reflects the latest synced records.
+    pub async fn acl_index(&self) -> Result<AclIndex, ReplicaError> {
+        Ok(self.hold.acl_index().await?)
     }
 
     /// Read access to the underlying hold (heads, track queries, records).
@@ -83,11 +85,62 @@ impl Replica {
         self.next_topo.fetch_add(1, Ordering::SeqCst)
     }
 
+    // ---- ACL log sync (§8, linear ordered log) -------------------------
+
+    /// How many ACL records this replica holds — a peer's position in the
+    /// linear log.
+    pub async fn acl_len(&self) -> Result<u64, ReplicaError> {
+        Ok(self.hold.acl_records().await?.len() as u64)
+    }
+
+    /// The ACL records at or after log position `from` — the suffix a peer
+    /// that is behind needs.
+    pub async fn acl_suffix(&self, from: u64) -> Result<Vec<ACLRecord>, ReplicaError> {
+        Ok(self
+            .hold
+            .acl_records()
+            .await?
+            .into_iter()
+            .skip(from as usize)
+            .collect())
+    }
+
+    /// Append newly-received ACL records to the log (§8.4). Each is folded
+    /// (validating chaining and authority) before it is persisted; a record
+    /// that does not chain stops ingestion (the linear log cannot skip a
+    /// gap). Already-held records are skipped, so re-delivery is idempotent.
+    pub async fn ingest_acl(&self, incoming: Vec<ACLRecord>) -> Result<(), ReplicaError> {
+        let existing = self.hold.acl_records().await?;
+        let mut fold = AclIndex::from_ordered(&existing)?;
+        let mut known: HashSet<RecordID> = existing
+            .iter()
+            .map(RecordID::of)
+            .collect::<Result<_, _>>()?;
+        let mut position = existing.len() as u64;
+        for record in incoming {
+            let id = RecordID::of(&record)?;
+            if known.contains(&id) {
+                continue; // already held
+            }
+            // Fold to validate chaining/authority; a break here means the
+            // record does not extend our head (invalid or out of order), and
+            // nothing after it in a linear log can apply either.
+            if fold.push(&record).is_err() {
+                break;
+            }
+            self.hold.append_acl(&record, position).await?;
+            known.insert(id);
+            position += 1;
+        }
+        Ok(())
+    }
+
     /// Apply a batch of received Notices: validate each (§5.4), append the
     /// ready ones, and retry the pending (orphan-queued) ones until no
     /// further progress. Duplicates are skipped, so re-delivery is
     /// idempotent. Rejected Notices are dropped (terminal, non-gossiped).
     pub async fn ingest(&self, incoming: Vec<SignedNotice>) -> Result<(), ReplicaError> {
+        let acl = self.hold.acl_index().await?;
         let mut queue = incoming;
         loop {
             let store = NoticeIndex::snapshot(&self.hold).await?;
@@ -98,7 +151,7 @@ impl Replica {
                 if self.hold.get_notice(id).await?.is_some() {
                     continue; // already held
                 }
-                match validate(&notice, &self.acl, &store) {
+                match validate(&notice, &acl, &store) {
                     Ok(Validated::Ready { envelope, .. }) => {
                         let track = if envelope.header.parents.is_empty() {
                             TrackID::from(id)
@@ -156,7 +209,21 @@ impl SyncPeer for Replica {
         // The SyncPeer contract is fire-and-forget; a storage error here is
         // logged and dropped rather than aborting the session.
         if let Err(e) = Replica::ingest(self, notices).await {
-            tracing::warn!("replica ingest failed: {e}");
+            tracing::warn!("replica notice ingest failed: {e}");
+        }
+    }
+
+    async fn acl_len(&self) -> u64 {
+        Replica::acl_len(self).await.unwrap_or(0)
+    }
+
+    async fn acl_suffix(&self, from: u64) -> Vec<ACLRecord> {
+        Replica::acl_suffix(self, from).await.unwrap_or_default()
+    }
+
+    async fn ingest_acl(&self, records: Vec<ACLRecord>) {
+        if let Err(e) = Replica::ingest_acl(self, records).await {
+            tracing::warn!("replica acl ingest failed: {e}");
         }
     }
 }

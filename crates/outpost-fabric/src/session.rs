@@ -22,6 +22,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use async_trait::async_trait;
+use outpost_protocol::acl::ACLRecord;
 use outpost_protocol::sync::{SyncMessage, TallyDigest, wanted};
 use outpost_protocol::{NoticeID, SignedNotice, TrackID};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -42,6 +43,14 @@ pub trait SyncPeer {
     async fn held_ids(&self) -> BTreeSet<NoticeID>;
     /// Apply received Notices (validate → append, orphan-queue as needed).
     async fn ingest(&self, notices: Vec<SignedNotice>);
+
+    /// Length of this peer's ACL log — its position in the linear log (§8.4).
+    async fn acl_len(&self) -> u64;
+    /// The ACL records at or after log position `from` (the suffix a peer
+    /// that is behind needs).
+    async fn acl_suffix(&self, from: u64) -> Vec<ACLRecord>;
+    /// Apply received ACL records (fold-validate → append, §8).
+    async fn ingest_acl(&self, records: Vec<ACLRecord>);
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -60,6 +69,27 @@ where
     S: AsyncWrite + Unpin + Send,
     R: AsyncRead + Unpin + Send,
 {
+    // ACL phase first: the Notice validator needs the ACL heads Notices
+    // pin, so reconcile the linear ACL log before the DAG (§8).
+    let my_acl_len = peer.acl_len().await;
+    write_frame(send, &SyncMessage::AclRequest { len: my_acl_len }).await?;
+    let (acl_records, responder_acl_len) = match read_frame::<SyncMessage>(recv).await? {
+        SyncMessage::AclResponse { records, len } => (records, len),
+        _ => {
+            return Err(SessionError::Unexpected {
+                expected: "acl-response",
+            });
+        }
+    };
+    peer.ingest_acl(acl_records).await;
+    // Push our own suffix if we are ahead of the responder.
+    let push_acl = if my_acl_len > responder_acl_len {
+        peer.acl_suffix(responder_acl_len).await
+    } else {
+        Vec::new()
+    };
+    write_frame(send, &SyncMessage::AclPush { records: push_acl }).await?;
+
     // 1. Announce our state.
     write_frame(send, &SyncMessage::TallyRequest(peer.digest().await)).await?;
 
@@ -109,6 +139,39 @@ where
     S: AsyncWrite + Unpin + Send,
     R: AsyncRead + Unpin + Send,
 {
+    // ACL phase first (mirrors `initiate`): answer with the records the
+    // initiator lacks, then apply what it pushes.
+    let init_acl_len = match read_frame::<SyncMessage>(recv).await? {
+        SyncMessage::AclRequest { len } => len,
+        _ => {
+            return Err(SessionError::Unexpected {
+                expected: "acl-request",
+            });
+        }
+    };
+    let my_acl_len = peer.acl_len().await;
+    let records = if my_acl_len > init_acl_len {
+        peer.acl_suffix(init_acl_len).await
+    } else {
+        Vec::new()
+    };
+    write_frame(
+        send,
+        &SyncMessage::AclResponse {
+            records,
+            len: my_acl_len,
+        },
+    )
+    .await?;
+    match read_frame::<SyncMessage>(recv).await? {
+        SyncMessage::AclPush { records } => peer.ingest_acl(records).await,
+        _ => {
+            return Err(SessionError::Unexpected {
+                expected: "acl-push",
+            });
+        }
+    }
+
     // 1. Receive the initiator's digest, find divergent tracks.
     let init_digest = match read_frame::<SyncMessage>(recv).await? {
         SyncMessage::TallyRequest(digest) => digest,

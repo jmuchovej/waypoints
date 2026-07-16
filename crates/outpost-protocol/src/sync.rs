@@ -81,20 +81,45 @@ pub fn wanted<'a>(
         .collect()
 }
 
-/// One message in a sync session (§10). The flow is two round-trips:
+/// One message in a sync session (§10). A session first reconciles the ACL
+/// log (which is linear and must be current before Notices can validate, as
+/// each Notice pins an `acl_head`), then the Notice DAG:
 ///
-/// 1. Initiator → [`TallyRequest`](SyncMessage::TallyRequest) with its digest.
-/// 2. Responder → [`TallyResponse`](SyncMessage::TallyResponse): for each
-///    divergent Track, the Notice ids it holds (its resupply *offer*).
-/// 3. Initiator → [`ResupplyRequest`](SyncMessage::ResupplyRequest): the
-///    ids it wants pulled, plus the Notices it will push (bidirectional).
-/// 4. Responder → [`ResupplyResponse`](SyncMessage::ResupplyResponse) with
-///    the pulled Notices; it has already applied the pushed ones.
+/// **ACL phase** (§8, linear log):
+/// 1. Initiator → [`AclRequest`](SyncMessage::AclRequest) with its log length.
+/// 2. Responder → [`AclResponse`](SyncMessage::AclResponse): the records the
+///    initiator is missing (its suffix), plus the responder's own length.
+/// 3. Initiator → [`AclPush`](SyncMessage::AclPush): the records the responder
+///    is missing (empty when the initiator is not ahead).
 ///
-/// Live updates ride the same `Push` shape over an open session — a
-/// receiver treats them identically to pulled Notices (§10.2).
+/// **Notice phase** (§10, DAG):
+/// 4. Initiator → [`TallyRequest`](SyncMessage::TallyRequest) with its digest.
+/// 5. Responder → [`TallyResponse`](SyncMessage::TallyResponse): per divergent
+///    Track, the ids it holds (its resupply *offer*).
+/// 6. Initiator → [`ResupplyRequest`](SyncMessage::ResupplyRequest): ids to
+///    pull, plus Notices to push (bidirectional).
+/// 7. Responder → [`ResupplyResponse`](SyncMessage::ResupplyResponse): the
+///    pulled Notices; it has already applied the pushed ones.
+///
+/// Live updates ride the same push shapes over an open session — a receiver
+/// treats them identically to reconciled records (§10.2).
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum SyncMessage {
+    AclRequest {
+        /// The initiator's ACL log length (its position in the linear log).
+        len: u64,
+    },
+    AclResponse {
+        /// ACL records the initiator lacks (the responder's suffix).
+        records: Vec<crate::acl::ACLRecord>,
+        /// The responder's own log length, so the initiator knows whether to
+        /// push its own suffix.
+        len: u64,
+    },
+    AclPush {
+        /// ACL records the responder lacked (empty if none).
+        records: Vec<crate::acl::ACLRecord>,
+    },
     TallyRequest(TallyDigest),
     TallyResponse {
         /// Divergent Track → the ids the responder holds for it.
