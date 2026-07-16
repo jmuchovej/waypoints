@@ -28,14 +28,16 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::replica::{Replica, ReplicaError};
-use ed25519_dalek::SigningKey;
+use ed25519_dalek::{SigningKey, VerifyingKey};
 use outpost_fabric::{Endpoint, Session, TransportError, read_frame, serve, write_frame};
 use outpost_hold::TerritoryHold;
-use outpost_protocol::TerritoryID;
 use outpost_protocol::acl::ACLRecord;
-use outpost_protocol::sync::SyncMessage;
+use outpost_protocol::auth::DeviceCert;
+use outpost_protocol::sync::{DeviceSighting, SyncMessage};
+use outpost_protocol::{MemberID, TerritoryID};
 
 pub use outpost_fabric::fleet;
 
@@ -75,6 +77,30 @@ pub struct Station {
     ///
     /// [`Register`]: outpost_protocol::sync::SyncMessage::Register
     territories: Mutex<BTreeMap<TerritoryID, Arc<Replica>>>,
+    /// Device sightings (§4): per Territory, which certified devices of which
+    /// identities have touched it, and when. Attribution the Station already
+    /// observes in the [`Hello`] handshake, made queryable
+    /// ([`DevicesRequest`]) — never consulted for an authorization decision.
+    /// In-memory presence data; persistence is a later refinement.
+    ///
+    /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
+    /// [`DevicesRequest`]: outpost_protocol::sync::SyncMessage::DevicesRequest
+    sightings: Mutex<BTreeMap<TerritoryID, Sightings>>,
+}
+
+/// One Territory's sightings, keyed by `(member, device key bytes)` — one
+/// entry per certified device per identity.
+type Sightings = BTreeMap<(MemberID, [u8; 32]), DeviceSighting>;
+
+/// The authenticated caller of a session, as proven by its [`Hello`]
+/// handshake (§10.2): the identity key and the cert binding the connection's
+/// device key to it.
+///
+/// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
+#[derive(Clone)]
+struct Caller {
+    identity: VerifyingKey,
+    cert: DeviceCert,
 }
 
 impl Station {
@@ -142,6 +168,7 @@ impl Station {
             fleet_key,
             storage,
             territories: Mutex::new(territories),
+            sightings: Mutex::new(BTreeMap::new()),
         })
     }
 
@@ -235,8 +262,8 @@ impl Station {
     /// Accept one inbound session and handle it: an optional [`Hello`]
     /// handshake (§10.2) verifying which identity is behind the device
     /// connection, then a request — register a Territory, open a scoped sync
-    /// session, or order an ACL submission. A Station loops this; tests drive
-    /// a single exchange.
+    /// session, order an ACL submission, or list device sightings. A Station
+    /// loops this; tests drive a single exchange.
     ///
     /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
     pub async fn serve_once(&self) -> Result<(), StationError> {
@@ -249,7 +276,7 @@ impl Station {
         // key to the claimed identity (§10.2). A Vessel and a Station never
         // implicitly trust each other; this is how the Station learns who is
         // calling. On failure, ack false and stop.
-        let request = match first {
+        let (request, caller) = match first {
             Ok(SyncMessage::Hello { identity, cert }) => {
                 let ok = cert.verify(&identity).is_ok() && cert.device == session.remote_key();
                 let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok }).await;
@@ -257,19 +284,29 @@ impl Station {
                     session.drain().await;
                     return Ok(());
                 }
-                read_frame::<SyncMessage>(&mut session.recv).await
+                let caller = Caller { identity, cert };
+                (
+                    read_frame::<SyncMessage>(&mut session.recv).await,
+                    Some(caller),
+                )
             }
-            other => other,
+            other => (other, None),
         };
 
-        self.dispatch(request, &mut session).await;
+        self.dispatch(request, caller.as_ref(), &mut session).await;
         session.drain().await;
+        // The session is over: whatever this device touched, it is no longer
+        // live on it (§4 connection status).
+        if let Some(caller) = &caller {
+            self.mark_disconnected(caller);
+        }
         Ok(())
     }
 
     async fn dispatch(
         &self,
         request: Result<SyncMessage, outpost_fabric::FrameError>,
+        caller: Option<&Caller>,
         session: &mut Session,
     ) {
         match request {
@@ -281,10 +318,16 @@ impl Station {
                         false
                     }
                 };
+                if ok && let Some(caller) = caller {
+                    self.record_sighting(territory, caller);
+                }
                 let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok }).await;
             }
             Ok(SyncMessage::Open { territory }) => match self.replica_for(&territory) {
                 Some(replica) => {
+                    if let Some(caller) = caller {
+                        self.record_sighting(territory, caller);
+                    }
                     let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: true }).await;
                     if serve(&*replica, &mut session.send, &mut session.recv)
                         .await
@@ -307,9 +350,100 @@ impl Station {
                 };
                 let _ = write_frame(&mut session.send, &SyncMessage::OrderResponse { proof }).await;
             }
+            Ok(SyncMessage::DevicesRequest { territory }) => {
+                // Viewing is member-gated (§4): only an authenticated caller
+                // whose identity the Territory's ACL admits may list. Being
+                // *sighted* required no membership; *seeing* does.
+                let allowed = match caller {
+                    Some(caller) => self.is_member(&territory, &caller.identity).await,
+                    None => false,
+                };
+                let reply = if allowed {
+                    SyncMessage::DevicesResponse {
+                        devices: self.sightings_for(&territory),
+                    }
+                } else {
+                    SyncMessage::Ack { ok: false }
+                };
+                let _ = write_frame(&mut session.send, &reply).await;
+            }
             _ => tracing::warn!("station: unexpected request frame"),
         }
     }
+
+    // ---- device sightings (§4: visibility + attribution) -----------------
+
+    /// Record that `caller`'s device touched `territory` now, marking it
+    /// live. First sight inserts; a re-sight refreshes `last_seen`.
+    fn record_sighting(&self, territory: TerritoryID, caller: &Caller) {
+        let now = unix_now();
+        let key = (
+            MemberID::from(&caller.identity),
+            caller.cert.device.to_bytes(),
+        );
+        let mut sightings = self.sightings.lock().unwrap();
+        sightings
+            .entry(territory)
+            .or_default()
+            .entry(key)
+            .and_modify(|s| {
+                s.last_seen = now;
+                s.connected = true;
+            })
+            .or_insert_with(|| DeviceSighting {
+                identity: caller.identity,
+                cert: caller.cert.clone(),
+                first_seen: now,
+                last_seen: now,
+                connected: true,
+            });
+    }
+
+    /// The session ended — the caller's device is no longer live anywhere.
+    fn mark_disconnected(&self, caller: &Caller) {
+        let key = (
+            MemberID::from(&caller.identity),
+            caller.cert.device.to_bytes(),
+        );
+        let mut sightings = self.sightings.lock().unwrap();
+        for by_device in sightings.values_mut() {
+            if let Some(s) = by_device.get_mut(&key) {
+                s.connected = false;
+            }
+        }
+    }
+
+    /// The sightings for one Territory. Also the local (non-wire) read used
+    /// by a self-host operator or tests.
+    pub fn sightings_for(&self, territory: &TerritoryID) -> Vec<DeviceSighting> {
+        self.sightings
+            .lock()
+            .unwrap()
+            .get(territory)
+            .map(|m| m.values().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    /// Whether `identity` is a member of `territory` per its folded ACL.
+    async fn is_member(&self, territory: &TerritoryID, identity: &VerifyingKey) -> bool {
+        let Some(replica) = self.replica_for(territory) else {
+            return false;
+        };
+        let Ok(acl) = replica.acl_index().await else {
+            return false;
+        };
+        acl.head_state()
+            .is_some_and(|s| s.members.contains_key(&MemberID::from(identity)))
+    }
+}
+
+/// Seconds since the Unix epoch, by the Station's clock — presence metadata,
+/// the same trust class as everything else a Station observes.
+fn unix_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 /// Decode a `<territory-hex>` hold filename stem back to a [`TerritoryID`].

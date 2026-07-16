@@ -76,6 +76,10 @@ pub enum VesselError {
     RegisterRejected,
     #[error("the Station does not serve that Territory — register it first")]
     NotServed,
+    #[error("the Station refused the device listing (not a member, or no identity presented)")]
+    DevicesRefused,
+    #[error("a device sighting failed verification — the Station may be lying")]
+    BadSighting,
 }
 
 /// A Vessel: the user's identity (authors + decrypts), a per-device key
@@ -400,6 +404,40 @@ impl Vessel {
         session.close();
         self.refresh_keys().await?;
         Ok(())
+    }
+
+    /// Ask a Station which certified devices have touched this Vessel's
+    /// Territory (§4: visibility + attribution). Member-gated on the Station
+    /// side, so this Vessel must present its identity handshake and be in the
+    /// Territory's ACL. Every returned sighting is **verified here** — the
+    /// cert must check out against its claimed identity — so a lying Station
+    /// cannot attribute a device to an identity that never certified it; a
+    /// sighting that fails verification fails the whole call
+    /// ([`BadSighting`](VesselError::BadSighting)).
+    ///
+    /// What a Station *can* still do is under-report or fabricate timestamps
+    /// — presence metadata is attested by nobody but the Station observing
+    /// it. Attribution is the verified part.
+    pub async fn device_sightings(
+        &self,
+        station: impl Into<outpost_fabric::EndpointAddr>,
+    ) -> Result<Vec<outpost_protocol::sync::DeviceSighting>, VesselError> {
+        let territory = self.replica.territory_id().await?;
+        let mut session = self.endpoint.connect(station).await?;
+        self.send_hello(&mut session).await?;
+        frame_write(&mut session, &SyncMessage::DevicesRequest { territory }).await?;
+        let reply = frame_read(&mut session).await?;
+        session.close();
+        let devices = match reply {
+            SyncMessage::DevicesResponse { devices } => devices,
+            _ => return Err(VesselError::DevicesRefused),
+        };
+        for sighting in &devices {
+            if sighting.cert.verify(&sighting.identity).is_err() {
+                return Err(VesselError::BadSighting);
+            }
+        }
+        Ok(devices)
     }
 
     /// Scope the session to this Vessel's Territory (§9) and confirm the
