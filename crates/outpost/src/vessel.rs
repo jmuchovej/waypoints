@@ -22,6 +22,7 @@ use outpost_protocol::crypto::{
     KemSecretKey, ReadKey, open_payload, open_sealed_key, seal_key_to_member, unwrap_prev_key,
     wrap_prev_key,
 };
+use outpost_protocol::sync::SyncMessage;
 use outpost_protocol::{
     CryptoError, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, SignedNotice, TerritoryID,
     TrackID, WireError,
@@ -29,6 +30,23 @@ use outpost_protocol::{
 
 pub use outpost_fabric::fleet;
 pub use outpost_protocol::acl::ACLRecord;
+
+/// Write a framed message to a session, mapping framing errors.
+async fn frame_write(
+    session: &mut outpost_fabric::Session,
+    msg: &SyncMessage,
+) -> Result<(), VesselError> {
+    outpost_fabric::write_frame(&mut session.send, msg)
+        .await
+        .map_err(|e| VesselError::Session(e.to_string()))
+}
+
+/// Read a framed message from a session, mapping framing errors.
+async fn frame_read(session: &mut outpost_fabric::Session) -> Result<SyncMessage, VesselError> {
+    outpost_fabric::read_frame::<SyncMessage>(&mut session.recv)
+        .await
+        .map_err(|e| VesselError::Session(e.to_string()))
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum VesselError {
@@ -50,6 +68,12 @@ pub enum VesselError {
     Order(String),
     #[error("the orderer refused to order the record")]
     OrderRejected,
+    #[error("session framing failed: {0}")]
+    Session(String),
+    #[error("the Station is not in the trusted fleet roster")]
+    UntrustedStation,
+    #[error("the Station refused the territory registration")]
+    RegisterRejected,
 }
 
 /// A Vessel: the user's identity (authors + decrypts), a per-device key
@@ -280,20 +304,96 @@ impl Vessel {
 
     /// Dial a Station and run one full sync (§10): reconciles the ACL log
     /// and both directions of the Notice DAG, then **auto-refreshes read
-    /// keys** — any membership change the sync delivered (new epoch, a key
-    /// newly sealed to this member) takes effect without a separate call.
+    /// keys** — any membership change the sync delivered takes effect without
+    /// a separate call. Sends the identity handshake (§10.2) when this Vessel
+    /// was opened from a derived identity. Does not verify the Station's
+    /// roster membership — use [`sync_with_fleet`](Self::sync_with_fleet) for
+    /// that.
     pub async fn sync_with(
         &mut self,
         station: impl Into<outpost_fabric::EndpointAddr>,
     ) -> Result<(), VesselError> {
         let mut session = self.endpoint.connect(station).await?;
-        // A roster check on `session.remote_key()` gates admission (§10.2);
-        // the caller supplies the trusted FleetConfig.
+        self.run_sync(&mut session).await
+    }
+
+    /// Like [`sync_with`](Self::sync_with), but first verifies the Station is
+    /// in the trusted `config`'s roster (§10.2): the config's signature must
+    /// check out and the Station's authenticated key must be listed. Refuses
+    /// to sync with a Station the fleet did not vouch for.
+    pub async fn sync_with_fleet(
+        &mut self,
+        config: &fleet::FleetConfig,
+        station: impl Into<outpost_fabric::EndpointAddr>,
+    ) -> Result<(), VesselError> {
+        let mut session = self.endpoint.connect(station).await?;
+        self.check_roster(config, &session)?;
+        self.run_sync(&mut session).await
+    }
+
+    /// Register `territory` with a rostered Station so it will hold and serve
+    /// it (§13) — the "connect to a fleet's servers" step. Verifies the
+    /// Station's roster membership, presents the identity handshake, and
+    /// waits for the acknowledgement.
+    pub async fn register(
+        &self,
+        config: &fleet::FleetConfig,
+        station: impl Into<outpost_fabric::EndpointAddr>,
+        territory: TerritoryID,
+    ) -> Result<(), VesselError> {
+        let mut session = self.endpoint.connect(station).await?;
+        self.check_roster(config, &session)?;
+        self.send_hello(&mut session).await?;
+        frame_write(&mut session, &SyncMessage::Register { territory }).await?;
+        let ack = frame_read(&mut session).await?;
+        session.close();
+        match ack {
+            SyncMessage::Ack { ok: true } => Ok(()),
+            _ => Err(VesselError::RegisterRejected),
+        }
+    }
+
+    /// The shared post-connect flow: handshake, reconcile, refresh keys.
+    async fn run_sync(&mut self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
+        self.send_hello(session).await?;
         let _ = initiate(&self.replica, &mut session.send, &mut session.recv).await;
         session.close();
-        // The session may have appended ACL records to the hold; pick up any
-        // keys they sealed to us.
         self.refresh_keys().await?;
+        Ok(())
+    }
+
+    /// Verify a Station is one the fleet vouches for (§10.2).
+    fn check_roster(
+        &self,
+        config: &fleet::FleetConfig,
+        session: &outpost_fabric::Session,
+    ) -> Result<(), VesselError> {
+        config.verify().map_err(|_| VesselError::UntrustedStation)?;
+        if config.station(&session.remote_key()).is_none() {
+            return Err(VesselError::UntrustedStation);
+        }
+        Ok(())
+    }
+
+    /// Present the identity handshake (§10.2) if this Vessel carries a device
+    /// cert, and read the Station's acknowledgement. A cert-less Vessel (from
+    /// the low-level [`new`](Self::new)) skips it.
+    async fn send_hello(&self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
+        if let Some(cert) = &self.cert {
+            frame_write(
+                session,
+                &SyncMessage::Hello {
+                    identity: self.identity.verifying_key(),
+                    cert: cert.clone(),
+                },
+            )
+            .await?;
+            // The Station acks the handshake; a rejection ends the session.
+            match frame_read(session).await? {
+                SyncMessage::Ack { ok: true } => {}
+                _ => return Err(VesselError::UntrustedStation),
+            }
+        }
         Ok(())
     }
 
