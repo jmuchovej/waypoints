@@ -37,6 +37,7 @@ cli = [
 _role = [
   "dep:async-trait",
   "dep:ed25519-dalek",
+  "dep:hex",
   "dep:outpost-fabric",
   "dep:outpost-hold",
   "dep:thiserror",
@@ -49,6 +50,7 @@ outpost-protocol = { workspace = true }
 # Role deps, pulled in by the role features (see `_role`).
 async-trait = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
 outpost-fabric = { workspace = true, optional = true }
 outpost-hold = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
@@ -72,6 +74,7 @@ required-features = ["cli"]
 [dev-dependencies]
 outpost = { path = ".", features = ["vessel", "station"] }
 rand = { workspace = true }
+tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]

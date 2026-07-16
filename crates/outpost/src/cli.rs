@@ -26,7 +26,6 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use ed25519_dalek::SigningKey;
 use outpost_hold::TerritoryHold;
-use outpost_protocol::acl::ACLRecord;
 use outpost_protocol::identity::{DeviceKey, Identity, KeyRoot};
 
 use crate::replica::Replica;
@@ -42,14 +41,11 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Run a Station serving one Territory over QUIC.
+    /// Run a Station over QUIC. It homes whatever Territories Vessels register
+    /// to it, persisting them under `<data>/territories/` and reloading them
+    /// on restart.
     StationRun {
-        /// The Territory's exported root record — a dev bootstrap. The app
-        /// exports this via the library API; registration-driven serving is
-        /// the follow-up.
-        #[arg(long)]
-        root: PathBuf,
-        /// Data directory for the Station's storage + key + address.
+        /// Data directory for the Station's key, address, and Territory holds.
         #[arg(long, default_value = ".outpost-station")]
         data: PathBuf,
         /// Also run the per-Fleet orderer with a fresh fleet key (dev).
@@ -83,11 +79,7 @@ pub fn main() -> Result<()> {
 
 async fn run(command: Command) -> Result<()> {
     match command {
-        Command::StationRun {
-            root,
-            data,
-            orderer,
-        } => station_run(&root, &data, orderer).await,
+        Command::StationRun { data, orderer } => station_run(&data, orderer).await,
         Command::Sync { data, station } => sync(&data, &station).await,
     }
 }
@@ -139,24 +131,17 @@ fn station_key(data: &Path) -> Result<SigningKey> {
     }
 }
 
-async fn station_run(root: &Path, data: &Path, orderer: bool) -> Result<()> {
+async fn station_run(data: &Path, orderer: bool) -> Result<()> {
     std::fs::create_dir_all(data)?;
-    let root_record = ACLRecord::decode(&std::fs::read(root)?)?;
-
-    // Open the Station's hold; bootstrap it from the root on first run.
-    let hold = TerritoryHold::open(station_db(data)?.as_str()).await?;
-    if hold.acl_records().await?.is_empty() {
-        hold.append_acl(&root_record, 0, None).await?;
-    }
-    let replica = Replica::reopen(hold).await?;
-
     let secret = station_key(data)?;
+    let territories = data.join("territories");
+
     let station = if orderer {
         // Dev: a fresh fleet key co-located with the station.
         let mut rng = rand::rng();
-        Station::orderer(&secret, SigningKey::generate(&mut rng), replica).await?
+        Station::hosting_orderer(&secret, SigningKey::generate(&mut rng), &territories).await?
     } else {
-        Station::new(&secret, replica).await?
+        Station::hosting(&secret, &territories).await?
     };
 
     // Publish the dialable address for vessels.
@@ -164,6 +149,7 @@ async fn station_run(root: &Path, data: &Path, orderer: bool) -> Result<()> {
     std::fs::write(station_addr_path(data), serde_json::to_vec(&addr)?)?;
 
     println!("Station running (Ctrl-C to stop)");
+    println!("  territories under {}", territories.display());
     println!(
         "  address published to {}",
         station_addr_path(data).display()
@@ -188,14 +174,6 @@ async fn station_run(root: &Path, data: &Path, orderer: bool) -> Result<()> {
     }
 }
 
-fn station_db(data: &Path) -> Result<String> {
-    Ok(data
-        .join("station.db")
-        .to_str()
-        .context("non-utf8 path")?
-        .to_owned())
-}
-
 // ---- sync -----------------------------------------------------------------
 
 async fn sync(data: &Path, station_addr_file: &Path) -> Result<()> {
@@ -207,8 +185,12 @@ async fn sync(data: &Path, station_addr_file: &Path) -> Result<()> {
     let hold = TerritoryHold::open(territory_db(data).to_str().context("non-utf8 path")?).await?;
     let replica = Replica::reopen(hold).await?;
     let mut vessel = Vessel::from_identity(&identity, &device, replica).await?;
+    let territory = vessel.territory_id().await?;
 
     let before = vessel.replica().acl_len().await?;
+    // Establish the sync chain: register the Territory (idempotent — the
+    // Station starts serving it if it was not already), then reconcile.
+    vessel.register(addr.clone(), territory).await?;
     vessel.sync_with(addr).await?;
     let after = vessel.replica().acl_len().await?;
     let notices = vessel.replica().hold().held_ids().await?.len();
