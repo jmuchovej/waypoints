@@ -13,16 +13,18 @@
 use std::collections::BTreeMap;
 
 use crate::replica::{Replica, ReplicaError};
-use ed25519_dalek::SigningKey;
+use ed25519_dalek::{Signer, SigningKey};
 use outpost_fabric::{Endpoint, TransportError, initiate};
 use outpost_hold::AclIndex;
-use outpost_protocol::acl::ACLPayload;
+use outpost_identity::{DeviceKey, Identity};
+use outpost_protocol::acl::{ACLPayload, InviteKey, Permissions, RecordBody, join_binding};
 use outpost_protocol::crypto::{
-    KemSecretKey, ReadKey, open_payload, open_sealed_key, unwrap_prev_key,
+    KemSecretKey, ReadKey, open_payload, open_sealed_key, seal_key_to_member, unwrap_prev_key,
+    wrap_prev_key,
 };
 use outpost_protocol::{
-    CryptoError, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, SignedNotice, TrackID,
-    WireError,
+    CryptoError, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, SignedNotice, TerritoryID,
+    TrackID, WireError,
 };
 
 pub use outpost_fabric::fleet;
@@ -42,6 +44,8 @@ pub enum VesselError {
     Crypto(#[from] CryptoError),
     #[error("no read key cached for epoch {0}")]
     NoKey(EpochID),
+    #[error("no pending join for that member — nothing to approve")]
+    UnknownJoin,
 }
 
 /// A Vessel: the user's identity (authors + decrypts), a per-device key
@@ -287,6 +291,198 @@ impl Vessel {
         // keys they sealed to us.
         self.refresh_keys().await?;
         Ok(())
+    }
+
+    // ---- Territory & membership (§8) -----------------------------------
+    //
+    // Each operation builds the right ACL record signed by the identity and
+    // applies it locally (single-writer). The orderer submission flow (a
+    // later phase) routes these through the fleet orderer before they
+    // propagate; the record shapes are unchanged.
+
+    /// Create a new Territory owned by `identity`, returning a ready Vessel.
+    /// A fresh epoch-0 read key is sealed to the owner's KEM, so the returned
+    /// Vessel can immediately author and read (§9).
+    pub async fn create_territory(
+        identity: &Identity,
+        device: &DeviceKey,
+        path: &str,
+        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+    ) -> Result<Self, VesselError> {
+        let mut territory_seed = [0u8; 32];
+        rng.fill_bytes(&mut territory_seed);
+        let epoch0 = ReadKey::generate(rng);
+        let sealed = seal_key_to_member(rng, &identity.kem_public(), &epoch0)?;
+        let root = RecordBody {
+            prev: None,
+            author: identity.verifying_key(),
+            payload: ACLPayload::Root {
+                territory_seed,
+                owner_kem: identity.kem_public(),
+                epoch0_key_wrapped: sealed,
+            },
+        }
+        .sign(identity.signing_key())?;
+        let replica = Replica::bootstrap(path, &[root]).await?;
+        Self::from_identity(identity, device, replica).await
+    }
+
+    /// This Vessel's Territory id (hash of the root ACL record, §9).
+    pub async fn territory_id(&self) -> Result<TerritoryID, VesselError> {
+        let acl = self.replica.acl_index().await?;
+        Ok(acl.head_state().ok_or(ReplicaError::NoAcl)?.territory)
+    }
+
+    /// Build an ACL record authored by this identity, chained on the current
+    /// head, and apply it locally (§8). Shared by the membership operations.
+    async fn author_acl(&self, payload: ACLPayload) -> Result<ACLRecord, VesselError> {
+        let prev = self.replica.acl_head().await?;
+        let record = RecordBody {
+            prev: Some(prev),
+            author: self.identity.verifying_key(),
+            payload,
+        }
+        .sign(&self.identity)?;
+        self.replica.apply_local(&record).await?;
+        Ok(record)
+    }
+
+    /// Issue an invite at `permissions` (Admin+ only). Returns the invite
+    /// public key, the invite **secret** to hand the invitee out of band, and
+    /// the record (§8.2). Single-use: a `Join` consumes it.
+    pub async fn invite(
+        &self,
+        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+        permissions: Permissions,
+    ) -> Result<(InviteKey, [u8; 32], ACLRecord), VesselError> {
+        let mut secret = [0u8; 32];
+        rng.fill_bytes(&mut secret);
+        let invite_signing = SigningKey::from_bytes(&secret);
+        let invite_key = InviteKey::from_bytes(invite_signing.verifying_key().to_bytes());
+        let record = self
+            .author_acl(ACLPayload::Invite {
+                invite_key,
+                permissions,
+            })
+            .await?;
+        Ok((invite_key, secret, record))
+    }
+
+    /// Join a Territory with an invite secret: proves the invite, presents
+    /// this identity's KEM key (§8.2). An admin must then [`approve`] the
+    /// resulting record. The Vessel must already hold the ACL up to the
+    /// invite (bootstrap or sync).
+    ///
+    /// [`approve`]: Self::approve
+    pub async fn join(
+        &self,
+        invite_key: InviteKey,
+        invite_secret: [u8; 32],
+    ) -> Result<ACLRecord, VesselError> {
+        let invite_signing = SigningKey::from_bytes(&invite_secret);
+        let member_kem = self.kem.public_key();
+        let invite_proof = invite_signing.sign(&join_binding(
+            &invite_key,
+            &self.identity.verifying_key(),
+            &member_kem,
+        ));
+        self.author_acl(ACLPayload::Join {
+            invite_key,
+            member_kem,
+            invite_proof,
+        })
+        .await
+    }
+
+    /// Approve a pending joiner (Admin+ only), sealing the current epoch's
+    /// read key to their KEM (§8.2). No rotation — adding a member does not
+    /// change the epoch (§7.2).
+    pub async fn approve(
+        &self,
+        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+        member: MemberID,
+        permissions: Permissions,
+    ) -> Result<ACLRecord, VesselError> {
+        let acl = self.replica.acl_index().await?;
+        let state = acl.head_state().ok_or(ReplicaError::NoAcl)?;
+        let member_kem = state
+            .pending_joins
+            .get(&member)
+            .map(|(kem, _)| kem.clone())
+            .ok_or(VesselError::UnknownJoin)?;
+        let epoch = state.epoch;
+        let key = self
+            .read_keys
+            .get(&epoch)
+            .ok_or(VesselError::NoKey(epoch))?;
+        let current_key_wrapped = seal_key_to_member(rng, &member_kem, key)?;
+        self.author_acl(ACLPayload::Approve {
+            member,
+            permissions,
+            current_key_wrapped,
+        })
+        .await
+    }
+
+    /// Change a member's role (authority per the lattice; touching Admin+ is
+    /// Owner-only, §8.2).
+    pub async fn change_role(
+        &self,
+        member: MemberID,
+        permissions: Permissions,
+    ) -> Result<ACLRecord, VesselError> {
+        self.author_acl(ACLPayload::ChangeRole {
+            member,
+            permissions,
+        })
+        .await
+    }
+
+    /// Revoke an outstanding invite (Admin+ only, §8.2).
+    pub async fn revoke_invite(&self, invite_key: InviteKey) -> Result<ACLRecord, VesselError> {
+        self.author_acl(ACLPayload::RevokeInvite { invite_key })
+            .await
+    }
+
+    /// Remove a member (§8.2), rotating to a new epoch: the new read key is
+    /// sealed to every remaining member and the old key is wrapped under it
+    /// (§7.3 backward chain). This Vessel's own key cache rotates forward
+    /// afterward.
+    pub async fn remove(
+        &mut self,
+        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+        member: MemberID,
+    ) -> Result<ACLRecord, VesselError> {
+        let (current_epoch, wraps, prev_wrapped) = {
+            let acl = self.replica.acl_index().await?;
+            let state = acl.head_state().ok_or(ReplicaError::NoAcl)?;
+            let current_epoch = state.epoch;
+            let current_key = self
+                .read_keys
+                .get(&current_epoch)
+                .ok_or(VesselError::NoKey(current_epoch))?;
+            let next_key = ReadKey::generate(rng);
+            let mut wraps = Vec::new();
+            for (m, kem) in &state.member_kems {
+                if *m == member {
+                    continue;
+                }
+                wraps.push((*m, seal_key_to_member(rng, kem, &next_key)?));
+            }
+            let prev_wrapped = wrap_prev_key(rng, &next_key, current_key);
+            (current_epoch, wraps, prev_wrapped)
+        };
+        let record = self
+            .author_acl(ACLPayload::Remove {
+                member,
+                new_epoch: current_epoch.next(),
+                new_key_wrapped: wraps,
+                prev_key_wrapped: prev_wrapped,
+            })
+            .await?;
+        // We sealed the new epoch key to ourselves; pick it up.
+        self.refresh_keys().await?;
+        Ok(record)
     }
 }
 

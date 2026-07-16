@@ -135,6 +135,21 @@ impl Replica {
         Ok(())
     }
 
+    /// Append a locally-authored ACL record to the log (§8), fold-validating
+    /// it first — unlike [`ingest_acl`](Self::ingest_acl), an invalid record
+    /// (broken chain, insufficient authority) is returned as an **error**,
+    /// not silently dropped, so a membership operation can report why it was
+    /// refused. Positions are assigned by count here; the orderer
+    /// submission flow replaces this in a later phase.
+    pub async fn apply_local(&self, record: &ACLRecord) -> Result<RecordID, ReplicaError> {
+        let existing = self.hold.acl_records().await?;
+        let mut fold = AclIndex::from_ordered(&existing)?;
+        fold.push(record)?; // chaining + authority; surfaces the reject
+        let position = existing.len() as u64;
+        self.hold.append_acl(record, position).await?;
+        RecordID::of(record).map_err(ReplicaError::from)
+    }
+
     /// Apply a batch of received Notices: validate each (§5.4), append the
     /// ready ones, and retry the pending (orphan-queued) ones until no
     /// further progress. Duplicates are skipped, so re-delivery is
