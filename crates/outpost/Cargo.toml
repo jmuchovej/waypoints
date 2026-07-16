@@ -29,11 +29,15 @@ cli = [
   "dep:clap",
   "dep:rand",
   "dep:serde_json",
-  "dep:tokio",
   "dep:tracing-subscriber",
+  "tokio/rt-multi-thread",
+  "tokio/signal",
 ]
 # Private: the deps and shared `replica` module both roles pull in. Not a
-# public knob — enable `vessel` and/or `station`.
+# public knob — enable `vessel` and/or `station`. tokio is here for the
+# live-push machinery (spawned session tasks, mpsc/broadcast channels,
+# select!); the runtime itself stays the embedder's (the cli feature adds
+# one).
 _role = [
   "dep:async-trait",
   "dep:ed25519-dalek",
@@ -41,6 +45,7 @@ _role = [
   "dep:outpost-fabric",
   "dep:outpost-hold",
   "dep:thiserror",
+  "dep:tokio",
   "dep:tracing",
 ]
 
@@ -60,11 +65,7 @@ anyhow = { workspace = true, optional = true }
 clap = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
-tokio = { workspace = true, optional = true, features = [
-  "macros",
-  "rt-multi-thread",
-  "signal",
-] }
+tokio = { workspace = true, optional = true, features = ["macros", "rt"] }
 tracing-subscriber = { workspace = true, optional = true }
 
 [[bin]]

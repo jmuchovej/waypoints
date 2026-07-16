@@ -11,12 +11,15 @@
 //! here later.
 
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex as StdMutex};
 
 use crate::replica::{Replica, ReplicaError};
 use ed25519_dalek::{Signer, SigningKey};
 use outpost_fabric::{Endpoint, TransportError, initiate};
 use outpost_hold::AclIndex;
-use outpost_protocol::acl::{ACLPayload, InviteKey, Permissions, RecordBody, join_binding};
+use outpost_protocol::acl::{
+    ACLPayload, InviteKey, OrderedRecord, Permissions, RecordBody, join_binding,
+};
 use outpost_protocol::crypto::{
     KemSecretKey, ReadKey, open_payload, open_sealed_key, seal_key_to_member, unwrap_prev_key,
     wrap_prev_key,
@@ -96,7 +99,7 @@ pub enum VesselError {
 /// carries the derived device cert, [`new`](Self::new) a self-cert).
 pub struct Vessel {
     identity: SigningKey,
-    kem: KemSecretKey,
+    kem: Arc<KemSecretKey>,
     endpoint: Endpoint,
     /// Certificate binding the endpoint's device key to `identity` (§4),
     /// presented in the connection handshake. For the low-level
@@ -104,8 +107,12 @@ pub struct Vessel {
     /// certifying its own key as the device key — so every Vessel can
     /// authenticate to an admission-gated Station.
     cert: outpost_protocol::identity::DeviceCert,
-    replica: Replica,
-    read_keys: BTreeMap<EpochID, ReadKey>,
+    /// Shared with subscription tasks (the replica is the convergence
+    /// point; the cache is what auto-refresh fills) — `Arc` so a live
+    /// session can ingest and refresh in the background while the app keeps
+    /// using the Vessel.
+    replica: Arc<Replica>,
+    read_keys: Arc<StdMutex<BTreeMap<EpochID, ReadKey>>>,
 }
 
 impl Vessel {
@@ -125,11 +132,11 @@ impl Vessel {
         let endpoint = Endpoint::bind_identity(&device.signing).await?;
         let mut vessel = Self {
             identity: identity.signing_key().clone(),
-            kem: identity.kem_secret(),
+            kem: Arc::new(identity.kem_secret()),
             endpoint,
             cert: device.cert.clone(),
-            replica,
-            read_keys: BTreeMap::new(),
+            replica: Arc::new(replica),
+            read_keys: Arc::new(StdMutex::new(BTreeMap::new())),
         };
         vessel.refresh_keys().await?;
         Ok(vessel)
@@ -151,11 +158,11 @@ impl Vessel {
             outpost_protocol::identity::DeviceCert::issue(&identity, &identity.verifying_key());
         let mut vessel = Self {
             identity,
-            kem,
+            kem: Arc::new(kem),
             endpoint,
             cert,
-            replica,
-            read_keys: BTreeMap::new(),
+            replica: Arc::new(replica),
+            read_keys: Arc::new(StdMutex::new(BTreeMap::new())),
         };
         vessel.refresh_keys().await?;
         Ok(vessel)
@@ -175,6 +182,12 @@ impl Vessel {
         &self.replica
     }
 
+    /// A shared handle to the replica — what a background task converges
+    /// into.
+    pub fn replica_handle(&self) -> Arc<Replica> {
+        Arc::clone(&self.replica)
+    }
+
     pub fn kem_public(&self) -> outpost_protocol::crypto::KemPublicKey {
         self.kem.public_key()
     }
@@ -183,7 +196,7 @@ impl Vessel {
     /// band. The normal path is [`refresh_keys`](Self::refresh_keys), which
     /// derives keys from the ACL log.
     pub fn cache_read_key(&mut self, epoch: EpochID, key: ReadKey) {
-        self.read_keys.insert(epoch, key);
+        self.read_keys.lock().unwrap().insert(epoch, key);
     }
 
     /// Populate the read-key cache from the ACL log (§7.2–7.3): for every
@@ -199,70 +212,13 @@ impl Vessel {
     /// expected, not an error, so those failures are skipped silently.
     pub async fn refresh_keys(&mut self) -> Result<(), VesselError> {
         let me = MemberID::from(&self.identity.verifying_key());
-        let records = self.replica.hold().acl_records().await?;
-
-        // Forward pass: unseal the one key sealed directly to me, and record
-        // each rotation so the backward pass can chain through it. `fold`
-        // tracks the epoch in force *before* each record is applied.
-        let mut fold = AclIndex::new();
-        let mut rotations: Vec<(EpochID, EpochID, Vec<u8>)> = Vec::new();
-        for record in &records {
-            let body = record.parse_and_verify()?;
-            let epoch_before = fold.head_state().map_or(EpochID::ZERO, |s| s.epoch);
-            match &body.payload {
-                ACLPayload::Root {
-                    epoch0_key_wrapped, ..
-                } if MemberID::from(&body.author) == me => {
-                    if let Ok(key) = open_sealed_key(&self.kem, epoch0_key_wrapped) {
-                        self.read_keys.insert(EpochID::ZERO, key);
-                    }
-                }
-                ACLPayload::Approve {
-                    member,
-                    current_key_wrapped,
-                    ..
-                } if *member == me => {
-                    // Approve does not rotate: the key it seals is the epoch
-                    // already in force.
-                    if let Ok(key) = open_sealed_key(&self.kem, current_key_wrapped) {
-                        self.read_keys.insert(epoch_before, key);
-                    }
-                }
-                ACLPayload::Remove {
-                    new_epoch,
-                    new_key_wrapped,
-                    prev_key_wrapped,
-                    ..
-                } => {
-                    if let Some((_, sealed)) = new_key_wrapped.iter().find(|(m, _)| *m == me)
-                        && let Ok(key) = open_sealed_key(&self.kem, sealed)
-                    {
-                        self.read_keys.insert(*new_epoch, key);
-                    }
-                    rotations.push((*new_epoch, epoch_before, prev_key_wrapped.clone()));
-                }
-                _ => {}
-            }
-            fold.push(record)?;
-        }
-
-        // Backward pass: newest rotation first, so a key acquired at a high
-        // epoch cascades down. Each Remove wraps epoch N−1's key under epoch
-        // N's (§7.3); if we hold N, we can recover N−1, and so on to genesis.
-        for (new_epoch, epoch_before, prev_wrapped) in rotations.into_iter().rev() {
-            if let Some(newer) = self.read_keys.get(&new_epoch).cloned()
-                && let Ok(prev) = unwrap_prev_key(&newer, &prev_wrapped)
-            {
-                self.read_keys.entry(epoch_before).or_insert(prev);
-            }
-        }
-        Ok(())
+        derive_keys(&self.replica, &self.kem, me, &self.read_keys).await
     }
 
     /// Which epochs this Vessel currently holds a read key for — the history
     /// it can decrypt (§7.2). Useful for tests and diagnostics.
     pub fn readable_epochs(&self) -> Vec<EpochID> {
-        self.read_keys.keys().copied().collect()
+        self.read_keys.lock().unwrap().keys().copied().collect()
     }
 
     /// Author a Notice: seal `plaintext` under the current epoch's read
@@ -278,7 +234,10 @@ impl Vessel {
     ) -> Result<SignedNotice, VesselError> {
         let key = self
             .read_keys
+            .lock()
+            .unwrap()
             .get(&epoch)
+            .cloned()
             .ok_or(VesselError::NoKey(epoch))?;
         let snapshot_base = if parents.is_empty() {
             NoticeID::SELF
@@ -297,7 +256,7 @@ impl Vessel {
             payload_type: payload_type.to_owned(),
             timestamp: 0,
         };
-        let payload = outpost_protocol::crypto::seal_payload(rng, key, &header, plaintext)?;
+        let payload = outpost_protocol::crypto::seal_payload(rng, &key, &header, plaintext)?;
         let notice = SignedNotice::sign(&Envelope { header, payload }, &self.identity)?;
         self.replica.ingest(vec![notice.clone()]).await?;
         Ok(notice)
@@ -310,9 +269,12 @@ impl Vessel {
         let envelope = notice.parse_and_verify()?;
         let key = self
             .read_keys
+            .lock()
+            .unwrap()
             .get(&envelope.header.epoch)
+            .cloned()
             .ok_or(VesselError::NoKey(envelope.header.epoch))?;
-        Ok(open_payload(key, &envelope.header, &envelope.payload)?)
+        Ok(open_payload(&key, &envelope.header, &envelope.payload)?)
     }
 
     /// Dial a Station and run one full sync (§10): reconciles the ACL log
@@ -401,7 +363,7 @@ impl Vessel {
     async fn run_sync(&mut self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
         self.send_hello(session).await?;
         self.open_territory(session).await?;
-        let result = initiate(&self.replica, &mut session.send, &mut session.recv).await;
+        let result = initiate(&*self.replica, &mut session.send, &mut session.recv).await;
         session.close();
         self.refresh_keys().await?;
         match result {
@@ -646,9 +608,12 @@ impl Vessel {
         let epoch = state.epoch;
         let key = self
             .read_keys
+            .lock()
+            .unwrap()
             .get(&epoch)
+            .cloned()
             .ok_or(VesselError::NoKey(epoch))?;
-        let current_key_wrapped = seal_key_to_member(rng, &member_kem, key)?;
+        let current_key_wrapped = seal_key_to_member(rng, &member_kem, &key)?;
         self.author_acl(ACLPayload::Approve {
             member,
             permissions,
@@ -692,7 +657,10 @@ impl Vessel {
             let current_epoch = state.epoch;
             let current_key = self
                 .read_keys
+                .lock()
+                .unwrap()
                 .get(&current_epoch)
+                .cloned()
                 .ok_or(VesselError::NoKey(current_epoch))?;
             let next_key = ReadKey::generate(rng);
             let mut wraps = Vec::new();
@@ -702,7 +670,7 @@ impl Vessel {
                 }
                 wraps.push((*m, seal_key_to_member(rng, kem, &next_key)?));
             }
-            let prev_wrapped = wrap_prev_key(rng, &next_key, current_key);
+            let prev_wrapped = wrap_prev_key(rng, &next_key, &current_key);
             (current_epoch, wraps, prev_wrapped)
         };
         let record = self
@@ -723,4 +691,254 @@ impl Vessel {
 /// Station's).
 pub async fn open_replica(path: &str, acl_log: &[ACLRecord]) -> Result<Replica, VesselError> {
     Ok(Replica::bootstrap(path, acl_log).await?)
+}
+
+// ---- read-key derivation (shared with subscription tasks) ----------------
+
+/// The §7.2–7.3 key-acquisition walk, factored free of `Vessel` so a live
+/// subscription task can refresh the *shared* cache after an ACL push, with
+/// the same logic [`Vessel::refresh_keys`] uses. Reads the log first (async),
+/// then works the sealed boxes and the backwards chain under one short lock.
+async fn derive_keys(
+    replica: &Replica,
+    kem: &KemSecretKey,
+    me: MemberID,
+    cache: &StdMutex<BTreeMap<EpochID, ReadKey>>,
+) -> Result<(), VesselError> {
+    let records = replica.hold().acl_records().await?;
+    let mut keys = cache.lock().unwrap();
+
+    // Forward pass: unseal the one key sealed directly to me, and record
+    // each rotation so the backward pass can chain through it. `fold`
+    // tracks the epoch in force *before* each record is applied.
+    let mut fold = AclIndex::new();
+    let mut rotations: Vec<(EpochID, EpochID, Vec<u8>)> = Vec::new();
+    for record in &records {
+        let body = record.parse_and_verify()?;
+        let epoch_before = fold.head_state().map_or(EpochID::ZERO, |s| s.epoch);
+        match &body.payload {
+            ACLPayload::Root {
+                epoch0_key_wrapped, ..
+            } if MemberID::from(&body.author) == me => {
+                if let Ok(key) = open_sealed_key(kem, epoch0_key_wrapped) {
+                    keys.insert(EpochID::ZERO, key);
+                }
+            }
+            ACLPayload::Approve {
+                member,
+                current_key_wrapped,
+                ..
+            } if *member == me => {
+                // Approve does not rotate: the key it seals is the epoch
+                // already in force.
+                if let Ok(key) = open_sealed_key(kem, current_key_wrapped) {
+                    keys.insert(epoch_before, key);
+                }
+            }
+            ACLPayload::Remove {
+                new_epoch,
+                new_key_wrapped,
+                prev_key_wrapped,
+                ..
+            } => {
+                if let Some((_, sealed)) = new_key_wrapped.iter().find(|(m, _)| *m == me)
+                    && let Ok(key) = open_sealed_key(kem, sealed)
+                {
+                    keys.insert(*new_epoch, key);
+                }
+                rotations.push((*new_epoch, epoch_before, prev_key_wrapped.clone()));
+            }
+            _ => {}
+        }
+        fold.push(record)?;
+    }
+
+    // Backward pass: newest rotation first, so a key acquired at a high
+    // epoch cascades down. Each Remove wraps epoch N−1's key under epoch
+    // N's (§7.3); if we hold N, we can recover N−1, and so on to genesis.
+    for (new_epoch, epoch_before, prev_wrapped) in rotations.into_iter().rev() {
+        if let Some(newer) = keys.get(&new_epoch).cloned()
+            && let Ok(prev) = unwrap_prev_key(&newer, &prev_wrapped)
+        {
+            keys.entry(epoch_before).or_insert(prev);
+        }
+    }
+    Ok(())
+}
+
+// ---- live-push subscription (design doc §1) ------------------------------
+
+/// The doorbell (design doc §1.3): a coarse "look again" ping *after* the
+/// pushed records are already validated and stored. The store stays the
+/// single source of truth — the app re-queries it (its topo cursor yields
+/// everything new); events carry addresses of change, never payloads.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SubscriptionEvent {
+    /// New validated Notices landed in these Tracks.
+    Notices { tracks: Vec<TrackID> },
+    /// The ACL advanced (keys already auto-refreshed).
+    Acl,
+    /// The session ended — any reason. Reconnect policy is the app's
+    /// (resubscribing reconciles whatever was missed).
+    Closed,
+}
+
+/// A live session to a Station (design doc §1): the background task ingests
+/// pushes into the shared replica, auto-refreshes read keys after ACL
+/// pushes, and rings the doorbell. Dropping the handle (or calling
+/// [`close`](Self::close)) ends the session; a final
+/// [`Closed`](SubscriptionEvent::Closed) event fires.
+pub struct Subscription {
+    push_tx: tokio::sync::mpsc::Sender<Vec<SignedNotice>>,
+}
+
+impl Subscription {
+    /// Hand a locally-stored Notice to the live session (typically right
+    /// after [`Vessel::author`]). Errors if the session has ended.
+    pub async fn push(&self, notice: SignedNotice) -> Result<(), VesselError> {
+        self.push_tx
+            .send(vec![notice])
+            .await
+            .map_err(|_| VesselError::Session("subscription ended".into()))
+    }
+
+    /// End the session. Equivalent to dropping the handle; explicit for
+    /// clarity at call sites.
+    pub fn close(self) {}
+}
+
+impl Vessel {
+    /// Open a live session to a Station (design doc §1): handshake, scope to
+    /// this Territory, run the same initial reconcile as
+    /// [`sync_with`](Self::sync_with) — then stay. Returns the handle plus
+    /// the doorbell channel. Admission follows the Station's policy; a
+    /// non-member is refused after the ACL phase exactly as in a one-shot
+    /// sync ([`SyncRefused`](VesselError::SyncRefused)).
+    ///
+    /// No auto-reconnect: when the session ends for any reason the channel
+    /// yields [`Closed`](SubscriptionEvent::Closed) and the app decides.
+    pub async fn subscribe(
+        &self,
+        station: impl Into<outpost_fabric::EndpointAddr>,
+    ) -> Result<(Subscription, tokio::sync::mpsc::Receiver<SubscriptionEvent>), VesselError> {
+        let mut session = self.endpoint.connect(station).await?;
+        self.send_hello(&mut session).await?;
+        let territory = self.replica.territory_id().await?;
+        frame_write(&mut session, &SyncMessage::Subscribe { territory }).await?;
+        match frame_read(&mut session).await? {
+            SyncMessage::Ack { ok: true } => {}
+            _ => return Err(VesselError::NotServed),
+        }
+        // Initial reconcile — identical to a one-shot sync, including the
+        // admission gate and the key refresh.
+        let result = initiate(&*self.replica, &mut session.send, &mut session.recv).await;
+        let me = MemberID::from(&self.identity.verifying_key());
+        derive_keys(&self.replica, &self.kem, me, &self.read_keys).await?;
+        if let Err(outpost_fabric::SessionError::Refused) = result {
+            session.close();
+            return Err(VesselError::SyncRefused);
+        }
+
+        let (push_tx, push_rx) = tokio::sync::mpsc::channel(16);
+        let (event_tx, event_rx) = tokio::sync::mpsc::channel(64);
+        let worker = SubscriptionWorker {
+            replica: Arc::clone(&self.replica),
+            kem: Arc::clone(&self.kem),
+            me,
+            read_keys: Arc::clone(&self.read_keys),
+            event_tx,
+        };
+        tokio::spawn(worker.run(session, push_rx));
+        Ok((Subscription { push_tx }, event_rx))
+    }
+}
+
+/// The state a live session's background task owns — shared views of the
+/// Vessel's replica and key cache, plus the doorbell.
+struct SubscriptionWorker {
+    replica: Arc<Replica>,
+    kem: Arc<KemSecretKey>,
+    me: MemberID,
+    read_keys: Arc<StdMutex<BTreeMap<EpochID, ReadKey>>>,
+    event_tx: tokio::sync::mpsc::Sender<SubscriptionEvent>,
+}
+
+impl SubscriptionWorker {
+    async fn run(
+        self,
+        mut session: outpost_fabric::Session,
+        mut push_rx: tokio::sync::mpsc::Receiver<Vec<SignedNotice>>,
+    ) {
+        loop {
+            tokio::select! {
+                cmd = push_rx.recv() => match cmd {
+                    Some(notices) => {
+                        let frame = SyncMessage::NoticePush { notices };
+                        if outpost_fabric::write_frame(&mut session.send, &frame)
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                    // The handle was dropped/closed: end the session.
+                    None => break,
+                },
+                frame = outpost_fabric::read_frame::<SyncMessage>(&mut session.recv) => {
+                    match frame {
+                        Ok(SyncMessage::NoticePush { notices }) => self.on_notices(notices).await,
+                        Ok(SyncMessage::AclPush { records }) => self.on_acl(records).await,
+                        Ok(_) => {} // unknown live frame: ignore
+                        Err(_) => break, // peer closed / transport gone
+                    }
+                }
+            }
+        }
+        session.close();
+        let _ = self.event_tx.send(SubscriptionEvent::Closed).await;
+    }
+
+    /// Ingest pushed Notices (validating, idempotent), then ring the
+    /// doorbell with the Tracks that actually gained stored Notices.
+    async fn on_notices(&self, notices: Vec<SignedNotice>) {
+        let ids: Vec<NoticeID> = notices
+            .iter()
+            .filter_map(|n| NoticeID::of(n).ok())
+            .collect();
+        if let Err(e) = self.replica.ingest(notices).await {
+            tracing::warn!("subscription notice ingest failed: {e}");
+            return;
+        }
+        let mut tracks = Vec::new();
+        for id in ids {
+            if let Ok(Some(stored)) = self.replica.hold().get_notice(id).await
+                && !tracks.contains(&stored.track)
+            {
+                tracks.push(stored.track);
+            }
+        }
+        if !tracks.is_empty() {
+            // A full channel is fine: a pending event already says "look
+            // again", and the topo-cursor pull picks these up too.
+            let _ = self
+                .event_tx
+                .try_send(SubscriptionEvent::Notices { tracks });
+        }
+    }
+
+    /// Ingest pushed ACL records, auto-refresh read keys (the sync_with
+    /// invariant), then ring the doorbell.
+    async fn on_acl(&self, records: Vec<OrderedRecord>) {
+        if records.is_empty() {
+            return;
+        }
+        if let Err(e) = self.replica.ingest_ordered(records).await {
+            tracing::warn!("subscription acl ingest failed: {e}");
+            return;
+        }
+        if let Err(e) = derive_keys(&self.replica, &self.kem, self.me, &self.read_keys).await {
+            tracing::warn!("subscription key refresh failed: {e}");
+        }
+        let _ = self.event_tx.try_send(SubscriptionEvent::Acl);
+    }
 }

@@ -174,6 +174,20 @@ pub enum SyncMessage {
     Open {
         territory: crate::TerritoryID,
     },
+    /// Vessel → Station: like [`Open`](SyncMessage::Open), but the session
+    /// does not end — after the initial reconcile both sides enter the live
+    /// phase, exchanging [`NoticePush`](SyncMessage::NoticePush) /
+    /// [`AclPush`](SyncMessage::AclPush) frames until either side closes
+    /// (§10.2–10.3: one subscription stream per Territory session).
+    Subscribe {
+        territory: crate::TerritoryID,
+    },
+    /// A live-phase push of freshly-arrived Notices (either direction).
+    /// Fire-and-forget: no ack — correctness comes from idempotent,
+    /// validating ingest plus the next reconcile, not delivery guarantees.
+    NoticePush {
+        notices: Vec<crate::SignedNotice>,
+    },
     /// Vessel → orderer Station: order this record for `territory` (§8.4). The
     /// Territory is named explicitly because a non-root record's log cannot be
     /// cheaply recovered from the record alone.
