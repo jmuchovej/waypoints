@@ -27,17 +27,22 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::replica::{Replica, ReplicaError};
+use async_trait::async_trait;
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use outpost_fabric::{Endpoint, Session, TransportError, read_frame, serve_gated, write_frame};
+use outpost_fabric::{
+    Endpoint, Session, SyncPeer, TransportError, read_frame, serve_gated, write_frame,
+};
 use outpost_hold::{AclIndex, StationHold, TerritoryHold};
 use outpost_protocol::acl::{ACLRecord, OrderedRecord, Permissions};
 use outpost_protocol::auth::DeviceCert;
-use outpost_protocol::sync::{DeviceSighting, SyncMessage};
-use outpost_protocol::{MemberID, TerritoryID};
+use outpost_protocol::sync::{DeviceSighting, SyncMessage, TallyDigest};
+use outpost_protocol::{MemberID, NoticeID, SignedNotice, TerritoryID, TrackID};
+use tokio::sync::broadcast;
 
 pub use outpost_fabric::fleet;
 
@@ -95,6 +100,26 @@ pub struct Station {
     hold: Option<StationHold>,
     register_policy: RegisterPolicy,
     sync_policy: SyncPolicy,
+    /// Per-Territory live-push bus (design doc §1.2): everything a session
+    /// newly accepts is published here and fanned out to that Territory's
+    /// subscribers (minus the source session, so nothing echoes).
+    buses: Mutex<BTreeMap<TerritoryID, broadcast::Sender<BusEvent>>>,
+    /// Monotonic session ids — the echo-suppression key on [`BusEvent`].
+    next_session: AtomicU64,
+}
+
+/// One batch of freshly-accepted records on a Territory's bus, tagged with
+/// the session that brought them in.
+#[derive(Clone)]
+struct BusEvent {
+    source: u64,
+    push: BusPush,
+}
+
+#[derive(Clone)]
+enum BusPush {
+    Notices(Vec<SignedNotice>),
+    Acl(Vec<OrderedRecord>),
 }
 
 /// Who may home a **new** Territory on this Station (design doc
@@ -238,6 +263,8 @@ impl Station {
             hold,
             register_policy: RegisterPolicy::default(),
             sync_policy: SyncPolicy::default(),
+            buses: Mutex::new(BTreeMap::new()),
+            next_session: AtomicU64::new(1),
         })
     }
 
@@ -399,17 +426,40 @@ impl Station {
         ))
     }
 
-    /// Accept one inbound session and handle it: an optional [`Hello`]
-    /// handshake (§10.2) verifying which identity is behind the device
-    /// connection, then a request — register a Territory, open a scoped sync
-    /// session, order an ACL submission, or list device sightings. A Station
-    /// loops this; tests drive a single exchange.
+    /// Accept one inbound session and handle it to completion: an optional
+    /// [`Hello`] handshake (§10.2) verifying which identity is behind the
+    /// device connection, then a request — register a Territory, open a
+    /// scoped sync session, subscribe live, order an ACL submission, or list
+    /// device sightings. Sequential — a live subscription occupies it; use
+    /// [`serve_loop`](Self::serve_loop) to serve sessions concurrently.
     ///
     /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
     pub async fn serve_once(&self) -> Result<(), StationError> {
-        let Some(mut session) = self.endpoint.accept().await? else {
+        let Some(session) = self.endpoint.accept().await? else {
             return Ok(());
         };
+        self.handle(session).await
+    }
+
+    /// Accept sessions until the endpoint closes, handling each in its own
+    /// task — the production serve shape (a live subscription must not block
+    /// the next caller). Returns when [`accept`](Endpoint::accept) yields
+    /// `None`.
+    pub async fn serve_loop(self: &Arc<Self>) -> Result<(), StationError> {
+        loop {
+            let Some(session) = self.endpoint.accept().await? else {
+                return Ok(());
+            };
+            let station = Arc::clone(self);
+            tokio::spawn(async move {
+                if let Err(e) = station.handle(session).await {
+                    tracing::warn!("station session failed: {e}");
+                }
+            });
+        }
+    }
+
+    async fn handle(&self, mut session: Session) -> Result<(), StationError> {
         let first = read_frame::<SyncMessage>(&mut session.recv).await;
 
         // Optional handshake: verify the cert binds the connection's device
@@ -433,7 +483,9 @@ impl Station {
             other => (other, None),
         };
 
-        self.dispatch(request, caller.as_ref(), &mut session).await;
+        let session_id = self.next_session.fetch_add(1, Ordering::Relaxed);
+        self.dispatch(request, caller.as_ref(), session_id, &mut session)
+            .await;
         session.drain().await;
         // The session is over: whatever this device touched, it is no longer
         // live on it (§4 connection status).
@@ -447,6 +499,7 @@ impl Station {
         &self,
         request: Result<SyncMessage, outpost_fabric::FrameError>,
         caller: Option<&Caller>,
+        session_id: u64,
         session: &mut Session,
     ) {
         match request {
@@ -497,12 +550,23 @@ impl Station {
                         },
                     }
                 };
-                if serve_gated(&*replica, &mut session.send, &mut session.recv, gate)
+                // Serve through the publishing peer, so records this session
+                // brings in fan out to the Territory's live subscribers.
+                let peer = PublishingPeer {
+                    replica,
+                    bus: self.bus_for(&territory),
+                    source: session_id,
+                };
+                if serve_gated(&peer, &mut session.send, &mut session.recv, gate)
                     .await
                     .is_err()
                 {
                     tracing::warn!("station session ended early");
                 }
+            }
+            Ok(SyncMessage::Subscribe { territory }) => {
+                self.subscribe_session(territory, caller, session_id, session)
+                    .await;
             }
             Ok(SyncMessage::OrderRequest { territory, record }) => {
                 // Order the submission (§8.4): assign a position and
@@ -512,6 +576,18 @@ impl Station {
                     (Some(replica), Some(key)) => replica.order(key, &record).await.ok().flatten(),
                     _ => None,
                 };
+                if let Some(proof) = proof {
+                    // An ordered ACL record is exactly what other devices
+                    // wait on — fan it out to the Territory's subscribers.
+                    let ordered = OrderedRecord {
+                        record: record.clone(),
+                        proof: Some(proof),
+                    };
+                    let _ = self.bus_for(&territory).send(BusEvent {
+                        source: session_id,
+                        push: BusPush::Acl(vec![ordered]),
+                    });
+                }
                 let _ = write_frame(&mut session.send, &SyncMessage::OrderResponse { proof }).await;
             }
             Ok(SyncMessage::DevicesRequest { territory }) => {
@@ -609,6 +685,194 @@ impl Station {
         };
         acl.head_state()
             .is_some_and(|s| s.members.contains_key(&MemberID::from(identity)))
+    }
+}
+
+impl Station {
+    /// The live half of a [`Subscribe`](SyncMessage::Subscribe) session
+    /// (design doc §1): admission + initial reconcile exactly like `Open`,
+    /// then park — forwarding this Territory's bus to the vessel and the
+    /// vessel's pushes onto the bus — until either side closes.
+    async fn subscribe_session(
+        &self,
+        territory: TerritoryID,
+        caller: Option<&Caller>,
+        session_id: u64,
+        session: &mut Session,
+    ) {
+        let replica = self.replica_for(&territory);
+        let admitted = replica.is_some()
+            && match self.sync_policy {
+                SyncPolicy::Everyone => true,
+                SyncPolicy::Members => caller.is_some(),
+            };
+        if !admitted {
+            let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: false }).await;
+            return;
+        }
+        let replica = replica.expect("admitted implies present");
+        if let Some(caller) = caller {
+            self.record_sighting(territory, caller).await;
+        }
+        let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: true }).await;
+
+        // Initial reconcile through the publishing peer, with the same
+        // two-phase admission gate as a one-shot Open.
+        let policy = self.sync_policy;
+        let identity = caller.map(|c| c.identity);
+        let bus = self.bus_for(&territory);
+        let peer = PublishingPeer {
+            replica: Arc::clone(&replica),
+            bus: bus.clone(),
+            source: session_id,
+        };
+        let gate = || async {
+            match policy {
+                SyncPolicy::Everyone => true,
+                SyncPolicy::Members => match identity {
+                    Some(identity) => self.is_member(&territory, &identity).await,
+                    None => false,
+                },
+            }
+        };
+        if serve_gated(&peer, &mut session.send, &mut session.recv, gate)
+            .await
+            .is_err()
+        {
+            return;
+        }
+        // The gate may have refused inside the reconcile (the vessel saw it
+        // and is gone); do not park a refused session in the live phase.
+        let stays = match policy {
+            SyncPolicy::Everyone => true,
+            SyncPolicy::Members => match identity {
+                Some(identity) => self.is_member(&territory, &identity).await,
+                None => false,
+            },
+        };
+        if !stays {
+            return;
+        }
+
+        // Live phase: vessel pushes in, bus events out (minus our own).
+        let mut rx = bus.subscribe();
+        loop {
+            tokio::select! {
+                frame = read_frame::<SyncMessage>(&mut session.recv) => match frame {
+                    Ok(SyncMessage::NoticePush { notices }) => {
+                        if notices.is_empty() {
+                            continue;
+                        }
+                        if let Err(e) = replica.ingest(notices.clone()).await {
+                            tracing::warn!("live notice ingest failed: {e}");
+                            continue;
+                        }
+                        let _ = bus.send(BusEvent {
+                            source: session_id,
+                            push: BusPush::Notices(notices),
+                        });
+                    }
+                    Ok(SyncMessage::AclPush { records }) => {
+                        if records.is_empty() {
+                            continue;
+                        }
+                        if let Err(e) = replica.ingest_ordered(records.clone()).await {
+                            tracing::warn!("live acl ingest failed: {e}");
+                            continue;
+                        }
+                        let _ = bus.send(BusEvent {
+                            source: session_id,
+                            push: BusPush::Acl(records),
+                        });
+                    }
+                    Ok(_) => {} // unknown live frame: ignore
+                    Err(_) => break, // vessel closed / transport gone
+                },
+                event = rx.recv() => match event {
+                    Ok(event) => {
+                        if event.source == session_id {
+                            continue; // no echo
+                        }
+                        let frame = match event.push {
+                            BusPush::Notices(notices) => SyncMessage::NoticePush { notices },
+                            BusPush::Acl(records) => SyncMessage::AclPush { records },
+                        };
+                        if write_frame(&mut session.send, &frame).await.is_err() {
+                            break;
+                        }
+                    }
+                    // Lagged: this subscriber missed events. Disconnect it —
+                    // honest failure; its resubscribe reconciles the gap.
+                    Err(broadcast::error::RecvError::Lagged(_)) => break,
+                    Err(broadcast::error::RecvError::Closed) => break,
+                },
+            }
+        }
+    }
+
+    /// This Territory's live-push bus, created on first use.
+    fn bus_for(&self, territory: &TerritoryID) -> broadcast::Sender<BusEvent> {
+        self.buses
+            .lock()
+            .unwrap()
+            .entry(*territory)
+            .or_insert_with(|| broadcast::channel(256).0)
+            .clone()
+    }
+}
+
+/// A [`SyncPeer`] adapter over the Territory replica that **publishes what
+/// it newly accepts** to the Territory's bus (design doc §1.2) — how records
+/// arriving through an ordinary reconcile reach live subscribers. Receivers
+/// ingest idempotently, so over-publishing a duplicate is harmless.
+struct PublishingPeer {
+    replica: Arc<Replica>,
+    bus: broadcast::Sender<BusEvent>,
+    source: u64,
+}
+
+#[async_trait]
+impl SyncPeer for PublishingPeer {
+    async fn digest(&self) -> TallyDigest {
+        self.replica.digest().await
+    }
+
+    async fn track_notices(&self, track: TrackID) -> Vec<SignedNotice> {
+        SyncPeer::track_notices(&*self.replica, track).await
+    }
+
+    async fn held_ids(&self) -> std::collections::BTreeSet<NoticeID> {
+        SyncPeer::held_ids(&*self.replica).await
+    }
+
+    async fn ingest(&self, notices: Vec<SignedNotice>) {
+        if notices.is_empty() {
+            return;
+        }
+        SyncPeer::ingest(&*self.replica, notices.clone()).await;
+        let _ = self.bus.send(BusEvent {
+            source: self.source,
+            push: BusPush::Notices(notices),
+        });
+    }
+
+    async fn acl_len(&self) -> u64 {
+        SyncPeer::acl_len(&*self.replica).await
+    }
+
+    async fn acl_suffix(&self, from: u64) -> Vec<OrderedRecord> {
+        SyncPeer::acl_suffix(&*self.replica, from).await
+    }
+
+    async fn ingest_ordered_acl(&self, records: Vec<OrderedRecord>) {
+        if records.is_empty() {
+            return;
+        }
+        SyncPeer::ingest_ordered_acl(&*self.replica, records.clone()).await;
+        let _ = self.bus.send(BusEvent {
+            source: self.source,
+            push: BusPush::Acl(records),
+        });
     }
 }
 

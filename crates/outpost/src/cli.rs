@@ -158,19 +158,15 @@ async fn station_run(data: &Path, orderer: bool) -> Result<()> {
         println!("  orderer: on");
     }
 
-    // Serve until interrupted.
-    loop {
-        tokio::select! {
-            _ = tokio::signal::ctrl_c() => {
-                println!("\nshutting down");
-                return Ok(());
-            }
-            r = station.serve_once() => {
-                if let Err(e) = r {
-                    tracing::warn!("serve error: {e}");
-                }
-            }
+    // Serve concurrently (live subscriptions park sessions) until
+    // interrupted.
+    let station = std::sync::Arc::new(station);
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            println!("\nshutting down");
+            Ok(())
         }
+        r = station.serve_loop() => r.map_err(Into::into),
     }
 }
 
