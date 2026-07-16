@@ -33,7 +33,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::replica::{Replica, ReplicaError};
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use outpost_fabric::{Endpoint, Session, TransportError, read_frame, serve, write_frame};
-use outpost_hold::TerritoryHold;
+use outpost_hold::{StationHold, TerritoryHold};
 use outpost_protocol::acl::ACLRecord;
 use outpost_protocol::auth::DeviceCert;
 use outpost_protocol::sync::{DeviceSighting, SyncMessage};
@@ -81,11 +81,18 @@ pub struct Station {
     /// identities have touched it, and when. Attribution the Station already
     /// observes in the [`Hello`] handshake, made queryable
     /// ([`DevicesRequest`]) — never consulted for an authorization decision.
-    /// In-memory presence data; persistence is a later refinement.
+    /// The in-memory map is the read path; a storage-backed Station loads it
+    /// from `hold` at start and writes sightings through, so a restart does
+    /// not forget a dormant device.
     ///
     /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
     /// [`DevicesRequest`]: outpost_protocol::sync::SyncMessage::DevicesRequest
     sightings: Mutex<BTreeMap<TerritoryID, Sightings>>,
+    /// The Station's own database (`station.db` in the storage dir): persisted
+    /// sightings + registrations, so a restart does not make a dormant device
+    /// vanish from the registry. `None` on a storage-less seeded Station —
+    /// embeds and tests stay memory-only.
+    hold: Option<StationHold>,
 }
 
 /// One Territory's sightings, keyed by `(member, device key bytes)` — one
@@ -154,11 +161,30 @@ impl Station {
     ) -> Result<Self, StationError> {
         let endpoint = Endpoint::bind_identity(secret).await?;
         let mut territories = BTreeMap::new();
+        let mut hold = None;
+        let mut sightings: BTreeMap<TerritoryID, Sightings> = BTreeMap::new();
         if let Some(dir) = &storage {
             std::fs::create_dir_all(dir)?;
             for replica in Self::scan_holds(dir).await? {
                 territories.insert(replica.territory_id().await?, Arc::new(replica));
             }
+            // The Station's own database, beside the Territory holds. Reload
+            // persisted sightings — `connected` comes back `false` (nobody is
+            // live right after a start).
+            let station_db = dir.join("station.db");
+            let station_hold =
+                StationHold::open(station_db.to_str().ok_or(StationError::BadPath)?).await?;
+            for (territory, sighting) in station_hold.sightings().await? {
+                let key = (
+                    MemberID::from(&sighting.identity),
+                    sighting.cert.device.to_bytes(),
+                );
+                sightings
+                    .entry(territory)
+                    .or_default()
+                    .insert(key, sighting);
+            }
+            hold = Some(station_hold);
         }
         for replica in seed {
             territories.insert(replica.territory_id().await?, Arc::new(replica));
@@ -168,7 +194,8 @@ impl Station {
             fleet_key,
             storage,
             territories: Mutex::new(territories),
-            sightings: Mutex::new(BTreeMap::new()),
+            sightings: Mutex::new(sightings),
+            hold,
         })
     }
 
@@ -229,11 +256,14 @@ impl Station {
     /// Home a Territory from its root ACL record (§13): idempotent if already
     /// served; otherwise verify the id is the root's hash and — if this
     /// Station has a storage directory — bootstrap a fresh hold from the root.
-    /// Returns whether the Station now serves it.
+    /// A first registration is remembered in the Station database (who, when)
+    /// when the registrant authenticated. Returns whether the Station now
+    /// serves it.
     async fn register(
         &self,
         territory: TerritoryID,
         root: ACLRecord,
+        caller: Option<&Caller>,
     ) -> Result<bool, StationError> {
         if self.serves(&territory) {
             return Ok(true);
@@ -256,7 +286,31 @@ impl Station {
             .unwrap()
             .entry(territory)
             .or_insert_with(|| Arc::new(replica));
+        if let (Some(station_hold), Some(caller)) = (&self.hold, caller)
+            && let Err(e) = station_hold
+                .record_registration(
+                    &territory,
+                    &MemberID::from(&caller.identity),
+                    unix_now() as i64,
+                )
+                .await
+        {
+            tracing::warn!("station: registration write failed: {e}");
+        }
         Ok(true)
+    }
+
+    /// Who first homed `territory` on this Station, and when (seconds since
+    /// the Unix epoch) — `None` on a storage-less Station or if it was never
+    /// registered here (e.g. seeded, or registered by an unauthenticated
+    /// caller).
+    pub async fn registration(&self, territory: &TerritoryID) -> Option<(MemberID, u64)> {
+        let hold = self.hold.as_ref()?;
+        let row = hold.registration(territory).await.ok()??;
+        Some((
+            MemberID::from_bytes(row.registered_by),
+            row.registered_at as u64,
+        ))
     }
 
     /// Accept one inbound session and handle it: an optional [`Hello`]
@@ -311,7 +365,7 @@ impl Station {
     ) {
         match request {
             Ok(SyncMessage::Register { territory, root }) => {
-                let ok = match self.register(territory, root).await {
+                let ok = match self.register(territory, root, caller).await {
                     Ok(ok) => ok,
                     Err(e) => {
                         tracing::warn!("station: registration failed: {e}");
@@ -319,14 +373,14 @@ impl Station {
                     }
                 };
                 if ok && let Some(caller) = caller {
-                    self.record_sighting(territory, caller);
+                    self.record_sighting(territory, caller).await;
                 }
                 let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok }).await;
             }
             Ok(SyncMessage::Open { territory }) => match self.replica_for(&territory) {
                 Some(replica) => {
                     if let Some(caller) = caller {
-                        self.record_sighting(territory, caller);
+                        self.record_sighting(territory, caller).await;
                     }
                     let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: true }).await;
                     if serve(&*replica, &mut session.send, &mut session.recv)
@@ -374,29 +428,40 @@ impl Station {
     // ---- device sightings (§4: visibility + attribution) -----------------
 
     /// Record that `caller`'s device touched `territory` now, marking it
-    /// live. First sight inserts; a re-sight refreshes `last_seen`.
-    fn record_sighting(&self, territory: TerritoryID, caller: &Caller) {
+    /// live. First sight inserts; a re-sight refreshes `last_seen`. Written
+    /// through to the Station database when one is open — a failed write is
+    /// logged, not fatal (presence metadata; the in-memory registry is the
+    /// read path either way).
+    async fn record_sighting(&self, territory: TerritoryID, caller: &Caller) {
         let now = unix_now();
         let key = (
             MemberID::from(&caller.identity),
             caller.cert.device.to_bytes(),
         );
-        let mut sightings = self.sightings.lock().unwrap();
-        sightings
-            .entry(territory)
-            .or_default()
-            .entry(key)
-            .and_modify(|s| {
-                s.last_seen = now;
-                s.connected = true;
-            })
-            .or_insert_with(|| DeviceSighting {
-                identity: caller.identity,
-                cert: caller.cert.clone(),
-                first_seen: now,
-                last_seen: now,
-                connected: true,
-            });
+        let persisted = {
+            let mut sightings = self.sightings.lock().unwrap();
+            sightings
+                .entry(territory)
+                .or_default()
+                .entry(key)
+                .and_modify(|s| {
+                    s.last_seen = now;
+                    s.connected = true;
+                })
+                .or_insert_with(|| DeviceSighting {
+                    identity: caller.identity,
+                    cert: caller.cert.clone(),
+                    first_seen: now,
+                    last_seen: now,
+                    connected: true,
+                })
+                .clone()
+        };
+        if let Some(hold) = &self.hold
+            && let Err(e) = hold.upsert_sighting(&territory, &persisted).await
+        {
+            tracing::warn!("station: sighting write-through failed: {e}");
+        }
     }
 
     /// The session ended — the caller's device is no longer live anywhere.

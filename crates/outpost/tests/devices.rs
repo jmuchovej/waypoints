@@ -110,3 +110,93 @@ async fn devices_are_attributed_per_identity_and_member_gated() {
 
     serve_loop.abort();
 }
+
+/// A Station restart must not make a dormant device vanish from the
+/// registry (design doc `docs/dev/outpost-live-push-and-station-persistence.md`
+/// §2): sightings persist in the Station's own database and reload with
+/// honest timestamps and `connected: false`.
+#[tokio::test]
+async fn sightings_survive_a_station_restart() {
+    let mut rng = rand::rngs::StdRng::from_seed([11; 32]);
+    let dir = tempfile::tempdir().unwrap();
+
+    let root_key = KeyRoot::from_seed([3; 64]);
+    let identity = root_key.identity();
+    let laptop = root_key.device(0);
+    let phone = root_key.device(1);
+
+    let mut owner_laptop = Vessel::create_territory(&identity, &laptop, ":memory:", &mut rng)
+        .await
+        .unwrap();
+    let territory = owner_laptop.territory_id().await.unwrap();
+    let root = owner_laptop.replica().hold().acl_records().await.unwrap();
+
+    // A hosting Station, empty: the laptop registers the Territory (which is
+    // itself a sighting + a remembered registration), then both devices sync.
+    let station = Arc::new(
+        Station::hosting(&station_secret(), dir.path())
+            .await
+            .unwrap(),
+    );
+    let addr = station.endpoint().direct_addr();
+    let serving = station.clone();
+    let serve_loop = tokio::spawn(async move {
+        loop {
+            let _ = serving.serve_once().await;
+        }
+    });
+    owner_laptop
+        .register(addr.clone(), territory)
+        .await
+        .unwrap();
+    owner_laptop.sync_with(addr.clone()).await.unwrap();
+    let mut owner_phone = Vessel::from_identity(
+        &identity,
+        &phone,
+        Replica::bootstrap(":memory:", &root).await.unwrap(),
+    )
+    .await
+    .unwrap();
+    owner_phone.sync_with(addr.clone()).await.unwrap();
+
+    let before = station.sightings_for(&territory);
+    assert_eq!(before.len(), 2, "laptop + phone sighted before the restart");
+
+    // Restart: drop the Station entirely, reopen from the same storage dir.
+    // The phone does NOT reconnect — the dormant device must still be listed.
+    serve_loop.abort();
+    drop(station);
+    let restarted = Station::hosting(&station_secret(), dir.path())
+        .await
+        .unwrap();
+
+    let after = restarted.sightings_for(&territory);
+    assert_eq!(after.len(), 2, "the dormant device did not vanish");
+    for s in &after {
+        s.cert.verify(&s.identity).unwrap();
+        assert!(
+            s.first_seen > 0 && s.last_seen >= s.first_seen,
+            "timestamps intact"
+        );
+        assert!(
+            !s.connected,
+            "presence is runtime truth — false after a load"
+        );
+    }
+    let devices: std::collections::BTreeSet<_> =
+        after.iter().map(|s| s.device().to_bytes()).collect();
+    assert!(devices.contains(&laptop.signing.verifying_key().to_bytes()));
+    assert!(devices.contains(&phone.signing.verifying_key().to_bytes()));
+
+    // The registration record survived too: who first homed it, and when.
+    let (registered_by, registered_at) = restarted
+        .registration(&territory)
+        .await
+        .expect("registration remembered");
+    assert_eq!(registered_by, identity.member_id());
+    assert!(registered_at > 0);
+}
+
+fn station_secret() -> ed25519_dalek::SigningKey {
+    ed25519_dalek::SigningKey::from_bytes(&[100; 32])
+}

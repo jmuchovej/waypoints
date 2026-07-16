@@ -13,13 +13,14 @@ publish.workspace = true
 
 [dependencies]
 bedrock = { workspace = true }
+blake3 = { workspace = true }
 bytes = { workspace = true }
+ed25519-dalek = { workspace = true }
 outpost-protocol = { workspace = true }
 postcard = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-ed25519-dalek = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 

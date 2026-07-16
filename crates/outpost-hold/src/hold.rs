@@ -73,7 +73,7 @@ impl TerritoryHold {
     ) -> Result<RecordID, HoldError> {
         let id = RecordID::of(record)?;
         let proof_bytes = match proof {
-            Some(p) => postcard::to_stdvec(p)?,
+            Some(p) => postcard::to_allocvec(p)?,
             None => Vec::new(),
         };
         self.db

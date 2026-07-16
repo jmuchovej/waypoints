@@ -22,7 +22,9 @@ mod acl_index;
 mod error;
 mod hold;
 mod rows;
+mod station_hold;
 
 pub use acl_index::AclIndex;
 pub use error::HoldError;
 pub use hold::{NoticeIndex, StoredNotice, TerritoryHold};
+pub use station_hold::{RegistrationRow, SightingRow, StationHold};
