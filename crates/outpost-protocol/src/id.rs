@@ -36,8 +36,8 @@ macro_rules! byte_id {
             }
         }
 
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl ::core::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                 for byte in self.0 {
                     write!(f, "{byte:02x}")?;
                 }
@@ -45,8 +45,8 @@ macro_rules! byte_id {
             }
         }
 
-        impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        impl ::core::fmt::Debug for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                 write!(f, concat!(stringify!($name), "("))?;
                 for byte in &self.0[..4] {
                     write!(f, "{byte:02x}")?;
@@ -56,6 +56,8 @@ macro_rules! byte_id {
         }
     };
 }
+
+pub(crate) use byte_id;
 
 byte_id! {
     /// Content address of a Notice: BLAKE3 of the encoded [`SignedNotice`]

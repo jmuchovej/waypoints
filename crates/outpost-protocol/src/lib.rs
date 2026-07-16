@@ -6,10 +6,12 @@
 //! network, no storage engine. Everything here is testable with byte
 //! vectors, and the crate boundary keeps it that way (§12).
 
+pub mod acl;
+pub mod crypto;
 mod envelope;
 mod error;
 mod id;
 
-pub use envelope::{ENVELOPE_VERSION, Envelope, SignedNotice};
-pub use error::WireError;
+pub use envelope::{ENVELOPE_VERSION, Envelope, EnvelopeHeader, SignedNotice};
+pub use error::{CryptoError, WireError};
 pub use id::{BlobHash, EpochID, MemberID, NoticeID, RecordID, TerritoryID, TrackID};
