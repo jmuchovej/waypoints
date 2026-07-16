@@ -12,6 +12,7 @@ fn scalar_to_turso(value: &ScalarValue) -> turso::Value {
         ScalarValue::Int(n) => turso::Value::Integer(*n),
         ScalarValue::Real(n) => turso::Value::Real(*n),
         ScalarValue::Text(s) => turso::Value::Text(s.clone()),
+        ScalarValue::Blob(b) => turso::Value::Blob(b.clone()),
     }
 }
 
