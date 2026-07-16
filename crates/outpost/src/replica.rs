@@ -108,6 +108,17 @@ impl Replica {
         self.acl_index().await?.head().ok_or(ReplicaError::NoAcl)
     }
 
+    /// This replica's Territory id — the hash of its root ACL record (§9),
+    /// read off the folded state.
+    pub async fn territory_id(&self) -> Result<outpost_protocol::TerritoryID, ReplicaError> {
+        Ok(self
+            .acl_index()
+            .await?
+            .head_state()
+            .ok_or(ReplicaError::NoAcl)?
+            .territory)
+    }
+
     /// The folded ACL state, materialized from the hold (§8). Fresh each
     /// call, so it always reflects the latest synced records.
     pub async fn acl_index(&self) -> Result<AclIndex, ReplicaError> {
