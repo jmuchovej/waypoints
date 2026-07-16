@@ -10,6 +10,7 @@ members = [
   "crates/domain",
   "crates/importer",
   "crates/outpost",
+  "crates/outpost-fabric",
   "crates/outpost-hold",
   "crates/outpost-protocol",
   "crates/server",
@@ -36,6 +37,7 @@ cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
 outpost = { path = "crates/outpost", default-features = false }
+outpost-fabric = { path = "crates/outpost-fabric" }
 outpost-hold = { path = "crates/outpost-hold" }
 outpost-protocol = { path = "crates/outpost-protocol" }
 store = { path = "crates/store" }
@@ -64,6 +66,8 @@ hex = "0.4"
 hostname = "0.4"
 iana-time-zone = "0.1.65"
 indexmap = { version = "2.14", features = ["serde"] }
+# iroh 1.0.x pins ed25519-dalek =3.0.0-rc.0 — kept in lockstep (see above).
+iroh = "1"
 objc2-app-kit = { version = "0.3", default-features = false, features = [
   "NSScrollView",
   "NSView",
