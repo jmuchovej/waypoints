@@ -11,7 +11,9 @@ pub mod crypto;
 mod envelope;
 mod error;
 mod id;
+mod validate;
 
 pub use envelope::{ENVELOPE_VERSION, Envelope, EnvelopeHeader, SignedNotice};
 pub use error::{CryptoError, WireError};
 pub use id::{BlobHash, EpochID, MemberID, NoticeID, RecordID, TerritoryID, TrackID};
+pub use validate::{ACLStateProvider, NoticeStore, RejectReason, Validated, validate};
