@@ -10,6 +10,7 @@ members = [
   "crates/domain",
   "crates/importer",
   "crates/outpost",
+  "crates/outpost-hold",
   "crates/outpost-protocol",
   "crates/server",
   "crates/store",
@@ -35,6 +36,7 @@ cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
 outpost = { path = "crates/outpost", default-features = false }
+outpost-hold = { path = "crates/outpost-hold" }
 outpost-protocol = { path = "crates/outpost-protocol" }
 store = { path = "crates/store" }
 
