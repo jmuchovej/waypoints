@@ -44,22 +44,59 @@ pub enum VesselError {
     NoKey(EpochID),
 }
 
-/// A Vessel: identity + KEM keys, an endpoint, the shared replica, and the
-/// per-epoch read-key cache (§7.2). The cache is what makes this a Vessel;
-/// a Station has no equivalent and cannot obtain one.
+/// A Vessel: the user's identity (authors + decrypts), a per-device key
+/// binding the connection, the shared replica, and the per-epoch read-key
+/// cache (§7.2). The cache is what makes this a Vessel; a Station has no
+/// equivalent and cannot obtain one.
+///
+/// The `identity` key authors Notices and ACL records — a `MemberID` is an
+/// identity, never a device (§4). The endpoint is bound with the *device*
+/// key (the `VesselID`); its cert (present when built via
+/// [`from_identity`](Self::from_identity)) proves which identity is behind
+/// the connection during the Phase-4 handshake.
 pub struct Vessel {
     identity: SigningKey,
     kem: KemSecretKey,
     endpoint: Endpoint,
+    /// Certificate binding the endpoint's device key to `identity` (§4).
+    /// `None` for the low-level [`new`](Self::new) constructor, whose
+    /// endpoint is bound with the identity key itself.
+    cert: Option<outpost_identity::DeviceCert>,
     replica: Replica,
     read_keys: BTreeMap<EpochID, ReadKey>,
 }
 
 impl Vessel {
-    /// Open a Vessel with the given identity and KEM seed over `replica`,
-    /// deriving whatever read keys the current ACL log already seals to this
-    /// member ([`refresh_keys`](Self::refresh_keys)) — so a freshly-opened
-    /// Vessel can read history it is entitled to without a separate call.
+    /// Open a Vessel from a derived [`Identity`] and one of its
+    /// [`DeviceKey`]s (§4). The identity authors and decrypts; the endpoint
+    /// is bound with the device key (the `VesselID`). Read keys the ACL log
+    /// already seals to this identity are derived immediately
+    /// ([`refresh_keys`](Self::refresh_keys)).
+    ///
+    /// [`Identity`]: outpost_identity::Identity
+    /// [`DeviceKey`]: outpost_identity::DeviceKey
+    pub async fn from_identity(
+        identity: &outpost_identity::Identity,
+        device: &outpost_identity::DeviceKey,
+        replica: Replica,
+    ) -> Result<Self, VesselError> {
+        let endpoint = Endpoint::bind_identity(&device.signing).await?;
+        let mut vessel = Self {
+            identity: identity.signing_key().clone(),
+            kem: identity.kem_secret(),
+            endpoint,
+            cert: Some(device.cert.clone()),
+            replica,
+            read_keys: BTreeMap::new(),
+        };
+        vessel.refresh_keys().await?;
+        Ok(vessel)
+    }
+
+    /// Open a Vessel from raw keys, binding the endpoint with the identity
+    /// key itself (no separate device key or cert). Lower-level than
+    /// [`from_identity`](Self::from_identity); useful where a full derived
+    /// identity is overkill.
     pub async fn new(
         identity: SigningKey,
         kem: KemSecretKey,
@@ -70,11 +107,19 @@ impl Vessel {
             identity,
             kem,
             endpoint,
+            cert: None,
             replica,
             read_keys: BTreeMap::new(),
         };
         vessel.refresh_keys().await?;
         Ok(vessel)
+    }
+
+    /// The device certificate proving the endpoint key belongs to this
+    /// identity (§4) — presented in the connection handshake (Phase 4).
+    /// `None` when the Vessel was opened via [`new`](Self::new).
+    pub fn device_cert(&self) -> Option<&outpost_identity::DeviceCert> {
+        self.cert.as_ref()
     }
 
     pub fn endpoint(&self) -> &Endpoint {
