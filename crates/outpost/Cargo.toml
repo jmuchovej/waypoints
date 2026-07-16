@@ -11,66 +11,7 @@ repository.workspace = true
 license.workspace = true
 publish.workspace = true
 
-[features]
-default = ["peers"]
-# The store-and-forward peer engine: wire types, fetch client, the
-# EnvelopeStore seam, and the gossip pump. What an embedding app pulls in.
-# Depends on domain for the frozen identity newtypes (OpID & friends) —
-# the log-plane fence is "never parse checkpoints", not "no domain types".
-peers = ["dep:reqwest", "dep:domain", "dep:uuid", "dep:chrono"]
-# The §4 endpoints as an axum router, plus request auth.
-peers-serve = ["peers", "dep:axum", "dep:sha2", "tokio/net"]
-# The embedded turso envelope store (standalone outposts).
-store-turso = ["peers", "dep:turso"]
-# Test fixtures: LocalPeer, NoopPeer, MemoryStore. They run the real
-# protocol code in-process (never a re-implementation), but they are
-# fixtures — nothing in production consumes them.
-testing = ["peers"]
-# Everything the `outpost` binary needs.
-binary = [
-  "peers-serve",
-  "store-turso",
-  "dep:clap",
-  "dep:tracing-subscriber",
-  "tokio/macros",
-  "tokio/rt-multi-thread",
-  "tokio/time",
-]
-# Reserved for future components (PROTOCOL.md §1): `relays` (live
-# forwarding) and `directory` (peer discovery). Names only — no code yet.
-
-[[bin]]
-name = "outpost"
-path = "bin/outpost.rs"
-required-features = ["binary"]
-
-[[test]]
-name = "e2e"
-required-features = ["binary"]
-
 [dependencies]
-async-trait.workspace = true
-axum = { workspace = true, optional = true }
-# The workspace chrono is default-features = false; `clock` enables Utc::now().
-chrono = { workspace = true, features = ["clock"], optional = true }
-clap = { workspace = true, features = ["env"], optional = true }
-domain = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
-serde.workspace = true
-serde_json.workspace = true
-sha2 = { workspace = true, optional = true }
-thiserror.workspace = true
-tokio = { workspace = true }
-tracing.workspace = true
-tracing-subscriber = { workspace = true, optional = true }
-turso = { workspace = true, optional = true }
-uuid = { workspace = true, optional = true }
-
-[dev-dependencies]
-cartograph.workspace = true
-chrono.workspace = true
-domain.workspace = true
-store = { workspace = true, features = ["test-utils"] }
 
 [lints]
 workspace = true
