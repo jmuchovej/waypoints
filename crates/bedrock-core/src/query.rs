@@ -63,6 +63,10 @@ pub enum ScalarValue {
     Int(i64),
     Real(f64),
     Text(String),
+    /// A binary bound for BLOB columns (content hashes, keys). Only
+    /// constructible from typed code — JSON filter documents have no
+    /// binary form.
+    Blob(Vec<u8>),
 }
 
 /// A sort key: a column and a direction.
@@ -358,6 +362,16 @@ impl From<&str> for ScalarValue {
 impl From<String> for ScalarValue {
     fn from(value: String) -> Self {
         ScalarValue::Text(value)
+    }
+}
+impl From<Vec<u8>> for ScalarValue {
+    fn from(value: Vec<u8>) -> Self {
+        ScalarValue::Blob(value)
+    }
+}
+impl<const N: usize> From<[u8; N]> for ScalarValue {
+    fn from(value: [u8; N]) -> Self {
+        ScalarValue::Blob(value.to_vec())
     }
 }
 

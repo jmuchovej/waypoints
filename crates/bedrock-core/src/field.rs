@@ -145,6 +145,32 @@ impl Field for Vec<u8> {
     }
 }
 
+/// Fixed-size byte arrays are BLOB columns with an enforced length —
+/// content hashes and public keys as native binary primary keys or
+/// indexed columns, no text encoding detour. Decoding a blob of any other
+/// length is a type mismatch, not a truncation.
+impl<const N: usize> Field for [u8; N] {
+    const KIND: FieldKind = FieldKind::Column(ColumnType::Blob);
+
+    fn encode(&self) -> Result<StoredValue, EncodeError> {
+        Ok(StoredValue::Blob(self.to_vec()))
+    }
+
+    fn decode(value: StoredValue) -> Result<Self, DecodeError> {
+        match value {
+            StoredValue::Blob(b) if b.len() == N => {
+                let mut out = [0u8; N];
+                out.copy_from_slice(&b);
+                Ok(out)
+            }
+            other => Err(DecodeError::type_mismatch(
+                core::any::type_name::<Self>(),
+                &other,
+            )),
+        }
+    }
+}
+
 /// Arbitrary JSON is a document — a genuinely schemaless field (e.g. a
 /// metadata bag), stored as `jsonb` without a Rust type to shape it. Unlike a
 /// derived [`Document`](FieldKind::Document), it needs no serde round-trip: the
