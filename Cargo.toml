@@ -12,6 +12,7 @@ members = [
   "crates/outpost",
   "crates/outpost-fabric",
   "crates/outpost-hold",
+  "crates/outpost-identity",
   "crates/outpost-protocol",
   "crates/server",
   "crates/store",
@@ -39,11 +40,13 @@ importer = { path = "crates/importer" }
 outpost = { path = "crates/outpost", default-features = false }
 outpost-fabric = { path = "crates/outpost-fabric" }
 outpost-hold = { path = "crates/outpost-hold" }
+outpost-identity = { path = "crates/outpost-identity" }
 outpost-protocol = { path = "crates/outpost-protocol" }
 store = { path = "crates/store" }
 
 anyhow = "1.0.103"
 async-trait = "0.1.89"
+bip39 = { version = "2", features = ["rand"] }
 axum = "0.8.9"
 blake3 = "1.8"
 bytes = { version = "1.11", features = ["serde"] }
@@ -63,6 +66,7 @@ fake = { version = "5.1.0", default-features = false }
 geo = { version = "0.33.1", features = ["use-serde"] }
 heck = "0.5"
 hex = "0.4"
+hmac = "0.13"
 hostname = "0.4"
 iana-time-zone = "0.1.65"
 indexmap = { version = "2.14", features = ["serde"] }
