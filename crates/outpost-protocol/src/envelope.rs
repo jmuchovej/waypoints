@@ -21,6 +21,11 @@
 //! - Signature verification uses `verify_strict`, rejecting the malleable /
 //!   weak-key edge cases plain `verify` accepts. Content-addressed history
 //!   should have exactly one accepted byte form.
+//! - The header lives in its own struct so the payload AEAD's associated
+//!   data (§7.4) is exactly `version byte ‖ postcard(header)` — see
+//!   [`EnvelopeHeader::aad`]. Postcard encodes nested structs inline, so
+//!   the split leaves the envelope encoding byte-identical (pinned by the
+//!   golden vectors).
 
 use bytes::Bytes;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
@@ -33,18 +38,18 @@ use crate::id::{EpochID, NoticeID, RecordID};
 /// wire-incompatible changes.
 pub const ENVELOPE_VERSION: u8 = 1;
 
-/// Parsed view of [`SignedNotice::bytes`]. Never re-encoded for
-/// verification (§5.2).
+/// The plaintext header of a Notice — everything a Station needs, nothing
+/// it doesn't (§5.3).
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct Envelope {
+pub struct EnvelopeHeader {
     /// Parent Notice IDs. Empty ⇒ this is a track root.
     pub parents: Vec<NoticeID>,
     /// The ACL record in force when this Notice was authored (§8.3).
     pub acl_head: RecordID,
-    /// Which read-key epoch encrypts `payload` (§7.2).
+    /// Which read-key epoch encrypts the payload (§7.2).
     pub epoch: EpochID,
     /// Author's identity public key. Must have write permission at
-    /// `acl_head` (validated in §5.4, slice 3).
+    /// `acl_head` (validated in §5.4).
     pub author: VerifyingKey,
     /// Nearest ancestor snapshot (§6.3). Roots reference themselves.
     pub snapshot_base: NoticeID,
@@ -54,8 +59,26 @@ pub struct Envelope {
     pub payload_type: String,
     /// Vessel clock; advisory only, never ordering.
     pub timestamp: i64,
-    /// XChaCha20-Poly1305 ciphertext. AAD = the version byte plus all
-    /// header fields (§7.4, slice 2).
+}
+
+impl EnvelopeHeader {
+    /// The payload AEAD's associated data (§7.4): the version byte plus the
+    /// encoded header. Binds ciphertext to its parents, epoch, author, and
+    /// ACL pin — a payload cannot be transplanted into a different header.
+    pub fn aad(&self) -> Result<Vec<u8>, WireError> {
+        let mut out = postcard::to_allocvec(self)?;
+        out.insert(0, ENVELOPE_VERSION);
+        Ok(out)
+    }
+}
+
+/// Parsed view of [`SignedNotice::bytes`]. Never re-encoded for
+/// verification (§5.2).
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub struct Envelope {
+    pub header: EnvelopeHeader,
+    /// XChaCha20-Poly1305 ciphertext, sealed with `header.aad()` as
+    /// associated data (§7.4).
     pub payload: Vec<u8>,
 }
 
@@ -92,7 +115,7 @@ pub struct SignedNotice {
 impl SignedNotice {
     /// Encode `envelope` and sign the resulting bytes with the author's
     /// identity key. The caller is responsible for `key` matching
-    /// `envelope.author` — [`parse_and_verify`](Self::parse_and_verify)
+    /// `envelope.header.author` — [`parse_and_verify`](Self::parse_and_verify)
     /// enforces it on every read path.
     pub fn sign(envelope: &Envelope, key: &SigningKey) -> Result<Self, WireError> {
         let bytes = envelope.encode()?;
@@ -106,6 +129,7 @@ impl SignedNotice {
     pub fn parse_and_verify(&self) -> Result<Envelope, WireError> {
         let envelope = Envelope::parse(&self.bytes)?;
         envelope
+            .header
             .author
             .verify_strict(&self.bytes, &self.signature)?;
         Ok(envelope)
@@ -143,14 +167,16 @@ mod tests {
 
     fn test_envelope() -> Envelope {
         Envelope {
-            parents: vec![NoticeID::from_bytes([1u8; 32])],
-            acl_head: RecordID::from_bytes([2u8; 32]),
-            epoch: EpochID::ZERO,
-            author: test_key().verifying_key(),
-            snapshot_base: NoticeID::from_bytes([3u8; 32]),
-            is_snapshot: false,
-            payload_type: "waypoints.test.v1".into(),
-            timestamp: 1_700_000_000,
+            header: EnvelopeHeader {
+                parents: vec![NoticeID::from_bytes([1u8; 32])],
+                acl_head: RecordID::from_bytes([2u8; 32]),
+                epoch: EpochID::ZERO,
+                author: test_key().verifying_key(),
+                snapshot_base: NoticeID::from_bytes([3u8; 32]),
+                is_snapshot: false,
+                payload_type: "waypoints.test.v1".into(),
+                timestamp: 1_700_000_000,
+            },
             payload: b"opaque ciphertext".to_vec(),
         }
     }
@@ -161,6 +187,16 @@ mod tests {
         let bytes = envelope.encode().unwrap();
         assert_eq!(bytes[0], ENVELOPE_VERSION);
         assert_eq!(Envelope::parse(&bytes).unwrap(), envelope);
+    }
+
+    #[test]
+    fn aad_is_envelope_prefix() {
+        // The header-only encoding must be a strict prefix of the envelope
+        // encoding: same version byte, same field bytes, payload appended.
+        let envelope = test_envelope();
+        let aad = envelope.header.aad().unwrap();
+        let full = envelope.encode().unwrap();
+        assert!(full.starts_with(&aad));
     }
 
     #[test]
@@ -201,7 +237,7 @@ mod tests {
     fn wrong_key_fails_verification() {
         let envelope = test_envelope();
         let imposter = SigningKey::from_bytes(&[8u8; 32]);
-        // Signed by a key that is not `envelope.author`.
+        // Signed by a key that is not `envelope.header.author`.
         let forged = SignedNotice {
             bytes: envelope.encode().unwrap(),
             signature: imposter.sign(&envelope.encode().unwrap()),
@@ -219,7 +255,7 @@ mod tests {
         assert_eq!(NoticeID::of(&notice).unwrap(), id);
 
         let mut other = test_envelope();
-        other.timestamp += 1;
+        other.header.timestamp += 1;
         let other = SignedNotice::sign(&other, &test_key()).unwrap();
         assert_ne!(NoticeID::of(&other).unwrap(), id);
     }
