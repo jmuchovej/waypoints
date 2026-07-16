@@ -11,6 +11,7 @@ pub mod crypto;
 mod envelope;
 mod error;
 mod id;
+pub mod sync;
 mod validate;
 
 pub use envelope::{ENVELOPE_VERSION, Envelope, EnvelopeHeader, SignedNotice};
