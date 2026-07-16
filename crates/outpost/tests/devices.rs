@@ -49,7 +49,7 @@ async fn devices_are_attributed_per_identity_and_member_gated() {
     });
 
     // Both devices sync; a stranger (different mnemonic, NOT a member) also
-    // syncs — stations serve ciphertext without membership, so it is sighted.
+    // tries — being *sighted* needs no membership, only authentication.
     owner_laptop.sync_with(addr.clone()).await.unwrap();
     let mut owner_phone = Vessel::from_identity(
         &identity,
@@ -68,7 +68,13 @@ async fn devices_are_attributed_per_identity_and_member_gated() {
     )
     .await
     .unwrap();
-    stranger.sync_with(addr.clone()).await.unwrap();
+    // Under the default Members policy the stranger's sync is refused after
+    // the ACL phase — but the attempt itself is sighted.
+    let refused = stranger.sync_with(addr.clone()).await;
+    assert!(
+        matches!(refused, Err(outpost::vessel::VesselError::SyncRefused)),
+        "a non-member's Notice phase is refused: {refused:?}"
+    );
 
     // The owner lists devices: three sightings (laptop, phone, stranger's
     // device), every cert verified client-side, the owner's two devices

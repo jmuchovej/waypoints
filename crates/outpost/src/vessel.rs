@@ -78,6 +78,8 @@ pub enum VesselError {
     NotServed,
     #[error("the Station refused the device listing (not a member, or no identity presented)")]
     DevicesRefused,
+    #[error("the Station refused the Notice phase — this identity is not a member")]
+    SyncRefused,
     #[error("a device sighting failed verification — the Station may be lying")]
     BadSighting,
 }
@@ -89,17 +91,19 @@ pub enum VesselError {
 ///
 /// The `identity` key authors Notices and ACL records — a `MemberID` is an
 /// identity, never a device (§4). The endpoint is bound with the *device*
-/// key (the `VesselID`); its cert (present when built via
-/// [`from_identity`](Self::from_identity)) proves which identity is behind
-/// the connection during the Phase-4 handshake.
+/// key (the `VesselID`); its cert proves which identity is behind the
+/// connection during the handshake ([`from_identity`](Self::from_identity)
+/// carries the derived device cert, [`new`](Self::new) a self-cert).
 pub struct Vessel {
     identity: SigningKey,
     kem: KemSecretKey,
     endpoint: Endpoint,
-    /// Certificate binding the endpoint's device key to `identity` (§4).
-    /// `None` for the low-level [`new`](Self::new) constructor, whose
-    /// endpoint is bound with the identity key itself.
-    cert: Option<outpost_protocol::identity::DeviceCert>,
+    /// Certificate binding the endpoint's device key to `identity` (§4),
+    /// presented in the connection handshake. For the low-level
+    /// [`new`](Self::new) constructor this is a **self-cert** — the identity
+    /// certifying its own key as the device key — so every Vessel can
+    /// authenticate to an admission-gated Station.
+    cert: outpost_protocol::identity::DeviceCert,
     replica: Replica,
     read_keys: BTreeMap<EpochID, ReadKey>,
 }
@@ -123,7 +127,7 @@ impl Vessel {
             identity: identity.signing_key().clone(),
             kem: identity.kem_secret(),
             endpoint,
-            cert: Some(device.cert.clone()),
+            cert: device.cert.clone(),
             replica,
             read_keys: BTreeMap::new(),
         };
@@ -132,20 +136,24 @@ impl Vessel {
     }
 
     /// Open a Vessel from raw keys, binding the endpoint with the identity
-    /// key itself (no separate device key or cert). Lower-level than
+    /// key itself (no separate device key). Lower-level than
     /// [`from_identity`](Self::from_identity); useful where a full derived
-    /// identity is overkill.
+    /// identity is overkill. The handshake cert is a **self-cert** (the
+    /// identity certifies its own key), so this Vessel authenticates to
+    /// admission-gated Stations like any other.
     pub async fn new(
         identity: SigningKey,
         kem: KemSecretKey,
         replica: Replica,
     ) -> Result<Self, VesselError> {
         let endpoint = Endpoint::bind_identity(&identity).await?;
+        let cert =
+            outpost_protocol::identity::DeviceCert::issue(&identity, &identity.verifying_key());
         let mut vessel = Self {
             identity,
             kem,
             endpoint,
-            cert: None,
+            cert,
             replica,
             read_keys: BTreeMap::new(),
         };
@@ -154,10 +162,9 @@ impl Vessel {
     }
 
     /// The device certificate proving the endpoint key belongs to this
-    /// identity (§4) — presented in the connection handshake (Phase 4).
-    /// `None` when the Vessel was opened via [`new`](Self::new).
-    pub fn device_cert(&self) -> Option<&outpost_protocol::identity::DeviceCert> {
-        self.cert.as_ref()
+    /// identity (§4) — presented in the connection handshake.
+    pub fn device_cert(&self) -> &outpost_protocol::identity::DeviceCert {
+        &self.cert
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -365,16 +372,18 @@ impl Vessel {
         self.do_register(&mut session, territory).await
     }
 
-    /// The shared registration exchange: handshake, present the root, await
-    /// the ack.
+    /// The shared registration exchange: handshake, present the ACL log,
+    /// await the ack. The full log (not just the root) travels so the
+    /// Station bootstraps *current* and can check the registrant's authority
+    /// against the fold (design doc §3.1).
     async fn do_register(
         &self,
         session: &mut outpost_fabric::Session,
         territory: TerritoryID,
     ) -> Result<(), VesselError> {
         self.send_hello(session).await?;
-        let root = self.root_record().await?;
-        frame_write(session, &SyncMessage::Register { territory, root }).await?;
+        let acl = self.replica.acl_suffix(0).await?;
+        frame_write(session, &SyncMessage::Register { territory, acl }).await?;
         let ack = frame_read(session).await?;
         session.close();
         match ack {
@@ -383,27 +392,22 @@ impl Vessel {
         }
     }
 
-    /// This Territory's root ACL record (log position 0), presented on
-    /// registration so a Station can bootstrap a fresh hold (§13).
-    async fn root_record(&self) -> Result<ACLRecord, VesselError> {
-        self.replica
-            .hold()
-            .acl_records()
-            .await?
-            .into_iter()
-            .next()
-            .ok_or(VesselError::Replica(ReplicaError::NoAcl))
-    }
-
     /// The shared post-connect flow: handshake, scope to the Territory,
-    /// reconcile, refresh keys.
+    /// reconcile, refresh keys. An admission refusal after the ACL phase
+    /// surfaces as [`SyncRefused`](VesselError::SyncRefused) — the ACL
+    /// records received up to that point are kept and keys still refresh
+    /// (they are exactly what a pending joiner came for); other session
+    /// hiccups stay best-effort, repaired by the next reconcile.
     async fn run_sync(&mut self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
         self.send_hello(session).await?;
         self.open_territory(session).await?;
-        let _ = initiate(&self.replica, &mut session.send, &mut session.recv).await;
+        let result = initiate(&self.replica, &mut session.send, &mut session.recv).await;
         session.close();
         self.refresh_keys().await?;
-        Ok(())
+        match result {
+            Err(outpost_fabric::SessionError::Refused) => Err(VesselError::SyncRefused),
+            _ => Ok(()),
+        }
     }
 
     /// Ask a Station which certified devices have touched this Vessel's
@@ -468,24 +472,23 @@ impl Vessel {
         Ok(())
     }
 
-    /// Present the identity handshake (§10.2) if this Vessel carries a device
-    /// cert, and read the Station's acknowledgement. A cert-less Vessel (from
-    /// the low-level [`new`](Self::new)) skips it.
+    /// Present the identity handshake (§10.2) and read the Station's
+    /// acknowledgement. Every Vessel carries a cert (a self-cert at minimum),
+    /// so the handshake is unconditional — admission-gated Stations require
+    /// it.
     async fn send_hello(&self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
-        if let Some(cert) = &self.cert {
-            frame_write(
-                session,
-                &SyncMessage::Hello {
-                    identity: self.identity.verifying_key(),
-                    cert: cert.clone(),
-                },
-            )
-            .await?;
-            // The Station acks the handshake; a rejection ends the session.
-            match frame_read(session).await? {
-                SyncMessage::Ack { ok: true } => {}
-                _ => return Err(VesselError::UntrustedStation),
-            }
+        frame_write(
+            session,
+            &SyncMessage::Hello {
+                identity: self.identity.verifying_key(),
+                cert: self.cert.clone(),
+            },
+        )
+        .await?;
+        // The Station acks the handshake; a rejection ends the session.
+        match frame_read(session).await? {
+            SyncMessage::Ack { ok: true } => {}
+            _ => return Err(VesselError::UntrustedStation),
         }
         Ok(())
     }

@@ -152,12 +152,15 @@ pub enum SyncMessage {
     },
     /// Vessel → Station: register a Territory so the Station will hold and
     /// serve it (§13, the coordinator role absorbed into Stations). Carries
-    /// the Territory's root ACL record so a Station that does not yet hold it
-    /// can bootstrap a fresh hold from it (`TerritoryID` is the root's hash,
-    /// so the Station verifies the two agree before serving).
+    /// the Territory's **ACL log** (root first) so a Station that does not
+    /// yet hold it bootstraps a fresh hold that is *current*, not
+    /// root-only — and so admission can fold the log and check the
+    /// registrant's authority against it (a later-promoted Owner passes
+    /// identically to the creator). The Station verifies
+    /// `territory == hash(log[0])` before anything else.
     Register {
         territory: crate::TerritoryID,
-        root: crate::acl::ACLRecord,
+        acl: Vec<crate::acl::OrderedRecord>,
     },
     /// Station → Vessel: acknowledge a registration (or handshake) — `true`
     /// if accepted.
