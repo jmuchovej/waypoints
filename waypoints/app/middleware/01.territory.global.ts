@@ -8,14 +8,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!("isTauri" in window) && !import.meta.dev) return;
 
   try {
-    const territories = await ipc.territory.list();
-    const hasTerritory = territories.length > 0;
+    const [territories, sync] = await Promise.all([ipc.territory.list(), ipc.sync.status()]);
+    const onboarded = territories.length > 0 && sync.hasIdentity;
 
-    if (!hasTerritory && to.path !== "/onboarding") {
+    if (!onboarded && to.path !== "/onboarding") {
       return navigateTo("/onboarding");
     }
 
-    if (hasTerritory && to.path === "/onboarding") {
+    if (onboarded && to.path === "/onboarding") {
       return navigateTo("/");
     }
   } catch {
