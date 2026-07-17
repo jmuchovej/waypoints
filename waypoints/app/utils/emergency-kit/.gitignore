@@ -1,0 +1,3 @@
+# typst design-preview artifacts (`typst compile emergency-kit.typ`)
+*.pdf
+*.png

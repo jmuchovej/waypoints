@@ -55,34 +55,9 @@ async function renderKatex(expression: string): Promise<RenderResult> {
   }
 }
 
-// Lazy-loaded typst.ts WASM compiler
-type TypstSnippet = Awaited<ReturnType<typeof initTypst>>;
-let typstReady: Promise<TypstSnippet> | null = null;
-
-async function initTypst() {
-  const { $typst } = await import("@myriaddreamin/typst.ts/contrib/all-in-one-lite");
-  $typst.setCompilerInitOptions({
-    getModule: () =>
-      fetch(
-        new URL(
-          "@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm",
-          import.meta.url,
-        ),
-      ).then((r) => r.arrayBuffer()),
-  });
-  $typst.setRendererInitOptions({
-    getModule: () =>
-      fetch(
-        new URL("@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm", import.meta.url),
-      ).then((r) => r.arrayBuffer()),
-  });
-  return $typst;
-}
-
-function loadTypst(): Promise<TypstSnippet> {
-  if (!typstReady) typstReady = initTypst();
-  return typstReady;
-}
+// Lazy-loaded typst.ts WASM compiler — the shared singleton lives in
+// app/utils/typst.ts (the emergency-kit PDF export uses it too).
+import { loadTypst } from "../../utils/typst";
 
 async function renderTypst(expression: string, displayMode = false): Promise<RenderResult> {
   const sanitized = displayMode ? expression.trim() : sanitizeForInline(expression);
