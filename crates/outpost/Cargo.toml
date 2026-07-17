@@ -44,6 +44,8 @@ _role = [
   "dep:hex",
   "dep:outpost-fabric",
   "dep:outpost-hold",
+  "dep:serde",
+  "dep:serde_json",
   "dep:thiserror",
   "dep:tokio",
   "dep:tracing",
@@ -58,6 +60,7 @@ ed25519-dalek = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 outpost-fabric = { workspace = true, optional = true }
 outpost-hold = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
 # CLI-only deps (see the `cli` feature).

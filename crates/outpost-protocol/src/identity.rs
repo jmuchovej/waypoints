@@ -28,6 +28,7 @@
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use hmac::{Hmac, KeyInit, Mac};
+use rand_core::{CryptoRng, Rng};
 use sha2::Sha512;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -141,6 +142,16 @@ impl KeyRoot {
             signing: SigningKey::from_bytes(&signing.key),
             kem_seed: kem.key,
         }
+    }
+
+    /// The keypair for a fresh random hardened index — how a joining device
+    /// picks its key when there is no coordinator to hand out sequential
+    /// indices (§4). Collision is a birthday problem over 2³¹ indices —
+    /// negligible at any realistic device count. Index 0 is skipped: it is
+    /// the conventional first-device index.
+    pub fn random_device(&self, rng: &mut impl CryptoRng) -> DeviceKey {
+        let index = (rng.next_u32() & 0x7FFF_FFFF).max(1);
+        self.device(index)
     }
 
     /// The keypair for device `index`, certified by the identity. A new
