@@ -14,6 +14,7 @@ use crate::instance::AppState;
 pub mod chart;
 pub mod editor;
 pub mod mark;
+pub mod sync;
 pub mod territory;
 
 /// Every IPC command route. State is applied by the caller.
@@ -40,6 +41,33 @@ pub fn router() -> Router<AppState> {
         .route("/ipc/territory_close", post(territory::territory_close))
         .route("/ipc/territory_create", post(territory::territory_create))
         .route("/ipc/territory_remove", post(territory::territory_remove))
+        // sync
+        .route("/ipc/sync_status", post(sync::sync_status))
+        .route(
+            "/ipc/sync_identity_create",
+            post(sync::sync_identity_create),
+        )
+        .route(
+            "/ipc/sync_identity_import",
+            post(sync::sync_identity_import),
+        )
+        .route(
+            "/ipc/sync_identity_mnemonic",
+            post(sync::sync_identity_mnemonic),
+        )
+        .route(
+            "/ipc/sync_territory_create",
+            post(sync::sync_territory_create),
+        )
+        .route("/ipc/sync_station_set", post(sync::sync_station_set))
+        .route("/ipc/sync_station_status", post(sync::sync_station_status))
+        .route("/ipc/sync_now", post(sync::sync_now))
+        .route("/ipc/sync_devices", post(sync::sync_devices))
+        .route(
+            "/ipc/sync_pairing_payload",
+            post(sync::sync_pairing_payload),
+        )
+        .route("/ipc/sync_pairing_join", post(sync::sync_pairing_join))
         // editor
         .route("/ipc/editor_get_mark", post(editor::editor_get_mark))
         .route("/ipc/editor_mark_list", post(editor::editor_mark_list))

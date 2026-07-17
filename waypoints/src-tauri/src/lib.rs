@@ -15,6 +15,7 @@ mod commands {
     pub mod chart;
     pub mod editor;
     pub mod mark;
+    pub mod sync;
     pub mod territory;
 }
 
@@ -48,6 +49,18 @@ pub fn run() {
             commands::territory::territory_close,
             commands::territory::territory_create,
             commands::territory::territory_remove,
+            // sync
+            commands::sync::sync_status,
+            commands::sync::sync_identity_create,
+            commands::sync::sync_identity_import,
+            commands::sync::sync_identity_mnemonic,
+            commands::sync::sync_territory_create,
+            commands::sync::sync_station_set,
+            commands::sync::sync_station_status,
+            commands::sync::sync_now,
+            commands::sync::sync_devices,
+            commands::sync::sync_pairing_payload,
+            commands::sync::sync_pairing_join,
             // editor
             commands::editor::editor_get_mark,
             commands::editor::editor_mark_list,

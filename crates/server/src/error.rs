@@ -11,6 +11,7 @@ use axum::response::{IntoResponse, Response};
 
 use cartograph::EditorError;
 use cartograph::mark::MarkError;
+use cartograph::sync::SyncError;
 use cartograph::territory::TerritoryError;
 
 pub struct ApiError {
@@ -35,6 +36,15 @@ impl From<EditorError> for ApiError {
 
 impl From<MarkError> for ApiError {
     fn from(e: MarkError) -> Self {
+        Self {
+            status: StatusCode::UNPROCESSABLE_ENTITY,
+            message: e.to_string(),
+        }
+    }
+}
+
+impl From<SyncError> for ApiError {
+    fn from(e: SyncError) -> Self {
         Self {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             message: e.to_string(),
