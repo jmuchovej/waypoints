@@ -24,6 +24,11 @@ const tabs: NavigationMenuItem[][] = [
       icon: "i-lucide-shield",
       to: "/settings/security",
     },
+    {
+      label: "Sync",
+      icon: "i-lucide-radio-tower",
+      to: "/settings/sync",
+    },
   ],
 ];
 
