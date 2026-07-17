@@ -61,5 +61,15 @@ pub mod territory {
     pub(crate) use manager::TerritoryManager;
 }
 
+pub mod sync {
+    mod error;
+    mod service;
+    mod types;
+
+    pub use error::{SyncError, SyncResult};
+    pub use service::SyncService;
+    pub use types::{IdentityCreated, StationStatus, SyncDevice, SyncStatus};
+}
+
 mod runtime;
 pub use runtime::WaypointsRuntime;

@@ -20,6 +20,9 @@ required-features = ["development"]
 async-trait.workspace = true
 chrono.workspace = true
 domain.workspace = true
+hex.workspace = true
+outpost = { workspace = true, features = ["vessel"] }
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 specta.workspace = true

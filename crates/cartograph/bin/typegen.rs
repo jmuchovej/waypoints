@@ -1,6 +1,7 @@
 use specta::Types;
 use specta_typescript::Typescript;
 
+use cartograph::sync::{IdentityCreated, StationStatus, SyncDevice, SyncStatus};
 use cartograph::territory::{Territory, TerritoryKind};
 use cartograph::{
     CreateResult, CursorState, MutationResult, RenderNode, SplitResult, UndoRedoResult,
@@ -12,6 +13,12 @@ fn main() {
     // territory
     collection.register_mut::<Territory>();
     collection.register_mut::<TerritoryKind>();
+
+    // sync
+    collection.register_mut::<SyncStatus>();
+    collection.register_mut::<IdentityCreated>();
+    collection.register_mut::<StationStatus>();
+    collection.register_mut::<SyncDevice>();
 
     // editor
     collection.register_mut::<RenderNode>();
