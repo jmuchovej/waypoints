@@ -63,6 +63,15 @@ export type CursorState = {
   offset: number | null;
 };
 
+/**
+ *  A freshly minted identity. The mnemonic is returned exactly once, for the
+ *  reveal-and-back-up step — it is the only backup that exists.
+ */
+export type IdentityCreated = {
+  mnemonic: string;
+  memberId: string;
+};
+
 /**  Result of a mutation that re-projects the block list. */
 export type MutationResult = MutationResult_Serialize;
 
@@ -112,6 +121,69 @@ export type SplitResult_Deserialize = {
 export type SplitResult_Serialize = {
   new_mark_id: MarkID;
   blocks: RenderNode_Serialize[];
+};
+
+/**  Result of probing the configured Station — the "ping". */
+export type StationStatus = {
+  configured: boolean;
+  reachable: boolean;
+  /**
+   *  Whether the Station serves this device's Territory (false until
+   *  registered, or when probing without a local Territory).
+   */
+  servesTerritory: boolean;
+  latencyMs: number | null;
+  error: string | null;
+};
+
+/**
+ *  One sighted device (Vessel) from the Station's device registry, with its
+ *  attribution verified client-side against the claimed identity.
+ */
+export type SyncDevice = {
+  /**  The identity behind the device, as hex `MemberID`. */
+  memberId: string;
+  /**  The device's public key (its VesselID), as hex. */
+  deviceKey: string;
+  /**  Belongs to this device's identity. */
+  mine: boolean;
+  /**  Is this very device. */
+  thisDevice: boolean;
+  /**
+   *  Station-attested unix seconds — presence metadata, not verified.
+   *  `f64` because specta forbids `u64` at the IPC boundary.
+   */
+  firstSeen: number | null;
+  lastSeen: number | null;
+  /**
+   *  Live-session presence: true only while the device holds an open
+   *  session with the Station.
+   */
+  connected: boolean;
+};
+
+/**
+ *  Where this device stands in the sync lifecycle — the UI's single source
+ *  for gating onboarding vs. settings surfaces.
+ */
+export type SyncStatus = {
+  hasIdentity: boolean;
+  /**
+   *  The identity's `MemberID` as hex (the user ID — the key *is* the
+   *  account).
+   */
+  memberId: string | null;
+  /**  This device's key-derivation index under the identity. */
+  deviceIndex: number | null;
+  hasTerritory: boolean;
+  /**  The sync Territory's ID as hex. */
+  territoryId: string | null;
+  stationConfigured: boolean;
+  /**
+   *  The configured Station address, as its JSON form (what `station-run`
+   *  publishes to `station.addr`).
+   */
+  stationAddr: string | null;
 };
 
 export type Territory = {

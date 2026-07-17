@@ -7,22 +7,29 @@ use crate::editor::{EditorHandle, EditorService};
 
 use crate::chart::ChartHandle;
 use crate::mark::MarkHandle;
+use crate::sync::SyncService;
 use crate::territory::{RegistryStore, TerritoryHandle, TerritoryManager, TerritoryResult};
 
 pub struct WaypointsRuntime {
     manager: TerritoryManager,
     pub(crate) editor: Mutex<EditorService>,
     registry: Arc<dyn RegistryStore>,
+    sync: SyncService,
 }
 
 impl WaypointsRuntime {
-    pub fn new(managed_root: PathBuf, registry: Arc<dyn RegistryStore>) -> Self {
+    pub fn new(
+        managed_root: PathBuf,
+        sync_root: PathBuf,
+        registry: Arc<dyn RegistryStore>,
+    ) -> Self {
         let manager = TerritoryManager::new(managed_root);
         let editor = EditorService::new(manager.active_db.clone());
         Self {
             manager,
             editor: Mutex::new(editor),
             registry,
+            sync: SyncService::new(sync_root),
         }
     }
 
@@ -69,6 +76,10 @@ impl WaypointsRuntime {
             registry: self.registry.as_ref(),
             editor: &self.editor,
         }
+    }
+
+    pub fn sync(&self) -> &SyncService {
+        &self.sync
     }
 
     pub fn marks(&self) -> MarkHandle<'_> {

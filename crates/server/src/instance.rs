@@ -50,7 +50,11 @@ impl Instances {
 
         // Share the desktop app's settings.json so we see its territories.
         let registry = Arc::new(SettingsRegistryStore::new(base.join("settings.json")));
-        let rt = Arc::new(WaypointsRuntime::new(base.join("territories"), registry));
+        let rt = Arc::new(WaypointsRuntime::new(
+            base.join("territories"),
+            base.join("sync"),
+            registry,
+        ));
         if let Err(e) = rt.resume().await {
             tracing::warn!("failed to resume territory for {flavor}: {e}");
         }
