@@ -24,6 +24,13 @@
 /// The protocol vocabulary — always available.
 pub use outpost_protocol as protocol;
 
+/// The one fabric type an embedding app must name: the dialable Station
+/// address (it appears in role-module signatures and in app config). A
+/// deliberate single re-export, not a barrel — the rest of the fabric stays
+/// an internal layer behind this façade.
+#[cfg(any(feature = "vessel", feature = "station"))]
+pub use outpost_fabric::EndpointAddr;
+
 #[cfg(feature = "cli")]
 pub mod cli;
 

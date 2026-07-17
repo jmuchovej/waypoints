@@ -20,7 +20,11 @@ use std::sync::atomic::{AtomicI64, Ordering};
 
 use ed25519_dalek::VerifyingKey;
 use outpost_fabric::SyncPeer;
-use outpost_hold::{AclIndex, HoldError, NoticeIndex, TerritoryHold};
+use outpost_hold::{AclIndex, HoldError, NoticeIndex};
+
+/// Re-exported so an embedding app can open an existing hold and hand it to
+/// [`Replica::reopen`] without depending on `outpost-hold` directly.
+pub use outpost_hold::TerritoryHold;
 use outpost_protocol::acl::{ACLRecord, ACLReject, OrderProof, OrderedRecord};
 use outpost_protocol::sync::TallyDigest;
 use outpost_protocol::{NoticeID, RecordID, SignedNotice, TrackID, Validated, validate};

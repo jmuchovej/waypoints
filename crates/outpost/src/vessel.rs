@@ -30,6 +30,7 @@ use outpost_protocol::{
     CryptoError, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, SignedNotice, TerritoryID,
     TrackID, WireError,
 };
+use serde::{Deserialize, Serialize};
 
 pub use outpost_fabric::fleet;
 pub use outpost_protocol::acl::ACLRecord;
@@ -406,7 +407,29 @@ impl Vessel {
         Ok(devices)
     }
 
-    /// Scope the session to this Vessel's Territory and confirm the
+    /// Probe a Station: dial it, present the identity handshake, and ask
+    /// whether it serves this Vessel's Territory — `Ok(true)` if it does,
+    /// `Ok(false)` if it answered but does not (register it first), `Err` if
+    /// it could not be reached at all. A liveness check, not a sync: the
+    /// session is closed right after the ack, so the Station may log the
+    /// early end of the sync flow it was ready to serve.
+    pub async fn probe(
+        &self,
+        station: impl Into<outpost_fabric::EndpointAddr>,
+    ) -> Result<bool, VesselError> {
+        let territory = self.replica.territory_id().await?;
+        let mut session = self.endpoint.connect(station).await?;
+        self.send_hello(&mut session).await?;
+        frame_write(&mut session, &SyncMessage::Open { territory }).await?;
+        let ack = frame_read(&mut session).await?;
+        session.close();
+        match ack {
+            SyncMessage::Ack { ok } => Ok(ok),
+            _ => Err(VesselError::Session("unexpected probe reply".into())),
+        }
+    }
+
+    /// Scope the session to this Vessel's Territory and confirm the ends
     /// Station serves it — a Station that does not returns
     /// [`NotServed`](VesselError::NotServed) (register it first).
     async fn open_territory(
@@ -941,4 +964,158 @@ impl SubscriptionWorker {
         }
         let _ = self.event_tx.try_send(SubscriptionEvent::Acl);
     }
+}
+
+// ---- device pairing surface ------------------------------
+
+/// Dial a Station and immediately hang up — the cheapest "is it there at
+/// all" reachability check, for a device that has no Territory yet (so
+/// [`Vessel::probe`] cannot run). Proves transport reachability only; says
+/// nothing about what the Station serves.
+pub async fn reach(
+    device: &DeviceKey,
+    station: impl Into<outpost_fabric::EndpointAddr>,
+) -> Result<(), VesselError> {
+    let endpoint = Endpoint::bind_identity(&device.signing).await?;
+    let outcome = match endpoint.connect(station).await {
+        Ok(mut session) => {
+            session.close();
+            Ok(())
+        }
+        Err(e) => Err(VesselError::from(e)),
+    };
+    endpoint.close().await;
+    outcome
+}
+
+/// The out-of-band payload that moves a user onto a new device: the
+/// recovery phrase (the identity), which Territory, and which Station to
+/// fetch it from — everything [`fetch_acl_log`] + [`Vessel::from_identity`]
+/// need on a fresh device. The app renders [`encode`](Self::encode)'s JSON
+/// as a QR code / copyable string on a trusted device; treat it exactly
+/// like the recovery phrase itself.
+///
+/// Lives here rather than outpost-protocol because it names a Station
+/// address — a fabric concern the protocol layer sits below.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairingPayload {
+    pub v: u8,
+    pub kind: String,
+    pub mnemonic: String,
+    /// Hex `TerritoryID` — hex rather than serde's byte array, for a
+    /// compact QR-friendly encoding.
+    pub territory: String,
+    /// The Station's dialable address.
+    pub station: outpost_fabric::EndpointAddr,
+}
+
+/// The `kind` discriminator of [`PairingPayload`].
+pub const PAIRING_KIND: &str = "waypoints-pairing";
+/// The current [`PairingPayload`] version.
+pub const PAIRING_VERSION: u8 = 1;
+
+#[derive(Debug, thiserror::Error)]
+pub enum PairingError {
+    #[error("not a Waypoints pairing code")]
+    Unrecognized,
+    #[error("unsupported pairing code version {0}")]
+    Version(u8),
+    #[error("malformed pairing code: {0}")]
+    Encoding(String),
+}
+
+impl PairingPayload {
+    pub fn new(
+        mnemonic: String,
+        territory: TerritoryID,
+        station: outpost_fabric::EndpointAddr,
+    ) -> Self {
+        Self {
+            v: PAIRING_VERSION,
+            kind: PAIRING_KIND.to_string(),
+            mnemonic,
+            territory: territory.to_string(),
+            station,
+        }
+    }
+
+    /// The JSON form the app puts in a QR code / on the clipboard.
+    pub fn encode(&self) -> Result<String, PairingError> {
+        serde_json::to_string(self).map_err(|e| PairingError::Encoding(e.to_string()))
+    }
+
+    /// Parse and validate a pairing code (kind and version are checked; the
+    /// mnemonic and Territory are validated by their own consumers).
+    pub fn decode(code: &str) -> Result<Self, PairingError> {
+        let payload: Self =
+            serde_json::from_str(code.trim()).map_err(|e| PairingError::Encoding(e.to_string()))?;
+        if payload.kind != PAIRING_KIND {
+            return Err(PairingError::Unrecognized);
+        }
+        if payload.v != PAIRING_VERSION {
+            return Err(PairingError::Version(payload.v));
+        }
+        Ok(payload)
+    }
+
+    pub fn territory_id(&self) -> Result<TerritoryID, PairingError> {
+        let bytes =
+            hex::decode(&self.territory).map_err(|e| PairingError::Encoding(e.to_string()))?;
+        let bytes: [u8; 32] = bytes
+            .try_into()
+            .map_err(|_| PairingError::Encoding("territory id must be 32 bytes".into()))?;
+        Ok(TerritoryID::from_bytes(bytes))
+    }
+}
+
+/// Fetch a Territory's full ordered ACL log from a Station that serves it,
+/// **without** holding a replica yet — the bootstrap step for a new device
+/// that knows only the `TerritoryID` (from a pairing payload) and a Station
+/// address. Same-mnemonic devices need no admission, but they do need
+/// the log to build a [`Replica`] before a [`Vessel`] can open; feed the
+/// returned records to [`open_replica`].
+///
+/// Runs Hello → Open → the initiator's ACL phase from position 0, then ends
+/// the session before the Notice phase (the first real sync fills that in).
+pub async fn fetch_acl_log(
+    identity: &Identity,
+    device: &DeviceKey,
+    station: impl Into<outpost_fabric::EndpointAddr>,
+    territory: TerritoryID,
+) -> Result<Vec<ACLRecord>, VesselError> {
+    let endpoint = Endpoint::bind_identity(&device.signing).await?;
+    let mut session = endpoint.connect(station).await?;
+
+    frame_write(
+        &mut session,
+        &SyncMessage::Hello {
+            identity: identity.verifying_key(),
+            cert: device.cert.clone(),
+        },
+    )
+    .await?;
+    match frame_read(&mut session).await? {
+        SyncMessage::Ack { ok: true } => {}
+        _ => return Err(VesselError::UntrustedStation),
+    }
+
+    frame_write(&mut session, &SyncMessage::Open { territory }).await?;
+    match frame_read(&mut session).await? {
+        SyncMessage::Ack { ok: true } => {}
+        _ => return Err(VesselError::NotServed),
+    }
+
+    frame_write(&mut session, &SyncMessage::AclRequest { len: 0 }).await?;
+    let records = match frame_read(&mut session).await? {
+        SyncMessage::AclResponse { records, .. } => records,
+        _ => return Err(VesselError::Session("unexpected ACL reply".into())),
+    };
+    // Finish the ACL phase politely (we have nothing to push) before ending
+    // the session ahead of the Notice phase.
+    frame_write(&mut session, &SyncMessage::AclPush { records: vec![] }).await?;
+    session.close();
+    endpoint.close().await;
+
+    Ok(records.into_iter().map(|o| o.record).collect())
 }
