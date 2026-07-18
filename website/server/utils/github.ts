@@ -37,11 +37,32 @@ export async function fetchGitHubReleases(): Promise<GitHubRelease[]> {
   return releases.filter((r) => !r.draft);
 }
 
+export type UpdateChannel = "stable" | "preview" | "nightly";
+
+export const UPDATE_CHANNELS: UpdateChannel[] = ["stable", "preview", "nightly"];
+
+/**
+ * Classify a release tag into an update channel by its shape.
+ *
+ * Preview and nightly are both GitHub *prereleases*, so the `prerelease`
+ * boolean alone can't tell them apart — a nightly would otherwise be served as
+ * the latest "preview". Match on the tag suffix instead, most-specific first:
+ *   nightly  vX.Y.Z-nightly.<date>
+ *   preview  vX.Y.Z-pre.<n>
+ *   stable   vX.Y.Z
+ */
+export function channelForTag(tag: string): UpdateChannel | null {
+  if (/-nightly\./.test(tag)) return "nightly";
+  if (/-pre\./.test(tag)) return "preview";
+  if (/^v\d+\.\d+\.\d+$/.test(tag)) return "stable";
+  return null;
+}
+
 export function latestForChannel(
   releases: GitHubRelease[],
-  channel: "stable" | "preview",
+  channel: UpdateChannel,
 ): ReleaseAssets | null {
-  const match = releases.find((r) => (channel === "preview" ? r.prerelease : !r.prerelease));
+  const match = releases.find((r) => channelForTag(r.tag_name) === channel);
 
   if (!match) return null;
 
@@ -112,9 +133,7 @@ export type TauriUpdateManifest = {
   platforms: Record<string, TauriPlatformEntry>;
 } | null;
 
-export async function buildUpdateManifest(
-  channel: "stable" | "preview",
-): Promise<TauriUpdateManifest> {
+export async function buildUpdateManifest(channel: UpdateChannel): Promise<TauriUpdateManifest> {
   const releases = await fetchGitHubReleases();
   const latest = latestForChannel(releases, channel);
 

@@ -1,0 +1,23 @@
+# $schema: https://json.schemastore.org/github-action.json
+name: "Nightly Plan"
+description: "Resolve the nightly release tag — derive the version from the on-disk workspace version, skip unchanged runs, and create the tag."
+
+inputs:
+  dispatch-tag:
+    required: false
+    default: ""
+    description: "Explicit tag for a manual dispatch (empty = build-only, no release). Ignored for schedule/push events."
+  token:
+    required: false
+    default: ${{ github.token }}
+    description: "Token used to read tags and create the nightly tag (needs contents: write)."
+
+outputs:
+  tag:
+    description: "The resolved release tag (empty when build-only)."
+  should-build:
+    description: "'true' when the build jobs should run, 'false' when the run is skipped."
+
+runs:
+  using: node24
+  main: dist/index.js

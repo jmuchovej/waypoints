@@ -14,15 +14,12 @@ publish.workspace = true
 [dependencies]
 bedrock = { workspace = true }
 chrono.workspace = true
-derive_more = {
-  workspace = true,
-  features = [
-    "debug",
-    "display",
-    "error",
-    "from",
-  ]
-}
+derive_more = { workspace = true, features = [
+  "debug",
+  "display",
+  "error",
+  "from",
+] }
 domain.workspace = true
 importer = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true }
@@ -44,6 +41,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 default = []
 development = ["mock"]
 mock = ["dep:importer", "dep:indexmap"]
+nightly = []
 preview = []
 stable = []
 test-utils = ["dep:tempfile"]

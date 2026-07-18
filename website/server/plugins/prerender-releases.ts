@@ -15,7 +15,10 @@ export default defineNitroPlugin((nitroApp) => {
 
       for (const release of data.releases) {
         if (release.draft) continue;
-        const channel = release.prerelease ? "preview" : "stable";
+        const channel = channelForTag(release.tag);
+        // Nightlies are an ephemeral dev channel — don't prerender a marketing
+        // notes page per build. Only stable/preview get per-release pages.
+        if (channel !== "stable" && channel !== "preview") continue;
         routes.add(`/releases/${channel}/${release.tag}`);
       }
     } catch (err) {
@@ -24,5 +27,6 @@ export default defineNitroPlugin((nitroApp) => {
 
     routes.add("/api/v1/update/stable.json");
     routes.add("/api/v1/update/preview.json");
+    routes.add("/api/v1/update/nightly.json");
   });
 });

@@ -1,57 +1,56 @@
 [package]
 name = "Waypoints"
 version.workspace = true
-description.workspace = true
-license.workspace = true
-repository.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description.workspace = true
+repository.workspace = true
+license.workspace = true
 default-run = "waypoints"
 
 [lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
 name = "waypoints"
-crate-type = ["staticlib", "cdylib", "rlib"]
-
 
 [[bin]]
 name = "waypoints"
 path = "bin/waypoints.rs"
 
+[dependencies]
+async-trait.workspace = true
+cartograph.workspace = true
+chrono.workspace = true
+domain.workspace = true
+resvg = "0.47.0"
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+sea-orm.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+store.workspace = true
+tauri = { workspace = true, features = ["image-png"] }
+tauri-plugin-deep-link.workspace = true
+tauri-plugin-dialog.workspace = true
+tauri-plugin-fs.workspace = true
+tauri-plugin-notification.workspace = true
+tauri-plugin-os.workspace = true
+tauri-plugin-shell.workspace = true
+tauri-plugin-store.workspace = true
+tauri-plugin-updater = "2.10.1"
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+wry.workspace = true
+
 [build-dependencies]
 tauri-build.workspace = true
 
-[dependencies]
-async-trait.workspace = true
-tauri-plugin-shell.workspace = true
-tauri-plugin-deep-link.workspace = true
-tauri-plugin-notification.workspace = true
-tauri-plugin-os.workspace = true
-tauri-plugin-fs.workspace = true
-tauri-plugin-dialog.workspace = true
-tauri-plugin-store.workspace = true
-chrono.workspace = true
-sea-orm.workspace = true
-tokio.workspace = true
-uuid.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-tauri = { workspace = true, features = ["image-png"] }
-thiserror.workspace = true
-cartograph.workspace = true
-domain.workspace = true
-store.workspace = true
-wry.workspace = true
-resvg = "0.47.0"
-tauri-plugin-updater = "2.10.1"
-rustls = { version = "0.23", default-features = false, features = ["ring"] }
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-barcode-scanner.workspace = true
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance.workspace = true
-
-[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
-tauri-plugin-barcode-scanner.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit.workspace = true
@@ -60,5 +59,6 @@ objc2-app-kit.workspace = true
 default = ["desktop"]
 desktop = ["tauri/tray-icon"]
 development = ["store/development"]
+nightly = ["store/nightly"]
 preview = ["store/preview"]
 stable = ["store/stable"]

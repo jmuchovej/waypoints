@@ -1,0 +1,17 @@
+# dependencies (bun install)
+node_modules
+
+# dist/ is intentionally committed — a repo-local `uses:` action runs
+# dist/index.js as-is, with no build step in CI. Rebuild with `bun run build`.
+# Override the repo-root `dist` ignore for this action.
+!dist/
+!dist/index.js
+
+# caches / logs / env
+*.tsbuildinfo
+*.log
+.env
+.env.local
+
+# Finder (macOS)
+.DS_Store

@@ -22,6 +22,13 @@ on:
         required: false
         type: boolean
         default: false
+      version-code:
+        required: false
+        type: string
+        default: ""
+        description: "Override the Android versionCode (monotonic integer). Used by the
+          nightly channel, whose builds share a base semver; empty means derive it
+          from the Tauri version."
     secrets:
       SOPS_AGE_KEY:
         required: true
@@ -88,6 +95,7 @@ jobs:
         env:
           WAYPOINTS_FLAVOR: ${{ inputs.flavor }}
           WAYPOINTS_BUILD: "1"
+          WAYPOINTS_VERSION_CODE: ${{ inputs.version-code }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
         working-directory: waypoints
         run: cargo tauri android build --features ${{ inputs.features }} --apk --aab

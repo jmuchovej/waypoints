@@ -1,8 +1,8 @@
 export default defineEventHandler(async (event) => {
-  const channel = getRouterParam(event, "channel") as "stable" | "preview";
+  const channel = getRouterParam(event, "channel") as UpdateChannel;
   const target = getRouterParam(event, "target") as string;
 
-  if (!["stable", "preview"].includes(channel)) {
+  if (!UPDATE_CHANNELS.includes(channel)) {
     throw createError({ statusCode: 404, statusMessage: "Unknown channel" });
   }
 

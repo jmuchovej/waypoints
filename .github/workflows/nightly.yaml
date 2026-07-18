@@ -1,0 +1,96 @@
+name: Nightly
+
+on:
+  schedule:
+    # 07:00 UTC daily (~03:00 US Eastern). `schedule` only runs on the default
+    # branch, which is what we want a nightly to track.
+    - cron: "0 7 * * *"
+  push:
+    tags: ["v*-nightly.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (leave empty for build-only, no release)"
+        required: false
+        default: ""
+      platforms:
+        description: "Platforms to build"
+        type: choice
+        options:
+          - All
+          - Desktop
+          - macOS
+          - Linux
+          - Windows
+          - Android
+        default: All
+
+# iOS is intentionally omitted: TestFlight review + 90-day expiry make a nightly
+# cadence impractical. Desktop auto-updates via the Tauri updater (nightly.json
+# channel); Android is sideloaded/tracked from GitHub Releases (e.g. Obtainium).
+
+permissions:
+  contents: write
+
+# Never let a scheduled run and a manual/tag run build concurrently.
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  # Resolve the release tag for this run (see .github/actions/nightly-plan).
+  # On a schedule the action synthesizes and pushes the tag itself (a schedule
+  # event has no tag to trigger on), deriving the base from the on-disk workspace
+  # version and skipping when nothing changed; on a tag push / manual dispatch it
+  # passes the existing/supplied tag through.
+  #
+  # Doing this in-workflow (rather than "cron pushes a tag → tag trigger builds")
+  # sidesteps the GITHUB_TOKEN loop-prevention rule, which would otherwise stop a
+  # token-pushed tag from ever triggering the build.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      should_build: ${{ steps.plan.outputs.should-build }}
+    steps:
+      # Only Cargo.toml is read locally; tags and commits go through the API.
+      - uses: actions/checkout@v4
+
+      - id: plan
+        uses: ./.github/actions/nightly-plan
+        with:
+          dispatch-tag: ${{ inputs.tag }}
+
+  desktop:
+    needs: prepare
+    if: >-
+      needs.prepare.outputs.should_build == 'true' &&
+      (github.event_name != 'workflow_dispatch' ||
+       contains(fromJson('["All","Desktop","macOS","Linux","Windows"]'), inputs.platforms))
+    uses: ./.github/workflows/_build-desktop.yaml
+    with:
+      flavor: nightly
+      features: nightly
+      config: Tauri.flavor=nightly.toml
+      tag: ${{ needs.prepare.outputs.tag }}
+      prerelease: true
+      os-filter: ${{ github.event_name == 'workflow_dispatch' && inputs.platforms || 'All' }}
+    secrets:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+  android:
+    needs: prepare
+    if: >-
+      needs.prepare.outputs.should_build == 'true' &&
+      (github.event_name != 'workflow_dispatch' ||
+       contains(fromJson('["All","Android"]'), inputs.platforms))
+    uses: ./.github/workflows/_build-android.yaml
+    with:
+      flavor: nightly
+      features: nightly
+      tag: ${{ needs.prepare.outputs.tag }}
+      prerelease: true
+      # Monotonic across nightly runs → in-place updates for so.waypoints.nightly.
+      version-code: ${{ github.run_number }}
+    secrets:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}

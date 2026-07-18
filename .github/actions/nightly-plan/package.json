@@ -1,0 +1,29 @@
+{
+  "name": "nightly-plan",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --target node --target node --outdir ./dist",
+    "typecheck": "tsc",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/github": "^9.1.1",
+    "semver": "^7.7.1",
+    "smol-toml": "^1.4.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/semver": "^7.7.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

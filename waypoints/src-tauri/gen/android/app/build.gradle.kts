@@ -31,6 +31,7 @@ android {
               when (waypointsFlavor) {
                 "development" -> ".dev"
                 "preview" -> ".preview"
+                "nightly" -> ".nightly"
                 else -> ""
               }
             } else {
@@ -38,7 +39,14 @@ android {
             }
     minSdk = 24
     targetSdk = 36
-    versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
+    // Nightlies share a base semver (e.g. 0.2.0-nightly.<date>), so the Tauri-
+    // derived versionCode collides across builds and blocks in-place updates.
+    // Let CI inject a monotonic code (WAYPOINTS_VERSION_CODE) for that channel;
+    // stable/preview fall back to the Tauri-generated value.
+    versionCode =
+        (System.getenv("WAYPOINTS_VERSION_CODE")?.takeIf { it.isNotBlank() }
+                ?: tauriProperties.getProperty("tauri.android.versionCode", "1"))
+            .toInt()
     versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
 
     resValue(
@@ -47,6 +55,7 @@ android {
         when (waypointsFlavor) {
           "development" -> "Waypoints (Dev)"
           "preview" -> "Waypoints (Preview)"
+          "nightly" -> "Waypoints (Nightly)"
           else -> "Waypoints"
         },
     )
@@ -56,6 +65,7 @@ android {
         when (waypointsFlavor) {
           "development" -> "Waypoints (Dev)"
           "preview" -> "Waypoints (Preview)"
+          "nightly" -> "Waypoints (Nightly)"
           else -> "Waypoints"
         },
     )
