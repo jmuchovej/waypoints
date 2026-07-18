@@ -14,6 +14,14 @@ export default defineNuxtConfig({
       clientSecret: "",
     },
     betterAuthSecret: "",
+    // App/site association (served by the /.well-known routes). Override
+    // per-environment via NUXT_APP_ASSOCIATION_* env vars — the Android
+    // fingerprints stay empty until the release signing cert is pinned.
+    appAssociation: {
+      appleTeamId: "D6NBHNJ93R",
+      // Comma-separated SHA-256 cert fingerprints.
+      androidCertFingerprints: "",
+    },
     turso: {
       databaseUrl: process.env.TURSO_DATABASE_URL,
       authToken: process.env.TURSO_AUTH_TOKEN,
