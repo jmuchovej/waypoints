@@ -20,6 +20,17 @@ pub struct SyncStatus {
     pub station_addr: Option<String>,
 }
 
+/// The Add-device pairing code, ready to display: the shareable URL form
+/// and its QR rendering. Treat both like the recovery phrase itself.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PairingCode {
+    /// `https://waypoints.so/pair#…` — the copyable link.
+    pub url: String,
+    /// SVG of the same URL, for direct rendering.
+    pub qr_svg: String,
+}
+
 /// A freshly minted identity. The mnemonic is returned exactly once, for the
 /// reveal-and-back-up step — it is the only backup that exists.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]

@@ -18,8 +18,10 @@ required-features = ["development"]
 
 [dependencies]
 async-trait.workspace = true
+base64.workspace = true
 chrono.workspace = true
 domain.workspace = true
+fast_qr.workspace = true
 hex.workspace = true
 outpost = { workspace = true, features = ["vessel"] }
 rand.workspace = true

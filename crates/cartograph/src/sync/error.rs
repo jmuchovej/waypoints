@@ -20,6 +20,10 @@ pub enum SyncError {
     StationAddr(String),
     #[error("invalid pairing code: {0}")]
     Pairing(String),
+    #[error(
+        "that doesn't look like a setup code — paste a pairing code or a recovery phrase exactly as it appears"
+    )]
+    UnrecognizedSetupCode,
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error(transparent)]
