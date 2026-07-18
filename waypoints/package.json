@@ -21,6 +21,7 @@
     "@nuxtjs/mdc": "catalog:",
     "@pinia/nuxt": "catalog:",
     "@tauri-apps/api": "catalog:tauri",
+    "@tauri-apps/plugin-barcode-scanner": "^2.4.5",
     "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-dialog": "catalog:tauri",
     "@tauri-apps/plugin-fs": "catalog:tauri",
