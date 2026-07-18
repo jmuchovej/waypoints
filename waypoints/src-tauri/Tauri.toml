@@ -28,6 +28,16 @@ category = "DeveloperTool"
 short-description = ""
 long-description = ""
 
+# Pairing links: the waypoints:// scheme opens the app everywhere it is
+# installed; the waypoints.so association upgrades https://waypoints.so/pair
+# links on iOS/Android (requires the .well-known files the website serves).
+[plugins.deep-link.desktop]
+schemes = ["waypoints"]
+
+[[plugins.deep-link.mobile]]
+host = "waypoints.so"
+pathPrefix = ["/pair"]
+
 [plugins.updater]
 endpoints = [
   "https://api.waypoints.so/releases/{{target}}/{{arch}}/{{current_version}}",
