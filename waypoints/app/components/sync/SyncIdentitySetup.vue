@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ipc, createLogger } from "#imports";
+import { ipc, createLogger, classifySetupCode } from "#imports";
 import { buildEmergencyKit, saveEmergencyKit } from "~/utils/emergency-kit";
 
 const logger = createLogger("SyncIdentitySetup");
@@ -91,11 +91,19 @@ async function importPhrase() {
   }
 }
 
-async function joinWithPairingCode() {
+/** One entry point for anything a scan, paste, or link hands us — the
+ * classifier decides which flow the input drives. */
+async function submitSetupCode(input: string) {
   error.value = null;
+  const code = classifySetupCode(input);
+  if (code.kind === "unknown") {
+    error.value =
+      "That doesn't look like a setup code — paste the pairing code exactly as it appears on your other device.";
+    return;
+  }
   busy.value = true;
   try {
-    await ipc.sync.pairingJoin(pairingInput.value);
+    await ipc.sync.pairingJoin(code.code);
     emit("success");
   } catch (e) {
     logger.error("Pairing failed", e);
@@ -103,6 +111,10 @@ async function joinWithPairingCode() {
   } finally {
     busy.value = false;
   }
+}
+
+async function joinWithPairingCode() {
+  await submitSetupCode(pairingInput.value);
 }
 
 function back() {
