@@ -40,5 +40,7 @@
       <string>UIInterfaceOrientationLandscapeLeft</string>
       <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <key>NSCameraUsageDescription</key>
+    <string>Waypoints uses the camera to scan setup codes when pairing a new device.</string>
   </dict>
 </plist>

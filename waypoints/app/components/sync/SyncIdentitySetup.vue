@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import QrScanner from "qr-scanner";
 import { ipc, createLogger, classifySetupCode } from "#imports";
 import { buildEmergencyKit, saveEmergencyKit } from "~/utils/emergency-kit";
 
@@ -117,6 +118,17 @@ function back() {
   mode.value = "choose";
 }
 
+// Camera scanning — offered wherever a code can be typed.
+const scanOpen = ref(false);
+const hasCamera = ref(false);
+onMounted(async () => {
+  hasCamera.value = await QrScanner.hasCamera().catch(() => false);
+});
+
+async function onScanned(code: string) {
+  await submitSetupCode(code);
+}
+
 const uiPickerButton = {
   base: "w-full flex flex-col items-center justify-center gap-3 p-6",
   leadingIcon: "size-8",
@@ -211,6 +223,14 @@ const uiPickerButton = {
       <div class="flex gap-2 w-full">
         <UButton variant="ghost" color="neutral" label="Back" @click="back" />
         <UButton
+          v-if="hasCamera"
+          variant="subtle"
+          color="neutral"
+          icon="i-lucide-scan-line"
+          label="Scan"
+          @click="scanOpen = true"
+        />
+        <UButton
           class="flex-1 justify-center"
           label="Recover identity"
           :disabled="!phraseInput.trim()"
@@ -239,6 +259,14 @@ const uiPickerButton = {
       <div class="flex gap-2 w-full">
         <UButton variant="ghost" color="neutral" label="Back" @click="back" />
         <UButton
+          v-if="hasCamera"
+          variant="subtle"
+          color="neutral"
+          icon="i-lucide-scan-line"
+          label="Scan"
+          @click="scanOpen = true"
+        />
+        <UButton
           class="flex-1 justify-center"
           label="Pair this device"
           :disabled="!pairingInput.trim()"
@@ -255,5 +283,7 @@ const uiPickerButton = {
       icon="i-lucide-triangle-alert"
       :description="error"
     />
+
+    <LazySyncScanCode v-model:open="scanOpen" @code="onScanned" />
   </div>
 </template>

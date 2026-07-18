@@ -34,6 +34,7 @@
     "etiket": "^0.11.0",
     "katex": "catalog:",
     "nuxt": "catalog:",
+    "qr-scanner": "^1.4.2",
     "shiki": "^4.0.2",
     "tailwindcss": "catalog:",
     "vue": "catalog:",
