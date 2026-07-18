@@ -78,35 +78,30 @@ async function downloadKit() {
 }
 
 async function importPhrase() {
-  error.value = null;
-  busy.value = true;
-  try {
-    await ipc.sync.identityImport(phraseInput.value);
-    emit("success");
-  } catch (e) {
-    logger.error("Identity import failed", e);
-    error.value = String(e);
-  } finally {
-    busy.value = false;
-  }
+  await submitSetupCode(phraseInput.value);
 }
 
 /** One entry point for anything a scan, paste, or link hands us — the
- * classifier decides which flow the input drives. */
+ * classifier decides which flow the input drives, so a phrase pasted into
+ * the pairing box (or a pairing code into the recovery box) still works. */
 async function submitSetupCode(input: string) {
   error.value = null;
   const code = classifySetupCode(input);
   if (code.kind === "unknown") {
     error.value =
-      "That doesn't look like a setup code — paste the pairing code exactly as it appears on your other device.";
+      "That doesn't look like a setup code — paste a pairing code or a recovery phrase exactly as it appears.";
     return;
   }
   busy.value = true;
   try {
-    await ipc.sync.pairingJoin(code.code);
+    if (code.kind === "pairing") {
+      await ipc.sync.pairingJoin(code.code);
+    } else {
+      await ipc.sync.identityImport(code.phrase);
+    }
     emit("success");
   } catch (e) {
-    logger.error("Pairing failed", e);
+    logger.error("Setup code failed", e);
     error.value = String(e);
   } finally {
     busy.value = false;
