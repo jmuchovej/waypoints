@@ -38,6 +38,11 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}));
 
+    // Mobile scans with the platform's native scanner (see the scan seam in
+    // app/utils/scan.ts); desktop keeps the webview camera path.
+    #[cfg(mobile)]
+    let builder = builder.plugin(tauri_plugin_barcode_scanner::init());
+
     builder
         .invoke_handler(tauri::generate_handler![
             // chart

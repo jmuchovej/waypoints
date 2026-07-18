@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import QrScanner from "qr-scanner";
-import { ipc, createLogger } from "#imports";
+import { ipc, createLogger, isNativeScanPlatform, nativeScan, cancelNativeScan } from "#imports";
 import { buildEmergencyKit, saveEmergencyKit } from "~/utils/emergency-kit";
 
 const logger = createLogger("SyncIdentitySetup");
@@ -108,12 +107,48 @@ function back() {
   mode.value = "choose";
 }
 
-// Camera scanning — offered wherever a code can be typed.
+// Camera scanning — offered wherever a code can be typed. Mobile scans
+// with the platform's native scanner (camera renders behind the webview,
+// so a see-through overlay is shown); desktop uses the webview scanner
+// modal. qr-scanner is only ever dynamically imported on non-native
+// platforms, keeping it out of the mobile load path.
 const scanOpen = ref(false);
 const hasCamera = ref(false);
+const nativePlatform = ref(false);
+const scanningNative = ref(false);
+
 onMounted(async () => {
+  nativePlatform.value = await isNativeScanPlatform();
+  if (nativePlatform.value) {
+    hasCamera.value = true;
+    return;
+  }
+  const { default: QrScanner } = await import("qr-scanner");
   hasCamera.value = await QrScanner.hasCamera().catch(() => false);
 });
+
+async function startScan() {
+  if (!nativePlatform.value) {
+    scanOpen.value = true;
+    return;
+  }
+  scanningNative.value = true;
+  document.body.classList.add("native-scan");
+  try {
+    const code = await nativeScan();
+    if (code) await submitSetupCode(code);
+  } catch (e) {
+    logger.error("Native scan failed", e);
+    error.value = String(e);
+  } finally {
+    document.body.classList.remove("native-scan");
+    scanningNative.value = false;
+  }
+}
+
+async function abortScan() {
+  await cancelNativeScan();
+}
 
 // A deep link may have carried a setup code here (see plugins/deep-link):
 // prefill the matching input and let the user confirm — links never
@@ -236,7 +271,7 @@ const uiPickerButton = {
           color="neutral"
           icon="i-lucide-scan-line"
           label="Scan"
-          @click="scanOpen = true"
+          @click="startScan"
         />
         <UButton
           class="flex-1 justify-center"
@@ -272,7 +307,7 @@ const uiPickerButton = {
           color="neutral"
           icon="i-lucide-scan-line"
           label="Scan"
-          @click="scanOpen = true"
+          @click="startScan"
         />
         <UButton
           class="flex-1 justify-center"
@@ -293,5 +328,28 @@ const uiPickerButton = {
     />
 
     <LazySyncScanCode v-model:open="scanOpen" @code="onScanned" />
+
+    <!-- Native scan overlay: the camera renders BEHIND the webview, so
+         everything except the hint + cancel must be see-through. -->
+    <Teleport to="body">
+      <div
+        v-if="scanningNative"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-end gap-4 pb-16"
+      >
+        <p class="text-sm text-white bg-black/60 rounded-full px-4 py-1.5">
+          Point the camera at a setup code
+        </p>
+        <UButton label="Cancel" color="neutral" variant="solid" @click="abortScan" />
+      </div>
+    </Teleport>
   </div>
 </template>
+
+<style>
+/* While the native scanner runs, the page must be transparent so the
+   camera preview (rendered behind the webview) shows through. */
+body.native-scan,
+body.native-scan #__nuxt {
+  background: transparent !important;
+}
+</style>
