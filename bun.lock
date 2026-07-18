@@ -44,7 +44,6 @@
         "@waypoints/cartograph": "catalog:",
         "@waypoints/domain": "catalog:",
         "consola": "catalog:",
-        "etiket": "^0.11.0",
         "katex": "catalog:",
         "nuxt": "catalog:",
         "qr-scanner": "^1.4.2",
@@ -2034,8 +2033,6 @@
     "esutils": ["esutils@2.0.3", "", {}, "sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g=="],
 
     "etag": ["etag@1.8.1", "", {}, "sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg=="],
-
-    "etiket": ["etiket@0.11.0", "", { "bin": { "etiket": "dist/cli.mjs" } }, "sha512-Ylk7LqDUwcjhp805fF5bbpwdBToPGWHiV2wLY9x1QZt3QcUKRpyrUympRZ2m6MUFVNk4Z7d3Be25jXTCxrzOfg=="],
 
     "event-target-shim": ["event-target-shim@5.0.1", "", {}, "sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ=="],
 

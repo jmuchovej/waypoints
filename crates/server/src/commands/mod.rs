@@ -48,8 +48,12 @@ pub fn router() -> Router<AppState> {
             post(sync::sync_identity_create),
         )
         .route(
-            "/ipc/sync_identity_import",
-            post(sync::sync_identity_import),
+            "/ipc/sync_submit_setup_code",
+            post(sync::sync_submit_setup_code),
+        )
+        .route(
+            "/ipc/sync_classify_setup_code",
+            post(sync::sync_classify_setup_code),
         )
         .route(
             "/ipc/sync_identity_mnemonic",
@@ -63,11 +67,8 @@ pub fn router() -> Router<AppState> {
         .route("/ipc/sync_station_status", post(sync::sync_station_status))
         .route("/ipc/sync_now", post(sync::sync_now))
         .route("/ipc/sync_devices", post(sync::sync_devices))
-        .route(
-            "/ipc/sync_pairing_payload",
-            post(sync::sync_pairing_payload),
-        )
-        .route("/ipc/sync_pairing_join", post(sync::sync_pairing_join))
+        .route("/ipc/sync_pairing_code", post(sync::sync_pairing_code))
+        .route("/ipc/sync_recovery_qr", post(sync::sync_recovery_qr))
         // editor
         .route("/ipc/editor_get_mark", post(editor::editor_get_mark))
         .route("/ipc/editor_mark_list", post(editor::editor_mark_list))

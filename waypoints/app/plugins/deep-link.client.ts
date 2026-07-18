@@ -1,4 +1,4 @@
-import { classifySetupCode } from "#imports";
+import { ipc } from "#imports";
 
 /**
  * Route incoming deep links (waypoints:// or associated waypoints.so
@@ -14,7 +14,7 @@ export default defineNuxtPlugin(() => {
 
   async function handle(urls: string[]) {
     for (const url of urls) {
-      if (classifySetupCode(url).kind === "unknown") continue;
+      if ((await ipc.sync.classifySetupCode(url)).kind === "unknown") continue;
       pending.value = url;
       await navigateTo("/onboarding");
       return;

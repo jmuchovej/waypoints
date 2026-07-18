@@ -3,7 +3,9 @@
 use axum::Json;
 use serde::Deserialize;
 
-use cartograph::sync::{IdentityCreated, StationStatus, SyncDevice, SyncStatus};
+use cartograph::sync::{
+    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncStatus,
+};
 
 use crate::error::ApiError;
 use crate::instance::Instance;
@@ -20,15 +22,21 @@ pub async fn sync_identity_create(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IdentityImport {
-    phrase: String,
+pub struct SubmitSetupCode {
+    input: String,
 }
 
-pub async fn sync_identity_import(
+pub async fn sync_submit_setup_code(
     Instance(rt): Instance,
-    Json(args): Json<IdentityImport>,
+    Json(args): Json<SubmitSetupCode>,
 ) -> Result<Json<SyncStatus>, ApiError> {
-    Ok(Json(rt.sync().identity_import(args.phrase).await?))
+    Ok(Json(rt.sync().submit_setup_code(args.input).await?))
+}
+
+pub async fn sync_classify_setup_code(
+    Json(args): Json<SubmitSetupCode>,
+) -> Result<Json<SetupCode>, ApiError> {
+    Ok(Json(cartograph::sync::classify(&args.input)))
 }
 
 pub async fn sync_identity_mnemonic(Instance(rt): Instance) -> Result<Json<String>, ApiError> {
@@ -64,19 +72,10 @@ pub async fn sync_devices(Instance(rt): Instance) -> Result<Json<Vec<SyncDevice>
     Ok(Json(rt.sync().devices().await?))
 }
 
-pub async fn sync_pairing_payload(Instance(rt): Instance) -> Result<Json<String>, ApiError> {
-    Ok(Json(rt.sync().pairing_payload().await?))
+pub async fn sync_pairing_code(Instance(rt): Instance) -> Result<Json<PairingCode>, ApiError> {
+    Ok(Json(rt.sync().pairing_code().await?))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PairingJoin {
-    code: String,
-}
-
-pub async fn sync_pairing_join(
-    Instance(rt): Instance,
-    Json(args): Json<PairingJoin>,
-) -> Result<Json<SyncStatus>, ApiError> {
-    Ok(Json(rt.sync().pairing_join(args.code).await?))
+pub async fn sync_recovery_qr(Instance(rt): Instance) -> Result<Json<String>, ApiError> {
+    Ok(Json(rt.sync().recovery_qr().await?))
 }

@@ -1,4 +1,4 @@
-import { qrcode } from "etiket/qr";
+import { ipc } from "#imports";
 import kitSource from "./emergency-kit.typ?raw";
 import { loadTypst } from "../typst";
 
@@ -6,7 +6,8 @@ import { loadTypst } from "../typst";
  * The Waypoints Emergency Kit — see `emergency-kit.typ` for the document
  * itself (designable/previewable standalone). This module compiles it with
  * the same typst.ts WASM compiler the editor already ships: real values go
- * in through `sys.inputs`, and the real QR (etiket SVG) is shadow-mapped
+ * in through `sys.inputs`, and the real QR (SVG from the Rust engine, via
+ * IPC) is shadow-mapped
  * over the design-time `demo-qr.svg`. Fully offline.
  */
 export interface EmergencyKitInput {
@@ -31,10 +32,9 @@ export async function buildEmergencyKit(input: EmergencyKitInput): Promise<Uint8
     day: "numeric",
   });
 
-  // QR of the phrase itself — scan it to avoid typing 24 words. Plain
-  // squares on purpose: maximum scanner compatibility for a document that
-  // may be a crumpled printout in ten years.
-  const qrSvg = qrcode(phrase, { ecLevel: "M", margin: 0 });
+  // QR of the phrase itself (rendered by the Rust engine) — scan it to
+  // avoid typing 24 words.
+  const qrSvg = await ipc.sync.recoveryQr();
 
   // The wordmark ships as an app asset; feed it to the compiler from here.
   const logo = await fetch("/logos/wordmark-dark-md.svg").then((r) => {

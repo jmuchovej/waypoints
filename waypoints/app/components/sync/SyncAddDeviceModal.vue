@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { qrcode } from "etiket/qr";
-import { ipc, createLogger, encodePairUrl } from "#imports";
+import { ipc, createLogger } from "#imports";
 
 const logger = createLogger("SyncAddDeviceModal");
 
@@ -21,11 +20,12 @@ watch(open, async (isOpen) => {
     return;
   }
   try {
-    // The QR and the copyable code carry the URL envelope: a camera-app
-    // scan opens the app (or the waypoints.so landing page), and the
-    // payload rides the fragment so a browser hit leaks nothing.
-    payload.value = encodePairUrl(await ipc.sync.pairingPayload());
-    qrSvg.value = qrcode(payload.value, { ecLevel: "M", margin: 0 });
+    // URL + QR both come from the Rust engine: the URL envelope means a
+    // camera-app scan opens the app (or the waypoints.so landing page),
+    // and the payload rides the fragment so a browser hit leaks nothing.
+    const code = await ipc.sync.pairingCode();
+    payload.value = code.url;
+    qrSvg.value = code.qrSvg;
   } catch (e) {
     logger.error("Pairing payload failed", e);
     error.value = String(e);

@@ -1,4 +1,11 @@
-import type { IdentityCreated, StationStatus, SyncDevice, SyncStatus } from "@waypoints/cartograph";
+import type {
+  IdentityCreated,
+  PairingCode,
+  SetupCode,
+  StationStatus,
+  SyncDevice,
+  SyncStatus,
+} from "@waypoints/cartograph";
 import { invoke } from "./invoke";
 
 export async function status(): Promise<SyncStatus> {
@@ -7,10 +14,6 @@ export async function status(): Promise<SyncStatus> {
 
 export async function identityCreate(): Promise<IdentityCreated> {
   return invoke<IdentityCreated>("sync_identity_create");
-}
-
-export async function identityImport(phrase: string): Promise<SyncStatus> {
-  return invoke<SyncStatus>("sync_identity_import", { phrase });
 }
 
 export async function identityMnemonic(): Promise<string> {
@@ -37,10 +40,22 @@ export async function devices(): Promise<SyncDevice[]> {
   return invoke<SyncDevice[]>("sync_devices");
 }
 
-export async function pairingPayload(): Promise<string> {
-  return invoke<string>("sync_pairing_payload");
+/** The Add-device pairing code: shareable URL + its QR SVG. */
+export async function pairingCode(): Promise<PairingCode> {
+  return invoke<PairingCode>("sync_pairing_code");
 }
 
-export async function pairingJoin(code: string): Promise<SyncStatus> {
-  return invoke<SyncStatus>("sync_pairing_join", { code });
+/** QR SVG of the recovery phrase, for the Emergency Kit. */
+export async function recoveryQr(): Promise<string> {
+  return invoke<string>("sync_recovery_qr");
+}
+
+/** Classify a paste/scan/deep-link input — routing only, no side effects. */
+export async function classifySetupCode(input: string): Promise<SetupCode> {
+  return invoke<SetupCode>("sync_classify_setup_code", { input });
+}
+
+/** Classify-and-dispatch a setup code (pairing join or phrase recovery). */
+export async function submitSetupCode(input: string): Promise<SyncStatus> {
+  return invoke<SyncStatus>("sync_submit_setup_code", { input });
 }

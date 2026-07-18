@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import QrScanner from "qr-scanner";
-import { ipc, createLogger, classifySetupCode } from "#imports";
+import { ipc, createLogger } from "#imports";
 import { buildEmergencyKit, saveEmergencyKit } from "~/utils/emergency-kit";
 
 const logger = createLogger("SyncIdentitySetup");
@@ -83,23 +83,13 @@ async function importPhrase() {
 }
 
 /** One entry point for anything a scan, paste, or link hands us — the
- * classifier decides which flow the input drives, so a phrase pasted into
- * the pairing box (or a pairing code into the recovery box) still works. */
+ * Rust engine classifies and dispatches, so a phrase pasted into the
+ * pairing box (or a pairing code into the recovery box) still works. */
 async function submitSetupCode(input: string) {
   error.value = null;
-  const code = classifySetupCode(input);
-  if (code.kind === "unknown") {
-    error.value =
-      "That doesn't look like a setup code — paste a pairing code or a recovery phrase exactly as it appears.";
-    return;
-  }
   busy.value = true;
   try {
-    if (code.kind === "pairing") {
-      await ipc.sync.pairingJoin(code.code);
-    } else {
-      await ipc.sync.identityImport(code.phrase);
-    }
+    await ipc.sync.submitSetupCode(input);
     emit("success");
   } catch (e) {
     logger.error("Setup code failed", e);
@@ -129,11 +119,11 @@ onMounted(async () => {
 // prefill the matching input and let the user confirm — links never
 // auto-submit an identity adoption.
 const pendingCode = useState<string | null>("sync-pending-setup-code", () => null);
-onMounted(() => {
+onMounted(async () => {
   const code = pendingCode.value;
   if (!code) return;
   pendingCode.value = null;
-  const classified = classifySetupCode(code);
+  const classified = await ipc.sync.classifySetupCode(code);
   if (classified.kind === "phrase") {
     mode.value = "import";
     phraseInput.value = code;
