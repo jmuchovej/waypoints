@@ -37,6 +37,9 @@ tracing.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+image = "0.25.10"
+resvg = { workspace = true }
+rqrr = "0.10.1"
 rstest = { workspace = true }
 store = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

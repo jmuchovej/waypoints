@@ -89,6 +89,134 @@ pub fn qr_svg(content: &str) -> Result<String, super::SyncError> {
         .to_str(&qr))
 }
 
+/// Render a QR code as a "liquid" SVG: modules that share an edge merge
+/// into one coherent shape — convex corners round only where a module has
+/// no neighbor on either side of that corner, and empty cells enclosed on
+/// two orthogonal sides (plus the diagonal) get a concave fillet so inner
+/// notches dissolve too. This is the neighborhood-aware projection over
+/// the module matrix that per-module renderers (etiket et al.) cannot
+/// express, and the reason QR rendering lives beside the matrix in Rust.
+pub fn qr_svg_liquid(content: &str) -> Result<String, super::SyncError> {
+    let qr = fast_qr::QRBuilder::new(content)
+        .ecl(fast_qr::ECL::M)
+        .build()
+        .map_err(|e| super::SyncError::Pairing(format!("QR encoding failed: {e:?}")))?;
+
+    let n = qr.size;
+    let filled = |x: isize, y: isize| -> bool {
+        x >= 0
+            && y >= 0
+            && (x as usize) < n
+            && (y as usize) < n
+            && qr[y as usize][x as usize].value()
+    };
+
+    // Corner radius in module units. 0.5 = a lone module becomes a circle.
+    const R: f32 = 0.5;
+    let mut d = String::new();
+
+    for y in 0..n as isize {
+        for x in 0..n as isize {
+            let (fx, fy) = (x as f32, y as f32);
+            if filled(x, y) {
+                // Convex: a corner rounds only when BOTH touching neighbors
+                // are empty (otherwise the edge continues into a neighbor).
+                let nw = if !filled(x, y - 1) && !filled(x - 1, y) {
+                    R
+                } else {
+                    0.0
+                };
+                let ne = if !filled(x, y - 1) && !filled(x + 1, y) {
+                    R
+                } else {
+                    0.0
+                };
+                let se = if !filled(x, y + 1) && !filled(x + 1, y) {
+                    R
+                } else {
+                    0.0
+                };
+                let sw = if !filled(x, y + 1) && !filled(x - 1, y) {
+                    R
+                } else {
+                    0.0
+                };
+
+                d.push_str(&format!("M{},{}", fx + nw, fy));
+                d.push_str(&format!("H{}", fx + 1.0 - ne));
+                if ne > 0.0 {
+                    d.push_str(&format!("A{R},{R} 0 0 1 {},{}", fx + 1.0, fy + ne));
+                }
+                d.push_str(&format!("V{}", fy + 1.0 - se));
+                if se > 0.0 {
+                    d.push_str(&format!("A{R},{R} 0 0 1 {},{}", fx + 1.0 - se, fy + 1.0));
+                }
+                d.push_str(&format!("H{}", fx + sw));
+                if sw > 0.0 {
+                    d.push_str(&format!("A{R},{R} 0 0 1 {},{}", fx, fy + 1.0 - sw));
+                }
+                d.push_str(&format!("V{}", fy + nw));
+                if nw > 0.0 {
+                    d.push_str(&format!("A{R},{R} 0 0 1 {},{}", fx + nw, fy));
+                }
+                d.push('Z');
+            } else {
+                // Concave fillets: an empty cell corner whose two orthogonal
+                // neighbors AND diagonal are filled is an inner notch of one
+                // blob — patch it with a quarter-fillet. (Diagonal required:
+                // without it the fillet would bridge two blobs that only
+                // touch at a point.)
+                // (corner point, arc start, arc end) per corner.
+                let corners: [((f32, f32), (f32, f32), (f32, f32), bool); 4] = [
+                    // NW corner: needs W, N, NW filled.
+                    (
+                        (fx, fy),
+                        (fx + R, fy),
+                        (fx, fy + R),
+                        filled(x - 1, y) && filled(x, y - 1) && filled(x - 1, y - 1),
+                    ),
+                    // NE corner: needs E, N, NE filled.
+                    (
+                        (fx + 1.0, fy),
+                        (fx + 1.0, fy + R),
+                        (fx + 1.0 - R, fy),
+                        filled(x + 1, y) && filled(x, y - 1) && filled(x + 1, y - 1),
+                    ),
+                    // SE corner: needs E, S, SE filled.
+                    (
+                        (fx + 1.0, fy + 1.0),
+                        (fx + 1.0 - R, fy + 1.0),
+                        (fx + 1.0, fy + 1.0 - R),
+                        filled(x + 1, y) && filled(x, y + 1) && filled(x + 1, y + 1),
+                    ),
+                    // SW corner: needs W, S, SW filled.
+                    (
+                        (fx, fy + 1.0),
+                        (fx, fy + 1.0 - R),
+                        (fx + R, fy + 1.0),
+                        filled(x - 1, y) && filled(x, y + 1) && filled(x - 1, y + 1),
+                    ),
+                ];
+                for ((cx, cy), (ax, ay), (bx, by), wanted) in corners {
+                    if wanted {
+                        d.push_str(&format!("M{cx},{cy}L{ax},{ay}A{R},{R} 0 0 0 {bx},{by}Z"));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(format!(
+        concat!(
+            "<svg viewBox=\"0 0 {n} {n}\" xmlns=\"http://www.w3.org/2000/svg\">",
+            "<rect width=\"100%\" height=\"100%\" fill=\"#fff\"/>",
+            "<path d=\"{d}\" fill=\"#000\"/></svg>"
+        ),
+        n = n,
+        d = d
+    ))
+}
+
 fn pair_url_fragment(input: &str) -> Option<&str> {
     [PAIR_URL_HEAD_WEB, PAIR_URL_HEAD_APP]
         .iter()
@@ -157,12 +285,45 @@ mod tests {
     #[test]
     fn rejects_pair_urls_with_missing_or_undecodable_fragments() {
         assert_eq!(classify("https://waypoints.so/pair"), SetupCode::Unknown);
-        assert_eq!(classify("https://waypoints.so/pair#%%%"), SetupCode::Unknown);
+        assert_eq!(
+            classify("https://waypoints.so/pair#%%%"),
+            SetupCode::Unknown
+        );
     }
 
     #[test]
     fn renders_a_qr_svg() {
         let svg = qr_svg("https://waypoints.so/pair#abc").unwrap();
         assert!(svg.starts_with("<svg"));
+    }
+
+    /// The liquid rendering must stay a *valid, decodable* QR — proven by
+    /// rasterizing the SVG (resvg) and decoding it with a real QR reader
+    /// (rqrr), not by asserting on path strings.
+    #[test]
+    fn liquid_qr_round_trips_through_a_real_decoder() {
+        let content = "https://waypoints.so/pair#eyJ2IjoxLCJraW5kIjoid2F5cG9pbnRzLXBhaXJpbmcifQ";
+        let svg = qr_svg_liquid(content).unwrap();
+        assert!(svg.contains("A0.5,0.5"), "rounding arcs present");
+
+        let options = resvg::usvg::Options::default();
+        let tree = resvg::usvg::Tree::from_str(&svg, &options).unwrap();
+        let scale = 12.0_f32;
+        let side = (tree.size().width() * scale).ceil() as u32;
+        let mut pixmap = resvg::tiny_skia::Pixmap::new(side, side).unwrap();
+        resvg::render(
+            &tree,
+            resvg::tiny_skia::Transform::from_scale(scale, scale),
+            &mut pixmap.as_mut(),
+        );
+
+        let gray = image::GrayImage::from_fn(side, side, |x, y| {
+            image::Luma([pixmap.pixel(x, y).map_or(255, |p| p.red())])
+        });
+        let mut prepared = rqrr::PreparedImage::prepare(gray);
+        let grids = prepared.detect_grids();
+        assert_eq!(grids.len(), 1, "exactly one QR detected");
+        let (_, decoded) = grids[0].decode().unwrap();
+        assert_eq!(decoded, content);
     }
 }

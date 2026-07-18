@@ -397,11 +397,13 @@ impl SyncService {
             .map_err(|e| SyncError::Pairing(e.to_string()))
     }
 
-    /// The pairing code ready for display: URL envelope + QR SVG.
+    /// The pairing code ready for display: URL envelope + QR SVG (liquid
+    /// style — an on-screen, short-lived code can afford the styling; the
+    /// Emergency Kit keeps plain squares).
     pub async fn pairing_code(&self) -> SyncResult<super::PairingCode> {
         let payload = self.pairing_payload().await?;
         let url = super::encode_pair_url(&payload);
-        let qr_svg = super::setup_code::qr_svg(&url)?;
+        let qr_svg = super::setup_code::qr_svg_liquid(&url)?;
         Ok(super::PairingCode { url, qr_svg })
     }
 
