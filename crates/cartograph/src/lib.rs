@@ -64,11 +64,13 @@ pub mod territory {
 pub mod sync {
     mod error;
     mod service;
+    mod setup_code;
     mod types;
 
     pub use error::{SyncError, SyncResult};
     pub use service::SyncService;
-    pub use types::{IdentityCreated, StationStatus, SyncDevice, SyncStatus};
+    pub use setup_code::{SetupCode, classify, encode_pair_url};
+    pub use types::{IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncStatus};
 }
 
 mod runtime;

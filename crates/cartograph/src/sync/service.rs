@@ -397,6 +397,33 @@ impl SyncService {
             .map_err(|e| SyncError::Pairing(e.to_string()))
     }
 
+    /// The pairing code ready for display: URL envelope + QR SVG.
+    pub async fn pairing_code(&self) -> SyncResult<super::PairingCode> {
+        let payload = self.pairing_payload().await?;
+        let url = super::encode_pair_url(&payload);
+        let qr_svg = super::setup_code::qr_svg(&url)?;
+        Ok(super::PairingCode { url, qr_svg })
+    }
+
+    /// QR of the recovery phrase itself, for the Emergency Kit — scan it to
+    /// avoid typing 24 words. Deliberately NOT a URL: the kit is a
+    /// decade-scale paper artifact and the phrase must never route through
+    /// a browser.
+    pub async fn recovery_qr(&self) -> SyncResult<String> {
+        let phrase = self.identity_mnemonic().await?;
+        super::setup_code::qr_svg(&phrase)
+    }
+
+    /// Classify-and-dispatch for anything a paste, scan, or deep link hands
+    /// the setup flow — the single entry point every platform shares.
+    pub async fn submit_setup_code(&self, input: String) -> SyncResult<SyncStatus> {
+        match super::classify(&input) {
+            super::SetupCode::Pairing(code) => self.pairing_join(code).await,
+            super::SetupCode::Phrase(phrase) => self.identity_import(phrase).await,
+            super::SetupCode::Unknown => Err(SyncError::UnrecognizedSetupCode),
+        }
+    }
+
     /// Consume a pairing payload on a fresh device: adopt the identity, point
     /// at the Station, fetch the Territory's ACL log to bootstrap a local
     /// replica, and run the first full sync.

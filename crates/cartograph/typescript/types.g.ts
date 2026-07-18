@@ -85,6 +85,17 @@ export type MutationResult_Serialize = {
   blocks: RenderNode_Serialize[];
 };
 
+/**
+ *  The Add-device pairing code, ready to display: the shareable URL form
+ *  and its QR rendering. Treat both like the recovery phrase itself.
+ */
+export type PairingCode = {
+  /**  `https://waypoints.so/pair#…` — the copyable link. */
+  url: string;
+  /**  SVG of the same URL, for direct rendering. */
+  qrSvg: string;
+};
+
 /**  A flattened block node for rendering, produced by `project_landmark`. */
 export type RenderNode = RenderNode_Serialize;
 
@@ -107,6 +118,15 @@ export type RenderNode_Serialize = {
   parent_id: MarkID | null;
   is_leaf_landmark: boolean;
 };
+
+/**  Where a setup code should be routed. */
+export type SetupCode =
+  /**  A pairing payload (JSON string) for `pairing_join`. */
+  | { kind: "pairing"; value: string }
+  /**  A recovery phrase for `identity_import`. */
+  | { kind: "phrase"; value: string }
+  /**  Unrecognized — surface a "not a setup code" error to the user. */
+  | { kind: "unknown" };
 
 /**  Result of a split operation. */
 export type SplitResult = SplitResult_Serialize;
