@@ -3,7 +3,9 @@ use std::sync::Arc;
 use tauri::State;
 
 use cartograph::WaypointsRuntime;
-use cartograph::sync::{IdentityCreated, StationStatus, SyncDevice, SyncResult, SyncStatus};
+use cartograph::sync::{
+    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncResult, SyncStatus,
+};
 
 #[tauri::command]
 pub async fn sync_status(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<SyncStatus> {
@@ -18,11 +20,16 @@ pub async fn sync_identity_create(
 }
 
 #[tauri::command]
-pub async fn sync_identity_import(
+pub async fn sync_submit_setup_code(
     rt: State<'_, Arc<WaypointsRuntime>>,
-    phrase: String,
+    input: String,
 ) -> SyncResult<SyncStatus> {
-    rt.sync().identity_import(phrase).await
+    rt.sync().submit_setup_code(input).await
+}
+
+#[tauri::command]
+pub async fn sync_classify_setup_code(input: String) -> SyncResult<SetupCode> {
+    Ok(cartograph::sync::classify(&input))
 }
 
 #[tauri::command]
@@ -61,14 +68,11 @@ pub async fn sync_devices(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<Ve
 }
 
 #[tauri::command]
-pub async fn sync_pairing_payload(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<String> {
-    rt.sync().pairing_payload().await
+pub async fn sync_pairing_code(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<PairingCode> {
+    rt.sync().pairing_code().await
 }
 
 #[tauri::command]
-pub async fn sync_pairing_join(
-    rt: State<'_, Arc<WaypointsRuntime>>,
-    code: String,
-) -> SyncResult<SyncStatus> {
-    rt.sync().pairing_join(code).await
+pub async fn sync_recovery_qr(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<String> {
+    rt.sync().recovery_qr().await
 }

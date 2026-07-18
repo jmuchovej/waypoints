@@ -32,7 +32,6 @@
     "@waypoints/cartograph": "catalog:",
     "@waypoints/domain": "catalog:",
     "consola": "catalog:",
-    "etiket": "^0.11.0",
     "katex": "catalog:",
     "nuxt": "catalog:",
     "qr-scanner": "^1.4.2",
