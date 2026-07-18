@@ -125,6 +125,24 @@ onMounted(async () => {
   hasCamera.value = await QrScanner.hasCamera().catch(() => false);
 });
 
+// A deep link may have carried a setup code here (see plugins/deep-link):
+// prefill the matching input and let the user confirm — links never
+// auto-submit an identity adoption.
+const pendingCode = useState<string | null>("sync-pending-setup-code", () => null);
+onMounted(() => {
+  const code = pendingCode.value;
+  if (!code) return;
+  pendingCode.value = null;
+  const classified = classifySetupCode(code);
+  if (classified.kind === "phrase") {
+    mode.value = "import";
+    phraseInput.value = code;
+  } else if (classified.kind === "pairing") {
+    mode.value = "pair";
+    pairingInput.value = code;
+  }
+});
+
 async function onScanned(code: string) {
   await submitSetupCode(code);
 }

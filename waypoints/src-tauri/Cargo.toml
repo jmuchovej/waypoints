@@ -23,6 +23,7 @@ tauri-build.workspace = true
 [dependencies]
 async-trait.workspace = true
 tauri-plugin-shell.workspace = true
+tauri-plugin-deep-link.workspace = true
 tauri-plugin-notification.workspace = true
 tauri-plugin-os.workspace = true
 tauri-plugin-fs.workspace = true
@@ -45,6 +46,9 @@ wry.workspace = true
 resvg = "0.47.0"
 tauri-plugin-updater = "2.10.1"
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit.workspace = true

@@ -132,8 +132,10 @@ specta-typescript = "0.0.12"
 syn = { version = "2", features = ["full"] }
 tauri = { version = "2.11.5", features = ["unstable"] }
 tauri-build = { version = "2.6.3", features = ["config-toml"] }
+tauri-plugin-deep-link = "2"
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-fs = "2.5.1"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-notification = "2.3.3"
 tauri-plugin-os = "2.3.2"
 tauri-plugin-shell = "2.3.5"

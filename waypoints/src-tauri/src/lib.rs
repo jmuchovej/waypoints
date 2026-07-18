@@ -29,7 +29,16 @@ pub fn run() {
 
     tracing::info!("waypoints starting");
 
-    TauriBuilder::default()
+    let builder = TauriBuilder::default();
+
+    // Single-instance must be registered before every other plugin so a
+    // second launch (e.g. from a waypoints:// link) forwards to the running
+    // app; its deep-link feature re-emits forwarded URLs as deep-link
+    // events.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}));
+
+    builder
         .invoke_handler(tauri::generate_handler![
             // chart
             commands::chart::chart_list,
@@ -80,6 +89,7 @@ pub fn run() {
             commands::editor::editor_undo,
             commands::editor::editor_redo,
         ])
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_fs::init())
@@ -87,6 +97,16 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app: &mut App| {
+            // Dev/AppImage builds have no installer to register the scheme;
+            // register it at runtime where the OS allows (Windows/Linux).
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Err(e) = app.deep_link().register_all() {
+                    tracing::warn!("deep-link runtime registration failed: {e}");
+                }
+            }
+
             tracing::info!("tauri setup: initializing runtime");
             builders::territory::setup(app)?;
             tracing::info!("tauri setup: runtime ready");
