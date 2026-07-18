@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifySetupCode } from "./setup-code";
+import { classifySetupCode, encodePairUrl } from "./setup-code";
 
 describe("classifySetupCode", () => {
   it("recognizes raw pairing JSON", () => {
@@ -40,5 +40,24 @@ describe("classifySetupCode", () => {
   it("rejects phrase-length input containing non-alphabetic tokens", () => {
     const words = [...Array.from({ length: 11 }, () => "abandon"), "n0tw0rd"];
     expect(classifySetupCode(words.join(" "))).toEqual({ kind: "unknown" });
+  });
+
+  it("round-trips a payload through the pairing URL envelope", () => {
+    const code = '{"v":1,"kind":"waypoints-pairing","mnemonic":"ä ö ü"}';
+    const url = encodePairUrl(code);
+    expect(url.startsWith("https://waypoints.so/pair#")).toBe(true);
+    expect(url).not.toContain("?");
+    expect(classifySetupCode(url)).toEqual({ kind: "pairing", code });
+  });
+
+  it("accepts the custom-scheme form of a pairing URL", () => {
+    const code = '{"v":1}';
+    const fragment = encodePairUrl(code).split("#")[1];
+    expect(classifySetupCode(`waypoints://pair#${fragment}`)).toEqual({ kind: "pairing", code });
+  });
+
+  it("rejects pairing URLs with a missing or undecodable fragment", () => {
+    expect(classifySetupCode("https://waypoints.so/pair")).toEqual({ kind: "unknown" });
+    expect(classifySetupCode("https://waypoints.so/pair#%%%")).toEqual({ kind: "unknown" });
   });
 });

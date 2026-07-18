@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { qrcode } from "etiket/qr";
-import { ipc, createLogger } from "#imports";
+import { ipc, createLogger, encodePairUrl } from "#imports";
 
 const logger = createLogger("SyncAddDeviceModal");
 
@@ -21,7 +21,10 @@ watch(open, async (isOpen) => {
     return;
   }
   try {
-    payload.value = await ipc.sync.pairingPayload();
+    // The QR and the copyable code carry the URL envelope: a camera-app
+    // scan opens the app (or the waypoints.so landing page), and the
+    // payload rides the fragment so a browser hit leaks nothing.
+    payload.value = encodePairUrl(await ipc.sync.pairingPayload());
     qrSvg.value = qrcode(payload.value, { ecLevel: "M", margin: 0 });
   } catch (e) {
     logger.error("Pairing payload failed", e);
