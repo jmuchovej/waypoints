@@ -1,4 +1,4 @@
-//! The Station role (design doc §12): an always-online peer that validates,
+//! The Station role: an always-online peer that validates,
 //! stores, serves sync, and orders ACL submissions — and never decrypts.
 //!
 //! A Station is content-blind, and **this module contains no key-custody
@@ -7,13 +7,13 @@
 //! decryption lives in too), that guarantee is a convention held in review
 //! rather than a crate boundary; keep it. The Station composes the shared
 //! [`Replica`](crate::replica::Replica) (validate + store + answer sync)
-//! with two Station-only duties: the per-Fleet **orderer** (§8.4), which
+//! with two Station-only duties: the per-Fleet **orderer**, which
 //! assigns ACL records a total order and countersigns the position with the
 //! fleet key, and the **serve loop**, which accepts inbound sessions and
 //! drives [`serve`](outpost_fabric::serve).
 //!
-//! One Station homes **many** Territories (§9): all Stations in a Fleet
-//! replicate all its Territories (`Everything`, §9). Territories are learned
+//! One Station homes **many** Territories: all Stations in a Fleet
+//! replicate all its Territories (`Everything`). Territories are learned
 //! over the wire — a Vessel [`Register`](outpost_protocol::sync::SyncMessage::Register)s
 //! one, presenting its root ACL record, and the Station bootstraps a fresh
 //! per-Territory hold from it under its storage directory. A Station opened
@@ -23,7 +23,7 @@
 //! nothing new (tests, single-Territory embeds).
 //!
 //! What a Station does not do — originate edits, hold read keys, materialize
-//! a library — is the Vessel's or nobody's (§3 rules 4–5).
+//! a library — is the Vessel's or nobody's.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -64,10 +64,10 @@ pub enum StationError {
 
 /// A running Station: an iroh endpoint plus the Territories it homes, each a
 /// shared [`Replica`]. Storage and serving are always on; the **orderer**
-/// role (§8.4) is present only when a fleet signing key is supplied
+/// role is present only when a fleet signing key is supplied
 /// ([`orderer`](Self::orderer)/[`hosting_orderer`](Self::hosting_orderer)) —
 /// that key is the sole secret a Station carries, and it can neither read
-/// payloads nor author records with it. The blob role layers on later (§10.3).
+/// payloads nor author records with it. The blob role layers on later.
 pub struct Station {
     endpoint: Endpoint,
     /// The fleet signing key, for the orderer role. `None` on a
@@ -77,12 +77,12 @@ pub struct Station {
     /// registrations. `None` for a Station seeded with a fixed replica set —
     /// it serves what it was given and bootstraps nothing new.
     storage: Option<PathBuf>,
-    /// The Territories this Station homes, keyed by id (§9). Populated by the
+    /// The Territories this Station homes, keyed by id. Populated by the
     /// storage scan at startup and grown by [`Register`] over the wire.
     ///
     /// [`Register`]: outpost_protocol::sync::SyncMessage::Register
     territories: Mutex<BTreeMap<TerritoryID, Arc<Replica>>>,
-    /// Device sightings (§4): per Territory, which certified devices of which
+    /// Device sightings: per Territory, which certified devices of which
     /// identities have touched it, and when. Attribution the Station already
     /// observes in the [`Hello`] handshake, made queryable
     /// ([`DevicesRequest`]) — never consulted for an authorization decision.
@@ -100,7 +100,7 @@ pub struct Station {
     hold: Option<StationHold>,
     register_policy: RegisterPolicy,
     sync_policy: SyncPolicy,
-    /// Per-Territory live-push bus (design doc §1.2): everything a session
+    /// Per-Territory live-push bus: everything a session
     /// newly accepts is published here and fanned out to that Territory's
     /// subscribers (minus the source session, so nothing echoes).
     buses: Mutex<BTreeMap<TerritoryID, broadcast::Sender<BusEvent>>>,
@@ -122,8 +122,7 @@ enum BusPush {
     Acl(Vec<OrderedRecord>),
 }
 
-/// Who may home a **new** Territory on this Station (design doc
-/// `docs/dev/outpost-live-push-and-station-persistence.md` §3.1).
+/// Who may home a **new** Territory on this Station.
 /// Re-registering an already-served Territory is an idempotent no-op either
 /// way; members and secondary devices never register at all.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -140,7 +139,7 @@ pub enum RegisterPolicy {
     Anyone,
 }
 
-/// Who may `Open`/sync a Territory this Station homes (§3.2). Extensible
+/// Who may `Open`/sync a Territory this Station homes. Extensible
 /// (`#[non_exhaustive]`) — a roster-peer arm lands with station↔station
 /// replication.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -165,7 +164,7 @@ pub enum SyncPolicy {
 type Sightings = BTreeMap<(MemberID, [u8; 32]), DeviceSighting>;
 
 /// The authenticated caller of a session, as proven by its [`Hello`]
-/// handshake (§10.2): the identity key and the cert binding the connection's
+/// handshake: the identity key and the cert binding the connection's
 /// device key to it.
 ///
 /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
@@ -176,7 +175,7 @@ struct Caller {
 }
 
 impl Station {
-    /// Bind a storage-only Station on `secret` (its roster peer key, §10.2)
+    /// Bind a storage-only Station on `secret` (its roster peer key)
     /// seeded with a single `replica` — it serves that one Territory and
     /// accepts no new registrations. For tests and single-Territory embeds;
     /// a self-host Station uses [`hosting`](Self::hosting).
@@ -184,7 +183,7 @@ impl Station {
         Self::build(secret, None, None, vec![replica]).await
     }
 
-    /// [`new`](Self::new) that also runs the per-Fleet **orderer** (§8.4),
+    /// [`new`](Self::new) that also runs the per-Fleet **orderer**,
     /// holding `fleet_key` to countersign ACL submissions.
     pub async fn orderer(
         secret: &SigningKey,
@@ -280,7 +279,7 @@ impl Station {
         self
     }
 
-    /// Load a Replica for every Territory hold already in `dir` (§9 restart
+    /// Load a Replica for every Territory hold already in `dir` (restart
     /// path). Holds are named `<territory-hex>.db`; files that do not parse as
     /// a Territory id are skipped, so an unrelated file is harmless.
     async fn scan_holds(dir: &Path) -> Result<Vec<Replica>, StationError> {
@@ -329,12 +328,12 @@ impl Station {
         self.territories.lock().unwrap().get(territory).cloned()
     }
 
-    /// Whether this Station homes `territory` (§9/§13).
+    /// Whether this Station homes `territory`.
     pub fn serves(&self, territory: &TerritoryID) -> bool {
         self.territories.lock().unwrap().contains_key(territory)
     }
 
-    /// Home a Territory from its presented ACL log (§13): idempotent if
+    /// Home a Territory from its presented ACL log: idempotent if
     /// already served; otherwise verify the id is the root's hash, fold the
     /// log (chaining + authority must hold), apply the [`RegisterPolicy`],
     /// and — if this Station has a storage directory — bootstrap a fresh
@@ -355,7 +354,7 @@ impl Station {
             return Ok(false); // an empty log defines nothing
         };
         if TerritoryID::of_root(&root)? != territory {
-            return Ok(false); // the id must be the root's hash (§9)
+            return Ok(false); // the id must be the root's hash
         }
         // Fold the presented log — a log that does not chain or exceeds its
         // authors' authority is refused before any policy question.
@@ -363,7 +362,7 @@ impl Station {
         let Ok(fold) = AclIndex::from_ordered(&records) else {
             return Ok(false);
         };
-        // Who may home a new Territory here (design doc §3.1): the fold is
+        // Who may home a new Territory here: the fold is
         // the authority — a later-promoted Owner passes identically to the
         // creator.
         match self.register_policy {
@@ -427,7 +426,7 @@ impl Station {
     }
 
     /// Accept one inbound session and handle it to completion: an optional
-    /// [`Hello`] handshake (§10.2) verifying which identity is behind the
+    /// [`Hello`] handshake verifying which identity is behind the
     /// device connection, then a request — register a Territory, open a
     /// scoped sync session, subscribe live, order an ACL submission, or list
     /// device sightings. Sequential — a live subscription occupies it; use
@@ -463,7 +462,7 @@ impl Station {
         let first = read_frame::<SyncMessage>(&mut session.recv).await;
 
         // Optional handshake: verify the cert binds the connection's device
-        // key to the claimed identity (§10.2). A Vessel and a Station never
+        // key to the claimed identity. A Vessel and a Station never
         // implicitly trust each other; this is how the Station learns who is
         // calling. On failure, ack false and stop.
         let (request, caller) = match first {
@@ -488,7 +487,7 @@ impl Station {
             .await;
         session.drain().await;
         // The session is over: whatever this device touched, it is no longer
-        // live on it (§4 connection status).
+        // live on it (connection status).
         if let Some(caller) = &caller {
             self.mark_disconnected(caller);
         }
@@ -535,7 +534,7 @@ impl Station {
                     self.record_sighting(territory, caller).await;
                 }
                 let _ = write_frame(&mut session.send, &SyncMessage::Ack { ok: true }).await;
-                // The two-phase gate (design doc §3.2): ACL phase for any
+                // The two-phase gate: ACL phase for any
                 // authenticated identity, Notice phase only for a member of
                 // the *post-reconcile* fold — an invited joiner approved in
                 // this very session passes; a stranger stops with the ACL.
@@ -569,7 +568,7 @@ impl Station {
                     .await;
             }
             Ok(SyncMessage::OrderRequest { territory, record }) => {
-                // Order the submission (§8.4): assign a position and
+                // Order the submission: assign a position and
                 // countersign — only possible if we hold the fleet key and
                 // home the Territory.
                 let proof = match (self.replica_for(&territory), &self.fleet_key) {
@@ -591,7 +590,7 @@ impl Station {
                 let _ = write_frame(&mut session.send, &SyncMessage::OrderResponse { proof }).await;
             }
             Ok(SyncMessage::DevicesRequest { territory }) => {
-                // Viewing is member-gated (§4): only an authenticated caller
+                // Viewing is member-gated: only an authenticated caller
                 // whose identity the Territory's ACL admits may list. Being
                 // *sighted* required no membership; *seeing* does.
                 let allowed = match caller {
@@ -611,7 +610,7 @@ impl Station {
         }
     }
 
-    // ---- device sightings (§4: visibility + attribution) -----------------
+    // ---- device sightings (visibility + attribution) -----------------
 
     /// Record that `caller`'s device touched `territory` now, marking it
     /// live. First sight inserts; a re-sight refreshes `last_seen`. Written
@@ -690,7 +689,7 @@ impl Station {
 
 impl Station {
     /// The live half of a [`Subscribe`](SyncMessage::Subscribe) session
-    /// (design doc §1): admission + initial reconcile exactly like `Open`,
+    /// admission + initial reconcile exactly like `Open`,
     /// then park — forwarding this Territory's bus to the vessel and the
     /// vessel's pushes onto the bus — until either side closes.
     async fn subscribe_session(
@@ -822,7 +821,7 @@ impl Station {
 }
 
 /// A [`SyncPeer`] adapter over the Territory replica that **publishes what
-/// it newly accepts** to the Territory's bus (design doc §1.2) — how records
+/// it newly accepts** to the Territory's bus — how records
 /// arriving through an ordinary reconcile reach live subscribers. Receivers
 /// ingest idempotently, so over-publishing a duplicate is harmless.
 struct PublishingPeer {

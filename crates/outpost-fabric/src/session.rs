@@ -1,11 +1,11 @@
-//! One sync session (§10), driven over a framed byte stream. Transport-
+//! One sync session, driven over a framed byte stream. Transport-
 //! generic: `send`/`recv` are any split async halves — iroh's
 //! `SendStream`/`RecvStream` in production, a split tokio duplex pipe in
 //! tests. The peer's storage is reached through the [`SyncPeer`] seam so
-//! this crate depends on no storage engine (design doc §12); the role
+//! this crate depends on no storage engine; the role
 //! crates implement [`SyncPeer`] over a hold.
 //!
-//! The exchange is the §10 two-round-trip flow, initiator ⇄ responder:
+//! The exchange is the two-round-trip flow, initiator ⇄ responder:
 //!
 //! ```text
 //! initiate ──TallyRequest(digest)──▶ serve
@@ -17,7 +17,7 @@
 //! Both sides converge in one pairing; a receiver applies pulled and pushed
 //! Notices through the same [`SyncPeer::ingest`], which runs `validate`
 //! and orphan-queues as needed — live pushes over an open session are
-//! identical (§10.2).
+//! identical.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
@@ -33,10 +33,10 @@ use crate::framing::{FrameError, read_frame, write_frame};
 /// A peer's replicated state, as a session needs to see it. The role crates
 /// implement this over a [`TerritoryHold`](outpost_hold::TerritoryHold); the
 /// implementation decides accept/pending/drop inside `ingest` (a Station
-/// and a Vessel ingest identically, §3 rule 5).
+/// and a Vessel ingest identically).
 #[async_trait]
 pub trait SyncPeer {
-    /// This peer's `(Track → heads)` summary (§10.1).
+    /// This peer's `(Track → heads)` summary.
     async fn digest(&self) -> TallyDigest;
     /// Every Notice this peer holds for `track` (its whole DAG).
     async fn track_notices(&self, track: TrackID) -> Vec<SignedNotice>;
@@ -45,12 +45,12 @@ pub trait SyncPeer {
     /// Apply received Notices (validate → append, orphan-queue as needed).
     async fn ingest(&self, notices: Vec<SignedNotice>);
 
-    /// Length of this peer's ACL log — its position in the linear log (§8.4).
+    /// Length of this peer's ACL log — its position in the linear log.
     async fn acl_len(&self) -> u64;
     /// The ordered ACL records at or after log position `from` (the suffix a
-    /// peer that is behind needs), each with its order proof (§8.4).
+    /// peer that is behind needs), each with its order proof.
     async fn acl_suffix(&self, from: u64) -> Vec<OrderedRecord>;
-    /// Apply received ordered ACL records (verify proof → fold → append, §8).
+    /// Apply received ordered ACL records (verify proof → fold → append).
     async fn ingest_ordered_acl(&self, records: Vec<OrderedRecord>);
 }
 
@@ -76,7 +76,7 @@ where
     R: AsyncRead + Unpin + Send,
 {
     // ACL phase first: the Notice validator needs the ACL heads Notices
-    // pin, so reconcile the linear ACL log before the DAG (§8).
+    // pin, so reconcile the linear ACL log before the DAG.
     let my_acl_len = peer.acl_len().await;
     write_frame(send, &SyncMessage::AclRequest { len: my_acl_len }).await?;
     let (acl_records, responder_acl_len) = match read_frame::<SyncMessage>(recv).await? {
@@ -241,7 +241,7 @@ where
         }
     }
 
-    // 1. Receive the initiator's digest — then the admission gate (§10.2):
+    // 1. Receive the initiator's digest — then the admission gate:
     //    the ACL phase above ran for anyone; the Notice phase below is
     //    served only if the gate (now looking at the post-reconcile fold)
     //    admits the caller.

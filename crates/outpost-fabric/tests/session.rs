@@ -1,5 +1,5 @@
 //! Session convergence over a framed stream, with an in-memory
-//! [`SyncPeer`] stub. Proves the §10 exchange drives two peers to
+//! [`SyncPeer`] stub. Proves the exchange drives two peers to
 //! agreement independently of any transport — run over a split tokio
 //! duplex pipe, no network. The iroh loopback test (`loopback.rs`) runs the
 //! same flow over real QUIC.

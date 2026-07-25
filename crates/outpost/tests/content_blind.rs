@@ -1,4 +1,4 @@
-//! Content-blindness of the Station (§3 rule 4), proven two ways.
+//! Content-blindness of the Station, proven two ways.
 //!
 //! The **behavioral** test is the real one: it hands a Station the encrypted
 //! Notice *and* the sealed read-key material from the ACL log, and shows the
@@ -29,7 +29,7 @@ use outpost::vessel::Vessel;
 use rand::SeedableRng;
 
 /// A single-member Territory whose Root ACL record carries a **real** sealed
-/// box: the epoch-0 read key sealed to `member`'s KEM key (§7.1). This is
+/// box: the epoch-0 read key sealed to `member`'s KEM key. This is
 /// what a member unseals to read; it is also what a Station provably cannot.
 fn sealed_root(
     member: &SigningKey,
@@ -174,7 +174,7 @@ fn station_and_replica_name_no_decryption() {
             found.is_empty(),
             "the {name} module must hold no key material and invoke no \
              decryption, but its code names: {found:?}. If this is a real \
-             design change, update the design doc — don't just delete this."
+             design change, document the rationale — don't just delete this."
         );
     }
 }

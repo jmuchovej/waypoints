@@ -1,8 +1,8 @@
-//! The shared replication engine (design doc §12). A [`Replica`] composes a
-//! per-Territory [`TerritoryHold`] with the §5.4 validation loop, and
+//! The shared replication engine. A [`Replica`] composes a
+//! per-Territory [`TerritoryHold`] with the validation loop, and
 //! implements the fabric [`SyncPeer`] seam. Both roles —
 //! [`station`](crate::station) and [`vessel`](crate::vessel) — run *this
-//! same engine* (§3 rule 5); it lives in its own module so the identical
+//! same engine*; it lives in its own module so the identical
 //! replication code is shared, not duplicated in each role.
 //!
 //! What a Replica does not do is role-specific: it never originates edits
@@ -43,7 +43,7 @@ pub struct Replica {
     hold: TerritoryHold,
     next_topo: AtomicI64,
     /// The fleet's verifying key, when this Territory is homed to a fleet
-    /// (§8.4). When set, ACL records arriving over sync must carry a valid
+    /// (fleet). When set, ACL records arriving over sync must carry a valid
     /// orderer proof; when `None` (self-hosted solo, or tests), ordering is
     /// not verified.
     fleet_key: Option<VerifyingKey>,
@@ -52,13 +52,13 @@ pub struct Replica {
 impl Replica {
     /// Open a Territory from a bootstrap ACL log (in order), unfleeted —
     /// order proofs are not verified. The log must be non-empty; a Territory
-    /// is defined by its root ACL record (§9).
+    /// is defined by its root ACL record.
     pub async fn bootstrap(path: &str, acl_log: &[ACLRecord]) -> Result<Self, ReplicaError> {
         Self::bootstrap_inner(path, acl_log, None).await
     }
 
     /// [`bootstrap`](Self::bootstrap) homed to a fleet: ACL records received
-    /// over sync are verified against `fleet_key` (§8.4). The bootstrap log
+    /// over sync are verified against `fleet_key`. The bootstrap log
     /// itself is trusted seed and is not re-verified — home a fleeted
     /// Territory with just its Root and let ordered records arrive by sync.
     pub async fn bootstrap_with_fleet(
@@ -102,13 +102,12 @@ impl Replica {
         })
     }
 
-    /// The current head of the ACL log — what a locally-authored Notice pins
-    /// (§8.3).
+    /// The current head of the ACL log — what a locally-authored Notice pins.
     pub async fn acl_head(&self) -> Result<RecordID, ReplicaError> {
         self.acl_index().await?.head().ok_or(ReplicaError::NoAcl)
     }
 
-    /// This replica's Territory id — the hash of its root ACL record (§9),
+    /// This replica's Territory id — the hash of its root ACL record,
     /// read off the folded state.
     pub async fn territory_id(&self) -> Result<outpost_protocol::TerritoryID, ReplicaError> {
         Ok(self
@@ -119,7 +118,7 @@ impl Replica {
             .territory)
     }
 
-    /// The folded ACL state, materialized from the hold (§8). Fresh each
+    /// The folded ACL state, materialized from the hold. Fresh each
     /// call, so it always reflects the latest synced records.
     pub async fn acl_index(&self) -> Result<AclIndex, ReplicaError> {
         Ok(self.hold.acl_index().await?)
@@ -134,7 +133,7 @@ impl Replica {
         self.next_topo.fetch_add(1, Ordering::SeqCst)
     }
 
-    // ---- ACL log sync (§8, linear ordered log) -------------------------
+    // ---- ACL log sync (linear ordered log) -------------------------
 
     /// How many ACL records this replica holds — a peer's position in the
     /// linear log.
@@ -143,7 +142,7 @@ impl Replica {
     }
 
     /// The ordered ACL records at or after log position `from` — the suffix a
-    /// peer that is behind needs, each carrying its order proof (§8.4).
+    /// peer that is behind needs, each carrying its order proof.
     pub async fn acl_suffix(&self, from: u64) -> Result<Vec<OrderedRecord>, ReplicaError> {
         Ok(self
             .hold
@@ -154,7 +153,7 @@ impl Replica {
             .collect())
     }
 
-    /// Append newly-received **ordered** ACL records to the log (§8.4). Each
+    /// Append newly-received **ordered** ACL records to the log. Each
     /// is verified against the fleet key (when this Territory is fleeted),
     /// then folded (chaining + authority) before it is persisted. A record
     /// that fails either check stops ingestion — the linear log cannot skip a
@@ -173,7 +172,7 @@ impl Replica {
                 continue; // already held
             }
             // Ordering: a fleeted Territory rejects records lacking a valid
-            // orderer proof (§8.4); the Root is exempt.
+            // orderer proof; the Root is exempt.
             if let Some(fleet_key) = &self.fleet_key
                 && ordered.verify(fleet_key).is_err()
             {
@@ -228,7 +227,7 @@ impl Replica {
     }
 
     /// Order a locally-chained ACL record: assign it the next position and
-    /// countersign with the fleet key (§8.4). Only an orderer-role Station
+    /// countersign with the fleet key. Only an orderer-role Station
     /// holds the fleet **signing** key, so only it can call this. Returns the
     /// proof; the caller persists the ordered record. `None` if the record
     /// does not chain from the current head.
@@ -249,7 +248,7 @@ impl Replica {
         Ok(Some(proof))
     }
 
-    /// Apply a batch of received Notices: validate each (§5.4), append the
+    /// Apply a batch of received Notices: validate each, append the
     /// ready ones, and retry the pending (orphan-queued) ones until no
     /// further progress. Duplicates are skipped, so re-delivery is
     /// idempotent. Rejected Notices are dropped (terminal, non-gossiped).

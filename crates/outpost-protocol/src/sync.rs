@@ -1,4 +1,4 @@
-//! The two-tier sync protocol (§10): a **Tally** finds divergence, a
+//! The two-tier sync protocol: a **Tally** finds divergence, a
 //! **Resupply** closes it. This module is the *pure* half — message types
 //! and the reconciliation computations over head sets and id sets. The
 //! I/O half (open a session, drive these over a transport, apply received
@@ -6,11 +6,11 @@
 //! and role crates; nothing here does storage or networking.
 //!
 //! Scope for this slice: correct set reconciliation over `(Track → heads)`.
-//! The design doc's logarithmic *range-diff* refinement (recursing into
+//! The logarithmic *range-diff* refinement (recursing into
 //! mismatched ID ranges) is a later optimization — the digest here compares
 //! whole tracks, which is correct and simple; the message shape already
 //! carries per-track granularity so the recursion can slot in without a
-//! wire change. Snapshot-path negotiation (§6.3) is likewise deferred with
+//! wire change. Snapshot-path negotiation is likewise deferred with
 //! the snapshot machinery.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use crate::id::{NoticeID, TrackID};
 
 /// A compact summary of a peer's state: per Track, a hash of that Track's
-/// head set (§10.1). Two peers in sync produce byte-identical digests;
+/// head set. Two peers in sync produce byte-identical digests;
 /// any mismatch localizes to the differing Tracks.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct TallyDigest {
@@ -41,7 +41,7 @@ impl TallyDigest {
     }
 
     /// The Tracks whose head sets differ between two peers: present on one
-    /// side only, or present on both with different heads (§10.1). This is
+    /// side only, or present on both with different heads. This is
     /// symmetric — both peers compute the same divergent set.
     pub fn divergent(&self, other: &TallyDigest) -> BTreeSet<TrackID> {
         let mut tracks = BTreeSet::new();
@@ -68,7 +68,7 @@ fn hash_ids(ids: &BTreeSet<NoticeID>) -> [u8; 32] {
 }
 
 /// Of the ids a peer offered, the ones we do not already hold — the
-/// resupply "give me what I'm missing" set (§10.2). Order-preserving on
+/// resupply "give me what I'm missing" set. Order-preserving on
 /// the offer so the requester controls transfer order.
 pub fn wanted<'a>(
     have: &BTreeSet<NoticeID>,
@@ -81,7 +81,7 @@ pub fn wanted<'a>(
         .collect()
 }
 
-/// One observed device of one identity, as a Station saw it (§4): the
+/// One observed device of one identity, as a Station saw it: the
 /// device key that bound a connection, the certificate tying it to the
 /// identity that authored through it, and when. This is *attribution*, not
 /// authorization — a user reads it to answer "which devices have touched my
@@ -114,18 +114,18 @@ impl DeviceSighting {
     }
 }
 
-/// One message in a sync session (§10). A session first reconciles the ACL
+/// One message in a sync session. A session first reconciles the ACL
 /// log (which is linear and must be current before Notices can validate, as
 /// each Notice pins an `acl_head`), then the Notice DAG:
 ///
-/// **ACL phase** (§8, linear log):
+/// **ACL phase** (linear log):
 /// 1. Initiator → [`AclRequest`](SyncMessage::AclRequest) with its log length.
 /// 2. Responder → [`AclResponse`](SyncMessage::AclResponse): the records the
 ///    initiator is missing (its suffix), plus the responder's own length.
 /// 3. Initiator → [`AclPush`](SyncMessage::AclPush): the records the responder
 ///    is missing (empty when the initiator is not ahead).
 ///
-/// **Notice phase** (§10, DAG):
+/// **Notice phase** (DAG):
 /// 4. Initiator → [`TallyRequest`](SyncMessage::TallyRequest) with its digest.
 /// 5. Responder → [`TallyResponse`](SyncMessage::TallyResponse): per divergent
 ///    Track, the ids it holds (its resupply *offer*).
@@ -135,14 +135,14 @@ impl DeviceSighting {
 ///    pulled Notices; it has already applied the pushed ones.
 ///
 /// Live updates ride the same push shapes over an open session — a receiver
-/// treats them identically to reconciled records (§10.2).
+/// treats them identically to reconciled records.
 // A protocol frame sent one at a time; the size spread between the small
 // control variants and the record-carrying ones is inherent, and boxing the
 // wire types would only obscure framing for no real gain.
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum SyncMessage {
-    /// The leading frame a Vessel sends on connect (§10.2): its identity and
+    /// The leading frame a Vessel sends on connect: its identity and
     /// the certificate proving the connection's device key belongs to that
     /// identity. The Station verifies the cert and that its device key is the
     /// connection's authenticated key.
@@ -151,7 +151,7 @@ pub enum SyncMessage {
         cert: crate::auth::DeviceCert,
     },
     /// Vessel → Station: register a Territory so the Station will hold and
-    /// serve it (§13, the coordinator role absorbed into Stations). Carries
+    /// serve it (the coordinator role absorbed into Stations). Carries
     /// the Territory's **ACL log** (root first) so a Station that does not
     /// yet hold it bootstraps a fresh hold that is *current*, not
     /// root-only — and so admission can fold the log and check the
@@ -168,7 +168,7 @@ pub enum SyncMessage {
         ok: bool,
     },
     /// Vessel → Station: scope this session to `territory` before the sync
-    /// flow (§9 — sessions are keyed by `(FleetID, TerritoryID)`). The Station
+    /// flow (sessions are keyed by `(FleetID, TerritoryID)`). The Station
     /// acks `true` if it serves that Territory and then runs the sync flow;
     /// `false` if it does not (the Vessel must `Register` first).
     Open {
@@ -178,7 +178,7 @@ pub enum SyncMessage {
     /// does not end — after the initial reconcile both sides enter the live
     /// phase, exchanging [`NoticePush`](SyncMessage::NoticePush) /
     /// [`AclPush`](SyncMessage::AclPush) frames until either side closes
-    /// (§10.2–10.3: one subscription stream per Territory session).
+    /// (one subscription stream per Territory session).
     Subscribe {
         territory: crate::TerritoryID,
     },
@@ -188,7 +188,7 @@ pub enum SyncMessage {
     NoticePush {
         notices: Vec<crate::SignedNotice>,
     },
-    /// Vessel → orderer Station: order this record for `territory` (§8.4). The
+    /// Vessel → orderer Station: order this record for `territory`. The
     /// Territory is named explicitly because a non-root record's log cannot be
     /// cheaply recovered from the record alone.
     OrderRequest {
@@ -206,7 +206,7 @@ pub enum SyncMessage {
     },
     AclResponse {
         /// Ordered ACL records the initiator lacks (the responder's suffix),
-        /// each carrying its order proof (§8.4).
+        /// each carrying its order proof.
         records: Vec<crate::acl::OrderedRecord>,
         /// The responder's own log length, so the initiator knows whether to
         /// push its own suffix.
@@ -216,8 +216,8 @@ pub enum SyncMessage {
         /// Ordered ACL records the responder lacked (empty if none).
         records: Vec<crate::acl::OrderedRecord>,
     },
-    /// Vessel → Station: list the device sightings for `territory` (§4 —
-    /// which devices, behind which identities, have touched it). Requires a
+    /// Vessel → Station: list the device sightings for `territory`
+    /// (which devices, behind which identities, have touched it). Requires a
     /// preceding [`Hello`](SyncMessage::Hello); the Station answers only if
     /// the authenticated identity is a **member** of the Territory (viewing
     /// is gated; being sighted is not).

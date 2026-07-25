@@ -1,10 +1,9 @@
 //! The Outpost sync protocol: pure data model, codecs, and (in later
 //! slices) validation, the ACL fold, key schedule, and sync state machines.
 //!
-//! Design doc: `.agents/outpost-design.md` — doc comments cite its
-//! §numbers. This crate is deliberately I/O-free: no async runtime, no
+//! This crate is deliberately I/O-free: no async runtime, no
 //! network, no storage engine. Everything here is testable with byte
-//! vectors, and the crate boundary keeps it that way (§12).
+//! vectors, and the crate boundary keeps it that way.
 
 pub mod acl;
 pub mod auth;

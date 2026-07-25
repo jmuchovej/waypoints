@@ -1,4 +1,4 @@
-//! Real-engine tests for the per-Territory hold (§11). Everything runs
+//! Real-engine tests for the per-Territory hold. Everything runs
 //! against a live bedrock database — no SQL-string assertions, which would
 //! be circular (they never prove valid turso SQL). The end-to-end append →
 //! validate flow proves the persistence layer feeds the pure validator

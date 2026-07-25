@@ -1,5 +1,5 @@
 //! An in-memory fold of a Territory's ACL log that implements the
-//! synchronous [`ACLStateProvider`] seam (§8, §5.4). A hold materializes
+//! synchronous [`ACLStateProvider`] seam. A hold materializes
 //! one of these from its persisted `AclRow`s so validation — which is pure
 //! and sync — can run against the folded state without touching the async
 //! store.

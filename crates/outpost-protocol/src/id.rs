@@ -1,4 +1,4 @@
-//! Identifier newtypes (§5.1). Each is distinct at the type level so a
+//! Identifier newtypes. Each is distinct at the type level so a
 //! Notice can never be confused with an ACL record (or a blob, a member, …)
 //! no matter how similar the underlying bytes look.
 
@@ -61,31 +61,31 @@ pub(crate) use byte_id;
 
 byte_id! {
     /// Content address of a Notice: BLAKE3 of the encoded [`SignedNotice`]
-    /// bytes (§5.1). Derived, never assigned.
+    /// bytes. Derived, never assigned.
     ///
     /// [`SignedNotice`]: crate::SignedNotice
     NoticeID
 }
 
 byte_id! {
-    /// Content address of an ACL record (§8.2).
+    /// Content address of an ACL record.
     RecordID
 }
 
 byte_id! {
-    /// A Territory's identity: hash of its root ACL record (§9) — thus
+    /// A Territory's identity: hash of its root ACL record — thus
     /// independent of any Fleet.
     TerritoryID
 }
 
 byte_id! {
-    /// BLAKE3 content hash of an uploaded file's plaintext (§10.3). Marks
+    /// BLAKE3 content hash of an uploaded file's plaintext. Marks
     /// embed this; Stations replicate blobs by per-Territory bindings on it.
     BlobHash
 }
 
 byte_id! {
-    /// A member's identity: their Ed25519 identity public key (§4). The key
+    /// A member's identity: their Ed25519 identity public key. The key
     /// *is* the user ID; there is no account behind it.
     MemberID
 }
@@ -96,7 +96,7 @@ impl From<&ed25519_dalek::VerifyingKey> for MemberID {
     }
 }
 
-/// A Track is identified by its root Notice (§5.1).
+/// A Track is identified by its root Notice.
 #[derive(
     Clone,
     Copy,
@@ -120,7 +120,7 @@ impl TrackID {
     }
 }
 
-/// One generation of a Territory's read key (§7.2). Monotonically
+/// One generation of a Territory's read key. Monotonically
 /// increasing; bumped when a member is removed.
 #[derive(
     Clone,
@@ -140,7 +140,7 @@ impl TrackID {
 pub struct EpochID(u64);
 
 impl EpochID {
-    /// The epoch every Territory starts in (§7.2).
+    /// The epoch every Territory starts in.
     pub const ZERO: Self = Self(0);
 
     pub const fn next(&self) -> Self {

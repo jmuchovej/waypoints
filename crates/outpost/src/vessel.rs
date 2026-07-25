@@ -1,13 +1,13 @@
-//! The Vessel role (design doc §12): an end-device that holds a user's
+//! The Vessel role: an end-device that holds a user's
 //! keys. The Vessel is the *only* party that can **originate** edits,
 //! **decrypt** payloads, and merge — the whole reason it and a Station,
 //! which can do none of these, never implicitly trust each other even
-//! under the same user identity (§3 rules 4–5).
+//! under the same user identity.
 //!
 //! It composes the shared [`Replica`](crate::replica::Replica) (validate +
 //! store + answer sync, the half every peer runs) with Vessel-only duties:
 //! authoring Notices under the identity key, the read-key cache that unseals
-//! payloads, and dialing Stations to sync. Snapshot cadence (§6.3) layers on
+//! payloads, and dialing Stations to sync. Snapshot cadence layers on
 //! here later.
 
 use std::collections::BTreeMap;
@@ -89,11 +89,11 @@ pub enum VesselError {
 
 /// A Vessel: the user's identity (authors + decrypts), a per-device key
 /// binding the connection, the shared replica, and the per-epoch read-key
-/// cache (§7.2). The cache is what makes this a Vessel; a Station has no
+/// cache. The cache is what makes this a Vessel; a Station has no
 /// equivalent and cannot obtain one.
 ///
 /// The `identity` key authors Notices and ACL records — a `MemberID` is an
-/// identity, never a device (§4). The endpoint is bound with the *device*
+/// identity, never a device. The endpoint is bound with the *device*
 /// key (the `VesselID`); its cert proves which identity is behind the
 /// connection during the handshake ([`from_identity`](Self::from_identity)
 /// carries the derived device cert, [`new`](Self::new) a self-cert).
@@ -101,7 +101,7 @@ pub struct Vessel {
     identity: SigningKey,
     kem: Arc<KemSecretKey>,
     endpoint: Endpoint,
-    /// Certificate binding the endpoint's device key to `identity` (§4),
+    /// Certificate binding the endpoint's device key to `identity`,
     /// presented in the connection handshake. For the low-level
     /// [`new`](Self::new) constructor this is a **self-cert** — the identity
     /// certifying its own key as the device key — so every Vessel can
@@ -117,7 +117,7 @@ pub struct Vessel {
 
 impl Vessel {
     /// Open a Vessel from a derived [`Identity`] and one of its
-    /// [`DeviceKey`]s (§4). The identity authors and decrypts; the endpoint
+    /// [`DeviceKey`]s. The identity authors and decrypts; the endpoint
     /// is bound with the device key (the `VesselID`). Read keys the ACL log
     /// already seals to this identity are derived immediately
     /// ([`refresh_keys`](Self::refresh_keys)).
@@ -169,7 +169,7 @@ impl Vessel {
     }
 
     /// The device certificate proving the endpoint key belongs to this
-    /// identity (§4) — presented in the connection handshake.
+    /// identity — presented in the connection handshake.
     pub fn device_cert(&self) -> &outpost_protocol::identity::DeviceCert {
         &self.cert
     }
@@ -199,7 +199,7 @@ impl Vessel {
         self.read_keys.lock().unwrap().insert(epoch, key);
     }
 
-    /// Populate the read-key cache from the ACL log (§7.2–7.3): for every
+    /// Populate the read-key cache from the ACL log: for every
     /// record that sealed a key to *this* Vessel's member identity, unseal
     /// it with the KEM secret; then walk the backwards key chain so a member
     /// admitted at a later epoch recovers every earlier epoch it is entitled
@@ -216,14 +216,14 @@ impl Vessel {
     }
 
     /// Which epochs this Vessel currently holds a read key for — the history
-    /// it can decrypt (§7.2). Useful for tests and diagnostics.
+    /// it can decrypt. Useful for tests and diagnostics.
     pub fn readable_epochs(&self) -> Vec<EpochID> {
         self.read_keys.lock().unwrap().keys().copied().collect()
     }
 
     /// Author a Notice: seal `plaintext` under the current epoch's read
     /// key, sign the envelope, and ingest it locally. Only a Vessel can do
-    /// this (§3 rule 5). Returns the stored Notice.
+    /// this. Returns the stored Notice.
     pub async fn author(
         &self,
         rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
@@ -243,7 +243,7 @@ impl Vessel {
             NoticeID::SELF
         } else {
             // A non-root's snapshot base is resolved by the snapshot layer
-            // (§6.3, deferred); until then it points at the first parent.
+            // (deferred); until then it points at the first parent.
             parents[0]
         };
         let header = EnvelopeHeader {
@@ -262,7 +262,7 @@ impl Vessel {
         Ok(notice)
     }
 
-    /// Decrypt a stored Notice's payload with the cached read key (§7.4) —
+    /// Decrypt a stored Notice's payload with the cached read key —
     /// the Vessel-only step a Station cannot perform. The AAD binding means
     /// this fails unless every header field matches what was sealed.
     pub fn decrypt(&self, notice: &SignedNotice) -> Result<Vec<u8>, VesselError> {
@@ -277,10 +277,10 @@ impl Vessel {
         Ok(open_payload(&key, &envelope.header, &envelope.payload)?)
     }
 
-    /// Dial a Station and run one full sync (§10): reconciles the ACL log
+    /// Dial a Station and run one full sync: reconciles the ACL log
     /// and both directions of the Notice DAG, then **auto-refreshes read
     /// keys** — any membership change the sync delivered takes effect without
-    /// a separate call. Sends the identity handshake (§10.2) when this Vessel
+    /// a separate call. Sends the identity handshake when this Vessel
     /// was opened from a derived identity. Does not verify the Station's
     /// roster membership — use [`sync_with_fleet`](Self::sync_with_fleet) for
     /// that.
@@ -293,7 +293,7 @@ impl Vessel {
     }
 
     /// Like [`sync_with`](Self::sync_with), but first verifies the Station is
-    /// in the trusted `config`'s roster (§10.2): the config's signature must
+    /// in the trusted `config`'s roster: the config's signature must
     /// check out and the Station's authenticated key must be listed. Refuses
     /// to sync with a Station the fleet did not vouch for.
     pub async fn sync_with_fleet(
@@ -306,7 +306,7 @@ impl Vessel {
         self.run_sync(&mut session).await
     }
 
-    /// Register `territory` with a Station so it will hold and serve it (§13) —
+    /// Register `territory` with a Station so it will hold and serve it —
     /// the "connect to a fleet's servers" step. Presents the Territory's root
     /// ACL record (so a Station that does not yet hold it can bootstrap), the
     /// identity handshake, and waits for the acknowledgement. Does **not**
@@ -322,7 +322,7 @@ impl Vessel {
     }
 
     /// Like [`register`](Self::register), but first verifies the Station is in
-    /// the trusted `config`'s roster (§10.2).
+    /// the trusted `config`'s roster.
     pub async fn register_with_fleet(
         &self,
         config: &fleet::FleetConfig,
@@ -337,7 +337,7 @@ impl Vessel {
     /// The shared registration exchange: handshake, present the ACL log,
     /// await the ack. The full log (not just the root) travels so the
     /// Station bootstraps *current* and can check the registrant's authority
-    /// against the fold (design doc §3.1).
+    /// against the fold.
     async fn do_register(
         &self,
         session: &mut outpost_fabric::Session,
@@ -373,7 +373,7 @@ impl Vessel {
     }
 
     /// Ask a Station which certified devices have touched this Vessel's
-    /// Territory (§4: visibility + attribution). Member-gated on the Station
+    /// Territory (visibility + attribution). Member-gated on the Station
     /// side, so this Vessel must present its identity handshake and be in the
     /// Territory's ACL. Every returned sighting is **verified here** — the
     /// cert must check out against its claimed identity — so a lying Station
@@ -406,7 +406,7 @@ impl Vessel {
         Ok(devices)
     }
 
-    /// Scope the session to this Vessel's Territory (§9) and confirm the
+    /// Scope the session to this Vessel's Territory and confirm the
     /// Station serves it — a Station that does not returns
     /// [`NotServed`](VesselError::NotServed) (register it first).
     async fn open_territory(
@@ -421,7 +421,7 @@ impl Vessel {
         }
     }
 
-    /// Verify a Station is one the fleet vouches for (§10.2).
+    /// Verify a Station is one the fleet vouches for.
     fn check_roster(
         &self,
         config: &fleet::FleetConfig,
@@ -434,7 +434,7 @@ impl Vessel {
         Ok(())
     }
 
-    /// Present the identity handshake (§10.2) and read the Station's
+    /// Present the identity handshake and read the Station's
     /// acknowledgement. Every Vessel carries a cert (a self-cert at minimum),
     /// so the handshake is unconditional — admission-gated Stations require
     /// it.
@@ -455,7 +455,7 @@ impl Vessel {
         Ok(())
     }
 
-    // ---- Territory & membership (§8) -----------------------------------
+    // ---- Territory & membership -----------------------------------
     //
     // Each operation builds the right ACL record signed by the identity and
     // applies it locally (single-writer). The orderer submission flow (a
@@ -464,7 +464,7 @@ impl Vessel {
 
     /// Create a new Territory owned by `identity`, returning a ready Vessel.
     /// A fresh epoch-0 read key is sealed to the owner's KEM, so the returned
-    /// Vessel can immediately author and read (§9).
+    /// Vessel can immediately author and read.
     pub async fn create_territory(
         identity: &Identity,
         device: &DeviceKey,
@@ -489,14 +489,14 @@ impl Vessel {
         Self::from_identity(identity, device, replica).await
     }
 
-    /// This Vessel's Territory id (hash of the root ACL record, §9).
+    /// This Vessel's Territory id (hash of the root ACL record).
     pub async fn territory_id(&self) -> Result<TerritoryID, VesselError> {
         let acl = self.replica.acl_index().await?;
         Ok(acl.head_state().ok_or(ReplicaError::NoAcl)?.territory)
     }
 
     /// Build an ACL record authored by this identity, chained on the current
-    /// head, and apply it locally (§8). Shared by the membership operations.
+    /// head, and apply it locally. Shared by the membership operations.
     async fn author_acl(&self, payload: ACLPayload) -> Result<ACLRecord, VesselError> {
         let prev = self.replica.acl_head().await?;
         let record = RecordBody {
@@ -509,7 +509,7 @@ impl Vessel {
         Ok(record)
     }
 
-    /// Submit an ACL record to a fleet orderer Station (§8.4): the orderer
+    /// Submit an ACL record to a fleet orderer Station: the orderer
     /// assigns it a position and returns a countersigned proof. The ordered
     /// record then propagates to peers with the proof, which they verify.
     /// Errors if the orderer refuses (e.g. the record does not chain).
@@ -544,7 +544,7 @@ impl Vessel {
 
     /// Issue an invite at `permissions` (Admin+ only). Returns the invite
     /// public key, the invite **secret** to hand the invitee out of band, and
-    /// the record (§8.2). Single-use: a `Join` consumes it.
+    /// the record. Single-use: a `Join` consumes it.
     pub async fn invite(
         &self,
         rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
@@ -564,7 +564,7 @@ impl Vessel {
     }
 
     /// Join a Territory with an invite secret: proves the invite, presents
-    /// this identity's KEM key (§8.2). An admin must then [`approve`] the
+    /// this identity's KEM key. An admin must then [`approve`] the
     /// resulting record. The Vessel must already hold the ACL up to the
     /// invite (bootstrap or sync).
     ///
@@ -590,8 +590,8 @@ impl Vessel {
     }
 
     /// Approve a pending joiner (Admin+ only), sealing the current epoch's
-    /// read key to their KEM (§8.2). No rotation — adding a member does not
-    /// change the epoch (§7.2).
+    /// read key to their KEM. No rotation — adding a member does not
+    /// change the epoch.
     pub async fn approve(
         &self,
         rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
@@ -623,7 +623,7 @@ impl Vessel {
     }
 
     /// Change a member's role (authority per the lattice; touching Admin+ is
-    /// Owner-only, §8.2).
+    /// Owner-only).
     pub async fn change_role(
         &self,
         member: MemberID,
@@ -636,15 +636,15 @@ impl Vessel {
         .await
     }
 
-    /// Revoke an outstanding invite (Admin+ only, §8.2).
+    /// Revoke an outstanding invite (Admin+ only).
     pub async fn revoke_invite(&self, invite_key: InviteKey) -> Result<ACLRecord, VesselError> {
         self.author_acl(ACLPayload::RevokeInvite { invite_key })
             .await
     }
 
-    /// Remove a member (§8.2), rotating to a new epoch: the new read key is
+    /// Remove a member, rotating to a new epoch: the new read key is
     /// sealed to every remaining member and the old key is wrapped under it
-    /// (§7.3 backward chain). This Vessel's own key cache rotates forward
+    /// (backward chain). This Vessel's own key cache rotates forward
     /// afterward.
     pub async fn remove(
         &mut self,
@@ -695,7 +695,7 @@ pub async fn open_replica(path: &str, acl_log: &[ACLRecord]) -> Result<Replica, 
 
 // ---- read-key derivation (shared with subscription tasks) ----------------
 
-/// The §7.2–7.3 key-acquisition walk, factored free of `Vessel` so a live
+/// The key-acquisition walk, factored free of `Vessel` so a live
 /// subscription task can refresh the *shared* cache after an ACL push, with
 /// the same logic [`Vessel::refresh_keys`] uses. Reads the log first (async),
 /// then works the sealed boxes and the backwards chain under one short lock.
@@ -755,7 +755,7 @@ async fn derive_keys(
 
     // Backward pass: newest rotation first, so a key acquired at a high
     // epoch cascades down. Each Remove wraps epoch N−1's key under epoch
-    // N's (§7.3); if we hold N, we can recover N−1, and so on to genesis.
+    // N's; if we hold N, we can recover N−1, and so on to genesis.
     for (new_epoch, epoch_before, prev_wrapped) in rotations.into_iter().rev() {
         if let Some(newer) = keys.get(&new_epoch).cloned()
             && let Ok(prev) = unwrap_prev_key(&newer, &prev_wrapped)
@@ -766,9 +766,9 @@ async fn derive_keys(
     Ok(())
 }
 
-// ---- live-push subscription (design doc §1) ------------------------------
+// ---- live-push subscription ------------------------------
 
-/// The doorbell (design doc §1.3): a coarse "look again" ping *after* the
+/// The doorbell: a coarse "look again" ping *after* the
 /// pushed records are already validated and stored. The store stays the
 /// single source of truth — the app re-queries it (its topo cursor yields
 /// everything new); events carry addresses of change, never payloads.
@@ -783,7 +783,7 @@ pub enum SubscriptionEvent {
     Closed,
 }
 
-/// A live session to a Station (design doc §1): the background task ingests
+/// A live session to a Station: the background task ingests
 /// pushes into the shared replica, auto-refreshes read keys after ACL
 /// pushes, and rings the doorbell. Dropping the handle (or calling
 /// [`close`](Self::close)) ends the session; a final
@@ -808,7 +808,7 @@ impl Subscription {
 }
 
 impl Vessel {
-    /// Open a live session to a Station (design doc §1): handshake, scope to
+    /// Open a live session to a Station: handshake, scope to
     /// this Territory, run the same initial reconcile as
     /// [`sync_with`](Self::sync_with) — then stay. Returns the handle plus
     /// the doorbell channel. Admission follows the Station's policy; a

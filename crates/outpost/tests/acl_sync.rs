@@ -1,5 +1,5 @@
-//! ACL propagation over sync, and the read-key auto-refresh it triggers
-//! (§8, §7.2). A Vessel that joins a Territory knowing only its root ACL
+//! ACL propagation over sync, and the read-key auto-refresh it triggers.
+//! A Vessel that joins a Territory knowing only its root ACL
 //! record syncs *once* with a Station and comes fully current: it receives
 //! the membership records that admitted it, automatically derives the read
 //! key sealed to it, pulls the encrypted history, and reads it — with no
