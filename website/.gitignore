@@ -6,6 +6,7 @@
 .cache
 dist
 !app/data
+.wrangler/
 
 # Node dependencies
 node_modules
