@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+# $schema: https://devenv.sh/devenv.schema.json
 impure: false
 
 nixpkgs:
@@ -22,7 +22,14 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   treefmt-nix:
-    url: github:numtide/treefmt-nix
+    url: github:jmuchovej/forked-treefmt-nix/cherry-picks
     inputs:
       nixpkgs:
         follows: nixpkgs
+  openspec:
+    url: github:jmuchovej/forked-openspec/add-nix-overlay
+    inputs:
+      nixpkgs:
+        url: github:NixOS/nixpkgs/9f0c42f8bc7151b8e7e5840fb3bd454ad850d8c5
+    overlays:
+      - default

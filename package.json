@@ -44,6 +44,7 @@
       "@iconify-json/ph": "^1.2.2",
       "@iconify-json/simple-icons": "^1.2.79",
       "@iconify-json/tabler": "^1.2.33",
+      "@iconify-json/vscode-icons": "^1.2.46",
       "@nuxt/eslint": "^1.15.2",
       "@nuxtjs/i18n": "^10.3.0",
       "@nuxtjs/storybook": "^9.0.1",
@@ -95,7 +96,9 @@
         "@tauri-apps/plugin-notification": "^2.3.3",
         "@tauri-apps/plugin-os": "^2.3.2",
         "@tauri-apps/plugin-shell": "^2.3.5",
-        "@tauri-apps/plugin-store": "^2.4.2"
+        "@tauri-apps/plugin-store": "^2.4.2",
+        "@tauri-apps/plugin-barcode-scanner": "^2.4.5",
+        "@tauri-apps/plugin-deep-link": "^2.4.9"
       },
       "tiptap": {
         "@tiptap/core": "^3.22.4",

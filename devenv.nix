@@ -22,6 +22,7 @@
     just
     sops
     age
+    openspec
   ];
 
   languages.rust = {
@@ -94,7 +95,7 @@
       rustfmt.enable = true;
       ktfmt.enable = true;
       swift-format.enable = true;
-      taplo.enable = true;
+      tombi.enable = true;
       rufo = {
         enable = true;
         includes = [

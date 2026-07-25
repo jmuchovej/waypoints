@@ -1,0 +1,76 @@
+schema: spec-driven
+
+context: |
+  Waypoints: a local-first, block-based knowledge management app (graph-native
+  PKM). Rust backend is the source of truth; Nuxt/Vue frontend rendered via
+  Tauri routes all edits back through a typed IPC. Turso persistence.
+
+  Data model: every user-facing datum is a Mark — either Content (a closed
+  enum of block primitives) or a Landmark (typed instance of a Chart schema,
+  field values as Readings). Marks relate through Terrain (directed edges).
+  Beacons (temporal activity layer) are designed but not yet implemented.
+
+  Crates:
+    - `domain` (pure data model, no DB deps)
+    - `store` (persistence, migrations, builtin Charts)
+    - `cartograph` (orchestration: editor, undo/redo, runtime)
+    - `importer` (Markdown/GFM)
+    - `bedrock-core`, `bedrock-derive`, `bedrock` (typed document storage on turso)
+    - `outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost` (E2EE
+      local-first sync engine; the protocol crate is pure — no tokio/iroh/bedrock)
+    - `server` (dev-only HTTP transport; not a product surface)
+
+  The Tauri app lives in `waypoints/` (`src-tauri` + Nuxt `app`); Tauri commands
+  are thin wrappers over the crates — test the crates, not the Tauri harness.
+
+  Authoritative references: the waypoints-architecture skill (data model —
+  always check its "cannot yet do" section). Release sequencing and feature
+  priority live in private planning documents outside this repository — when
+  a proposal's scope or timing depends on them, ask rather than guess, and
+  never cite their contents in artifacts.
+
+  Spec domains: every delta lands in one or more of these. Do NOT mint a
+  new domain unless none fits; if none fits, say so in the proposal rather
+  than inventing a name silently. Seed sources are uncommitted documents
+  referenced here by filename only — locate them by name on disk; if absent,
+  proceed without them. Trim a seed from this registry once it has fully
+  drained into its domain spec.
+    - data-model: Mark/Content/Landmark/Chart/Terrain/Reading semantics.
+        code: domain · seed: waypoints-architecture skill
+    - editor: block mutation, undo/redo, projection, selection.
+        code: cartograph, app
+    - import: Waypoints-Markdown/GFM parsing and import.
+        code: importer
+    - app-shell: Tauri command surface, typed IPC, runtime lifecycle.
+        code: src-tauri, cartograph
+    - storage: collection specs, migrations, query semantics.
+        code: bedrock-core, bedrock-derive, bedrock
+        seeds: store-on-bedrock-migration-plan.md,
+        bedrock-orm-design-validation.md, bedrock-collection-specs.md
+        (last one documents the retired reference lineage — verify against
+        the merged rebuild before citing)
+    - sync-protocol: notices, ACL, epochs, station/vessel contracts.
+        code: outpost-protocol, outpost-fabric, outpost-hold, outpost
+        seeds: outpost-design.md (spine), outpost-orchestration-plan.md,
+        outpost-enhancements.md, outpost-live-push-and-station-persistence.md
+    - sync: pairing, device registry, offline/conflict UX.
+        code: cartograph, app, domain — cross-cutting by nature; may cite
+        sync-protocol guarantees, never the reverse.
+
+  Seed sources are read-only donors. Once a domain spec covers a topic, the spec is authoritative — pull invariants from seeds into deltas; never edit a seed.
+
+  Conventions: Conventional Commits, signed; jj-colocated repo; bun (never
+  pnpm); devenv + just + treefmt (never hand-format); derive_more for trait
+  impls; prek runs clippy, cargo-check, cargo-test, treefmt.
+
+rules:
+  proposal:
+    - Name the main-spec sections (or capabilities) this change amends
+    - Include a Non-goals section
+    - Never reference unshipped or planned capabilities beyond this change's scope
+  specs:
+    - Present-tense invariants only — no task language, no phases
+    - Record decisions dated, with rationale and rejected alternatives
+  tasks:
+    - Every task must leave per-commit hooks green (clippy, cargo-test, treefmt)
+    - Tests for persistence behavior run against the real engine, never string-asserted SQL
