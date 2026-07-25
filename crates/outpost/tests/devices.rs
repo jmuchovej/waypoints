@@ -1,4 +1,4 @@
-//! The device registry (§4: visibility + attribution + connection status)
+//! The device registry (visibility + attribution + connection status)
 //! over real QUIC. Two devices of one identity touch a Territory through a
 //! Station; the owner asks the Station which devices have access and gets
 //! back *verified* attribution — each sighting's cert checks out against its
@@ -118,8 +118,7 @@ async fn devices_are_attributed_per_identity_and_member_gated() {
 }
 
 /// A Station restart must not make a dormant device vanish from the
-/// registry (design doc `docs/dev/outpost-live-push-and-station-persistence.md`
-/// §2): sightings persist in the Station's own database and reload with
+/// registry: sightings persist in the Station's own database and reload with
 /// honest timestamps and `connected: false`.
 #[tokio::test]
 async fn sightings_survive_a_station_restart() {

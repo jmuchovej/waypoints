@@ -1,5 +1,5 @@
 //! ACL records are ordered by a fleet orderer and carry a fleet-key proof
-//! that peers verify (§8.4, full ordering). A vessel submits a membership
+//! that peers verify (full ordering). A vessel submits a membership
 //! record to the orderer Station over real QUIC, receives the countersigned
 //! proof, and the ordered record propagates to a *fleeted* peer that
 //! verifies it — while a record with a forged proof is rejected.

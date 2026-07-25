@@ -1,4 +1,4 @@
-//! Read-key acquisition from the ACL log (§7.2–7.3), proven end-to-end
+//! Read-key acquisition from the ACL log, proven end-to-end
 //! through [`Vessel::refresh_keys`] — no hand-fed keys.
 //!
 //! The scenario spans two epochs:
@@ -9,10 +9,10 @@
 //! Three properties fall out:
 //! - **Chain recovery**: member 3, admitted at epoch 1, reads epoch-0
 //!   history it never had a sealed box for — by walking the backwards chain
-//!   from the epoch-1 key it *was* sealed (§7.3).
+//!   from the epoch-1 key it *was* sealed.
 //! - **Forward-only cutoff**: member 2, removed at the rotation, holds only
 //!   epoch 0; it can still *receive* epoch-1 Notices but cannot read them
-//!   (§7.2), the honest limit of removal.
+//!   the honest limit of removal.
 //! - **Owner**: holds both epochs (Root + the rotation it authored).
 //!
 //! [`Vessel::refresh_keys`]: outpost::vessel::Vessel::refresh_keys

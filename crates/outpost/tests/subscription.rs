@@ -1,5 +1,4 @@
-//! Live-push subscriptions (design doc
-//! `docs/dev/outpost-live-push-and-station-persistence.md` §1) over real
+//! Live-push subscriptions over real
 //! QUIC. Two devices of one identity subscribe to a Station; one authors and
 //! pushes, the other's doorbell rings and its hold converges **without a
 //! re-dial**. A one-shot sync carrying a new ACL record fans out live to

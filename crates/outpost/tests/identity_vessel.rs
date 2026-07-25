@@ -1,4 +1,4 @@
-//! A Vessel opened from a mnemonic-derived identity (§4) authors and reads
+//! A Vessel opened from a mnemonic-derived identity authors and reads
 //! its own encrypted history — proving the identity layer plugs into the
 //! Vessel end to end, without hand-fed raw keys.
 

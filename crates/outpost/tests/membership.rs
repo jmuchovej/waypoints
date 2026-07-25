@@ -1,4 +1,4 @@
-//! The membership ceremony driven through real Vessel APIs (§8): an owner
+//! The membership ceremony driven through real Vessel APIs: an owner
 //! creates a Territory, invites a user, the user joins, the owner approves,
 //! and the new member reads history — no hand-built ACL records. Then
 //! removal rotates the epoch and cuts the removed member off, and an

@@ -1,4 +1,4 @@
-//! Bedrock collections backing a Territory (§11.1). Each row keeps the
+//! Bedrock collections backing a Territory. Each row keeps the
 //! canonical raw bytes plus denormalized header columns for indexing. The
 //! `id` columns are native binary keys (the [`u8; 32]` `Field` impl) — no
 //! text-encoding detour for content addresses.
@@ -15,7 +15,7 @@ pub struct RecordKey(pub [u8; 32]);
 
 /// One stored Notice. `bytes` is the object of record; every other column
 /// is a denormalized copy of a header field, present only for indexing
-/// (§11.1) and never trusted for a security decision.
+/// and never trusted for a security decision.
 #[derive(Debug, Clone, PartialEq, Collection)]
 #[bedrock(index("track", "topo"))]
 pub struct NoticeRow {
@@ -25,10 +25,10 @@ pub struct NoticeRow {
     #[bedrock(index)]
     pub track: [u8; 32],
     /// Total insertion order within this hold: the topological cursor for
-    /// "everything after K" range scans (§6.2).
+    /// "everything after K" range scans.
     pub topo: i64,
     /// True ⇒ some accepted Notice lists this one as a parent. A Notice
-    /// with no children is a head (§6.1); heads are `is_head = true`.
+    /// with no children is a head; heads are `is_head = true`.
     #[bedrock(index)]
     pub is_head: bool,
     pub is_snapshot: bool,
@@ -40,7 +40,7 @@ pub struct NoticeRow {
 }
 
 /// One stored ACL record, in log order. `position` is the orderer-assigned
-/// index (§8.4); the fold replays them in that order.
+/// index; the fold replays them in that order.
 #[derive(Debug, Clone, PartialEq, Collection)]
 pub struct AclRow {
     #[bedrock(id)]
@@ -49,13 +49,13 @@ pub struct AclRow {
     pub position: i64,
     /// The canonical encoded `ACLRecord`.
     pub bytes: Vec<u8>,
-    /// The orderer's countersignature (§8.4), postcard-encoded `OrderProof`.
+    /// The orderer's countersignature, postcard-encoded `OrderProof`.
     /// Empty for the `Root`, which is self-authenticating (position 0).
     pub proof: Vec<u8>,
 }
 
 /// A parent edge awaiting its parent: the child cannot be accepted until
-/// `parent` arrives (§5.4 `Pending`). Keyed by the missing parent so the
+/// `parent` arrives (`Pending`). Keyed by the missing parent so the
 /// arrival of a Notice can look up who was waiting on it.
 #[derive(Debug, Clone, PartialEq, Collection)]
 pub struct PendingRow {

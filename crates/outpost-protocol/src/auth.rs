@@ -1,4 +1,4 @@
-//! Connection identity (§4, §10.2). A device key binds the transport
+//! Connection identity. A device key binds the transport
 //! connection (the `VesselID`); a [`DeviceCert`] is the identity's signed
 //! statement that the device key is one of its own. On connect, a peer
 //! presents `(identity, cert)` and the other side checks the cert *and* that
@@ -24,7 +24,7 @@ pub fn cert_message(device: &VerifyingKey) -> Vec<u8> {
     message
 }
 
-/// An identity-signed statement "this device key is mine" (§4).
+/// An identity-signed statement "this device key is mine".
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceCert {
     pub device: VerifyingKey,

@@ -1,15 +1,15 @@
-//! Access control as an ordered log (§8).
+//! Access control as an ordered log.
 //!
 //! Content edits tolerate concurrency; membership does not. Each
 //! Territory's ACL is a strictly ordered, signed log — the only linearized
 //! structure in the system. State is a **pure fold** over that log:
 //! deterministic, side-effect free, identically recomputable by every peer
-//! (Vessel and Station alike — §3 rule 5).
+//! (Vessel and Station alike).
 //!
-//! Subordinate decisions (refining the design doc):
+//! Subordinate decisions:
 //! - ACL records get their own wire-version byte ([`RECORD_VERSION`]),
 //!   mirroring the envelope discipline.
-//! - The order proof (§8.4) lives *outside* the author-signed bytes and
+//! - The order proof lives *outside* the author-signed bytes and
 //!   outside [`RecordID`]: the orderer countersigns after the fact, and
 //!   folding either would make the hash circular / the ID unstable.
 //! - Invites are single-use: a `Join` consumes its invite. Re-inviting is
@@ -33,16 +33,16 @@ pub const RECORD_VERSION: u8 = 1;
 
 /// Domain tag for the `Join` invite proof.
 const JOIN_PROOF_TAG: &[u8] = b"outpost.join.v1";
-/// Domain tag for orderer countersignatures (§8.4).
+/// Domain tag for orderer countersignatures.
 const ORDER_PROOF_TAG: &[u8] = b"outpost.order.v1";
 
 crate::id::byte_id! {
-    /// An invite's Ed25519 public key (§8.2). The matching secret travels
+    /// An invite's Ed25519 public key. The matching secret travels
     /// out-of-band inside the invite payload; whoever holds it can `Join`.
     InviteKey
 }
 
-/// Permission lattice: `Owner ⊃ Admin ⊃ Writer ⊃ Reader` (§8.2). The
+/// Permission lattice: `Owner ⊃ Admin ⊃ Writer ⊃ Reader`. The
 /// derived order makes `>=` mean "at least".
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub enum Permissions {
@@ -52,7 +52,7 @@ pub enum Permissions {
     Owner,
 }
 
-/// The membership operations (§8.2). Sealed boxes are opaque bytes here —
+/// The membership operations. Sealed boxes are opaque bytes here —
 /// the fold checks their *coverage*, never their contents (Stations cannot
 /// decrypt, and must not need to).
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -77,7 +77,7 @@ pub enum ACLPayload {
         invite_proof: Signature,
     },
     /// An admin admits a joined candidate; the current read key is sealed
-    /// to the new member (no rotation on add — §7.2).
+    /// to the new member (no rotation on add).
     Approve {
         member: MemberID,
         permissions: Permissions,
@@ -87,9 +87,9 @@ pub enum ACLPayload {
         member: MemberID,
         permissions: Permissions,
     },
-    /// Removal must rotate (§7.2): the next epoch's key sealed to each
+    /// Removal must rotate: the next epoch's key sealed to each
     /// remaining member, plus the old key wrapped under the new one so the
-    /// backwards chain stays walkable (§7.3).
+    /// backwards chain stays walkable.
     Remove {
         member: MemberID,
         new_epoch: EpochID,
@@ -173,7 +173,7 @@ impl RecordID {
 }
 
 impl TerritoryID {
-    /// A Territory's identity is the hash of its root ACL record (§9) —
+    /// A Territory's identity is the hash of its root ACL record —
     /// the same bytes as the root's [`RecordID`], as a distinct type.
     pub fn of_root(root: &ACLRecord) -> Result<Self, WireError> {
         Ok(Self::from_bytes(*RecordID::of(root)?.as_bytes()))
@@ -195,8 +195,8 @@ pub fn join_binding(
     msg
 }
 
-/// The per-Fleet orderer's countersignature over `(record, position)`
-/// (§8.4). Travels beside the record, outside its ID and author signature.
+/// The per-Fleet orderer's countersignature over `(record, position)`.
+/// Travels beside the record, outside its ID and author signature.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct OrderProof {
     pub position: u64,
@@ -222,7 +222,7 @@ impl OrderProof {
 
     /// Peer side: audit a proof against the fleet's public key. Divergent
     /// proofs for one position are cryptographic evidence of orderer
-    /// equivocation (§8.4) — callers surface that loudly, never silently.
+    /// equivocation — callers surface that loudly, never silently.
     pub fn verify(
         &self,
         fleet_key: &VerifyingKey,
@@ -232,7 +232,7 @@ impl OrderProof {
     }
 }
 
-/// An ACL record together with its orderer countersignature (§8.4) — the
+/// An ACL record together with its orderer countersignature — the
 /// unit that travels the wire and is stored, once ordered. The `Root` record
 /// carries no proof: it defines the Territory before any ordering exists, so
 /// its authenticity is the owner's own signature (position 0, `prev = None`).
@@ -249,7 +249,7 @@ impl OrderedRecord {
         self.proof.as_ref().map_or(0, |p| p.position)
     }
 
-    /// Verify the record against the fleet key (§8.4). The `Root` (no proof)
+    /// Verify the record against the fleet key. The `Root` (no proof)
     /// is accepted on its own author signature; every other record must
     /// carry a proof that verifies for its content address.
     pub fn verify(&self, fleet_key: &VerifyingKey) -> Result<(), OrderError> {
@@ -272,7 +272,7 @@ impl OrderedRecord {
     }
 }
 
-/// Why an [`OrderedRecord`] failed its ordering check (§8.4).
+/// Why an [`OrderedRecord`] failed its ordering check.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OrderError {
     #[error("record bytes or author signature invalid")]
@@ -286,7 +286,7 @@ pub enum OrderError {
 }
 
 /// Why the fold refused a record. Every variant is a distinct, tested
-/// behavior; rejection is terminal (§5.4 note applies to ACL records too).
+/// behavior; rejection is terminal (the note applies to ACL records too).
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ACLReject {
     #[error("record bytes/signature invalid: {0}")]
@@ -323,7 +323,7 @@ impl From<WireError> for ACLReject {
     }
 }
 
-/// The folded membership state (§8.2). Values are cheap to clone; the fold
+/// The folded membership state. Values are cheap to clone; the fold
 /// returns a fresh state so rejected records cannot half-apply.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ACLState {
@@ -341,7 +341,7 @@ pub struct ACLState {
 }
 
 impl ACLState {
-    /// Fold step zero: validate and apply a `Root` record (§8.2).
+    /// Fold step zero: validate and apply a `Root` record.
     pub fn genesis(root: &ACLRecord) -> Result<Self, ACLReject> {
         let body = root.parse_and_verify()?;
         let ACLPayload::Root { owner_kem, .. } = &body.payload else {
@@ -362,7 +362,7 @@ impl ACLState {
         })
     }
 
-    /// One fold step (§8.2): enforce chaining, authority, and
+    /// One fold step: enforce chaining, authority, and
     /// well-formedness, and produce the next state.
     pub fn apply(&self, record: &ACLRecord) -> Result<Self, ACLReject> {
         let body = record.parse_and_verify()?;
@@ -451,7 +451,7 @@ impl ACLState {
                 if *new_epoch != self.epoch.next() {
                     return Err(ACLReject::WrongEpoch);
                 }
-                // Wraps must cover exactly the members that remain (§8.2).
+                // Wraps must cover exactly the members that remain.
                 let mut covered: Vec<MemberID> = new_key_wrapped.iter().map(|(m, _)| *m).collect();
                 covered.sort_unstable();
                 covered.dedup();
@@ -479,12 +479,12 @@ impl ACLState {
         Ok(next)
     }
 
-    /// §5.4 step 4: may `author` write content at this state?
+    /// Validation step 4: may `author` write content at this state?
     pub fn require_writer(&self, author: &VerifyingKey) -> Result<(), ACLReject> {
         self.require_authority(MemberID::from(author), Permissions::Writer)
     }
 
-    /// §5.4 step 5: a Notice's epoch must be current or older — a writer
+    /// Validation step 5: a Notice's epoch must be current or older — a writer
     /// cannot pin an epoch this state has not reached yet.
     pub fn require_epoch_current_or_older(&self, epoch: EpochID) -> Result<(), ACLReject> {
         if epoch > self.epoch {
@@ -502,7 +502,7 @@ impl ACLState {
     }
 
     /// Membership operations need Admin; operations that grant or touch
-    /// Admin-or-above need Owner ("only Owner may change Admins", §8.2).
+    /// Admin-or-above need Owner ("only Owner may change Admins").
     fn require_granting_authority(
         &self,
         author: MemberID,

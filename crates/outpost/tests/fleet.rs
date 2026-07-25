@@ -1,4 +1,4 @@
-//! Fleet enforcement + territory registration (§10.2, §13) over real QUIC.
+//! Fleet enforcement + territory registration over real QUIC.
 //! A Vessel holding a signed FleetConfig registers its Territory with a
 //! rostered Station and syncs; a Station not in the roster is refused; the
 //! identity handshake proves which identity is behind the device.

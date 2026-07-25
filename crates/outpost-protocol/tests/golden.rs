@@ -1,4 +1,4 @@
-//! Golden byte vectors pinning the wire format (§5.2). Ed25519 signing is
+//! Golden byte vectors pinning the wire format. Ed25519 signing is
 //! deterministic (RFC 8032) and postcard is canonical for a given value, so
 //! every byte below is reproducible. If one of these assertions breaks, the
 //! wire format changed: that is either a deliberate [`ENVELOPE_VERSION`]

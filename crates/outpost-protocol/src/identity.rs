@@ -1,4 +1,4 @@
-//! Identity: a keypair, not an account (design doc §4).
+//! Identity: a keypair, not an account.
 //!
 //! Everything a user has derives from a BIP-39 mnemonic through SLIP-10
 //! (Ed25519, which admits only hardened derivation):
@@ -7,20 +7,20 @@
 //! mnemonic (12/24 words)
 //!   └── SLIP-10 master
 //!         ├── m/44'/9297'/0'        identity signing key (Ed25519) — the user ID
-//!         │     └── …/0'/0'         identity KEM seed (X-Wing, §7 key delivery)
+//!         │     └── …/0'/0'         identity KEM seed (X-Wing, key delivery)
 //!         └── m/44'/9297'/1'/n'     per-device keys, certified by the identity
 //! ```
 //!
 //! The **identity** signing key authors Notices and ACL records (so a
-//! `MemberID` is an identity, never a device — validation keys on it, §5.4).
+//! `MemberID` is an identity, never a device — validation keys on it).
 //! Each **device** gets its own signing key, whose public half is the
 //! `VesselID` that binds the transport connection; the identity certifies it
 //! ([`auth::DeviceCert`](crate::auth::DeviceCert)) so a Station can learn
-//! which identity is behind a device (§10.2). All of a user's devices share
+//! which identity is behind a device. All of a user's devices share
 //! the one identity signing + KEM key, so a new device from the same mnemonic
 //! can read all history the identity is entitled to.
 //!
-//! Subordinate decisions (recorded here, not contradicting the design doc):
+//! Subordinate decisions:
 //! - Coin type 9297 is "WAYP" on a phone keypad — unregistered in SLIP-44,
 //!   which is fine: these paths never interoperate with wallet software.
 //! - SLIP-10 is hand-rolled over `hmac`/`sha2` — not novel crypto, just the
@@ -110,7 +110,7 @@ impl KeyRoot {
     /// length, so earlier 24-word phrases keep working. Deliberately **no**
     /// BIP-39 passphrase parameter: it is a pure KDF input that can never be
     /// changed or removed without becoming a different identity — changeable
-    /// protection belongs in the at-rest wrapping layer (app custody, §14.1
+    /// protection belongs in the at-rest wrapping layer (app custody,
     /// escrow), not in derivation.
     pub fn generate() -> (Self, String) {
         let mnemonic = bip39::Mnemonic::generate(12).expect("12 is a valid word count");
@@ -133,7 +133,7 @@ impl KeyRoot {
     }
 
     /// The identity keypair: authors Notices and ACL records; its public key
-    /// is the user ID everywhere (§4).
+    /// is the user ID everywhere.
     pub fn identity(&self) -> Identity {
         let signing = Node::derive(&self.seed, &[PURPOSE, COIN, 0]);
         let kem = signing.child(0);
@@ -157,8 +157,8 @@ impl KeyRoot {
     }
 }
 
-/// The user-level keypair (§4): Ed25519 for signatures, plus an X-Wing KEM
-/// key (as a seed) for read-key delivery (§7). Cheap to clone — it holds only
+/// The user-level keypair: Ed25519 for signatures, plus an X-Wing KEM
+/// key (as a seed) for read-key delivery. Cheap to clone — it holds only
 /// the two 32-byte secrets.
 #[derive(Clone)]
 pub struct Identity {
@@ -180,19 +180,19 @@ impl Identity {
         MemberID::from(&self.verifying_key())
     }
 
-    /// A fresh KEM secret for unsealing read keys (§7.1). Rebuilt from the
+    /// A fresh KEM secret for unsealing read keys. Rebuilt from the
     /// stored seed so the secret material lives no longer than the caller
     /// keeps it.
     pub fn kem_secret(&self) -> KemSecretKey {
         KemSecretKey::from_seed(self.kem_seed)
     }
 
-    /// The KEM public key an admitting record seals read keys to (§7.2).
+    /// The KEM public key an admitting record seals read keys to.
     pub fn kem_public(&self) -> KemPublicKey {
         self.kem_secret().public_key()
     }
 
-    /// Certify a device key as belonging to this identity (§4).
+    /// Certify a device key as belonging to this identity.
     pub fn certify(&self, device: &VerifyingKey) -> DeviceCert {
         DeviceCert::issue(&self.signing, device)
     }
@@ -204,7 +204,7 @@ impl Drop for Identity {
     }
 }
 
-/// A device keypair plus its identity-key certificate (§4). The signing key
+/// A device keypair plus its identity-key certificate. The signing key
 /// binds the transport connection; the cert proves the identity behind it.
 pub struct DeviceKey {
     pub signing: SigningKey,

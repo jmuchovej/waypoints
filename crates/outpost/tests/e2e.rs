@@ -1,5 +1,5 @@
 //! End-to-end: vessel ↔ station ↔ vessel convergence over the whole stack
-//! (design doc §12). One Vessel authors an *encrypted* Notice and pushes it
+//! One Vessel authors an *encrypted* Notice and pushes it
 //! to a Station over real iroh QUIC; a second Vessel pulls from the Station
 //! and decrypts it. This exercises every slice at once — the ACL fold and
 //! key schedule, read-key acquisition from the log, the validation loop,

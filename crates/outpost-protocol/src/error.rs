@@ -1,6 +1,6 @@
 //! Boundary errors for codecs and signature checks. Validation verdicts
 //! (accept / reject / pending) are a separate vocabulary arriving with
-//! §5.4 in slice 3 — a malformed byte string is not a *rejected* Notice,
+//! validation in slice 3 — a malformed byte string is not a *rejected* Notice,
 //! it is not a Notice at all.
 
 /// Failures turning bytes into protocol objects (or signing them).
@@ -23,7 +23,7 @@ pub enum WireError {
     Signature(#[from] ed25519_dalek::SignatureError),
 }
 
-/// Failures sealing or opening encrypted material (§7). Deliberately
+/// Failures sealing or opening encrypted material. Deliberately
 /// coarse: AEAD failures are indistinguishable by construction, and finer
 /// reporting would only help an attacker.
 #[derive(Debug, thiserror::Error)]

@@ -1,4 +1,4 @@
-//! The Notice wire structure (§5.1) and the raw-bytes discipline (§5.2).
+//! The Notice wire structure and the raw-bytes discipline.
 //!
 //! Three nested layers, and the nesting order is what makes IDs and
 //! signatures meaningful:
@@ -13,7 +13,7 @@
 //! them, verify signatures against them; parse lazily into [`Envelope`]
 //! views and never verify against a re-encoding.
 //!
-//! Subordinate decisions (refining the design doc, not contradicting it):
+//! Subordinate decisions:
 //! - The envelope encoding is prefixed with a format-version byte
 //!   ([`ENVELOPE_VERSION`]); parsers reject unknown versions. Postcard
 //!   structs carry no tags, so this byte is the only room the wire format
@@ -22,7 +22,7 @@
 //!   weak-key edge cases plain `verify` accepts. Content-addressed history
 //!   should have exactly one accepted byte form.
 //! - The header lives in its own struct so the payload AEAD's associated
-//!   data (§7.4) is exactly `version byte ‖ postcard(header)` — see
+//!   data is exactly `version byte ‖ postcard(header)` — see
 //!   [`EnvelopeHeader::aad`]. Postcard encodes nested structs inline, so
 //!   the split leaves the envelope encoding byte-identical (pinned by the
 //!   golden vectors).
@@ -39,19 +39,19 @@ use crate::id::{EpochID, NoticeID, RecordID};
 pub const ENVELOPE_VERSION: u8 = 1;
 
 /// The plaintext header of a Notice — everything a Station needs, nothing
-/// it doesn't (§5.3).
+/// it doesn't.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct EnvelopeHeader {
     /// Parent Notice IDs. Empty ⇒ this is a track root.
     pub parents: Vec<NoticeID>,
-    /// The ACL record in force when this Notice was authored (§8.3).
+    /// The ACL record in force when this Notice was authored.
     pub acl_head: RecordID,
-    /// Which read-key epoch encrypts the payload (§7.2).
+    /// Which read-key epoch encrypts the payload.
     pub epoch: EpochID,
     /// Author's identity public key. Must have write permission at
-    /// `acl_head` (validated in §5.4).
+    /// `acl_head` (validated by the validation function).
     pub author: VerifyingKey,
-    /// Nearest ancestor snapshot (§6.3). Roots reference themselves.
+    /// Nearest ancestor snapshot. Roots reference themselves.
     pub snapshot_base: NoticeID,
     /// True ⇒ payload is a full materialized state, not a delta.
     pub is_snapshot: bool,
@@ -62,7 +62,7 @@ pub struct EnvelopeHeader {
 }
 
 impl EnvelopeHeader {
-    /// The payload AEAD's associated data (§7.4): the version byte plus the
+    /// The payload AEAD's associated data: the version byte plus the
     /// encoded header. Binds ciphertext to its parents, epoch, author, and
     /// ACL pin — a payload cannot be transplanted into a different header.
     pub fn aad(&self) -> Result<Vec<u8>, WireError> {
@@ -73,12 +73,12 @@ impl EnvelopeHeader {
 }
 
 /// Parsed view of [`SignedNotice::bytes`]. Never re-encoded for
-/// verification (§5.2).
+/// verification.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Envelope {
     pub header: EnvelopeHeader,
     /// XChaCha20-Poly1305 ciphertext, sealed with `header.aad()` as
-    /// associated data (§7.4).
+    /// associated data.
     pub payload: Vec<u8>,
 }
 
@@ -102,7 +102,7 @@ impl Envelope {
     }
 }
 
-/// Signed, immutable unit of replication (§5.1). `bytes` is canonical:
+/// Signed, immutable unit of replication. `bytes` is canonical:
 /// hashing and signature verification always operate on these exact bytes.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SignedNotice {
@@ -125,7 +125,7 @@ impl SignedNotice {
 
     /// Parse the envelope view and verify the signature over the raw bytes
     /// against the `author` key found inside them — steps 1 and 2 of the
-    /// validation function (§5.4).
+    /// validation function.
     pub fn parse_and_verify(&self) -> Result<Envelope, WireError> {
         let envelope = Envelope::parse(&self.bytes)?;
         envelope
@@ -142,7 +142,7 @@ impl SignedNotice {
     }
 
     /// Decode a notice received from a peer. No validation happens here;
-    /// every received notice goes through §5.4 before acceptance.
+    /// every received notice goes through validation before acceptance.
     pub fn decode(bytes: &[u8]) -> Result<Self, WireError> {
         Ok(postcard::from_bytes(bytes)?)
     }
@@ -150,7 +150,7 @@ impl SignedNotice {
 
 impl NoticeID {
     /// The content address: BLAKE3 of the encoded [`SignedNotice`]. Derived,
-    /// not checked — it *is* the hash (§5.4).
+    /// not checked — it *is* the hash.
     pub fn of(notice: &SignedNotice) -> Result<Self, WireError> {
         let encoded = notice.encode()?;
         Ok(Self::from_bytes(*blake3::hash(&encoded).as_bytes()))

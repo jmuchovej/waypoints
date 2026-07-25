@@ -1,5 +1,4 @@
-//! Admission policy (design doc
-//! `docs/dev/outpost-live-push-and-station-persistence.md` §3) over real
+//! Admission policy over real
 //! QUIC. Registration: only an identity holding **Owner in the presented
 //! log's fold** may home a new Territory (a later-promoted Owner passes
 //! identically to the creator — authority comes from the ACL). Sync: the

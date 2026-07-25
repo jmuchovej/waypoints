@@ -131,7 +131,7 @@ impl TerritoryBuilder {
 
     /// Remove member `who_seed`, rotating to `next_key`: seal it to every
     /// remaining member, and wrap the outgoing `prev_key` under it so the
-    /// backwards chain stays walkable (§7.3). `admin_seed` must outrank the
+    /// backwards chain stays walkable. `admin_seed` must outrank the
     /// target.
     pub fn remove(&mut self, admin_seed: u8, who_seed: u8, prev_key: &ReadKey, next_key: &ReadKey) {
         let admin = signing(admin_seed);
