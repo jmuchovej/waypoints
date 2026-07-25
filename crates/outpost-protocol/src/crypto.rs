@@ -1,11 +1,11 @@
-//! Encryption (§7): payload AEAD, sealed-box read-key delivery, and the
+//! Encryption: payload AEAD, sealed-box read-key delivery, and the
 //! backwards epoch key chain.
 //!
-//! Primitives (§7.1, carried decisions): XChaCha20-Poly1305 for payloads
+//! Primitives (carried decisions): XChaCha20-Poly1305 for payloads
 //! and key wraps; X-Wing (hybrid X25519 + ML-KEM-768) sealed boxes for
 //! read-key delivery — the ACL log is world-replicated ciphertext that is
 //! never re-encrypted, so key delivery must survive
-//! harvest-now-decrypt-later. Signatures stay Ed25519 (§7.1).
+//! harvest-now-decrypt-later. Signatures stay Ed25519.
 //!
 //! Every randomized operation takes the RNG as a parameter: this crate has
 //! no ambient entropy source, which keeps it pure and every test
@@ -31,11 +31,11 @@ pub const KEM_PUBLIC_LEN: usize = x_wing::ENCAPSULATION_KEY_SIZE;
 /// X-Wing KEM ciphertext length inside a sealed box.
 pub const KEM_CIPHERTEXT_LEN: usize = x_wing::CIPHERTEXT_SIZE;
 
-/// Domain separation for the §7.3 key-chain wrap, so a wrapped key can
+/// Domain separation for the key-chain wrap, so a wrapped key can
 /// never be confused with (or replayed as) a Notice payload.
 const KEY_CHAIN_AAD: &[u8] = b"outpost.keychain.v1";
 
-/// One epoch's symmetric read key (§7.2). Redacted `Debug`, zeroized on
+/// One epoch's symmetric read key. Redacted `Debug`, zeroized on
 /// drop; never serialized directly — it travels only inside sealed boxes
 /// ([`seal_key_to_member`]) or chain wraps ([`wrap_prev_key`]).
 #[derive(Clone, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
@@ -85,7 +85,7 @@ impl core::fmt::Debug for KemPublicKey {
 }
 
 /// The vessel-held decapsulation seed. The 32-byte seed is a SLIP-10 node
-/// key (§4), so mnemonic recovery restores it.
+/// key, so mnemonic recovery restores it.
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct KemSecretKey([u8; 32]);
 
@@ -121,7 +121,7 @@ fn random_nonce(rng: &mut impl CryptoRng) -> [u8; NONCE_LEN] {
 }
 
 /// Encrypt a Notice payload under the epoch read key, with the encoded
-/// header as associated data (§7.4). Output: `nonce ‖ ciphertext` — what
+/// header as associated data. Output: `nonce ‖ ciphertext` — what
 /// goes in [`Envelope::payload`](crate::Envelope::payload).
 pub fn seal_payload(
     rng: &mut impl CryptoRng,
@@ -148,7 +148,7 @@ pub fn seal_payload(
 
 /// Decrypt a Notice payload. Fails if the key, the payload bytes, or any
 /// header field differ from what was sealed — the AAD binding is what
-/// makes a payload untransplantable (§7.4).
+/// makes a payload untransplantable.
 pub fn open_payload(
     key: &ReadKey,
     header: &EnvelopeHeader,
@@ -169,7 +169,7 @@ pub fn open_payload(
         .map_err(|_| CryptoError::Aead)
 }
 
-/// Seal a read key to one member's KEM key (§7.1): the sealed box carried
+/// Seal a read key to one member's KEM key: the sealed box carried
 /// by `Root`/`Approve`/`Remove` ACL records. Layout:
 /// `kem_ciphertext ‖ nonce ‖ AEAD(shared_secret, read_key)`.
 pub fn seal_key_to_member(
@@ -213,7 +213,7 @@ pub fn open_sealed_key(secret: &KemSecretKey, sealed: &[u8]) -> Result<ReadKey, 
     Ok(ReadKey(bytes))
 }
 
-/// Wrap epoch N−1's key under epoch N's key (§7.3): the `prev_key_wrapped`
+/// Wrap epoch N−1's key under epoch N's key: the `prev_key_wrapped`
 /// field of a `Remove` record. A newly admitted member holding only the
 /// current key walks these wraps back through all history; a removed
 /// member's knowledge ends at their last epoch.
@@ -234,7 +234,7 @@ pub fn wrap_prev_key(rng: &mut impl CryptoRng, next: &ReadKey, prev: &ReadKey) -
     out
 }
 
-/// Unwrap one link of the backwards key chain (§7.3).
+/// Unwrap one link of the backwards key chain.
 pub fn unwrap_prev_key(next: &ReadKey, wrapped: &[u8]) -> Result<ReadKey, CryptoError> {
     let (nonce, ciphertext) = wrapped
         .split_at_checked(NONCE_LEN)

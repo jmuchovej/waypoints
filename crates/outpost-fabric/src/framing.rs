@@ -1,4 +1,4 @@
-//! Length-prefixed `postcard` framing over any async byte stream (§10.3).
+//! Length-prefixed `postcard` framing over any async byte stream.
 //!
 //! Frame = `u32` little-endian length + that many bytes of postcard. QUIC
 //! streams, tokio duplex pipes, and unix sockets all qualify; the protocol

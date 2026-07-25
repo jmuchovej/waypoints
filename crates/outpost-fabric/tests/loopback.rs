@@ -1,4 +1,4 @@
-//! The session convergence flow over **real iroh QUIC on loopback** (§10.3)
+//! The session convergence flow over **real iroh QUIC on loopback**
 //! — the same exchange `session.rs` proves over an in-memory duplex, now
 //! across two bound endpoints with an authenticated handshake. This is the
 //! transport integration proof: framing over QUIC streams, connect/accept,
@@ -56,7 +56,7 @@ async fn session_runs_over_real_quic_loopback() {
         .await
         .expect("bind vessel");
     // Dial the station's real bound socket directly — loopback needs no
-    // relay/DNS discovery (§10.2 air-gapped posture).
+    // relay/DNS discovery (air-gapped posture).
     let station_addr = station.direct_addr();
 
     // Both endpoints stay alive for the whole exchange: the initiator
@@ -69,7 +69,7 @@ async fn session_runs_over_real_quic_loopback() {
             .expect("accept")
             .expect("a connection");
         // The vessel's authenticated identity, for a Station's own roster
-        // check in production (§10.2).
+        // check in production.
         assert_eq!(
             session.remote_key(),
             SecretKey::from_bytes(&[0x11; 32])

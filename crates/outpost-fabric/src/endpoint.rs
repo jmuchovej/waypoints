@@ -1,11 +1,11 @@
-//! iroh wiring (§10.3): QUIC, hole-punching, relays when NAT wins. Stations
-//! are always-reachable iroh endpoints listed in the Fleet config (§10.1);
+//! iroh wiring: QUIC, hole-punching, relays when NAT wins. Stations
+//! are always-reachable iroh endpoints listed in the Fleet config;
 //! Vessels dial them and drive [`session`](crate::session) over one
 //! bidirectional stream.
 //!
 //! Deliberately thin — everything protocol-shaped lives transport-generic
 //! in [`session`](crate::session), so a `quinn`+static-address fallback
-//! (§10.3) would replace only this file. iroh authenticates the remote
+//! would replace only this file. iroh authenticates the remote
 //! endpoint's Ed25519 id for free, so [`remote_key`] hands the session the
 //! peer identity a roster check ([`FleetConfig::station`]) consumes.
 //!
@@ -19,7 +19,7 @@ use iroh::endpoint::{Connection, RecvStream, SendStream};
 use iroh::{EndpointId, SecretKey, TransportAddr};
 
 /// One protocol, one ALPN; wire-version negotiation happens inside the
-/// session, not here (§10.3).
+/// session, not here.
 pub const ALPN: &[u8] = b"outpost/sync/v1";
 
 /// iroh's error surface is large and version-mobile; sessions only ever
@@ -55,7 +55,7 @@ pub struct Session {
 
 impl Session {
     /// The remote peer's identity key, as authenticated by iroh's QUIC/TLS
-    /// handshake — the input to a roster admission check (§10.2).
+    /// handshake — the input to a roster admission check.
     pub fn remote_key(&self) -> VerifyingKey {
         self.connection.remote_id().as_verifying_key()
     }
@@ -82,8 +82,8 @@ pub struct Endpoint {
 
 impl Endpoint {
     /// Bind an endpoint whose identity is `secret` — a Station's roster key
-    /// or a Vessel's device key (§10.2). The `Minimal` preset is LAN-only
-    /// (no relay, no DNS): the right posture for air-gapped Fleets (§10.2)
+    /// or a Vessel's device key. The `Minimal` preset is LAN-only
+    /// (no relay, no DNS): the right posture for air-gapped Fleets
     /// and for loopback tests. Relay-assisted presets layer on later.
     ///
     /// Binds **loopback only** (`127.0.0.1`/`[::1]`), replacing iroh's
@@ -126,7 +126,7 @@ impl Endpoint {
     /// [`bind`](Self::bind) from an Ed25519 identity key. The 32-byte seed
     /// is shared, so the endpoint's authenticated id equals the key's public
     /// half — the roster peer key. Lets the role crates bind without
-    /// touching iroh directly (design doc §12: only fabric knows iroh).
+    /// touching iroh directly (only fabric knows iroh).
     pub async fn bind_identity(key: &ed25519_dalek::SigningKey) -> Result<Self, TransportError> {
         Self::bind(SecretKey::from_bytes(&key.to_bytes())).await
     }
@@ -145,7 +145,7 @@ impl Endpoint {
 
     /// A dialable address built from the actual bound socket(s), skipping
     /// discovery — the reliable form for LAN/loopback Fleets whose Stations
-    /// publish a fixed address in the roster (§10.1). Unspecified bind
+    /// publish a fixed address in the roster. Unspecified bind
     /// addresses (`0.0.0.0` / `::`) are rewritten to loopback so the result
     /// is dialable on the same host.
     pub fn direct_addr(&self) -> EndpointAddr {

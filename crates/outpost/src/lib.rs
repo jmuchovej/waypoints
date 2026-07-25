@@ -1,4 +1,4 @@
-//! Outpost — the Waypoints sync layer façade (design doc §12).
+//! Outpost — the Waypoints sync layer façade.
 //!
 //! This is the crate embedding code depends on; it reaches nothing deeper.
 //! The protocol vocabulary is always available; the two roles are

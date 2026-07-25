@@ -1,13 +1,13 @@
-//! Bedrock-backed storage for Outpost records (§11). This is the storage
+//! Bedrock-backed storage for Outpost records. This is the storage
 //! interface for *records* — Notices and ACL records — on both Station and
 //! Vessel roles. Files/assets are out of scope here (they live behind a
-//! separate `BlobStore` seam, §10.3).
+//! separate `BlobStore` seam).
 //!
-//! Layering (design doc §11, §12):
+//! Layering:
 //! - One bedrock `Database` per Territory ([`TerritoryHold`]): one turso
 //!   file, so GC / deletion / migration stay per-Territory mechanical.
 //! - Notices are stored as their **raw `SignedNotice` bytes** plus
-//!   *denormalized* header columns for indexing (§5.2). The bytes column is
+//!   *denormalized* header columns for indexing. The bytes column is
 //!   the object of record; the typed columns exist only to make "heads of a
 //!   track", "everything after topo key K", and "pending parents" index
 //!   lookups. Reads that make a security decision re-derive everything from

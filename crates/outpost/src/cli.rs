@@ -7,7 +7,7 @@
 //! [`Vessel::create_territory`](crate::vessel::Vessel::create_territory)),
 //! which the app (Waypoints, cartograph) drives through its UI. Outpost offers
 //! the capability; the app orchestrates it — outpost never needs to know how
-//! to *use* Waypoints, only how to serve it (§12/§13). So this binary is
+//! to *use* Waypoints, only how to serve it. So this binary is
 //! deliberately thin:
 //!
 //! - `station-run`: run a Station serving a Territory over QUIC (optionally as

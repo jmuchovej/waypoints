@@ -1,4 +1,4 @@
-//! The ACL fold, exercised as scenarios (§8): a happy membership
+//! The ACL fold, exercised as scenarios: a happy membership
 //! lifecycle, then one test per rejection — every `ACLReject` variant is a
 //! promised behavior, not an incidental one.
 

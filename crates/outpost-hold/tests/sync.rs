@@ -1,4 +1,4 @@
-//! In-process two-peer convergence (§10). Two holds run the *real*
+//! In-process two-peer convergence. Two holds run the *real*
 //! protocol code — the pure `outpost_protocol::sync` reconciliation plus
 //! `validate` plus the hold's storage — with no network in between. The
 //! ingest loop here is the slice-5 driver; the role crates (slice 7) grow
@@ -153,7 +153,7 @@ impl Peer {
     }
 
     /// Apply a batch through validate → append, retrying orphans until no
-    /// further progress (the §5.4 pending-queue loop). Duplicates are
+    /// further progress (the pending-queue loop). Duplicates are
     /// skipped, so re-delivery is idempotent.
     async fn ingest(&self, incoming: Vec<SignedNotice>) {
         let mut queue = incoming;
@@ -197,7 +197,7 @@ impl Peer {
     }
 }
 
-/// Run one full initiator→responder sync (§10). Both directions transfer,
+/// Run one full initiator→responder sync. Both directions transfer,
 /// so a single call reconciles the pair completely.
 async fn sync(initiator: &Peer, responder: &Peer) {
     // 1. Initiator sends its digest.

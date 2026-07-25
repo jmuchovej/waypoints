@@ -1,9 +1,8 @@
-//! Station-scope storage (`docs/dev/outpost-live-push-and-station-persistence.md`
-//! §2): the records a *Station itself* owns, as opposed to the per-Territory
+//! Station-scope storage: the records a *Station itself* owns, as opposed to the per-Territory
 //! records in a [`TerritoryHold`](crate::TerritoryHold). One bedrock database
 //! (`station.db`) beside the Territory holds.
 //!
-//! First residents: **device sightings** (§4 visibility — a restart must not
+//! First residents: **device sightings** (visibility — a restart must not
 //! make a dormant device vanish from the "which devices have access" list)
 //! and **registrations** (who first homed a Territory here, when). Presence
 //! (`connected`) is deliberately *not* persisted — it is runtime truth,
@@ -50,7 +49,7 @@ pub struct SightingRow {
     pub last_seen: i64,
 }
 
-/// Who first homed a Territory on this Station, and when (§13 attribution).
+/// Who first homed a Territory on this Station, and when (attribution).
 /// The holds on disk remain the authoritative *serving* registry; this row
 /// only remembers the act of registration.
 #[derive(Debug, Clone, PartialEq, Collection)]

@@ -1,4 +1,4 @@
-//! Adversarial suite for the §5.4 validation function. The scenarios a
+//! Adversarial suite for the validation function. The scenarios a
 //! removed member (or a lying peer) would actually try, each pinned as a
 //! promised verdict.
 
@@ -237,7 +237,7 @@ fn non_members_and_readers_cannot_write() {
         Err(RejectReason::Forbidden(ACLReject::NotAMember))
     ));
 
-    // Admit a Reader; readers hold keys but may not write (§8.2).
+    // Admit a Reader; readers hold keys but may not write.
     let invite_secret = key(10);
     let invite = InviteKey::from_bytes(invite_secret.verifying_key().to_bytes());
     log.push(&record(
@@ -289,7 +289,7 @@ fn removed_member_cannot_pin_post_removal_state() {
 
 #[test]
 fn removed_member_cannot_extend_post_removal_history_with_old_pin() {
-    // The §8.3 backdating attack: pin the pre-removal record (where the
+    // The backdating attack: pin the pre-removal record (where the
     // author could write) but descend from a Notice pinned post-removal.
     let (log, owner, writer, pre_removal, post_removal) = removed_writer_log();
 
@@ -307,7 +307,7 @@ fn removed_member_cannot_extend_post_removal_history_with_old_pin() {
 
 #[test]
 fn removed_member_extending_pre_removal_history_still_validates() {
-    // The honest §8.3 nuance: extending *pre-removal* heads with a
+    // The honest nuance: extending *pre-removal* heads with a
     // pre-removal pin is structurally indistinguishable from a write made
     // before the removal, and validation alone accepts it. The backstop
     // (ingest quarantine) is service-level by design.

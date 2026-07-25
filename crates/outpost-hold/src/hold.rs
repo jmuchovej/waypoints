@@ -1,11 +1,11 @@
-//! [`TerritoryHold`]: one bedrock database per Territory (§11.1), holding
+//! [`TerritoryHold`]: one bedrock database per Territory, holding
 //! that Territory's Notices and ACL log.
 //!
 //! What a hold does and does not do: it *persists and indexes* records and
 //! *materializes* the folded ACL state for validation. It does not itself
 //! run `validate()` — the caller drives that, deciding accept/pending/drop
 //! (a Station and a Vessel make the same validation call but attach
-//! different follow-on duties, §3 rule 5). A hold refuses to persist a
+//! different follow-on duties). A hold refuses to persist a
 //! Notice whose bytes do not decode, but "well-formed bytes" is the only
 //! judgment it makes; authority is the validator's job.
 
@@ -43,7 +43,7 @@ impl StoredNotice {
     }
 }
 
-/// Per-Territory record storage (§11.1).
+/// Per-Territory record storage.
 pub struct TerritoryHold {
     db: Database,
 }
@@ -61,7 +61,7 @@ impl TerritoryHold {
 
     // ---- ACL log -------------------------------------------------------
 
-    /// Append an ACL record at `position` with its orderer proof (§8.4). The
+    /// Append an ACL record at `position` with its orderer proof. The
     /// caller has already validated it against the fold; the hold persists the
     /// bytes, position, and proof that let a later fold replay and re-verify
     /// them. `proof` is `None` only for the self-authenticating `Root`.
@@ -100,7 +100,7 @@ impl TerritoryHold {
     }
 
     /// Every ACL record with its order proof, in log order — what sync
-    /// transfers so a peer can re-verify ordering (§8.4).
+    /// transfers so a peer can re-verify ordering.
     pub async fn ordered_records(&self) -> Result<Vec<OrderedRecord>, HoldError> {
         let rows = self
             .db
@@ -119,7 +119,7 @@ impl TerritoryHold {
             .collect()
     }
 
-    /// Materialize the folded ACL state (§5.4's `ACLStateProvider`), ready
+    /// Materialize the folded ACL state (the `ACLStateProvider`), ready
     /// to hand to `validate()`.
     pub async fn acl_index(&self) -> Result<AclIndex, HoldError> {
         AclIndex::from_ordered(&self.acl_records().await?)
@@ -178,7 +178,7 @@ impl TerritoryHold {
         }
     }
 
-    /// The head Notices of a Track (§6.1): those with no accepted children.
+    /// The head Notices of a Track: those with no accepted children.
     /// Multiple heads = unmerged concurrent edits.
     pub async fn track_heads(&self, track: TrackID) -> Result<Vec<StoredNotice>, HoldError> {
         let rows = self
@@ -192,7 +192,7 @@ impl TerritoryHold {
     }
 
     /// The whole Territory's `(Track → head ids)` map — the input to a
-    /// [`TallyDigest`](outpost_protocol::sync::TallyDigest) (§10.1).
+    /// [`TallyDigest`](outpost_protocol::sync::TallyDigest).
     pub async fn all_heads(&self) -> Result<BTreeMap<TrackID, BTreeSet<NoticeID>>, HoldError> {
         let rows = self
             .db
@@ -207,7 +207,7 @@ impl TerritoryHold {
     }
 
     /// Every Notice belonging to one Track (its whole DAG, not just heads)
-    /// — a resupply offer for a divergent Track (§10.2).
+    /// — a resupply offer for a divergent Track.
     pub async fn track_notices(&self, track: TrackID) -> Result<Vec<StoredNotice>, HoldError> {
         let rows = self
             .db
@@ -224,7 +224,7 @@ impl TerritoryHold {
     }
 
     /// Every Notice id the hold currently holds — the `have` set a resupply
-    /// filters an offer against (§10.2).
+    /// filters an offer against.
     pub async fn held_ids(&self) -> Result<BTreeSet<NoticeID>, HoldError> {
         Ok(self
             .notices_after(-1)
@@ -235,7 +235,7 @@ impl TerritoryHold {
     }
 
     /// Every Notice with topo cursor greater than `after`, in cursor order
-    /// — the resupply "everything after X" scan (§6.2). `after = -1` yields
+    /// — the resupply "everything after X" scan. `after = -1` yields
     /// the whole hold.
     pub async fn notices_after(&self, after: i64) -> Result<Vec<StoredNotice>, HoldError> {
         let rows = self
@@ -261,8 +261,8 @@ impl TerritoryHold {
 
     // ---- Orphan queue --------------------------------------------------
 
-    /// Park a Notice that is waiting on a still-missing `parent` (§5.4
-    /// `Pending`). Keyed by the Notice id; one row per waiting Notice.
+    /// Park a Notice that is waiting on a still-missing `parent`
+    /// (`Pending`). Keyed by the Notice id; one row per waiting Notice.
     pub async fn park_pending(
         &self,
         notice: &SignedNotice,
@@ -312,7 +312,7 @@ pub struct NoticeIndex {
 
 impl NoticeIndex {
     /// Snapshot the (id → acl_head) map from the hold's Notices, so the
-    /// validator can check §8.3 monotonicity against accepted parents.
+    /// validator can check monotonicity against accepted parents.
     pub async fn snapshot(hold: &TerritoryHold) -> Result<Self, HoldError> {
         let mut acl_heads = std::collections::BTreeMap::new();
         for stored in hold.notices_after(-1).await? {

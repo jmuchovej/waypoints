@@ -1,4 +1,4 @@
-//! Fleets — the deployment and trust boundary (§9, §10.3). A Fleet is a
+//! Fleets — the deployment and trust boundary. A Fleet is a
 //! cryptographic identity (the fleet key) plus a **signed, revision-numbered
 //! Station roster**, distributed as an untrusted file: the signature makes
 //! passing it around (QR code, well-known endpoint, invite payload) safe.
@@ -9,7 +9,7 @@
 //! Ed25519 key), so "who is the peer" needs no extra challenge — the fabric
 //! only has to answer "is that authenticated key in a roster I trust". The
 //! security boundary for data remains the signatures + AEAD that travel
-//! with it (§10.3); this is admission, not the data guarantee.
+//! with it; this is admission, not the data guarantee.
 
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct FleetId(pub VerifyingKey);
 
-/// The roles a Station plays in its Fleet (§10.1). A self-hoster runs all
+/// The roles a Station plays in its Fleet. A self-hoster runs all
 /// of them in one process; a hosted Fleet spreads them.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct StationRoles {
@@ -44,7 +44,7 @@ pub struct StationEntry {
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct RosterBody {
     pub fleet: FleetId,
-    /// Monotonic; a Vessel rejects a rollback to an older revision (§10.1).
+    /// Monotonic; a Vessel rejects a rollback to an older revision.
     pub revision: u64,
     pub stations: Vec<StationEntry>,
 }
@@ -70,7 +70,7 @@ impl RosterBody {
 /// Wire-format version of the roster encoding.
 pub const ROSTER_VERSION: u8 = 1;
 
-/// A signed Station roster (§10.1) — the file a Vessel holds and verifies.
+/// A signed Station roster — the file a Vessel holds and verifies.
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct FleetConfig {
     pub body: RosterBody,
@@ -105,7 +105,7 @@ impl FleetConfig {
     }
 
     /// Verify, and reject a rollback below a revision already trusted
-    /// (§10.1). Vessels call this when replacing a held config.
+    /// Vessels call this when replacing a held config.
     pub fn verify_against(&self, trusted_revision: u64) -> Result<(), FleetError> {
         self.verify()?;
         if self.body.revision < trusted_revision {
@@ -118,7 +118,7 @@ impl FleetConfig {
     }
 
     /// Is `peer` a Station in this roster? The admission check a peer runs
-    /// on an authenticated connection (§10.2).
+    /// on an authenticated connection.
     pub fn station(&self, peer: &VerifyingKey) -> Option<&StationEntry> {
         self.body.stations.iter().find(|s| &s.peer_key == peer)
     }

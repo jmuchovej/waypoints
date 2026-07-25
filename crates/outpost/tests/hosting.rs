@@ -1,4 +1,4 @@
-//! Registration-driven, multi-Territory serving (design doc §9/§13) over real
+//! Registration-driven, multi-Territory serving over real
 //! QUIC. A Station opened empty with only a storage directory learns
 //! Territories over the wire: a Vessel registers one (presenting its root),
 //! the Station bootstraps a fresh hold, and it serves it. One Station homes
