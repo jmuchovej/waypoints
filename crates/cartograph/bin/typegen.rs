@@ -6,11 +6,14 @@ use cartograph::sync::{
 };
 use cartograph::territory::{Territory, TerritoryKind};
 use cartograph::{
-    CreateResult, CursorState, MutationResult, RenderNode, SplitResult, UndoRedoResult,
+    BuildInfo, CreateResult, CursorState, MutationResult, RenderNode, SplitResult, UndoRedoResult,
 };
 
 fn main() {
     let mut collection = Types::default();
+
+    // build info
+    collection.register_mut::<BuildInfo>();
 
     // territory
     collection.register_mut::<Territory>();

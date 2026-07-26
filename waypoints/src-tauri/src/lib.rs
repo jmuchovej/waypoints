@@ -15,6 +15,7 @@ mod commands {
     pub mod chart;
     pub mod editor;
     pub mod mark;
+    pub mod meta;
     pub mod sync;
     pub mod territory;
 }
@@ -45,6 +46,8 @@ pub fn run() {
 
     builder
         .invoke_handler(tauri::generate_handler![
+            // meta
+            commands::meta::build_info,
             // chart
             commands::chart::chart_list,
             commands::chart::chart_get,

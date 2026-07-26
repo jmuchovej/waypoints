@@ -5,6 +5,9 @@ use tokio::sync::Mutex;
 /// Shared store handle, swapped by territory lifecycle.
 pub type Database = Arc<Mutex<Option<store::Store>>>;
 
+pub mod build_info;
+pub use build_info::BuildInfo;
+
 pub(crate) mod editor {
     pub(crate) mod error;
     mod handle;
