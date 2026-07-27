@@ -29,7 +29,7 @@ BREAKING CHANGE: what broke and how to migrate.   ← footer, only if needed
 
 Use exactly one of these. The strays that have crept into history
 (`dev`, `deps`, `init`, `parked`, `fea`, `feeat`, `eat`, …) are retired as
-*types* — map them below. (`dev` survives as a *region* — see Scope.)
+_types_ — map them below. (`dev` survives as a _region_ — see Scope.)
 
 | Type       | Use for                                                                    | Release-note section |
 | ---------- | -------------------------------------------------------------------------- | -------------------- |
@@ -59,17 +59,17 @@ open-ended and names the capability the commit is part of.
 A region maps to actual crates/areas; it is **not** a rollup of unrelated crates.
 Do not invent regions (the one-offs `flux`, `vox`, `obx`, `things` are retired).
 
-| Region       | Covers                                                                             |
+| Region       | Covers                                                                            |
 | ------------ | --------------------------------------------------------------------------------- |
-| `domain`     | the `domain` crate — the core definitions                                          |
-| `cartograph` | the `cartograph` crate — the core app engine                                       |
-| `bedrock`    | the `bedrock*` crates **only** (storage engine)                                    |
-| `outpost`    | the `outpost*` crates **only** (sync/networking)                                   |
-| `store`      | the `store` data layer *(transitional — expected to fold into `cartograph`)*       |
-| `importer`   | the `importer` crate *(kept out of `cartograph` on purpose, to limit its sprawl)*  |
-| `app`        | the Tauri app + frontend                                                           |
-| `website`    | the marketing/docs site                                                            |
-| `dev`        | developer tooling — the `server` crate, `devenv`, build/codegen scripts            |
+| `domain`     | the `domain` crate — the core definitions                                         |
+| `cartograph` | the `cartograph` crate — the core app engine                                      |
+| `bedrock`    | the `bedrock*` crates **only** (storage engine)                                   |
+| `outpost`    | the `outpost*` crates **only** (sync/networking)                                  |
+| `store`      | the `store` data layer _(transitional — expected to fold into `cartograph`)_      |
+| `importer`   | the `importer` crate _(kept out of `cartograph` on purpose, to limit its sprawl)_ |
+| `app`        | the Tauri app + frontend                                                          |
+| `website`    | the marketing/docs site                                                           |
+| `dev`        | developer tooling — the `server` crate, `devenv`, build/codegen scripts           |
 
 For a repo-wide change, omit the scope. Special scopes `deps` (dependency bumps)
 and `release` (release plumbing) may be used in place of a region.
@@ -94,7 +94,7 @@ feat(app/editor):        block context menu — delete, duplicate, convert-to
 Anyone (or any tool) scanning the log can now see the `sync` and `editor`
 initiatives as coherent bodies of work rather than disjoint commits. Coin a
 subscope only when it associates work across two or more commits, and reuse it
-consistently rather than minting one-offs. Subscopes are *capabilities*, not
+consistently rather than minting one-offs. Subscopes are _capabilities_, not
 directory paths — don't mirror the file tree.
 
 ### Combining and omitting

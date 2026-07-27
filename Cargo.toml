@@ -44,9 +44,9 @@ store = { path = "crates/store" }
 
 anyhow = "1.0.103"
 async-trait = "0.1.89"
+axum = "0.8.9"
 base64 = "0.22"
 bip39 = { version = "2", features = ["rand"] }
-axum = "0.8.9"
 blake3 = "1.8"
 bytes = { version = "1.11", features = ["serde"] }
 chacha20poly1305 = "0.11"
@@ -138,10 +138,10 @@ tauri-plugin-barcode-scanner = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-fs = "2.5.1"
-tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-notification = "2.3.3"
 tauri-plugin-os = "2.3.2"
 tauri-plugin-shell = "2.3.5"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-store = "2.4.3"
 tauri-plugin-updater = "2.10.1"
 tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
@@ -198,11 +198,11 @@ specta-macros = { path = "vendor/specta-macros" }
 specta-serde = { path = "vendor/specta-serde" }
 
 [profile.dev]
-incremental = true # Compile your binary in smaller steps.
+incremental = true  # Compile your binary in smaller steps.
 
 [profile.release]
-opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
-strip = true      # Ensures debug symbols are removed.
-lto = true        # Enables link-time-optimizations.
-panic = "abort"   # Higher performance by disabling panic handlers.
-codegen-units = 1 # Allows LLVM to perform better optimization.
+opt-level = "s"  # Prioritizes small binary size. Use `3` if you prefer speed.
+strip = true  # Ensures debug symbols are removed.
+lto = true  # Enables link-time-optimizations.
+panic = "abort"  # Higher performance by disabling panic handlers.
+codegen-units = 1  # Allows LLVM to perform better optimization.

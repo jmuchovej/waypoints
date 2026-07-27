@@ -19,18 +19,15 @@ required-features = ["development"]
 [dependencies]
 bedrock.workspace = true
 chrono.workspace = true
-derive_more = {
-  workspace = true,
-  features = [
-    "as_ref",
-    "debug",
-    "display",
-    "from_str",
-    "is_variant",
-    "try_unwrap",
-    "unwrap",
-  ]
-}
+derive_more = { workspace = true, features = [
+  "as_ref",
+  "debug",
+  "display",
+  "from_str",
+  "is_variant",
+  "try_unwrap",
+  "unwrap",
+] }
 indexmap.workspace = true
 rand.workspace = true
 serde.workspace = true
