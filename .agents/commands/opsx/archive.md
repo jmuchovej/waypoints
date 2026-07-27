@@ -68,6 +68,7 @@ Archive a completed change in the experimental workflow.
 5. **Perform the archive**
 
    Create an `archive` directory under `planningHome.changesDir` if it doesn't exist:
+
    ```bash
    mkdir -p "<planningHome.changesDir>/archive"
    ```
@@ -128,6 +129,7 @@ All artifacts complete. All tasks complete.
 **Specs:** Sync skipped (user chose to skip)
 
 **Warnings:**
+
 - Archived with 2 incomplete artifacts
 - Archived with 3 incomplete tasks
 - Delta spec sync was skipped (user chose to skip)
@@ -146,12 +148,14 @@ Review the archive if this was not intentional.
 Target archive directory already exists.
 
 **Options:**
+
 1. Rename the existing archive
 2. Delete the existing archive if it's a duplicate
 3. Wait until a different date to archive
 ```
 
 **Guardrails**
+
 - Always prompt for change selection if not provided
 - Use artifact graph (openspec status --json) for completion checking
 - Don't block archive on warnings - just inform and confirm

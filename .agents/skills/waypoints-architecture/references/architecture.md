@@ -8,18 +8,23 @@
 
 Waypoints is a block-based knowledge management system. Every piece of user-facing data is either a **Mark** (a node in the knowledge graph) or a **Beacon** (a record in the temporal activity layer). Marks relate to each other through **Terrain** (directed edges). Marks that carry structured, typed data conform to **Charts** (schema definitions).
 
-The system is implemented in Rust (authoritative backend) with a Vue/Nuxt frontend rendered via Tauri. SQLite is the persistence layer. The Rust domain model is the source of truth — the frontend is a rendering surface that routes edits back to Rust.
+The system is implemented in Rust (authoritative backend) with a Vue/Nuxt frontend rendered via Tauri. Persistence is **turso**, accessed through the `bedrock` typed-document layer. The Rust domain model is the source of truth — the frontend is a rendering surface that routes edits back to Rust.
 
 ### Crate Structure
 
 The Rust backend is organized into domain-focused crates:
 
-- **`domain`** — Core data structures: Mark, MarkData (Content/Landmark), Chart, Feature, FeatureKind, Terrain, TerrainKind, Reading, RichText, TextMark. No database dependencies. This is the pure domain model.
-- **`store`** — SeaORM entity definitions (`entities/`), migrations (`migrations/`), seed data, and query layer (`query/`). Contains the `BuiltinRegistry` for built-in Charts.
-- **`cartograph`** — Orchestration layer. Contains the editor subsystem (`editor/` — mutation, history, projection, undo/redo), and handles for charts, marks, and territories. Re-exports editor types (`EditorHandle`, `EditorResult`, `RenderNode`, etc.) as public API. Also owns `WaypointsRuntime` which manages the active territory and database lifecycle.
+- **`domain`** — Core data structures: Mark, MarkData (Content/Landmark), Chart, Feature, FeatureKind, Terrain, TerrainKind, Reading, RichText, TextMark. Depends on `bedrock` as a façade only, to derive `Collection`/`Scalar` on domain types; it carries no query or connection logic.
+- **`store`** — Persistence: `query/` (`mark.rs`, `chart.rs`, `terrain.rs`), builtin Chart definitions (`builtin/`), and seeding (`collections/`). Built on `bedrock`. Exposes an opaque `Store` handle.
+- **`cartograph`** — Orchestration layer. Contains the editor subsystem (`editor/` — mutation, history, projection, undo/redo), the app-side sync driver (`sync/`), and handles for charts, marks, and territories. Re-exports editor types (`EditorHandle`, `EditorResult`, `RenderNode`, etc.) as public API. Also owns `WaypointsRuntime` which manages the active territory and database lifecycle.
 - **`importer`** — Markdown parsing and import (Waypoints format, GitHub Flavored Markdown with GFM alert → callout mapping).
+- **`bedrock-core`, `bedrock-derive`, `bedrock`** — Typed document storage over turso. Collections, derive macros, queries (including JSON-path filters), pooling, and durability. `domain` depends only on the `bedrock` façade.
+- **`outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost`** — The E2EE local-first sync engine. `outpost-protocol` is pure (no tokio/iroh/bedrock). See §11.
+- **`server`** — Dev-only HTTP transport. Not a product surface.
 
-Type bindings are hand-maintained TypeScript in `crates/domain/typescript/` (`types.g.ts`, `schema.g.ts`). The frontend consumes these via the `@waypoints/domain` package. Tauri commands are defined in `waypoints/src-tauri/src/commands/` and invoked through a typed IPC layer (`waypoints/app/ipc/`).
+Layering note: **Waypoints uses outpost, never the reverse.**
+
+Type bindings are **specta-generated** TypeScript in `crates/domain/typescript/` (`types.g.ts`, `schema.g.ts`). The frontend consumes these via the `@waypoints/domain` package. Tauri commands are defined in `waypoints/src-tauri/src/commands/` and invoked through a typed IPC layer (`waypoints/app/ipc/`); commands are thin wrappers — test the crates, not the Tauri harness.
 
 ---
 
@@ -176,7 +181,19 @@ RichReference {
 
 Display modes: `Avatar`, `Mention`, `Inline`, `Embed`, `CardXS`, `CardSM`, `CardMD`, `CardLG`, `CardXL`
 
-Children represent the ordered content "inside" a Landmark — the blocks that constitute a page's body, a meeting's notes, etc. This is distinct from Terrain edges: children are an ordered list owned by the Landmark, while Terrain edges are graph-level relationships between arbitrary Marks.
+> **`children` is vestigial — do not treat it as authoritative.** Containment
+> and ordering are carried **entirely by Terrain `Child` edges**, ordered by
+> their `order` fractional index. `projection::project_landmark` walks
+> `terrain::get_child_edges` and never reads this field. Nothing in
+> `cartograph` or `store` writes it; the only writers are the builder mutators
+> `add_child`/`with_children` in `crates/domain/src/mark/mark_data.rs`, which
+> production code does not call.
+>
+> Consequence: there is **no dual-source-of-truth problem** here, and nothing
+> for a sync merge law to reconcile — a "child" mutation is a Terrain edge
+> mutation, full stop. The field is dead weight the schema still carries.
+
+Children conceptually represent the ordered content "inside" a Landmark — the blocks constituting a page's body, a meeting's notes, etc. That role is discharged by Terrain `Child` edges; the `Vec<RichReference>` field is a leftover from an earlier design.
 
 ### Readings
 
@@ -202,8 +219,12 @@ Chart {
 
 Two kinds:
 
-- **Built-in:** `"builtin.page"`, `"builtin.task"`, etc. Fixed identifiers for Charts that ship with Waypoints. Currently only `Page` is fully implemented; others (Task, Note, Person, Meeting, etc.) are planned.
-- **Custom:** 4-character base-36 strings (e.g., `"a1b2"`). Generated for user-defined Charts.
+`ChartID` is a plain `String` newtype (`ChartID(pub String)`) — the format is a convention, not a type-level guarantee.
+
+- **Built-in:** short generated string codes, **not** dotted `"builtin.*"` paths. Observed in the seeded data: `nage` (Page), `nerson` (Person), `nook` (Book). All nine built-ins are implemented and seeded, not planned.
+- **Custom:** short generated string codes, same space. Generated for user-defined Charts.
+
+> The `"builtin.*"` dotted form still appears in `type_name()` strings (`"landmark.page"`) and in mark-kind filtering, which is a _different_ string from the ChartID. Don't conflate them — see `crates/store/src/query/mark.rs`.
 
 ### Features
 
@@ -257,15 +278,13 @@ The `Reference` FeatureKind has several configuration options:
 - `display_mode: ReferenceDisplayMode` — default rendering style
 - `filter_criteria: Json` — optional filtering constraints
 
-### BuiltinRegistry
+### Built-in Charts
 
-Built-in Charts are managed through a `BuiltinRegistry` that allows:
+**There is no `BuiltinRegistry`** — it was removed. Built-in Charts are plain Chart values defined one-per-module in `crates/store/src/builtin/` and seeded via idempotent `upsert` on every boot (`crates/store/src/collections/seed.rs`). "Extend a builtin" and "reset a builtin" are not implemented.
 
-- Looking up built-in Charts by ID
-- Extending a built-in (creating a custom copy with a new ID)
-- Resetting a modified built-in back to its original definition
+**Nine** built-in Charts ship: Page, Objective, Note, Person, Campaign, Meeting, Bookmark, Journal, and **Book**.
 
-Eight built-in Charts ship with Waypoints: Page, Objective, Note, Person, Campaign, Meeting, Bookmark, and Journal. Each is defined in `crates/store/src/builtin/`.
+> Note: this set has never been reconciled against the dogfooding set named in the planning material (Page, Task, Daily Note, Meeting, Person, Research Paper, Project). Treat the nine above as what the code actually seeds, and the mismatch as an open question rather than a settled decision.
 
 ### Limitations
 
@@ -285,32 +304,37 @@ Terrain represents directed edges between Marks. The combination of Marks (nodes
 
 ```
 Terrain {
-    src_id: MarkID,         // source Mark
-    dst_id: MarkID,         // destination Mark
-    kind:   TerrainKind,    // relationship type
+    id:     TerrainID,      // stable edge identity — the primary key
+    src_id: MarkID,         // source Mark        (indexed)
+    dst_id: MarkID,         // destination Mark   (indexed)
+    kind:   TerrainKind,    // relationship type  (indexed, stored as a flattened string)
+    order:  String | null,  // fractional index; meaningful for ordered kinds like Child
     extra:  Json | null,    // edge metadata
 }
 ```
 
 ### TerrainKind
 
-Currently three variants:
+Four variants:
 
-- **`Child`** — parent-child hierarchy. The source contains the destination. This is distinct from Landmark `children` (which is an ordered list within the Landmark's data). Child Terrain edges represent structural containment in the graph.
-- **`Reference`** — a `[[wiki-style]]` link. The source references the destination. This is the primary mechanism for building the knowledge graph's non-hierarchical connections.
-- **`Custom`** — application-defined or user-defined relationships. The `extra` field on the Terrain carries any metadata needed to distinguish custom edge types.
+- **`Child`** — parent-child hierarchy. The source contains the destination. This is distinct from Landmark `children` (an ordered list within the Landmark's data). Child Terrain edges represent structural containment in the graph.
+- **`Reference`** — a `[[wiki-style]]` link. The source references the destination. The primary mechanism for the graph's non-hierarchical connections.
+- **`Custom`** — application- or user-defined relationships. The `extra` field carries any distinguishing metadata.
+- **`Reading(ChartID, FeatureID)`** — a `Reference`-kind Reading materialized as a graph edge. The `ChartID`/`FeatureID` identify _which_ Reference feature on _which_ Chart the edge represents, enabling attributed queries ("all backlinks into this landmark via the `attendees` feature of a `Meeting`") without scanning every landmark's readings JSON.
 
-### Primary Key
+### Primary Key — the multigraph IS implemented
 
-Terrain's primary key in the database is `(src_id, dst_id)`. This means there can be **at most one Terrain edge** between any ordered pair of Marks in the current schema. The multigraph capability (multiple edges between the same pair) described in the domain documentation is a conceptual goal but is **not yet supported by the database schema** — it would require adding `kind` (or a separate edge ID) to the primary key.
+Terrain's primary key is **`id: TerrainID`**, a stable per-edge identity generated on creation and never changed. `src_id`, `dst_id`, and `kind` are each indexed but none is part of the key.
+
+This means multiple edges of different kinds — or even the same kind — may exist between the same ordered pair of Marks. The multigraph is a shipped capability, not a conceptual goal. Address a specific edge by its `TerrainID`.
 
 ### Limitations
 
-**No edge-level ordering.** Terrain edges between a source and its destinations have no intrinsic order. If ordering matters (e.g., the order of child blocks in a document), it must be maintained separately — currently via the `children` field on Landmarks (which is an ordered `Vec<RichReference>`) and via fractional indexing for Content ordering within a document.
+**Edge ordering exists but is kind-specific.** Terrain carries an `order: Option<String>` fractional index, used for ordered kinds (notably `Child`). It is not meaningful for every kind, and edges of unordered kinds have no intrinsic order.
 
-**TerrainKind is coarse.** There are only three kinds. Custom edges rely entirely on the `extra` JSON field for semantics. There is no schema validation for custom edge metadata. If the system needs to efficiently query "all edges of custom type X," it must parse the `extra` field, which is not indexed.
+**Terrain `Child` edges are the sole authority for containment.** `Landmark.children` looks like a competing source of truth but is vestigial and never written — see §5. Child ordering lives in the edge's `order` fractional index, not on the Landmark.
 
-**The `(src_id, dst_id)` primary key constraint** means you cannot have both a Child and a Reference edge between the same ordered pair of Marks in the current schema. This is a known limitation that may need to be addressed as the graph becomes richer.
+**Custom edges have no schema validation.** `Custom` relies entirely on the unindexed `extra` JSON field for semantics, so "all edges of custom type X" requires a scan with JSON parsing. Note that `Reading(ChartID, FeatureID)` exists precisely to avoid this for the reference-reading case.
 
 ---
 
@@ -354,9 +378,9 @@ Icon namespaces: `Iconify` (icon libraries), `Waypoints` (custom, future), `Syst
 
 This section enumerates known gaps and missing capabilities. An agent should reference this when evaluating feature proposals.
 
-1. **No query/view system.** There is no mechanism for "show me all Landmarks of Chart X where Feature Y has value Z." Aggregated contextual views depend on this. The database schema supports it (SeaORM queries), but no query API or view abstraction exists.
+1. **No user-facing query/view system.** A programmatic query layer _does_ exist — `crates/store/src/query/` over bedrock, with equality filters, sorting, and JSON-path filters (`Filter::json_eq`, lowering to `json_extract`). What does not exist is any abstraction for "show me all Landmarks of Chart X where Feature Y has value Z" as a user-defined, saved, or composable view. Aggregated contextual views depend on that layer, not on raw query capability.
 
-2. **Terrain multigraph is conceptual, not implemented.** The `(src_id, dst_id)` primary key prevents multiple edges between the same pair. This needs to be addressed before features like "this Mark is both a child of and a reference from the same parent" can work.
+2. ~~**Terrain multigraph is conceptual.**~~ **Resolved — the multigraph is implemented.** Terrain's PK is `id: TerrainID`; see §7.
 
 3. **Formula fields have no evaluation engine.** The FeatureKind exists, the Reading storage exists, but no computation happens.
 
@@ -368,6 +392,57 @@ This section enumerates known gaps and missing capabilities. An agent should ref
 
 7. **The `extra` field on Marks and Terrain is unindexed and unvalidated.** Any feature that relies on querying or filtering by `extra` contents will be slow (full-table scan with JSON parsing) unless auxiliary indexing is added.
 
-8. **WAL mode not explicitly configured.** SQLite WAL checkpoint is called but `PRAGMA journal_mode = WAL` is not explicitly set on connection. Crash recovery testing has not been performed.
+8. **WAL is configured; crash recovery is unverified.** `PRAGMA journal_mode = WAL` is set on file-backed databases by default (`crates/bedrock/src/pool.rs`, `crates/bedrock/src/config.rs`), and a `crates/bedrock/src/durability.rs` exists. What is still missing is **verification** — crash-recovery testing has not been performed against the current storage layer, and the migration off SeaORM invalidated whatever prior verification existed.
 
-9. **No backup/export of territory databases.** No mechanism to export, import, or back up a territory's SQLite database.
+9. **No backup/export of territory databases.** No mechanism to export, import, or back up a territory's database.
+
+10. **Note content does not sync.** The sync engine works, but nothing serializes the Mark/Terrain graph onto it. See §11.
+
+---
+
+## 11. Sync (outpost)
+
+Sync is provided by **outpost**, an end-to-end-encrypted local-first sync engine living in four crates. It is a separate architecture from the Mark model and is deliberately **payload-agnostic** — it moves opaque encrypted blobs and knows nothing about Marks.
+
+### Roles and vocabulary
+
+| Term          | Meaning                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Territory** | The replicated unit — one user's synced dataset. Identified by `TerritoryID`.                                       |
+| **Vessel**    | A device that can author. Holds the identity, can encrypt/decrypt, originates changes.                              |
+| **Station**   | An always-online peer that stores and serves encrypted Notices. Validating but **content-blind**; never originates. |
+| **Fleet**     | A named, key-identified set of Stations. The deployment/trust boundary.                                             |
+| **Notice**    | One signed, content-addressed, encrypted operation record. Identified by `NoticeID` (a content hash).               |
+| **Track**     | A connected component of the Notice DAG, rooted at a parentless Notice. `TrackID` **is** that root's `NoticeID`.    |
+
+Identity derives from a BIP-39 mnemonic (`KeyRoot` → `Identity` + per-device `DeviceKey`). Membership is governed by an ACL log; read keys are versioned by **epoch** and rotate when a member is removed.
+
+### Ordering — this is the part that trips people up
+
+- **Notices have no total order.** They form a DAG ordered only by parentage. The per-Fleet _orderer_ totally-orders **ACL records only**, never Notices.
+- A Notice's Track is assigned **structurally** on ingest: no parents ⇒ it starts a new Track; otherwise it inherits `parents[0]`'s Track. The app's only lever is what it passes as `parents` when authoring.
+- `EnvelopeHeader.timestamp` exists, is signed and AAD-bound, and is documented "advisory only, never ordering." It is currently unused.
+- Consequence: **any merge law must derive its own ordering** — DAG parentage establishes causality, not which of two concurrent edits wins.
+- Tracks are a **sync-partitioning** mechanism (divergence detection keys on `TrackID`), not a semantic boundary.
+
+### Two Track mistakes worth naming
+
+**A Notice cannot be in two Tracks.** Ingest assigns exactly one, inherited from `parents[0]`. Naming two Tracks' heads as parents does not place the Notice in both — `append_notice` clears `is_head` on _every_ parent, so the second Track is left headless and fuses into the first. Related consequence: because an operation spanning two Landmarks must land in one Track or the other, Tracks gradually **fuse** as blocks move between pages. That erodes partitioning quality over a Territory's lifetime. It is never a correctness problem (the fold is Territory-wide and keys on operation target) and it is not fixable by re-partitioning, since content addressing forbids rewriting parentage.
+
+**A Track is not "the history of a page."** It closely resembles one, which is why this recurs. It isn't, for two reasons: a cross-Landmark operation appears in only one of the two Tracks it concerns, and Tracks fuse over time. Derive any history view — page history, per-field change log, "what changed while I was offline" — by **filtering folded operations on their target**, never by reading `track_notices`. A `track_notices` view is _incomplete_ rather than obviously broken, so it ships looking correct and degrades quietly. Treat `track_notices` as transport debugging only.
+
+### Reachability posture
+
+Endpoints currently bind **loopback only**; the routable bind path exists but is unused. This was a deliberate development-ergonomics choice, not an oversight. Practical effect: **no two physical devices have ever synced** — all verification to date is same-host.
+
+Stations are **accept-only** — they never dial a Vessel, though they push freely over a session a Vessel opened. So Vessels need no inbound reachability, and NAT traversal is not on the critical path for device↔Station sync.
+
+### The gap
+
+The `Maneuver` op enum (`crates/cartograph/src/editor/maneuver.rs`) describes every graph mutation and is currently used **only for local undo/redo**. Nothing serializes it into a Notice; `EditorService` has no sync coupling. The app-side driver (`crates/cartograph/src/sync/`) handles identity, pairing, Station config, and the device registry — the plumbing around sync, not the syncing of content.
+
+**Therefore: identity and pairing sync; notes do not.** The merge law, the payload wiring, and the reachability work are all in active design. Do not assume any of it when evaluating a proposal — check the current change set first.
+
+### Explicitly not provided
+
+No character-level text CRDT, no real-time collaborative editing, no snapshot/compaction layer (log growth is unbounded by design for now), and no Vessel-to-Vessel sync (a stated architectural goal, but every current flow routes through a Station).
