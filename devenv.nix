@@ -74,19 +74,18 @@
     # Exclude generated/vendored code
     config.settings.global.excludes = [
       "**/node_modules*"
-      "**/.devenv*"
-      "**/.direnv*"
+      "**/.{devenv,direnv}*"
       "**/.envrc*"
       "**/.gitignore"
-      "*.png"
-      "*.gif"
-      "*.ico"
+      # Patched third-party crates ([patch.crates-io] path forks) — formatting
+      # them obscures the local delta against upstream.
+      "vendor/**"
+      "*.{png,gif,ico}"
       "*.lock"
       "*.pbxproj"
       "*.properties"
       "*.gradle"
       "*.xcconfig"
-      # NOTE: *.md excluded from oxfmt includes (mangles MDC syntax)
     ];
     config.settings.global.on-unmatched = "info";
     config.programs = {
@@ -107,26 +106,19 @@
       just.enable = true;
       oxfmt = {
         enable = true;
-        # Exclude *.md/*.mdx — oxfmt mangles MDC (Nuxt Content) syntax
+        excludes = [ "{website,docs}/*/*.{md,mdx}" ];
         includes = [
-          "*.cjs"
-          "*.css"
+          "*.{css,scss}"
           "*.graphql"
           "*.hbs"
           "*.html"
-          "*.js"
-          "*.json"
-          "*.json5"
-          "*.jsonc"
-          "*.jsx"
-          "*.mjs"
+          "*.{js,jsx,cjs,mjs}"
+          "*.{json,json5,jsonc}"
           "*.mustache"
-          "*.scss"
-          "*.ts"
-          "*.tsx"
+          "*.{ts,tsx}"
           "*.vue"
-          "*.yaml"
-          "*.yml"
+          "*.{yaml,yml}"
+          "*.{md,mdx}"
         ];
       };
       xmllint = {
