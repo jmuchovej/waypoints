@@ -85,7 +85,9 @@ describe("latestNightlyTag", () => {
 describe("commitsSince", () => {
   const octokit = (aheadBy: number) =>
     stubOctokit({
-      rest: { repos: { compareCommitsWithBasehead: async () => ({ data: { ahead_by: aheadBy } }) } },
+      rest: {
+        repos: { compareCommitsWithBasehead: async () => ({ data: { ahead_by: aheadBy } }) },
+      },
     });
 
   test("returns ahead_by from the comparison", async () => {

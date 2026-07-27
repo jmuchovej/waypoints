@@ -1,3 +1,4 @@
+# $schema: https://www.schemastore.org/github-workflow.json
 name: Nightly
 
 on:
@@ -6,7 +7,7 @@ on:
     # branch, which is what we want a nightly to track.
     - cron: "0 7 * * *"
   push:
-    tags: ["v*-nightly.*"]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+-nightly.[0-9]{8}"]
   workflow_dispatch:
     inputs:
       tag:
@@ -25,10 +26,6 @@ on:
           - Android
         default: All
 
-# iOS is intentionally omitted: TestFlight review + 90-day expiry make a nightly
-# cadence impractical. Desktop auto-updates via the Tauri updater (nightly.json
-# channel); Android is sideloaded/tracked from GitHub Releases (e.g. Obtainium).
-
 permissions:
   contents: write
 
@@ -38,22 +35,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Resolve the release tag for this run (see .github/actions/nightly-plan).
-  # On a schedule the action synthesizes and pushes the tag itself (a schedule
-  # event has no tag to trigger on), deriving the base from the on-disk workspace
-  # version and skipping when nothing changed; on a tag push / manual dispatch it
-  # passes the existing/supplied tag through.
-  #
-  # Doing this in-workflow (rather than "cron pushes a tag → tag trigger builds")
-  # sidesteps the GITHUB_TOKEN loop-prevention rule, which would otherwise stop a
-  # token-pushed tag from ever triggering the build.
   prepare:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.plan.outputs.tag }}
       should_build: ${{ steps.plan.outputs.should-build }}
     steps:
-      # Only Cargo.toml is read locally; tags and commits go through the API.
       - uses: actions/checkout@v4
 
       - id: plan
@@ -90,7 +77,6 @@ jobs:
       features: nightly
       tag: ${{ needs.prepare.outputs.tag }}
       prerelease: true
-      # Monotonic across nightly runs → in-place updates for so.waypoints.nightly.
       version-code: ${{ github.run_number }}
     secrets:
       SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}

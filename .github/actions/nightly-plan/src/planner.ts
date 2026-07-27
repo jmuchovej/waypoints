@@ -157,7 +157,9 @@ export async function createTag(
 }
 
 function isStatus(error: unknown, status: number): boolean {
-  return typeof error === "object" && error !== null && "status" in error && error.status === status;
+  return (
+    typeof error === "object" && error !== null && "status" in error && error.status === status
+  );
 }
 
 function emit(tag: string, shouldBuild: boolean): void {
