@@ -1,19 +1,44 @@
 //! Mints the release tag for a Nightly workflow run.
 //!
-//! Today's date names the tag; the nightly tags already published decide its
-//! same-day index. Skips when `HEAD` already carries the latest tag.
+//! A nightly is `{target}-nightly.{N}+{YYYY.MM.DD}`. `N` counts the nightlies
+//! shipped since the target last changed, and carries the semver ordering;
+//! the date is build metadata, which semver ignores for precedence, so it is
+//! free to be documentation that the store build numbers are also read from.
+//!
+//! Splitting the two is what keeps this simple. `N` is bumped by
+//! [`VersionUpdater`], which increments a trailing numeric prerelease
+//! identifier and leaves build metadata alone — and, usefully, returns the
+//! version *unchanged* when no commits landed, so "nothing new to publish" and
+//! "what is the next version" are one question. The date is then stamped over
+//! whatever metadata came through, because a preserved date is a stale one.
+//!
+//! The date being the store build number is also the rate limit: two runs on
+//! one day would produce the same `versionCode`, so a nightly ships at most
+//! once a day. A manual dispatch therefore builds without publishing.
 //!
 //! Tags are read from the checkout with `git` and created through the `gh` API,
 //! so the job needs neither deep history nor a committer identity.
 
 use crate::shell;
 use anyhow::{Context, Result, bail};
-use cargo_metadata::semver::Version;
+use cargo_metadata::semver::{BuildMetadata, Prerelease, Version};
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use next_version::VersionUpdater;
+
+/// The prerelease identifier every nightly carries.
+const NIGHTLY: &str = "nightly";
 
 #[derive(Parser)]
-pub struct NightlyPlanArgs {}
+pub struct NightlyPlanArgs {
+    /// Build without publishing: no tag is minted and nothing is uploaded.
+    ///
+    /// The date doubles as the store build number, so a second publish on one
+    /// day could not produce a distinct one. A dispatch exercises the pipeline
+    /// instead, and the next scheduled run publishes.
+    #[arg(long)]
+    build_only: bool,
+}
 
 /// What the planner decided, and what the workflow reads back as job outputs.
 ///
@@ -31,22 +56,24 @@ struct Plan {
 }
 
 impl Plan {
-    /// Derives the build numbers from the tag, so the two cannot disagree.
-    fn build(tag: impl Into<String>) -> Result<Self> {
-        let tag = tag.into();
-        let (version_code, bundle_version) = if tag.is_empty() {
-            (String::new(), String::new())
-        } else {
-            build_numbers(&tag)?
-        };
-
+    /// Derives the build numbers from the version, so the two cannot disagree.
+    fn publish(version: &Version) -> Result<Self> {
+        let (version_code, bundle_version) = build_numbers(version)?;
         Ok(Self {
-            tag,
+            tag: format!("v{version}"),
             should_build: true,
             version_code,
             bundle_version,
         })
     }
+
+    /// Builds without minting a tag — a manual dispatch.
+    const BUILD_ONLY: Self = Self {
+        tag: String::new(),
+        should_build: true,
+        version_code: String::new(),
+        bundle_version: String::new(),
+    };
 
     const SKIP: Self = Self {
         tag: String::new(),
@@ -56,45 +83,91 @@ impl Plan {
     };
 }
 
-pub fn run(_: NightlyPlanArgs) -> Result<()> {
-    let head = shell::git(&["rev-parse", "HEAD"])?;
-    let plan = plan_next(
-        &nightly_tags()?,
-        &head,
-        &crate::workspace::version()?,
-        Utc::now(),
-        commit_for,
-    )?;
-
-    if !plan.tag.is_empty() {
-        create_tag(&plan.tag, &head)?;
-        println!("Tagged nightly {tag} at {head}.", tag = plan.tag);
-    }
-
-    crate::utils::github::set_outputs(&plan)
+/// Today's UTC date, as the build metadata a nightly carries.
+fn date_stamp(now: DateTime<Utc>) -> String {
+    now.format("%Y.%m.%d").to_string()
 }
 
-/// Decides the next tag, or skips when `head` already carries the last one.
+/// The store build numbers for a nightly, as `(android, ios)`.
 ///
-/// `commit_for` resolves a tag to the commit it points at.
-fn plan_next(
-    tags: &[String],
-    head: &str,
-    version: &Version,
-    now: DateTime<Utc>,
-    commit_for: impl Fn(&str) -> Result<String>,
-) -> Result<Plan> {
-    if let Some(last) = latest_nightly_tag(tags)
-        && commit_for(&last)? == head
-    {
-        println!("HEAD is already tagged {last}; nothing new to publish.");
-        return Ok(Plan::SKIP);
+/// Both are the date: Android's `versionCode` is a single integer, so the
+/// separators are dropped; iOS's `CFBundleVersion` takes period-separated
+/// components and keeps them. Both increase monotonically because dates do,
+/// and 8 digits stays far under Android's 2_100_000_000 ceiling.
+///
+/// ```text
+/// 0.2.0-nightly.1+2026.08.29  ->  20260829   2026.08.29
+/// 0.2.0-nightly.2+2026.08.30  ->  20260830   2026.08.30
+/// ```
+fn build_numbers(version: &Version) -> Result<(String, String)> {
+    let stamp = version.build.as_str();
+    if stamp.is_empty() {
+        bail!("{version} carries no date; a nightly needs one for its build number");
     }
 
-    Plan::build(next_nightly_tag(version, &date_stamp(now), tags)?)
+    let android: String = stamp.chars().filter(char::is_ascii_digit).collect();
+    if android.len() != 8 {
+        bail!(
+            "\"{stamp}\" is not a YYYY.MM.DD date; got {} digits",
+            android.len()
+        );
+    }
+
+    Ok((android, stamp.to_owned()))
 }
 
-/// Nightly tags already published. Requires a checkout with `fetch-tags`.
+/// The target a nightly previews: the version with any suffix stripped.
+///
+/// `N` counts within one target, so a bump on `main` restarts it. That is safe
+/// because the store build number is the date, not `N`.
+fn target(version: &Version) -> Version {
+    Version::new(version.major, version.minor, version.patch)
+}
+
+/// The newest nightly already published for `target`.
+fn latest_nightly(target: &Version, tags: &[String]) -> Option<Version> {
+    tags.iter()
+        .filter_map(|tag| Version::parse(tag.strip_prefix('v')?).ok())
+        .filter(|version| version.pre.starts_with(NIGHTLY) && self::target(version) == *target)
+        .max()
+}
+
+/// The first nightly of a target, `{target}-nightly.1`.
+fn first_nightly(target: &Version) -> Result<Version> {
+    let mut version = target.clone();
+    version.pre = Prerelease::new(&format!("{NIGHTLY}.1"))
+        .with_context(|| format!("`{NIGHTLY}.1` is not a valid prerelease"))?;
+    Ok(version)
+}
+
+/// The next nightly, or `None` when nothing landed since the last one.
+///
+/// [`VersionUpdater`] returns the version unchanged given no commits, which is
+/// exactly the skip condition — so the bump and the "is there anything new?"
+/// check are the same call.
+fn next_nightly(
+    latest: Option<&Version>,
+    commits: &[String],
+    target: &Version,
+    stamp: &str,
+) -> Result<Option<Version>> {
+    let mut next = match latest {
+        None => first_nightly(target)?,
+        Some(latest) => {
+            let bumped = VersionUpdater::new().increment(latest, commits);
+            if bumped.pre == latest.pre {
+                return Ok(None);
+            }
+            bumped
+        }
+    };
+
+    // Whatever metadata came through is the previous run's date.
+    next.build = BuildMetadata::new(stamp)
+        .with_context(|| format!("\"{stamp}\" is not valid build metadata"))?;
+    Ok(Some(next))
+}
+
 fn nightly_tags() -> Result<Vec<String>> {
     Ok(shell::git(&["tag", "--list", "v*-nightly.*"])?
         .lines()
@@ -102,10 +175,16 @@ fn nightly_tags() -> Result<Vec<String>> {
         .collect())
 }
 
-/// The commit a tag points at, peeled so an annotated tag yields its commit
-/// rather than the tag object.
-fn commit_for(tag: &str) -> Result<String> {
-    shell::git(&["rev-parse", &format!("{tag}^{{commit}}")])
+/// Commit subjects since `tag`, or the whole history before the first nightly.
+fn commits_since(tag: Option<&Version>) -> Result<Vec<String>> {
+    let range = match tag {
+        Some(version) => format!("v{version}..HEAD"),
+        None => "HEAD".to_owned(),
+    };
+    Ok(shell::git(&["log", "--format=%s", "--reverse", &range])?
+        .lines()
+        .map(str::to_owned)
+        .collect())
 }
 
 /// Creates the tag ref through the API, which needs only `GH_TOKEN`.
@@ -126,126 +205,36 @@ fn create_tag(tag: &str, sha: &str) -> Result<()> {
     Ok(())
 }
 
-/// Today's UTC date as `YYYYMMDD`.
-fn date_stamp(now: DateTime<Utc>) -> String {
-    now.format("%Y%m%d").to_string()
+fn env(key: &str) -> Result<String> {
+    std::env::var(key).with_context(|| format!("${key} is not set"))
 }
 
-/// How many nightlies one day can carry.
-///
-/// The Android `versionCode` packs the same-day index into a single decimal
-/// digit, so the index must stay within `0..=9`. An eleventh build would wrap:
-/// `20260823 * 10 + 10` is `202608240`, which is also the first build of the
-/// 24th.
-const MAX_NIGHTLIES_PER_DAY: u64 = 10;
+pub fn run(args: NightlyPlanArgs) -> Result<()> {
+    if args.build_only {
+        println!("Manual dispatch: building without publishing.");
+        return crate::utils::github::set_outputs(&Plan::BUILD_ONLY);
+    }
 
-/// The store build numbers for a nightly tag, as `(android, ios)`.
-///
-/// Both encode the UTC date and the tag's own same-day index. Android's
-/// `versionCode` is a single integer, so the index becomes its last digit;
-/// iOS's `CFBundleVersion` takes period-separated components and needs no
-/// packing. Both must increase monotonically or the store rejects the upload.
-///
-/// ```text
-/// v0.2.0-nightly.20260823    ->  202608230   20260823.0
-/// v0.2.0-nightly.20260823.1  ->  202608231   20260823.1
-/// v0.2.0-nightly.20260823.9  ->  202608239   20260823.9
-/// v0.2.0-nightly.20260824    ->  202608240   20260824.0
-/// ```
-fn build_numbers(tag: &str) -> Result<(String, String)> {
-    let suffix = tag
-        .split_once("-nightly.")
-        .map(|(_, suffix)| suffix)
-        .with_context(|| format!("\"{tag}\" is not a nightly tag"))?;
+    let target = target(&crate::workspace::version()?);
+    let tags = nightly_tags()?;
+    let latest = latest_nightly(&target, &tags);
+    let commits = commits_since(latest.as_ref())?;
 
-    let (stamp, index) = match suffix.split_once('.') {
-        Some((stamp, index)) => (
-            stamp,
-            index
-                .parse::<u64>()
-                .with_context(|| format!("\"{tag}\" has a non-numeric same-day index"))?,
-        ),
-        // An unsuffixed tag is the first build of its day.
-        None => (suffix, 0),
+    let plan = match next_nightly(latest.as_ref(), &commits, &target, &date_stamp(Utc::now()))? {
+        None => {
+            println!("Nothing landed since the last nightly; nothing new to publish.");
+            Plan::SKIP
+        }
+        Some(version) => {
+            let head = shell::git(&["rev-parse", "HEAD"])?;
+            let plan = Plan::publish(&version)?;
+            create_tag(&plan.tag, &head)?;
+            println!("Tagged nightly {tag} at {head}.", tag = plan.tag);
+            plan
+        }
     };
 
-    let date: u64 = stamp
-        .parse()
-        .with_context(|| format!("\"{tag}\" has a non-numeric date stamp"))?;
-    if stamp.len() != 8 {
-        bail!(
-            "\"{tag}\" has a {}-digit date stamp; expected 8",
-            stamp.len()
-        );
-    }
-    if index >= MAX_NIGHTLIES_PER_DAY {
-        bail!(
-            "\"{tag}\" is nightly index {index} of its day; only {MAX_NIGHTLIES_PER_DAY} fit in \
-             the version code"
-        );
-    }
-
-    Ok((format!("{}", date * 10 + index), format!("{stamp}.{index}")))
-}
-
-/// The next nightly tag for `stamp`: `v{base}-nightly.{stamp}` for the day's
-/// first build, then `.1`, `.2`, and so on — valid, higher-sorting pre-release
-/// identifiers that are also the build index.
-///
-/// `base` is the workspace version with any pre-release suffix stripped. The
-/// index is one past the highest already published for that day, so deleting a
-/// tag does not free its index.
-fn next_nightly_tag(version: &Version, stamp: &str, tags: &[String]) -> Result<String> {
-    let base = format!(
-        "v{major}.{minor}.{patch}-nightly.{stamp}",
-        major = version.major,
-        minor = version.minor,
-        patch = version.patch,
-    );
-
-    let Some(highest) = tags
-        .iter()
-        .filter_map(|tag| same_day_index(tag, &base))
-        .max()
-    else {
-        return Ok(base);
-    };
-
-    // An eleventh tag would yield the same version code as tomorrow's first
-    // build. Failing here beats failing at upload.
-    let next = highest + 1;
-    if next >= MAX_NIGHTLIES_PER_DAY {
-        bail!("{MAX_NIGHTLIES_PER_DAY} nightlies already exist for {stamp}");
-    }
-
-    Ok(format!("{base}.{next}"))
-}
-
-/// The build index `tag` carries for `base`'s day, or `None` if it belongs to
-/// another day. The unsuffixed tag is index 0.
-fn same_day_index(tag: &str, base: &str) -> Option<u64> {
-    match tag.strip_prefix(base)? {
-        "" => Some(0),
-        rest => rest.strip_prefix('.')?.parse().ok(),
-    }
-}
-
-/// The most recent `*-nightly.*` tag by semver precedence — the date lives in
-/// the tag, so ordering it by version orders it by time.
-fn latest_nightly_tag(tags: &[String]) -> Option<String> {
-    tags.iter()
-        .filter(|tag| tag.contains("-nightly."))
-        .filter_map(|tag| {
-            Version::parse(tag.strip_prefix('v').unwrap_or(tag))
-                .ok()
-                .map(|version| (version, tag))
-        })
-        .max_by(|(left, _), (right, _)| left.cmp(right))
-        .map(|(_, tag)| tag.clone())
-}
-
-fn env(name: &str) -> Result<String> {
-    std::env::var(name).with_context(|| format!("${name} is not set"))
+    crate::utils::github::set_outputs(&plan)
 }
 
 #[cfg(test)]
@@ -253,284 +242,138 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
 
+    fn v(text: &str) -> Version {
+        Version::parse(text).unwrap()
+    }
     fn owned(tags: &[&str]) -> Vec<String> {
         tags.iter().map(|tag| (*tag).to_owned()).collect()
     }
-
-    /// The workspace version as `cargo metadata` hands it over.
-    fn version(text: &str) -> Version {
-        Version::parse(text).unwrap()
+    fn commit() -> Vec<String> {
+        vec!["fix: something landed".to_owned()]
     }
 
     #[test]
     fn date_stamp_formats_a_utc_date() {
         let now = Utc.with_ymd_and_hms(2026, 7, 26, 23, 59, 59).unwrap();
-        assert_eq!(date_stamp(now), "20260726");
-    }
-
-    /// The ordinal is 0-based in both encodings, so an unsuffixed tag — the
-    /// scheduled build — ends in `0` rather than `1`.
-    #[test]
-    fn build_numbers_are_zero_based() {
-        let (android, ios) = build_numbers("v0.2.0-nightly.20260823").unwrap();
-        assert_eq!(
-            (android.as_str(), ios.as_str()),
-            ("202608230", "20260823.0")
-        );
-    }
-
-    /// The tag's suffix is the index, so it passes through unchanged.
-    #[test]
-    fn build_numbers_track_the_same_day_index() {
-        for (tag, android, ios) in [
-            ("v0.2.0-nightly.20260823.1", "202608231", "20260823.1"),
-            ("v0.2.0-nightly.20260823.9", "202608239", "20260823.9"),
-        ] {
-            let (got_android, got_ios) = build_numbers(tag).unwrap();
-            assert_eq!(
-                (got_android.as_str(), got_ios.as_str()),
-                (android, ios),
-                "{tag}"
-            );
-        }
-    }
-
-    /// The property the whole scheme exists for: a full day of forced builds
-    /// still leaves the next day's scheduled build strictly higher.
-    #[test]
-    fn the_day_rolls_over_without_colliding() {
-        let (last_of_day, last_ios) = build_numbers("v0.2.0-nightly.20260823.9").unwrap();
-        let (next_day, next_ios) = build_numbers("v0.2.0-nightly.20260824").unwrap();
-
-        assert!(
-            next_day.parse::<u64>().unwrap() > last_of_day.parse::<u64>().unwrap(),
-            "{next_day} must exceed {last_of_day}"
-        );
-        assert_eq!(
-            (last_ios.as_str(), next_ios.as_str()),
-            ("20260823.9", "20260824.0")
-        );
-    }
-
-    /// Index 10 would pack two digits into one and land on the next day's first
-    /// version code, so it is refused rather than silently wrapped.
-    #[test]
-    fn an_eleventh_same_day_build_is_refused() {
-        let error = build_numbers("v0.2.0-nightly.20260823.10").unwrap_err();
-        assert!(error.to_string().contains("only 10"), "{error}");
+        assert_eq!(date_stamp(now), "2026.07.26");
     }
 
     #[test]
-    fn next_tag_refuses_to_exceed_the_daily_cap() {
-        let existing: Vec<String> = std::iter::once("v0.2.0-nightly.20260823".to_string())
-            .chain(
-                (1..MAX_NIGHTLIES_PER_DAY).map(|index| format!("v0.2.0-nightly.20260823.{index}")),
-            )
-            .collect();
-
-        let error = next_nightly_tag(&version("0.2.0"), "20260823", &existing).unwrap_err();
-        assert!(error.to_string().contains("already exist"), "{error}");
+    fn build_numbers_come_from_the_date() {
+        let (android, ios) = build_numbers(&v("0.2.0-nightly.7+2026.08.29")).unwrap();
+        assert_eq!((android.as_str(), ios.as_str()), ("20260829", "2026.08.29"));
     }
 
-    /// Every tag the planner can mint must yield a usable pair, so the two
-    /// functions cannot drift apart.
+    /// Android's `versionCode` is one integer and must only ever climb.
     #[test]
-    fn every_tag_the_planner_mints_has_build_numbers() {
-        let mut existing: Vec<String> = Vec::new();
-        for _ in 0..MAX_NIGHTLIES_PER_DAY {
-            let tag = next_nightly_tag(&version("0.2.0"), "20260823", &existing).unwrap();
-            build_numbers(&tag).unwrap_or_else(|e| panic!("{tag}: {e}"));
-            existing.push(tag);
-        }
+    fn version_codes_increase_with_the_date() {
+        let earlier = build_numbers(&v("0.2.0-nightly.9+2026.08.29")).unwrap().0;
+        let later = build_numbers(&v("0.2.0-nightly.1+2026.09.01")).unwrap().0;
+        assert!(earlier.parse::<u64>().unwrap() < later.parse::<u64>().unwrap());
+        // ...even across a target bump, which restarts N but not the date.
+        assert!(later.parse::<u64>().unwrap() < 2_100_000_000);
     }
 
     #[test]
-    fn non_nightly_tags_are_rejected() {
-        let error = build_numbers("v0.2.0").unwrap_err();
-        assert!(error.to_string().contains("not a nightly tag"), "{error}");
+    fn a_nightly_without_a_date_is_rejected() {
+        assert!(build_numbers(&v("0.2.0-nightly.1")).is_err());
     }
 
     #[test]
-    fn next_tag_stamps_the_base_version() {
-        let tag = next_nightly_tag(&version("0.2.0"), "20260726", &owned(&[])).unwrap();
-        assert_eq!(tag, "v0.2.0-nightly.20260726");
+    fn the_first_nightly_of_a_target_starts_at_one() {
+        let next = next_nightly(None, &[], &v("0.2.0"), "2026.08.29")
+            .unwrap()
+            .unwrap();
+        assert_eq!(next.to_string(), "0.2.0-nightly.1+2026.08.29");
     }
 
     #[test]
-    fn next_tag_strips_a_pre_release_suffix() {
-        let tag = next_nightly_tag(&version("0.2.0-pre.3"), "20260726", &owned(&[])).unwrap();
-        assert_eq!(tag, "v0.2.0-nightly.20260726");
+    fn a_landed_commit_advances_the_counter() {
+        let latest = v("0.2.0-nightly.1+2026.08.29");
+        let next = next_nightly(Some(&latest), &commit(), &v("0.2.0"), "2026.08.30")
+            .unwrap()
+            .unwrap();
+        assert_eq!(next.to_string(), "0.2.0-nightly.2+2026.08.30");
+    }
+
+    /// The bump and the "anything new?" check are the same call.
+    #[test]
+    fn an_idle_day_publishes_nothing() {
+        let latest = v("0.2.0-nightly.1+2026.08.29");
+        let next = next_nightly(Some(&latest), &[], &v("0.2.0"), "2026.08.30").unwrap();
+        assert_eq!(next, None);
+    }
+
+    /// A preserved date would be the previous run's.
+    #[test]
+    fn the_date_is_restamped_not_carried() {
+        let latest = v("0.2.0-nightly.1+2026.08.29");
+        let next = next_nightly(Some(&latest), &commit(), &v("0.2.0"), "2026.09.01")
+            .unwrap()
+            .unwrap();
+        assert_eq!(next.build.as_str(), "2026.09.01");
     }
 
     #[test]
-    fn next_tag_disambiguates_a_same_day_collision() {
-        let tag = next_nightly_tag(
-            &version("0.2.0"),
-            "20260726",
-            &owned(&["v0.2.0-nightly.20260726"]),
-        )
-        .unwrap();
-        assert_eq!(tag, "v0.2.0-nightly.20260726.1");
+    fn the_counter_restarts_when_the_target_moves() {
+        let tags = owned(&["v0.2.0-nightly.9+2026.08.29"]);
+        assert_eq!(latest_nightly(&v("0.3.0"), &tags), None);
+        let next = next_nightly(None, &commit(), &v("0.3.0"), "2026.08.30")
+            .unwrap()
+            .unwrap();
+        assert_eq!(next.to_string(), "0.3.0-nightly.1+2026.08.30");
     }
 
     #[test]
-    fn next_tag_walks_past_multiple_collisions() {
-        let existing = owned(&["v0.2.0-nightly.20260726", "v0.2.0-nightly.20260726.1"]);
-        let tag = next_nightly_tag(&version("0.2.0"), "20260726", &existing).unwrap();
-        assert_eq!(tag, "v0.2.0-nightly.20260726.2");
-    }
-
-    /// The disambiguated form has to keep sorting above the tag it disambiguates,
-    /// or `latest_nightly_tag` would walk backwards.
-    #[test]
-    fn disambiguated_tags_sort_above_their_base() {
-        let tags = owned(&["v0.2.0-nightly.20260726", "v0.2.0-nightly.20260726.1"]);
-        assert_eq!(
-            latest_nightly_tag(&tags).as_deref(),
-            Some("v0.2.0-nightly.20260726.1")
-        );
-    }
-
-    #[test]
-    fn latest_ignores_non_nightly_tags() {
+    fn the_latest_nightly_is_the_highest_counter_not_the_newest_date() {
         let tags = owned(&[
-            "v0.2.0-nightly.20260725",
-            "v0.1.0",
-            "v0.2.0-nightly.20260726",
-            "v0.2.0-nightly.20260726.1",
-            "v0.2.0-pre.1",
+            "v0.2.0-nightly.1+2026.08.29",
+            "v0.2.0-nightly.10+2026.08.30",
+            "v0.2.0-nightly.9+2026.09.01",
         ]);
+        let latest = latest_nightly(&v("0.2.0"), &tags).unwrap();
+        assert_eq!(latest.pre.as_str(), "nightly.10");
+    }
+
+    #[test]
+    fn non_nightly_tags_are_ignored() {
+        let tags = owned(&["v0.2.0", "v0.2.0-pre.3", "v0.2.0-nightly.4+2026.08.29"]);
         assert_eq!(
-            latest_nightly_tag(&tags).as_deref(),
-            Some("v0.2.0-nightly.20260726.1")
+            latest_nightly(&v("0.2.0"), &tags).unwrap().pre.as_str(),
+            "nightly.4"
         );
     }
 
-    /// Ordering is by version, not lexical — `0.10.0` outranks `0.9.0` even
-    /// though its date stamp is older.
+    /// Build metadata is ignored for precedence, so `N` must carry the order.
     #[test]
-    fn latest_orders_across_base_versions() {
-        let tags = owned(&["v0.9.0-nightly.20260101", "v0.10.0-nightly.20251231"]);
-        assert_eq!(
-            latest_nightly_tag(&tags).as_deref(),
-            Some("v0.10.0-nightly.20251231")
-        );
+    fn the_counter_orders_nightlies_not_the_date() {
+        assert!(v("0.2.0-nightly.9+2026.09.01") < v("0.2.0-nightly.10+2026.08.29"));
     }
 
+    /// nightly < preview < stable, and the next target outranks the release.
     #[test]
-    fn latest_is_none_without_nightly_tags() {
-        assert_eq!(
-            latest_nightly_tag(&owned(&["v0.1.0", "v0.2.0-pre.1"])),
-            None
-        );
+    fn channels_stay_ordered() {
+        let ordered = [
+            v("0.2.0-nightly.1+2026.08.29"),
+            v("0.2.0-nightly.2+2026.08.30"),
+            v("0.2.0-pre.1"),
+            v("0.2.0"),
+            v("0.3.0-nightly.1+2026.09.01"),
+        ];
+        let mut sorted = ordered.to_vec();
+        sorted.sort();
+        assert_eq!(sorted, ordered, "channel ordering is not monotonic");
     }
 
-    /// Stands in for `commit_for`: every tag resolves to `sha`.
-    fn tagging(sha: &str) -> impl Fn(&str) -> Result<String> + '_ {
-        move |_| Ok(sha.to_owned())
-    }
-
-    fn at(stamp: &str) -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339(&format!(
-            "{}-{}-{}T04:00:00Z",
-            &stamp[..4],
-            &stamp[4..6],
-            &stamp[6..]
-        ))
-        .unwrap()
-        .with_timezone(&Utc)
-    }
-
+    /// A dispatch builds but publishes nothing; an idle day does neither.
     #[test]
-    fn skips_when_head_is_already_tagged() {
-        let tags = owned(&["v0.2.0-nightly.20260725"]);
-        let plan = plan_next(
-            &tags,
-            "SHA",
-            &version("0.2.0"),
-            at("20260726"),
-            tagging("SHA"),
-        )
-        .unwrap();
-        assert_eq!(plan, Plan::SKIP);
-    }
+    fn the_three_outcomes_differ_in_the_right_way() {
+        let outcome = |plan: &Plan| (plan.should_build, plan.tag.is_empty());
+        assert_eq!(outcome(&Plan::BUILD_ONLY), (true, true));
+        assert_eq!(outcome(&Plan::SKIP), (false, true));
 
-    #[test]
-    fn tags_when_head_has_moved() {
-        let tags = owned(&["v0.2.0-nightly.20260725"]);
-        let plan = plan_next(
-            &tags,
-            "NEW",
-            &version("0.2.0"),
-            at("20260726"),
-            tagging("OLD"),
-        )
-        .unwrap();
-        assert_eq!(plan, Plan::build("v0.2.0-nightly.20260726").unwrap());
-    }
-
-    /// The very first nightly has nothing to compare against, so it must build
-    /// rather than skip.
-    #[test]
-    fn tags_when_no_nightly_exists_yet() {
-        let tags = owned(&["v0.1.0"]);
-        let plan = plan_next(
-            &tags,
-            "SHA",
-            &version("0.2.0"),
-            at("20260726"),
-            tagging("SHA"),
-        )
-        .unwrap();
-        assert_eq!(plan, Plan::build("v0.2.0-nightly.20260726").unwrap());
-    }
-
-    /// A dispatch after the cron has already run, or vice versa — the day’s next
-    /// index, which is what makes the suffix reachable at all.
-    #[test]
-    fn a_second_nightly_the_same_day_takes_the_next_index() {
-        let tags = owned(&["v0.2.0-nightly.20260726"]);
-        let plan = plan_next(
-            &tags,
-            "NEW",
-            &version("0.2.0"),
-            at("20260726"),
-            tagging("OLD"),
-        )
-        .unwrap();
-        assert_eq!(plan, Plan::build("v0.2.0-nightly.20260726.1").unwrap());
-    }
-
-    /// The counterpart: a dispatch on sources already published republishes
-    /// nothing, even though the cap for the day is nowhere near reached.
-    #[test]
-    fn a_second_nightly_the_same_day_still_needs_commits() {
-        let tags = owned(&["v0.2.0-nightly.20260726"]);
-        let plan = plan_next(
-            &tags,
-            "SHA",
-            &version("0.2.0"),
-            at("20260726"),
-            tagging("SHA"),
-        )
-        .unwrap();
-        assert_eq!(plan, Plan::SKIP);
-    }
-
-    /// The read paths, against this checkout — no network, no fixtures. Any
-    /// tag the filter admits must be one `build_numbers` can parse, or a
-    /// nightly run would fail after the tag already exists.
-    #[test]
-    fn reads_tags_and_resolves_commits_from_the_checkout() {
-        const SHA_LENGTH: usize = 40;
-
-        let head = shell::git(&["rev-parse", "HEAD"]).unwrap();
-        assert_eq!(head.len(), SHA_LENGTH, "expected a full sha, got {head:?}");
-
-        for tag in nightly_tags().unwrap() {
-            build_numbers(&tag).unwrap_or_else(|error| panic!("{tag}: {error}"));
-            assert_eq!(commit_for(&tag).unwrap().len(), SHA_LENGTH, "{tag}");
-        }
+        let published = Plan::publish(&v("0.2.0-nightly.1+2026.08.29")).unwrap();
+        assert_eq!(outcome(&published), (true, false));
     }
 
     /// `Plan` is serialized field-for-field into `$GITHUB_OUTPUT`, and the

@@ -116,7 +116,7 @@ fn union(terms: impl Iterator<Item = String>) -> String {
 
 /// The merge base on a pull request, the previous commit on a push.
 fn default_base() -> Result<String> {
-    match std::env::var("GITHUB_BASE_REF") {
+    match shell::env("GITHUB_BASE_REF") {
         Ok(base) if !base.is_empty() => {
             shell::git(&["merge-base", &format!("origin/{base}"), "HEAD"])
         }

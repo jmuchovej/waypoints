@@ -21,6 +21,7 @@ mod check_generated;
 mod devenv_update;
 mod pull_request;
 mod release;
+mod release_plan;
 
 pub(crate) mod _types;
 pub(crate) use _types::{Artifact, Channel, Platform, PrepareJob, TestSuite, WorkflowInput};
@@ -124,6 +125,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
+        WorkflowFile::waypoints("release_plan", release_plan::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
         release_file(Channel::Stable),

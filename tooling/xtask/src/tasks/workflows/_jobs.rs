@@ -24,10 +24,19 @@ fn build_code(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
     }
 }
 
+/// Passed to the planner only on a manual dispatch, which builds without
+/// publishing.
+///
+/// A nightly's store build number is its date, so a second publish on one day
+/// could not produce a distinct one. A dispatch exercises the pipeline and
+/// leaves publishing to the next scheduled run.
+const BUILD_ONLY_ON_DISPATCH: &str =
+    "${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}";
+
 /// Resolves the nightly tag: derive it from the workspace version, skip the run
 /// when nothing landed since the last nightly, and create the tag.
 pub fn prepare() -> PrepareJob {
-    let planner = steps::cargo_xtask("nightly-plan", &[])
+    let planner = steps::cargo_xtask("nightly-plan", &[(BUILD_ONLY_ON_DISPATCH, None)])
         .id("nightly-plan")
         .add_env(("GH_TOKEN", GITHUB_TOKEN));
 
