@@ -1,6 +1,6 @@
 ## Context
 
-See proposal.md — _Why_ for the motivation and the four bypassing paths.
+See proposal.md — _Why_ for the motivation and the five bypassing paths.
 
 The constraints that shape this design, all read from the current tree:
 
@@ -27,7 +27,7 @@ The constraints that shape this design, all read from the current tree:
   `EditorService`, so a `&self` → `&mut self` change on the service does not
   propagate outward to the IPC layer.
 - `Landmark.children` has **no writer and no reader** in production code.
-  `add_child` / `with_children` (`mark_data.rs:360,364`) have zero callers;
+  `add_child` / `with_children` (`mark_data.rs:373,377`) have zero callers;
   `projection::project_landmark` walks `terrain::get_child_edges` instead. No
   SQL, generated column, or materialized view references it, and no frontend
   source reads it.
@@ -50,7 +50,7 @@ The constraints that shape this design, all read from the current tree:
 
 **Non-Goals (design-level, beyond the proposal's scope boundaries):**
 
-- Retrofitting the build-op-then-apply discipline (Decision 1) onto the eleven
+- Retrofitting the build-op-then-apply discipline (Decision 1) onto the nine
   mutations that already record history correctly. They work; converting them is
   a separate cleanup.
 - Making `Maneuver::apply` validating or transactional. It stays a mechanical
@@ -59,22 +59,24 @@ The constraints that shape this design, all read from the current tree:
 
 ## Decisions
 
-### 1. The four touched paths construct the op first, then apply it
+### 1. The four rewritten mutation bodies construct the op first, then apply it
 
 New and rewritten mutation bodies follow: gather pre-state → validate →
 construct the `Maneuver` → `op.apply(db).await?` → `history.push(...)`. They do
-not call `store::query::mark::*` directly.
+not call `store::query::mark::*` directly. The fifth bypassing path,
+`MarkHandle::update_title`, does not get its own body — it becomes a shortcut
+delegating into the editor's title path, so it inherits this shape for free.
 
 _Why:_ the op and the database write become one expression instead of two, so
 they cannot disagree. Path 3's bug — a write with no matching op — is not
 expressible in this shape.
 
 _Alternative rejected:_ keep the existing write-then-describe shape for
-consistency with the other eleven mutations. Rejected because consistency with a
+consistency with the other nine mutations. Rejected because consistency with a
 shape that produced this bug is not a virtue. The inconsistency is temporary and
 visible; a note in the spec records the intended direction.
 
-_Alternative rejected:_ convert all fifteen mutations now. Rejected as scope
+_Alternative rejected:_ convert all twelve mutations now. Rejected as scope
 creep — it would touch every editor test for no behavioural gain.
 
 ### 2. Validation stays in the mutation layer; `Maneuver::apply` stays mechanical
@@ -144,7 +146,7 @@ would put an interner in `domain` to preserve a derive nobody depends on.
 the landmark's `MarkID` as `id`. That is the history key.
 
 _Why:_ no new parameter crosses the typed IPC boundary, and the one frontend
-caller (`waypoints/app/pages/marks/[markID].vue`) is editing the page it is
+caller (`src/app/pages/marks/[markID].vue`) is editing the page it is
 displaying, so `id` is already the landmark whose history the user expects
 Cmd+Z to walk.
 
@@ -284,12 +286,14 @@ this change is the one whose investigation established the finding.
   `&self` and locks a mutex around the service, so the mutability change is
   contained. Verified against `crates/cartograph/src/editor/handle.rs`.
 - **Two mutation styles coexist in `mutation.rs` after this lands** (build-then-
-  apply for four paths, write-then-describe for eleven) → Accepted, and recorded
+  apply for the four rewritten bodies, write-then-describe for nine) → Accepted, and recorded
   in the spec as the intended direction so the next person does not "fix" the
   new code back to the old shape.
 - **`create_landmark` moving off `ChartHandle` changes a Tauri command's backing
-  call** → `waypoints/src-tauri/src/commands/chart.rs` keeps its signature;
-  only the delegation target moves. No IPC or frontend change.
+  call** → `src-tauri/src/commands/chart.rs` keeps its signature;
+  only the delegation target moves. No IPC or frontend change. The same holds
+  for `mark_update_title` (`src-tauri/src/commands/mark.rs`) once
+  `MarkHandle::update_title` delegates to the editor.
 - **The `children` / Terrain duplication is resolved by deletion** → See
   Decision 9. Terrain `Child` edges become the only expression of containment,
   structurally rather than by convention. Residual: landmark rows persisted

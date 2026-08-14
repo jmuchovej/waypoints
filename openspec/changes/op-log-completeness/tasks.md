@@ -2,7 +2,7 @@ Every task below must land with `prek` hooks green (clippy, cargo-check,
 cargo-test, treefmt). Never hand-format — `treefmt` owns formatting.
 Rust editor tests run through the existing `rstest` + `store::test_utils::temp_db()`
 fixture in `crates/cartograph/src/editor/tests/mod.rs`, against the real engine.
-No test asserts SQL strings. Frontend tests run under `bun`.
+No test asserts SQL strings. Frontend tests run under `vitest`.
 
 ## 1. Operation vocabulary
 
@@ -27,7 +27,7 @@ No test asserts SQL strings. Frontend tests run under `bun`.
       `Landmark.title`, one inserting the reading or removing it when `new` is
       `Reading::Null`. Both error if the target Mark is missing or is not a
       landmark. Neither performs schema validation (design.md, Decision 2).
-- [ ] ~~1.7 Rewrite the `Maneuver` doc comments at `maneuver.rs:32` and `:59`~~
+- [ ] ~~1.7 Rewrite the `Maneuver` doc comments at `maneuver.rs:25` and `:91`~~
       **STRUCK.** Based on a false premise: those comments were read as describing a
       _retired_ wire protocol. They are not stale — they are **anticipatory**, and
       they describe exactly the design the sync change implements (`Envelope` is an
@@ -56,10 +56,17 @@ No test asserts SQL strings. Frontend tests run under `bun`.
       edits undo one at a time; a title edit leaves `chart`, `icon`, and
       `readings` untouched; setting a title on a content Mark is rejected and
       pushes nothing onto the history.
-- [ ] 2.4 Confirm `waypoints/src-tauri/src/commands/editor.rs` and
-      `crates/server/src/commands/editor.rs` still compile unchanged (no IPC
-      signature change is expected), and run `just typegen` if the generated
-      bindings move.
+- [ ] 2.4 Confirm `src-tauri/src/commands/editor.rs` and
+      `tooling/xtask/src/tasks/dev_server/commands/editor.rs` still compile
+      unchanged (no IPC signature change is expected), and run `just typegen`
+      if the generated bindings move.
+- [ ] 2.5 Rewire `MarkHandle::update_title` in `crates/cartograph/src/mark/handle.rs`
+      to delegate to the editor's title path — it is a shortcut for updating a
+      Landmark's title and must no longer read via `store::query::mark::get` and
+      write `MarkData` directly. Keep its public signature so the Tauri command
+      `mark_update_title` (`src-tauri/src/commands/mark.rs`), the dev-server
+      xtask route, and `src/app/utils/ipc/marks.ts` are unaffected. Add a test
+      that a title edit through `MarkHandle::update_title` is undoable.
 
 ## 3. Reading path
 
@@ -108,7 +115,7 @@ No test asserts SQL strings. Frontend tests run under `bun`.
 - [ ] 5.3 Rewrite `ChartHandle::create_landmark` in
       `crates/cartograph/src/chart/handle.rs` to delegate to the editor. It must no
       longer call `store::query::mark::insert`. Keep its public signature and its
-      `tracing::info!` line so `waypoints/src-tauri/src/commands/chart.rs` is
+      `tracing::info!` line so `src-tauri/src/commands/chart.rs` is
       unaffected.
 - [ ] 5.4 Add tests: creating a landmark persists it and records a `CreateMark`
       in that landmark's history; undo soft-deletes it; redo restores it with the
@@ -116,23 +123,23 @@ No test asserts SQL strings. Frontend tests run under `bun`.
 
 ## 6. Single undo authority (frontend)
 
-- [ ] 6.1 In `waypoints/app/composables/editor/useBlockOrchestrator.ts`, remove
+- [ ] 6.1 In `src/app/composables/editor/useBlockOrchestrator.ts`, remove
       the Tiptap-first short-circuit from `onUndo` and `onRedo` (the
       `focus.getHandle(blockId)` / `canUndo()` / `canRedo()` branches). Both
       handlers go straight to `flushPendingUpdates()` then `ipc.editor.undo` /
       `ipc.editor.redo`.
 - [ ] 6.2 Remove the now-unused `undo` / `redo` / `canUndo` / `canRedo` members
       from the block-handle contract in
-      `waypoints/app/composables/editor/useBlockFocus.ts` and their implementations
+      `src/app/composables/editor/useBlockFocus.ts` and their implementations
       in `useInlineEditor.ts`, **only if** nothing else consumes them — grep first
       and leave them in place with a note if anything does. Leave
       `useInlineEditor.ts`'s external-change resync untouched; the backend path
       depends on it.
 - [ ] 6.3 Update the affected specs:
-      `waypoints/app/composables/editor/useBlockKeymap.test.ts` and
+      `src/app/composables/editor/useBlockKeymap.test.ts` and
       `useBlockFocus.test.ts` both stub `undo`/`redo` on the handle mock. Adjust
       them to assert that Cmd+Z reaches the backend path.
-- [ ] 6.4 Run `bun` unit tests and `just typecheck`.
+- [ ] 6.4 Run `pnpm exec vitest` unit tests and `just typecheck`.
 
 ## 7. Landmark schema cleanup
 
@@ -140,11 +147,11 @@ Independent of sections 1–6; may land first. Do it in one commit so the struct
 change and the regenerated bindings never disagree.
 
 - [ ] 7.1 In `crates/domain/src/mark/mark_data.rs`, delete the `children` field
-      from `Landmark` (line ~369) together with the `via_mutators` block
-      declaring `add_child` and `with_children` (~357-368). Drop the now-unused
+      from `Landmark` (line ~382) together with the `via_mutators` block
+      declaring `add_child` and `with_children` (~371-381). Drop the now-unused
       `RichReference` import from the `use super::{...}` line at the top **only
       if** nothing else in the file references it.
-- [ ] 7.2 Fix the `Landmark` doc comment (~line 332), which names `children` as
+- [ ] 7.2 Fix the `Landmark` doc comment (~line 345), which names `children` as
       a guaranteed top-level field. Guaranteed fields are `id`, `title`, `icon`.
       Add a line stating that a Landmark's content is expressed by Terrain
       `Child` edges, not by a field on the Landmark, so the next reader does not
@@ -153,7 +160,7 @@ change and the regenerated bindings never disagree.
       `crates/domain/src/mark/rich_reference.rs` recording why it has no use
       site: it is the typed payload intended for inline Mark references inside
       `Content` marks (`InlineMark { kind: Mention | Link, data }`), which
-      currently carry untyped JSON. Correct its existing comment at line ~41,
+      currently carry untyped JSON. Correct its existing comment at line ~36,
       which cites "top-level Thing fields like children" — that use site no
       longer exists. Do **not** remove `ReferenceDisplayMode`; it is live via
       `chart::feature_kind::FeatureKind::Reference`.
@@ -176,10 +183,11 @@ change and the regenerated bindings never disagree.
 
 ## 8. Verification
 
-- [ ] 8.1 Sweep `crates/cartograph/src/editor/mutation.rs` and
-      `crates/cartograph/src/chart/handle.rs` for any remaining direct
+- [ ] 8.1 Sweep `crates/cartograph/src/editor/mutation.rs`,
+      `crates/cartograph/src/chart/handle.rs`, and
+      `crates/cartograph/src/mark/handle.rs` for any remaining direct
       `store::query::mark::*` or `store::query::terrain::*` write that is not
-      paired with a `history.push`. Confirm none remain outside the eleven
+      paired with a `history.push`. Confirm none remain outside the nine
       pre-existing mutations that already record correctly.
 - [ ] 8.2 Confirm no `history: &mut CommandHistory` parameter in the editor is
       underscore-prefixed or otherwise unused.
@@ -190,6 +198,7 @@ change and the regenerated bindings never disagree.
 - [ ] 8.4 Confirm `Landmark.children` appears nowhere in the tree — not in
       `crates/`, not in the generated `types.g.ts` files, not in the
       architecture reference except as a historical note.
-- [ ] 8.5 Run the full editor suite (`just cartograph test` or `just test`) plus
-      `just typecheck`, and confirm `prek` is green across clippy, cargo-check,
-      cargo-test, and treefmt.
+- [ ] 8.5 Run the full editor suite (`just cartograph::test`; note the root
+      `just test` runs only the frontend vitest suite) plus `just typecheck`,
+      and confirm `prek` is green across clippy, cargo-check, cargo-test, and
+      treefmt.

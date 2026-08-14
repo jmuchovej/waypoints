@@ -4,19 +4,20 @@ Undo/redo in the block editor has never behaved the way users expect. The
 diagnosis is structural, not incidental: `cartograph`'s editor is built on the
 premise that every mutation is _op-shaped_ — it produces one or more
 `Maneuver` values recorded in `CommandHistory`, and `CommandHistory` inverts
-those ops to undo. Four high-traffic mutation paths do not honour that premise.
+those ops to undo. Five high-traffic mutation paths do not honour that premise.
 They write to the database directly and record nothing, so the edits they make
 are not merely hard to undo, they are **structurally un-undoable**: there is no
 record for the history to invert.
 
-The four paths, all verified in the current tree:
+The five paths, all verified in the current tree:
 
-| #   | Path                                                                 | How it bypasses                                                                                                      |
-| --- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 1   | `crates/cartograph/src/editor/mutation.rs:205` `update_mark_title`   | No `history` parameter at all; calls `mark::update_data` directly.                                                   |
-| 2   | `crates/cartograph/src/editor/mutation.rs:223` `update_mark_reading` | No `history` parameter; loads the mark, mutates one reading, writes the whole `MarkData` back.                       |
-| 3   | `crates/cartograph/src/editor/mutation.rs:353` `update_mark_text`    | Takes `_history` (underscore-prefixed, unused). Its own doc comment states it "does NOT record in the undo history". |
-| 4   | `crates/cartograph/src/chart/handle.rs:32` `create_landmark`         | Skips the editor entirely; calls `store::query::mark::insert` directly.                                              |
+| #   | Path                                                                  | How it bypasses                                                                                                                                                                                                                                 |
+| --- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `crates/cartograph/src/editor/mutation.rs:205` `update_mark_title`    | No `history` parameter at all; calls `mark::update_data` directly.                                                                                                                                                                              |
+| 2   | `crates/cartograph/src/editor/mutation.rs:223` `update_mark_reading`  | No `history` parameter; loads the mark, mutates one reading, writes the whole `MarkData` back.                                                                                                                                                  |
+| 3   | `crates/cartograph/src/editor/mutation.rs:353` `update_mark_text`     | Takes `_history` (underscore-prefixed, unused). Its own doc comment states it "does NOT record in the undo history".                                                                                                                            |
+| 4   | `crates/cartograph/src/chart/handle.rs:31` `create_landmark`          | Skips the editor entirely; calls `store::query::mark::insert` directly.                                                                                                                                                                         |
+| 5   | `crates/cartograph/src/mark/handle.rs:148` `MarkHandle::update_title` | Skips the editor entirely; reads via `store::query::mark::get` and writes with no history. Live end-to-end: Tauri command `mark_update_title` (`src-tauri/src/commands/mark.rs`), the dev-server xtask route, and `src/app/utils/ipc/marks.ts`. |
 
 Together these cover the most common things a user does: rename a page, fill in
 a field, and type. Closing them is what makes the op log complete, and a
@@ -59,13 +60,18 @@ embed) cannot practicably be a Terrain edge, and today that case is carried by
 payload. `RichReference` is the typed shape that payload wants. Removing it
 would delete the answer to a problem the codebase still has.
 
-**Plumbing, not vocabulary.** Paths 3 and 4 map onto existing variants
-(`UpdateRichText` and `CreateMark`). They need routing, not new op kinds.
+**Plumbing, not vocabulary.** Paths 3–5 map onto existing or newly added
+variants (`UpdateRichText`, `CreateMark`, `UpdateLandmarkTitle`). They need
+routing, not new op kinds.
 
 - `update_mark_text` records `UpdateRichText` against the `history` it is
   already handed.
 - `create_landmark` moves onto the editor and emits `CreateMark`.
   **BREAKING** for the `ChartHandle::create_landmark` call site.
+- `MarkHandle::update_title` stays as a convenience surface but becomes a
+  shortcut that delegates into the editor's title path — at its core it is a
+  Landmark having its title updated, so it must route through the same
+  history-recorded mutation rather than writing `MarkData` directly.
 
 **Signature changes.** `EditorService::update_mark_title` and
 `update_mark_reading` currently take `&self`. Recording history requires
@@ -119,11 +125,11 @@ than amending existing ones.
 - **No character-level text ops.** `TextPayload` keeps `Snapshot` as its only
   variant.
 - **No rewrite of `Maneuver`'s wire-type doc comments.** An earlier draft of
-  this proposal treated the comments at `maneuver.rs:25` and `:59` — ops
+  this proposal treated the comments at `maneuver.rs:25` and `:91` — ops
   travelling between devices "inside `Envelope`s" — as describing a retired
   protocol, on the reasoning that no `Envelope` type exists in `cartograph`.
   That reasoning was wrong. `Envelope` is an `outpost-protocol` type
-  (`crates/outpost-protocol/src/envelope.rs:78`), and the comments are
+  (`crates/outpost-protocol/src/envelope.rs:76`), and the comments are
   anticipatory rather than stale: the in-flight `sync-mark-graph` change cites
   them as existing groundwork it builds on (its `design.md:8`) and declares a
   dependency on this change. Rewriting them here would be churn the next change
@@ -181,7 +187,9 @@ rather than a spec.
 - `crates/cartograph/src/editor/handle.rs` — mirror the service signatures.
 - `crates/cartograph/src/chart/handle.rs` — `create_landmark` delegates to the
   editor instead of calling `store::query::mark::insert`.
-- `waypoints/app/composables/editor/useBlockOrchestrator.ts` — remove the
+- `crates/cartograph/src/mark/handle.rs` — `update_title` becomes a shortcut
+  delegating to the editor's title path instead of writing `MarkData` directly.
+- `src/app/composables/editor/useBlockOrchestrator.ts` — remove the
   Tiptap-first undo/redo short-circuit.
 - `crates/domain/src/mark/mark_data.rs` — delete the `children` field, its
   `add_child` / `with_children` builder mutators, and the guaranteed-fields doc
@@ -197,11 +205,13 @@ rather than a spec.
 
 **Unchanged surfaces**
 
-- Typed IPC: `waypoints/src-tauri/src/commands/{editor,chart}.rs`,
-  `crates/server/src/commands/editor.rs`, and
-  `waypoints/app/utils/ipc/editor.ts` keep their current argument shapes. The
+- Typed IPC: `src-tauri/src/commands/{editor,chart,mark}.rs`,
+  `tooling/xtask/src/tasks/dev_server/commands/editor.rs`, and
+  `src/app/utils/ipc/editor.ts` keep their current argument shapes. The
   history key for a title or reading edit is the landmark's own `MarkID`, which
   callers already pass as `id`, so no new parameter crosses the boundary.
+  `mark_update_title` likewise keeps its signature; only its delegation target
+  moves.
 - `store` is untouched. `domain` is touched only by the `children` removal
   above — no query, migration, or schema-definition change. No SQL references
   `$.children`, and no generated column or materialized view depends on it.
@@ -211,8 +221,8 @@ rather than a spec.
 **Tests**
 
 - `crates/cartograph/src/editor/tests/{mutations,undo_redo}.rs` gain coverage
-  for the four paths. The existing `rstest` + `store::test_utils::temp_db()`
+  for the five paths. The existing `rstest` + `store::test_utils::temp_db()`
   fixture runs against the real engine; no SQL strings are asserted.
-- `waypoints/app/composables/editor/useBlockKeymap.test.ts` and
+- `src/app/composables/editor/useBlockKeymap.test.ts` and
   `useBlockFocus.test.ts` reference the Tiptap undo handle and need updating
   alongside the orchestrator change.
