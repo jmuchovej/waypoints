@@ -1,3 +1,4 @@
+import java.io.File
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -18,13 +19,21 @@ val tauriProperties =
 val waypointsFlavor = System.getenv("WAYPOINTS_FLAVOR") ?: "stable"
 val waypointsBuild = System.getenv("WAYPOINTS_BUILD") == "1"
 
+val minSdkVersion = run {
+  val config = rootProject.file("../../configs/platforms/android.toml")
+  val declared =
+      Regex("""^\s*minSdkVersion\s*=\s*(\d+)""", RegexOption.MULTILINE)
+          .find(config.readText())
+          ?.groupValues
+          ?.get(1)
+  requireNotNull(declared) { "minSdkVersion is not declared in ${config.path}" }.toInt()
+}
+
 android {
   compileSdk = 36
   namespace = "so.waypoints"
   defaultConfig {
     manifestPlaceholders["usesCleartextTraffic"] = "false"
-    // Only suffix the applicationId for distribution builds — during dev, the
-    // Tauri CLI hardcodes the launch intent to the base identifier.
     applicationId =
         "so.waypoints" +
             if (waypointsBuild) {
@@ -37,14 +46,10 @@ android {
             } else {
               ""
             }
-    minSdk = 24
+    minSdk = minSdkVersion
     targetSdk = 36
-    // Nightlies share a base semver (e.g. 0.2.0-nightly.<date>), so the Tauri-
-    // derived versionCode collides across builds and blocks in-place updates.
-    // Let CI inject a monotonic code (WAYPOINTS_VERSION_CODE) for that channel;
-    // stable/preview fall back to the Tauri-generated value.
     versionCode =
-        (System.getenv("WAYPOINTS_VERSION_CODE")?.takeIf { it.isNotBlank() }
+        (System.getenv("WAYPOINTS_BUILD_CODE")?.takeIf { it.isNotBlank() }
                 ?: tauriProperties.getProperty("tauri.android.versionCode", "1"))
             .toInt()
     versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
@@ -73,20 +78,28 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePropertiesFile = rootProject.file("keystore.properties")
-      val keystoreProperties = Properties()
-      if (keystorePropertiesFile.exists()) {
-        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-        keyAlias = keystoreProperties["keyAlias"] as String
-        keyPassword = keystoreProperties["password"] as String
-        storeFile = file(keystoreProperties["storeFile"] as String)
-        storePassword = keystoreProperties["password"] as String
+      val keystorePath =
+          requireNotNull(System.getenv("ANDROID_KEYSTORE_PATH")) {
+            "ANDROID_KEYSTORE_PATH is unset — run the build through " +
+                "`just tauri::android::build*`, which wraps it in `secretspec run`."
+          }
+      val keystorePropertiesFile = File(keystorePath)
+      require(keystorePropertiesFile.exists()) {
+        "ANDROID_KEYSTORE_PATH points at $keystorePath, which does not exist."
       }
+
+      val keystoreProperties = Properties()
+      keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+      keyAlias = keystoreProperties["keyAlias"] as String
+      keyPassword = keystoreProperties["password"] as String
+      storeFile = file(keystoreProperties["storeFile"] as String)
+      storePassword = keystoreProperties["password"] as String
     }
   }
 
   buildTypes {
     getByName("debug") {
+      applicationIdSuffix = ".debug"
       manifestPlaceholders["usesCleartextTraffic"] = "true"
       isDebuggable = true
       isJniDebuggable = true
@@ -113,7 +126,7 @@ android {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
-  kotlinOptions { jvmTarget = "17" }
+  kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
   buildFeatures { buildConfig = true }
 }
 
