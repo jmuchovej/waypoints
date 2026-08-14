@@ -8,16 +8,9 @@
 //! - **Otherwise**: only the crates a change can break — the changed crate and
 //!   everything in-tree that depends on it.
 //!
-//! nextest resolves both closures itself, so this only names the roots. The
-//! whole workspace still *compiles* — a filterset bounds what runs, not what is
-//! built — which keeps feature resolution identical to a release build and is
-//! why the cost is addressed with a compilation cache rather than by narrowing
-//! the build.
-//!
-//! Mapping changed *files* to crates is the part nextest cannot do, and is what
-//! this module computes. An empty plan means no Rust crate is affected — a
-//! website- or docs-only change — and the caller skips testing entirely rather
-//! than falling back to everything.
+//! nextest resolves both closures itself, so this names only the roots and
+//! maps changed *files* to the crates that own them. A filterset bounds what
+//! runs, not what is built. An empty plan means no Rust crate is affected.
 //!
 //! [nextest filterset]: https://nexte.st/docs/filtersets/
 
@@ -25,24 +18,17 @@ use anyhow::Result;
 use clap::Parser;
 use std::collections::BTreeSet;
 
-/// Crates the release artifacts are built from. Their in-tree dependencies come
-/// along via `deps()`, so this lists only the roots.
-///
-/// `Waypoints` carries no tests of its own — it is the thin Tauri shell — but
-/// naming it pulls in everything it delegates to.
-///
-/// Deliberately not `all()`. `server`, `transload`, `importer-sdk`, the importer
-/// plugins and `xtask` are maintained here but linked into nothing that ships,
-/// so a half-finished test in one of them must not block an app release. Their
-/// tests still run on any pull request that touches them.
 use crate::shell;
+
+/// Crates the release artifacts are built from; `deps()` pulls in their in-tree
+/// dependencies, so only the roots are listed.
+///
+/// Anything absent — `server`, `transload`, `importer-sdk`, the importer
+/// plugins, `xtask` — ships in nothing and so cannot gate a release.
 const RELEASE_ROOTS: [&str; 2] = ["Waypoints", "cartograph"];
 
-/// Paths that invalidate every crate, so a change to one tests the lot.
-///
-/// Deliberately narrow. `.github/` is *not* here: a workflow edit cannot change
-/// how Rust behaves, and treating it as global would test the whole workspace
-/// every time a website job is retuned.
+/// Paths that invalidate every crate. `.github/` is excluded — a workflow edit
+/// cannot change how Rust behaves.
 const GLOBAL_PATHS: [&str; 4] = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/"];
 
 #[derive(Parser)]

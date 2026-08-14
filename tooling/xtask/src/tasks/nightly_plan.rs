@@ -1,13 +1,10 @@
-//! Resolves the release tag for a Nightly workflow run.
+//! Mints the release tag for a Nightly workflow run.
 //!
-//! - **push** (a `v*-nightly.*` tag): the tag already exists, so pass it through.
-//! - **workflow_dispatch**: use the supplied tag; empty means build-only.
-//! - **schedule**: skip when nothing landed since the last nightly, otherwise
-//!   derive `v{base}-nightly.{date}` from the workspace version and create it.
+//! Today's date names the tag; the nightly tags already published decide its
+//! same-day index. Skips when `HEAD` already carries the latest tag.
 //!
-//! GitHub is reached through the REST API rather than shelled-out git, so the
-//! job needs only a shallow checkout and tag creation needs no committer
-//! identity or push credentials.
+//! Tags are read from the checkout with `git` and created through the `gh` API,
+//! so the job needs neither deep history nor a committer identity.
 
 use crate::shell;
 use anyhow::{Context, Result, bail};
