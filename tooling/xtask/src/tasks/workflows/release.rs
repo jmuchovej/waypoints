@@ -1,16 +1,11 @@
 //! Builds a channel's release workflow — one shape for all three, differing
 //! only in flavor strings, tag pattern, and whether iOS is in scope.
 
+use super::{Channel, Platform, TestSuite, WorkflowContext, WorkflowInput, helpers, jobs};
 use gh_workflow::{
-    Event, Expression, Level, Permissions, Push, Schedule, Workflow, WorkflowDispatch,
+    Event, Expression, FluentBuilder, NamedJob, Push, Schedule, Workflow, WorkflowDispatch,
 };
 use heck::ToTitleCase;
-
-use super::{
-    Channel, FluentBuilder, NamedJob, Platform, TestSuite, WorkflowContext, WorkflowInput, helpers,
-    helpers::{FORCE_NODE24, SECRETSPEC_PROVIDER},
-    jobs,
-};
 use strum::IntoEnumIterator;
 
 /// Nightly runs at 07:00 UTC (~03:00 US Eastern). `schedule` only fires on the
@@ -28,7 +23,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
         .map(|platform| {
             // A nightly that finds nothing new skips its builds, so its gates
             // skip with them.
-            jobs::test(TestSuite::Release, platform).map_job(|job| {
+            jobs::test(TestSuite::Release, platform).map(|job| {
                 job.when_some(prepare.as_ref(), |job, prepare| {
                     let expr = format!("{} == 'true'", prepare.should_build.expr());
                     job.add_needs(prepare.name().to_owned())
@@ -44,7 +39,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
     // Builds wait on the test gates; `build` wires their planner dependency.
     let builds: Vec<NamedJob> = Platform::iter()
         .map(|platform| {
-            jobs::build(channel, context, platform, prepare.as_ref()).map_job(|job| {
+            jobs::build(channel, context, platform, prepare.as_ref()).map(|job| {
                 gates
                     .iter()
                     .fold(job, |job, gate| job.add_needs(gate.clone()))
@@ -68,9 +63,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
             dispatch
         });
 
-    Workflow::new(channel.flavor().to_title_case())
-        .add_env(FORCE_NODE24)
-        .add_env(SECRETSPEC_PROVIDER)
+    helpers::named_workflow(channel.flavor().to_title_case())
         .on(Event::default()
             .workflow_dispatch(dispatch)
             .when_some(channel.tag_pattern(), |event, pattern| {
@@ -84,7 +77,6 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
         .when_some(prepare, |workflow, prepare| {
             let prepare: NamedJob = prepare.into();
             workflow
-                .permissions(Permissions::default().contents(Level::Write))
                 .concurrency(helpers::serialize("nightly"))
                 .add_job(prepare.name, prepare.job)
         })

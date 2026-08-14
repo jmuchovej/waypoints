@@ -1,8 +1,14 @@
 //! Step constructors shared across workflows. Each returns a labelled step
 //! ready to drop into a job.
 
-use super::{Artifact, Channel, FluentBuilder, JobOutput, Platform, SOPS_AGE_KEY, TestSuite};
-use gh_workflow::{Run, Step, Use};
+use super::{
+    Artifact, Channel, Platform, TestSuite,
+    helpers::{
+        GITHUB_TOKEN, SECRETSPEC_PROVIDER, SOPS_AGE_KEY_ENV, WP_BOTSWAIN_APP_ID,
+        WP_BOTSWAIN_PRIVATE_KEY,
+    },
+};
+use gh_workflow::{FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
 use indoc::indoc;
 
 /// A `uses:` reference — `{owner}/{repo}@{sha}`. Pinning to the hash rather

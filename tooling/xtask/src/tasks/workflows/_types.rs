@@ -1,12 +1,11 @@
 use derive_more::{Display, IsVariant, Unwrap};
 use gh_workflow::{
-    Event, Expression, Input, Job, Step, Workflow, WorkflowCallInput, WorkflowCallSecret,
-    WorkflowDispatch, WorkflowDispatchInput,
+    Expression, JobOutput, NamedJob, WorkflowCallInput, WorkflowCallSecret, WorkflowDispatchInput,
 };
 use indoc::indoc;
 use strum::EnumIter;
 
-/// Which suite to run.
+/// Which test suite to run.
 #[derive(Clone, Copy)]
 pub enum TestSuite {
     /// Everything the shipped artifacts are built from. Gates a release.
@@ -217,29 +216,6 @@ impl Channel {
 #[display("waypoints-{}-{}", _1.slug(), _0)]
 pub struct Artifact(pub Channel, pub Platform);
 
-/// A job plus the id it is registered under, so callers can wire `needs:`
-/// without restating the string.
-#[derive(Clone)]
-pub struct NamedJob {
-    pub name: String,
-    pub job: Job,
-}
-
-impl NamedJob {
-    pub const fn new(name: String, job: Job) -> Self {
-        Self { name, job }
-    }
-
-    /// Rebuilds the job, keeping the name — so wiring `needs:` stays fluent
-    /// without unpacking and reassembling the pair.
-    pub fn map_job(self, f: impl FnOnce(Job) -> Job) -> Self {
-        Self {
-            name: self.name,
-            job: f(self.job),
-        }
-    }
-}
-
 /// The nightly planner, together with the outputs its dependents read back.
 ///
 /// Built once and lent to the jobs that depend on it. Each output already
@@ -282,108 +258,6 @@ impl PrepareJob {
 impl From<PrepareJob> for NamedJob {
     fn from(prepare: PrepareJob) -> Self {
         prepare.job
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct StepOutput {
-    pub name: &'static str,
-    step_id: String,
-}
-
-impl StepOutput {
-    /// Asserts the step's command names the output, which only holds when the
-    /// command writes it inline. A command that publishes its own outputs — as
-    /// `cargo xtask` does — needs [`new_trusted`].
-    #[allow(dead_code, reason = "for steps that write their outputs inline")]
-    pub fn new<T>(step: &Step<T>, name: &'static str) -> Self {
-        let step_id = step
-            .value
-            .id
-            .clone()
-            .expect("Steps with outputs must have an ID");
-
-        assert!(
-            step.value
-                .run
-                .as_ref()
-                .is_none_or(|run_command| run_command.contains(name)),
-            "Step output with name '{name}' must occur at least once in run command with ID:{step_id}!"
-        );
-
-        Self { name, step_id }
-    }
-
-    pub fn new_trusted<T>(step: &Step<T>, name: &'static str) -> Self {
-        let step_id = step
-            .value
-            .id
-            .clone()
-            .expect("Steps with outputs must have an ID");
-
-        Self { name, step_id }
-    }
-
-    pub fn expr(&self) -> String {
-        format!("steps.{}.outputs.{}", self.step_id, self.name)
-    }
-
-    pub fn as_job_output(&self, job: &NamedJob) -> JobOutput {
-        JobOutput {
-            job_name: job.name.clone(),
-            name: self.name,
-        }
-    }
-
-    pub fn as_output(&self) -> (String, String) {
-        (self.name.to_owned(), self.to_string())
-    }
-}
-
-impl serde::Serialize for StepOutput {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl std::fmt::Display for StepOutput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "${{{{ {} }}}}", self.expr())
-    }
-}
-
-#[derive(Clone)]
-pub(crate) struct JobOutput {
-    pub job_name: String,
-    pub name: &'static str,
-}
-
-impl JobOutput {
-    #[allow(dead_code, reason = "for outputs not reached through a PrepareJob")]
-    pub fn new(job_name: String, name: &'static str) -> Self {
-        Self { job_name, name }
-    }
-
-    pub fn expr(&self) -> String {
-        format!("needs.{}.outputs.{}", self.job_name, self.name)
-    }
-}
-
-impl serde::Serialize for JobOutput {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl std::fmt::Display for JobOutput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "${{{{ {} }}}}", self.expr())
     }
 }
 
@@ -522,68 +396,5 @@ impl serde::Serialize for WorkflowSecret {
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl FluentBuilder for Job {}
-impl<T> FluentBuilder for Step<T> {}
-impl FluentBuilder for Input {}
-impl FluentBuilder for Event {}
-impl FluentBuilder for Workflow {}
-impl FluentBuilder for WorkflowDispatch {}
-
-/// A helper trait for building complex objects with imperative conditionals in a fluent style.
-/// Copied from GPUI to avoid adding GPUI as dependency
-/// todo(ci) just put this in gh-workflow
-#[allow(unused)]
-pub trait FluentBuilder {
-    /// Imperatively modify self with the given closure.
-    fn map<U>(self, f: impl FnOnce(Self) -> U) -> U
-    where
-        Self: Sized,
-    {
-        f(self)
-    }
-
-    /// Conditionally modify self with the given closure.
-    fn when(self, condition: bool, then: impl FnOnce(Self) -> Self) -> Self
-    where
-        Self: Sized,
-    {
-        self.map(|this| if condition { then(this) } else { this })
-    }
-
-    /// Conditionally modify self with the given closure.
-    fn when_else(
-        self,
-        condition: bool,
-        then: impl FnOnce(Self) -> Self,
-        else_fn: impl FnOnce(Self) -> Self,
-    ) -> Self
-    where
-        Self: Sized,
-    {
-        self.map(|this| if condition { then(this) } else { else_fn(this) })
-    }
-
-    /// Conditionally unwrap and modify self with the given closure, if the given option is Some.
-    fn when_some<T>(self, option: Option<T>, then: impl FnOnce(Self, T) -> Self) -> Self
-    where
-        Self: Sized,
-    {
-        self.map(|this| {
-            if let Some(value) = option {
-                then(this, value)
-            } else {
-                this
-            }
-        })
-    }
-    /// Conditionally unwrap and modify self with the given closure, if the given option is None.
-    fn when_none<T>(self, option: &Option<T>, then: impl FnOnce(Self) -> Self) -> Self
-    where
-        Self: Sized,
-    {
-        self.map(|this| if option.is_some() { this } else { then(this) })
     }
 }

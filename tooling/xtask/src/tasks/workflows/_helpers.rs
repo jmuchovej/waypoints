@@ -1,7 +1,7 @@
 //! Shared expressions, secret handles, and concurrency groups.
 //! Trigger plumbing shared by workflow modules.
 
-use gh_workflow::Concurrency;
+use gh_workflow::{Concurrency, Permissions, Workflow};
 
 macro_rules! secret {
     ($name:ident) => {
@@ -17,6 +17,11 @@ macro_rules! env {
 secret!(SOPS_AGE_KEY);
 secret!(GITHUB_TOKEN);
 env!(ANDROID_HOME);
+env!(WP_BOTSWAIN_APP_ID);
+env!(WP_BOTSWAIN_PRIVATE_KEY);
+
+/// The secretspec profile holding those credentials.
+pub const AUTOMATION_PROFILE: &str = "automation";
 
 /// Pins JavaScript actions to Node 24; the runner otherwise falls back to its
 /// own default, which they fail to start under.
@@ -43,4 +48,12 @@ pub fn serialize(group: &str) -> Concurrency {
     Concurrency::default()
         .group(group.to_owned())
         .cancel_in_progress(false)
+}
+
+pub fn named_workflow(name: impl ToString) -> Workflow {
+    Workflow::new(name)
+        // Blank, so nothing inherits by accident: every job states its own.
+        .permissions(Permissions::default())
+        .add_env(FORCE_NODE24)
+        .add_env(SECRETSPEC_PROVIDER)
 }

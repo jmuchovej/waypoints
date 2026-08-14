@@ -539,7 +539,8 @@ mod tests {
     /// resolving to an empty string.
     #[test]
     fn the_prepare_job_republishes_exactly_the_plans_fields() {
-        use crate::tasks::workflows::{NamedJob, jobs};
+        use crate::tasks::workflows::jobs;
+        use gh_workflow::NamedJob;
         use std::collections::BTreeSet;
 
         let serialized = serde_json::to_value(Plan::SKIP).unwrap();

@@ -2,9 +2,8 @@
 //! generated from — devenv's `files."..."`/`tasks."mise:lock"` outputs, and the
 //! workflows emitted by this very crate.
 
+use super::{WorkflowContext, helpers, runners, steps};
 use gh_workflow::{Event, Job, Level, Permissions, PullRequest, Push, Workflow, WorkflowDispatch};
-
-use super::{WorkflowContext, helpers::one_run_per_ref, runners, steps};
 
 /// Sources whose change can invalidate something we generate. A change to any
 /// of these has to re-run the check.
@@ -36,7 +35,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .add_step(steps::nix_profile_install(&["devenv", "just"]))
         .add_step(steps::just("check-generated").name("Check generated files"));
 
-    Workflow::new("assert generated files remain in lockstep")
+    helpers::named_workflow("assert generated files remain in lockstep")
         .on(Event::default()
             .pull_request(
                 paths
@@ -50,7 +49,6 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
                     .add_branch("main"),
             )
             .workflow_dispatch(WorkflowDispatch::default()))
-        .permissions(Permissions::default().contents(Level::Read))
-        .concurrency(one_run_per_ref("generated"))
+        .concurrency(helpers::one_run_per_ref("generated"))
         .add_job("check-generated", check_generated)
 }
