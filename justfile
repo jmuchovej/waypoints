@@ -87,3 +87,33 @@ check-generated:
       exit 1
     fi
     echo "$(echo $files) and .github/workflows are in sync with their sources."
+
+[doc("Dry-runs Renovate against the working tree. MODE is extract, lookup, or full.")]
+[script]
+renovate-plan mode="full":
+    export SECRETSPEC_REASON="just renovate-plan dry-runs Renovate over the repo's dependency manifests; no secret values are read"
+
+    case "{{ mode }}" in
+      # extract: parse manifests only, offline, seconds.
+      # lookup:  extract, then query datasources for newer versions.
+      # full:    lookup, then resolve grouping into the branches Renovate would open.
+      extract | lookup | full) ;;
+      *)
+        echo "MODE must be extract, lookup, or full (got '{{ mode }}')." >&2
+        exit 1
+        ;;
+    esac
+
+    devenv shell renovate-config-validator .github/renovate.json5
+
+    if [ -n "${GH_TOKEN:-}" ]; then
+      export GITHUB_COM_TOKEN="$GH_TOKEN"
+    elif [ "{{ mode }}" != "extract" ]; then
+      echo "note: GH_TOKEN unset — expect datasource rate-limiting." >&2
+    fi
+
+    log="${TMPDIR:-/tmp}/renovate-{{ mode }}.log"
+    devenv shell renovate --platform=local --dry-run={{ mode }} > "$log" 2>&1
+
+    sed -n '/"managers": {/,/"total"/p' "$log"
+    echo "Full output: $log"

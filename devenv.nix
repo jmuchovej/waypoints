@@ -50,6 +50,7 @@
       "npm:wrangler" = pkgs.wrangler;
       "aqua:mikefarah/yq" = pkgs.yq-go;
       "aqua:cachix/secretspec" = pkgs.secretspec;
+      "npm:renovate" = pkgs.renovate;
 
       "gem:fastlane" = pkgs.fastlane;
       "npm:@tauri-apps/cli" = pkgs.cargo-tauri;
