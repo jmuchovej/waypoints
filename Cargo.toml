@@ -13,7 +13,6 @@ members = [
   "crates/outpost-fabric",
   "crates/outpost-hold",
   "crates/outpost-protocol",
-  "crates/server",
   "crates/store",
   "tooling/xtask",
   "waypoints/src-tauri",
@@ -43,7 +42,6 @@ outpost = { path = "crates/outpost", default-features = false }
 outpost-fabric = { path = "crates/outpost-fabric" }
 outpost-hold = { path = "crates/outpost-hold" }
 outpost-protocol = { path = "crates/outpost-protocol" }
-server = { path = "crates/server" }
 store = { path = "crates/store" }
 
 anyhow = "1.0.103"

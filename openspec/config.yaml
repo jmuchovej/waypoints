@@ -18,10 +18,11 @@ context: |
     - `bedrock-core`, `bedrock-derive`, `bedrock` (typed document storage on turso)
     - `outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost` (E2EE
       local-first sync engine; the protocol crate is pure — no tokio/iroh/bedrock)
-    - `server` (dev-only HTTP transport; not a product surface)
 
   The Tauri app lives in `waypoints/` (`src-tauri` + Nuxt `app`); Tauri commands
   are thin wrappers over the crates — test the crates, not the Tauri harness.
+  (`cargo xtask dev-server` mirrors the same commands over HTTP for browser-based
+  dev — a task in `tooling/xtask`, the Rust dev-toolchain; not a product surface.)
 
   Authoritative references: the waypoints-architecture skill (data model —
   always check its "cannot yet do" section). Release sequencing and feature

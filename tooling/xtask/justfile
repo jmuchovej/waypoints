@@ -1,0 +1,7 @@
+[private]
+default:
+    @just --list
+
+# HTTP backend for browser-based app dev
+dev-server *ARGS:
+    cargo xtask dev-server {{ ARGS }}

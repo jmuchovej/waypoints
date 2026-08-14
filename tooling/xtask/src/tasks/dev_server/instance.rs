@@ -7,25 +7,21 @@
 //! caches it. So the server knows *how* Waypoints works but stays agnostic about
 //! *which* instance(s) it serves — it serves whatever flavor connects.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use axum::extract::FromRequestParts;
-use axum::http::StatusCode;
-use axum::http::request::Parts;
-use axum::response::{IntoResponse, Response};
-use tokio::sync::Mutex;
-
+use super::SettingsRegistryStore;
+use axum::{
+    extract::FromRequestParts,
+    http::{StatusCode, request::Parts},
+    response::{IntoResponse, Response},
+};
 use cartograph::WaypointsRuntime;
-
-use crate::registry::SettingsRegistryStore;
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use tokio::sync::Mutex;
 
 const FLAVOR_HEADER: &str = "x-waypoints-flavor";
 const DEFAULT_FLAVOR: &str = "so.waypoints.dev";
 
 /// Lazily-built, cached `WaypointsRuntime` per flavor identifier.
-pub struct Instances {
+pub(super) struct Instances {
     data_root: PathBuf,
     runtimes: Mutex<HashMap<String, Arc<WaypointsRuntime>>>,
 }
@@ -64,11 +60,11 @@ impl Instances {
     }
 }
 
-pub type AppState = Arc<Instances>;
+pub(super) type AppState = Arc<Instances>;
 
 /// Extractor yielding the `WaypointsRuntime` for the request's flavor
 /// (`X-Waypoints-Flavor`, defaulting to the dev flavor when absent).
-pub struct Instance(pub Arc<WaypointsRuntime>);
+pub(super) struct Instance(pub Arc<WaypointsRuntime>);
 
 impl FromRequestParts<AppState> for Instance {
     type Rejection = Response;

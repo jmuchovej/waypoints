@@ -1,6 +1,0 @@
-[private]
-default:
-    @just --list
-
-dev *ARGS:
-    cargo run --features development {{ ARGS }}

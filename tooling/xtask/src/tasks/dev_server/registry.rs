@@ -5,7 +5,7 @@
 //! settings.rs), under the same `territories` key. That file lives at the root
 //! of the flavor's app-data dir (e.g. `~/Library/Application Support/
 //! so.waypoints.dev/settings.json`). Sharing it — rather than keeping a separate
-//! registry — is what lets `waypoints-serve` see and open the territories the
+//! registry — is what lets the dev server see and open the territories the
 //! desktop app already created.
 //!
 //! Note: this is a plain read-modify-write of the JSON file. If the desktop app
@@ -13,12 +13,10 @@
 //! clobber writes from here on its next save. Fine for dev; don't run both on
 //! the same identifier concurrently.
 
-use std::path::PathBuf;
-
 use async_trait::async_trait;
-use serde_json::{Map, Value};
-
 use cartograph::{RegistryStore, TerritoryError, TerritoryRegistry, TerritoryResult};
+use serde_json::{Map, Value};
+use std::path::PathBuf;
 
 /// Key within `settings.json` holding the territory registry. Mirrors
 /// `settings::KEY_TERRITORIES` in the Tauri crate.

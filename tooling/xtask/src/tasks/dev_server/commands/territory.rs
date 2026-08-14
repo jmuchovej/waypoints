@@ -1,22 +1,17 @@
 //! Territory command handlers. Mirrors
 //! `waypoints/src-tauri/src/commands/territory.rs`.
 
+use super::{ApiError, Instance};
 use axum::Json;
+use cartograph::Territory;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use cartograph::Territory;
-
-use crate::error::ApiError;
-use crate::instance::Instance;
-
-pub async fn territory_list(Instance(rt): Instance) -> Result<Json<Vec<Territory>>, ApiError> {
+pub async fn list(Instance(rt): Instance) -> Result<Json<Vec<Territory>>, ApiError> {
     Ok(Json(rt.territory().list().await?))
 }
 
-pub async fn territory_get_active(
-    Instance(rt): Instance,
-) -> Result<Json<Option<Territory>>, ApiError> {
+pub async fn get_active(Instance(rt): Instance) -> Result<Json<Option<Territory>>, ApiError> {
     Ok(Json(rt.territory().get_active().await?))
 }
 
@@ -26,7 +21,7 @@ pub struct TerritoryCreate {
     name: String,
 }
 
-pub async fn territory_create(
+pub async fn create(
     Instance(rt): Instance,
     Json(args): Json<TerritoryCreate>,
 ) -> Result<Json<Territory>, ApiError> {
@@ -41,7 +36,7 @@ pub struct TerritoryOpen {
     name: Option<String>,
 }
 
-pub async fn territory_open(
+pub async fn open(
     Instance(rt): Instance,
     Json(args): Json<TerritoryOpen>,
 ) -> Result<Json<Territory>, ApiError> {
@@ -50,7 +45,7 @@ pub async fn territory_open(
     ))
 }
 
-pub async fn territory_close(Instance(rt): Instance) -> Result<Json<()>, ApiError> {
+pub async fn close(Instance(rt): Instance) -> Result<Json<()>, ApiError> {
     Ok(Json(rt.territory().close().await?))
 }
 
@@ -61,7 +56,7 @@ pub struct TerritoryRemove {
     delete_data: bool,
 }
 
-pub async fn territory_remove(
+pub async fn remove(
     Instance(rt): Instance,
     Json(args): Json<TerritoryRemove>,
 ) -> Result<Json<()>, ApiError> {

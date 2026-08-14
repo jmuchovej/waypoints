@@ -1,15 +1,11 @@
 //! Chart command handlers. Mirrors `waypoints/src-tauri/src/commands/chart.rs`.
 
+use super::{ApiError, Instance};
 use axum::Json;
+use domain::{Chart, ChartID, Mark};
 use serde::Deserialize;
 
-use domain::Mark;
-use domain::{Chart, ChartID};
-
-use crate::error::ApiError;
-use crate::instance::Instance;
-
-pub async fn chart_list(Instance(rt): Instance) -> Result<Json<Vec<Chart>>, ApiError> {
+pub async fn list(Instance(rt): Instance) -> Result<Json<Vec<Chart>>, ApiError> {
     Ok(Json(rt.charts().list().await?))
 }
 
@@ -19,7 +15,7 @@ pub struct ChartId {
     chart_id: ChartID,
 }
 
-pub async fn chart_get(
+pub async fn get(
     Instance(rt): Instance,
     Json(args): Json<ChartId>,
 ) -> Result<Json<Option<Chart>>, ApiError> {

@@ -1,14 +1,10 @@
 //! Mark command handlers. Mirrors `waypoints/src-tauri/src/commands/mark.rs`.
 
+use super::{ApiError, Instance};
 use axum::Json;
+use domain::{ChartID, Content, Mark, RichText};
 use serde::Deserialize;
 use uuid::Uuid;
-
-use domain::ChartID;
-use domain::{Content, Mark, RichText};
-
-use crate::error::ApiError;
-use crate::instance::Instance;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,7 +13,7 @@ pub struct MarkList {
     allowed_types: Option<Vec<ChartID>>,
 }
 
-pub async fn mark_list(
+pub async fn list(
     Instance(rt): Instance,
     Json(args): Json<MarkList>,
 ) -> Result<Json<Vec<Mark>>, ApiError> {
@@ -38,7 +34,7 @@ pub struct MarkCreate {
     after_id: Option<Uuid>,
 }
 
-pub async fn mark_create(
+pub async fn create(
     Instance(rt): Instance,
     Json(args): Json<MarkCreate>,
 ) -> Result<Json<()>, ApiError> {
@@ -62,7 +58,7 @@ pub struct MarkUpdate {
     content: Content,
 }
 
-pub async fn mark_update(
+pub async fn update(
     Instance(rt): Instance,
     Json(args): Json<MarkUpdate>,
 ) -> Result<Json<()>, ApiError> {
@@ -75,7 +71,7 @@ pub struct MarkDelete {
     id: Uuid,
 }
 
-pub async fn mark_delete(
+pub async fn delete(
     Instance(rt): Instance,
     Json(args): Json<MarkDelete>,
 ) -> Result<Json<()>, ApiError> {
@@ -90,7 +86,7 @@ pub struct MarkMove {
     after_id: Option<Uuid>,
 }
 
-pub async fn mark_move(
+pub async fn r#move(
     Instance(rt): Instance,
     Json(args): Json<MarkMove>,
 ) -> Result<Json<()>, ApiError> {
@@ -108,7 +104,7 @@ pub struct MarkUpdateTitle {
     title: RichText,
 }
 
-pub async fn mark_update_title(
+pub async fn update_title(
     Instance(rt): Instance,
     Json(args): Json<MarkUpdateTitle>,
 ) -> Result<Json<()>, ApiError> {

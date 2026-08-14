@@ -1,15 +1,11 @@
 //! Editor command handlers. Mirrors
 //! `waypoints/src-tauri/src/commands/editor.rs`.
 
+use super::{ApiError, Instance};
 use axum::Json;
-use serde::Deserialize;
-
 use cartograph::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
-use domain::FeatureID;
-use domain::{Content, Mark, MarkData, MarkID, Reading, RichText};
-
-use crate::error::ApiError;
-use crate::instance::Instance;
+use domain::{Content, FeatureID, Mark, MarkData, MarkID, Reading, RichText};
+use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,14 +13,14 @@ pub struct GetMark {
     mark_id: MarkID,
 }
 
-pub async fn editor_get_mark(
+pub async fn get_mark(
     Instance(rt): Instance,
     Json(args): Json<GetMark>,
 ) -> Result<Json<Mark>, ApiError> {
     Ok(Json(rt.editor().get_mark(args.mark_id).await?))
 }
 
-pub async fn editor_mark_list(Instance(rt): Instance) -> Result<Json<Vec<Mark>>, ApiError> {
+pub async fn list_marks(Instance(rt): Instance) -> Result<Json<Vec<Mark>>, ApiError> {
     Ok(Json(rt.editor().mark_list().await?))
 }
 
@@ -35,7 +31,7 @@ pub struct ProjectLandmark {
     max_depth: Option<u32>,
 }
 
-pub async fn editor_project_landmark(
+pub async fn project_landmark(
     Instance(rt): Instance,
     Json(args): Json<ProjectLandmark>,
 ) -> Result<Json<Vec<RenderNode>>, ApiError> {
@@ -54,7 +50,7 @@ pub struct UpdateMark {
     landmark_id: MarkID,
 }
 
-pub async fn editor_update_mark(
+pub async fn update_mark(
     Instance(rt): Instance,
     Json(args): Json<UpdateMark>,
 ) -> Result<Json<MutationResult>, ApiError> {
@@ -72,7 +68,7 @@ pub struct DeleteMark {
     landmark_id: MarkID,
 }
 
-pub async fn editor_delete_mark(
+pub async fn delete_mark(
     Instance(rt): Instance,
     Json(args): Json<DeleteMark>,
 ) -> Result<Json<MutationResult>, ApiError> {
@@ -90,7 +86,7 @@ pub struct MoveMarks {
     landmark_id: MarkID,
 }
 
-pub async fn editor_move_marks(
+pub async fn move_marks(
     Instance(rt): Instance,
     Json(args): Json<MoveMarks>,
 ) -> Result<Json<MutationResult>, ApiError> {
@@ -113,7 +109,7 @@ pub struct UpdateMarkTitle {
     title: RichText,
 }
 
-pub async fn editor_update_mark_title(
+pub async fn update_mark_title(
     Instance(rt): Instance,
     Json(args): Json<UpdateMarkTitle>,
 ) -> Result<Json<()>, ApiError> {
@@ -130,7 +126,7 @@ pub struct UpdateMarkReading {
     reading: Reading,
 }
 
-pub async fn editor_update_mark_reading(
+pub async fn update_mark_reading(
     Instance(rt): Instance,
     Json(args): Json<UpdateMarkReading>,
 ) -> Result<Json<Mark>, ApiError> {
@@ -151,7 +147,7 @@ pub struct WrapInCompound {
     landmark_id: MarkID,
 }
 
-pub async fn editor_wrap_in_compound(
+pub async fn wrap_in_compound(
     Instance(rt): Instance,
     Json(args): Json<WrapInCompound>,
 ) -> Result<Json<CreateResult>, ApiError> {
@@ -177,7 +173,7 @@ pub struct CreateMarkAfter {
     landmark_id: MarkID,
 }
 
-pub async fn editor_create_mark_after(
+pub async fn create_mark_after(
     Instance(rt): Instance,
     Json(args): Json<CreateMarkAfter>,
 ) -> Result<Json<CreateResult>, ApiError> {
@@ -196,7 +192,7 @@ pub struct UpdateMarkText {
     landmark_id: MarkID,
 }
 
-pub async fn editor_update_mark_text(
+pub async fn update_mark_text(
     Instance(rt): Instance,
     Json(args): Json<UpdateMarkText>,
 ) -> Result<Json<MutationResult>, ApiError> {
@@ -215,7 +211,7 @@ pub struct SplitMark {
     landmark_id: MarkID,
 }
 
-pub async fn editor_split_mark(
+pub async fn split_mark(
     Instance(rt): Instance,
     Json(args): Json<SplitMark>,
 ) -> Result<Json<SplitResult>, ApiError> {
@@ -234,7 +230,7 @@ pub struct MergeMarks {
     landmark_id: MarkID,
 }
 
-pub async fn editor_merge_marks(
+pub async fn merge_marks(
     Instance(rt): Instance,
     Json(args): Json<MergeMarks>,
 ) -> Result<Json<MutationResult>, ApiError> {
@@ -252,7 +248,7 @@ pub struct DeleteMarks {
     landmark_id: MarkID,
 }
 
-pub async fn editor_delete_marks(
+pub async fn delete_marks(
     Instance(rt): Instance,
     Json(args): Json<DeleteMarks>,
 ) -> Result<Json<MutationResult>, ApiError> {
@@ -272,7 +268,7 @@ pub struct ReparentMark {
     landmark_id: MarkID,
 }
 
-pub async fn editor_reparent_mark(
+pub async fn reparent_mark(
     Instance(rt): Instance,
     Json(args): Json<ReparentMark>,
 ) -> Result<Json<MutationResult>, ApiError> {
@@ -294,14 +290,14 @@ pub struct Landmark {
     landmark_id: MarkID,
 }
 
-pub async fn editor_undo(
+pub async fn undo(
     Instance(rt): Instance,
     Json(args): Json<Landmark>,
 ) -> Result<Json<Option<UndoRedoResult>>, ApiError> {
     Ok(Json(rt.editor().undo(args.landmark_id).await?))
 }
 
-pub async fn editor_redo(
+pub async fn redo(
     Instance(rt): Instance,
     Json(args): Json<Landmark>,
 ) -> Result<Json<Option<UndoRedoResult>>, ApiError> {

@@ -6,12 +6,13 @@
 //! frontend's `IPCError` carries through. Handlers just `?` and these `From`
 //! impls do the rest.
 
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use cartograph::{EditorError, MarkError, SyncError, TerritoryError};
 
-pub struct ApiError {
+pub(super) struct ApiError {
     status: StatusCode,
     message: String,
 }

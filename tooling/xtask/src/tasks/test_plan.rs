@@ -23,8 +23,8 @@ use crate::shell;
 /// Crates the release artifacts are built from; `deps()` pulls in their in-tree
 /// dependencies, so only the roots are listed.
 ///
-/// Anything absent — `server`, `transload`, `importer-sdk`, the importer
-/// plugins, `xtask` — ships in nothing and so cannot gate a release.
+/// Anything absent — `transload`, `importer-sdk`, the importer plugins,
+/// `xtask` — ships in nothing and so cannot gate a release.
 const RELEASE_ROOTS: [&str; 2] = ["Waypoints", "cartograph"];
 
 /// Paths that invalidate every crate. `.github/` is excluded — a workflow edit

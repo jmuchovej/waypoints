@@ -23,8 +23,8 @@ mod domain "crates/domain/justfile"
 # Recipes for `store`
 mod store "crates/store/justfile"
 
-# Recipes for `server`
-mod server "crates/server/justfile"
+# Recipes for `xtask` dev tooling
+mod xtask "tooling/xtask/justfile"
 
 # Recipes for the `website`
 mod website "website/justfile"
