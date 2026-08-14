@@ -5,6 +5,7 @@
 name: Nightly
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SECRETSPEC_PROVIDER: sops
 on:
   schedule:
     - cron: "0 7 * * *"

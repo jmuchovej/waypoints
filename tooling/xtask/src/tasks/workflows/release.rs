@@ -8,7 +8,8 @@ use heck::ToTitleCase;
 
 use super::{
     Channel, FluentBuilder, NamedJob, Platform, TestSuite, WorkflowContext, WorkflowInput, helpers,
-    helpers::FORCE_NODE24, jobs,
+    helpers::{FORCE_NODE24, SECRETSPEC_PROVIDER},
+    jobs,
 };
 use strum::IntoEnumIterator;
 
@@ -69,6 +70,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
 
     Workflow::new(channel.flavor().to_title_case())
         .add_env(FORCE_NODE24)
+        .add_env(SECRETSPEC_PROVIDER)
         .on(Event::default()
             .workflow_dispatch(dispatch)
             .when_some(channel.tag_pattern(), |event, pattern| {

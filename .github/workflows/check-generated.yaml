@@ -11,10 +11,10 @@ on:
       - devenv.lock
       - tooling/xtask/**
       - .github/workflows/**
+      - .config/mise.lock
+      - .config/mise.toml
+      - .config/treefmt.toml
       - .pre-commit-config.yaml
-      - mise.lock
-      - mise.toml
-      - treefmt.toml
   push:
     branches:
       - main
@@ -24,10 +24,10 @@ on:
       - devenv.lock
       - tooling/xtask/**
       - .github/workflows/**
+      - .config/mise.lock
+      - .config/mise.toml
+      - .config/treefmt.toml
       - .pre-commit-config.yaml
-      - mise.lock
-      - mise.toml
-      - treefmt.toml
   workflow_dispatch: {}
 permissions:
   contents: read

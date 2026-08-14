@@ -22,6 +22,12 @@ env!(ANDROID_HOME);
 /// own default, which they fail to start under.
 pub const FORCE_NODE24: (&str, &str) = ("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24", "true");
 
+/// Selects the sops backend for every `secretspec` call in the workflow.
+/// secretspec treats a manifest's `providers` list as an allowlist, not a
+/// selector — without this it resolves against `env://` and every sops-backed
+/// secret comes back missing.
+pub const SECRETSPEC_PROVIDER: (&str, &str) = ("SECRETSPEC_PROVIDER", "sops");
+
 /// One run per ref, cancelling any already in flight. For checks only — a
 /// cancelled release leaves published artifacts half-written.
 pub fn one_run_per_ref(prefix: &str) -> Concurrency {
