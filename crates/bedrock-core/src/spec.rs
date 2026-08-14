@@ -1,7 +1,5 @@
+use crate::{ColumnType, FieldKind};
 use serde::{Deserialize, Serialize};
-
-use crate::field::FieldKind;
-use crate::value::ColumnType;
 
 /// One field of a collection — a named slot with a storage classification.
 ///

@@ -9,10 +9,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-use cartograph::EditorError;
-use cartograph::mark::MarkError;
-use cartograph::sync::SyncError;
-use cartograph::territory::TerritoryError;
+use cartograph::{EditorError, MarkError, SyncError, TerritoryError};
 
 pub struct ApiError {
     status: StatusCode,

@@ -13,10 +13,10 @@
 use std::collections::HashMap;
 
 use bedrock::Query;
-use domain::chart::{Chart, ChartID, Feature, FeatureID};
-use domain::mark::{Mark, MarkData, MarkID};
-use domain::terrain::Terrain;
-use importer::markdown::{MarkdownImporter, WaypointsMarkdown};
+use domain::Terrain;
+use domain::{Chart, ChartID, Feature, FeatureID};
+use domain::{Mark, MarkData, MarkID};
+use importer::{MarkdownImporter, WaypointsMarkdown};
 use indexmap::IndexMap;
 use uuid::Uuid;
 

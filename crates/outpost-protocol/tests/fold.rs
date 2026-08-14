@@ -3,19 +3,19 @@
 //! promised behavior, not an incidental one.
 
 use ed25519_dalek::{Signer, SigningKey};
-use outpost_protocol::acl::{
+use outpost_protocol::{
     ACLPayload, ACLRecord, ACLReject, ACLState, InviteKey, OrderProof, Permissions, RecordBody,
     join_binding,
 };
-use outpost_protocol::crypto::{KemPublicKey, KemSecretKey};
 use outpost_protocol::{EpochID, MemberID, RecordID};
+use outpost_protocol::{KEMPublic, KEMSecret};
 
 fn key(seed: u8) -> SigningKey {
     SigningKey::from_bytes(&[seed; 32])
 }
 
-fn kem(seed: u8) -> KemPublicKey {
-    KemSecretKey::from_seed([seed; 32]).public_key()
+fn kem(seed: u8) -> KEMPublic {
+    KEMSecret::from_seed([seed; 32]).public_key()
 }
 
 fn member(signing: &SigningKey) -> MemberID {

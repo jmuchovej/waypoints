@@ -1,6 +1,4 @@
-use crate::field::{DecodeError, EncodeError, Field};
-use crate::spec::CollectionSpec;
-use crate::value::StoredValue;
+use crate::{CollectionSpec, DecodeError, EncodeError, Field, StoredValue};
 
 /// Which write is about to happen, passed to [`Collection::before_save`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

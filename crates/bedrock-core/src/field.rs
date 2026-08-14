@@ -1,10 +1,8 @@
-use core::fmt::Display;
-
+use crate::{ColumnType, StoredValue};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use core::fmt::Display;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use crate::value::{ColumnType, StoredValue};
 
 /// How a Rust type maps into bedrock storage.
 ///

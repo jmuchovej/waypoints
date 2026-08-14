@@ -1,6 +1,6 @@
-use domain::chart::ChartID;
+use domain::ChartID;
 use domain::fractional_index;
-use domain::mark::{Content, Landmark, MarkData, MarkID, RichText};
+use domain::{Content, Landmark, MarkData, MarkID, RichText};
 use rstest::fixture;
 use store::Store;
 use store::query::{mark, terrain};

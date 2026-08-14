@@ -1,13 +1,8 @@
 use super::{MarkdownImporter, ParsedBlock};
 use crate::ImportResult;
 use domain::{
-    chart::ChartID,
-    fractional_index,
-    mark::{
-        Content, InlineMark, Landmark, Mark, MarkData, MarkID, Reading, RichText, TextMarkKind,
-        TextSegment,
-    },
-    terrain::{Terrain, TerrainKind},
+    ChartID, Content, InlineMark, Landmark, Mark, MarkData, MarkID, Reading, RichText, Terrain,
+    TerrainKind, TextMarkKind, TextSegment, fractional_index,
 };
 use pulldown_cmark::{Event, HeadingLevel, MetadataBlockKind, Options, Parser, Tag, TagEnd};
 use uuid::Uuid;
@@ -103,11 +98,11 @@ fn parse_frontmatter(yaml: &str) -> Frontmatter {
         list_key: &mut Option<String>,
         list_items: &mut Vec<MarkID>,
     ) {
-        if let Some(key) = list_key.take() {
-            if !list_items.is_empty() {
-                fm.readings
-                    .push((key, Reading::References(std::mem::take(list_items))));
-            }
+        if let Some(key) = list_key.take()
+            && !list_items.is_empty()
+        {
+            fm.readings
+                .push((key, Reading::References(std::mem::take(list_items))));
         }
         list_items.clear();
     }
@@ -507,6 +502,8 @@ fn import(input: &str) -> ImportResult {
                 blocks.push(ParsedBlock::leaf(Content::code(
                     std::mem::take(&mut code_lang),
                     code_lines.split('\n').map(String::from).collect(),
+                    None,
+                    None,
                 )));
                 code_lines.clear();
                 ctx = BlockCtx::None;
@@ -530,7 +527,7 @@ fn import(input: &str) -> ImportResult {
     let doc_id = MarkID::from(doc_uuid);
 
     // The landmark mark
-    let now = domain::mark::now_ms();
+    let now = domain::now_ms();
     let landmark_mark = Mark {
         id: doc_id,
         data: MarkData::Landmark(
@@ -615,7 +612,7 @@ enum BlockCtx {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::mark::TextMarkKind;
+    use domain::TextMarkKind;
 
     #[test]
     fn basic_page_without_frontmatter() {

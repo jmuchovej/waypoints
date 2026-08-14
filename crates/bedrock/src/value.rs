@@ -1,6 +1,7 @@
-use bedrock_core::{CollectionSpec, ColumnType, FieldKind, StoredValue};
-
-use crate::error::BedrockError;
+use crate::{
+    BedrockError,
+    core::{CollectionSpec, ColumnType, FieldKind, StoredValue},
+};
 
 /// Bind a row of stored values into turso parameters, in `spec.fields` order,
 /// rejecting sub-millisecond temporals first.

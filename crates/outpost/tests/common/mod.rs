@@ -7,26 +7,24 @@
 //! each record chains correctly and rotations land at the right epoch. It
 //! is deterministic (seeded RNG) so the sealed boxes are reproducible.
 
-#![allow(dead_code)] // each integration test uses a different subset.
+#![allow(dead_code, reason = "each integration test uses a different subset")]
 
 use ed25519_dalek::{Signer, SigningKey};
-use outpost::protocol::acl::{
-    ACLPayload, ACLRecord, ACLState, InviteKey, Permissions, RecordBody, join_binding,
+use outpost::protocol::{
+    ACLPayload, ACLRecord, ACLState, EpochID, InviteKey, KEMSecret, MemberID, Permissions, ReadKey,
+    RecordBody, RecordID, join_binding, seal_key_to_member, wrap_prev_key,
 };
-use outpost::protocol::crypto::{KemSecretKey, ReadKey, seal_key_to_member, wrap_prev_key};
-use outpost::protocol::{EpochID, MemberID, RecordID};
-use rand::SeedableRng;
-use rand::rngs::StdRng;
+use rand::{SeedableRng, rngs::StdRng};
 
 /// A member's deterministic identity + KEM keypair, addressed by a seed.
 pub fn signing(seed: u8) -> SigningKey {
     SigningKey::from_bytes(&[seed; 32])
 }
 
-pub fn kem(seed: u8) -> KemSecretKey {
+pub fn kem(seed: u8) -> KEMSecret {
     // KEM seed kept distinct from the signing seed so the two key spaces
     // never accidentally coincide in a test.
-    KemSecretKey::from_seed([seed.wrapping_add(0x80); 32])
+    KEMSecret::from_seed([seed.wrapping_add(0x80); 32])
 }
 
 pub fn member_id(seed: u8) -> MemberID {

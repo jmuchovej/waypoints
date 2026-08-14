@@ -1,7 +1,4 @@
-use domain::DomainError;
-use domain::chart::{ChartID, FeatureID, GlyphID};
-use domain::mark::MarkID;
-use domain::terrain::TerrainID;
+use domain::{ChartID, DomainError, FeatureID, GlyphID, MarkID, TerrainID};
 use thiserror::Error;
 
 pub type StoreResult<T> = ::std::result::Result<T, StoreError>;

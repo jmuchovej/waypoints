@@ -1,7 +1,7 @@
 mod fixtures;
 
+use domain::MarkID;
 use domain::fractional_index;
-use domain::mark::MarkID;
 use fixtures::*;
 use rstest::rstest;
 use store::Store;
@@ -26,8 +26,8 @@ async fn insert_and_get_child_edges(#[future] db: Store) {
 
     let edges = terrain::get_child_edges(&db, parent).await.unwrap();
     assert_eq!(edges.len(), 1);
-    assert_eq!(edges[0].src_id, parent.into());
-    assert_eq!(edges[0].dst_id, child.into());
+    assert_eq!(edges[0].src_id, parent);
+    assert_eq!(edges[0].dst_id, child);
 }
 
 #[rstest]
@@ -48,7 +48,7 @@ async fn find_parent_edge(#[future] db: Store) {
 
     let edge = terrain::find_parent_edge(&db, child).await.unwrap();
     assert!(edge.is_some());
-    assert_eq!(edge.unwrap().src_id, parent.into());
+    assert_eq!(edge.unwrap().src_id, parent);
 }
 
 #[rstest]
@@ -89,7 +89,7 @@ async fn child_edges_ordered_by_fractional_index(#[future] db: Store) {
     let edges = terrain::get_child_edges(&db, parent).await.unwrap();
     assert_eq!(edges.len(), 3);
     for (edge, expected_child) in edges.iter().zip(children.iter()) {
-        assert_eq!(edge.dst_id, (*expected_child).into());
+        assert_eq!(edge.dst_id, (*expected_child));
     }
 }
 
@@ -171,7 +171,7 @@ async fn reparent_to_new_parent(#[future] db: Store) {
 
     let new_edges = terrain::get_child_edges(&db, new_parent).await.unwrap();
     assert_eq!(new_edges.len(), 1);
-    assert_eq!(new_edges[0].dst_id, child.into());
+    assert_eq!(new_edges[0].dst_id, child);
 }
 
 #[rstest]
@@ -202,7 +202,7 @@ async fn reparent_preserves_extra_metadata(#[future] db: Store) {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(edge.src_id, new_parent.into());
+    assert_eq!(edge.src_id, new_parent);
     assert_eq!(edge.order.as_deref(), Some("m000"));
 }
 
@@ -246,7 +246,7 @@ async fn multi_mark_reorder_noncontiguous(#[future] db: Store) {
     let expected = [m[0], m[3], m[6], m[7], m[1], m[2], m[4], m[5], m[8]];
     assert_eq!(order.len(), 9);
     for (got, want) in order.iter().zip(expected.iter()) {
-        assert_eq!(*got, (*want).into(), "order mismatch");
+        assert_eq!(*got, (*want), "order mismatch");
     }
 }
 
@@ -285,17 +285,17 @@ async fn reparent_marks_into_container(#[future] db: Store) {
     let page_edges = terrain::get_child_edges(&db, parent).await.unwrap();
     let page_order: Vec<MarkID> = page_edges.iter().map(|e| e.dst_id).collect();
     assert_eq!(page_order.len(), 4);
-    assert_eq!(page_order[0], m[0].into());
-    assert_eq!(page_order[1], bq.into());
-    assert_eq!(page_order[2], m[3].into());
-    assert_eq!(page_order[3], m[4].into());
+    assert_eq!(page_order[0], m[0]);
+    assert_eq!(page_order[1], bq);
+    assert_eq!(page_order[2], m[3]);
+    assert_eq!(page_order[3], m[4]);
 
     // Blockquote children should be: M2, M3 in order
     let bq_edges = terrain::get_child_edges(&db, bq).await.unwrap();
     let bq_order: Vec<MarkID> = bq_edges.iter().map(|e| e.dst_id).collect();
     assert_eq!(bq_order.len(), 2);
-    assert_eq!(bq_order[0], m[1].into());
-    assert_eq!(bq_order[1], m[2].into());
+    assert_eq!(bq_order[0], m[1]);
+    assert_eq!(bq_order[1], m[2]);
 }
 
 /// Same as above but with a non-contiguous selection: move {M2, M4} into
@@ -327,17 +327,17 @@ async fn reparent_noncontiguous_into_container(#[future] db: Store) {
     let page_edges = terrain::get_child_edges(&db, parent).await.unwrap();
     let page_order: Vec<MarkID> = page_edges.iter().map(|e| e.dst_id).collect();
     assert_eq!(page_order.len(), 4);
-    assert_eq!(page_order[0], m[0].into());
-    assert_eq!(page_order[1], m[2].into());
-    assert_eq!(page_order[2], m[4].into());
-    assert_eq!(page_order[3], bq.into());
+    assert_eq!(page_order[0], m[0]);
+    assert_eq!(page_order[1], m[2]);
+    assert_eq!(page_order[2], m[4]);
+    assert_eq!(page_order[3], bq);
 
     // BQ: M2, M4
     let bq_edges = terrain::get_child_edges(&db, bq).await.unwrap();
     let bq_order: Vec<MarkID> = bq_edges.iter().map(|e| e.dst_id).collect();
     assert_eq!(bq_order.len(), 2);
-    assert_eq!(bq_order[0], m[1].into());
-    assert_eq!(bq_order[1], m[3].into());
+    assert_eq!(bq_order[0], m[1]);
+    assert_eq!(bq_order[1], m[3]);
 }
 
 // ---------------------------------------------------------------------------
@@ -346,18 +346,21 @@ async fn reparent_noncontiguous_into_container(#[future] db: Store) {
 
 #[ignore = "requires block type conversion (not yet implemented in store layer)"]
 #[tokio::test]
+#[warn(clippy::todo)]
 async fn convert_paragraph_to_heading() {
     todo!("convert a paragraph mark to heading1 — update data, preserve edges and order")
 }
 
 #[ignore = "requires block type conversion (not yet implemented in store layer)"]
 #[tokio::test]
+#[warn(clippy::todo)]
 async fn convert_paragraphs_to_list_items() {
     todo!("select multiple paragraphs, convert all to list items in a single operation")
 }
 
 #[ignore = "requires unwrap-container operation"]
 #[tokio::test]
+#[warn(clippy::todo)]
 async fn unwrap_container_promotes_children() {
     todo!("delete a blockquote, reparent its children back to the grandparent in-place")
 }
@@ -367,8 +370,8 @@ async fn unwrap_container_promotes_children() {
 // ---------------------------------------------------------------------------
 
 use bedrock::{Filter, Query};
-use domain::chart::{ChartID, FeatureID};
-use domain::terrain::{Terrain, TerrainKind};
+use domain::{ChartID, FeatureID};
+use domain::{Terrain, TerrainKind};
 use std::str::FromStr;
 
 /// Insert a terrain edge of arbitrary kind via bedrock — tests only.
@@ -380,7 +383,7 @@ async fn insert_edge_raw(
     kind: TerrainKind,
     order: Option<&str>,
 ) {
-    use domain::terrain::TerrainID;
+    use domain::TerrainID;
     let terrain = Terrain {
         id: TerrainID::new(),
         src_id: src,
@@ -607,7 +610,7 @@ async fn schema_allows_duplicate_child_edges_for_future_block_embeds(#[future] d
 
 // ── Multigraph by-ID helpers (sync v1, #129) ────────────────────────────
 
-use domain::terrain::TerrainID;
+use domain::TerrainID;
 
 /// `insert_edge` must store the caller-provided `TerrainID` exactly — sync
 /// requires the same edge identity on every device.

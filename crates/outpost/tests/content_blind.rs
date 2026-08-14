@@ -19,23 +19,20 @@
 //! with review they restore most of what the old crate boundary gave.
 
 use ed25519_dalek::{Signer, SigningKey};
-use outpost::protocol::acl::{ACLPayload, ACLRecord, RecordBody};
-use outpost::protocol::crypto::{
-    KemSecretKey, ReadKey, open_payload, open_sealed_key, seal_key_to_member,
+use outpost::{
+    protocol::{
+        ACLPayload, ACLRecord, EpochID, KEMSecret, NoticeID, ReadKey, RecordBody, open_payload,
+        open_sealed_key, seal_key_to_member,
+    },
+    replica::Replica,
+    vessel::Vessel,
 };
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::replica::Replica;
-use outpost::vessel::Vessel;
 use rand::SeedableRng;
 
 /// A single-member Territory whose Root ACL record carries a **real** sealed
 /// box: the epoch-0 read key sealed to `member`'s KEM key. This is
 /// what a member unseals to read; it is also what a Station provably cannot.
-fn sealed_root(
-    member: &SigningKey,
-    member_kem: &KemSecretKey,
-    sealed_key: &[u8],
-) -> Vec<ACLRecord> {
+fn sealed_root(member: &SigningKey, member_kem: &KEMSecret, sealed_key: &[u8]) -> Vec<ACLRecord> {
     let root = RecordBody {
         prev: None,
         author: member.verifying_key(),
@@ -58,7 +55,7 @@ async fn station_holds_ciphertext_but_cannot_obtain_the_key() {
 
     // The Territory's owner (also our authoring member) and their KEM key.
     let member = SigningKey::from_bytes(&[2; 32]);
-    let member_kem = KemSecretKey::from_seed([2; 32]);
+    let member_kem = KEMSecret::from_seed([2; 32]);
 
     // The Root ACL record seals epoch-0 to the member — a real X-Wing box.
     let sealed_box = seal_key_to_member(&mut rng, &member_kem.public_key(), &read_key).unwrap();
@@ -69,7 +66,7 @@ async fn station_holds_ciphertext_but_cannot_obtain_the_key() {
     // authors an encrypted Notice, and it reaches the Station's store.
     let vessel = Vessel::new(
         member.clone(),
-        KemSecretKey::from_seed([2; 32]),
+        KEMSecret::from_seed([2; 32]),
         Replica::bootstrap(":memory:", &acl).await.unwrap(),
     )
     .await
@@ -100,7 +97,7 @@ async fn station_holds_ciphertext_but_cannot_obtain_the_key() {
     // 2. Hand a Station the same sealed box: it FAILS. A Station is not a
     //    member, so its (identity-derived) KEM secret is not the one the box
     //    was sealed to — it can never obtain the key. This is the crux.
-    let station_kem = KemSecretKey::from_seed([200; 32]);
+    let station_kem = KEMSecret::from_seed([200; 32]);
     assert!(
         open_sealed_key(&station_kem, &sealed_box).is_err(),
         "a Station cannot unseal a read key sealed to a member"

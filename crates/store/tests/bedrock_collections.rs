@@ -5,11 +5,7 @@
 //! against a live turso engine — no string-only assertions.
 
 use chrono::{NaiveDate, NaiveDateTime};
-use domain::{
-    Terrain, TerrainKind,
-    mark::{Content, Mark, MarkData, MarkID},
-    terrain::TerrainID,
-};
+use domain::{Content, Mark, MarkData, MarkID, Terrain, TerrainID, TerrainKind};
 use store::Store;
 use tempfile::tempdir;
 
@@ -100,7 +96,7 @@ async fn builtin_charts_are_seeded_on_open() {
 
     // 9 builtin charts: page, objective, note, person, campaign, meeting,
     // bookmark, journal, book.
-    let count = db.count::<domain::chart::Chart>().await.expect("count");
+    let count = db.count::<domain::Chart>().await.expect("count");
     assert_eq!(count, 9, "expected exactly 9 builtin charts, got {count}");
 }
 
@@ -112,7 +108,7 @@ async fn chart_domain_roundtrip() {
     // Fetch the page chart (always seeded).
     let page_id = store::builtin::page::type_id();
     let chart = db
-        .get::<domain::chart::Chart>(&page_id)
+        .get::<domain::Chart>(&page_id)
         .await
         .expect("get")
         .expect("page chart must be seeded");
@@ -129,7 +125,7 @@ async fn seed_is_idempotent() {
     // Run seed again — should not error or duplicate rows.
     store::collections::seed::run(db).await.expect("re-seed");
 
-    let count = db.count::<domain::chart::Chart>().await.expect("count");
+    let count = db.count::<domain::Chart>().await.expect("count");
     assert_eq!(count, 9);
 }
 
@@ -197,7 +193,7 @@ async fn terrain_insert_get_roundtrip() {
 
 #[tokio::test]
 async fn terrain_reading_kind_roundtrips() {
-    use domain::chart::FeatureID;
+    use domain::FeatureID;
     use std::str::FromStr;
 
     let (store, _dir) = open_store().await;

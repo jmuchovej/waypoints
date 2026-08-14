@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use async_trait::async_trait;
 use serde_json::{Map, Value};
 
-use cartograph::territory::{RegistryStore, TerritoryError, TerritoryRegistry, TerritoryResult};
+use cartograph::{RegistryStore, TerritoryError, TerritoryRegistry, TerritoryResult};
 
 /// Key within `settings.json` holding the territory registry. Mirrors
 /// `settings::KEY_TERRITORIES` in the Tauri crate.

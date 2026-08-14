@@ -1,6 +1,5 @@
+use crate::{TerritoryError, TerritoryRegistry};
 use async_trait::async_trait;
-
-use super::{TerritoryError, TerritoryRegistry};
 
 #[async_trait]
 pub trait RegistryStore: Send + Sync {

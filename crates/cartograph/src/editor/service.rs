@@ -1,14 +1,11 @@
+use crate::{
+    CommandHistory, CreateResult, Database, EditorError, EditorResult, MutationResult, RenderNode,
+    SplitResult, UndoRedoResult,
+    editor::{mutation, projection},
+};
+use domain::{Content, Mark, MarkData, MarkID, RichText};
 use std::collections::HashMap;
-
-use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
 use store::Store;
-
-use super::error::{EditorError, EditorResult};
-use super::history::CommandHistory;
-use super::types::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
-use super::{mutation, projection};
-
-use crate::Database;
 
 /// The editor service holds a shared store handle and per-landmark undo
 /// histories.
@@ -119,8 +116,8 @@ impl EditorService {
     pub async fn update_mark_reading(
         &self,
         id: MarkID,
-        feature_id: domain::chart::FeatureID,
-        reading: domain::mark::Reading,
+        feature_id: domain::FeatureID,
+        reading: domain::Reading,
     ) -> EditorResult<Mark> {
         let db = self.db().await?;
         mutation::update_mark_reading(&db, id, feature_id, reading).await

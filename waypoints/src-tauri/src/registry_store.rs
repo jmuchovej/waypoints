@@ -1,10 +1,8 @@
+use crate::settings;
 use async_trait::async_trait;
+use cartograph::{RegistryStore, TerritoryError, TerritoryRegistry, TerritoryResult};
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
-
-use cartograph::territory::{RegistryStore, TerritoryError, TerritoryRegistry, TerritoryResult};
-
-use crate::settings;
 
 pub(crate) struct TauriRegistryStore {
     app: AppHandle,

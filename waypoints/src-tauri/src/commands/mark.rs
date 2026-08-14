@@ -1,12 +1,8 @@
+use cartograph::{MarkResult, WaypointsRuntime};
+use domain::{ChartID, Content, Mark, RichText};
 use std::sync::Arc;
-
-use domain::chart::ChartID;
-use domain::mark::{Content, Mark, RichText};
 use tauri::State;
 use uuid::Uuid;
-
-use cartograph::WaypointsRuntime;
-use cartograph::mark::MarkResult;
 
 #[tauri::command]
 pub async fn mark_list(

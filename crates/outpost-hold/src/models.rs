@@ -18,7 +18,7 @@ pub struct RecordKey(pub [u8; 32]);
 /// and never trusted for a security decision.
 #[derive(Debug, Clone, PartialEq, Collection)]
 #[bedrock(index("track", "topo"))]
-pub struct NoticeRow {
+pub struct Notices {
     #[bedrock(id)]
     pub id: NoticeKey,
     /// Track root's NoticeID — the Track this Notice belongs to.
@@ -42,7 +42,7 @@ pub struct NoticeRow {
 /// One stored ACL record, in log order. `position` is the orderer-assigned
 /// index; the fold replays them in that order.
 #[derive(Debug, Clone, PartialEq, Collection)]
-pub struct AclRow {
+pub struct ACLs {
     #[bedrock(id)]
     pub id: RecordKey,
     #[bedrock(index)]
@@ -58,7 +58,7 @@ pub struct AclRow {
 /// `parent` arrives (`Pending`). Keyed by the missing parent so the
 /// arrival of a Notice can look up who was waiting on it.
 #[derive(Debug, Clone, PartialEq, Collection)]
-pub struct PendingRow {
+pub struct Backlog {
     #[bedrock(id)]
     pub id: NoticeKey,
     /// The still-missing parent this child waits on.

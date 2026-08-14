@@ -5,9 +5,9 @@
 
 mod fixtures;
 
-use domain::chart::{ChartID, FeatureID};
-use domain::mark::mark_data::MathEngine;
-use domain::mark::{
+use domain::MathEngine;
+use domain::{ChartID, FeatureID};
+use domain::{
     Content, InlineMark, Landmark, MarkData, Reading, RichText, TextMarkKind, TextSegment,
 };
 use fixtures::*;
@@ -24,7 +24,7 @@ use store::query::mark;
 #[case::heading1(heading("Title"))]
 #[case::blockquote(MarkData::Content(Content::blockquote()))]
 #[case::divider(MarkData::Content(Content::divider()))]
-#[case::code_block(MarkData::Content(Content::code("rust".to_string(), vec!["fn main() {}".to_string()])))]
+#[case::code_block(MarkData::Content(Content::code("rust".to_string(), vec!["fn main() {}".to_string()], None, None)))]
 #[case::callout(MarkData::Content(Content::callout("💡".to_string())))]
 #[case::table(MarkData::Content(Content::Table {
     cells: vec![
@@ -131,7 +131,7 @@ fn landmark_with_readings_roundtrip() {
 #[rstest]
 #[case::paragraph(paragraph("database roundtrip"))]
 #[case::heading(heading("DB Title"))]
-#[case::code(MarkData::Content(Content::code("python".to_string(), vec!["def greet():".to_string(), "    print('hello')".to_string()])))]
+#[case::code(MarkData::Content(Content::code("python".to_string(), vec!["def greet():".to_string(), "    print('hello')".to_string()], None, None)))]
 #[case::landmark(landmark("page", "Persisted Page"))]
 #[case::inline_marks(MarkData::Content(Content::paragraph(RichText::new(vec![
     TextSegment {

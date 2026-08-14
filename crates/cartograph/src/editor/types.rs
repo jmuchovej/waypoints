@@ -1,4 +1,4 @@
-use domain::mark::{MarkData, MarkID};
+use domain::{MarkData, MarkID};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 

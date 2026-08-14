@@ -3,8 +3,8 @@
 use axum::Json;
 use serde::Deserialize;
 
-use domain::chart::{Chart, ChartID};
-use domain::mark::Mark;
+use domain::Mark;
+use domain::{Chart, ChartID};
 
 use crate::error::ApiError;
 use crate::instance::Instance;

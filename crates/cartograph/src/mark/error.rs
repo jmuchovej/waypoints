@@ -1,6 +1,4 @@
 use serde::Serialize;
-use uuid::Uuid;
-
 use specta::{
     Type, Types,
     datatype::{DataType, Primitive},
@@ -13,9 +11,9 @@ pub enum MarkError {
     #[error("no active territory")]
     NoActiveTerritory,
     #[error("mark not found: {0}")]
-    NotFound(Uuid),
+    NotFound(uuid::Uuid),
     #[error("not a landmark: {0}")]
-    NotLandmark(Uuid),
+    NotLandmark(uuid::Uuid),
     #[error("invalid timestamp: {0}")]
     InvalidTimestamp(String),
     #[error("serialization error: {0}")]

@@ -8,8 +8,7 @@
 //! Classification only routes; it never trusts. Real validation stays with
 //! `outpost::vessel::PairingPayload::decode` and the BIP-39 parse.
 
-use base64::Engine as _;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde::{Deserialize, Serialize};
 
 /// Where a setup code should be routed.
@@ -167,7 +166,8 @@ pub fn qr_svg_liquid(content: &str) -> Result<String, super::SyncError> {
                 // without it the fillet would bridge two blobs that only
                 // touch at a point.)
                 // (corner point, arc start, arc end) per corner.
-                let corners: [((f32, f32), (f32, f32), (f32, f32), bool); 4] = [
+                type Corner = (f32, f32);
+                let corners: [(Corner, Corner, Corner, bool); 4] = [
                     // NW corner: needs W, N, NW filled.
                     (
                         (fx, fy),
@@ -318,7 +318,7 @@ mod tests {
         );
 
         let gray = image::GrayImage::from_fn(side, side, |x, y| {
-            image::Luma([pixmap.pixel(x, y).map_or(255, |p| p.red())])
+            image::Luma([pixmap.pixel(x, y).map(|p| p.red()).unwrap_or(255)])
         });
         let mut prepared = rqrr::PreparedImage::prepare(gray);
         let grids = prepared.detect_grids();

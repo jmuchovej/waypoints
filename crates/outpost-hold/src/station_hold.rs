@@ -8,12 +8,12 @@
 //! (`connected`) is deliberately *not* persisted — it is runtime truth,
 //! rebuilt `false` on load.
 
+use crate::{
+    HoldError,
+    protocol::{DeviceSighting, MemberID, TerritoryID},
+};
 use bedrock::{Collection, Database, Scalar};
 use ed25519_dalek::VerifyingKey;
-use outpost_protocol::sync::DeviceSighting;
-use outpost_protocol::{MemberID, TerritoryID};
-
-use crate::error::HoldError;
 
 /// The sighting's synthetic 32-byte primary key:
 /// `BLAKE3(territory ‖ member ‖ device)` — one row per certified device per
@@ -43,7 +43,7 @@ pub struct SightingRow {
     #[bedrock(index)]
     pub territory: [u8; 32],
     pub identity: [u8; 32],
-    /// Postcard-encoded [`DeviceCert`](outpost_protocol::auth::DeviceCert).
+    /// Postcard-encoded [`DeviceCert`](outpost_protocol::DeviceCert).
     pub cert: Vec<u8>,
     pub first_seen: i64,
     pub last_seen: i64,

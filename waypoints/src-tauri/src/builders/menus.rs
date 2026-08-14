@@ -1,3 +1,7 @@
+#[cfg(debug_assertions)]
+use cartograph::WaypointsRuntime;
+#[cfg(debug_assertions)]
+use std::sync::Arc;
 use tauri::{
     App, AppHandle, Emitter, Manager, Runtime, async_runtime,
     menu::{
@@ -5,20 +9,9 @@ use tauri::{
         SubmenuBuilder,
     },
 };
-
+#[cfg(debug_assertions)]
+use tauri::{image::Image, menu::IconMenuItemBuilder};
 use tauri_plugin_updater::UpdaterExt;
-
-// Every use of these is inside a `#[cfg(debug_assertions)]` block — the
-// Developer submenu and the debug-only half of the View menu. Split out of the
-// group above because `cfg` cannot be applied to individual items within a
-// braced `use`.
-#[cfg(debug_assertions)]
-use std::sync::Arc;
-#[cfg(debug_assertions)]
-use {
-    cartograph::WaypointsRuntime,
-    tauri::{image::Image, menu::IconMenuItemBuilder},
-};
 
 type SetupResult<T> = Result<T, Box<dyn std::error::Error>>;
 type SubMenuResult<R> = SetupResult<Submenu<R>>;
@@ -175,10 +168,10 @@ fn setup_edit<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
 fn setup_file<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     let handle = app_handle.clone();
     app_handle.on_menu_event(move |_app, event: MenuEvent| {
-        if event.id().0.as_str() == "new" {
-            if let Some(window) = handle.get_webview_window("main") {
-                let _ = window.emit("app:mark:new", ());
-            }
+        if event.id().0.as_str() == "new"
+            && let Some(window) = handle.get_webview_window("main")
+        {
+            let _ = window.emit("app:mark:new", ());
         }
     });
 
@@ -236,8 +229,8 @@ fn setup_developer<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     let builder = SubmenuBuilder::new(app_handle, "Developer");
     let handle = app_handle.clone();
 
-    app_handle.on_menu_event(move |_app, event: MenuEvent| match event.id().0.as_str() {
-        "reset-database" => {
+    app_handle.on_menu_event(move |_app, event: MenuEvent| {
+        if event.id().0.as_str() == "reset-database" {
             let handle = handle.clone();
             async_runtime::spawn(async move {
                 let rt = handle.state::<Arc<WaypointsRuntime>>();
@@ -252,7 +245,6 @@ fn setup_developer<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
                 }
             });
         }
-        _ => {}
     });
 
     let builder = builder.item(

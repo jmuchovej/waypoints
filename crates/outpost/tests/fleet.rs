@@ -4,19 +4,16 @@
 //! identity handshake proves which identity is behind the device.
 
 use ed25519_dalek::SigningKey;
-use outpost::protocol::identity::KeyRoot;
-use outpost::replica::Replica;
-use outpost::station::Station;
-use outpost::station::fleet::{FleetId, RosterBody, StationEntry, StationRoles};
-use outpost::vessel::Vessel;
+use outpost::{
+    fabric::fleet::{FleetId, RosterBody, StationEntry, StationRoles},
+    protocol::KeyRoot,
+    replica::Replica,
+    station::Station,
+    vessel::Vessel,
+};
 use rand::SeedableRng;
 
-fn identity(
-    seed: u8,
-) -> (
-    outpost::protocol::identity::Identity,
-    outpost::protocol::identity::DeviceKey,
-) {
+fn identity(seed: u8) -> (outpost::protocol::Identity, outpost::protocol::DeviceKey) {
     let root = KeyRoot::from_seed([seed; 64]);
     (root.identity(), root.device(0))
 }
@@ -25,7 +22,7 @@ fn identity(
 fn fleet_config(
     fleet_key: &SigningKey,
     station_key: ed25519_dalek::VerifyingKey,
-) -> outpost::station::fleet::FleetConfig {
+) -> outpost::fabric::fleet::FleetConfig {
     RosterBody {
         fleet: FleetId(fleet_key.verifying_key()),
         revision: 1,

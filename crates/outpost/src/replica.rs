@@ -15,30 +15,32 @@
 //! mutability. The ACL log is short (membership changes are rare), so
 //! refolding it per ingest is cheap.
 
-use std::collections::HashSet;
-use std::sync::atomic::{AtomicI64, Ordering};
-
+use crate::{
+    fabric::SyncPeer,
+    hold::{ACLIndex, NoticeIndex, TerritoryHold},
+    protocol::{
+        ACLRecord, NoticeID, OrderProof, OrderedRecord, RecordID, SignedNotice, TallyDigest,
+        TerritoryID, TrackID, Validated, validate,
+    },
+};
 use ed25519_dalek::VerifyingKey;
-use outpost_fabric::SyncPeer;
-use outpost_hold::{AclIndex, HoldError, NoticeIndex};
+use std::{
+    collections::HashSet,
+    sync::atomic::{AtomicI64, Ordering},
+};
 
-/// Re-exported so an embedding app can open an existing hold and hand it to
-/// [`Replica::reopen`] without depending on `outpost-hold` directly.
-pub use outpost_hold::TerritoryHold;
-use outpost_protocol::acl::{ACLRecord, ACLReject, OrderProof, OrderedRecord};
-use outpost_protocol::sync::TallyDigest;
-use outpost_protocol::{NoticeID, RecordID, SignedNotice, TrackID, Validated, validate};
+type ReplicaResult<T> = ::std::result::Result<T, ReplicaError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReplicaError {
     #[error(transparent)]
-    Hold(#[from] HoldError),
+    Hold(#[from] crate::hold::HoldError),
     #[error(transparent)]
-    Wire(#[from] outpost_protocol::WireError),
+    Wire(#[from] crate::protocol::WireError),
     #[error("acl log is empty — the Territory has no root record yet")]
-    NoAcl,
+    NoACL,
     #[error("acl record rejected by the fold: {0}")]
-    Acl(#[from] ACLReject),
+    ACL(#[from] crate::protocol::ACLReject),
 }
 
 /// A Territory replica: the hold and the topo cursor. ACL and head state are
@@ -57,7 +59,7 @@ impl Replica {
     /// Open a Territory from a bootstrap ACL log (in order), unfleeted —
     /// order proofs are not verified. The log must be non-empty; a Territory
     /// is defined by its root ACL record.
-    pub async fn bootstrap(path: &str, acl_log: &[ACLRecord]) -> Result<Self, ReplicaError> {
+    pub async fn bootstrap(path: &str, acl_log: &[ACLRecord]) -> ReplicaResult<Self> {
         Self::bootstrap_inner(path, acl_log, None).await
     }
 
@@ -69,7 +71,7 @@ impl Replica {
         path: &str,
         acl_log: &[ACLRecord],
         fleet_key: VerifyingKey,
-    ) -> Result<Self, ReplicaError> {
+    ) -> ReplicaResult<Self> {
         Self::bootstrap_inner(path, acl_log, Some(fleet_key)).await
     }
 
@@ -77,7 +79,7 @@ impl Replica {
         path: &str,
         acl_log: &[ACLRecord],
         fleet_key: Option<VerifyingKey>,
-    ) -> Result<Self, ReplicaError> {
+    ) -> ReplicaResult<Self> {
         let hold = TerritoryHold::open(path).await?;
         for (position, record) in acl_log.iter().enumerate() {
             hold.append_acl(record, position as u64, None).await?;
@@ -86,17 +88,17 @@ impl Replica {
     }
 
     /// Reopen a Replica over an already-populated hold (unfleeted).
-    pub async fn reopen(hold: TerritoryHold) -> Result<Self, ReplicaError> {
+    pub async fn reopen(hold: TerritoryHold) -> ReplicaResult<Self> {
         Self::reopen_inner(hold, None).await
     }
 
     async fn reopen_inner(
         hold: TerritoryHold,
         fleet_key: Option<VerifyingKey>,
-    ) -> Result<Self, ReplicaError> {
+    ) -> ReplicaResult<Self> {
         // A Territory must have a root; fail fast if the hold is empty.
         if hold.acl_index().await?.head().is_none() {
-            return Err(ReplicaError::NoAcl);
+            return Err(ReplicaError::NoACL);
         }
         let next_topo = AtomicI64::new(hold.max_topo().await? + 1);
         Ok(Self {
@@ -107,24 +109,24 @@ impl Replica {
     }
 
     /// The current head of the ACL log — what a locally-authored Notice pins.
-    pub async fn acl_head(&self) -> Result<RecordID, ReplicaError> {
-        self.acl_index().await?.head().ok_or(ReplicaError::NoAcl)
+    pub async fn acl_head(&self) -> ReplicaResult<RecordID> {
+        self.acl_index().await?.head().ok_or(ReplicaError::NoACL)
     }
 
     /// This replica's Territory id — the hash of its root ACL record,
     /// read off the folded state.
-    pub async fn territory_id(&self) -> Result<outpost_protocol::TerritoryID, ReplicaError> {
+    pub async fn territory_id(&self) -> ReplicaResult<TerritoryID> {
         Ok(self
             .acl_index()
             .await?
             .head_state()
-            .ok_or(ReplicaError::NoAcl)?
+            .ok_or(ReplicaError::NoACL)?
             .territory)
     }
 
     /// The folded ACL state, materialized from the hold. Fresh each
     /// call, so it always reflects the latest synced records.
-    pub async fn acl_index(&self) -> Result<AclIndex, ReplicaError> {
+    pub async fn acl_index(&self) -> ReplicaResult<ACLIndex> {
         Ok(self.hold.acl_index().await?)
     }
 
@@ -141,13 +143,13 @@ impl Replica {
 
     /// How many ACL records this replica holds — a peer's position in the
     /// linear log.
-    pub async fn acl_len(&self) -> Result<u64, ReplicaError> {
+    pub async fn acl_len(&self) -> ReplicaResult<u64> {
         Ok(self.hold.acl_records().await?.len() as u64)
     }
 
     /// The ordered ACL records at or after log position `from` — the suffix a
     /// peer that is behind needs, each carrying its order proof.
-    pub async fn acl_suffix(&self, from: u64) -> Result<Vec<OrderedRecord>, ReplicaError> {
+    pub async fn acl_suffix(&self, from: u64) -> ReplicaResult<Vec<OrderedRecord>> {
         Ok(self
             .hold
             .ordered_records()
@@ -162,9 +164,9 @@ impl Replica {
     /// then folded (chaining + authority) before it is persisted. A record
     /// that fails either check stops ingestion — the linear log cannot skip a
     /// gap. Already-held records are skipped, so re-delivery is idempotent.
-    pub async fn ingest_ordered(&self, incoming: Vec<OrderedRecord>) -> Result<(), ReplicaError> {
+    pub async fn ingest_ordered(&self, incoming: Vec<OrderedRecord>) -> ReplicaResult<()> {
         let existing = self.hold.acl_records().await?;
-        let mut fold = AclIndex::from_ordered(&existing)?;
+        let mut fold = ACLIndex::from_ordered(&existing)?;
         let mut known: HashSet<RecordID> = existing
             .iter()
             .map(RecordID::of)
@@ -200,7 +202,7 @@ impl Replica {
     /// unfleeted path, e.g. handing records directly between vessels in a
     /// test. Wraps each as an unproven [`OrderedRecord`]; on a fleeted
     /// Replica these would be rejected, which is the point.
-    pub async fn ingest_acl(&self, incoming: Vec<ACLRecord>) -> Result<(), ReplicaError> {
+    pub async fn ingest_acl(&self, incoming: Vec<ACLRecord>) -> ReplicaResult<()> {
         let ordered = incoming
             .into_iter()
             .map(|record| OrderedRecord {
@@ -221,9 +223,9 @@ impl Replica {
         &self,
         record: &ACLRecord,
         proof: Option<&OrderProof>,
-    ) -> Result<RecordID, ReplicaError> {
+    ) -> ReplicaResult<RecordID> {
         let existing = self.hold.acl_records().await?;
-        let mut fold = AclIndex::from_ordered(&existing)?;
+        let mut fold = ACLIndex::from_ordered(&existing)?;
         fold.push(record)?; // chaining + authority; surfaces the reject
         let position = existing.len() as u64;
         self.hold.append_acl(record, position, proof).await?;
@@ -239,9 +241,9 @@ impl Replica {
         &self,
         fleet_signing: &ed25519_dalek::SigningKey,
         record: &ACLRecord,
-    ) -> Result<Option<OrderProof>, ReplicaError> {
+    ) -> ReplicaResult<Option<OrderProof>> {
         let existing = self.hold.acl_records().await?;
-        let mut fold = AclIndex::from_ordered(&existing)?;
+        let mut fold = ACLIndex::from_ordered(&existing)?;
         if fold.push(record).is_err() {
             return Ok(None); // does not chain / unauthorized
         }
@@ -256,7 +258,7 @@ impl Replica {
     /// ready ones, and retry the pending (orphan-queued) ones until no
     /// further progress. Duplicates are skipped, so re-delivery is
     /// idempotent. Rejected Notices are dropped (terminal, non-gossiped).
-    pub async fn ingest(&self, incoming: Vec<SignedNotice>) -> Result<(), ReplicaError> {
+    pub async fn ingest(&self, incoming: Vec<SignedNotice>) -> ReplicaResult<()> {
         let acl = self.hold.acl_index().await?;
         let mut queue = incoming;
         loop {

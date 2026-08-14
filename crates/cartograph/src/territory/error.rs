@@ -1,12 +1,11 @@
 use serde::Serialize;
-use uuid::Uuid;
 
 pub type TerritoryResult<T> = ::std::result::Result<T, TerritoryError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TerritoryError {
     #[error("territory not found: {0}")]
-    NotFound(Uuid),
+    NotFound(uuid::Uuid),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("store error: {0}")]

@@ -1,7 +1,7 @@
-pub mod markdown;
+pub(crate) mod markdown;
+pub use markdown::{MarkdownImporter, WaypointsMarkdown};
 
-use domain::mark::{Mark, Reading};
-use domain::terrain::Terrain;
+use domain::{Mark, Reading, Terrain};
 
 /// The result of importing a document into Waypoints' domain model.
 #[derive(Debug, Clone)]

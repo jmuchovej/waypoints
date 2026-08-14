@@ -4,20 +4,18 @@
 //! duplex pipe, no network. The iroh loopback test (`loopback.rs`) runs the
 //! same flow over real QUIC.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Mutex;
-
 use async_trait::async_trait;
 use ed25519_dalek::{Signer, SigningKey};
 use outpost_fabric::{SyncPeer, initiate, serve};
-use outpost_hold::{AclIndex, NoticeIndex, TerritoryHold};
-use outpost_protocol::acl::{
-    ACLPayload, ACLRecord, InviteKey, OrderedRecord, Permissions, RecordBody, join_binding,
-};
-use outpost_protocol::crypto::KemSecretKey;
-use outpost_protocol::sync::TallyDigest;
+use outpost_hold::{ACLIndex, NoticeIndex, TerritoryHold};
 use outpost_protocol::{
-    Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, RecordID, SignedNotice, TrackID,
+    ACLPayload, ACLRecord, Envelope, EnvelopeHeader, EpochID, InviteKey, KEMSecret, MemberID,
+    NoticeID, OrderedRecord, Permissions, RecordBody, RecordID, SignedNotice, TallyDigest, TrackID,
+    join_binding,
+};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Mutex,
 };
 use tokio::io::split;
 
@@ -25,7 +23,7 @@ use tokio::io::split;
 // slice 7, here as a test double so fabric depends on hold only in tests.
 struct HoldPeer {
     hold: TerritoryHold,
-    acl: AclIndex,
+    acl: ACLIndex,
     acl_head: RecordID,
     next_topo: Mutex<i64>,
 }
@@ -206,14 +204,14 @@ fn shared_acl() -> (Vec<ACLRecord>, SigningKey) {
         .unwrap()
     };
     let mut records = Vec::new();
-    let mut fold = AclIndex::new();
+    let mut fold = ACLIndex::new();
 
     let root = sign(
         &owner,
         None,
         ACLPayload::Root {
             territory_seed: [0xA5; 32],
-            owner_kem: KemSecretKey::from_seed([1; 32]).public_key(),
+            owner_kem: KEMSecret::from_seed([1; 32]).public_key(),
             epoch0_key_wrapped: vec![0xEE; 8],
         },
     );
@@ -233,7 +231,7 @@ fn shared_acl() -> (Vec<ACLRecord>, SigningKey) {
     fold.push(&inv).unwrap();
     records.push(inv);
 
-    let writer_kem = KemSecretKey::from_seed([2; 32]).public_key();
+    let writer_kem = KEMSecret::from_seed([2; 32]).public_key();
     let proof = invite_secret.sign(&join_binding(&invite, &writer.verifying_key(), &writer_kem));
     let join = sign(
         &writer,

@@ -14,10 +14,7 @@
 //!   [`NoticeID::SELF`] sentinel: a content address cannot literally
 //!   contain itself.
 
-use crate::acl::{ACLReject, ACLState};
-use crate::envelope::{Envelope, SignedNotice};
-use crate::error::WireError;
-use crate::id::{NoticeID, RecordID};
+use crate::{ACLReject, ACLState, Envelope, NoticeID, RecordID, SignedNotice, WireError};
 
 impl NoticeID {
     /// Sentinel meaning "this Notice itself" in `snapshot_base`, used by

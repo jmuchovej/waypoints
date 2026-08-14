@@ -1,11 +1,10 @@
+use crate::{EditorError, EditorResult, RenderNode};
+use domain::{Content, Mark, MarkData, MarkID, RichText, TextMarkKind};
 use std::collections::{HashMap, HashSet};
-
-use domain::mark::{Content, Mark, MarkData, MarkID, RichText, TextMarkKind};
-use store::Store;
-use store::query::{mark, terrain};
-
-use super::error::{EditorError, EditorResult};
-use super::types::RenderNode;
+use store::{
+    Store,
+    query::{mark, terrain},
+};
 
 const MAX_DEPTH: u32 = 20;
 
@@ -130,10 +129,10 @@ async fn hydrate_mentions(db: &Store, nodes: &mut [RenderNode]) -> EditorResult<
         for rt in collect_rich_texts(&node.data) {
             for seg in rt.segments() {
                 for m in &seg.marks {
-                    if m.kind == TextMarkKind::Mention {
-                        if let Some(uuid) = mention_id(&m.data) {
-                            ids.insert(uuid);
-                        }
+                    if m.kind == TextMarkKind::Mention
+                        && let Some(uuid) = mention_id(&m.data)
+                    {
+                        ids.insert(uuid);
                     }
                 }
             }
@@ -180,7 +179,7 @@ async fn hydrate_mentions(db: &Store, nodes: &mut [RenderNode]) -> EditorResult<
 
                         // Hydrate data: { id, mark }.
                         let mark_json =
-                            serde_json::to_value(&referenced).unwrap_or(serde_json::Value::Null);
+                            serde_json::to_value(referenced).unwrap_or(serde_json::Value::Null);
                         m.data = Some(serde_json::json!({
                             "id": uuid.to_string(),
                             "mark": mark_json,

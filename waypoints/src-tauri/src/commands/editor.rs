@@ -1,7 +1,5 @@
+use domain::{Content, FeatureID, Mark, MarkData, MarkID, Reading, RichText};
 use std::sync::Arc;
-
-use domain::chart::FeatureID;
-use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
 use tauri::State;
 
 use cartograph::{

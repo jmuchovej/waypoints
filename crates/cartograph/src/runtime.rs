@@ -1,14 +1,9 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-
+use crate::{
+    ChartHandle, EditorHandle, MarkHandle, RegistryStore, SyncService, TerritoryHandle,
+    TerritoryResult, editor::EditorService, territory::TerritoryManager,
+};
+use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
-
-use crate::editor::{EditorHandle, EditorService};
-
-use crate::chart::ChartHandle;
-use crate::mark::MarkHandle;
-use crate::sync::SyncService;
-use crate::territory::{RegistryStore, TerritoryHandle, TerritoryManager, TerritoryResult};
 
 pub struct WaypointsRuntime {
     manager: TerritoryManager,

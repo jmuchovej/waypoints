@@ -1,21 +1,13 @@
-use specta::Types;
-use specta_typescript::Typescript;
+#![allow(clippy::disallowed_macros)]
 
 use domain::{
-    Color, Icon, IconNamespace,
-    chart::{
-        Chart, ChartID, DateGranularity, Feature, FeatureID, FeatureKind, GlyphID,
-        feature_kind::{SelectGroup, SelectOption},
-        ids::Base36ID,
-    },
-    mark::{
-        Content, InlineMark, Landmark, Mark, MarkData, MarkID, Reading, ReferenceDisplayMode,
-        RichReference, RichText, TextMarkKind, TextSegment,
-        mark_data::{MathEngine, Size},
-    },
-    sync::{AccountID, DeviceID, HLC, OpID, RealmID},
-    terrain::{Terrain, TerrainKind},
+    AccountID, Base36ID, Chart, ChartID, Color, Content, DateGranularity, DeviceID, Feature,
+    FeatureID, FeatureKind, GlyphID, HLC, Icon, IconNamespace, InlineMark, Landmark, Mark,
+    MarkData, MarkID, MathEngine, OpID, Reading, RealmID, ReferenceDisplayMode, RichReference,
+    RichText, SelectGroup, SelectOption, Size, Terrain, TerrainKind, TextMarkKind, TextSegment,
 };
+use specta::Types;
+use specta_typescript::Typescript;
 
 fn main() {
     let mut collection = Types::default();

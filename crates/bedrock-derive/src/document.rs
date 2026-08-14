@@ -1,8 +1,7 @@
+use crate::attr;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::DeriveInput;
-
-use crate::attr;
 
 /// A document is stored as a `jsonb` blob, round-tripped through serde. The type
 /// is assumed to be `Serialize` + `Deserialize`; if it is not, the generated

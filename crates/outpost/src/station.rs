@@ -10,11 +10,11 @@
 //! with two Station-only duties: the per-Fleet **orderer**, which
 //! assigns ACL records a total order and countersigns the position with the
 //! fleet key, and the **serve loop**, which accepts inbound sessions and
-//! drives [`serve`](outpost_fabric::serve).
+//! drives [`serve`](crate::fabric::serve).
 //!
 //! One Station homes **many** Territories: all Stations in a Fleet
 //! replicate all its Territories (`Everything`). Territories are learned
-//! over the wire — a Vessel [`Register`](outpost_protocol::sync::SyncMessage::Register)s
+//! over the wire — a Vessel [`Register`](crate::protocol::SyncMessage::Register)s
 //! one, presenting its root ACL record, and the Station bootstraps a fresh
 //! per-Territory hold from it under its storage directory. A Station opened
 //! with a storage directory ([`hosting`](Self::hosting)) persists that set as
@@ -25,37 +25,40 @@
 //! What a Station does not do — originate edits, hold read keys, materialize
 //! a library — is the Vessel's or nobody's.
 
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use crate::replica::{Replica, ReplicaError};
+use crate::{
+    fabric::{Endpoint, Session, SyncPeer, read_frame, serve_gated, write_frame},
+    hold::{ACLIndex, StationHold, TerritoryHold},
+    protocol::{
+        ACLRecord, DeviceCert, DeviceSighting, MemberID, NoticeID, OrderedRecord, Permissions,
+        SignedNotice, SyncMessage, TallyDigest, TerritoryID, TrackID,
+    },
+    replica::Replica,
+};
 use async_trait::async_trait;
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use outpost_fabric::{
-    Endpoint, Session, SyncPeer, TransportError, read_frame, serve_gated, write_frame,
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::{SystemTime, UNIX_EPOCH},
 };
-use outpost_hold::{AclIndex, StationHold, TerritoryHold};
-use outpost_protocol::acl::{ACLRecord, OrderedRecord, Permissions};
-use outpost_protocol::auth::DeviceCert;
-use outpost_protocol::sync::{DeviceSighting, SyncMessage, TallyDigest};
-use outpost_protocol::{MemberID, NoticeID, SignedNotice, TerritoryID, TrackID};
 use tokio::sync::broadcast;
 
-pub use outpost_fabric::fleet;
+type StationResult<T> = ::std::result::Result<T, StationError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StationError {
     #[error(transparent)]
-    Transport(#[from] TransportError),
+    Transport(#[from] crate::fabric::TransportError),
     #[error(transparent)]
-    Replica(#[from] ReplicaError),
+    Replica(#[from] crate::replica::ReplicaError),
     #[error(transparent)]
-    Hold(#[from] outpost_hold::HoldError),
+    Hold(#[from] crate::hold::HoldError),
     #[error(transparent)]
-    Wire(#[from] outpost_protocol::WireError),
+    Wire(#[from] crate::protocol::WireError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error("station storage path is not valid utf-8")]
@@ -80,7 +83,7 @@ pub struct Station {
     /// The Territories this Station homes, keyed by id. Populated by the
     /// storage scan at startup and grown by [`Register`] over the wire.
     ///
-    /// [`Register`]: outpost_protocol::sync::SyncMessage::Register
+    /// [`Register`]: crate::protocol::SyncMessage::Register
     territories: Mutex<BTreeMap<TerritoryID, Arc<Replica>>>,
     /// Device sightings: per Territory, which certified devices of which
     /// identities have touched it, and when. Attribution the Station already
@@ -90,8 +93,8 @@ pub struct Station {
     /// from `hold` at start and writes sightings through, so a restart does
     /// not forget a dormant device.
     ///
-    /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
-    /// [`DevicesRequest`]: outpost_protocol::sync::SyncMessage::DevicesRequest
+    /// [`Hello`]: crate::protocol::SyncMessage::Hello
+    /// [`DevicesRequest`]: crate::protocol::SyncMessage::DevicesRequest
     sightings: Mutex<BTreeMap<TerritoryID, Sightings>>,
     /// The Station's own database (`station.db` in the storage dir): persisted
     /// sightings + registrations, so a restart does not make a dormant device
@@ -119,7 +122,8 @@ struct BusEvent {
 #[derive(Clone)]
 enum BusPush {
     Notices(Vec<SignedNotice>),
-    Acl(Vec<OrderedRecord>),
+    #[allow(clippy::upper_case_acronyms)]
+    ACL(Vec<OrderedRecord>),
 }
 
 /// Who may home a **new** Territory on this Station.
@@ -151,7 +155,7 @@ pub enum SyncPolicy {
     /// reconcile — a joiner approved in this very session passes, a stranger
     /// stops with the ACL and never sees envelopes or ciphertext.
     ///
-    /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
+    /// [`Hello`]: crate::protocol::SyncMessage::Hello
     #[default]
     Members,
     /// Anyone may pull ciphertext + envelopes (metadata is visible to any
@@ -167,7 +171,7 @@ type Sightings = BTreeMap<(MemberID, [u8; 32]), DeviceSighting>;
 /// handshake: the identity key and the cert binding the connection's
 /// device key to it.
 ///
-/// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
+/// [`Hello`]: crate::protocol::SyncMessage::Hello
 #[derive(Clone)]
 struct Caller {
     identity: VerifyingKey,
@@ -179,7 +183,7 @@ impl Station {
     /// seeded with a single `replica` — it serves that one Territory and
     /// accepts no new registrations. For tests and single-Territory embeds;
     /// a self-host Station uses [`hosting`](Self::hosting).
-    pub async fn new(secret: &SigningKey, replica: Replica) -> Result<Self, StationError> {
+    pub async fn new(secret: &SigningKey, replica: Replica) -> StationResult<Self> {
         Self::build(secret, None, None, vec![replica]).await
     }
 
@@ -189,7 +193,7 @@ impl Station {
         secret: &SigningKey,
         fleet_key: SigningKey,
         replica: Replica,
-    ) -> Result<Self, StationError> {
+    ) -> StationResult<Self> {
         Self::build(secret, Some(fleet_key), None, vec![replica]).await
     }
 
@@ -197,8 +201,8 @@ impl Station {
     /// directory): it reloads the holds already there and accepts new
     /// [`Register`] requests, bootstrapping a fresh hold per Territory.
     ///
-    /// [`Register`]: outpost_protocol::sync::SyncMessage::Register
-    pub async fn hosting(secret: &SigningKey, storage: &Path) -> Result<Self, StationError> {
+    /// [`Register`]: crate::protocol::SyncMessage::Register
+    pub async fn hosting(secret: &SigningKey, storage: &Path) -> StationResult<Self> {
         Self::build(secret, None, Some(storage.to_owned()), Vec::new()).await
     }
 
@@ -207,7 +211,7 @@ impl Station {
         secret: &SigningKey,
         fleet_key: SigningKey,
         storage: &Path,
-    ) -> Result<Self, StationError> {
+    ) -> StationResult<Self> {
         Self::build(
             secret,
             Some(fleet_key),
@@ -222,7 +226,7 @@ impl Station {
         fleet_key: Option<SigningKey>,
         storage: Option<PathBuf>,
         seed: Vec<Replica>,
-    ) -> Result<Self, StationError> {
+    ) -> StationResult<Self> {
         let endpoint = Endpoint::bind_identity(secret).await?;
         let mut territories = BTreeMap::new();
         let mut hold = None;
@@ -282,7 +286,7 @@ impl Station {
     /// Load a Replica for every Territory hold already in `dir` (restart
     /// path). Holds are named `<territory-hex>.db`; files that do not parse as
     /// a Territory id are skipped, so an unrelated file is harmless.
-    async fn scan_holds(dir: &Path) -> Result<Vec<Replica>, StationError> {
+    async fn scan_holds(dir: &Path) -> StationResult<Vec<Replica>> {
         let mut out = Vec::new();
         for entry in std::fs::read_dir(dir)? {
             let path = entry?.path();
@@ -346,7 +350,7 @@ impl Station {
         territory: TerritoryID,
         acl: Vec<OrderedRecord>,
         caller: Option<&Caller>,
-    ) -> Result<bool, StationError> {
+    ) -> StationResult<bool> {
         if self.serves(&territory) {
             return Ok(true);
         }
@@ -359,7 +363,7 @@ impl Station {
         // Fold the presented log — a log that does not chain or exceeds its
         // authors' authority is refused before any policy question.
         let records: Vec<ACLRecord> = acl.iter().map(|o| o.record.clone()).collect();
-        let Ok(fold) = AclIndex::from_ordered(&records) else {
+        let Ok(fold) = ACLIndex::from_ordered(&records) else {
             return Ok(false);
         };
         // Who may home a new Territory here: the fold is
@@ -432,8 +436,8 @@ impl Station {
     /// device sightings. Sequential — a live subscription occupies it; use
     /// [`serve_loop`](Self::serve_loop) to serve sessions concurrently.
     ///
-    /// [`Hello`]: outpost_protocol::sync::SyncMessage::Hello
-    pub async fn serve_once(&self) -> Result<(), StationError> {
+    /// [`Hello`]: crate::protocol::SyncMessage::Hello
+    pub async fn serve_once(&self) -> StationResult<()> {
         let Some(session) = self.endpoint.accept().await? else {
             return Ok(());
         };
@@ -444,7 +448,7 @@ impl Station {
     /// task — the production serve shape (a live subscription must not block
     /// the next caller). Returns when [`accept`](Endpoint::accept) yields
     /// `None`.
-    pub async fn serve_loop(self: &Arc<Self>) -> Result<(), StationError> {
+    pub async fn serve_loop(self: &Arc<Self>) -> StationResult<()> {
         loop {
             let Some(session) = self.endpoint.accept().await? else {
                 return Ok(());
@@ -458,7 +462,7 @@ impl Station {
         }
     }
 
-    async fn handle(&self, mut session: Session) -> Result<(), StationError> {
+    async fn handle(&self, mut session: Session) -> StationResult<()> {
         let first = read_frame::<SyncMessage>(&mut session.recv).await;
 
         // Optional handshake: verify the cert binds the connection's device
@@ -496,7 +500,7 @@ impl Station {
 
     async fn dispatch(
         &self,
-        request: Result<SyncMessage, outpost_fabric::FrameError>,
+        request: Result<SyncMessage, crate::fabric::FrameError>,
         caller: Option<&Caller>,
         session_id: u64,
         session: &mut Session,
@@ -584,7 +588,7 @@ impl Station {
                     };
                     let _ = self.bus_for(&territory).send(BusEvent {
                         source: session_id,
-                        push: BusPush::Acl(vec![ordered]),
+                        push: BusPush::ACL(vec![ordered]),
                     });
                 }
                 let _ = write_frame(&mut session.send, &SyncMessage::OrderResponse { proof }).await;
@@ -771,7 +775,7 @@ impl Station {
                             push: BusPush::Notices(notices),
                         });
                     }
-                    Ok(SyncMessage::AclPush { records }) => {
+                    Ok(SyncMessage::ACLPush { records }) => {
                         if records.is_empty() {
                             continue;
                         }
@@ -781,7 +785,7 @@ impl Station {
                         }
                         let _ = bus.send(BusEvent {
                             source: session_id,
-                            push: BusPush::Acl(records),
+                            push: BusPush::ACL(records),
                         });
                     }
                     Ok(_) => {} // unknown live frame: ignore
@@ -794,7 +798,7 @@ impl Station {
                         }
                         let frame = match event.push {
                             BusPush::Notices(notices) => SyncMessage::NoticePush { notices },
-                            BusPush::Acl(records) => SyncMessage::AclPush { records },
+                            BusPush::ACL(records) => SyncMessage::ACLPush { records },
                         };
                         if write_frame(&mut session.send, &frame).await.is_err() {
                             break;
@@ -870,7 +874,7 @@ impl SyncPeer for PublishingPeer {
         SyncPeer::ingest_ordered_acl(&*self.replica, records.clone()).await;
         let _ = self.bus.send(BusEvent {
             source: self.source,
-            push: BusPush::Acl(records),
+            push: BusPush::ACL(records),
         });
     }
 }

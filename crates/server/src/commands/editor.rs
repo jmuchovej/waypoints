@@ -5,8 +5,8 @@ use axum::Json;
 use serde::Deserialize;
 
 use cartograph::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
-use domain::chart::FeatureID;
-use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
+use domain::FeatureID;
+use domain::{Content, Mark, MarkData, MarkID, Reading, RichText};
 
 use crate::error::ApiError;
 use crate::instance::Instance;

@@ -19,16 +19,16 @@
 //! and orphan-queues as needed — live pushes over an open session are
 //! identical.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::future::Future;
-
+use crate::{
+    framing::{FrameError, read_frame, write_frame},
+    protocol::{NoticeID, OrderedRecord, SignedNotice, SyncMessage, TallyDigest, TrackID, wanted},
+};
 use async_trait::async_trait;
-use outpost_protocol::acl::OrderedRecord;
-use outpost_protocol::sync::{SyncMessage, TallyDigest, wanted};
-use outpost_protocol::{NoticeID, SignedNotice, TrackID};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    future::Future,
+};
 use tokio::io::{AsyncRead, AsyncWrite};
-
-use crate::framing::{FrameError, read_frame, write_frame};
 
 /// A peer's replicated state, as a session needs to see it. The role crates
 /// implement this over a [`TerritoryHold`](outpost_hold::TerritoryHold); the
@@ -78,9 +78,9 @@ where
     // ACL phase first: the Notice validator needs the ACL heads Notices
     // pin, so reconcile the linear ACL log before the DAG.
     let my_acl_len = peer.acl_len().await;
-    write_frame(send, &SyncMessage::AclRequest { len: my_acl_len }).await?;
+    write_frame(send, &SyncMessage::ACLRequest { len: my_acl_len }).await?;
     let (acl_records, responder_acl_len) = match read_frame::<SyncMessage>(recv).await? {
-        SyncMessage::AclResponse { records, len } => (records, len),
+        SyncMessage::ACLResponse { records, len } => (records, len),
         _ => {
             return Err(SessionError::Unexpected {
                 expected: "acl-response",
@@ -94,7 +94,7 @@ where
     } else {
         Vec::new()
     };
-    write_frame(send, &SyncMessage::AclPush { records: push_acl }).await?;
+    write_frame(send, &SyncMessage::ACLPush { records: push_acl }).await?;
 
     // 1. Announce our state.
     write_frame(send, &SyncMessage::TallyRequest(peer.digest().await)).await?;
@@ -173,7 +173,7 @@ where
     Fut: Future<Output = bool> + Send,
 {
     let init_acl_len = match read_frame::<SyncMessage>(recv).await? {
-        SyncMessage::AclRequest { len } => len,
+        SyncMessage::ACLRequest { len } => len,
         _ => {
             return Err(SessionError::Unexpected {
                 expected: "acl-request",
@@ -226,14 +226,14 @@ where
     };
     write_frame(
         send,
-        &SyncMessage::AclResponse {
+        &SyncMessage::ACLResponse {
             records,
             len: my_acl_len,
         },
     )
     .await?;
     match read_frame::<SyncMessage>(recv).await? {
-        SyncMessage::AclPush { records } => peer.ingest_ordered_acl(records).await,
+        SyncMessage::ACLPush { records } => peer.ingest_ordered_acl(records).await,
         _ => {
             return Err(SessionError::Unexpected {
                 expected: "acl-push",

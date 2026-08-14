@@ -50,6 +50,8 @@ pub enum Size {
     /// Auto-size based on content (and table width)
     #[default]
     Auto,
+    Min,
+    Max,
 }
 
 /// Visual theme for a content block. Applies both ink (foreground) and
@@ -127,6 +129,10 @@ pub enum Content {
     Code {
         language: String,
         lines: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        filename: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        highlights: Option<Vec<u32>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         theme: Option<BlockTheme>,
     },
@@ -228,10 +234,17 @@ impl Content {
             }),
         }
     }
-    pub fn code(language: String, lines: Vec<String>) -> Self {
+    pub fn code(
+        language: String,
+        lines: Vec<String>,
+        filename: Option<String>,
+        highlights: Option<Vec<u32>>,
+    ) -> Self {
         Self::Code {
             language,
             lines,
+            filename,
+            highlights,
             theme: None,
         }
     }
@@ -415,6 +428,8 @@ mod tests {
             Content::Code {
                 language: "rust".to_string(),
                 lines: vec!["fn main() {}".to_string()],
+                filename: None,
+                highlights: None,
                 theme: None,
             }
             .type_name(),
@@ -484,6 +499,8 @@ mod tests {
                 "    println!(\"Hello, world!\");".to_string(),
                 "}".to_string(),
             ],
+            filename: None,
+            highlights: None,
         };
 
         assert_eq!(content.type_name(), "code");
@@ -623,6 +640,8 @@ mod tests {
             Content::Code {
                 language: String::new(),
                 lines: vec![],
+                filename: None,
+                highlights: None,
                 theme: None,
             },
             Content::Table {

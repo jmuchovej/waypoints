@@ -16,11 +16,12 @@
 mod common;
 
 use common::{TerritoryBuilder, kem, signing};
-use outpost::protocol::crypto::ReadKey;
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::replica::Replica;
-use outpost::station::Station;
-use outpost::vessel::Vessel;
+use outpost::{
+    protocol::{EpochID, NoticeID, ReadKey},
+    replica::Replica,
+    station::Station,
+    vessel::Vessel,
+};
 use rand::SeedableRng;
 
 #[tokio::test]

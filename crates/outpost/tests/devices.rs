@@ -6,14 +6,14 @@
 //! Viewing is member-gated: a non-member identity that synced (being sighted
 //! needs no membership) is still refused the listing.
 
-use std::sync::Arc;
-
-use outpost::protocol::MemberID;
-use outpost::protocol::identity::KeyRoot;
-use outpost::replica::Replica;
-use outpost::station::Station;
-use outpost::vessel::Vessel;
+use outpost::{
+    protocol::{KeyRoot, MemberID},
+    replica::Replica,
+    station::Station,
+    vessel::Vessel,
+};
 use rand::SeedableRng;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn devices_are_attributed_per_identity_and_member_gated() {

@@ -1,53 +1,50 @@
-//! The Vessel role: an end-device that holds a user's
-//! keys. The Vessel is the *only* party that can **originate** edits,
-//! **decrypt** payloads, and merge — the whole reason it and a Station,
-//! which can do none of these, never implicitly trust each other even
-//! under the same user identity.
+//! The Vessel role: an end-device that holds a user's keys. The Vessel is the
+//! *only* party that can **originate** edits, **decrypt** payloads, and merge
+//! — the whole reason it and a Station, which can do none of these, never
+//! implicitly trust each other even under the same user identity.
 //!
-//! It composes the shared [`Replica`](crate::replica::Replica) (validate +
-//! store + answer sync, the half every peer runs) with Vessel-only duties:
-//! authoring Notices under the identity key, the read-key cache that unseals
-//! payloads, and dialing Stations to sync. Snapshot cadence layers on
-//! here later.
+//! It composes the shared [`Replica`] (validate + store + answer sync, the
+//! half every peer runs) with Vessel-only duties: authoring Notices under the
+//! identity key, the read-key cache that unseals payloads, and dialing Stations
+//! to sync. Snapshot cadence layers on here later.
 
-use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex as StdMutex};
-
-use crate::replica::{Replica, ReplicaError};
+use crate::{
+    fabric::{
+        Endpoint, EndpointAddr, Session, SessionError, fleet::FleetConfig, initiate, read_frame,
+        write_frame,
+    },
+    hold::ACLIndex,
+    protocol::{
+        ACLPayload, CryptoRNG, DeviceCert, DeviceKey, DeviceSighting, Envelope, EnvelopeHeader,
+        EpochID, Identity, InviteKey, KEMPublic, KEMSecret, MemberID, NoticeID, OrderProof,
+        OrderedRecord, Permissions, ReadKey, RecordBody, SignedNotice, SyncMessage, TerritoryID,
+        TrackID, join_binding, open_payload, open_sealed_key, seal_key_to_member, seal_payload,
+        unwrap_prev_key, wrap_prev_key,
+    },
+    replica::{Replica, ReplicaError},
+};
 use ed25519_dalek::{Signer, SigningKey};
-use outpost_fabric::{Endpoint, TransportError, initiate};
-use outpost_hold::AclIndex;
-use outpost_protocol::acl::{
-    ACLPayload, InviteKey, OrderedRecord, Permissions, RecordBody, join_binding,
-};
-use outpost_protocol::crypto::{
-    KemSecretKey, ReadKey, open_payload, open_sealed_key, seal_key_to_member, unwrap_prev_key,
-    wrap_prev_key,
-};
-use outpost_protocol::identity::{DeviceKey, Identity};
-use outpost_protocol::sync::SyncMessage;
-use outpost_protocol::{
-    CryptoError, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, SignedNotice, TerritoryID,
-    TrackID, WireError,
-};
 use serde::{Deserialize, Serialize};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, Mutex as StdMutex},
+};
+use tokio::sync::mpsc;
 
-pub use outpost_fabric::fleet;
-pub use outpost_protocol::acl::ACLRecord;
+pub use crate::protocol::ACLRecord;
+
+type VesselResult<T> = ::std::result::Result<T, VesselError>;
 
 /// Write a framed message to a session, mapping framing errors.
-async fn frame_write(
-    session: &mut outpost_fabric::Session,
-    msg: &SyncMessage,
-) -> Result<(), VesselError> {
-    outpost_fabric::write_frame(&mut session.send, msg)
+async fn frame_write(session: &mut Session, msg: &SyncMessage) -> VesselResult<()> {
+    write_frame(&mut session.send, msg)
         .await
         .map_err(|e| VesselError::Session(e.to_string()))
 }
 
 /// Read a framed message from a session, mapping framing errors.
-async fn frame_read(session: &mut outpost_fabric::Session) -> Result<SyncMessage, VesselError> {
-    outpost_fabric::read_frame::<SyncMessage>(&mut session.recv)
+async fn frame_read(session: &mut Session) -> VesselResult<SyncMessage> {
+    read_frame::<SyncMessage>(&mut session.recv)
         .await
         .map_err(|e| VesselError::Session(e.to_string()))
 }
@@ -55,15 +52,15 @@ async fn frame_read(session: &mut outpost_fabric::Session) -> Result<SyncMessage
 #[derive(Debug, thiserror::Error)]
 pub enum VesselError {
     #[error(transparent)]
-    Transport(#[from] TransportError),
+    Transport(#[from] crate::fabric::TransportError),
     #[error(transparent)]
-    Replica(#[from] ReplicaError),
+    Replica(#[from] crate::replica::ReplicaError),
     #[error(transparent)]
-    Hold(#[from] outpost_hold::HoldError),
+    Hold(#[from] crate::hold::HoldError),
     #[error(transparent)]
-    Wire(#[from] WireError),
+    Wire(#[from] crate::protocol::WireError),
     #[error(transparent)]
-    Crypto(#[from] CryptoError),
+    Crypto(#[from] crate::protocol::CryptoError),
     #[error("no read key cached for epoch {0}")]
     NoKey(EpochID),
     #[error("no pending join for that member — nothing to approve")]
@@ -100,14 +97,14 @@ pub enum VesselError {
 /// carries the derived device cert, [`new`](Self::new) a self-cert).
 pub struct Vessel {
     identity: SigningKey,
-    kem: Arc<KemSecretKey>,
+    kem: Arc<KEMSecret>,
     endpoint: Endpoint,
     /// Certificate binding the endpoint's device key to `identity`,
     /// presented in the connection handshake. For the low-level
     /// [`new`](Self::new) constructor this is a **self-cert** — the identity
     /// certifying its own key as the device key — so every Vessel can
     /// authenticate to an admission-gated Station.
-    cert: outpost_protocol::identity::DeviceCert,
+    cert: DeviceCert,
     /// Shared with subscription tasks (the replica is the convergence
     /// point; the cache is what auto-refresh fills) — `Arc` so a live
     /// session can ingest and refresh in the background while the app keeps
@@ -122,18 +119,15 @@ impl Vessel {
     /// is bound with the device key (the `VesselID`). Read keys the ACL log
     /// already seals to this identity are derived immediately
     /// ([`refresh_keys`](Self::refresh_keys)).
-    ///
-    /// [`Identity`]: outpost_protocol::identity::Identity
-    /// [`DeviceKey`]: outpost_protocol::identity::DeviceKey
     pub async fn from_identity(
-        identity: &outpost_protocol::identity::Identity,
-        device: &outpost_protocol::identity::DeviceKey,
+        identity: &Identity,
+        device: &DeviceKey,
         replica: Replica,
-    ) -> Result<Self, VesselError> {
+    ) -> VesselResult<Self> {
         let endpoint = Endpoint::bind_identity(&device.signing).await?;
         let mut vessel = Self {
             identity: identity.signing_key().clone(),
-            kem: Arc::new(identity.kem_secret()),
+            kem: Arc::new(identity.secret_key()),
             endpoint,
             cert: device.cert.clone(),
             replica: Arc::new(replica),
@@ -149,14 +143,9 @@ impl Vessel {
     /// identity is overkill. The handshake cert is a **self-cert** (the
     /// identity certifies its own key), so this Vessel authenticates to
     /// admission-gated Stations like any other.
-    pub async fn new(
-        identity: SigningKey,
-        kem: KemSecretKey,
-        replica: Replica,
-    ) -> Result<Self, VesselError> {
+    pub async fn new(identity: SigningKey, kem: KEMSecret, replica: Replica) -> VesselResult<Self> {
         let endpoint = Endpoint::bind_identity(&identity).await?;
-        let cert =
-            outpost_protocol::identity::DeviceCert::issue(&identity, &identity.verifying_key());
+        let cert = DeviceCert::issue(&identity, &identity.verifying_key());
         let mut vessel = Self {
             identity,
             kem: Arc::new(kem),
@@ -171,7 +160,7 @@ impl Vessel {
 
     /// The device certificate proving the endpoint key belongs to this
     /// identity — presented in the connection handshake.
-    pub fn device_cert(&self) -> &outpost_protocol::identity::DeviceCert {
+    pub fn device_cert(&self) -> &DeviceCert {
         &self.cert
     }
 
@@ -189,7 +178,7 @@ impl Vessel {
         Arc::clone(&self.replica)
     }
 
-    pub fn kem_public(&self) -> outpost_protocol::crypto::KemPublicKey {
+    pub fn kem_public(&self) -> KEMPublic {
         self.kem.public_key()
     }
 
@@ -211,7 +200,7 @@ impl Vessel {
     /// Station cannot perform (it is not a member, so no box is sealed to
     /// it). A box sealed to someone else simply fails to open — that is
     /// expected, not an error, so those failures are skipped silently.
-    pub async fn refresh_keys(&mut self) -> Result<(), VesselError> {
+    pub async fn refresh_keys(&mut self) -> VesselResult<()> {
         let me = MemberID::from(&self.identity.verifying_key());
         derive_keys(&self.replica, &self.kem, me, &self.read_keys).await
     }
@@ -227,12 +216,12 @@ impl Vessel {
     /// this. Returns the stored Notice.
     pub async fn author(
         &self,
-        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+        rng: &mut impl CryptoRNG,
         parents: Vec<NoticeID>,
         epoch: EpochID,
         payload_type: &str,
         plaintext: &[u8],
-    ) -> Result<SignedNotice, VesselError> {
+    ) -> VesselResult<SignedNotice> {
         let key = self
             .read_keys
             .lock()
@@ -257,7 +246,7 @@ impl Vessel {
             payload_type: payload_type.to_owned(),
             timestamp: 0,
         };
-        let payload = outpost_protocol::crypto::seal_payload(rng, &key, &header, plaintext)?;
+        let payload = seal_payload(rng, &key, &header, plaintext)?;
         let notice = SignedNotice::sign(&Envelope { header, payload }, &self.identity)?;
         self.replica.ingest(vec![notice.clone()]).await?;
         Ok(notice)
@@ -266,7 +255,7 @@ impl Vessel {
     /// Decrypt a stored Notice's payload with the cached read key —
     /// the Vessel-only step a Station cannot perform. The AAD binding means
     /// this fails unless every header field matches what was sealed.
-    pub fn decrypt(&self, notice: &SignedNotice) -> Result<Vec<u8>, VesselError> {
+    pub fn decrypt(&self, notice: &SignedNotice) -> VesselResult<Vec<u8>> {
         let envelope = notice.parse_and_verify()?;
         let key = self
             .read_keys
@@ -285,10 +274,7 @@ impl Vessel {
     /// was opened from a derived identity. Does not verify the Station's
     /// roster membership — use [`sync_with_fleet`](Self::sync_with_fleet) for
     /// that.
-    pub async fn sync_with(
-        &mut self,
-        station: impl Into<outpost_fabric::EndpointAddr>,
-    ) -> Result<(), VesselError> {
+    pub async fn sync_with(&mut self, station: impl Into<EndpointAddr>) -> VesselResult<()> {
         let mut session = self.endpoint.connect(station).await?;
         self.run_sync(&mut session).await
     }
@@ -299,9 +285,9 @@ impl Vessel {
     /// to sync with a Station the fleet did not vouch for.
     pub async fn sync_with_fleet(
         &mut self,
-        config: &fleet::FleetConfig,
-        station: impl Into<outpost_fabric::EndpointAddr>,
-    ) -> Result<(), VesselError> {
+        config: &FleetConfig,
+        station: impl Into<EndpointAddr>,
+    ) -> VesselResult<()> {
         let mut session = self.endpoint.connect(station).await?;
         self.check_roster(config, &session)?;
         self.run_sync(&mut session).await
@@ -315,9 +301,9 @@ impl Vessel {
     /// [`register_with_fleet`](Self::register_with_fleet) for that.
     pub async fn register(
         &self,
-        station: impl Into<outpost_fabric::EndpointAddr>,
+        station: impl Into<EndpointAddr>,
         territory: TerritoryID,
-    ) -> Result<(), VesselError> {
+    ) -> VesselResult<()> {
         let mut session = self.endpoint.connect(station).await?;
         self.do_register(&mut session, territory).await
     }
@@ -326,10 +312,10 @@ impl Vessel {
     /// the trusted `config`'s roster.
     pub async fn register_with_fleet(
         &self,
-        config: &fleet::FleetConfig,
-        station: impl Into<outpost_fabric::EndpointAddr>,
+        config: &FleetConfig,
+        station: impl Into<EndpointAddr>,
         territory: TerritoryID,
-    ) -> Result<(), VesselError> {
+    ) -> VesselResult<()> {
         let mut session = self.endpoint.connect(station).await?;
         self.check_roster(config, &session)?;
         self.do_register(&mut session, territory).await
@@ -339,11 +325,7 @@ impl Vessel {
     /// await the ack. The full log (not just the root) travels so the
     /// Station bootstraps *current* and can check the registrant's authority
     /// against the fold.
-    async fn do_register(
-        &self,
-        session: &mut outpost_fabric::Session,
-        territory: TerritoryID,
-    ) -> Result<(), VesselError> {
+    async fn do_register(&self, session: &mut Session, territory: TerritoryID) -> VesselResult<()> {
         self.send_hello(session).await?;
         let acl = self.replica.acl_suffix(0).await?;
         frame_write(session, &SyncMessage::Register { territory, acl }).await?;
@@ -361,14 +343,14 @@ impl Vessel {
     /// records received up to that point are kept and keys still refresh
     /// (they are exactly what a pending joiner came for); other session
     /// hiccups stay best-effort, repaired by the next reconcile.
-    async fn run_sync(&mut self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
+    async fn run_sync(&mut self, session: &mut Session) -> VesselResult<()> {
         self.send_hello(session).await?;
         self.open_territory(session).await?;
         let result = initiate(&*self.replica, &mut session.send, &mut session.recv).await;
         session.close();
         self.refresh_keys().await?;
         match result {
-            Err(outpost_fabric::SessionError::Refused) => Err(VesselError::SyncRefused),
+            Err(SessionError::Refused) => Err(VesselError::SyncRefused),
             _ => Ok(()),
         }
     }
@@ -387,8 +369,8 @@ impl Vessel {
     /// it. Attribution is the verified part.
     pub async fn device_sightings(
         &self,
-        station: impl Into<outpost_fabric::EndpointAddr>,
-    ) -> Result<Vec<outpost_protocol::sync::DeviceSighting>, VesselError> {
+        station: impl Into<EndpointAddr>,
+    ) -> VesselResult<Vec<DeviceSighting>> {
         let territory = self.replica.territory_id().await?;
         let mut session = self.endpoint.connect(station).await?;
         self.send_hello(&mut session).await?;
@@ -413,10 +395,7 @@ impl Vessel {
     /// it could not be reached at all. A liveness check, not a sync: the
     /// session is closed right after the ack, so the Station may log the
     /// early end of the sync flow it was ready to serve.
-    pub async fn probe(
-        &self,
-        station: impl Into<outpost_fabric::EndpointAddr>,
-    ) -> Result<bool, VesselError> {
+    pub async fn probe(&self, station: impl Into<EndpointAddr>) -> VesselResult<bool> {
         let territory = self.replica.territory_id().await?;
         let mut session = self.endpoint.connect(station).await?;
         self.send_hello(&mut session).await?;
@@ -432,10 +411,7 @@ impl Vessel {
     /// Scope the session to this Vessel's Territory and confirm the ends
     /// Station serves it — a Station that does not returns
     /// [`NotServed`](VesselError::NotServed) (register it first).
-    async fn open_territory(
-        &self,
-        session: &mut outpost_fabric::Session,
-    ) -> Result<(), VesselError> {
+    async fn open_territory(&self, session: &mut Session) -> VesselResult<()> {
         let territory = self.replica.territory_id().await?;
         frame_write(session, &SyncMessage::Open { territory }).await?;
         match frame_read(session).await? {
@@ -445,11 +421,7 @@ impl Vessel {
     }
 
     /// Verify a Station is one the fleet vouches for.
-    fn check_roster(
-        &self,
-        config: &fleet::FleetConfig,
-        session: &outpost_fabric::Session,
-    ) -> Result<(), VesselError> {
+    fn check_roster(&self, config: &FleetConfig, session: &Session) -> VesselResult<()> {
         config.verify().map_err(|_| VesselError::UntrustedStation)?;
         if config.station(&session.remote_key()).is_none() {
             return Err(VesselError::UntrustedStation);
@@ -461,7 +433,7 @@ impl Vessel {
     /// acknowledgement. Every Vessel carries a cert (a self-cert at minimum),
     /// so the handshake is unconditional — admission-gated Stations require
     /// it.
-    async fn send_hello(&self, session: &mut outpost_fabric::Session) -> Result<(), VesselError> {
+    async fn send_hello(&self, session: &mut Session) -> VesselResult<()> {
         frame_write(
             session,
             &SyncMessage::Hello {
@@ -492,18 +464,18 @@ impl Vessel {
         identity: &Identity,
         device: &DeviceKey,
         path: &str,
-        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
-    ) -> Result<Self, VesselError> {
+        rng: &mut impl CryptoRNG,
+    ) -> VesselResult<Self> {
         let mut territory_seed = [0u8; 32];
         rng.fill_bytes(&mut territory_seed);
         let epoch0 = ReadKey::generate(rng);
-        let sealed = seal_key_to_member(rng, &identity.kem_public(), &epoch0)?;
+        let sealed = seal_key_to_member(rng, &identity.public_key(), &epoch0)?;
         let root = RecordBody {
             prev: None,
             author: identity.verifying_key(),
             payload: ACLPayload::Root {
                 territory_seed,
-                owner_kem: identity.kem_public(),
+                owner_kem: identity.public_key(),
                 epoch0_key_wrapped: sealed,
             },
         }
@@ -513,14 +485,14 @@ impl Vessel {
     }
 
     /// This Vessel's Territory id (hash of the root ACL record).
-    pub async fn territory_id(&self) -> Result<TerritoryID, VesselError> {
+    pub async fn territory_id(&self) -> VesselResult<TerritoryID> {
         let acl = self.replica.acl_index().await?;
-        Ok(acl.head_state().ok_or(ReplicaError::NoAcl)?.territory)
+        Ok(acl.head_state().ok_or(ReplicaError::NoACL)?.territory)
     }
 
     /// Build an ACL record authored by this identity, chained on the current
     /// head, and apply it locally. Shared by the membership operations.
-    async fn author_acl(&self, payload: ACLPayload) -> Result<ACLRecord, VesselError> {
+    async fn author_acl(&self, payload: ACLPayload) -> VesselResult<ACLRecord> {
         let prev = self.replica.acl_head().await?;
         let record = RecordBody {
             prev: Some(prev),
@@ -538,27 +510,25 @@ impl Vessel {
     /// Errors if the orderer refuses (e.g. the record does not chain).
     pub async fn submit_acl(
         &self,
-        orderer: impl Into<outpost_fabric::EndpointAddr>,
+        orderer: impl Into<EndpointAddr>,
         record: &ACLRecord,
-    ) -> Result<outpost_protocol::acl::OrderProof, VesselError> {
+    ) -> VesselResult<OrderProof> {
         let territory = self.replica.territory_id().await?;
         let mut session = self.endpoint.connect(orderer).await?;
-        outpost_fabric::write_frame(
+        write_frame(
             &mut session.send,
-            &outpost_protocol::sync::SyncMessage::OrderRequest {
+            &SyncMessage::OrderRequest {
                 territory,
                 record: record.clone(),
             },
         )
         .await
         .map_err(|e| VesselError::Order(e.to_string()))?;
-        let proof = match outpost_fabric::read_frame::<outpost_protocol::sync::SyncMessage>(
-            &mut session.recv,
-        )
-        .await
-        .map_err(|e| VesselError::Order(e.to_string()))?
+        let proof = match read_frame::<SyncMessage>(&mut session.recv)
+            .await
+            .map_err(|e| VesselError::Order(e.to_string()))?
         {
-            outpost_protocol::sync::SyncMessage::OrderResponse { proof } => proof,
+            SyncMessage::OrderResponse { proof } => proof,
             _ => None,
         };
         session.close();
@@ -570,7 +540,7 @@ impl Vessel {
     /// the record. Single-use: a `Join` consumes it.
     pub async fn invite(
         &self,
-        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+        rng: &mut impl CryptoRNG,
         permissions: Permissions,
     ) -> Result<(InviteKey, [u8; 32], ACLRecord), VesselError> {
         let mut secret = [0u8; 32];
@@ -596,7 +566,7 @@ impl Vessel {
         &self,
         invite_key: InviteKey,
         invite_secret: [u8; 32],
-    ) -> Result<ACLRecord, VesselError> {
+    ) -> VesselResult<ACLRecord> {
         let invite_signing = SigningKey::from_bytes(&invite_secret);
         let member_kem = self.kem.public_key();
         let invite_proof = invite_signing.sign(&join_binding(
@@ -617,12 +587,12 @@ impl Vessel {
     /// change the epoch.
     pub async fn approve(
         &self,
-        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+        rng: &mut impl CryptoRNG,
         member: MemberID,
         permissions: Permissions,
-    ) -> Result<ACLRecord, VesselError> {
+    ) -> VesselResult<ACLRecord> {
         let acl = self.replica.acl_index().await?;
-        let state = acl.head_state().ok_or(ReplicaError::NoAcl)?;
+        let state = acl.head_state().ok_or(ReplicaError::NoACL)?;
         let member_kem = state
             .pending_joins
             .get(&member)
@@ -651,7 +621,7 @@ impl Vessel {
         &self,
         member: MemberID,
         permissions: Permissions,
-    ) -> Result<ACLRecord, VesselError> {
+    ) -> VesselResult<ACLRecord> {
         self.author_acl(ACLPayload::ChangeRole {
             member,
             permissions,
@@ -660,7 +630,7 @@ impl Vessel {
     }
 
     /// Revoke an outstanding invite (Admin+ only).
-    pub async fn revoke_invite(&self, invite_key: InviteKey) -> Result<ACLRecord, VesselError> {
+    pub async fn revoke_invite(&self, invite_key: InviteKey) -> VesselResult<ACLRecord> {
         self.author_acl(ACLPayload::RevokeInvite { invite_key })
             .await
     }
@@ -671,12 +641,12 @@ impl Vessel {
     /// afterward.
     pub async fn remove(
         &mut self,
-        rng: &mut impl outpost_protocol::crypto::CryptoRngExport,
+        rng: &mut impl CryptoRNG,
         member: MemberID,
-    ) -> Result<ACLRecord, VesselError> {
+    ) -> VesselResult<ACLRecord> {
         let (current_epoch, wraps, prev_wrapped) = {
             let acl = self.replica.acl_index().await?;
-            let state = acl.head_state().ok_or(ReplicaError::NoAcl)?;
+            let state = acl.head_state().ok_or(ReplicaError::NoACL)?;
             let current_epoch = state.epoch;
             let current_key = self
                 .read_keys
@@ -712,7 +682,7 @@ impl Vessel {
 
 /// Bootstrap a Vessel replica from an ACL log (thin helper mirroring the
 /// Station's).
-pub async fn open_replica(path: &str, acl_log: &[ACLRecord]) -> Result<Replica, VesselError> {
+pub async fn open_replica(path: &str, acl_log: &[ACLRecord]) -> VesselResult<Replica> {
     Ok(Replica::bootstrap(path, acl_log).await?)
 }
 
@@ -724,21 +694,21 @@ pub async fn open_replica(path: &str, acl_log: &[ACLRecord]) -> Result<Replica, 
 /// then works the sealed boxes and the backwards chain under one short lock.
 async fn derive_keys(
     replica: &Replica,
-    kem: &KemSecretKey,
+    kem: &KEMSecret,
     me: MemberID,
     cache: &StdMutex<BTreeMap<EpochID, ReadKey>>,
-) -> Result<(), VesselError> {
+) -> VesselResult<()> {
     let records = replica.hold().acl_records().await?;
     let mut keys = cache.lock().unwrap();
 
     // Forward pass: unseal the one key sealed directly to me, and record
     // each rotation so the backward pass can chain through it. `fold`
     // tracks the epoch in force *before* each record is applied.
-    let mut fold = AclIndex::new();
+    let mut fold = ACLIndex::new();
     let mut rotations: Vec<(EpochID, EpochID, Vec<u8>)> = Vec::new();
     for record in &records {
         let body = record.parse_and_verify()?;
-        let epoch_before = fold.head_state().map_or(EpochID::ZERO, |s| s.epoch);
+        let epoch_before = fold.head_state().map(|s| s.epoch).unwrap_or(EpochID::ZERO);
         match &body.payload {
             ACLPayload::Root {
                 epoch0_key_wrapped, ..
@@ -812,13 +782,13 @@ pub enum SubscriptionEvent {
 /// [`close`](Self::close)) ends the session; a final
 /// [`Closed`](SubscriptionEvent::Closed) event fires.
 pub struct Subscription {
-    push_tx: tokio::sync::mpsc::Sender<Vec<SignedNotice>>,
+    push_tx: mpsc::Sender<Vec<SignedNotice>>,
 }
 
 impl Subscription {
     /// Hand a locally-stored Notice to the live session (typically right
     /// after [`Vessel::author`]). Errors if the session has ended.
-    pub async fn push(&self, notice: SignedNotice) -> Result<(), VesselError> {
+    pub async fn push(&self, notice: SignedNotice) -> VesselResult<()> {
         self.push_tx
             .send(vec![notice])
             .await
@@ -842,8 +812,8 @@ impl Vessel {
     /// yields [`Closed`](SubscriptionEvent::Closed) and the app decides.
     pub async fn subscribe(
         &self,
-        station: impl Into<outpost_fabric::EndpointAddr>,
-    ) -> Result<(Subscription, tokio::sync::mpsc::Receiver<SubscriptionEvent>), VesselError> {
+        station: impl Into<EndpointAddr>,
+    ) -> Result<(Subscription, mpsc::Receiver<SubscriptionEvent>), VesselError> {
         let mut session = self.endpoint.connect(station).await?;
         self.send_hello(&mut session).await?;
         let territory = self.replica.territory_id().await?;
@@ -857,13 +827,13 @@ impl Vessel {
         let result = initiate(&*self.replica, &mut session.send, &mut session.recv).await;
         let me = MemberID::from(&self.identity.verifying_key());
         derive_keys(&self.replica, &self.kem, me, &self.read_keys).await?;
-        if let Err(outpost_fabric::SessionError::Refused) = result {
+        if let Err(SessionError::Refused) = result {
             session.close();
             return Err(VesselError::SyncRefused);
         }
 
-        let (push_tx, push_rx) = tokio::sync::mpsc::channel(16);
-        let (event_tx, event_rx) = tokio::sync::mpsc::channel(64);
+        let (push_tx, push_rx) = mpsc::channel(16);
+        let (event_tx, event_rx) = mpsc::channel(64);
         let worker = SubscriptionWorker {
             replica: Arc::clone(&self.replica),
             kem: Arc::clone(&self.kem),
@@ -880,24 +850,20 @@ impl Vessel {
 /// Vessel's replica and key cache, plus the doorbell.
 struct SubscriptionWorker {
     replica: Arc<Replica>,
-    kem: Arc<KemSecretKey>,
+    kem: Arc<KEMSecret>,
     me: MemberID,
     read_keys: Arc<StdMutex<BTreeMap<EpochID, ReadKey>>>,
-    event_tx: tokio::sync::mpsc::Sender<SubscriptionEvent>,
+    event_tx: mpsc::Sender<SubscriptionEvent>,
 }
 
 impl SubscriptionWorker {
-    async fn run(
-        self,
-        mut session: outpost_fabric::Session,
-        mut push_rx: tokio::sync::mpsc::Receiver<Vec<SignedNotice>>,
-    ) {
+    async fn run(self, mut session: Session, mut push_rx: mpsc::Receiver<Vec<SignedNotice>>) {
         loop {
             tokio::select! {
                 cmd = push_rx.recv() => match cmd {
                     Some(notices) => {
                         let frame = SyncMessage::NoticePush { notices };
-                        if outpost_fabric::write_frame(&mut session.send, &frame)
+                        if write_frame(&mut session.send, &frame)
                             .await
                             .is_err()
                         {
@@ -907,10 +873,10 @@ impl SubscriptionWorker {
                     // The handle was dropped/closed: end the session.
                     None => break,
                 },
-                frame = outpost_fabric::read_frame::<SyncMessage>(&mut session.recv) => {
+                frame = read_frame::<SyncMessage>(&mut session.recv) => {
                     match frame {
                         Ok(SyncMessage::NoticePush { notices }) => self.on_notices(notices).await,
-                        Ok(SyncMessage::AclPush { records }) => self.on_acl(records).await,
+                        Ok(SyncMessage::ACLPush { records }) => self.on_acl(records).await,
                         Ok(_) => {} // unknown live frame: ignore
                         Err(_) => break, // peer closed / transport gone
                     }
@@ -972,10 +938,7 @@ impl SubscriptionWorker {
 /// all" reachability check, for a device that has no Territory yet (so
 /// [`Vessel::probe`] cannot run). Proves transport reachability only; says
 /// nothing about what the Station serves.
-pub async fn reach(
-    device: &DeviceKey,
-    station: impl Into<outpost_fabric::EndpointAddr>,
-) -> Result<(), VesselError> {
+pub async fn reach(device: &DeviceKey, station: impl Into<EndpointAddr>) -> VesselResult<()> {
     let endpoint = Endpoint::bind_identity(&device.signing).await?;
     let outcome = match endpoint.connect(station).await {
         Ok(mut session) => {
@@ -1007,7 +970,7 @@ pub struct PairingPayload {
     /// compact QR-friendly encoding.
     pub territory: String,
     /// The Station's dialable address.
-    pub station: outpost_fabric::EndpointAddr,
+    pub station: EndpointAddr,
 }
 
 /// The `kind` discriminator of [`PairingPayload`].
@@ -1026,11 +989,7 @@ pub enum PairingError {
 }
 
 impl PairingPayload {
-    pub fn new(
-        mnemonic: String,
-        territory: TerritoryID,
-        station: outpost_fabric::EndpointAddr,
-    ) -> Self {
+    pub fn new(mnemonic: String, territory: TerritoryID, station: EndpointAddr) -> Self {
         Self {
             v: PAIRING_VERSION,
             kind: PAIRING_KIND.to_string(),
@@ -1081,9 +1040,9 @@ impl PairingPayload {
 pub async fn fetch_acl_log(
     identity: &Identity,
     device: &DeviceKey,
-    station: impl Into<outpost_fabric::EndpointAddr>,
+    station: impl Into<EndpointAddr>,
     territory: TerritoryID,
-) -> Result<Vec<ACLRecord>, VesselError> {
+) -> VesselResult<Vec<ACLRecord>> {
     let endpoint = Endpoint::bind_identity(&device.signing).await?;
     let mut session = endpoint.connect(station).await?;
 
@@ -1106,14 +1065,14 @@ pub async fn fetch_acl_log(
         _ => return Err(VesselError::NotServed),
     }
 
-    frame_write(&mut session, &SyncMessage::AclRequest { len: 0 }).await?;
+    frame_write(&mut session, &SyncMessage::ACLRequest { len: 0 }).await?;
     let records = match frame_read(&mut session).await? {
-        SyncMessage::AclResponse { records, .. } => records,
+        SyncMessage::ACLResponse { records, .. } => records,
         _ => return Err(VesselError::Session("unexpected ACL reply".into())),
     };
     // Finish the ACL phase politely (we have nothing to push) before ending
     // the session ahead of the Notice phase.
-    frame_write(&mut session, &SyncMessage::AclPush { records: vec![] }).await?;
+    frame_write(&mut session, &SyncMessage::ACLPush { records: vec![] }).await?;
     session.close();
     endpoint.close().await;
 

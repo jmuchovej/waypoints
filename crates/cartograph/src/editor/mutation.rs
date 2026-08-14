@@ -1,15 +1,15 @@
-use domain::chart::{FeatureID, FeatureKind};
-use domain::fractional_index;
-use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
-use domain::terrain::{Terrain, TerrainKind};
-use store::Store;
-use store::query::{chart, mark, terrain};
-
-use super::error::{EditorError, EditorResult};
-use super::history::CommandHistory;
-use super::maneuver::{Maneuver, TextPayload};
-use super::projection;
-use super::types::{CreateResult, CursorState, MutationResult, SplitResult};
+use crate::{
+    CommandHistory, CreateResult, CursorState, EditorError, EditorResult, Maneuver, MutationResult,
+    SplitResult, TextPayload, editor::projection,
+};
+use domain::{
+    Content, FeatureID, FeatureKind, Mark, MarkData, MarkID, Reading, RichText, Terrain,
+    TerrainKind, fractional_index,
+};
+use store::{
+    Store,
+    query::{chart, mark, terrain},
+};
 
 /// Compute a fractional index for inserting after `after_id` among `parent_id`'s children.
 async fn compute_order(
@@ -115,8 +115,8 @@ pub async fn update_mark(
     };
     let ops = vec![Maneuver::UpdateMarkData {
         mark_id: id,
-        old: old_data,
-        new: new_data,
+        old: old_data.into(),
+        new: new_data.into(),
     }];
     history.push(ops.clone(), id, cursor.clone(), cursor, false);
 
@@ -327,7 +327,7 @@ pub async fn create_mark_after(
     let ops = vec![
         Maneuver::CreateMark {
             mark_id: new_id,
-            data,
+            data: data.into(),
         },
         Maneuver::CreateTerrain {
             edge_id,
@@ -445,7 +445,7 @@ pub async fn split_mark(
         },
         Maneuver::CreateMark {
             mark_id: new_id,
-            data: right_data,
+            data: right_data.into(),
         },
         Maneuver::CreateTerrain {
             edge_id,
@@ -582,7 +582,7 @@ pub async fn wrap_in_compound(
         terrain::insert_child_edge(db, parent_id, compound_id, &compound_order).await?;
     ops.push(Maneuver::CreateMark {
         mark_id: compound_id,
-        data: compound_data,
+        data: compound_data.into(),
     });
     ops.push(Maneuver::CreateTerrain {
         edge_id: compound_edge_id,
@@ -593,9 +593,7 @@ pub async fn wrap_in_compound(
         extra: None,
     });
 
-    let focus_id;
-
-    if child_ids.is_empty() {
+    let focus_id = if child_ids.is_empty() {
         // No children to wrap — create an empty paragraph inside the compound
         let para_id = MarkID::new();
         let para_data = MarkData::Content(Content::default());
@@ -606,7 +604,7 @@ pub async fn wrap_in_compound(
             terrain::insert_child_edge(db, compound_id, para_id, &para_order).await?;
         ops.push(Maneuver::CreateMark {
             mark_id: para_id,
-            data: para_data,
+            data: para_data.into(),
         });
         ops.push(Maneuver::CreateTerrain {
             edge_id: para_edge_id,
@@ -616,7 +614,7 @@ pub async fn wrap_in_compound(
             order: Some(para_order),
             extra: None,
         });
-        focus_id = para_id;
+        para_id
     } else {
         // Reparent each child under the compound
         let mut prev_id: Option<MarkID> = None;
@@ -634,8 +632,8 @@ pub async fn wrap_in_compound(
             });
             prev_id = Some(child_id);
         }
-        focus_id = child_ids[0];
-    }
+        child_ids[0]
+    };
 
     let cursor = CursorState {
         block_id: focus_id,

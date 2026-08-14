@@ -26,20 +26,18 @@
 //! - SLIP-10 is hand-rolled over `hmac`/`sha2` — not novel crypto, just the
 //!   spec's byte-plumbing over vetted HMAC, pinned to the SLIP-0010 vectors.
 
+use crate::{CryptoRNG, KEMPublic, KEMSecret, MemberID};
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use hmac::{Hmac, KeyInit, Mac};
-use rand_core::{CryptoRng, Rng};
 use sha2::Sha512;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-
-use crate::MemberID;
-use crate::crypto::{KemPublicKey, KemSecretKey};
 
 /// The device certificate type lives in [`auth`](crate::auth) (so it can ride
 /// a connection handshake); re-exported here for the identity API surface.
 pub use crate::auth::DeviceCert;
 
-type HmacSha512 = Hmac<Sha512>;
+#[allow(clippy::upper_case_acronyms)]
+type HMAC = Hmac<Sha512>;
 
 const HARDENED: u32 = 0x8000_0000;
 const PURPOSE: u32 = 44;
@@ -61,7 +59,7 @@ struct Node {
 
 impl Node {
     fn master(seed: &[u8]) -> Self {
-        let mut mac = HmacSha512::new_from_slice(b"ed25519 seed").expect("hmac takes any key len");
+        let mut mac = HMAC::new_from_slice(b"ed25519 seed").expect("hmac takes any key len");
         mac.update(seed);
         Self::split(&mac.finalize().into_bytes())
     }
@@ -69,7 +67,7 @@ impl Node {
     /// SLIP-10 over Ed25519 defines hardened derivation only, so the high bit
     /// is set unconditionally and callers pass plain indices.
     fn child(&self, index: u32) -> Self {
-        let mut mac = HmacSha512::new_from_slice(&self.chain).expect("hmac takes any key len");
+        let mut mac = HMAC::new_from_slice(&self.chain).expect("hmac takes any key len");
         mac.update(&[0x00]);
         mac.update(&self.key);
         mac.update(&(index | HARDENED).to_be_bytes());
@@ -149,7 +147,7 @@ impl KeyRoot {
     /// indices (§4). Collision is a birthday problem over 2³¹ indices —
     /// negligible at any realistic device count. Index 0 is skipped: it is
     /// the conventional first-device index.
-    pub fn random_device(&self, rng: &mut impl CryptoRng) -> DeviceKey {
+    pub fn random_device(&self, rng: &mut impl CryptoRNG) -> DeviceKey {
         let index = (rng.next_u32() & 0x7FFF_FFFF).max(1);
         self.device(index)
     }
@@ -194,13 +192,13 @@ impl Identity {
     /// A fresh KEM secret for unsealing read keys. Rebuilt from the
     /// stored seed so the secret material lives no longer than the caller
     /// keeps it.
-    pub fn kem_secret(&self) -> KemSecretKey {
-        KemSecretKey::from_seed(self.kem_seed)
+    pub fn secret_key(&self) -> KEMSecret {
+        KEMSecret::from_seed(self.kem_seed)
     }
 
     /// The KEM public key an admitting record seals read keys to.
-    pub fn kem_public(&self) -> KemPublicKey {
-        self.kem_secret().public_key()
+    pub fn public_key(&self) -> KEMPublic {
+        self.secret_key().public_key()
     }
 
     /// Certify a device key as belonging to this identity.
@@ -298,8 +296,8 @@ mod tests {
         let b = KeyRoot::from_mnemonic(phrase).unwrap();
         assert_eq!(a.identity().member_id(), b.identity().member_id());
         assert_eq!(
-            a.identity().kem_public().as_bytes(),
-            b.identity().kem_public().as_bytes()
+            a.identity().public_key().as_bytes(),
+            b.identity().public_key().as_bytes()
         );
         assert_ne!(
             a.identity().verifying_key(),

@@ -8,22 +8,17 @@
 //! behavior. (The invited-joiner flow through the gate is covered end to end
 //! by `acl_sync.rs`.)
 
+use ed25519_dalek::SigningKey;
+use outpost::{
+    protocol::{DeviceKey, EpochID, Identity, KeyRoot, NoticeID},
+    replica::Replica,
+    station::{RegisterPolicy, Station, SyncPolicy},
+    vessel::{Vessel, VesselError},
+};
+use rand::SeedableRng;
 use std::sync::Arc;
 
-use ed25519_dalek::SigningKey;
-use outpost::protocol::identity::KeyRoot;
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::replica::Replica;
-use outpost::station::{RegisterPolicy, Station, SyncPolicy};
-use outpost::vessel::{Vessel, VesselError};
-use rand::SeedableRng;
-
-fn actors() -> (
-    outpost::protocol::identity::Identity,
-    outpost::protocol::identity::DeviceKey,
-    outpost::protocol::identity::Identity,
-    outpost::protocol::identity::DeviceKey,
-) {
+fn actors() -> (Identity, DeviceKey, Identity, DeviceKey) {
     let owner = KeyRoot::from_seed([1; 64]);
     let stranger = KeyRoot::from_seed([9; 64]);
     (
@@ -94,7 +89,7 @@ async fn a_stranger_gets_the_acl_phase_but_zero_notices() {
         .await
         .unwrap();
     let (_invite_key, _secret, _record) = owner
-        .invite(&mut rng, outpost::protocol::acl::Permissions::Writer)
+        .invite(&mut rng, outpost::protocol::Permissions::Writer)
         .await
         .unwrap();
     let notice = owner

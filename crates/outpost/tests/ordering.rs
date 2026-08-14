@@ -5,21 +5,18 @@
 //! verifies it — while a record with a forged proof is rejected.
 
 use ed25519_dalek::SigningKey;
-use outpost::protocol::acl::{ACLPayload, OrderProof, OrderedRecord, Permissions, RecordBody};
-use outpost::protocol::crypto::ReadKey;
-use outpost::protocol::identity::KeyRoot;
-use outpost::protocol::{RecordID, acl};
-use outpost::replica::Replica;
-use outpost::station::Station;
-use outpost::vessel::Vessel;
+use outpost::{
+    protocol::{
+        ACLPayload, DeviceKey, Identity, InviteKey, KeyRoot, OrderProof, OrderedRecord,
+        Permissions, ReadKey, RecordBody, RecordID,
+    },
+    replica::Replica,
+    station::Station,
+    vessel::Vessel,
+};
 use rand::SeedableRng;
 
-fn identity(
-    seed: u8,
-) -> (
-    outpost::protocol::identity::Identity,
-    outpost::protocol::identity::DeviceKey,
-) {
+fn identity(seed: u8) -> (Identity, DeviceKey) {
     let root = KeyRoot::from_seed([seed; 64]);
     (root.identity(), root.device(0))
 }
@@ -51,7 +48,7 @@ async fn a_submitted_record_is_ordered_proven_and_accepted_by_a_fleeted_peer() {
 
     // Owner authors an Invite chained on the Root (not yet ordered).
     let invite_secret = SigningKey::from_bytes(&[9; 32]);
-    let invite_key = acl::InviteKey::from_bytes(invite_secret.verifying_key().to_bytes());
+    let invite_key = InviteKey::from_bytes(invite_secret.verifying_key().to_bytes());
     let invite = RecordBody {
         prev: Some(RecordID::of(&root).unwrap()),
         author: owner_id.verifying_key(),
@@ -140,7 +137,7 @@ async fn the_root_needs_no_proof_but_others_do() {
         prev: Some(RecordID::of(&root).unwrap()),
         author: owner_id.verifying_key(),
         payload: ACLPayload::RevokeInvite {
-            invite_key: acl::InviteKey::from_bytes([7; 32]),
+            invite_key: InviteKey::from_bytes([7; 32]),
         },
     }
     .sign(owner_id.signing_key())

@@ -1,5 +1,4 @@
 use super::*;
-
 use rstest::rstest;
 use store::query::{mark, terrain};
 

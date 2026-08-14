@@ -8,18 +8,13 @@
 //! sync path that carries them is tested elsewhere); this keeps the test
 //! focused on the authoring APIs.
 
-use outpost::protocol::acl::Permissions;
-use outpost::protocol::identity::KeyRoot;
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::vessel::Vessel;
+use outpost::{
+    protocol::{EpochID, KeyRoot, NoticeID, Permissions},
+    vessel::Vessel,
+};
 use rand::SeedableRng;
 
-fn identity(
-    seed: u8,
-) -> (
-    outpost::protocol::identity::Identity,
-    outpost::protocol::identity::DeviceKey,
-) {
+fn identity(seed: u8) -> (outpost::protocol::Identity, outpost::protocol::DeviceKey) {
     let root = KeyRoot::from_seed([seed; 64]);
     (root.identity(), root.device(0))
 }
@@ -56,7 +51,7 @@ async fn owner_invites_user_joins_and_reads() {
     let acl_so_far = owner.replica().hold().acl_records().await.unwrap();
     let user = Vessel::new(
         user_id.signing_key().clone(),
-        user_id.kem_secret(),
+        user_id.secret_key(),
         outpost::replica::Replica::bootstrap(":memory:", &acl_so_far)
             .await
             .unwrap(),
@@ -105,7 +100,7 @@ async fn remove_rotates_and_cuts_off() {
     let acl = owner.replica().hold().acl_records().await.unwrap();
     let mut user = Vessel::new(
         user_id.signing_key().clone(),
-        user_id.kem_secret(),
+        user_id.secret_key(),
         outpost::replica::Replica::bootstrap(":memory:", &acl)
             .await
             .unwrap(),
@@ -151,7 +146,7 @@ async fn unauthorized_operations_are_refused() {
     let acl = owner.replica().hold().acl_records().await.unwrap();
     let user = Vessel::new(
         user_id.signing_key().clone(),
-        user_id.kem_secret(),
+        user_id.secret_key(),
         outpost::replica::Replica::bootstrap(":memory:", &acl)
             .await
             .unwrap(),
@@ -175,7 +170,7 @@ async fn unauthorized_operations_are_refused() {
         let full = owner.replica().hold().acl_records().await.unwrap();
         Vessel::new(
             user_id.signing_key().clone(),
-            user_id.kem_secret(),
+            user_id.secret_key(),
             outpost::replica::Replica::bootstrap(":memory:", &full)
                 .await
                 .unwrap(),

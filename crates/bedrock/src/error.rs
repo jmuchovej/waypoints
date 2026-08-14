@@ -1,4 +1,4 @@
-use bedrock_core::{DecodeError, EncodeError, SpecError};
+use crate::core::{DecodeError, EncodeError, SpecError};
 
 /// Anything that can go wrong at the engine boundary.
 ///

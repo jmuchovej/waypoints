@@ -1,5 +1,4 @@
 use tauri::App;
-
 #[cfg(desktop)]
 use tauri::{
     menu::{Menu, MenuItem},
@@ -19,7 +18,7 @@ pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
                 app.exit(0);
             }
             other => {
-                println!("menu item {} not handled", other);
+                tracing::warn!(%other, "menu item not handled");
             }
         })
         .build(app)?;

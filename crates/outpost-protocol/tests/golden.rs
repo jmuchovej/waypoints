@@ -79,16 +79,16 @@ const ROOT_RECORD_ID_HEX: &str = "52e987f294c7ca8de6f98fb1a9bf16307e6bc7fd6bfa58
 
 #[test]
 fn acl_record_id_is_pinned() {
+    use outpost_protocol::KEMSecret;
     use outpost_protocol::TerritoryID;
-    use outpost_protocol::acl::{ACLPayload, RecordBody};
-    use outpost_protocol::crypto::KemSecretKey;
+    use outpost_protocol::{ACLPayload, RecordBody};
 
     let record = RecordBody {
         prev: None,
         author: vector_key().verifying_key(),
         payload: ACLPayload::Root {
             territory_seed: [0xA5; 32],
-            owner_kem: KemSecretKey::from_seed([0x0F; 32]).public_key(),
+            owner_kem: KEMSecret::from_seed([0x0F; 32]).public_key(),
             epoch0_key_wrapped: vec![0xEE; 8],
         },
     }

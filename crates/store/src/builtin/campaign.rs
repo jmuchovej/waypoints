@@ -2,9 +2,8 @@
 use super::{person, status_multi_select, tags_feature};
 use domain::{
     Chart, ChartID, Color, Date, Feature, FeatureKind, GlyphID, Icon, Number, Reference, Select,
-    SelectBuilder, SelectGroup, SelectOption,
+    SelectBuilder, SelectGroup, SelectOption, icon_presets,
 };
-use domain::{icon, icon_presets};
 use std::str::FromStr;
 
 /// Project - A project with timeline, team, and deliverables

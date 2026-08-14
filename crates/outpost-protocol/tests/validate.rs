@@ -5,10 +5,10 @@
 use std::collections::BTreeMap;
 
 use ed25519_dalek::{Signer, SigningKey};
-use outpost_protocol::acl::{
+use outpost_protocol::KEMSecret;
+use outpost_protocol::{
     ACLPayload, ACLRecord, ACLReject, ACLState, InviteKey, Permissions, RecordBody, join_binding,
 };
-use outpost_protocol::crypto::KemSecretKey;
 use outpost_protocol::{
     ACLStateProvider, Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, NoticeStore, RecordID,
     RejectReason, SignedNotice, Validated, validate,
@@ -93,7 +93,7 @@ fn removed_writer_log() -> (LogFixture, SigningKey, SigningKey, RecordID, Record
         None,
         ACLPayload::Root {
             territory_seed: [0xA5; 32],
-            owner_kem: KemSecretKey::from_seed([1; 32]).public_key(),
+            owner_kem: KEMSecret::from_seed([1; 32]).public_key(),
             epoch0_key_wrapped: vec![0xEE; 8],
         },
     );
@@ -110,7 +110,7 @@ fn removed_writer_log() -> (LogFixture, SigningKey, SigningKey, RecordID, Record
         },
     ));
 
-    let writer_kem = KemSecretKey::from_seed([2; 32]).public_key();
+    let writer_kem = KEMSecret::from_seed([2; 32]).public_key();
     let proof = invite_secret.sign(&join_binding(&invite, &writer.verifying_key(), &writer_kem));
     log.push(&record(
         &writer,
@@ -249,7 +249,7 @@ fn non_members_and_readers_cannot_write() {
         },
     ));
     let reader = key(3);
-    let reader_kem = KemSecretKey::from_seed([3; 32]).public_key();
+    let reader_kem = KEMSecret::from_seed([3; 32]).public_key();
     let proof = invite_secret.sign(&join_binding(&invite, &reader.verifying_key(), &reader_kem));
     log.push(&record(
         &reader,

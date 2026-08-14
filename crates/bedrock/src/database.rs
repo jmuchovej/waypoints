@@ -1,15 +1,13 @@
-use bedrock_core::{
-    Collection, CollectionSpec, Field, Filter, Query, StoredValue, Update, ViewSpec, WriteOp,
+use crate::{
+    BedrockError, Config, FlushMode, QueryPlan, ReadTx, WriteTx,
+    core::{
+        Collection, CollectionSpec, Field, Filter, Query, StoredValue, Update, ViewSpec, WriteOp,
+    },
+    ddl, durability, explain, migrate,
+    pool::Pool,
+    value,
 };
 use turso::Connection;
-
-use crate::config::Config;
-use crate::durability::{self, FlushMode};
-use crate::error::BedrockError;
-use crate::explain::{self, QueryPlan};
-use crate::pool::Pool;
-use crate::tx::{ReadTx, WriteTx};
-use crate::{ddl, migrate, value};
 
 /// A bedrock database: a pooled turso engine plus collection-aware operations.
 ///

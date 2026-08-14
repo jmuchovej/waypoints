@@ -3,7 +3,7 @@
 //! [C]: super::Chart
 //! [F]: super::Feature
 //! [S]: super::Select
-use crate::error::{DomainError, DomainResult};
+use crate::{DomainError, DomainResult};
 use derive_more::{Debug, Display, FromStr};
 use rand::RngExt;
 use serde::{Deserialize, Serialize};

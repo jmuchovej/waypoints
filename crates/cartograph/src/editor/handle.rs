@@ -1,11 +1,9 @@
+use crate::{
+    CreateResult, EditorResult, EditorService, MutationResult, RenderNode, SplitResult,
+    UndoRedoResult,
+};
+use domain::{Content, FeatureID, Mark, MarkData, MarkID, Reading, RichText};
 use tokio::sync::Mutex;
-
-use domain::chart::FeatureID;
-use domain::mark::{Content, Mark, MarkData, MarkID, Reading, RichText};
-
-use super::EditorResult;
-use super::service::EditorService;
-use super::types::{CreateResult, MutationResult, RenderNode, SplitResult, UndoRedoResult};
 
 pub struct EditorHandle<'a> {
     pub(crate) editor: &'a Mutex<EditorService>,

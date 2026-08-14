@@ -1,6 +1,5 @@
 use super::*;
-
-use domain::mark::{Content, MarkData, RichText};
+use domain::{Content, MarkData, RichText};
 use rstest::rstest;
 
 #[rstest]

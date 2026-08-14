@@ -1,12 +1,10 @@
+use super::TerritoryManager;
+use crate::{
+    RegistryStore, Territory, TerritoryError, TerritoryKind, TerritoryResult, editor::EditorService,
+};
 use chrono::Utc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-
-use crate::editor::EditorService;
-
-use super::{
-    RegistryStore, Territory, TerritoryError, TerritoryKind, TerritoryManager, TerritoryResult,
-};
 
 pub struct TerritoryHandle<'a> {
     pub(crate) manager: &'a TerritoryManager,

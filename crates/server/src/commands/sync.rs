@@ -3,9 +3,7 @@
 use axum::Json;
 use serde::Deserialize;
 
-use cartograph::sync::{
-    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncStatus,
-};
+use cartograph::{IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncStatus};
 
 use crate::error::ApiError;
 use crate::instance::Instance;
@@ -36,7 +34,7 @@ pub async fn sync_submit_setup_code(
 pub async fn sync_classify_setup_code(
     Json(args): Json<SubmitSetupCode>,
 ) -> Result<Json<SetupCode>, ApiError> {
-    Ok(Json(cartograph::sync::classify(&args.input)))
+    Ok(Json(cartograph::classify(&args.input)))
 }
 
 pub async fn sync_identity_mnemonic(Instance(rt): Instance) -> Result<Json<String>, ApiError> {

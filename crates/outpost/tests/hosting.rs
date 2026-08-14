@@ -5,14 +5,14 @@
 //! many Territories, and the set persists as the holds on disk — a restarted
 //! Station reloads them and still serves, with the synced Notices intact.
 
-use std::sync::Arc;
-
 use ed25519_dalek::SigningKey;
-use outpost::protocol::identity::KeyRoot;
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::station::Station;
-use outpost::vessel::Vessel;
+use outpost::{
+    protocol::{EpochID, KeyRoot, NoticeID},
+    station::Station,
+    vessel::Vessel,
+};
 use rand::SeedableRng;
+use std::sync::Arc;
 
 fn station_key() -> SigningKey {
     SigningKey::from_bytes(&[100; 32])

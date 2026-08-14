@@ -2,10 +2,10 @@
 //! Icon as jsonb documents. Round-tripped through `bedrock::Field`.
 
 use bedrock::{ColumnType, Field, FieldKind, StoredValue};
+use domain::ChartID;
 use domain::Icon;
-use domain::chart::ChartID;
-use domain::mark::{Content, MarkData, MarkID};
-use domain::terrain::TerrainID;
+use domain::TerrainID;
+use domain::{Content, MarkData, MarkID};
 use uuid::Uuid;
 
 #[test]

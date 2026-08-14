@@ -7,11 +7,8 @@
 //! Use it in tests to pin down how the Mongo-style operators translate and to
 //! catch a filter that should seek an index but plans as a scan.
 
-use bedrock_core::StoredValue;
+use crate::{BedrockError, core::StoredValue, value};
 use turso::Connection;
-
-use crate::error::BedrockError;
-use crate::value;
 
 /// A lowered bedrock operation: the SQL, its bound parameters, and the engine's
 /// `EXPLAIN QUERY PLAN` steps (one `detail` string per plan row).

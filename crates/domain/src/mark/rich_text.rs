@@ -101,7 +101,6 @@ pub enum TextMarkKind {
     FontFamily,
     Math,
     Spoiler,
-    Comment,
 }
 
 #[cfg(test)]
@@ -244,7 +243,6 @@ mod tests {
             FontSize,
             FontFamily,
             Spoiler,
-            Comment,
         ];
 
         for mark_type in mark_types {

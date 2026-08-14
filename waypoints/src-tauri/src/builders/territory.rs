@@ -1,10 +1,7 @@
-use std::sync::Arc;
-
-use tauri::{App, Manager};
-
-use cartograph::WaypointsRuntime;
-
 use crate::registry_store::TauriRegistryStore;
+use cartograph::WaypointsRuntime;
+use std::sync::Arc;
+use tauri::{App, Manager};
 
 pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let data_dir = app.path().app_data_dir()?;

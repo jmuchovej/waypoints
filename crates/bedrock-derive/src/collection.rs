@@ -1,9 +1,8 @@
+use crate::attr;
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DataStruct, DeriveInput, Field, Fields, Ident, Type};
-
-use crate::attr;
 
 struct FieldInfo<'a> {
     ident: &'a Ident,

@@ -4,8 +4,8 @@ use axum::Json;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use domain::chart::ChartID;
-use domain::mark::{Content, Mark, RichText};
+use domain::ChartID;
+use domain::{Content, Mark, RichText};
 
 use crate::error::ApiError;
 use crate::instance::Instance;

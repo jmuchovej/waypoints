@@ -1,12 +1,6 @@
-use domain::chart::ChartID;
-use domain::fractional_index;
-use domain::mark::{Content, Mark, MarkData, MarkID, RichText};
-use domain::terrain::TerrainKind;
+use crate::{Database, MarkError, MarkResult};
+use domain::{ChartID, Content, Mark, MarkData, MarkID, RichText, TerrainKind, fractional_index};
 use uuid::Uuid;
-
-use crate::Database;
-
-use super::{MarkError, MarkResult};
 
 pub struct MarkHandle<'a> {
     pub(crate) db: &'a Database,

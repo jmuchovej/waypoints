@@ -27,12 +27,10 @@
 //!   the split leaves the envelope encoding byte-identical (pinned by the
 //!   golden vectors).
 
+use crate::{EpochID, NoticeID, RecordID, WireError};
 use bytes::Bytes;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
-
-use crate::error::WireError;
-use crate::id::{EpochID, NoticeID, RecordID};
 
 /// Wire-format version of the [`Envelope`] encoding. Bumped only for
 /// wire-incompatible changes.

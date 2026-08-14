@@ -1,6 +1,5 @@
+use crate::ColumnType;
 use serde::{Deserialize, Serialize};
-
-use crate::value::ColumnType;
 
 /// A materialized view over a collection: homogeneous, typed projections of
 /// document paths, so those paths can be filtered and sorted (which the raw,

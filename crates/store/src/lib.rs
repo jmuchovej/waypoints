@@ -1,11 +1,11 @@
-pub mod error;
+pub(crate) mod error;
 pub use error::{StoreError, StoreResult};
 
 pub mod collections;
 mod store;
 pub use store::Store;
 
-pub mod tools;
+pub(crate) mod tools;
 pub use tools::{checkpoint, open, reset};
 
 pub mod query {

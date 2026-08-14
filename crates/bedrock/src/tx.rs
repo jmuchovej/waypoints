@@ -6,12 +6,12 @@
 //! connection mid-transaction, and the pool rolls it back on next acquisition
 //! (see [`crate::pool`]).
 
+use crate::{
+    BedrockError,
+    pool::{ReadGuard, WriteGuard},
+};
 use std::sync::atomic::{AtomicU64, Ordering};
-
 use turso::{IntoParams, Rows};
-
-use crate::error::BedrockError;
-use crate::pool::{ReadGuard, WriteGuard};
 
 /// Distinct savepoint names, so nested savepoints on one connection never
 /// collide. Monotonic for the process; savepoints are released in LIFO order.

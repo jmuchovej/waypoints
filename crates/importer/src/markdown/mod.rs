@@ -3,7 +3,7 @@ mod waypoints;
 pub use waypoints::WaypointsMarkdown;
 
 use crate::ImportResult;
-use domain::mark::Content;
+use domain::Content;
 
 /// A parsed block with optional nested children (for compound blocks like blockquote).
 #[derive(Debug, Clone)]

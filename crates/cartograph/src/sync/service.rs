@@ -10,21 +10,18 @@
 //! - `territory.db` — the Territory hold (replica storage)
 //! - `sync.json`   — device index, Station address, cached Territory id
 
-use std::path::{Path, PathBuf};
-use std::time::Instant;
-
-use rand::SeedableRng;
-use rand::rngs::StdRng;
+use crate::{IdentityCreated, StationStatus, SyncDevice, SyncError, SyncResult, SyncStatus};
+use outpost::{
+    fabric::EndpointAddr,
+    hold::TerritoryHold,
+    protocol::{DeviceKey, Identity, KeyRoot, MemberID, TerritoryID},
+    replica::Replica,
+    vessel::{PairingPayload, Vessel, fetch_acl_log, open_replica, reach},
+};
+use rand::{SeedableRng, rngs::StdRng};
 use serde::{Deserialize, Serialize};
+use std::{path::PathBuf, time::Instant};
 use tokio::sync::{Mutex, MutexGuard};
-
-use outpost::EndpointAddr;
-use outpost::protocol::identity::{DeviceKey, Identity, KeyRoot};
-use outpost::protocol::{MemberID, TerritoryID};
-use outpost::replica::{Replica, TerritoryHold};
-use outpost::vessel::{self, PairingPayload, Vessel};
-
-use super::{IdentityCreated, StationStatus, SyncDevice, SyncError, SyncResult, SyncStatus};
 
 /// Per-device sync configuration persisted beside the identity.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -252,10 +249,10 @@ impl SyncService {
         config.territory = Some(territory.to_string());
         self.save_config(&config)?;
 
-        if let Some(station) = config.station {
-            if let Err(e) = vessel.register(station, territory).await {
-                tracing::warn!("territory created but station registration failed: {e}");
-            }
+        if let Some(station) = config.station
+            && let Err(e) = vessel.register(station, territory).await
+        {
+            tracing::warn!("territory created but station registration failed: {e}");
         }
 
         *self.vessel.lock().await = Some(vessel);
@@ -303,7 +300,7 @@ impl SyncService {
             // No Territory yet — a bare dial still proves the Station is
             // there.
             match self.identity_pair() {
-                Ok((_, device)) => vessel::reach(&device, station)
+                Ok((_, device)) => reach(&device, station)
                     .await
                     .map(|()| false)
                     .map_err(|e| e.to_string()),
@@ -452,14 +449,13 @@ impl SyncService {
 
         // Bootstrap the replica from the Station's copy of the ACL log
         // before anything is persisted locally.
-        let log =
-            vessel::fetch_acl_log(&identity, &device, payload.station.clone(), territory).await?;
+        let log = fetch_acl_log(&identity, &device, payload.station.clone(), territory).await?;
         std::fs::create_dir_all(&self.root)?;
         let db = self.territory_db_path();
         let path = db
             .to_str()
             .ok_or_else(|| SyncError::Io(std::io::Error::other("non-utf8 sync root path")))?;
-        let replica = vessel::open_replica(path, &log).await?;
+        let replica = open_replica(path, &log).await?;
         let mut vessel = Vessel::from_identity(&identity, &device, replica).await?;
         vessel.sync_with(payload.station.clone()).await?;
 

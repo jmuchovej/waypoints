@@ -5,9 +5,10 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
 #[serde(rename_all = "lowercase")]
 pub enum Color {
+    #[default]
     Default,
     Gray,
     Brown,
@@ -68,12 +69,6 @@ impl Color {
             Color::Pink => "#f472b6",    // pink-400
             Color::Red => "#f87171",     // red-400
         }
-    }
-}
-
-impl Default for Color {
-    fn default() -> Self {
-        Color::Default
     }
 }
 

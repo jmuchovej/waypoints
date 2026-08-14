@@ -35,9 +35,9 @@ impl Store {
         }
 
         let db = bedrock::Database::open(&path.display().to_string()).await?;
-        db.ensure_collection::<domain::mark::Mark>().await?;
-        db.ensure_collection::<domain::chart::Chart>().await?;
-        db.ensure_collection::<domain::terrain::Terrain>().await?;
+        db.ensure_collection::<domain::Mark>().await?;
+        db.ensure_collection::<domain::Chart>().await?;
+        db.ensure_collection::<domain::Terrain>().await?;
         collections::seed::run(&db).await?;
 
         // Dev-only: seed the demo document corpus so a fresh DB has something

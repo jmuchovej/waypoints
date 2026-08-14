@@ -1,4 +1,4 @@
-use bedrock_core::{CollectionSpec, ColumnType, FieldKind, FieldSpec, IndexSpec, ViewSpec};
+use crate::core::{CollectionSpec, ColumnType, FieldKind, FieldSpec, IndexSpec, ViewSpec};
 
 /// The engine storage type for a field.
 ///
@@ -9,10 +9,10 @@ fn sql_type(kind: FieldKind) -> &'static str {
     match kind {
         FieldKind::Document => "jsonb",
         FieldKind::Column(column) => match column {
-            ColumnType::Integer => "INTEGER",
-            ColumnType::Real => "REAL",
-            ColumnType::Text => "TEXT",
-            ColumnType::Blob => "BLOB",
+            ColumnType::Integer => "integer",
+            ColumnType::Real => "real",
+            ColumnType::Text => "text",
+            ColumnType::Blob => "blob",
             ColumnType::Boolean => "boolean",
             ColumnType::Uuid => "uuid",
             ColumnType::Date => "date",

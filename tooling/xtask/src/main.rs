@@ -1,4 +1,5 @@
 #![warn(unused, dead_code)]
+#![allow(clippy::disallowed_macros)]
 
 pub mod tasks {
     pub mod devenv_files;

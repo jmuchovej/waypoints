@@ -1,6 +1,4 @@
-use bedrock_core::CollectionSpec;
-
-use crate::ddl;
+use crate::{core::CollectionSpec, ddl};
 
 /// A schema change bedrock cannot apply automatically.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]

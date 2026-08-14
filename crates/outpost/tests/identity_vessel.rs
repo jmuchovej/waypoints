@@ -2,12 +2,13 @@
 //! its own encrypted history — proving the identity layer plugs into the
 //! Vessel end to end, without hand-fed raw keys.
 
-use outpost::protocol::acl::{ACLPayload, ACLRecord, RecordBody};
-use outpost::protocol::crypto::{ReadKey, seal_key_to_member};
-use outpost::protocol::identity::KeyRoot;
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::replica::Replica;
-use outpost::vessel::Vessel;
+use outpost::{
+    protocol::{
+        ACLPayload, ACLRecord, EpochID, KeyRoot, NoticeID, ReadKey, RecordBody, seal_key_to_member,
+    },
+    replica::Replica,
+    vessel::Vessel,
+};
 use rand::SeedableRng;
 
 #[tokio::test]
@@ -21,13 +22,13 @@ async fn a_mnemonic_derived_vessel_authors_and_reads() {
     // — exactly what `Vessel::from_identity` unseals via refresh_keys.
     let mut rng = rand::rngs::StdRng::from_seed([7; 32]);
     let read_key = ReadKey::from_bytes([0xA0; 32]);
-    let sealed = seal_key_to_member(&mut rng, &identity.kem_public(), &read_key).unwrap();
+    let sealed = seal_key_to_member(&mut rng, &identity.public_key(), &read_key).unwrap();
     let root_record: ACLRecord = RecordBody {
         prev: None,
         author: identity.verifying_key(),
         payload: ACLPayload::Root {
             territory_seed: [0xA5; 32],
-            owner_kem: identity.kem_public(),
+            owner_kem: identity.public_key(),
             epoch0_key_wrapped: sealed,
         },
     }

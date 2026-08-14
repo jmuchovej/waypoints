@@ -1,5 +1,3 @@
-use outpost_protocol::WireError;
-
 /// Failures in the storage layer. Bedrock and protocol wire errors surface
 /// through here; storage never invents its own validation verdicts.
 #[derive(Debug, thiserror::Error)]
@@ -8,7 +6,7 @@ pub enum HoldError {
     Bedrock(#[from] bedrock::BedrockError),
 
     #[error(transparent)]
-    Wire(#[from] WireError),
+    Wire(#[from] crate::protocol::WireError),
 
     /// Encoding/decoding a stored order proof failed.
     #[error("order-proof codec: {0}")]
@@ -17,5 +15,5 @@ pub enum HoldError {
     /// A record already in the store failed to fold — the store is
     /// internally inconsistent, which is a bug, not a rejected input.
     #[error("stored ACL log does not fold: {0}")]
-    AclFold(String),
+    ACLFold(String),
 }

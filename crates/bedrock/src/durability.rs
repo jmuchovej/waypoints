@@ -3,9 +3,8 @@
 //! This is the *primitive* only. Deciding when to flush — idle timers, crash
 //! sentinels, shutdown hooks — is runtime policy that belongs to the caller.
 
+use crate::BedrockError;
 use turso::Connection;
-
-use crate::error::BedrockError;
 
 /// How to flush durable state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

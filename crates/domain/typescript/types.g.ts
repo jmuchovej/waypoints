@@ -102,7 +102,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -118,7 +120,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -134,7 +138,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -150,7 +156,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -166,7 +174,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -183,7 +193,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -199,7 +211,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -215,7 +229,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       language?: never;
       lines?: never;
       rich_text?: never;
@@ -224,7 +240,14 @@ export type Content_Deserialize =
       row_size?: never;
     })
   /**  Code block with syntax highlighting */
-  | ({ type: "code"; language: string; lines: string[]; theme?: BlockTheme | null } & {
+  | ({
+      type: "code";
+      language: string;
+      lines: string[];
+      filename?: string | null;
+      highlights?: number[] | null;
+      theme?: BlockTheme | null;
+    } & {
       cells?: never;
       col_colors?: never;
       col_header?: never;
@@ -253,6 +276,8 @@ export type Content_Deserialize =
     } & {
       engine?: never;
       expression?: never;
+      filename?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -264,7 +289,9 @@ export type Content_Deserialize =
       col_colors?: never;
       col_header?: never;
       col_size?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -281,7 +308,9 @@ export type Content_Deserialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -304,7 +333,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -320,7 +351,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -336,7 +369,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -352,7 +387,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -368,7 +405,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -385,7 +424,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -401,7 +442,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -417,7 +460,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       language?: never;
       lines?: never;
       rich_text?: never;
@@ -426,7 +471,14 @@ export type Content_Serialize =
       row_size?: never;
     })
   /**  Code block with syntax highlighting */
-  | ({ type: "code"; language: string; lines: string[]; theme?: BlockTheme | null } & {
+  | ({
+      type: "code";
+      language: string;
+      lines: string[];
+      filename?: string | null;
+      highlights?: number[] | null;
+      theme?: BlockTheme | null;
+    } & {
       cells?: never;
       col_colors?: never;
       col_header?: never;
@@ -455,6 +507,8 @@ export type Content_Serialize =
     } & {
       engine?: never;
       expression?: never;
+      filename?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -466,7 +520,9 @@ export type Content_Serialize =
       col_colors?: never;
       col_header?: never;
       col_size?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -483,7 +539,9 @@ export type Content_Serialize =
       col_size?: never;
       engine?: never;
       expression?: never;
+      filename?: never;
       fill_width?: never;
+      highlights?: never;
       icon?: never;
       language?: never;
       lines?: never;
@@ -1469,6 +1527,21 @@ export type Mark_Deserialize = {
    *  schema-less. In the future, it will will support dynamic rendering, too!
    */
   extra: unknown | null;
+  /**
+   *  When the [`Mark`] was created. Defaults to now; a caller (e.g. an import)
+   *  may set it explicitly.
+   */
+  created_at: string;
+  /**
+   *  When the [`Mark`] was last written. Stamped on every save by the
+   *  before-save hook.
+   */
+  updated_at: string;
+  /**
+   *  Soft-delete tombstone: set when the [`Mark`] is removed; live reads
+   *  exclude it.
+   */
+  deleted_at: string | null;
 };
 
 export type Mark_Serialize = {
@@ -1489,6 +1562,21 @@ export type Mark_Serialize = {
    *  schema-less. In the future, it will will support dynamic rendering, too!
    */
   extra: unknown | null;
+  /**
+   *  When the [`Mark`] was created. Defaults to now; a caller (e.g. an import)
+   *  may set it explicitly.
+   */
+  created_at: string;
+  /**
+   *  When the [`Mark`] was last written. Stamped on every save by the
+   *  before-save hook.
+   */
+  updated_at: string;
+  /**
+   *  Soft-delete tombstone: set when the [`Mark`] is removed; live reads
+   *  exclude it.
+   */
+  deleted_at: string | null;
 };
 
 /**  Math rendering engines */
@@ -1665,7 +1753,9 @@ export type Size =
   /**  Fractional size of available space */
   | { type: "ratio"; value: number | null }
   /**  Auto-size based on content (and table width) */
-  | { type: "auto" };
+  | { type: "auto" }
+  | { type: "min" }
+  | { type: "max" };
 
 /**
  *  Graph edges representing relationships between blocks.
@@ -1687,12 +1777,14 @@ export type Terrain = {
   src_id: MarkID;
   /**  The directed edge this block is going to */
   dst_id: MarkID;
-  /**  What kind of edge is this? */
+  /**  What kind of edge is this? Stored as an indexed flattened string. */
   kind: TerrainKind;
   /**  Lexicographic ordering string (only meaningful for certain edge kinds like `Child`) */
   order: string | null;
   /**  Extra metadata that belongs to this particular edge */
   extra: unknown | null;
+  /**  Soft-delete tombstone: set when the edge is removed; live reads exclude it. */
+  deleted_at: string | null;
 };
 
 /**
@@ -1730,11 +1822,10 @@ export type TerrainID = string;
  *
  *  # DB format
  *
- *  When persisted to the `terrains.kind` column we flatten to a single
+ *  When persisted to the `terrain.kind` column we flatten to a single
  *  string: `"child"`, `"reference"`, `"custom"`, or
- *  `"reading::{chart}::{feature}"`. See the helpers in
- *  `store::query::terrain` / `store::entities::terrain_orm` for the
- *  bidirectional conversion.
+ *  `"reading::{chart}::{feature}"`. See [`TerrainKind::to_storage`] /
+ *  [`TerrainKind::from_storage`] for the bidirectional conversion.
  */
 export type TerrainKind =
   | { type: "child" }
@@ -1767,8 +1858,7 @@ export type TextMarkKind =
   | "font-size"
   | "font-family"
   | "math"
-  | "spoiler"
-  | "comment";
+  | "spoiler";
 
 /**  A contiguous run of text sharing the same set of inline marks. */
 export type TextSegment = TextSegment_Serialize;

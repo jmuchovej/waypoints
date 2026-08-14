@@ -33,5 +33,4 @@ export const InlineKind = {
   FontFamily: "font-family",
   Math: "math",
   Spoiler: "spoiler",
-  Comment: "comment",
 } as const;

@@ -166,23 +166,23 @@ mod tests {
         let b = "i001";
         let mid = key_between(Some(a), Some(b));
         assert_eq!(mid.len(), 5);
-        assert!(mid > a.to_string());
-        assert!(mid < b.to_string());
+        assert!(mid.as_str() > a);
+        assert!(mid.as_str() < b);
     }
 
     #[test]
     fn key_between_before_first() {
         let b = "1000";
         let mid = key_between(None, Some(b));
-        assert!(mid < b.to_string());
-        assert!(mid > "0000".to_string());
+        assert!(mid.as_str() < b);
+        assert!(mid.as_str() > "0000");
     }
 
     #[test]
     fn key_between_after_last() {
         let a = "zzzz";
         let mid = key_between(Some(a), None);
-        assert!(mid > a.to_string());
+        assert!(mid.as_str() > a);
     }
 
     #[test]

@@ -28,6 +28,9 @@ pub fn run() {
 
     let _ = rustls::crypto::ring::default_provider().install_default();
 
+    #[allow(clippy::disallowed_macros)]
+    let context = tauri::generate_context!();
+
     tracing::info!("waypoints starting");
 
     let builder = TauriBuilder::default();
@@ -134,6 +137,6 @@ pub fn run() {
             tracing::info!("tauri setup: complete");
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }

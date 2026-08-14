@@ -20,7 +20,7 @@ pub async fn run(db: &bedrock::Database) -> StoreResult<()> {
 
     let count = charts.len();
     for chart in charts {
-        db.upsert::<domain::chart::Chart>(chart).await?;
+        db.upsert::<domain::Chart>(chart).await?;
     }
 
     tracing::info!(count, "seed: upserted builtin charts");

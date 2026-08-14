@@ -4,13 +4,14 @@
 //! ACL log to bootstrap a local replica — the second-device onboarding step
 //! (§4: same mnemonic, fresh device index, no admission required).
 
-use std::sync::Arc;
-
-use outpost::protocol::identity::KeyRoot;
-use outpost::replica::Replica;
-use outpost::station::Station;
-use outpost::vessel::{PairingPayload, Vessel, fetch_acl_log, reach};
+use outpost::{
+    protocol::KeyRoot,
+    replica::Replica,
+    station::Station,
+    vessel::{PairingPayload, Vessel, fetch_acl_log, reach},
+};
 use rand::SeedableRng;
+use std::sync::Arc;
 
 #[tokio::test]
 async fn a_station_is_probeable_and_a_fresh_device_bootstraps_from_it() {

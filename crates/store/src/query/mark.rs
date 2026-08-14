@@ -1,6 +1,5 @@
 use chrono::NaiveDateTime;
-use domain::chart::ChartID;
-use domain::mark::{Mark, MarkData, MarkID};
+use domain::{ChartID, Mark, MarkData, MarkID};
 use uuid::Uuid;
 
 use bedrock::{Filter, Query, ScalarValue, Update};
@@ -175,7 +174,7 @@ pub async fn hard_delete(store: &Store, id: MarkID) -> StoreResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::mark::{Content, RichText};
+    use domain::{Content, RichText};
     use tempfile::tempdir;
 
     async fn open_store() -> (Store, tempfile::TempDir) {
@@ -191,7 +190,7 @@ mod tests {
     }
 
     fn landmark_page(title: &str) -> MarkData {
-        use domain::mark::Landmark;
+        use domain::Landmark;
         MarkData::Landmark(
             Landmark::builder()
                 .with_chart(ChartID::builtin("page"))
@@ -255,7 +254,7 @@ mod tests {
             &store,
             note_id,
             &{
-                use domain::mark::Landmark;
+                use domain::Landmark;
                 MarkData::Landmark(
                     Landmark::builder()
                         .with_chart(note_chart.clone())
@@ -269,7 +268,7 @@ mod tests {
         .unwrap();
 
         // Query only for page landmarks.
-        let results = list(&store, None, Some(&[page_chart.clone()]))
+        let results = list(&store, None, Some(std::slice::from_ref(&page_chart)))
             .await
             .unwrap();
 

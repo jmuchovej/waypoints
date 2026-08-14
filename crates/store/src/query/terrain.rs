@@ -1,7 +1,5 @@
 use chrono::NaiveDateTime;
-use domain::Json;
-use domain::mark::MarkID;
-use domain::terrain::{Terrain, TerrainID, TerrainKind};
+use domain::{Json, MarkID, Terrain, TerrainID, TerrainKind};
 
 use bedrock::{Filter, Query, ScalarValue, Update};
 

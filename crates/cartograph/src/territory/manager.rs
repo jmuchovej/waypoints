@@ -1,10 +1,7 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-
+use crate::{Territory, TerritoryKind};
+use std::{path::PathBuf, sync::Arc};
 use tokio::sync::Mutex;
 use uuid::Uuid;
-
-use super::{Territory, TerritoryKind};
 
 pub struct TerritoryManager {
     managed_root: PathBuf,

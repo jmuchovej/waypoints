@@ -20,15 +20,16 @@
 mod common;
 
 use common::{TerritoryBuilder, kem, signing};
-use outpost::protocol::crypto::ReadKey;
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::replica::Replica;
-use outpost::vessel::{Vessel, VesselError};
+use outpost::{
+    protocol::{EpochID, NoticeID, ReadKey},
+    replica::Replica,
+    vessel::{ACLRecord, Vessel, VesselError},
+};
 use rand::SeedableRng;
 
 const EPOCH0: EpochID = EpochID::ZERO;
 
-async fn vessel(seed: u8, acl: &[outpost::vessel::ACLRecord]) -> Vessel {
+async fn vessel(seed: u8, acl: &[ACLRecord]) -> Vessel {
     let mut v = Vessel::new(
         signing(seed),
         kem(seed),

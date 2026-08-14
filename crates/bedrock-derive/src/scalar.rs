@@ -1,8 +1,7 @@
+use crate::attr;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DataEnum, DataStruct, DeriveInput, Fields, Type, Variant};
-
-use crate::attr;
 
 pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
     match &input.data {

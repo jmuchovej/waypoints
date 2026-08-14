@@ -7,15 +7,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ed25519_dalek::{Signer, SigningKey};
-use outpost_hold::{AclIndex, NoticeIndex, TerritoryHold};
-use outpost_protocol::acl::{
-    ACLPayload, ACLRecord, InviteKey, Permissions, RecordBody, join_binding,
-};
-use outpost_protocol::crypto::KemSecretKey;
-use outpost_protocol::sync::{SyncMessage, TallyDigest, wanted};
+use outpost_hold::{ACLIndex, NoticeIndex, TerritoryHold};
+use outpost_protocol::KEMSecret;
+use outpost_protocol::{ACLPayload, ACLRecord, InviteKey, Permissions, RecordBody, join_binding};
 use outpost_protocol::{
-    Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, RecordID, SignedNotice, TrackID,
-    Validated, validate,
+    Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, RecordID, SignedNotice, SyncMessage,
+    TallyDigest, TrackID, Validated, validate, wanted,
 };
 
 // ---- fixtures -------------------------------------------------------------
@@ -39,14 +36,14 @@ fn shared_acl() -> (Vec<ACLRecord>, SigningKey) {
     let owner = key(1);
     let writer = key(2);
     let mut records = Vec::new();
-    let mut fold = AclIndex::new();
+    let mut fold = ACLIndex::new();
 
     let root = acl_record(
         &owner,
         None,
         ACLPayload::Root {
             territory_seed: [0xA5; 32],
-            owner_kem: KemSecretKey::from_seed([1; 32]).public_key(),
+            owner_kem: KEMSecret::from_seed([1; 32]).public_key(),
             epoch0_key_wrapped: vec![0xEE; 8],
         },
     );
@@ -66,7 +63,7 @@ fn shared_acl() -> (Vec<ACLRecord>, SigningKey) {
     fold.push(&inv).unwrap();
     records.push(inv);
 
-    let writer_kem = KemSecretKey::from_seed([2; 32]).public_key();
+    let writer_kem = KEMSecret::from_seed([2; 32]).public_key();
     let proof = invite_secret.sign(&join_binding(&invite, &writer.verifying_key(), &writer_kem));
     let join = acl_record(
         &writer,
@@ -98,7 +95,7 @@ fn shared_acl() -> (Vec<ACLRecord>, SigningKey) {
 /// A peer: one hold plus the folded ACL both sides agree on.
 struct Peer {
     hold: TerritoryHold,
-    acl: AclIndex,
+    acl: ACLIndex,
     acl_head: RecordID,
 }
 

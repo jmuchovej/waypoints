@@ -1,4 +1,4 @@
-//! Outpost — the Waypoints sync layer façade.
+//! Outpost — the sync layer for Waypoints.
 //!
 //! This is the crate embedding code depends on; it reaches nothing deeper.
 //! The protocol vocabulary is always available; the two roles are
@@ -24,15 +24,19 @@
 /// The protocol vocabulary — always available.
 pub use outpost_protocol as protocol;
 
-/// The one fabric type an embedding app must name: the dialable Station
-/// address (it appears in role-module signatures and in app config). A
-/// deliberate single re-export, not a barrel — the rest of the fabric stays
-/// an internal layer behind this façade.
+/// The transport layer, routed through the façade so neither an embedding
+/// app nor this crate's own modules ever name `outpost_fabric` directly.
+/// Mostly an internal layer; what an app actually needs is
+/// [`fabric::EndpointAddr`] (the dialable Station address, which appears in
+/// role-module signatures and in app config) and [`fabric::fleet`].
 #[cfg(any(feature = "vessel", feature = "station"))]
-pub use outpost_fabric::EndpointAddr;
+pub use outpost_fabric as fabric;
 
-#[cfg(feature = "cli")]
-pub mod cli;
+/// The storage layer, routed for the same reason as [`fabric`]. An embedding
+/// app names [`hold::TerritoryHold`] when opening a Territory; the rest is
+/// the roles' business.
+#[cfg(any(feature = "vessel", feature = "station"))]
+pub use outpost_hold as hold;
 
 #[cfg(any(feature = "vessel", feature = "station"))]
 pub mod replica;

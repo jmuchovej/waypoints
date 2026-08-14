@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
-use tauri::State;
-
-use cartograph::WaypointsRuntime;
-use cartograph::sync::{
+use cartograph::{
     IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncResult, SyncStatus,
+    WaypointsRuntime,
 };
+use std::sync::Arc;
+use tauri::State;
 
 #[tauri::command]
 pub async fn sync_status(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<SyncStatus> {
@@ -29,7 +27,7 @@ pub async fn sync_submit_setup_code(
 
 #[tauri::command]
 pub async fn sync_classify_setup_code(input: String) -> SyncResult<SetupCode> {
-    Ok(cartograph::sync::classify(&input))
+    Ok(cartograph::classify(&input))
 }
 
 #[tauri::command]

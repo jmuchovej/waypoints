@@ -4,8 +4,7 @@
 //! streams, tokio duplex pipes, and unix sockets all qualify; the protocol
 //! never knows which it runs on.
 
-use serde::Serialize;
-use serde::de::DeserializeOwned;
+use serde::{Serialize, de::DeserializeOwned};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 /// Refuse absurd frames before allocating. Snapshots are the largest real
@@ -57,7 +56,7 @@ pub async fn read_frame<T: DeserializeOwned>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use outpost_protocol::sync::SyncMessage;
+    use crate::protocol::SyncMessage;
 
     #[tokio::test]
     async fn roundtrip_over_duplex() {

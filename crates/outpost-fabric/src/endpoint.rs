@@ -11,12 +11,14 @@
 //!
 //! [`FleetConfig::station`]: crate::fleet::FleetConfig::station
 
+use ed25519_dalek::VerifyingKey;
+use iroh::{
+    EndpointId, SecretKey, TransportAddr,
+    endpoint::{Connection, RecvStream, SendStream},
+};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
-use ed25519_dalek::VerifyingKey;
 pub use iroh::EndpointAddr;
-use iroh::endpoint::{Connection, RecvStream, SendStream};
-use iroh::{EndpointId, SecretKey, TransportAddr};
 
 /// One protocol, one ALPN; wire-version negotiation happens inside the
 /// session, not here.

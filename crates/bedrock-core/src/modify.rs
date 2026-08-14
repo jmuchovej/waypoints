@@ -2,9 +2,8 @@
 //! the mutation counterpart to the [`Filter`](crate::Filter) query DSL. Built as
 //! a typed value or parsed from a MongoDB-style update document.
 
+use crate::{QueryError, ScalarValue, query::scalar_from_json};
 use serde::{Deserialize, Serialize};
-
-use crate::query::{QueryError, ScalarValue, scalar_from_json};
 
 /// A field-level update over a collection's columns.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

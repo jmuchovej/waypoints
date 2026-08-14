@@ -31,7 +31,7 @@ pub enum CryptoError {
     /// Authenticated decryption failed: wrong key, tampered ciphertext, or
     /// mismatched associated data.
     #[error("authenticated decryption failed")]
-    Aead,
+    AEAD,
 
     /// Key material has the wrong shape (length or encoding).
     #[error("malformed key material")]

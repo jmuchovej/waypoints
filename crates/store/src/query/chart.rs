@@ -1,4 +1,4 @@
-use domain::chart::{Chart, ChartID};
+use domain::{Chart, ChartID};
 
 use crate::error::StoreResult;
 use crate::store::Store;

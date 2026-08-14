@@ -8,7 +8,7 @@ use specta::Type;
 
 /// Display mode for rendering references in the UI.
 /// Determines how referenced Landmarks should be visually presented.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum ReferenceDisplayMode {
     /// Small circular avatar (typically for people)
@@ -16,6 +16,7 @@ pub enum ReferenceDisplayMode {
     /// Inline mention with @ symbol (e.g., @username)
     Mention,
     /// Displays the Reference's value within the currently visible block
+    #[default]
     Inline,
     /// Rich embedded preview
     Embed,
@@ -29,12 +30,6 @@ pub enum ReferenceDisplayMode {
     CardLG,
     /// Extra large card (full preview with rich content)
     CardXL,
-}
-
-impl Default for ReferenceDisplayMode {
-    fn default() -> Self {
-        ReferenceDisplayMode::Inline
-    }
 }
 
 /// A reference that includes display mode information.

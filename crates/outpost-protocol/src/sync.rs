@@ -13,11 +13,9 @@
 //! wire change. Snapshot-path negotiation is likewise deferred with
 //! the snapshot machinery.
 
-use std::collections::{BTreeMap, BTreeSet};
-
+use crate::{NoticeID, TrackID};
 use serde::{Deserialize, Serialize};
-
-use crate::id::{NoticeID, TrackID};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A compact summary of a peer's state: per Track, a hash of that Track's
 /// head set. Two peers in sync produce byte-identical digests;
@@ -119,10 +117,10 @@ impl DeviceSighting {
 /// each Notice pins an `acl_head`), then the Notice DAG:
 ///
 /// **ACL phase** (linear log):
-/// 1. Initiator → [`AclRequest`](SyncMessage::AclRequest) with its log length.
-/// 2. Responder → [`AclResponse`](SyncMessage::AclResponse): the records the
+/// 1. Initiator → [`ACLRequest`](SyncMessage::ACLRequest) with its log length.
+/// 2. Responder → [`ACLResponse`](SyncMessage::ACLResponse): the records the
 ///    initiator is missing (its suffix), plus the responder's own length.
-/// 3. Initiator → [`AclPush`](SyncMessage::AclPush): the records the responder
+/// 3. Initiator → [`ACLPush`](SyncMessage::ACLPush): the records the responder
 ///    is missing (empty when the initiator is not ahead).
 ///
 /// **Notice phase** (DAG):
@@ -200,11 +198,11 @@ pub enum SyncMessage {
     OrderResponse {
         proof: Option<crate::acl::OrderProof>,
     },
-    AclRequest {
+    ACLRequest {
         /// The initiator's ACL log length (its position in the linear log).
         len: u64,
     },
-    AclResponse {
+    ACLResponse {
         /// Ordered ACL records the initiator lacks (the responder's suffix),
         /// each carrying its order proof.
         records: Vec<crate::acl::OrderedRecord>,
@@ -212,7 +210,7 @@ pub enum SyncMessage {
         /// push its own suffix.
         len: u64,
     },
-    AclPush {
+    ACLPush {
         /// Ordered ACL records the responder lacked (empty if none).
         records: Vec<crate::acl::OrderedRecord>,
     },

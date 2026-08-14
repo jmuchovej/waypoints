@@ -18,15 +18,11 @@
 //!   their KEM key (domain-tagged), so an observed Join cannot be replayed
 //!   by or for anyone else.
 
-use std::collections::BTreeMap;
-
+use crate::{EpochID, KEMPublic, MemberID, RecordID, TerritoryID, WireError};
 use bytes::Bytes;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
-
-use crate::crypto::KemPublicKey;
-use crate::error::WireError;
-use crate::id::{EpochID, MemberID, RecordID, TerritoryID};
+use std::collections::BTreeMap;
 
 /// Wire-format version of the ACL record encoding.
 pub const RECORD_VERSION: u8 = 1;
@@ -61,7 +57,7 @@ pub enum ACLPayload {
     /// sealed to their KEM key.
     Root {
         territory_seed: [u8; 32],
-        owner_kem: KemPublicKey,
+        owner_kem: KEMPublic,
         epoch0_key_wrapped: Vec<u8>,
     },
     /// Author invites the holder of `invite_key`'s secret.
@@ -73,7 +69,7 @@ pub enum ACLPayload {
     /// invite secret. Author is the *joiner* — not yet a member.
     Join {
         invite_key: InviteKey,
-        member_kem: KemPublicKey,
+        member_kem: KEMPublic,
         invite_proof: Signature,
     },
     /// An admin admits a joined candidate; the current read key is sealed
@@ -185,7 +181,7 @@ impl TerritoryID {
 pub fn join_binding(
     invite_key: &InviteKey,
     joiner: &VerifyingKey,
-    member_kem: &KemPublicKey,
+    member_kem: &KEMPublic,
 ) -> Vec<u8> {
     let mut msg = Vec::with_capacity(JOIN_PROOF_TAG.len() + 32 + 32 + member_kem.as_bytes().len());
     msg.extend_from_slice(JOIN_PROOF_TAG);
@@ -246,7 +242,7 @@ impl OrderedRecord {
     /// The log position this record claims: the proof's, or 0 for the
     /// unproven `Root`.
     pub fn position(&self) -> u64 {
-        self.proof.as_ref().map_or(0, |p| p.position)
+        self.proof.as_ref().map(|p| p.position).unwrap_or(0)
     }
 
     /// Verify the record against the fleet key. The `Root` (no proof)
@@ -332,10 +328,10 @@ pub struct ACLState {
     pub territory: TerritoryID,
     pub members: BTreeMap<MemberID, Permissions>,
     /// KEM keys for everyone a future `Remove` must reseal to.
-    pub member_kems: BTreeMap<MemberID, KemPublicKey>,
+    pub member_kems: BTreeMap<MemberID, KEMPublic>,
     /// Joined-but-not-yet-approved candidates and the permissions their
     /// invite promised.
-    pub pending_joins: BTreeMap<MemberID, (KemPublicKey, Permissions)>,
+    pub pending_joins: BTreeMap<MemberID, (KEMPublic, Permissions)>,
     pub pending_invites: BTreeMap<InviteKey, Permissions>,
     pub epoch: EpochID,
 }

@@ -285,7 +285,7 @@ mod tests {
             assert_eq!(options.len(), 2);
             assert_eq!(options[0].name, "Option 1");
         } else {
-            panic!("Expected Select variant, got {:?}", select);
+            panic!("Expected Select variant, got {select:?}");
         }
     }
 
@@ -349,7 +349,7 @@ mod tests {
         if let FGroupedSelect { groups, .. } = grouped_select {
             assert_eq!(groups.len(), 2);
         } else {
-            panic!("Expected GroupedSelect variant, got {:?}", grouped_select);
+            panic!("Expected GroupedSelect variant, got {grouped_select:?}");
         }
     }
 

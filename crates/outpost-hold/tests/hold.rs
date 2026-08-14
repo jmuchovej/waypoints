@@ -5,11 +5,11 @@
 //! correctly.
 
 use ed25519_dalek::{Signer, SigningKey};
-use outpost_hold::{AclIndex, NoticeIndex, TerritoryHold};
-use outpost_protocol::acl::{
+use outpost_hold::{ACLIndex, NoticeIndex, TerritoryHold};
+use outpost_protocol::KEMSecret;
+use outpost_protocol::{
     ACLPayload, ACLRecord, ACLState, InviteKey, Permissions, RecordBody, join_binding,
 };
-use outpost_protocol::crypto::KemSecretKey;
 use outpost_protocol::{
     Envelope, EnvelopeHeader, EpochID, MemberID, NoticeID, RecordID, SignedNotice, TrackID,
     Validated, validate,
@@ -32,7 +32,7 @@ fn acl_record(author: &SigningKey, prev: Option<RecordID>, payload: ACLPayload) 
 /// Build (and persist into `hold`) an Owner+Writer ACL log; return the
 /// folded index and the writer key. Records are appended at their log
 /// positions, exactly as a validated append would.
-async fn seed_acl(hold: &TerritoryHold) -> (AclIndex, SigningKey) {
+async fn seed_acl(hold: &TerritoryHold) -> (ACLIndex, SigningKey) {
     let owner = key(1);
     let writer = key(2);
 
@@ -41,11 +41,11 @@ async fn seed_acl(hold: &TerritoryHold) -> (AclIndex, SigningKey) {
         None,
         ACLPayload::Root {
             territory_seed: [0xA5; 32],
-            owner_kem: KemSecretKey::from_seed([1; 32]).public_key(),
+            owner_kem: KEMSecret::from_seed([1; 32]).public_key(),
             epoch0_key_wrapped: vec![0xEE; 8],
         },
     );
-    let mut fold = AclIndex::new();
+    let mut fold = ACLIndex::new();
     fold.push(&root).unwrap();
     hold.append_acl(&root, 0, None).await.unwrap();
 
@@ -62,7 +62,7 @@ async fn seed_acl(hold: &TerritoryHold) -> (AclIndex, SigningKey) {
     fold.push(&inv).unwrap();
     hold.append_acl(&inv, 1, None).await.unwrap();
 
-    let writer_kem = KemSecretKey::from_seed([2; 32]).public_key();
+    let writer_kem = KEMSecret::from_seed([2; 32]).public_key();
     let proof = invite_secret.sign(&join_binding(&invite, &writer.verifying_key(), &writer_kem));
     let join = acl_record(
         &writer,

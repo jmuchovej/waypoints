@@ -1,6 +1,5 @@
 use super::*;
-
-use domain::mark::{Content, MarkData, MarkID, RichText};
+use domain::{Content, MarkData, MarkID, RichText};
 use rstest::rstest;
 
 #[rstest]
@@ -60,7 +59,7 @@ async fn update_mark_converts_block_type(#[future] env: Env) {
                 "text should survive type conversion"
             );
         }
-        other => panic!("expected Heading1, got {:?}", other),
+        other => panic!("expected Heading1, got {other:?}"),
     }
 }
 
@@ -307,6 +306,7 @@ async fn update_mark_title_on_content_errors(#[future] env: Env) {
 #[ignore = "legacy sync_log surface removed; awaiting outpost sync layer"]
 #[rstest]
 #[tokio::test]
+#[warn(clippy::todo)]
 async fn mutations_log_local_sync_groups(#[future] env: Env) {
     // The legacy sync surface is gone — test body is a stub.
     let (_svc, _db) = env.await;

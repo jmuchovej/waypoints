@@ -1,9 +1,6 @@
 //! Page built-in type - A container for other blocks.
 use super::tags_feature;
-use domain::{
-    chart::{Chart, ChartID, Feature, Reference},
-    icon_presets,
-};
+use domain::{Chart, ChartID, Feature, Reference, icon_presets};
 
 pub fn chart() -> Chart {
     let chart = Chart::builder()

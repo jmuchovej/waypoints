@@ -1,10 +1,7 @@
+use cartograph::{Territory, TerritoryResult, WaypointsRuntime};
 use std::sync::Arc;
-
 use tauri::State;
 use uuid::Uuid;
-
-use cartograph::WaypointsRuntime;
-use cartograph::territory::{Territory, TerritoryResult};
 
 #[tauri::command]
 pub async fn territory_list(

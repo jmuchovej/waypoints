@@ -15,10 +15,11 @@ use typed_builder::TypedBuilder;
 ///
 /// The variant names mirror `@internationalized/date` and Nuxt UI's
 /// `UInputDate` `granularity` prop so the frontend can map 1:1.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum DateGranularity {
     /// Date only — time component is zeroed (00:00:00).
+    #[default]
     Day,
     /// Date + hour — minutes and seconds zeroed.
     Hour,
@@ -26,12 +27,6 @@ pub enum DateGranularity {
     Minute,
     /// Full precision.
     Second,
-}
-
-impl Default for DateGranularity {
-    fn default() -> Self {
-        DateGranularity::Day
-    }
 }
 
 /// Builder for date/time features.

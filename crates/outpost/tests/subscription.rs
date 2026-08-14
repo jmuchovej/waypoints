@@ -6,16 +6,15 @@
 //! session: true while subscribed, false after close, and the closed side
 //! sees `Closed`.
 
-use std::sync::Arc;
-use std::time::Duration;
-
 use ed25519_dalek::SigningKey;
-use outpost::protocol::identity::KeyRoot;
-use outpost::protocol::{EpochID, NoticeID};
-use outpost::replica::Replica;
-use outpost::station::Station;
-use outpost::vessel::{SubscriptionEvent, Vessel};
+use outpost::{
+    protocol::{EpochID, KeyRoot, NoticeID},
+    replica::Replica,
+    station::Station,
+    vessel::{SubscriptionEvent, Vessel},
+};
 use rand::SeedableRng;
+use std::{sync::Arc, time::Duration};
 use tokio::time::timeout;
 
 const TICK: Duration = Duration::from_millis(50);
@@ -104,7 +103,7 @@ async fn subscribers_converge_live_without_redialing() {
     // receives it as an AclPush (Acl doorbell + log growth), no re-dial.
     let mut laptop = laptop;
     laptop
-        .invite(&mut rng, outpost::protocol::acl::Permissions::Writer)
+        .invite(&mut rng, outpost::protocol::Permissions::Writer)
         .await
         .unwrap();
     laptop.sync_with(addr.clone()).await.unwrap();

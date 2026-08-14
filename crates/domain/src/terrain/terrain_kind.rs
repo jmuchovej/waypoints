@@ -63,13 +63,13 @@ impl TerrainKind {
     /// but safe (only `to_storage` produces these, so it shouldn't happen).
     pub fn from_storage(s: &str) -> Self {
         if let Some(rest) = s.strip_prefix("reading::") {
-            if let Some((chart_str, feature_str)) = rest.split_once("::") {
-                if let (Ok(chart), Ok(feature)) = (
+            if let Some((chart_str, feature_str)) = rest.split_once("::")
+                && let (Ok(chart), Ok(feature)) = (
                     ChartID::from_str(chart_str),
                     FeatureID::from_str(feature_str),
-                ) {
-                    return TerrainKind::Reading(chart, feature);
-                }
+                )
+            {
+                return TerrainKind::Reading(chart, feature);
             }
             return TerrainKind::Custom;
         }

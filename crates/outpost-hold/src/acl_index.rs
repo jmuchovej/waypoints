@@ -1,26 +1,25 @@
 //! An in-memory fold of a Territory's ACL log that implements the
 //! synchronous [`ACLStateProvider`] seam. A hold materializes
-//! one of these from its persisted `AclRow`s so validation — which is pure
+//! one of these from its persisted `ACLRow`s so validation — which is pure
 //! and sync — can run against the folded state without touching the async
 //! store.
 
+use crate::{
+    HoldError,
+    protocol::{ACLRecord, ACLState, ACLStateProvider, RecordID},
+};
 use std::collections::BTreeMap;
-
-use outpost_protocol::acl::{ACLRecord, ACLState};
-use outpost_protocol::{ACLStateProvider, RecordID};
-
-use crate::error::HoldError;
 
 /// The folded ACL log: each record's state and its log position.
 #[derive(Clone, Debug, Default)]
-pub struct AclIndex {
+pub struct ACLIndex {
     states: BTreeMap<RecordID, (u64, ACLState)>,
     head: Option<RecordID>,
     head_state: Option<ACLState>,
     len: u64,
 }
 
-impl AclIndex {
+impl ACLIndex {
     pub fn new() -> Self {
         Self::default()
     }
@@ -42,7 +41,7 @@ impl AclIndex {
             None => ACLState::genesis(record),
             Some(state) => state.apply(record),
         }
-        .map_err(|e| HoldError::AclFold(e.to_string()))?;
+        .map_err(|e| HoldError::ACLFold(e.to_string()))?;
         let position = self.len;
         self.head = Some(next.head);
         self.states.insert(next.head, (position, next.clone()));
@@ -62,7 +61,7 @@ impl AclIndex {
     }
 }
 
-impl ACLStateProvider for AclIndex {
+impl ACLStateProvider for ACLIndex {
     fn state_at(&self, record: RecordID) -> Option<&ACLState> {
         self.states.get(&record).map(|(_, state)| state)
     }

@@ -1,4 +1,4 @@
-use domain::mark::{InlineMark, RichText, TextSegment};
+use domain::{InlineMark, RichText, TextSegment};
 
 /// Split a `RichText` at the given byte offset into two halves.
 ///
@@ -55,11 +55,11 @@ pub fn merge(a: &RichText, b: &RichText) -> RichText {
         if seg.text.is_empty() {
             continue;
         }
-        if let Some(last) = segments.last_mut() {
-            if last.marks == seg.marks {
-                last.text.push_str(&seg.text);
-                continue;
-            }
+        if let Some(last) = segments.last_mut()
+            && last.marks == seg.marks
+        {
+            last.text.push_str(&seg.text);
+            continue;
         }
         segments.push(seg.clone());
     }
@@ -69,7 +69,7 @@ pub fn merge(a: &RichText, b: &RichText) -> RichText {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::mark::TextMarkKind;
+    use domain::TextMarkKind;
 
     #[test]
     fn test_split_at_segment_boundary() {

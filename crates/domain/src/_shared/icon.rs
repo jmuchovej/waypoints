@@ -187,9 +187,9 @@ impl Icon {
     /// ```
     pub fn local_image(path: &str) -> Self {
         Self {
-            alt_text: format!("Image: {}", path.split('/').last().unwrap_or(path)).into(),
+            alt_text: format!("Image: {}", path.split('/').next_back().unwrap_or(path)).into(),
             colorable: false.into(),
-            ..Self::new(&format!("local:image:{}", path))
+            ..Self::new(&format!("local:image:{path}"))
         }
     }
 
@@ -207,7 +207,7 @@ impl Icon {
         Self {
             alt_text: "Remote image".to_string().into(),
             colorable: false.into(),
-            ..Self::new(&format!("remote:image:{}", url))
+            ..Self::new(&format!("remote:image:{url}"))
         }
     }
 

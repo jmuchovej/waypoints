@@ -2,17 +2,14 @@ mod mutations;
 mod projection;
 mod undo_redo;
 
-use std::sync::Arc;
-
-use domain::chart::ChartID;
-use domain::fractional_index;
-use domain::mark::{Content, Landmark, MarkData, MarkID, RichText};
+use crate::{Database, editor::service::EditorService};
+use domain::{ChartID, Content, Landmark, MarkData, MarkID, RichText, fractional_index};
 use rstest::fixture;
-use store::Store;
-use store::query::{mark, terrain};
-
-use crate::Database;
-use crate::editor::service::EditorService;
+use std::sync::Arc;
+use store::{
+    Store,
+    query::{mark, terrain},
+};
 
 type Env = (EditorService, Store);
 

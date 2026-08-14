@@ -13,9 +13,10 @@ use std::collections::HashMap;
 use typed_builder::TypedBuilder;
 
 /// Field types that can be used in Charts.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum FeatureKind {
+    #[default]
     Text,
 
     /// Numeric field with range constraints
@@ -94,12 +95,6 @@ pub enum FeatureKind {
 
 fn default_display_field() -> String {
     "title".to_string()
-}
-
-impl Default for FeatureKind {
-    fn default() -> Self {
-        FeatureKind::Text
-    }
 }
 
 pub mod date_builder;

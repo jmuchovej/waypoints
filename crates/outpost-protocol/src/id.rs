@@ -3,7 +3,7 @@
 //! no matter how similar the underlying bytes look.
 
 use core::fmt;
-
+use derive_more::{Display, From, Into};
 use serde::{Deserialize, Serialize};
 
 /// 32-byte identifiers rendered as hex. `Debug` shows a shortened prefix so
@@ -108,9 +108,9 @@ impl From<&ed25519_dalek::VerifyingKey> for MemberID {
     Debug,
     Serialize,
     Deserialize,
-    derive_more::Display,
-    derive_more::From,
-    derive_more::Into,
+    Display,
+    From,
+    Into,
 )]
 pub struct TrackID(NoticeID);
 
@@ -133,9 +133,9 @@ impl TrackID {
     Debug,
     Serialize,
     Deserialize,
-    derive_more::Display,
-    derive_more::From,
-    derive_more::Into,
+    Display,
+    From,
+    Into,
 )]
 pub struct EpochID(u64);
 

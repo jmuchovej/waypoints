@@ -9,15 +9,15 @@
 //! Notice whose bytes do not decode, but "well-formed bytes" is the only
 //! judgment it makes; authority is the validator's job.
 
-use std::collections::{BTreeMap, BTreeSet};
-
+use crate::{
+    ACLIndex, ACLs, Backlog, HoldError, NoticeKey, Notices, RecordKey,
+    protocol::{
+        ACLRecord, NoticeID, NoticeStore, OrderProof, OrderedRecord, RecordID, SignedNotice,
+        TrackID,
+    },
+};
 use bedrock::{Database, Filter, Query};
-use outpost_protocol::acl::{ACLRecord, OrderProof, OrderedRecord};
-use outpost_protocol::{NoticeID, NoticeStore, RecordID, SignedNotice, TrackID};
-
-use crate::acl_index::AclIndex;
-use crate::error::HoldError;
-use crate::rows::{AclRow, NoticeKey, NoticeRow, PendingRow, RecordKey};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A Notice as it comes back from the store: the canonical bytes plus the
 /// cheap denormalized facts the store already indexed.
@@ -31,7 +31,7 @@ pub struct StoredNotice {
 }
 
 impl StoredNotice {
-    fn from_row(row: NoticeRow) -> Result<Self, HoldError> {
+    fn from_row(row: Notices) -> Result<Self, HoldError> {
         let notice = SignedNotice::decode(&row.bytes)?;
         Ok(Self {
             id: NoticeID::from_bytes(row.id.0),
@@ -53,9 +53,9 @@ impl TerritoryHold {
     /// `":memory:"`. Idempotent: re-opening ensures the collections exist.
     pub async fn open(path: &str) -> Result<Self, HoldError> {
         let db = Database::open(path).await?;
-        db.ensure_collection::<NoticeRow>().await?;
-        db.ensure_collection::<AclRow>().await?;
-        db.ensure_collection::<PendingRow>().await?;
+        db.ensure_collection::<Notices>().await?;
+        db.ensure_collection::<ACLs>().await?;
+        db.ensure_collection::<Backlog>().await?;
         Ok(Self { db })
     }
 
@@ -77,7 +77,7 @@ impl TerritoryHold {
             None => Vec::new(),
         };
         self.db
-            .insert(AclRow {
+            .insert(ACLs {
                 id: RecordKey(*id.as_bytes()),
                 position: position as i64,
                 bytes: record.encode()?.to_vec(),
@@ -92,7 +92,7 @@ impl TerritoryHold {
     pub async fn acl_records(&self) -> Result<Vec<ACLRecord>, HoldError> {
         let rows = self
             .db
-            .query::<AclRow>(&Query::new().sort_asc("position"))
+            .query::<ACLs>(&Query::new().sort_asc("position"))
             .await?;
         rows.iter()
             .map(|row| ACLRecord::decode(&row.bytes).map_err(HoldError::from))
@@ -104,7 +104,7 @@ impl TerritoryHold {
     pub async fn ordered_records(&self) -> Result<Vec<OrderedRecord>, HoldError> {
         let rows = self
             .db
-            .query::<AclRow>(&Query::new().sort_asc("position"))
+            .query::<ACLs>(&Query::new().sort_asc("position"))
             .await?;
         rows.iter()
             .map(|row| {
@@ -121,8 +121,8 @@ impl TerritoryHold {
 
     /// Materialize the folded ACL state (the `ACLStateProvider`), ready
     /// to hand to `validate()`.
-    pub async fn acl_index(&self) -> Result<AclIndex, HoldError> {
-        AclIndex::from_ordered(&self.acl_records().await?)
+    pub async fn acl_index(&self) -> Result<ACLIndex, HoldError> {
+        ACLIndex::from_ordered(&self.acl_records().await?)
     }
 
     // ---- Notices -------------------------------------------------------
@@ -142,7 +142,7 @@ impl TerritoryHold {
         let header = &envelope.header;
 
         self.db
-            .insert(NoticeRow {
+            .insert(Notices {
                 id: NoticeKey(*id.as_bytes()),
                 track: track.root_notice().as_bytes().to_owned(),
                 topo,
@@ -161,7 +161,7 @@ impl TerritoryHold {
     }
 
     async fn clear_head(&self, id: NoticeID) -> Result<(), HoldError> {
-        if let Some(mut row) = self.db.get::<NoticeRow>(&NoticeKey(*id.as_bytes())).await?
+        if let Some(mut row) = self.db.get::<Notices>(&NoticeKey(*id.as_bytes())).await?
             && row.is_head
         {
             row.is_head = false;
@@ -172,7 +172,7 @@ impl TerritoryHold {
 
     /// Fetch a stored Notice by content address.
     pub async fn get_notice(&self, id: NoticeID) -> Result<Option<StoredNotice>, HoldError> {
-        match self.db.get::<NoticeRow>(&NoticeKey(*id.as_bytes())).await? {
+        match self.db.get::<Notices>(&NoticeKey(*id.as_bytes())).await? {
             Some(row) => Ok(Some(StoredNotice::from_row(row)?)),
             None => Ok(None),
         }
@@ -183,7 +183,7 @@ impl TerritoryHold {
     pub async fn track_heads(&self, track: TrackID) -> Result<Vec<StoredNotice>, HoldError> {
         let rows = self
             .db
-            .query::<NoticeRow>(&Query::new().filter(Filter::all([
+            .query::<Notices>(&Query::new().filter(Filter::all([
                 Filter::eq("track", track.root_notice().as_bytes().to_owned()),
                 Filter::eq("is_head", true),
             ])))
@@ -192,11 +192,11 @@ impl TerritoryHold {
     }
 
     /// The whole Territory's `(Track → head ids)` map — the input to a
-    /// [`TallyDigest`](outpost_protocol::sync::TallyDigest).
+    /// [`TallyDigest`](outpost_protocol::TallyDigest).
     pub async fn all_heads(&self) -> Result<BTreeMap<TrackID, BTreeSet<NoticeID>>, HoldError> {
         let rows = self
             .db
-            .query::<NoticeRow>(&Query::new().filter(Filter::eq("is_head", true)))
+            .query::<Notices>(&Query::new().filter(Filter::eq("is_head", true)))
             .await?;
         let mut heads: BTreeMap<TrackID, BTreeSet<NoticeID>> = BTreeMap::new();
         for row in rows {
@@ -211,7 +211,7 @@ impl TerritoryHold {
     pub async fn track_notices(&self, track: TrackID) -> Result<Vec<StoredNotice>, HoldError> {
         let rows = self
             .db
-            .query::<NoticeRow>(
+            .query::<Notices>(
                 &Query::new()
                     .filter(Filter::eq(
                         "track",
@@ -240,7 +240,7 @@ impl TerritoryHold {
     pub async fn notices_after(&self, after: i64) -> Result<Vec<StoredNotice>, HoldError> {
         let rows = self
             .db
-            .query::<NoticeRow>(
+            .query::<Notices>(
                 &Query::new()
                     .filter(Filter::gt("topo", after))
                     .sort_asc("topo"),
@@ -254,9 +254,9 @@ impl TerritoryHold {
     pub async fn max_topo(&self) -> Result<i64, HoldError> {
         let rows = self
             .db
-            .query::<NoticeRow>(&Query::new().sort_desc("topo").limit(1))
+            .query::<Notices>(&Query::new().sort_desc("topo").limit(1))
             .await?;
-        Ok(rows.first().map_or(-1, |row| row.topo))
+        Ok(rows.first().map(|row| row.topo).unwrap_or(-1))
     }
 
     // ---- Orphan queue --------------------------------------------------
@@ -270,7 +270,7 @@ impl TerritoryHold {
     ) -> Result<(), HoldError> {
         let id = NoticeID::of(notice)?;
         self.db
-            .insert(PendingRow {
+            .insert(Backlog {
                 id: NoticeKey(*id.as_bytes()),
                 parent: *parent.as_bytes(),
                 bytes: notice.encode()?.to_vec(),
@@ -284,7 +284,7 @@ impl TerritoryHold {
     pub async fn pending_on(&self, parent: NoticeID) -> Result<Vec<SignedNotice>, HoldError> {
         let rows = self
             .db
-            .query::<PendingRow>(
+            .query::<Backlog>(
                 &Query::new().filter(Filter::eq("parent", parent.as_bytes().to_owned())),
             )
             .await?;
@@ -296,7 +296,7 @@ impl TerritoryHold {
     /// Remove a Notice from the orphan queue once it has been accepted.
     pub async fn unpark(&self, id: NoticeID) -> Result<(), HoldError> {
         self.db
-            .delete::<PendingRow>(&NoticeKey(*id.as_bytes()))
+            .delete::<Backlog>(&NoticeKey(*id.as_bytes()))
             .await?;
         Ok(())
     }

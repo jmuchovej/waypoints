@@ -1,11 +1,10 @@
 use std::sync::Arc;
-
 use tokio::sync::Mutex;
 
 /// Shared store handle, swapped by territory lifecycle.
 pub type Database = Arc<Mutex<Option<store::Store>>>;
 
-pub mod build_info;
+pub(crate) mod build_info;
 pub use build_info::BuildInfo;
 
 pub(crate) mod editor {
@@ -23,33 +22,37 @@ pub(crate) mod editor {
 
     pub use error::{EditorError, EditorResult};
     pub use handle::EditorHandle;
-    pub use maneuver::{Maneuver, ManeuverTarget};
+    pub use maneuver::{Maneuver, ManeuverTarget, TextPayload};
     pub use types::{
         CreateResult, CursorState, MutationResult, RenderNode, SplitResult, UndoRedoResult,
     };
 
+    pub(crate) use history::CommandHistory;
     pub(crate) use service::EditorService;
 }
+pub(crate) use editor::{CommandHistory, EditorService, TextPayload};
 pub use editor::{
     CreateResult, CursorState, EditorError, EditorHandle, EditorResult, Maneuver, ManeuverTarget,
     MutationResult, RenderNode, SplitResult, UndoRedoResult,
 };
 
-pub mod chart {
+pub(crate) mod chart {
     mod handle;
 
     pub use handle::ChartHandle;
 }
+pub use chart::ChartHandle;
 
-pub mod mark {
+pub(crate) mod mark {
     mod error;
     mod handle;
 
     pub use error::{MarkError, MarkResult};
     pub use handle::MarkHandle;
 }
+pub use mark::{MarkError, MarkHandle, MarkResult};
 
-pub mod territory {
+pub(crate) mod territory {
     mod error;
     mod handle;
     pub(crate) mod manager;
@@ -63,8 +66,12 @@ pub mod territory {
 
     pub(crate) use manager::TerritoryManager;
 }
+pub use territory::{
+    RegistryStore, Territory, TerritoryError, TerritoryHandle, TerritoryKind, TerritoryRegistry,
+    TerritoryResult,
+};
 
-pub mod sync {
+pub(crate) mod sync {
     mod error;
     mod service;
     mod setup_code;
@@ -75,6 +82,10 @@ pub mod sync {
     pub use setup_code::{SetupCode, classify, encode_pair_url};
     pub use types::{IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncStatus};
 }
+pub use sync::{
+    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncError, SyncResult,
+    SyncService, SyncStatus, classify, encode_pair_url,
+};
 
 mod runtime;
 pub use runtime::WaypointsRuntime;

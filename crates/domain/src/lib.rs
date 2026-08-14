@@ -40,52 +40,57 @@
 //! [R]: crate::mark::Reading
 
 //! Shared utilities and types for the waypoints domain.
-mod _shared {
+pub(crate) mod _shared {
     pub type Json = serde_json::Value;
     pub type DateTime = chrono::NaiveDateTime;
     pub type Uuid = uuid::Uuid;
 
-    pub mod color;
-    pub mod error;
+    pub(crate) mod color;
+    pub(crate) mod error;
     pub mod fractional_index;
-    pub mod icon;
+    pub(crate) mod icon;
 
     pub use color::Color;
     pub use error::{DomainError, DomainResult};
     pub use icon::{HasIcon, Icon, IconNamespace, presets as icon_presets};
 }
-pub use _shared::fractional_index;
-pub use _shared::*;
+pub use _shared::{
+    Color, DateTime, DomainError, DomainResult, HasIcon, Icon, IconNamespace, Json, Uuid,
+    fractional_index, icon_presets,
+};
 
-pub mod mark {
+pub(crate) mod mark {
     #[allow(clippy::module_inception)]
-    pub mod mark;
-    pub mod mark_data;
-    pub mod reading;
-    pub mod rich_reference;
-    pub mod rich_text;
+    mod mark;
+    pub(crate) mod mark_data;
+    pub(crate) mod reading;
+    pub(crate) mod rich_reference;
+    pub(crate) mod rich_text;
 
     pub use mark::{Mark, MarkID, now_ms};
-    pub use mark_data::{Content, Landmark, MarkData};
+    pub use mark_data::{Content, Landmark, MarkData, MathEngine, Size};
     pub use reading::Reading;
     pub use rich_reference::{ReferenceDisplayMode, RichReference};
     pub use rich_text::{InlineMark, RichText, TextMarkKind, TextSegment};
 
-    pub mod reading_validators;
+    pub(crate) mod reading_validators;
 
-    pub mod builders {
+    mod builders {
         use super::mark;
         pub use mark::MarkBuilder;
     }
+    pub use builders::MarkBuilder;
 }
-pub use mark::builders::MarkBuilder;
-pub use mark::{Content, Landmark, Mark, MarkData, MarkID, Reading, RichText};
+pub use mark::{
+    Content, InlineMark, Landmark, Mark, MarkBuilder, MarkData, MarkID, MathEngine, Reading,
+    ReferenceDisplayMode, RichReference, RichText, Size, TextMarkKind, TextSegment, now_ms,
+};
 
-pub mod chart {
-    pub mod ids;
-    pub use ids::{ChartID, FeatureID, GlyphID};
+pub(crate) mod chart {
+    pub(crate) mod ids;
+    pub use ids::{Base36ID, ChartID, FeatureID, GlyphID};
 
-    pub mod feature_kind;
+    mod feature_kind;
     pub use feature_kind::{
         Date, DateGranularity, FeatureKind, Number, Reference, Select, SelectGroup, SelectOption,
     };
@@ -94,10 +99,10 @@ pub mod chart {
     pub use feature::Feature;
 
     #[allow(clippy::module_inception)]
-    pub mod chart;
+    mod chart;
     pub use chart::Chart;
 
-    pub mod builders {
+    mod builders {
         use super::chart;
         pub use chart::ChartBuilder;
 
@@ -107,36 +112,37 @@ pub mod chart {
         pub use feature_kind::reference_builder::ReferenceBuilder;
         pub use feature_kind::select_builder::SelectBuilder;
     }
+    pub use builders::{ChartBuilder, DateBuilder, NumberBuilder, ReferenceBuilder, SelectBuilder};
 }
-pub use chart::builders::{
-    ChartBuilder, DateBuilder, NumberBuilder, ReferenceBuilder, SelectBuilder,
-};
 pub use chart::{
-    Chart, ChartID, Date, DateGranularity, Feature, FeatureID, FeatureKind, GlyphID, Number,
-    Reference, Select, SelectGroup, SelectOption,
+    Base36ID, Chart, ChartBuilder, ChartID, Date, DateBuilder, DateGranularity, Feature, FeatureID,
+    FeatureKind, GlyphID, Number, NumberBuilder, Reference, ReferenceBuilder, Select,
+    SelectBuilder, SelectGroup, SelectOption,
 };
 
-pub mod terrain {
+pub(crate) mod terrain {
     #[allow(clippy::module_inception)]
-    pub mod terrain;
+    mod terrain;
+    pub(crate) mod terrain_id;
+    pub(crate) mod terrain_kind;
+
     pub use terrain::Terrain;
-    pub mod terrain_id;
     pub use terrain_id::TerrainID;
-    pub mod terrain_kind;
     pub use terrain_kind::TerrainKind;
 
-    pub mod builders {
+    mod builders {
         use super::terrain;
         pub use terrain::TerrainBuilder;
     }
+    pub use builders::TerrainBuilder;
 }
-pub use terrain::builders::TerrainBuilder;
-pub use terrain::{Terrain, TerrainID, TerrainKind};
+pub use terrain::{Terrain, TerrainBuilder, TerrainID, TerrainKind};
 
-pub mod sync {
-    pub mod hlc;
+pub(crate) mod sync {
+    pub(crate) mod hlc;
+    pub(crate) mod identity;
+
     pub use hlc::{Clock, HLC, SystemClock};
-    pub mod identity;
     pub use identity::{AccountID, DeviceID, OpID, RealmID};
 }
-pub use sync::{AccountID, DeviceID, HLC, OpID, RealmID};
+pub use sync::{AccountID, Clock, DeviceID, HLC, OpID, RealmID, SystemClock};

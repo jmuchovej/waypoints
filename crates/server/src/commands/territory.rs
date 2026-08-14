@@ -5,7 +5,7 @@ use axum::Json;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use cartograph::territory::Territory;
+use cartograph::Territory;
 
 use crate::error::ApiError;
 use crate::instance::Instance;

@@ -1,4 +1,4 @@
-use bedrock_core::{CompareOp, Filter, Query, ScalarValue, Update};
+use crate::core::{CompareOp, Filter, Query, ScalarValue, Update};
 
 /// Quote an identifier for SQL, escaping embedded quotes.
 fn quote(name: &str) -> String {

@@ -8,19 +8,16 @@
 //! shared engine rather than per-connection.
 //!
 //! Rust has no async `Drop`, so a connection returned mid-transaction (a
-//! dropped, uncommitted [`WriteTx`](crate::tx::WriteTx)) is cleaned with a
+//! dropped, uncommitted [`WriteTx`](crate::WriteTx)) is cleaned with a
 //! `ROLLBACK` on its *next* acquisition rather than on release.
 
+use crate::{BedrockError, Config};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicUsize, Ordering},
 };
-
 use tokio::sync::{Mutex, OwnedMutexGuard, OwnedSemaphorePermit, Semaphore};
 use turso::Connection;
-
-use crate::config::Config;
-use crate::error::BedrockError;
 
 /// The connection pool backing a [`Database`](crate::Database).
 pub(crate) struct Pool {
@@ -191,7 +188,7 @@ async fn apply_pragma(conn: &Connection, key: &str, value: &str) {
     match conn.query(&format!("PRAGMA {key} = {value}"), ()).await {
         Ok(mut rows) => while let Ok(Some(_)) = rows.next().await {},
         Err(error) => {
-            eprintln!("bedrock: pragma {key}={value} rejected by turso: {error}");
+            tracing::warn!(%key, %value, %error, "pragma rejected by turso");
         }
     }
 }

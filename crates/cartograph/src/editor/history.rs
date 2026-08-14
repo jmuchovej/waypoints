@@ -1,11 +1,7 @@
+use crate::{CursorState, EditorResult, Maneuver};
+use domain::MarkID;
 use std::time::Instant;
-
-use domain::mark::MarkID;
 use store::Store;
-
-use super::error::EditorResult;
-use super::maneuver::Maneuver;
-use super::types::CursorState;
 
 const MAX_HISTORY_DEPTH: usize = 200;
 const COALESCE_WINDOW_MS: u128 = 500;
@@ -47,16 +43,14 @@ impl CommandHistory {
         let now = Instant::now();
 
         // Try coalescing with the last group for text edits
-        if is_text_edit {
-            if let Some(last) = self.undo_stack.last_mut() {
-                let elapsed = now.duration_since(last.last_timestamp).as_millis();
-                if last.primary_mark_id == primary_mark_id && elapsed < COALESCE_WINDOW_MS {
-                    last.ops.extend(ops);
-                    last.last_timestamp = now;
-                    last.cursor_after = cursor_after;
-                    self.redo_stack.clear();
-                    return;
-                }
+        if is_text_edit && let Some(last) = self.undo_stack.last_mut() {
+            let elapsed = now.duration_since(last.last_timestamp).as_millis();
+            if last.primary_mark_id == primary_mark_id && elapsed < COALESCE_WINDOW_MS {
+                last.ops.extend(ops);
+                last.last_timestamp = now;
+                last.cursor_after = cursor_after;
+                self.redo_stack.clear();
+                return;
             }
         }
 

@@ -11,18 +11,19 @@
 //! no ambient entropy source, which keeps it pure and every test
 //! deterministic.
 
-use chacha20poly1305::aead::{Aead, Payload};
-use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce};
+use crate::{CryptoError, EnvelopeHeader};
+use chacha20poly1305::{
+    KeyInit, XChaCha20Poly1305, XNonce,
+    aead::{Aead, Payload},
+};
 use rand_core::CryptoRng;
-/// The RNG bound every randomized operation here takes, re-exported so
-/// callers need not depend on `rand_core` directly.
-pub use rand_core::CryptoRng as CryptoRngExport;
 use serde::{Deserialize, Serialize};
 use x_wing::{Decapsulate, Decapsulator, Encapsulate, KeyExport};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use crate::envelope::EnvelopeHeader;
-use crate::error::CryptoError;
+/// The RNG bound every randomized operation here takes, re-exported so
+/// callers need not depend on `rand_core` directly.
+pub use rand_core::CryptoRng as CryptoRNG;
 
 /// XChaCha20 nonce length.
 pub const NONCE_LEN: usize = 24;
@@ -42,7 +43,7 @@ const KEY_CHAIN_AAD: &[u8] = b"outpost.keychain.v1";
 pub struct ReadKey([u8; 32]);
 
 impl ReadKey {
-    pub fn generate(rng: &mut impl CryptoRng) -> Self {
+    pub fn generate(rng: &mut impl CryptoRNG) -> Self {
         let mut key = [0u8; 32];
         rng.fill_bytes(&mut key);
         Self(key)
@@ -66,9 +67,9 @@ impl core::fmt::Debug for ReadKey {
 /// A member's X-Wing encapsulation key as it travels in ACL records —
 /// plain bytes on the wire, validated when used.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct KemPublicKey(Vec<u8>);
+pub struct KEMPublic(Vec<u8>);
 
-impl KemPublicKey {
+impl KEMPublic {
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
@@ -78,7 +79,7 @@ impl KemPublicKey {
     }
 }
 
-impl core::fmt::Debug for KemPublicKey {
+impl core::fmt::Debug for KEMPublic {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "KemPublicKey({} bytes)", self.0.len())
     }
@@ -87,16 +88,16 @@ impl core::fmt::Debug for KemPublicKey {
 /// The vessel-held decapsulation seed. The 32-byte seed is a SLIP-10 node
 /// key, so mnemonic recovery restores it.
 #[derive(Zeroize, ZeroizeOnDrop)]
-pub struct KemSecretKey([u8; 32]);
+pub struct KEMSecret([u8; 32]);
 
-impl KemSecretKey {
+impl KEMSecret {
     pub const fn from_seed(seed: [u8; 32]) -> Self {
         Self(seed)
     }
 
-    pub fn public_key(&self) -> KemPublicKey {
+    pub fn public_key(&self) -> KEMPublic {
         let dk = x_wing::DecapsulationKey::from(self.0);
-        KemPublicKey(dk.encapsulation_key().to_bytes().to_vec())
+        KEMPublic(dk.encapsulation_key().to_bytes().to_vec())
     }
 
     fn decapsulation_key(&self) -> x_wing::DecapsulationKey {
@@ -104,7 +105,7 @@ impl KemSecretKey {
     }
 }
 
-impl core::fmt::Debug for KemSecretKey {
+impl core::fmt::Debug for KEMSecret {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("KemSecretKey(…)")
     }
@@ -114,7 +115,7 @@ fn cipher(key: &[u8; 32]) -> XChaCha20Poly1305 {
     XChaCha20Poly1305::new(key.into())
 }
 
-fn random_nonce(rng: &mut impl CryptoRng) -> [u8; NONCE_LEN] {
+fn random_nonce(rng: &mut impl CryptoRNG) -> [u8; NONCE_LEN] {
     let mut nonce = [0u8; NONCE_LEN];
     rng.fill_bytes(&mut nonce);
     nonce
@@ -124,7 +125,7 @@ fn random_nonce(rng: &mut impl CryptoRng) -> [u8; NONCE_LEN] {
 /// header as associated data. Output: `nonce ‖ ciphertext` — what
 /// goes in [`Envelope::payload`](crate::Envelope::payload).
 pub fn seal_payload(
-    rng: &mut impl CryptoRng,
+    rng: &mut impl CryptoRNG,
     key: &ReadKey,
     header: &EnvelopeHeader,
     plaintext: &[u8],
@@ -139,7 +140,7 @@ pub fn seal_payload(
                 aad: &aad,
             },
         )
-        .map_err(|_| CryptoError::Aead)?;
+        .map_err(|_| CryptoError::AEAD)?;
     let mut out = Vec::with_capacity(NONCE_LEN + ciphertext.len());
     out.extend_from_slice(&nonce);
     out.extend_from_slice(&ciphertext);
@@ -166,15 +167,15 @@ pub fn open_payload(
                 aad: &aad,
             },
         )
-        .map_err(|_| CryptoError::Aead)
+        .map_err(|_| CryptoError::AEAD)
 }
 
 /// Seal a read key to one member's KEM key: the sealed box carried
 /// by `Root`/`Approve`/`Remove` ACL records. Layout:
 /// `kem_ciphertext ‖ nonce ‖ AEAD(shared_secret, read_key)`.
 pub fn seal_key_to_member(
-    rng: &mut impl CryptoRng,
-    recipient: &KemPublicKey,
+    rng: &mut impl CryptoRNG,
+    recipient: &KEMPublic,
     key: &ReadKey,
 ) -> Result<Vec<u8>, CryptoError> {
     let (kem_ciphertext, shared) = recipient.encapsulation_key()?.encapsulate_with_rng(rng);
@@ -182,7 +183,7 @@ pub fn seal_key_to_member(
     let nonce = random_nonce(rng);
     let body = cipher(&shared)
         .encrypt(&XNonce::from(nonce), key.0.as_slice())
-        .map_err(|_| CryptoError::Aead)?;
+        .map_err(|_| CryptoError::AEAD)?;
     let mut out = Vec::with_capacity(KEM_CIPHERTEXT_LEN + NONCE_LEN + body.len());
     out.extend_from_slice(kem_ciphertext.as_ref());
     out.extend_from_slice(&nonce);
@@ -191,7 +192,7 @@ pub fn seal_key_to_member(
 }
 
 /// Open a sealed box with the vessel's decapsulation seed.
-pub fn open_sealed_key(secret: &KemSecretKey, sealed: &[u8]) -> Result<ReadKey, CryptoError> {
+pub fn open_sealed_key(secret: &KEMSecret, sealed: &[u8]) -> Result<ReadKey, CryptoError> {
     let (kem_ciphertext, body) = sealed
         .split_at_checked(KEM_CIPHERTEXT_LEN)
         .ok_or(CryptoError::Truncated)?;
@@ -201,14 +202,14 @@ pub fn open_sealed_key(secret: &KemSecretKey, sealed: &[u8]) -> Result<ReadKey, 
     let shared = secret
         .decapsulation_key()
         .decapsulate_slice(kem_ciphertext)
-        .map_err(|_| CryptoError::Aead)?;
+        .map_err(|_| CryptoError::AEAD)?;
     let shared: [u8; 32] = shared.into();
     let plaintext = cipher(&shared)
         .decrypt(
             &XNonce::try_from(nonce).map_err(|_| CryptoError::Truncated)?,
             ciphertext,
         )
-        .map_err(|_| CryptoError::Aead)?;
+        .map_err(|_| CryptoError::AEAD)?;
     let bytes: [u8; 32] = plaintext.try_into().map_err(|_| CryptoError::BadKey)?;
     Ok(ReadKey(bytes))
 }
@@ -217,7 +218,7 @@ pub fn open_sealed_key(secret: &KemSecretKey, sealed: &[u8]) -> Result<ReadKey, 
 /// field of a `Remove` record. A newly admitted member holding only the
 /// current key walks these wraps back through all history; a removed
 /// member's knowledge ends at their last epoch.
-pub fn wrap_prev_key(rng: &mut impl CryptoRng, next: &ReadKey, prev: &ReadKey) -> Vec<u8> {
+pub fn wrap_prev_key(rng: &mut impl CryptoRNG, next: &ReadKey, prev: &ReadKey) -> Vec<u8> {
     let nonce = random_nonce(rng);
     let body = cipher(&next.0)
         .encrypt(
@@ -247,7 +248,7 @@ pub fn unwrap_prev_key(next: &ReadKey, wrapped: &[u8]) -> Result<ReadKey, Crypto
                 aad: KEY_CHAIN_AAD,
             },
         )
-        .map_err(|_| CryptoError::Aead)?;
+        .map_err(|_| CryptoError::AEAD)?;
     let bytes: [u8; 32] = plaintext.try_into().map_err(|_| CryptoError::BadKey)?;
     Ok(ReadKey(bytes))
 }
@@ -257,7 +258,7 @@ mod tests {
     use super::*;
     use crate::id::{EpochID, NoticeID, RecordID};
 
-    fn rng() -> impl CryptoRng {
+    fn rng() -> impl CryptoRNG {
         // Deterministic test RNG: fixed-seed ChaCha via rand.
         use rand::SeedableRng;
         rand::rngs::StdRng::seed_from_u64(42)
@@ -295,7 +296,7 @@ mod tests {
         other.timestamp += 1;
         assert!(matches!(
             open_payload(&key, &other, &sealed),
-            Err(CryptoError::Aead)
+            Err(CryptoError::AEAD)
         ));
     }
 
@@ -316,7 +317,7 @@ mod tests {
     #[test]
     fn sealed_box_roundtrip() {
         let mut rng = rng();
-        let secret = KemSecretKey::from_seed([9u8; 32]);
+        let secret = KEMSecret::from_seed([9u8; 32]);
         let key = ReadKey::generate(&mut rng);
         let sealed = seal_key_to_member(&mut rng, &secret.public_key(), &key).unwrap();
         assert_eq!(open_sealed_key(&secret, &sealed).unwrap(), key);
@@ -325,11 +326,11 @@ mod tests {
     #[test]
     fn sealed_box_rejects_wrong_recipient_and_tampering() {
         let mut rng = rng();
-        let secret = KemSecretKey::from_seed([9u8; 32]);
+        let secret = KEMSecret::from_seed([9u8; 32]);
         let key = ReadKey::generate(&mut rng);
         let mut sealed = seal_key_to_member(&mut rng, &secret.public_key(), &key).unwrap();
 
-        let imposter = KemSecretKey::from_seed([10u8; 32]);
+        let imposter = KEMSecret::from_seed([10u8; 32]);
         assert!(open_sealed_key(&imposter, &sealed).is_err());
 
         // Tamper with the KEM ciphertext: decapsulation yields a different

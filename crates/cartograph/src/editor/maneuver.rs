@@ -1,11 +1,11 @@
+use crate::{EditorError, EditorResult};
 use chrono::NaiveDateTime;
-use domain::mark::{MarkData, MarkID, RichText};
-use domain::{Json, TerrainID, TerrainKind};
+use domain::{Json, MarkData, MarkID, RichText, TerrainID, TerrainKind};
 use serde::{Deserialize, Serialize};
-use store::Store;
-use store::query::{mark, terrain};
-
-use super::error::{EditorError, EditorResult};
+use store::{
+    Store,
+    query::{mark, terrain},
+};
 
 /// Wire-stable wrapper for rich-text content in ops: the tagged enum lets a
 /// new payload kind (e.g. char-level deltas) join without breaking the wire
@@ -32,14 +32,14 @@ pub enum Maneuver {
     // ── Mark layer (LWW target = MarkID) ─────────────────────────────
     CreateMark {
         mark_id: MarkID,
-        data: MarkData,
+        data: Box<MarkData>,
     },
     UpdateMarkData {
         mark_id: MarkID,
         /// Local-only, for CommandHistory undo.
         #[serde(skip)]
-        old: MarkData,
-        new: MarkData,
+        old: Box<MarkData>,
+        new: Box<MarkData>,
     },
     UpdateRichText {
         mark_id: MarkID,
