@@ -1,4 +1,3 @@
-#:tombi schema.strict = false
 #:schema ../gen/schemas/mobile-schema.json
 
 identifier = "mobile"

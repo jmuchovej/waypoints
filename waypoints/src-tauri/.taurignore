@@ -1,4 +1,5 @@
-src/generated/*.rs
 icons/
-gen/apple/
-gen/android/
+gen/
+justfile
+.just/
+.gitignore

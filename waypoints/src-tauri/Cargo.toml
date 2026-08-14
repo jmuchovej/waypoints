@@ -23,7 +23,6 @@ chrono.workspace = true
 domain.workspace = true
 resvg = "0.47.0"
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
-sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 store.workspace = true

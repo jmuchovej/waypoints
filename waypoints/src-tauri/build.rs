@@ -8,7 +8,7 @@ fn emit_build_info() {
     let sha = env_var("GITHUB_SHA")
         .or_else(|| git(["rev-parse", "HEAD"]))
         .unwrap_or_else(|| "unknown".into());
-    let branch = env_var("GITHUB_REF_NAME")
+    let r#ref = env_var("GITHUB_REF_NAME")
         .or_else(|| git(["rev-parse", "--abbrev-ref", "HEAD"]))
         .unwrap_or_else(|| "unknown".into());
     let channel = env_var("WAYPOINTS_FLAVOR").unwrap_or_else(|| "development".into());
@@ -24,7 +24,7 @@ fn emit_build_info() {
     };
 
     println!("cargo:rustc-env=WAYPOINTS_GIT_SHA={sha}");
-    println!("cargo:rustc-env=WAYPOINTS_GIT_BRANCH={branch}");
+    println!("cargo:rustc-env=WAYPOINTS_GIT_REF={ref}");
     println!("cargo:rustc-env=WAYPOINTS_CHANNEL={channel}");
     println!("cargo:rustc-env=WAYPOINTS_BUILT_AT_EPOCH={built_at_epoch}");
 

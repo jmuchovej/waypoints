@@ -1,16 +1,24 @@
-use std::sync::Arc;
-
 use tauri::{
     App, AppHandle, Emitter, Manager, Runtime, async_runtime,
-    image::Image,
     menu::{
-        AboutMetadata, AboutMetadataBuilder, IconMenuItemBuilder, MenuBuilder, MenuEvent,
-        MenuItemBuilder, Submenu, SubmenuBuilder,
+        AboutMetadata, AboutMetadataBuilder, MenuBuilder, MenuEvent, MenuItemBuilder, Submenu,
+        SubmenuBuilder,
     },
 };
 
-use cartograph::WaypointsRuntime;
 use tauri_plugin_updater::UpdaterExt;
+
+// Every use of these is inside a `#[cfg(debug_assertions)]` block — the
+// Developer submenu and the debug-only half of the View menu. Split out of the
+// group above because `cfg` cannot be applied to individual items within a
+// braced `use`.
+#[cfg(debug_assertions)]
+use std::sync::Arc;
+#[cfg(debug_assertions)]
+use {
+    cartograph::WaypointsRuntime,
+    tauri::{image::Image, menu::IconMenuItemBuilder},
+};
 
 type SetupResult<T> = Result<T, Box<dyn std::error::Error>>;
 type SubMenuResult<R> = SetupResult<Submenu<R>>;
@@ -218,6 +226,12 @@ fn setup_help<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     Ok(builder.build()?)
 }
 
+/// Mirrors the `cfg` on the call site in [`setup`]: the Developer menu is a
+/// debug-only affordance, so in a release build the function is not merely
+/// unused, it is not wanted. Gating the definition rather than silencing the
+/// warning keeps the two in step — an `allow(dead_code)` would still compile
+/// it into shipped binaries.
+#[cfg(debug_assertions)]
 fn setup_developer<R: Runtime>(app_handle: &AppHandle<R>) -> SubMenuResult<R> {
     let builder = SubmenuBuilder::new(app_handle, "Developer");
     let handle = app_handle.clone();
