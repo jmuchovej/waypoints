@@ -15,6 +15,7 @@ members = [
   "crates/outpost-protocol",
   "crates/server",
   "crates/store",
+  "tooling/xtask",
   "waypoints/src-tauri",
 ]
 
@@ -64,6 +65,7 @@ eyre = "0.6.12"
 fake = { version = "5.1.0", default-features = false }
 fast_qr = { version = "0.13", features = ["svg"] }
 geo = { version = "0.33.1", features = ["use-serde"] }
+gh-workflow = { git = "https://github.com/waypoints-hq/gh-workflow", rev = "3793c17", version = "0.9.0" }
 heck = "0.5"
 hex = "0.4"
 hmac = "0.13"
