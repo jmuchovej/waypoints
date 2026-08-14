@@ -3,6 +3,12 @@ excludes = ["*.lock", "*.patch", "package-lock.json", "go.mod", "go.sum", ".gita
 on-unmatched = "info"
 verbose = 1
 
+[formatter.actionlint]
+command = "actionlint"
+excludes = []
+includes = [".github/workflows/*.yml", ".github/workflows/*.yaml", ".gitea/workflows/*.yml", ".gitea/workflows/*.yaml", ".forgejo/workflows/*.yml", ".forgejo/workflows/*.yaml"]
+options = []
+
 [formatter.alejandra]
 command = "alejandra"
 excludes = []

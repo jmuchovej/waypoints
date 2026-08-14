@@ -14,6 +14,7 @@ lockfile = true
 "aqua:numtide/treefmt" = "2.5.0"
 "aqua:nushell/nushell" = "0.114.1"
 "aqua:oxipng/oxipng" = "10.1.1"
+"aqua:rhysd/actionlint" = "1.7.12"
 "aqua:tombi-toml/tombi" = "1.2.7"
 "core:deno" = "2.9.4"
 "core:node" = "24.19.0"

@@ -25,6 +25,7 @@
       oxfmt = "npm:oxfmt";
       oxipng = "aqua:oxipng/oxipng";
       tombi = "aqua:tombi-toml/tombi";
+      actionlint = "aqua:rhysd/actionlint";
     };
     is-available = name: !(builtins.elem name unavailable);
   in
@@ -152,32 +153,30 @@ in {
   };
 
   treefmt.enable = true;
-  treefmt.config.programs = {
-    clang-format.enable = true;
-    just.enable = true;
-    ktfmt.enable = true;
-    oxfmt.enable = true;
-    oxipng.enable = true;
-    rufo.enable = true;
-    rustfmt.enable = true;
-    swift-format.enable = true;
-    tombi.enable = true;
-    typos.enable = true;
-    xmllint.enable = true;
-
-    statix = {
-      enable = true;
-      priority = 1;
-    };
-    deadnix = {
-      enable = true;
-      priority = 2;
-    };
-    alejandra = {
-      enable = true;
-      priority = 3;
-    };
-  };
+  treefmt.config.programs = lib.mkMerge [
+    {
+      actionlint.enable = true;
+      clang-format.enable = true;
+      just.enable = true;
+      ktfmt.enable = true;
+      oxfmt.enable = true;
+      oxipng.enable = true;
+      rufo.enable = true;
+      rustfmt.enable = true;
+      swift-format.enable = true;
+      tombi.enable = true;
+      typos.enable = true;
+      xmllint.enable = true;
+      statix.enable = true;
+      deadnix.enable = true;
+      alejandra.enable = true;
+    }
+    {
+      statix.priority = 1;
+      deadnix.priority = 2;
+      alejandra.priority = 3;
+    }
+  ];
   treefmt.config.settings = lib.mkMerge [
     {
       on-unmatched = "info";
