@@ -2,12 +2,12 @@ keys:
   - &jmuchovej age1gx0l7q0g2j0dxpg8ta5vcpk24v4ftph4u0qmhdzf6yzgqp5s0chsfm0mza
   - &waypoints-ci age1nsu9wfmm45yt8dp68h6vgcs3yssprd9qrkqmqdqanw9xmptk7u4qf677p6
 creation_rules:
-  - path_regex: ".secrets/.*\\.sops\\.yaml$"
+  - path_regex: "website/secrets\\.sops\\.yaml$"
     key_groups:
       - age:
           - *jmuchovej
           - *waypoints-ci
-  - path_regex: "website/secrets\\.sops\\.yaml$"
+  - path_regex: "secrets\\.sops\\.yaml$"
     key_groups:
       - age:
           - *jmuchovej
