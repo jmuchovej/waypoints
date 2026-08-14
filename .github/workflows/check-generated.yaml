@@ -18,6 +18,8 @@ on:
       - .config/mise.toml
       - .config/treefmt.toml
       - .pre-commit-config.yaml
+      - src-tauri/gen/android/gradle/libs.versions.toml
+      - src-tauri/gen/android/local.properties
   push:
     branches:
       - main
@@ -31,6 +33,8 @@ on:
       - .config/mise.toml
       - .config/treefmt.toml
       - .pre-commit-config.yaml
+      - src-tauri/gen/android/gradle/libs.versions.toml
+      - src-tauri/gen/android/local.properties
   workflow_dispatch: {}
 permissions: {}
 jobs:

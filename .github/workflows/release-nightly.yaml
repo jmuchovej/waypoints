@@ -49,7 +49,7 @@ jobs:
           cache: "false"
       - id: nightly-plan
         name: cargo xtask nightly-plan
-        run: cargo xtask nightly-plan
+        run: cargo xtask nightly-plan ${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -383,12 +383,12 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-ios-nightly
-          path: waypoints/src-tauri/gen/apple/build/**/*.ipa
+          path: src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" waypoints/src-tauri/gen/apple/build/**/*.ipa --clobber
+        run: gh release upload "${TAG}" src-tauri/gen/apple/build/**/*.ipa --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -452,13 +452,13 @@ jobs:
         with:
           name: waypoints-android-nightly
           path: |-
-            waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
-            waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
+            src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+            src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
+        run: gh release upload "${TAG}" src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

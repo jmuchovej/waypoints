@@ -23,9 +23,7 @@
     "**/test/**",
     "**/tests/**",
     "**/__fixtures__/**",
-    // Tauri regenerates gen/android and gen/apple from scratch; the Gradle,
-    // Gradle-wrapper and CocoaPods manifests in there are build artifacts.
-    "waypoints/src-tauri/gen/**",
+    "src-tauri/gen/**",
   ],
   customManagers: [
     {
@@ -88,7 +86,7 @@
       groupSlug: "website-minor-patch",
     },
     {
-      description: "Covers waypoints/, crates/domain and tooling/icongen, which all draw from the app catalog.",
+      description: "Covers src/, crates/domain and tooling/icongen, which all draw from the app catalog.",
       matchUpdateTypes: ["minor", "patch"],
       matchDepTypes: ["pnpm.catalog.app"],
       groupName: "app non-major",

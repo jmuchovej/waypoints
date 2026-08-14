@@ -345,12 +345,12 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-ios-stable
-          path: waypoints/src-tauri/gen/apple/build/**/*.ipa
+          path: src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: gh release upload "${TAG}" waypoints/src-tauri/gen/apple/build/**/*.ipa --clobber
+        run: gh release upload "${TAG}" src-tauri/gen/apple/build/**/*.ipa --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -412,13 +412,13 @@ jobs:
         with:
           name: waypoints-android-stable
           path: |-
-            waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
-            waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
+            src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+            src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: gh release upload "${TAG}" waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
+        run: gh release upload "${TAG}" src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
