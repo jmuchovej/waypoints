@@ -25,6 +25,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v6
         with:
+          persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -40,7 +41,9 @@ jobs:
         name: cargo xtask test-plan
         run: "cargo xtask test-plan "
       - name: Run affected tests
-        run: cargo nextest run --workspace --no-fail-fast -E "${{ steps.test-plan.outputs.filterset }}"
+        run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        env:
+          FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true

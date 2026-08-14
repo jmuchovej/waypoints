@@ -39,6 +39,8 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: "false"
       - id: setup-nix
         name: Install Nix
         uses: cachix/install-nix-action@v31

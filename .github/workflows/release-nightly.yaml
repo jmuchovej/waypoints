@@ -40,6 +40,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v6
         with:
+          persist-credentials: "false"
           fetch-tags: "true"
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -61,6 +62,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v6
         with:
+          persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -72,7 +74,9 @@ jobs:
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
       - name: Run release tests
-        run: cargo nextest run --workspace --no-fail-fast -E "${{ steps.test-plan.outputs.filterset }}"
+        run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        env:
+          FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-windows:
     needs:
       - prepare
@@ -86,6 +90,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v6
         with:
+          persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -97,7 +102,9 @@ jobs:
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
       - name: Run release tests
-        run: cargo nextest run --workspace --no-fail-fast -E "${{ steps.test-plan.outputs.filterset }}"
+        run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        env:
+          FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-linux:
     needs:
       - prepare
@@ -111,6 +118,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v6
         with:
+          persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -126,7 +134,9 @@ jobs:
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
       - name: Run release tests
-        run: cargo nextest run --workspace --no-fail-fast -E "${{ steps.test-plan.outputs.filterset }}"
+        run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        env:
+          FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   build-macos:
     needs:
       - prepare
@@ -142,6 +152,8 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: "false"
       - name: Setup mise
         uses: jdx/mise-action@v2
       - name: Install JS deps
@@ -184,6 +196,8 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: "false"
       - name: Setup mise
         uses: jdx/mise-action@v2
       - name: Install JS deps
@@ -226,6 +240,8 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: "false"
       - name: Install system deps (Linux)
         run: |-
           sudo apt-get update
@@ -276,6 +292,8 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: "false"
       - name: Setup mise
         uses: jdx/mise-action@v2
       - name: Install JS deps
@@ -317,6 +335,8 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: "false"
       - name: Setup Java
         uses: actions/setup-java@v5
         with:

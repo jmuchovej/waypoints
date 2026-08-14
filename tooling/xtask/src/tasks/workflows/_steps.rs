@@ -36,6 +36,7 @@ impl From<Action> for Step<Use> {
 pub fn checkout() -> Step<Use> {
     Action::new("actions", "checkout", "v6")
         .step("Checkout")
+        .with(("persist-credentials", false))
         .id("checkout")
 }
 
@@ -215,8 +216,9 @@ impl Nextest {
     #[allow(dead_code)]
     pub(crate) fn with_filter_expr(mut self, filter_expr: &str) -> Self {
         if let Some(command) = self.0.value.run.as_mut() {
-            command.push_str(&format!(r#" -E "{filter_expr}""#));
+            command.push_str(&format!(r#" -E "${{FILTER_EXPR}}""#));
         }
+        self.0 = self.0.add_env(("FILTER_EXPR", filter_expr));
         self
     }
 }
