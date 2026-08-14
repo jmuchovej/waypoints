@@ -47,6 +47,7 @@
       "npm:@fission-ai/openspec" = pkgs.openspec;
       "npm:@tauri-apps/cli" = pkgs.cargo-tauri;
 
+      "aqua:nextest-rs/nextest/cargo-nextest" = pkgs.cargo-nextest;
       "aqua:numtide/treefmt" = config.treefmt.config.package;
 
       "core:node" = config.languages.javascript.package;

@@ -31,7 +31,9 @@ use utils::Channel;
 
 mod bundle;
 mod check_generated;
+mod pull_request;
 mod release;
+mod tests;
 
 /// Where a workflow lives, which is also who is allowed to consume it.
 #[derive(PartialEq, Eq, strum::EnumIter)]
@@ -121,6 +123,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
     }
     let workflows = [
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
+        WorkflowFile::waypoints("pull_request", pull_request::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
         release_file(Channel::Stable),
@@ -311,7 +314,7 @@ impl WorkflowFile {
         self
     }
 
-    #[expect(dead_code, reason = "no plugin workflows are generated yet")]
+    /// Unused until the first plugin workflow exists.
     pub fn plugin(
         module: &'static str,
         source: impl Fn(&WorkflowContext) -> Workflow + 'static,

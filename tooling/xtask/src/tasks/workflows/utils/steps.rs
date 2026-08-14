@@ -84,6 +84,22 @@ pub fn setup_mise() -> Step<Use> {
     actions::MISE.step("Setup mise")
 }
 
+/// Restores compiled dependencies between runs.
+///
+/// Only registry dependencies are cached — the action prunes the workspace's
+/// own artifacts before saving, which is what keeps the entry within GitHub's
+/// 10 GB per-repository budget for a tree this size.
+///
+/// Saved only from `main`. Actions caches are branch-scoped with fallback to
+/// the default branch, so a cache written on a feature branch is visible to
+/// nothing else while still consuming the shared budget; writing from `main`
+/// alone means every branch restores from one warm entry.
+pub(crate) fn rust_cache() -> Step<Use> {
+    actions::RUST_CACHE
+        .step("Cache Rust dependencies")
+        .add_with(("save-if", "${{ github.ref == 'refs/heads/main' }}"))
+}
+
 pub fn pnpm_install() -> Step<Run> {
     Step::new("Install JS deps").run("pnpm install --frozen-lockfile")
 }

@@ -1,10 +1,12 @@
 pub mod tasks {
     pub mod nightly_plan;
+    pub mod test_plan;
     pub mod workflows;
 }
 pub mod utils {
     pub mod devenv;
 }
+pub mod workspace;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -18,6 +20,8 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Prints the nextest filterset a CI run should use.
+    TestPlan(tasks::test_plan::TestPlanArgs),
     /// Resolves the release tag for a Nightly workflow run.
     NightlyPlan(tasks::nightly_plan::NightlyPlanArgs),
     /// Prints the files devenv materializes into the working tree.
@@ -30,6 +34,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
+        Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
         Command::DevenvFiles(args) => utils::devenv::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),

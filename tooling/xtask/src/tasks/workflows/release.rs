@@ -6,7 +6,7 @@
 //! more reusable workflows underneath to hold the jobs.
 
 use gh_workflow::{
-    Event, Job, Level, Permissions, Push, Schedule, Workflow, WorkflowDispatch,
+    Event, Expression, Job, Level, Permissions, Push, Schedule, Workflow, WorkflowDispatch,
     WorkflowDispatchInput,
 };
 use indexmap::IndexMap;
@@ -14,12 +14,16 @@ use indexmap::IndexMap;
 use super::{
     WorkflowContext,
     bundle::{self, NamedJob},
+    tests,
     utils::{Channel, Platform, runners, steps, vars},
 };
 
 /// Nightly runs at 07:00 UTC (~03:00 US Eastern). `schedule` only fires on the
 /// default branch, which is what a nightly should track.
 const NIGHTLY_CRON: &str = "0 7 * * *";
+
+/// The nightly planner's verdict on whether anything changed since last night.
+const SHOULD_BUILD: &str = "needs.prepare.outputs.should_build == 'true'";
 
 use strum::IntoEnumIterator;
 
@@ -29,6 +33,27 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
     if channel == Channel::Nightly {
         jobs.push(prepare());
     }
+
+    // Nothing ships until the release suite passes on every desktop platform we
+    // build for. Named up front so the build jobs below can depend on it.
+    let gates: Vec<String> = Platform::iter()
+        .filter(|platform| platform.is_desktop())
+        .map(|platform| {
+            let mut job = tests::test(tests::Suite::Release, platform);
+            // A nightly that finds nothing new skips its builds; the gates must
+            // skip with them rather than test a tree nobody will ship.
+            if channel == Channel::Nightly {
+                job.job = job
+                    .job
+                    .add_needs("prepare")
+                    .cond(Expression::new(SHOULD_BUILD));
+            }
+
+            let id = job.id.clone();
+            jobs.push(job);
+            id
+        })
+        .collect();
 
     jobs.push(bundle::desktop(channel, Platform::macOS));
     jobs.push(bundle::desktop(channel, Platform::Linux));
@@ -43,19 +68,30 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
         jobs.push(bundle::ios(channel));
     }
 
-    // Every build waits on the nightly planner's verdict.
-    if channel == Channel::Nightly {
-        jobs = jobs
-            .into_iter()
-            .map(|named| match named.id.as_str() {
-                "prepare" => named,
-                _ => NamedJob {
-                    job: named.job.add_needs("prepare"),
-                    ..named
-                },
-            })
-            .collect();
-    }
+    // Builds wait on the test gates, and on nightly also on the planner's
+    // verdict. The gates and the planner wait on nothing.
+    let scaffolding: Vec<&str> = ["prepare"]
+        .into_iter()
+        .chain(gates.iter().map(String::as_str))
+        .collect();
+    jobs = jobs
+        .into_iter()
+        .map(|named| {
+            if scaffolding.contains(&named.id.as_str()) {
+                return named;
+            }
+
+            let job = gates
+                .iter()
+                .fold(named.job, |job, gate| job.add_needs(gate.clone()));
+            let job = match channel {
+                Channel::Nightly => job.add_needs("prepare"),
+                _ => job,
+            };
+
+            NamedJob { job, ..named }
+        })
+        .collect();
 
     let workflow = Workflow::new(title(channel))
         .add_env(vars::FORCE_NODE24)

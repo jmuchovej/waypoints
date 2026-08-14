@@ -47,8 +47,117 @@ jobs:
         run: cargo xtask nightly-plan --dispatch-tag "${{ inputs.tag }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  test-macos:
+    needs:
+      - prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    name: Test macOS
+    runs-on: macos-15
+    permissions:
+      contents: read
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: "0"
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - id: plan
+        name: Plan
+        run: |
+          filterset="$(cargo xtask test-plan --release)"
+          echo "filterset=${filterset}" >> "$GITHUB_OUTPUT"
+          if [ -n "${filterset}" ]; then
+            echo "Testing: ${filterset}"
+          else
+            echo "No Rust crates affected."
+          fi
+
+      - name: Run release tests
+        if: steps.plan.outputs.filterset != ''
+        run: cargo nextest run --workspace --no-fail-fast -E "${{ steps.plan.outputs.filterset }}"
+  test-windows:
+    needs:
+      - prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    name: Test Windows
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: "0"
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - id: plan
+        name: Plan
+        run: |
+          filterset="$(cargo xtask test-plan --release)"
+          echo "filterset=${filterset}" >> "$GITHUB_OUTPUT"
+          if [ -n "${filterset}" ]; then
+            echo "Testing: ${filterset}"
+          else
+            echo "No Rust crates affected."
+          fi
+
+      - name: Run release tests
+        if: steps.plan.outputs.filterset != ''
+        run: cargo nextest run --workspace --no-fail-fast -E "${{ steps.plan.outputs.filterset }}"
+  test-linux:
+    needs:
+      - prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    name: Test Linux
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: "0"
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install system deps (Linux)
+        run: |-
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - id: plan
+        name: Plan
+        run: |
+          filterset="$(cargo xtask test-plan --release)"
+          echo "filterset=${filterset}" >> "$GITHUB_OUTPUT"
+          if [ -n "${filterset}" ]; then
+            echo "Testing: ${filterset}"
+          else
+            echo "No Rust crates affected."
+          fi
+
+      - name: Run release tests
+        if: steps.plan.outputs.filterset != ''
+        run: cargo nextest run --workspace --no-fail-fast -E "${{ steps.plan.outputs.filterset }}"
   macos:
     needs:
+      - test-macos
+      - test-windows
+      - test-linux
       - prepare
     if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Desktop","macOS"]'), inputs.platforms))
     name: Build macOS desktop
@@ -139,6 +248,9 @@ jobs:
           if-no-files-found: error
   linux:
     needs:
+      - test-macos
+      - test-windows
+      - test-linux
       - prepare
     if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Desktop","Linux"]'), inputs.platforms))
     name: Build Linux desktop
@@ -204,6 +316,9 @@ jobs:
           if-no-files-found: error
   windows:
     needs:
+      - test-macos
+      - test-windows
+      - test-linux
       - prepare
     if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Desktop","Windows"]'), inputs.platforms))
     name: Build Windows desktop
@@ -264,6 +379,9 @@ jobs:
           if-no-files-found: error
   android:
     needs:
+      - test-macos
+      - test-windows
+      - test-linux
       - prepare
     if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Android"]'), inputs.platforms))
     name: Build Android

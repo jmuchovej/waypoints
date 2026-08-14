@@ -39,6 +39,12 @@ pub const CACHIX: Action = Action {
     version: "v17",
 };
 
+pub const RUST_CACHE: Action = Action {
+    owner: "Swatinem",
+    repo: "rust-cache",
+    version: "v2",
+};
+
 pub const MISE: Action = Action {
     owner: "jdx",
     repo: "mise-action",

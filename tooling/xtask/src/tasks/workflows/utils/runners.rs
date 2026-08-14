@@ -91,3 +91,11 @@ impl Platform {
         matches!(self, Android | iOS)
     }
 }
+
+#[derive(Clone, Copy, PartialEq, Eq, Unwrap, Display, EnumIter)]
+pub enum Arch {
+    #[allow(non_camel_case_types)]
+    amd64,
+    #[allow(non_camel_case_types)]
+    arm64,
+}
