@@ -91,13 +91,13 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
     index_defs.extend(container.indexes);
     let index_specs = index_defs.iter().map(|(columns, unique)| {
         let index_name = format!("{}_{}_idx", table, columns.join("_"));
-        let column_lits = columns
+        let column_list = columns
             .iter()
             .map(|c| quote! { ::std::string::String::from(#c) });
         quote! {
             ::bedrock::IndexSpec {
                 name: ::std::string::String::from(#index_name),
-                columns: ::std::vec![ #(#column_lits),* ],
+                columns: ::std::vec![ #(#column_list),* ],
                 unique: #unique,
             }
         }

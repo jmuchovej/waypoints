@@ -1,5 +1,5 @@
 allow-missing-formatter = true
-excludes = ["*.lock", "*.patch", "package-lock.json", "go.mod", "go.sum", ".gitattributes", ".gitignore", ".gitmodules", ".hgignore", ".svnignore", "LICENSE", "*/node_modules*", ".{dev,dir}env/*", "*/.envrc*", "vendor/*", "*.{gif,ico}", "*.{properties,gradle}", "*.{pbxproj,xcconfig}", "{mise,treefmt}.toml"]
+excludes = ["*.lock", "*.patch", "package-lock.json", "go.mod", "go.sum", ".gitattributes", ".gitignore", ".gitmodules", ".hgignore", ".svnignore", "LICENSE", "*/node_modules*", ".{dev,dir}env/*", "*/.envrc*", "vendor/*", "*.{gif,ico}", "*.{properties,gradle}", "*.{pbxproj,xcconfig}", "*{mise,treefmt}.toml"]
 on-unmatched = "info"
 verbose = 1
 

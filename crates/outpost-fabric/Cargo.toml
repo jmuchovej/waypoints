@@ -26,12 +26,15 @@ tracing = { workspace = true }
 # hold is a test-only dependency: it lets the session tests converge two
 # real holds over a stream. Production fabric depends on protocol alone.
 outpost-hold = { workspace = true }
-tokio = { workspace = true, features = [
-  "io-util",
-  "macros",
-  "rt-multi-thread",
-  "sync",
-] }
+tokio = {
+  workspace = true,
+  features = [
+    "io-util",
+    "macros",
+    "rt-multi-thread",
+    "sync",
+  ]
+}
 
 [lints]
 workspace = true

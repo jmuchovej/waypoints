@@ -53,7 +53,7 @@ next reader to re-litigate it. **BREAKING** for the `Landmark` struct shape and
 its generated TypeScript bindings; no in-tree caller is affected.
 
 `RichReference` itself is **retained**. It is not dead — it is ahead of its use
-site. A Mark referenced *inside* a `Content` mark (a mention, an inline card, an
+site. A Mark referenced _inside_ a `Content` mark (a mention, an inline card, an
 embed) cannot practicably be a Terrain edge, and today that case is carried by
 `InlineMark { kind: Mention | Link, data: Option<Json> }` with an untyped JSON
 payload. `RichReference` is the typed shape that payload wants. Removing it

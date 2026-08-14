@@ -92,16 +92,19 @@
     "*.{gif,ico}"
     "*.{properties,gradle}"
     "*.{pbxproj,xcconfig}"
-    "{mise,treefmt}.toml"
+    "*{mise,treefmt}.toml"
   ];
 in {
   stdenv = pkgs.clangStdenv;
   env.LD_LIBRARY_PATH = lib.mkForce "";
   env.PROJECT_ROOT = config.env.DEVENV_ROOT;
+  env.PROJECT_CONFIG_PATH = "${config.env.PROJECT_ROOT}/.config";
   env.TAURI_FRONTEND_PATH = "${config.env.PROJECT_ROOT}/${tauri-app-path}";
   env.TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/${tauri-lib-path}";
   env.TAURI_ANDROID_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/${tauri-android-path}";
   env.TAURI_IOS_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/${tauri-ios-path}";
+  env.TREEFMT_CONFIG = "${config.env.PROJECT_CONFIG_PATH}/treefmt.toml";
+  env.CLIPPY_CONF_DIR = "${config.env.PROJECT_CONFIG_PATH}";
 
   enterShell = ''
     export PATH="$DEVENV_ROOT/.bin:$PATH"
@@ -212,19 +215,19 @@ in {
   tasks."mise:lock" = {
     after = ["devenv:enterShell"];
     execIfModified = [
-      "mise.toml"
-      "mise.lock"
+      ".config/mise.toml"
+      ".config/mise.lock"
     ];
     exec = ''
       set -euo pipefail
       mise lock
 
-      declared="$(yq -p toml -o=json '.tools | length' mise.toml)"
+      declared="$(yq -p toml -o=json '.tools | length' .config/mise.toml)"
       resolved="$(mise ls --current --json \
-        | yq -o=json "to_entries | map(select(.value[0].source.path == \"$DEVENV_ROOT/mise.toml\")) | length")"
+        | yq -o=json "to_entries | map(select(.value[0].source.path == \"$DEVENV_ROOT/.config/mise.toml\")) | length")"
 
       if [ "$declared" -ne "$resolved" ]; then
-        echo "mise resolved only $resolved of the $declared tools in mise.toml." >&2
+        echo "mise resolved only $resolved of the $declared tools in .config/mise.toml." >&2
         echo "Declared:" >&2
         yq -p toml -o=json '.tools | keys | .[]' mise.toml | tr -d '"' | sed 's/^/  /' >&2
         echo "Resolved:" >&2
@@ -237,12 +240,12 @@ in {
   };
 
   files = {
-    "mise.lock" = {
+    ".config/mise.lock" = {
       copyMode = "seed";
       text = "# This should be overwritten on re-entry.";
     };
 
-    "treefmt.toml" = {
+    ".config/treefmt.toml" = {
       copyMode = "copy";
       toml =
         lib.filterAttrs (name: _: name != "global") config.treefmt.config.settings
@@ -251,7 +254,7 @@ in {
         };
     };
 
-    "mise.toml" = {
+    ".config/mise.toml" = {
       copyMode = "copy";
       toml = {
         settings = {
@@ -264,10 +267,13 @@ in {
         };
         env = {
           PROJECT_ROOT = "{{ config_root }}";
+          PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";
           TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
           TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-lib-path}";
           TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-android-path}";
           TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-ios-path}";
+          TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
+          CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
         };
         tools = lib.mapAttrs (_: pkg: toString pkg.version) mise-tools;
       };

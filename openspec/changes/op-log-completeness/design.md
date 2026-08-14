@@ -253,7 +253,7 @@ plus a binding regeneration.
 
 _Why `RichReference` survives the removal of its only user:_ it is early, not
 dead. Terrain edges express containment between Marks, but a Mark referenced
-*within* a `Content` mark — a mention mid-paragraph, an inline card — is not
+_within_ a `Content` mark — a mention mid-paragraph, an inline card — is not
 naturally an edge in that graph, and the display-mode question ("render this
 reference as an avatar, a mention, a card") is real for exactly that case.
 Today it is carried untyped as `InlineMark { kind: Mention | Link, data:
@@ -299,7 +299,7 @@ this change is the one whose investigation established the finding.
   Read-compatible in both directions that matter: old rows deserialize (no
   `deny_unknown_fields`), and new rows simply omit the key. The break is at the
   Rust struct and TypeScript binding level, where the compiler and `just
-  typecheck` catch it. No in-tree caller constructs `children`.
+typecheck` catch it. No in-tree caller constructs `children`.
 
 ## Migration Plan
 

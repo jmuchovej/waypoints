@@ -25,6 +25,7 @@ const links: NavigationMenuItem[] = [
     },
     children: [
       // TODO: dynamically populate with first 5–10 recently visited landmarks
+
     ],
   },
   {
@@ -36,6 +37,7 @@ const links: NavigationMenuItem[] = [
     defaultOpen: true,
     children: [
       // TODO: dynamically populate with first 5–10 pinned landmarks
+
     ],
   },
   {

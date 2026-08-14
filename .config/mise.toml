@@ -1,9 +1,12 @@
 [env]
+CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}"
+PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"
 PROJECT_ROOT = "{{ config_root }}"
 TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/android"
 TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/waypoints/src-tauri"
 TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/waypoints"
 TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/apple"
+TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml"
 
 [settings]
 experimental = true

@@ -45,7 +45,7 @@ for containment.
 
 ### Requirement: Referencing a Mark within content is not containment
 
-A Mark referenced from *within* another Mark's block content — a mention, an
+A Mark referenced from _within_ another Mark's block content — a mention, an
 inline card, an embedded reference — SHALL NOT thereby be contained by the
 referencing Mark, and SHALL NOT produce a Terrain child edge.
 
@@ -87,7 +87,7 @@ contributor re-opens the question. A field nothing operates on should not exist
 to suggest otherwise.
 
 _Rejected:_ removing the reference type the field held. That type answers a
-question the codebase still has — how a Mark referenced *inside* block content
+question the codebase still has — how a Mark referenced _inside_ block content
 should be displayed — which containment edges do not address. It is early, not
 dead, and the second requirement above is why the two concerns stay separate.
 

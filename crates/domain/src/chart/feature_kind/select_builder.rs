@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_multi_select() {
-        let mutli_select = {
+        let multi_select = {
             let options: SelectGroup = SelectGroup::builder()
                 .with_option("Option 1".to_string())
                 .with_option("Option 2".to_string())
@@ -308,7 +308,7 @@ mod tests {
             options,
             max_selections,
             ..
-        } = mutli_select
+        } = multi_select
         {
             assert_eq!(options.len(), 2);
             assert_eq!(max_selections, Some(3));

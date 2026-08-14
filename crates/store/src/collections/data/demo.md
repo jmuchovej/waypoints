@@ -12,7 +12,7 @@ Waypoints is a structured editor for capturing and organizing your work. Everyth
 
 ## Formatting
 
-Inline styles: **bold**, _italic_, **underline**, ~~strikethrough~~, and `inline code`. You can also use ^superscript^ and ~subscript~ for technical notation, or ||spoilers|| to hide sensitive content until revealed.
+Inline styles: **bold**, _italic_, **underline**, ~~strikethrough~~, and `inline code`. You can also use ^superscript^ and ~~subscript~~ for technical notation, or ||spoilers|| to hide sensitive content until revealed.
 
 > Blockquotes pull out key ideas or reference external sources. Nest them for layered commentary.
 

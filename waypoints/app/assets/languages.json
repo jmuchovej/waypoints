@@ -336,7 +336,7 @@
     "icon": "i-vscode-icons-file-type-haxe"
   },
   "hcl": {
-    "name": "HashiCorp HCL",
+    "name": "HashCorp HCL",
     "icon": "i-vscode-icons-file-type-hcl"
   },
   "hjson": {
@@ -1247,9 +1247,9 @@
     "name": "Splunk Query Language",
     "icon": "i-vscode-icons-file-type-spl"
   },
-  "styl": {
+  "style": {
     "name": "Stylus",
-    "icon": "i-vscode-icons-file-type-styl"
+    "icon": "i-vscode-icons-file-type-style"
   },
   "surql": {
     "name": "JavaScript",

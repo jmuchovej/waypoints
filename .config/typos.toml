@@ -1,10 +1,21 @@
-#:tombi toml-version = "v1.0.0"
+#:tombi toml-version = "v1.1.0"
 #:schema https://raw.githubusercontent.com/crate-ci/typos/master/config.schema.json
 
 [files]
 ignore-files = true
 ignore-hidden = false
-extend-exclude = [".git/", ".jj/", ".mailmap"]
+ignore-vcs = true
+ignore-dot = true
+extend-exclude = [
+  ".mailmap",
+  ".config/treefmt.toml",
+  ".config/mise*.toml",
+  "*.sops.yaml",
+  "*.edn",
+  "*.png",
+  "*.icns",
+  "*.ico",
+]
 
 [default]
 extend-ignore-re = [
@@ -19,8 +30,14 @@ extend-ignore-re = [
   "numer",
   # Abbreviation for foreignObject in mermaid SVG processing
   "fo",
+  ".*\\.edn$",
+  "\\$?nin",
 ]
 check-filename = true
 
 [default.extend-words]
 writeable = "writeable"
+
+[type.storyboard]
+extend-glob = ["*.storyboard", "*.xib"]
+extend-ignore-re = ['\b[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}\b']

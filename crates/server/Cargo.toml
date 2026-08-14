@@ -27,12 +27,15 @@ directories = { workspace = true }
 domain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true, features = [
-  "fs",
-  "macros",
-  "net",
-  "rt-multi-thread",
-] }
+tokio = {
+  workspace = true,
+  features = [
+    "fs",
+    "macros",
+    "net",
+    "rt-multi-thread",
+  ]
+}
 tower-http = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
