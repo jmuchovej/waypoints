@@ -1,172 +1,97 @@
-//! Builds a channel's release workflow.
-//!
-//! One shape for all three channels. The hand-written YAML had this shape three
-//! times over — `stable.yaml`, `preview.yaml` and `nightly.yaml` differed only
-//! in flavor strings, a tag pattern, and whether iOS was in scope — plus three
-//! more reusable workflows underneath to hold the jobs.
+//! Builds a channel's release workflow — one shape for all three, differing
+//! only in flavor strings, tag pattern, and whether iOS is in scope.
 
 use gh_workflow::{
-    Event, Expression, Job, Level, Permissions, Push, Schedule, Workflow, WorkflowDispatch,
-    WorkflowDispatchInput,
+    Event, Expression, Level, Permissions, Push, Schedule, Workflow, WorkflowDispatch,
 };
-use indexmap::IndexMap;
+use heck::ToTitleCase;
 
 use super::{
-    WorkflowContext,
-    bundle::{self, NamedJob},
-    tests,
-    utils::{Channel, Platform, runners, steps, vars},
+    Channel, FluentBuilder, NamedJob, Platform, TestSuite, WorkflowContext, WorkflowInput, helpers,
+    helpers::FORCE_NODE24, jobs,
 };
+use strum::IntoEnumIterator;
 
 /// Nightly runs at 07:00 UTC (~03:00 US Eastern). `schedule` only fires on the
 /// default branch, which is what a nightly should track.
 const NIGHTLY_CRON: &str = "0 7 * * *";
 
-/// The nightly planner's verdict on whether anything changed since last night.
-const SHOULD_BUILD: &str = "needs.prepare.outputs.should_build == 'true'";
-
-use strum::IntoEnumIterator;
-
 pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
-    let mut jobs: Vec<NamedJob> = Vec::new();
+    // Built once and lent to everything that depends on it; only nightly has
+    // a planner.
+    let prepare = channel.is_nightly().then(jobs::prepare);
 
-    if channel == Channel::Nightly {
-        jobs.push(prepare());
-    }
-
-    // Nothing ships until the release suite passes on every desktop platform we
-    // build for. Named up front so the build jobs below can depend on it.
-    let gates: Vec<String> = Platform::iter()
+    // Nothing ships until the release suite passes on every desktop platform.
+    let tests: Vec<NamedJob> = Platform::iter()
         .filter(|platform| platform.is_desktop())
         .map(|platform| {
-            let mut job = tests::test(tests::Suite::Release, platform);
-            // A nightly that finds nothing new skips its builds; the gates must
-            // skip with them rather than test a tree nobody will ship.
-            if channel == Channel::Nightly {
-                job.job = job
-                    .job
-                    .add_needs("prepare")
-                    .cond(Expression::new(SHOULD_BUILD));
-            }
-
-            let id = job.id.clone();
-            jobs.push(job);
-            id
+            // A nightly that finds nothing new skips its builds, so its gates
+            // skip with them.
+            jobs::test(TestSuite::Release, platform).map_job(|job| {
+                job.when_some(prepare.as_ref(), |job, prepare| {
+                    let expr = format!("{} == 'true'", prepare.should_build.expr());
+                    job.add_needs(prepare.name().to_owned())
+                        .cond(Expression::new(expr))
+                })
+            })
         })
         .collect();
 
-    jobs.push(bundle::desktop(channel, Platform::macOS));
-    jobs.push(bundle::desktop(channel, Platform::Linux));
-    jobs.push(bundle::desktop(channel, Platform::Windows));
-    jobs.push(bundle::android(
-        channel,
-        &context.android_jdk,
-        &context.android_ndk,
-        &context.android_abis,
-    ));
-    if channel.ships_ios() {
-        jobs.push(bundle::ios(channel));
-    }
+    // Named up front so every build can wait on the whole set.
+    let gates: Vec<String> = tests.iter().map(|named| named.name.clone()).collect();
 
-    // Builds wait on the test gates, and on nightly also on the planner's
-    // verdict. The gates and the planner wait on nothing.
-    let scaffolding: Vec<&str> = ["prepare"]
-        .into_iter()
-        .chain(gates.iter().map(String::as_str))
-        .collect();
-    jobs = jobs
-        .into_iter()
-        .map(|named| {
-            if scaffolding.contains(&named.id.as_str()) {
-                return named;
-            }
-
-            let job = gates
-                .iter()
-                .fold(named.job, |job, gate| job.add_needs(gate.clone()));
-            let job = match channel {
-                Channel::Nightly => job.add_needs("prepare"),
-                _ => job,
-            };
-
-            NamedJob { job, ..named }
+    // Builds wait on the test gates; `build` wires their planner dependency.
+    let builds: Vec<NamedJob> = Platform::iter()
+        .map(|platform| {
+            jobs::build(channel, context, platform, prepare.as_ref()).map_job(|job| {
+                gates
+                    .iter()
+                    .fold(job, |job, gate| job.add_needs(gate.clone()))
+            })
         })
         .collect();
 
-    let workflow = Workflow::new(title(channel))
-        .add_env(vars::FORCE_NODE24)
-        .on(events(channel));
+    let platforms = WorkflowInput::choices("platforms", channel.dispatch_platforms(), "All".into())
+        .description("Platforms to build");
 
-    let workflow = match channel {
+    // Defaulted to empty, not unset: an input with no default is `required`,
+    // and blank is how a build-only run is asked for.
+    let tag = WorkflowInput::string("tag", Some(String::new()))
+        .description("Release tag (leave empty for build-only, no release)");
+
+    // Nightly mints its own tag, so only the tag-driven channels take one.
+    let dispatch = WorkflowDispatch::default()
+        .inputs([(platforms.name.into(), platforms.input())])
+        .when(!channel.is_nightly(), |mut dispatch| {
+            dispatch.inputs.insert(tag.name.into(), tag.input());
+            dispatch
+        });
+
+    Workflow::new(channel.flavor().to_title_case())
+        .add_env(FORCE_NODE24)
+        .on(Event::default()
+            .workflow_dispatch(dispatch)
+            .when_some(channel.tag_pattern(), |event, pattern| {
+                event.push(Push::default().add_tag(pattern))
+            })
+            .when(channel.is_nightly(), |event| {
+                event.schedule(vec![Schedule::new(NIGHTLY_CRON)])
+            }))
         // A scheduled run and a manual or tag run must never bundle at once,
         // and cancelling one mid-publish would strand release artifacts.
-        Channel::Nightly => workflow
-            .permissions(Permissions::default().contents(Level::Write))
-            .concurrency(vars::serialize("nightly")),
-        _ => workflow,
-    };
-
-    jobs.into_iter().fold(workflow, |workflow, named| {
-        workflow.add_job(named.id, named.job)
-    })
-}
-
-fn title(channel: Channel) -> String {
-    let mut name = channel.flavor().to_owned();
-    name[..1].make_ascii_uppercase();
-    name
-}
-
-fn events(channel: Channel) -> Event {
-    let event = Event::default()
-        .push(Push::default().add_tag(channel.tag_pattern()))
-        .workflow_dispatch(dispatch(channel));
-
-    match channel {
-        Channel::Nightly => event.schedule(vec![Schedule::new(NIGHTLY_CRON)]),
-        _ => event,
-    }
-}
-
-fn dispatch(channel: Channel) -> WorkflowDispatch {
-    WorkflowDispatch::default().inputs(IndexMap::from([
-        (
-            "tag".to_owned(),
-            WorkflowDispatchInput::default()
-                .description("Release tag (leave empty for build-only, no release)")
-                .input_type("string")
-                .set_default(""),
-        ),
-        (
-            "platforms".to_owned(),
-            WorkflowDispatchInput::default()
-                .description("Platforms to build")
-                .input_type("choice")
-                .options(channel.dispatch_platforms())
-                .set_default("All"),
-        ),
-    ]))
-}
-
-/// Resolves the nightly tag: derive it from the workspace version, skip the run
-/// when nothing landed since the last nightly, and create the tag.
-fn prepare() -> NamedJob {
-    NamedJob {
-        id: "prepare".to_owned(),
-        job: Job::default()
-            .name("Plan the nightly")
-            .runs_on(runners::LINUX)
-            .add_output("tag", "${{ steps.plan.outputs.tag }}")
-            .add_output("should_build", "${{ steps.plan.outputs.should-build }}")
-            // A shallow checkout is enough: the planner reads Cargo.toml from
-            // the tree and reaches everything else over the API, so it needs no
-            // local history and no committer identity to create the tag.
-            .add_step(steps::checkout())
-            .add_step(steps::setup_mise())
-            .add_step(
-                steps::cargo_xtask("nightly-plan", &[("--dispatch-tag", "${{ inputs.tag }}")])
-                    .id("plan")
-                    .add_env(("GH_TOKEN", vars::GITHUB_TOKEN)),
-            ),
-    }
+        .when_some(prepare, |workflow, prepare| {
+            let prepare: NamedJob = prepare.into();
+            workflow
+                .permissions(Permissions::default().contents(Level::Write))
+                .concurrency(helpers::serialize("nightly"))
+                .add_job(prepare.name, prepare.job)
+        })
+        .map(|workflow| {
+            tests
+                .into_iter()
+                .chain(builds)
+                .fold(workflow, |workflow, named| {
+                    workflow.add_job(named.name, named.job)
+                })
+        })
 }

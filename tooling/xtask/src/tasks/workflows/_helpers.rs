@@ -1,4 +1,5 @@
 //! Shared expressions, secret handles, and concurrency groups.
+//! Trigger plumbing shared by workflow modules.
 
 use gh_workflow::Concurrency;
 
@@ -7,19 +8,22 @@ macro_rules! secret {
         pub const $name: &str = concat!("${{ secrets.", stringify!($name), " }}");
     };
 }
+macro_rules! env {
+    ($name:ident) => {
+        pub const $name: &str = concat!("${{ env.", stringify!($name), " }}");
+    };
+}
 
 secret!(SOPS_AGE_KEY);
 secret!(GITHUB_TOKEN);
+env!(ANDROID_HOME);
 
-/// Node 24 is what our JavaScript actions target; without this, the runner
-/// downgrades them to its default and they fail to start.
+/// Pins JavaScript actions to Node 24; the runner otherwise falls back to its
+/// own default, which they fail to start under.
 pub const FORCE_NODE24: (&str, &str) = ("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24", "true");
 
-/// One run per ref, superseding any run already in flight for that ref.
-///
-/// Correct for checks — a newer push makes the older answer irrelevant. Do not
-/// reach for this on release workflows, where a cancelled run leaves published
-/// artifacts half-written.
+/// One run per ref, cancelling any already in flight. For checks only — a
+/// cancelled release leaves published artifacts half-written.
 pub fn one_run_per_ref(prefix: &str) -> Concurrency {
     Concurrency::default()
         .group(format!("{prefix}-${{{{ github.ref }}}}"))

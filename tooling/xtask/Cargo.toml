@@ -18,9 +18,10 @@ chrono = { workspace = true, features = ["clock", "std"] }
 clap.workspace = true
 derive_more = {
   workspace = true,
-  features = ["as_ref", "display", "into", "unwrap"]
+  features = ["as_ref", "display", "into", "is_variant", "unwrap"]
 }
 gh-workflow.workspace = true
+heck.workspace = true
 indexmap = "2"
 indoc = "2"
 serde.workspace = true
