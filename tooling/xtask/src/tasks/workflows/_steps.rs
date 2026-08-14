@@ -117,6 +117,84 @@ pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run>
         .shell("bash")
 }
 
+/// Refreshes the pinned Nix inputs, then rebuilds everything downstream of
+/// them.
+///
+/// `devenv update` moves `devenv.lock`, which moves tool versions, which moves
+/// devenv's own generated files — and, because `WorkflowContext` reads the
+/// Android NDK and JDK versions back out of devenv, the workflows too. Entering
+/// the shell is what regenerates devenv's outputs, so the `cargo xtask` call
+/// covers both halves. Committing the lockfile alone would open a pull request
+/// that fails its own `check-generated`.
+pub fn devenv_update() -> Step<Run> {
+    let cmd = indoc! {r#"
+        devenv update
+        devenv shell cargo xtask workflows
+    "#}
+    .trim_end();
+
+    Step::new("Update devenv inputs")
+        .run(cmd)
+        .shell("bash")
+        .add_env(("SECRETSPEC_REASON", "devenv update refreshes locked inputs and regenerates devenv- and xtask-managed files; no secret values are read"))
+        .id("devenv-update")
+}
+
+/// Mints a short-lived installation token for the `wp-botswain` GitHub App,
+/// narrowed to `permissions` — pairs of a `permission-<name>` suffix and the
+/// level to grant it.
+///
+/// Automation authenticates as the App rather than through `GITHUB_TOKEN`
+/// because a pull request opened by `GITHUB_TOKEN` deliberately raises no
+/// `pull_request` event — the checks that justify the pull request would never
+/// run on it. Scoping is not optional: an unnarrowed token inherits the whole
+/// installation's grant, which `zizmor` fails the workflow over.
+pub fn app_token(permissions: &[(&str, &str)]) -> Step<Use> {
+    permissions.iter().fold(
+        Action::new(
+            "actions",
+            "create-github-app-token",
+            "bcd2ba49218906704ab6c1aa796996da409d3eb1", // v3.2.0
+        )
+        .step("Mint a wp-botswain token")
+        .id("app-token")
+        .add_with(("app-id", WP_BOTSWAIN_APP_ID))
+        .add_with(("private-key", WP_BOTSWAIN_PRIVATE_KEY)),
+        |step, (scope, level)| step.add_with((format!("permission-{scope}"), *level)),
+    )
+}
+
+/// Opens a pull request from whatever the preceding steps left in the tree,
+/// restricted to `paths`.
+///
+/// `branch` is reused across runs, so a still-unmerged update is refreshed in
+/// place instead of stacking a second pull request behind the first. Commits go
+/// through the API (`sign-commits`), which is what makes them show up verified
+/// rather than as an unsigned push from a bot.
+pub fn create_pull_request(
+    token: &StepOutput,
+    branch: &str,
+    title: &str,
+    body: &str,
+    paths: &[String],
+) -> Step<Use> {
+    Action::new(
+        "peter-evans",
+        "create-pull-request",
+        "5f6978faf089d4d20b00c7766989d076bb2fc7f1", // v8.1.1
+    )
+    .step("Open a pull request")
+    .id("create-pull-request")
+    .add_with(("token", token.to_string()))
+    .add_with(("branch", branch))
+    .add_with(("delete-branch", true))
+    .add_with(("sign-commits", true))
+    .add_with(("title", title))
+    .add_with(("body", body))
+    .add_with(("commit-message", title))
+    .add_with(("add-paths", paths.join("\n")))
+}
+
 /// Installs the whole toolchain — node, pnpm, just, sops, age, yq, nu, and
 /// rust with every cross-compilation target, read from `rust-toolchain.toml`.
 pub fn setup_mise(with_cache: Option<bool>) -> Step<Use> {
@@ -211,7 +289,7 @@ pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
 pub fn fastlane(platform: Platform, channel: Channel) -> Step<Run> {
-    let spec = SecretSpec::new(format!(
+    let spec = SecretSpec::run(format!(
         "fastlane {lane} {flavor}",
         lane = platform.slug(),
         flavor = channel.flavor()
@@ -339,21 +417,53 @@ impl From<Nextest> for Step<Run> {
     }
 }
 
-#[derive(Clone, Default)]
+/// How a step hands the secrets it resolves to whatever consumes them.
+#[derive(Clone)]
+enum Delivery {
+    /// `secretspec run -- <cmd>`. The values exist only for that child process,
+    /// which is what keeps signing material out of `$GITHUB_ENV` and so out of
+    /// every later step in the job.
+    Wrap(String),
+    /// `secretspec export --format gha`. The values land in `$GITHUB_ENV`, so
+    /// later steps read them as `${{ env.NAME }}` — the only route that reaches
+    /// an action's `with:` block, which cannot run a command of its own.
+    ///
+    /// Multi-line values survive intact: the CLI writes them under a random
+    /// heredoc delimiter and emits one `::add-mask::` per line, a single mask
+    /// over a multi-line value redacting nothing.
+    Export,
+}
+
+#[derive(Clone)]
 pub(crate) struct SecretSpec {
     profile: Option<String>,
     scope: Option<String>,
-    cmd: String,
+    reason: Option<String>,
+    delivery: Delivery,
 }
 
 impl SecretSpec {
-    pub(crate) fn new(cmd: String) -> Self {
+    /// Wraps `cmd`, so the secrets never outlive it. Prefer this wherever the
+    /// consumer is a command; [`SecretSpec::export`] widens the blast radius to
+    /// the rest of the job.
+    pub(crate) fn run(cmd: impl ToString) -> Self {
+        Self::deliver(Delivery::Wrap(cmd.to_string()))
+    }
+
+    /// Publishes the profile into the job environment.
+    pub(crate) fn export() -> Self {
+        Self::deliver(Delivery::Export)
+    }
+
+    fn deliver(delivery: Delivery) -> Self {
         Self {
-            cmd,
-            ..Default::default()
+            profile: None,
+            scope: None,
+            reason: None,
+            delivery,
         }
     }
-    #[allow(dead_code)]
+
     pub(crate) fn with_profile(mut self, profile: impl ToString) -> Self {
         self.profile = Some(profile.to_string());
         self
@@ -365,26 +475,53 @@ impl SecretSpec {
         self
     }
 
+    /// Recorded by providers that keep an audit log, and demanded outright by
+    /// secretspec's `require_reason` policy.
+    pub(crate) fn with_reason(mut self, reason: impl ToString) -> Self {
+        self.reason = Some(reason.to_string());
+        self
+    }
+
     #[allow(dead_code)]
     pub(crate) fn with_cmd(mut self, cmd: impl ToString) -> Self {
-        self.cmd = cmd.to_string();
+        self.delivery = Delivery::Wrap(cmd.to_string());
         self
     }
 }
 
 impl From<SecretSpec> for Step<Run> {
     fn from(spec: SecretSpec) -> Self {
-        let mut command = String::from("secretspec run");
-        if let Some(profile) = spec.profile {
+        let mut command = String::from(match spec.delivery {
+            Delivery::Wrap(_) => "secretspec run",
+            Delivery::Export => "secretspec export",
+        });
+        if let Some(profile) = &spec.profile {
             command.push_str(&format!(" --profile {profile}"));
         }
-        if let Some(scope) = spec.scope {
+        if let Some(scope) = &spec.scope {
             command.push_str(&format!(" --scope {scope}"));
         }
-        command.push_str(&format!(" -- {cmd}", cmd = spec.cmd));
+        // Last, so `--` stays at the end of the line where it belongs.
+        match &spec.delivery {
+            Delivery::Wrap(cmd) => command.push_str(&format!(" -- {cmd}")),
+            Delivery::Export => command.push_str(" --format gha"),
+        }
 
-        Step::new("secretspec")
+        let name = match spec.delivery {
+            Delivery::Wrap(_) => "secretspec".to_owned(),
+            Delivery::Export => format!(
+                "Resolve the {profile} secrets",
+                profile = spec.profile.as_deref().unwrap_or("default"),
+            ),
+        };
+
+        Step::new(name)
             .run(command)
-            .add_env(("SOPS_AGE_KEY", SOPS_AGE_KEY))
+            .shell("bash")
+            .add_env(SECRETSPEC_PROVIDER)
+            .add_env(SOPS_AGE_KEY_ENV)
+            .when_some(spec.reason, |step, reason| {
+                step.add_env(("SECRETSPEC_REASON", reason))
+            })
     }
 }

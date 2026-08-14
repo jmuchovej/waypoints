@@ -15,5 +15,6 @@ pub mod utils {
     pub mod devenv;
     pub mod github;
 }
+pub mod botswain;
 pub mod shell;
 pub mod workspace;

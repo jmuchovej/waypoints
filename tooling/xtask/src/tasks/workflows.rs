@@ -18,6 +18,7 @@ use strum::IntoEnumIterator;
 // One module per workflow. Everything they are assembled from is prefixed with
 // an underscore, so a bare name in this directory is always a workflow.
 mod check_generated;
+mod devenv_update;
 mod pull_request;
 mod release;
 
@@ -121,6 +122,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
     }
     let workflows = [
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
+        WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
