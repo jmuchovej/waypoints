@@ -1,5 +1,5 @@
 //! Territory command handlers. Mirrors
-//! `waypoints/src-tauri/src/commands/territory.rs`.
+//! `src-tauri/src/commands/territory.rs`.
 
 use super::{ApiError, Instance};
 use axum::Json;

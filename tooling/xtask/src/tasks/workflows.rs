@@ -109,7 +109,7 @@ impl WorkflowFamily {
 }
 
 pub fn run(args: WorkflowArgs) -> Result<()> {
-    if !Path::new("waypoints/src-tauri/").is_dir() || !Path::new("crates/domain/").is_dir() {
+    if !Path::new("src-tauri/").is_dir() || !Path::new("crates/domain/").is_dir() {
         anyhow::bail!("xtask workflows must be run from the project root");
     }
 

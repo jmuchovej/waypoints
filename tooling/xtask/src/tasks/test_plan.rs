@@ -135,7 +135,7 @@ mod tests {
 
     fn directories() -> Vec<(String, String)> {
         [
-            ("Waypoints", "waypoints/src-tauri"),
+            ("Waypoints", "src-tauri"),
             ("cartograph", "crates/cartograph"),
             ("store", "crates/store"),
             ("domain", "crates/domain"),

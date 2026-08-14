@@ -1,7 +1,7 @@
 //! File-backed [`RegistryStore`] for the dev server.
 //!
 //! Reads and writes the SAME `settings.json` that the Tauri app's
-//! tauri-plugin-store maintains (see waypoints/src-tauri/src/registry_store.rs +
+//! tauri-plugin-store maintains (see src-tauri/src/registry_store.rs +
 //! settings.rs), under the same `territories` key. That file lives at the root
 //! of the flavor's app-data dir (e.g. `~/Library/Application Support/
 //! so.waypoints.dev/settings.json`). Sharing it — rather than keeping a separate

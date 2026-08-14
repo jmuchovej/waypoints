@@ -1,4 +1,5 @@
 app/bindings.g.ts
+.nuxtrc
 
 # Nuxt dev/build outputs
 .output

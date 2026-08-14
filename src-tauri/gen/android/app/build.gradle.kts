@@ -31,6 +31,7 @@ val minSdkVersion = run {
 
 android {
   compileSdk = 36
+  buildToolsVersion = libs.versions.buildTools.get()
   namespace = "so.waypoints"
   defaultConfig {
     manifestPlaceholders["usesCleartextTraffic"] = "false"

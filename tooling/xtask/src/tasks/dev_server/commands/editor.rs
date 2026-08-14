@@ -1,5 +1,5 @@
 //! Editor command handlers. Mirrors
-//! `waypoints/src-tauri/src/commands/editor.rs`.
+//! `src-tauri/src/commands/editor.rs`.
 
 use super::{ApiError, Instance};
 use axum::Json;

@@ -40,7 +40,7 @@ pub struct DevServerArgs {
     data_root: Option<PathBuf>,
 
     /// Directory of the built Nuxt SPA to serve (e.g.
-    /// `waypoints/.output/public`). When omitted, only `/ipc` is served and the
+    /// `src/.output/public`). When omitted, only `/ipc` is served and the
     /// frontend is expected to come from the Nuxt dev server via proxy.
     #[arg(long)]
     static_dir: Option<PathBuf>,

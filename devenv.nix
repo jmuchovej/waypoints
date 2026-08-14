@@ -4,10 +4,10 @@
   config,
   ...
 }: let
-  tauri-lib-path = "waypoints/src-tauri";
-  tauri-app-path = "waypoints";
-  tauri-android-path = "gen/android";
-  tauri-ios-path = "gen/apple";
+  tauri-app-path = "src-tauri";
+  tauri-frontend-path = "src";
+  tauri-android-path = "${tauri-app-path}/gen/android";
+  tauri-ios-path = "${tauri-app-path}/gen/apple";
 
   is-enabled = prog: prog.enable or false;
   has-package = prog: prog ? package;
@@ -93,6 +93,7 @@
     ".{dev,dir}env/*"
     "*/.envrc*"
     "vendor/*"
+    ".scratch/*"
     "*.{gif,ico}"
     "*.{properties,gradle}"
     "*.{pbxproj,xcconfig}"
@@ -103,10 +104,10 @@ in {
   env.LD_LIBRARY_PATH = lib.mkForce "";
   env.PROJECT_ROOT = config.env.DEVENV_ROOT;
   env.PROJECT_CONFIG_PATH = "${config.env.PROJECT_ROOT}/.config";
-  env.TAURI_FRONTEND_PATH = "${config.env.PROJECT_ROOT}/${tauri-app-path}";
-  env.TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/${tauri-lib-path}";
-  env.TAURI_ANDROID_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/${tauri-android-path}";
-  env.TAURI_IOS_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/${tauri-ios-path}";
+  env.TAURI_FRONTEND_PATH = "${config.env.PROJECT_ROOT}/${tauri-frontend-path}";
+  env.TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/${tauri-app-path}";
+  env.TAURI_ANDROID_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-android-path}";
+  env.TAURI_IOS_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-ios-path}";
   env.TREEFMT_CONFIG = "${config.env.PROJECT_CONFIG_PATH}/treefmt.toml";
   env.CLIPPY_CONF_DIR = "${config.env.PROJECT_CONFIG_PATH}";
 
@@ -210,8 +211,7 @@ in {
           "*.xc{scheme,settings,workspacedata}"
         ];
         oxfmt.excludes = [
-          "website/*/*.{md,mdx}"
-          "docs/*/*.{md,mdx}"
+          "website/*/*.md"
         ];
       };
     }
@@ -275,13 +275,13 @@ in {
           {PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";}
           {
             CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
-            TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-lib-path}";
-            TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
+            TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
+            TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-frontend-path}";
+            TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-android-path}";
+            TAURI_IOS_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-ios-path}";
             TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
           }
           {
-            TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-android-path}";
-            TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-ios-path}";
           }
         ];
         tools = lib.mapAttrs (_: pkg: toString pkg.version) mise-tools;

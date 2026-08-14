@@ -71,9 +71,9 @@ impl Platform {
                 target/release/bundle/nsis/*.nsis.zip
                 target/release/bundle/nsis/*.nsis.zip.sig"},
             Android => indoc! {"
-                waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
-                waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab"},
-            iOS => "waypoints/src-tauri/gen/apple/build/**/*.ipa",
+                src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+                src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab"},
+            iOS => "src-tauri/gen/apple/build/**/*.ipa",
         }
         .trim()
     }

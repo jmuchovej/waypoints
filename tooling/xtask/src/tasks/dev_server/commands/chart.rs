@@ -1,4 +1,4 @@
-//! Chart command handlers. Mirrors `waypoints/src-tauri/src/commands/chart.rs`.
+//! Chart command handlers. Mirrors `src-tauri/src/commands/chart.rs`.
 
 use super::{ApiError, Instance};
 use axum::Json;

@@ -19,7 +19,7 @@ context: |
     - `outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost` (E2EE
       local-first sync engine; the protocol crate is pure — no tokio/iroh/bedrock)
 
-  The Tauri app lives in `waypoints/` (`src-tauri` + Nuxt `app`); Tauri commands
+  The Tauri shell lives in `src-tauri/` and the Nuxt app in `src/`; Tauri commands
   are thin wrappers over the crates — test the crates, not the Tauri harness.
   (`cargo xtask dev-server` mirrors the same commands over HTTP for browser-based
   dev — a task in `tooling/xtask`, the Rust dev-toolchain; not a product surface.)

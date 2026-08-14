@@ -1,67 +1,69 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from "@nuxt/ui";
-import { createReusableTemplate } from "@vueuse/core";
-import { ref, inject, type Ref } from "vue";
+  import type { NavigationMenuItem } from "@nuxt/ui";
+  import { createReusableTemplate } from "@vueuse/core";
+  import { ref, inject, type Ref } from "vue";
 
-import { LazyUCalendar, UTooltip, UButton } from "#components";
+  import { LazyUCalendar, UTooltip, UButton } from "#components";
 
-const open = inject<Ref<boolean>>("sidebar-open", ref(false));
+  const open = inject<Ref<boolean>>("sidebar-open", ref(false));
 
-const route = useRoute();
+  const route = useRoute();
 
-const [DefineLibraryLink, ReuseLibraryLink] = createReusableTemplate<{
-  name: string;
-  icon: string;
-}>();
+  const [DefineLibraryLink, ReuseLibraryLink] = createReusableTemplate<{
+    name: string;
+    icon: string;
+  }>();
 
-const links: NavigationMenuItem[] = [
-  {
-    label: "Recents",
-    icon: "i-lucide-clock-fading",
-    to: "/library/recents",
-    slot: "recents" as const,
-    type: "label",
-    onSelect() {
-      open.value = false;
+  const links: NavigationMenuItem[] = [
+    {
+      label: "Recents",
+      icon: "i-lucide-clock-fading",
+      to: "/library/recents",
+      slot: "recents" as const,
+      type: "label",
+      onSelect() {
+        open.value = false;
+      },
+      children: [
+        // TODO: dynamically populate with first 5–10 recently visited landmarks
+
+      ],
     },
-    children: [
-      // TODO: dynamically populate with first 5–10 recently visited landmarks
-    ],
-  },
-  {
-    label: "Pinned",
-    icon: "i-lucide-pin",
-    slot: "pinned" as const,
-    type: "label",
-    to: "/library/pinned",
-    defaultOpen: true,
-    children: [
-      // TODO: dynamically populate with first 5–10 pinned landmarks
-    ],
-  },
-  {
-    label: "Marks",
-    icon: "i-lucide-map-pin",
-    to: "/marks",
-    onSelect() {
-      open.value = false;
-    },
-  },
-];
+    {
+      label: "Pinned",
+      icon: "i-lucide-pin",
+      slot: "pinned" as const,
+      type: "label",
+      to: "/library/pinned",
+      defaultOpen: true,
+      children: [
+        // TODO: dynamically populate with first 5–10 pinned landmarks
 
-const footerLinks: NavigationMenuItem[] = [
-  {
-    label: "Library",
-    icon: "i-lucide-library",
-    to: "/library",
-    exact: true,
-  },
-  {
-    label: "Trash",
-    icon: "i-lucide-trash",
-    to: "/trash",
-  },
-];
+      ],
+    },
+    {
+      label: "Marks",
+      icon: "i-lucide-map-pin",
+      to: "/marks",
+      onSelect() {
+        open.value = false;
+      },
+    },
+  ];
+
+  const footerLinks: NavigationMenuItem[] = [
+    {
+      label: "Library",
+      icon: "i-lucide-library",
+      to: "/library",
+      exact: true,
+    },
+    {
+      label: "Trash",
+      icon: "i-lucide-trash",
+      to: "/trash",
+    },
+  ];
 </script>
 
 <template>
@@ -74,8 +76,7 @@ const footerLinks: NavigationMenuItem[] = [
       // inner: 'bg-elevated/25 divide-transparent',
       // body: 'pt-0',
       footer: 'border-t border-default',
-    }"
-  >
+    }">
     <template #header="{ state }">
       <TerritoryMenu :collapsed="state" />
 
@@ -85,8 +86,7 @@ const footerLinks: NavigationMenuItem[] = [
         color="neutral"
         size="xs"
         :icon="`i-lucide-chevrons-${open ? 'left' : 'right'}`"
-        @click="open = false"
-      />
+        @click="open = false" />
     </template>
 
     <template #default="{ state }">
@@ -106,8 +106,7 @@ const footerLinks: NavigationMenuItem[] = [
             variant="ghost"
             size="xs"
             :icon="icon"
-            :to="`/library/${name}`"
-          />
+            :to="`/library/${name}`" />
         </UTooltip>
       </DefineLibraryLink>
 
@@ -116,8 +115,7 @@ const footerLinks: NavigationMenuItem[] = [
         orientation="vertical"
         :ui="{ link: 'p-1.5 overflow-hidden' }"
         tooltip
-        popover
-      >
+        popover>
         <template #recents-trailing>
           <ReuseLibraryLink name="recents" icon="i-lucide-library" />
         </template>
@@ -132,8 +130,7 @@ const footerLinks: NavigationMenuItem[] = [
         :ui="{ link: 'p-1.5 overflow-hidden' }"
         class="mt-auto"
         tooltip
-        popover
-      />
+        popover />
     </template>
 
     <template #footer="{ state }">

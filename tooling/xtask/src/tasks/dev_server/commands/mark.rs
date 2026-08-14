@@ -1,4 +1,4 @@
-//! Mark command handlers. Mirrors `waypoints/src-tauri/src/commands/mark.rs`.
+//! Mark command handlers. Mirrors `src-tauri/src/commands/mark.rs`.
 
 use super::{ApiError, Instance};
 use axum::Json;

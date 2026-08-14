@@ -14,8 +14,8 @@ members = [
   "crates/outpost-hold",
   "crates/outpost-protocol",
   "crates/store",
+  "src-tauri",
   "tooling/xtask",
-  "waypoints/src-tauri",
 ]
 
 [workspace.package]
@@ -31,7 +31,7 @@ license = "Apache-2.0"
 publish = false
 
 [workspace.dependencies]
-Waypoints = { path = "waypoints/src-tauri" }
+Waypoints = { path = "src-tauri" }
 bedrock = { path = "crates/bedrock" }
 bedrock-core = { path = "crates/bedrock-core" }
 bedrock-derive = { path = "crates/bedrock-derive" }

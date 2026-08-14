@@ -1,4 +1,4 @@
-//! HTTP command handlers, organized to mirror `waypoints/src-tauri/src/commands/`.
+//! HTTP command handlers, organized to mirror `src-tauri/src/commands/`.
 //!
 //! Each handler is an explicit, typed axum route that hands off to
 //! `WaypointsRuntime` immediately — the HTTP analog of the Tauri
@@ -6,7 +6,7 @@
 //! `/ipc/<command_name>` so the frontend transport (`app/ipc/`) is identical to
 //! the Tauri one. Keep this list in sync with the Tauri `generate_handler!`.
 
-pub(self) use super::{ApiError, AppState, Instance};
+use super::{ApiError, AppState, Instance};
 use axum::Router;
 use axum::routing::post;
 

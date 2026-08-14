@@ -1,4 +1,4 @@
-//! Sync command handlers. Mirrors `waypoints/src-tauri/src/commands/sync.rs`.
+//! Sync command handlers. Mirrors `src-tauri/src/commands/sync.rs`.
 
 use super::{ApiError, Instance};
 use axum::Json;

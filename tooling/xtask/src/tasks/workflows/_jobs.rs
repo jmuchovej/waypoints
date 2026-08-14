@@ -250,8 +250,8 @@ mod tests {
     fn the_build_scripts_read_the_variable_we_inject() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         for consumer in [
-            "waypoints/src-tauri/gen/android/app/build.gradle.kts",
-            "waypoints/src-tauri/.just/iOS.justfile",
+            "src-tauri/gen/android/app/build.gradle.kts",
+            "src-tauri/.just/iOS.justfile",
         ] {
             let source = fs::read_to_string(root.join(consumer))
                 .unwrap_or_else(|error| panic!("{consumer}: {error}"));

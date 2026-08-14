@@ -1,5 +1,5 @@
 packages:
-  - waypoints
+  - src
   - website
   - crates/domain
   - crates/cartograph

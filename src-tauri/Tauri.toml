@@ -8,7 +8,7 @@ identifier = "so.waypoints"
 beforeBuildCommand = "just generate"
 beforeDevCommand = "just dev"
 devUrl = "http://localhost:9297"
-frontendDist = "../.output"
+frontendDist = "../src/.output"
 
 [bundle]
 homepage = "https://waypoints.so"

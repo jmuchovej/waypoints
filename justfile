@@ -9,10 +9,10 @@ default:
     @just --list
 
 # App (front-end) scoped recipes
-mod app "waypoints/justfile"
+mod app "src/justfile"
 
 # App (back-end) scoped recipes
-mod tauri "waypoints/src-tauri/justfile"
+mod tauri "src-tauri/justfile"
 
 # Recipes for `cartograph`
 mod cartograph "crates/cartograph/justfile"
