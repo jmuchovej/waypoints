@@ -23,11 +23,9 @@ derive_more = {
 gh-workflow.workspace = true
 indexmap = "2"
 indoc = "2"
-octocrab = "0.47"
 serde.workspace = true
 serde_json.workspace = true
 strum = { version = "0.28.0", features = ["derive"] }
-tokio = { workspace = true, features = ["net", "rt", "time"] }
 toml = "0.9"
 
 [lints]
