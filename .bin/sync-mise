@@ -1,0 +1,32 @@
+#!/usr/bin/env nu
+
+# Regenerate mise.lock, then verify that every tool declared in
+# .config/mise.toml actually resolved — mise silently skips tools whose
+# backend spec is wrong, so a count mismatch means a broken spec.
+
+let root = $env.PROJECT_ROOT? | default (pwd)
+let mise_toml = $root | path join ".config" "mise.toml"
+
+mise lock
+
+# mise lists `core:` backend tools under their bare names (core:node -> node).
+let declared = open $mise_toml | get tools | columns | each {|tool| $tool | str replace -r '^core:' ''}
+let resolved = (
+  mise ls --current --json
+  | from json
+  | transpose tool installs
+  | where {|row| ($row.installs.0?.source?.path? | default "") == $mise_toml}
+  | get tool
+)
+
+let missing = $declared | where {|tool| $tool not-in $resolved}
+
+if ($missing | is-empty) {
+  print $"mise.lock regenerated; all ($declared | length) declared tools resolved"
+} else {
+  print -e $"mise resolved only ($resolved | length) of the ($declared | length) tools in .config/mise.toml."
+  print -e $"Missing: ($missing | sort | str join ', ')"
+  print -e "Add the missing tool to the mise-formatters `unavailable` list in"
+  print -e "devenv.nix, or give it a correct backend spec."
+  exit 1
+}

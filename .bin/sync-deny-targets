@@ -1,0 +1,18 @@
+#!/usr/bin/env nu
+
+let root = $env.PROJECT_ROOT? | default (pwd)
+let toolchain_file = $root | path join "rust-toolchain.toml"
+let deny_file = $root | path join ".cargo" "deny.toml"
+
+let toolchain = open $toolchain_file | get toolchain.targets
+let current = open $deny_file | get graph.targets
+
+if $toolchain == $current {
+  print "deny.toml graph.targets is in sync with rust-toolchain.toml"
+} else {
+  open $deny_file
+  | update graph.targets $toolchain
+  | to toml
+  | save -f $deny_file
+  print $"synced ($toolchain | length) targets from rust-toolchain.toml into .cargo/deny.toml"
+}

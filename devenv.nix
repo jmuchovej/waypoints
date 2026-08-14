@@ -218,30 +218,25 @@ in {
   ];
 
   tasks."mise:lock" = {
+    description = "Regenerate mise.lock and verify every declared tool resolved";
+    package = pkgs.nushell;
     after = ["devenv:enterShell"];
     execIfModified = [
       ".config/mise.toml"
       ".config/mise.lock"
     ];
-    exec = ''
-      set -euo pipefail
-      mise lock
+    exec = builtins.readFile "${config.git.root}/.bin/sync-mise";
+  };
 
-      declared="$(yq -p toml -o=json '.tools | length' .config/mise.toml)"
-      resolved="$(mise ls --current --json \
-        | yq -o=json "to_entries | map(select(.value[0].source.path == \"$DEVENV_ROOT/.config/mise.toml\")) | length")"
-
-      if [ "$declared" -ne "$resolved" ]; then
-        echo "mise resolved only $resolved of the $declared tools in .config/mise.toml." >&2
-        echo "Declared:" >&2
-        yq -p toml -o=json '.tools | keys | .[]' mise.toml | tr -d '"' | sed 's/^/  /' >&2
-        echo "Resolved:" >&2
-        mise ls --current --json | yq -o=json 'keys | .[]' | tr -d '"' | sed 's/^/  /' >&2
-        echo 'Add the missing one to the mise-formatters `unavailable` list in' >&2
-        echo 'devenv.nix, or give it a correct backend spec.' >&2
-        exit 1
-      fi
-    '';
+  tasks."waypoints:sync-deny-targets" = {
+    description = "Sync .cargo/deny.toml graph.targets from rust-toolchain.toml";
+    package = pkgs.nushell;
+    after = ["devenv:enterShell"];
+    execIfModified = [
+      "rust-toolchain.toml"
+      ".cargo/deny.toml"
+    ];
+    exec = builtins.readFile "${config.git.root}/.bin/sync-deny-targets";
   };
 
   files = {

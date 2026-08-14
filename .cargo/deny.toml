@@ -3,23 +3,16 @@
 [graph]
 targets = [
   "aarch64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-unknown-linux-musl",
+  "aarch64-unknown-linux-musl",
+  "x86_64-pc-windows-msvc",
+  "aarch64-pc-windows-msvc",
   "aarch64-apple-ios",
   "aarch64-apple-ios-sim",
-
-  "x86_64-unknown-linux-gnu",
-  "x86_64-unknown-linux-musl",
-  "aarch64-unknown-linux-gnu",
-  "aarch64-unknown-linux-musl",
-
   "aarch64-linux-android",
-  "x86_64-linux-android",
-
-  "x86_64-pc-windows-msvc",
-  "x86_64-pc-windows-gnu",
-  "x86_64-pc-windows-gnullvm",
-  "aarch64-pc-windows-msvc",
-  "aarch64-pc-windows-gnu",
-  "aarch64-pc-windows-gnullvm",
+  "x86_64-linux-android"
 ]
 all-features = false
 no-default-features = false
@@ -30,28 +23,94 @@ feature-depth = 1
 
 [advisories]
 ignore = [
-  { id = "RUSTSEC-2026-0194", reason = "blocked on tauri->plist bumping quick-xml to 0.41; parser DoS on untrusted XML, which we don't accept" },
-  { id = "RUSTSEC-2026-0195", reason = "blocked on tauri->plist bumping quick-xml to 0.41; parser DoS on untrusted XML, which we don't accept" },
-  { id = "RUSTSEC-2024-0411", reason = "gdkwayland-sys: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0412", reason = "gdk: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0413", reason = "atk: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0414", reason = "gdkx11-sys: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0415", reason = "gtk: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0416", reason = "atk-sys: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0417", reason = "gdkx11: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0418", reason = "gdk-sys: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0419", reason = "gtk3-macros: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2024-0420", reason = "gtk-sys: GTK3 required by tauri/wry on Linux" },
-  { id = "RUSTSEC-2026-0206", reason = "rustybuzz via usvg; waiting on upstream migration to harfrust" },
-  { id = "RUSTSEC-2026-0192", reason = "ttf-parser via usvg; waiting on upstream migration to skrifa" },
-  { id = "RUSTSEC-2025-0075", reason = "unic-char-range via usvg stack; upstream concern" },
-  { id = "RUSTSEC-2025-0080", reason = "unic-common via usvg stack; upstream concern" },
-  { id = "RUSTSEC-2025-0081", reason = "unic-char-property via usvg stack; upstream concern" },
-  { id = "RUSTSEC-2025-0098", reason = "unic-ucd-version via usvg stack; upstream concern" },
-  { id = "RUSTSEC-2025-0100", reason = "unic-ucd-ident via usvg stack; upstream concern" },
-  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error, compile-time only, transitive" },
-  { id = "RUSTSEC-2024-0436", reason = "paste via specta/rav1e/pulp, compile-time only" },
-  { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2, compile-time only, transitive" },
+  {
+    id = "RUSTSEC-2026-0194",
+    reason = "blocked on tauri->plist bumping quick-xml to 0.41; parser DoS on untrusted XML, which we don't accept"
+  },
+  {
+    id = "RUSTSEC-2026-0195",
+    reason = "blocked on tauri->plist bumping quick-xml to 0.41; parser DoS on untrusted XML, which we don't accept"
+  },
+  {
+    id = "RUSTSEC-2024-0411",
+    reason = "gdkwayland-sys: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0412",
+    reason = "gdk: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0413",
+    reason = "atk: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0414",
+    reason = "gdkx11-sys: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0415",
+    reason = "gtk: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0416",
+    reason = "atk-sys: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0417",
+    reason = "gdkx11: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0418",
+    reason = "gdk-sys: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0419",
+    reason = "gtk3-macros: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2024-0420",
+    reason = "gtk-sys: GTK3 required by tauri/wry on Linux"
+  },
+  {
+    id = "RUSTSEC-2026-0206",
+    reason = "rustybuzz via usvg; waiting on upstream migration to harfrust"
+  },
+  {
+    id = "RUSTSEC-2026-0192",
+    reason = "ttf-parser via usvg; waiting on upstream migration to skrifa"
+  },
+  {
+    id = "RUSTSEC-2025-0075",
+    reason = "unic-char-range via usvg stack; upstream concern"
+  },
+  {
+    id = "RUSTSEC-2025-0080",
+    reason = "unic-common via usvg stack; upstream concern"
+  },
+  {
+    id = "RUSTSEC-2025-0081",
+    reason = "unic-char-property via usvg stack; upstream concern"
+  },
+  {
+    id = "RUSTSEC-2025-0098",
+    reason = "unic-ucd-version via usvg stack; upstream concern"
+  },
+  {
+    id = "RUSTSEC-2025-0100",
+    reason = "unic-ucd-ident via usvg stack; upstream concern"
+  },
+  {
+    id = "RUSTSEC-2024-0370",
+    reason = "proc-macro-error, compile-time only, transitive"
+  },
+  {
+    id = "RUSTSEC-2024-0436",
+    reason = "paste via specta/rav1e/pulp, compile-time only"
+  },
+  {
+    id = "RUSTSEC-2026-0173",
+    reason = "proc-macro-error2, compile-time only, transitive"
+  },
 ]
 
 [licenses]
@@ -92,8 +151,8 @@ external-default-features = "allow"
 allow-workspace = false
 
 [sources]
-unknown-registry = "error"
-unknown-git = "error"
+unknown-registry = "deny"
+unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
 
