@@ -1,3 +1,5 @@
+import { UPDATE_CHANNELS, type UpdateChannel } from "#shared/utils/releases";
+
 export default defineEventHandler(async (event) => {
   const channel = getRouterParam(event, "channel") as UpdateChannel;
   const target = getRouterParam(event, "target") as string;
@@ -13,7 +15,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const releases = await fetchGitHubReleases();
+  const releases = await fetchGitHubReleases(event);
   const latest = latestForChannel(releases, channel);
 
   if (!latest) {

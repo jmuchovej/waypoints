@@ -19,7 +19,7 @@ export interface Release {
   markdown: string;
 }
 
-export function useReleases(channel: MaybeRef<"stable" | "preview">) {
+export function useReleases(channel: MaybeRef<UpdateChannel>) {
   const appConfig = useAppConfig();
   const isDev = import.meta.dev;
 
@@ -32,7 +32,7 @@ export function useReleases(channel: MaybeRef<"stable" | "preview">) {
     transform(data: { releases: UnghRelease[] }) {
       return data.releases
         .filter((r) => !r.draft)
-        .filter((r) => (toValue(channel) === "preview" ? r.prerelease : !r.prerelease))
+        .filter((r) => toValue(channel) === channelForRelease(r.tag, r.prerelease))
         .map((r) => ({
           tag: r.tag,
           title: r.name || r.tag,

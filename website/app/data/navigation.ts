@@ -1,6 +1,20 @@
 import type { NavigationMenuItem } from "@nuxt/ui";
 
-export const resourceGroups = [
+type ResourceLink = {
+  icon: string;
+  label: string;
+  description: string;
+  to: string;
+  /** Only for off-site links; internal ones leave this unset. */
+  target?: "_blank" | "_parent" | "_self" | "_top";
+};
+
+type ResourceGroup = {
+  label: string;
+  items: ResourceLink[];
+};
+
+export const resourceGroups: ResourceGroup[] = [
   {
     label: "Product",
     items: [
@@ -24,9 +38,9 @@ export const resourceGroups = [
     items: [
       {
         icon: "i-lucide-compass",
-        label: "About",
+        label: "Why",
         description: "Learn about Waypoints' vision",
-        to: "/about",
+        to: "/why",
       },
     ],
   },

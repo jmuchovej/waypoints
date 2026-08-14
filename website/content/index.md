@@ -1,207 +1,216 @@
 ---
-title: Waypoints — Your data. Your machine. Your knowledge.
-description: A local-first, block-based knowledge tool. No cloud accounts, no API keys, no data harvesting. Your notes live on your device and nowhere else.
+title: Waypoints — a toolkit for non-linear thought
+description: >-
+  Thinking doesn't happen in a straight line. Your tools shouldn't force that
+  either. Local-first, block-based, GPL — built in the open by one researcher.
 ---
 
-::u-page-hero
----
-orientation: horizontal
----
+<!-- Frame: Announcement Day. -->
+<!-- Markers: GATE | FACT | BRIDGE | QUARRY
+  GATE   = licensed by a launch gate (see Notion gates table)
+  FACT   = number/detail you must confirm
+  BRIDGE = connective tissue in my words, not quarry — rewrite in yours if it grates
+-->
+<!--
+  Routing: this page targets the EARLY ADOPTER. Tinkerers get routed to /about.
+  Voice: first-person singular per 1.5. Triad budget: one (spent in "Not for you" intro).
+  index.v2 — SCAN PAGE rebuild per site-ia.md (delete this block before deploy)
+  Changes from v1: narrative section removed (→ /why); redditor's "losses" line cut
+  (not your quarry); Beacons card removed (not built — origin material lives on /why);
+  offline reframed as invariant; sync/encryption unfused; denotative headers throughout;
+  readiness ladder replaces "who shouldn't download this yet"; email removed everywhere.
+  Triad budget: spent on the invariant strip, on purpose.
+-->
+
+::u-page-hero{orientation="vertical"}
 #title
-Your data. Your machine. Your knowledge.
+Thinking doesn't happen in a straight line.
 
 #description
-Waypoints is a local-first, block-based knowledge tool. No cloud accounts, no API keys, no data harvesting. Your notes live on your device and nowhere else.
+Your tools shouldn't force that either. I got tired of needing twelve apps to
+track the papers I'm reading, my notes on them, my projects, and the time each
+one eats — so I built the one I wanted. [The long version.](/why)
 
 #headline
-:::u-badge
----
-variant: subtle
-class: mb-4
----
-Early development
-:::
+  :::u-badge{size="lg" color="secondary" class="mb-4"}
+  Early, honest, and open
+  :::
 
 #links
-:::u-button
----
-size: xl
-to: /download/stable
-trailing-icon: i-lucide-arrow-right
----
-Download
-:::
-:::u-button
----
-color: neutral
-icon: i-simple-icons-github
-size: xl
-target: _blank
-to: https://github.com/waypoints-hq/waypoints
-variant: subtle
----
-Source code
-:::
+  :::u-button
+  ---
+  size: xl
+  color: primary
+  variant: solid
+  to: /download/stable
+  trailing-icon: i-lucide-arrow-right
+  ---
+  Download
+  :::
+
+  :::u-button
+  ---
+  size: xl
+  to: https://github.com/waypoints-hq/waypoints
+  leading-icon: i-simple-icons-github
+  color: neutral
+  target: _blank
+  ---
+  Source code
+  :::
 ::
 
-::u-page-section
+::u-theme
 ---
-id: principles
+ui:
+  pageSection:
+  root: "bg-elevated/50"
+  container: "py-0 sm:py-0 lg:py-0"
+  body: "mt-0"
+  features: "grid gap-1 divide-x divide-accented"
+  pageFeature:
+  root: "rounded-none divide-inherit p-2"
+  prose:
+  p:
+    base: "my-0"
 ---
-#title
-Principles, not promises
+  ::u-page-section{id="invariants"}
+  
+  #features
+    :::u-page-feature{as="li" to="/docs/storage" icon="i-lucide-plane"}
+    
+    #title
+    Offline always, online sometimes
 
-#description
-Waypoints is early software. Here is what drives every decision.
+    #description
+    Core features will never wait on a remote server. Its baked into the architecture, not an afterthought.
+    <!-- QUARRY: your mantra, verbatim. -->
+    :::
 
-#features
-:::u-page-feature
----
-icon: i-lucide-hard-drive
----
-#title
-Data locality
-#description
-Your notes are stored in a SQLite database on your device. No sync servers, no vendor lock-in. Back them up however you want.
-:::
-:::u-page-feature
----
-icon: i-lucide-cpu
----
-#title
-Compute locality
-#description
-Processing happens on your machine. Math rendering, search indexing, and eventually AI inference — all local.
-:::
-:::u-page-feature
----
-icon: i-lucide-lock-keyhole
----
-#title
-Data ownership
-#description
-Waypoints does not want your data. No telemetry, no analytics, no cloud dependency. If a feature needs a network call, you opt in explicitly.
-:::
-:::u-page-feature
----
-icon: i-lucide-box
----
-#title
-Blocks as first-class citizens
-#description
-Every piece of content is a block that can be dragged, nested, linked, and referenced. Not an afterthought bolted onto a document model.
-:::
-:::u-page-feature
----
-icon: i-lucide-shapes
----
-#title
-User-defined types
-#description
-Built-in charts (Pages, Notes, People, Meetings, Bookmarks) are just the starting set. Define your own types with custom fields and relationships.
-:::
-:::u-page-feature
----
-icon: i-lucide-code
----
-#title
-Open Source
-#description
-The entire codebase is public. Inspect it, fork it, contribute to it. No proprietary core hiding behind an open wrapper.
-:::
+    :::u-page-feature{as="li" to="/docs/export" icon="i-lucide-door-open"}
+    #title
+    Leaves the way it came
+    #description
+    Export is already built as plain markdown. **Your data is yours, and the text can be read in 1980 or 2180.**
+    <!-- GATE: export shipped. QUARRY: reply 1. Above the fold per your call. -->
+    :::
+
+    :::u-page-feature{as="li" to="/why#sustainability" icon="i-lucide-scale"}
+    #title
+    GPL-3.0, one public repo
+
+    #description
+    Fork it, audit it, continue it without me.
+    :::
+  ::
 ::
 
-::u-page-section
----
-id: today
----
+::u-page-section{id="today"}
 #title
 What works today
 
 #description
-Waypoints is dogfooding toward v0.1. Here is what is already built and usable.
+Each card links to the document that proves it.
+<!-- BRIDGE — the receipts rule, stated. -->
 
 #features
-:::u-page-feature
----
-icon: i-lucide-text-cursor-input
----
-#title
-Rich block editor
-#description
-Paragraphs, headings, lists, blockquotes, dividers, and math blocks with live Typst and LaTeX rendering.
-:::
-:::u-page-feature
----
-icon: i-lucide-grip-vertical
----
-#title
-Drag-and-drop reordering
-#description
-Single and multi-block drag with visual feedback, compound block nesting, and touch support for mobile.
-:::
-:::u-page-feature
----
-icon: i-lucide-type
----
-#title
-Inline formatting
-#description
-Bold, italic, underline, strikethrough, code, links, inline math, spoilers, superscript, and subscript — all with markdown shortcuts.
-:::
-:::u-page-feature
----
-icon: i-lucide-database
----
-#title
-Structured data
-#description
-8 built-in chart types with typed readings: text, numbers, dates, selects, references, URLs, emails, and formulas.
-:::
-:::u-page-feature
----
-icon: i-lucide-slash
----
-#title
-Slash commands
-#description
-Type / to convert blocks, insert new content types, or access editor actions with fuzzy search.
-:::
-:::u-page-feature
----
-icon: i-lucide-monitor-smartphone
----
-#title
-Cross-platform
-#description
-Built with Tauri. Runs natively on macOS, Linux, and Windows. Android builds exist. iOS is in progress.
-:::
+  :::u-page-feature{as="li" icon="i-lucide-text-cursor-input"}
+  #title
+  Rich block editor
+  
+  #description
+  Paragraphs, headings, lists, blockquotes, callouts. Math blocks render Typst and LaTeX live.
+  :::
+
+  :::u-page-feature{as="li" to="/docs/charts" icon="i-lucide-shapes"}
+  #title
+  Charts — typing that's optional
+  
+  #description
+  Everything is at least a page; typecast exactly as far as you want. Ships with 8 built-in Charts; define your own when you find new use cases.
+  <!-- FACT: confirm count ("8(?)" in worksheet; current site names 5). QUARRY: 4.1 + your two-axis note. -->
+  :::
+
+  :::u-page-feature{as="li" to="/docs/import" icon="i-lucide-import"}
+  #title
+  Import from Logseq, Notion, and Obsidian
+  
+  #description
+  Logseq imports keyed on block UUIDs — re-running never duplicates. The migration matrix shows exactly what survives from each source.
+  <!-- GATE: importers shipped. FACT: matrix fidelity columns must be filled before this links anywhere. -->
+  :::
+
+  :::u-page-feature{as="li" to="/docs/sync" icon="i-lucide-refresh-cw"}
+  #title
+  Multi-device sync
+  
+  #description
+  Has carried my own devices for months and survived a half-dozen testers. Young, and disclosed as such.
+  <!-- GATE: sync soak. Encryption claim moved to /docs/sync — unfused per your note. -->
+  :::
+
+  :::u-page-feature{as="li" to="/docs/sync#encryption" icon="i-lucide-lock-keyhole"}
+  #title
+  Encrypted at rest
+  
+  #description
+  Whoever runs the sync fleet cannot read your notes without explicit access. That guarantee is in the test suite — violating it breaks the build.
+  <!-- QUARRY: 5.2 #3. Separate card, separate claim. -->
+  :::
+
+  :::u-page-feature{as="li" icon="i-lucide-terminal"}
+  #title
+  Cross-platform
+  
+  #description
+  macOS, Linux, Windows; Android and iOS.
+  <!-- QUARRY: 5.1. Deliberately the bluntest card on the page. -->
+  :::
 ::
 
-::u-page-section
+::u-page-section{id="readiness" orientation="vertical"}
 #title
-Early, honest, and open
+Should you download this today?
 
 #description
-Waypoints is not ready for production use. It has known bugs, missing features, and an incomplete UI. If that does not scare you, try it out and file issues.
+Honest answer: depends on your appetite. Pick your rung. <!-- BRIDGE -->
 
-#links
-:::u-button
----
-color: neutral
-to: /download/stable
-trailing-icon: i-lucide-arrow-right
----
-Download
-:::
-:::u-button
----
-color: neutral
-icon: i-simple-icons-github
-target: _blank
-to: https://github.com/waypoints-hq/waypoints/issues
-variant: outline
----
-Issues & feedback
-:::
+#features
+  :::u-page-feature{as="li" to="/download/stable" icon="i-lucide-flame"}
+  #title
+  Try it today
+  
+  #description
+  You don't need every byte of your old graph to survive import, and breakage is closer to entertainment than catastrophe. Known bugs, missing features, an incomplete UI — if that does not scare you, download it and file issues.
+  <!-- QUARRY: 5.3 #1 inverted + the keeper line. -->
+  :::
+
+  :::u-page-feature{as="li" to="https://github.com/waypoints-hq/waypoints/releases" icon="i-lucide-eye"}
+  #title
+  Watch the releases
+  
+  #description
+  You want this, but you need a specific importer to land, or collaboration — the multiplayer foundations exist and none of it has been tested as multiplayer. Watch the repo, or grab the release-ping role on Discord.
+  <!-- QUARRY: 5.3 #2. FACT: Discord invite + role mechanics TBD. -->
+  :::
+
+  :::u-page-feature{as="li" to="/covenant" icon="i-lucide-hourglass"}
+  #title
+  Wait for the covenant
+  
+  #description
+  You need stability guarantees, not promises. The data covenant defines exactly what v1 means — read it, then take the "ping me at v1" role and close this tab with my blessing.
+  <!-- QUARRY: 5.3 #3 inverted. FACT: /covenant must exist; role mechanics TBD. -->
+  :::
+::
+
+::u-page-section{id="cost" orientation="vertical"}
+#title
+What this costs
+
+#description
+The app is GPL-3.0 and free. Everything I plan to charge for is availability, not capability — a synced peer that never sleeps, a bigger model than your laptop carries, a scheduler that runs while you don't. All of it ships self-hostable. <!-- CANDIDATE: revenue invariant — still mine, still unvetoed. -->
+
+Built by one maintainer with an academic day job; releases every 3–5 weeks, and some sprints will be quiet. [How this outlives my motivation.](/why#sustainability)
+<!-- QUARRY: 5.2 #5. -->
 ::

@@ -87,6 +87,30 @@ export default defineEventHandler(() => {
 - Resolved command palette focus trap on close`,
         html: "",
       },
+      {
+        id: 5,
+        tag: "v0.2.0-nightly.20260531",
+        author: "john",
+        name: "v0.2.0 (31 May 2026)",
+        draft: false,
+        prerelease: true,
+        createdAt: "2026-05-31T12:00:00Z",
+        publishedAt: "2026-05-31T12:00:00Z",
+        markdown: `## Highlights
+
+- Initial public release of Waypoints
+- Rich block-based editor with drag handles and context menus
+- Callout blocks with customizable colors
+- Reading list management with book import support
+- Math rendering with Typst and LaTeX engines
+
+## Bug Fixes
+
+- Fixed missing \`isEmpty\` import that broke bottom-doc click targets
+- Resolved compound block creation edge cases
+- Fixed undo/redo pipeline for block operations`,
+        html: "",
+      },
     ],
   };
 });

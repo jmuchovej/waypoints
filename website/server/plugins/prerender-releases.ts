@@ -1,3 +1,5 @@
+import { UPDATE_CHANNELS, type UpdateChannel, channelForRelease } from "#shared/utils/releases";
+
 /**
  * At prerender time, fetch all releases from ungh.cc and register
  * each individual version route so the static generator visits them.
@@ -15,10 +17,10 @@ export default defineNitroPlugin((nitroApp) => {
 
       for (const release of data.releases) {
         if (release.draft) continue;
-        const channel = channelForTag(release.tag);
+        const channel = channelForRelease(release.tag, release.prerelease);
         // Nightlies are an ephemeral dev channel — don't prerender a marketing
         // notes page per build. Only stable/preview get per-release pages.
-        if (channel !== "stable" && channel !== "preview") continue;
+        if (!channel || !UPDATE_CHANNELS.includes(channel)) continue;
         routes.add(`/releases/${channel}/${release.tag}`);
       }
     } catch (err) {

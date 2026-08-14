@@ -1,3 +1,7 @@
+import type { H3Event } from "h3";
+
+import { type UpdateChannel, channelForRelease } from "#shared/utils/releases";
+
 export const REPO = "waypoints-hq/waypoints";
 
 interface GitHubAsset {
@@ -21,8 +25,15 @@ export interface ReleaseAssets {
   assets: GitHubAsset[];
 }
 
-export async function fetchGitHubReleases(): Promise<GitHubRelease[]> {
-  const { github } = useRuntimeConfig();
+/**
+ * `event` is optional because these routes run in two contexts: prerendered at
+ * build time (no event — config comes from the build environment) and on
+ * Cloudflare at request time, where secrets arrive per-request via the Worker
+ * `env` binding and are ONLY visible to `useRuntimeConfig(event)`. Omitting the
+ * event on Workers silently yields the build-time value, not the CF secret.
+ */
+export async function fetchGitHubReleases(event?: H3Event): Promise<GitHubRelease[]> {
+  const { github } = useRuntimeConfig(event);
   const releases = await $fetch<GitHubRelease[]>(`https://api.github.com/repos/${REPO}/releases`, {
     headers: {
       Accept: "application/vnd.github+json",
@@ -37,32 +48,11 @@ export async function fetchGitHubReleases(): Promise<GitHubRelease[]> {
   return releases.filter((r) => !r.draft);
 }
 
-export type UpdateChannel = "stable" | "preview" | "nightly";
-
-export const UPDATE_CHANNELS: UpdateChannel[] = ["stable", "preview", "nightly"];
-
-/**
- * Classify a release tag into an update channel by its shape.
- *
- * Preview and nightly are both GitHub *prereleases*, so the `prerelease`
- * boolean alone can't tell them apart — a nightly would otherwise be served as
- * the latest "preview". Match on the tag suffix instead, most-specific first:
- *   nightly  vX.Y.Z-nightly.<date>
- *   preview  vX.Y.Z-pre.<n>
- *   stable   vX.Y.Z
- */
-export function channelForTag(tag: string): UpdateChannel | null {
-  if (/-nightly\./.test(tag)) return "nightly";
-  if (/-pre\./.test(tag)) return "preview";
-  if (/^v\d+\.\d+\.\d+$/.test(tag)) return "stable";
-  return null;
-}
-
 export function latestForChannel(
   releases: GitHubRelease[],
   channel: UpdateChannel,
 ): ReleaseAssets | null {
-  const match = releases.find((r) => channelForTag(r.tag_name) === channel);
+  const match = releases.find((r) => channelForRelease(r.tag_name, r.prerelease) === channel);
 
   if (!match) return null;
 
@@ -133,8 +123,11 @@ export type TauriUpdateManifest = {
   platforms: Record<string, TauriPlatformEntry>;
 } | null;
 
-export async function buildUpdateManifest(channel: UpdateChannel): Promise<TauriUpdateManifest> {
-  const releases = await fetchGitHubReleases();
+export async function buildUpdateManifest(
+  channel: UpdateChannel,
+  event?: H3Event,
+): Promise<TauriUpdateManifest> {
+  const releases = await fetchGitHubReleases(event);
   const latest = latestForChannel(releases, channel);
 
   if (!latest) return null;
@@ -145,18 +138,18 @@ export async function buildUpdateManifest(channel: UpdateChannel): Promise<Tauri
     const asset = latest.assets.find((a) => a.name.endsWith(suffix));
     const sig = latest.assets.find((a) => a.name.endsWith(sigSuffix));
 
-    if (asset && sig) {
-      // Fetch the signature content (it's a small text file)
-      const signature = await $fetch<string>(sig.browser_download_url, {
-        responseType: "text",
-      }).catch(() => "");
+    if (!(asset && sig)) continue;
 
-      if (signature) {
-        platforms[target] = {
-          url: asset.browser_download_url,
-          signature,
-        };
-      }
+    // Fetch the signature content (it's a small text file)
+    const signature = await $fetch<string>(sig.browser_download_url, {
+      responseType: "text",
+    }).catch(() => "");
+
+    if (signature) {
+      platforms[target] = {
+        url: asset.browser_download_url,
+        signature,
+      };
     }
   }
 

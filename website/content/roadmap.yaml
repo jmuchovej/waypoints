@@ -1,4 +1,7 @@
 items:
+  - title: ACL
+    status: done
+
   - title: Reliable undo/redo
     description: Operations must reliably reverse and replay editing actions.
     status: in-progress
