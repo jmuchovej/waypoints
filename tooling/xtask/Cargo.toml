@@ -17,6 +17,8 @@ cargo_metadata = "0.23.1"
 clap.workspace = true
 derive_more = { workspace = true, features = ["as_ref"] }
 gh-workflow.workspace = true
+indexmap = "2"
+indoc = "2"
 strum = { version = "0.28.0", features = ["derive"] }
 
 [lints]

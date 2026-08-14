@@ -14,14 +14,24 @@ use std::{
 };
 use strum::IntoEnumIterator;
 
-pub(crate) mod utils {
-    pub(crate) mod actions;
-    pub(crate) mod runners;
-    pub(crate) mod steps;
-    pub(crate) mod vars;
+pub mod utils {
+    pub mod actions;
+    pub mod channels;
+    pub mod runners;
+    pub mod secrets;
+    pub mod steps;
+    pub mod toolchain;
+    pub mod vars;
+
+    pub use channels::{Artifact, Channel};
+    pub use runners::Platform;
 }
 
+use utils::Channel;
+
+mod bundle;
 mod check_generated;
+mod release;
 
 /// Where a workflow lives, which is also who is allowed to consume it.
 #[derive(PartialEq, Eq, strum::EnumIter)]
@@ -97,20 +107,32 @@ impl WorkflowFamily {
     }
 }
 
-pub(crate) fn run(args: WorkflowArgs) -> Result<()> {
+pub fn run(args: WorkflowArgs) -> Result<()> {
     if !Path::new("waypoints/src-tauri/").is_dir() || !Path::new("crates/domain/").is_dir() {
         anyhow::bail!("xtask workflows must be run from the project root");
     }
 
-    let workflows = [WorkflowFile::waypoints(
-        "check_generated",
-        check_generated::workflow,
-    )];
+    /// One `release-<channel>.yaml` per channel, all from [`release::workflow`].
+    fn release_file(channel: Channel) -> WorkflowFile {
+        WorkflowFile::waypoints("release", move |context| {
+            release::workflow(channel, context)
+        })
+        .stem(format!("release-{flavor}", flavor = channel.flavor()))
+    }
+    let workflows = [
+        WorkflowFile::waypoints("check_generated", check_generated::workflow),
+        release_file(Channel::Nightly),
+        release_file(Channel::Preview),
+        release_file(Channel::Stable),
+    ];
 
     let checking = args.check;
     let context = WorkflowContext {
         args,
         devenv_files: crate::utils::devenv::managed_files()?,
+        android_ndk: crate::utils::devenv::android_ndk_version()?,
+        android_jdk: crate::utils::devenv::android_jdk_major()?,
+        android_abis: utils::toolchain::android_abis(Path::new("."))?,
     };
 
     let rendered = workflows
@@ -184,19 +206,19 @@ fn check(rendered: &[RenderedWorkflow]) -> Result<()> {
 
 #[derive(Clone, AsRef)]
 #[as_ref(str)]
-pub(crate) struct GitSHA(String);
+pub struct GitSHA(String);
 
 #[derive(Parser)]
-pub(crate) struct WorkflowArgs {
+pub struct WorkflowArgs {
     /// Report drift instead of writing. Exits non-zero when a generated
     /// workflow on disk differs from what this crate would emit.
     #[arg(long)]
-    pub(crate) check: bool,
+    pub check: bool,
 
     /// Pin generated workflows to a specific commit, for workflows shipped to
     /// repositories that consume this one.
     #[arg(value_parser = parse_sha)]
-    pub(crate) sha: Option<GitSHA>,
+    pub sha: Option<GitSHA>,
 }
 
 fn parse_sha(value: &str) -> Result<GitSHA, String> {
@@ -239,37 +261,65 @@ fn parse_sha(value: &str) -> Result<GitSHA, String> {
 }
 
 /// Everything a workflow needs that isn't hard-coded in its own module.
-pub(crate) struct WorkflowContext {
-    pub(crate) args: WorkflowArgs,
+pub struct WorkflowContext {
+    pub args: WorkflowArgs,
     /// Files devenv materializes into the working tree. See
     /// [`crate::utils::devenv::managed_files`].
-    pub(crate) devenv_files: Vec<String>,
+    pub devenv_files: Vec<String>,
+    /// The Android NDK devenv installs, so CI provisions the same one. See
+    /// [`crate::utils::devenv::android_ndk_version`].
+    pub android_ndk: String,
+    /// The JDK major version devenv installs. See
+    /// [`crate::utils::devenv::android_jdk_major`].
+    pub android_jdk: String,
+    /// Android ABIs to build. See [`utils::toolchain::android_abis`].
+    pub android_abis: Vec<String>,
 }
 
-type Source = fn(&WorkflowContext) -> Workflow;
+/// Boxed rather than a plain `fn` pointer so a module can emit a family of
+/// workflows from one builder by capturing what varies between them — see
+/// [`release::file`].
+type Source = Box<dyn Fn(&WorkflowContext) -> Workflow>;
 
-struct WorkflowFile {
-    /// Module path under `tasks::workflows`, e.g. `check_generated`. Names the
-    /// file (`check-generated.yaml`) and points the header at its source.
+pub struct WorkflowFile {
+    /// Filename stem, kebab-case to match the rest of `.github/`.
+    stem: String,
+    /// Rust module under `tasks::workflows` that produces this file. Points the
+    /// header at real source, which is not always `stem` — every channel of
+    /// `release-*.yaml` comes out of `release`.
     module: &'static str,
     source: Source,
     family: WorkflowFamily,
 }
 
 impl WorkflowFile {
-    fn waypoints(module: &'static str, source: Source) -> Self {
+    pub fn waypoints(
+        module: &'static str,
+        source: impl Fn(&WorkflowContext) -> Workflow + 'static,
+    ) -> Self {
         Self {
+            stem: module.replace('_', "-"),
             module,
-            source,
+            source: Box::new(source),
             family: WorkflowFamily::Waypoints,
         }
     }
 
+    /// Overrides the filename for one of several workflows sharing a module.
+    pub fn stem(mut self, stem: impl Into<String>) -> Self {
+        self.stem = stem.into();
+        self
+    }
+
     #[expect(dead_code, reason = "no plugin workflows are generated yet")]
-    fn plugin(module: &'static str, source: Source) -> Self {
+    pub fn plugin(
+        module: &'static str,
+        source: impl Fn(&WorkflowContext) -> Workflow + 'static,
+    ) -> Self {
         Self {
+            stem: module.replace('_', "-"),
             module,
-            source,
+            source: Box::new(source),
             family: WorkflowFamily::Plugins,
         }
     }
@@ -277,11 +327,7 @@ impl WorkflowFile {
     fn render(&self, context: &WorkflowContext) -> Result<RenderedWorkflow> {
         let workflow = (self.source)(context);
 
-        // Filenames stay kebab-case, matching the rest of `.github/`.
-        let path = self
-            .family
-            .path()
-            .join(format!("{}.yaml", self.module.replace('_', "-")));
+        let path = self.family.path().join(format!("{}.yaml", self.stem));
         let body = workflow
             .to_string()
             .map_err(|e| anyhow!("{}: {e:?}", path.display()))?;

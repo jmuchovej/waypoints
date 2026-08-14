@@ -23,7 +23,7 @@ const SOURCES: &[&str] = &[
 /// the list in `devenv.nix`.
 const OUTPUTS: &[&str] = &[".github/workflows/**"];
 
-pub(crate) fn workflow(context: &WorkflowContext) -> Workflow {
+pub fn workflow(context: &WorkflowContext) -> Workflow {
     let paths: Vec<String> = SOURCES
         .iter()
         .chain(OUTPUTS)
