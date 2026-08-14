@@ -28,6 +28,8 @@ pub const FORCE_NODE24: (&str, &str) = ("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24", "t
 /// secret comes back missing.
 pub const SECRETSPEC_PROVIDER: (&str, &str) = ("SECRETSPEC_PROVIDER", "sops");
 
+pub const SOPS_AGE_KEY_ENV: (&str, &str) = ("SOPS_AGE_KEY", SOPS_AGE_KEY);
+
 /// One run per ref, cancelling any already in flight. For checks only — a
 /// cancelled release leaves published artifacts half-written.
 pub fn one_run_per_ref(prefix: &str) -> Concurrency {

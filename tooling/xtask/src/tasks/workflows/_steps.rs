@@ -77,6 +77,7 @@ pub fn nix_profile_install(packages: &[&str]) -> Step<Run> {
 
     Step::new(format!("Install {}", packages.join(" and ")))
         .run(format!("nix profile install {refs}"))
+        .shell("bash")
         .id("setup-nix-profile")
 }
 
@@ -84,6 +85,7 @@ pub fn nix_profile_install(packages: &[&str]) -> Step<Run> {
 pub fn just(recipe: &str) -> Step<Run> {
     Step::new(format!("just {recipe}"))
         .run(format!("just {recipe}"))
+        .shell("bash")
         .id(recipe)
 }
 
@@ -104,7 +106,9 @@ pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run>
         },
     );
 
-    Step::new(format!("cargo xtask {subcommand}")).run(command)
+    Step::new(format!("cargo xtask {subcommand}"))
+        .run(command)
+        .shell("bash")
 }
 
 /// Installs the whole toolchain — node, pnpm, just, sops, age, yq, nu, and
@@ -134,18 +138,24 @@ pub(crate) fn rust_cache() -> Step<Use> {
 }
 
 pub fn pnpm_install() -> Step<Run> {
-    Step::new("Install JS deps").run("pnpm install --frozen-lockfile")
+    Step::new("Install JS deps")
+        .run("pnpm install --frozen-lockfile")
+        .shell("bash")
+        .id("pnpm-install")
 }
 
 /// Tauri's Linux backend is WebKitGTK, which the runner image does not carry.
 pub fn install_linux_deps() -> Step<Run> {
-    Step::new("Install system deps (Linux)").run(
-        indoc! {"
+    Step::new("Install system deps (Linux)")
+        .run(
+            indoc! {"
             sudo apt-get update
             sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         "}
-        .trim_end(),
-    )
+            .trim_end(),
+        )
+        .shell("bash")
+        .id("linux-deps")
 }
 
 pub fn setup_java(major: &str) -> Step<Use> {
@@ -188,7 +198,9 @@ pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
             slug = platform.slug(),
             recipe = channel.build_recipe(),
         ))
-        .add_env(("SOPS_AGE_KEY", SOPS_AGE_KEY))
+        .shell("bash")
+        .add_env(SOPS_AGE_KEY_ENV)
+        .id("build-recipe")
 }
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
@@ -208,6 +220,7 @@ pub fn fastlane(platform: Platform, channel: Channel) -> Step<Run> {
         .when(platform.is_ios(), |step| {
             step.name("Upload to the App Store")
         })
+        .id("publish-mobile-app")
 }
 
 /// Uploads everything the platform's build produced, under a name naming both
@@ -245,7 +258,9 @@ pub(crate) struct Nextest(Step<Run>);
 
 pub(crate) fn cargo_nextest(suite: TestSuite) -> Nextest {
     let step = Step::new(format!("Run {} tests", suite.describe()))
-        .run("cargo nextest run --workspace --no-fail-fast");
+        .run("cargo nextest run --workspace --no-fail-fast")
+        .shell("bash")
+        .id("nextest");
     Nextest(step)
 }
 
