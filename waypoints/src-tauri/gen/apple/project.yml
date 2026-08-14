@@ -13,9 +13,6 @@ settingGroups:
       PRODUCT_NAME: Waypoints
       PRODUCT_BUNDLE_IDENTIFIER: so.waypoints
       DEVELOPMENT_TEAM: D6NBHNJ93R
-      CODE_SIGN_STYLE: Manual
-      CODE_SIGN_IDENTITY: "Apple Distribution"
-      PROVISIONING_PROFILE_SPECIFIER: "Waypoints App Store Connect"
 targetTemplates:
   app:
     type: application
@@ -57,6 +54,7 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         CFBundleShortVersionString: 1.5.1
         CFBundleVersion: "1.5.1"
+        NSCameraUsageDescription: Waypoints uses the camera to scan setup codes when pairing a new device.
     entitlements:
       path: Waypoints_iOS/Waypoints_iOS.entitlements
     scheme:
@@ -68,12 +66,6 @@ targets:
         ENABLE_BITCODE: false
         ARCHS: [arm64]
         VALID_ARCHS: arm64
-        LIBRARY_SEARCH_PATHS[arch=x86_64]: >-
-          $(inherited)
-            $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION)
-            $(SDKROOT)/usr/lib/swift
-            $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)
-            $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)
         LIBRARY_SEARCH_PATHS[arch=arm64]: >-
           $(inherited)
             $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION)
@@ -91,12 +83,13 @@ targets:
       - sdk: MetalKit.framework
       - sdk: QuartzCore.framework
       - sdk: Security.framework
+      - sdk: SystemConfiguration.framework
       - sdk: UIKit.framework
       - sdk: WebKit.framework
     preBuildScripts:
       - script: |
           set -e
-          cargo tauri ios xcode-script -v \
+          tauri ios xcode-script -v \
             --platform "${PLATFORM_DISPLAY_NAME:?}" \
             --sdk-root "${SDKROOT:?}" \
             --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" \
@@ -108,5 +101,4 @@ targets:
         name: Build Rust Code
         basedOnDependencyAnalysis: false
         outputFiles:
-          - $(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a
           - $(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a

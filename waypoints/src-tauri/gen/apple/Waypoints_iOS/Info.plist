@@ -20,6 +20,8 @@
     <string>1.5.1</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>Waypoints uses the camera to scan setup codes when pairing a new device.</string>
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
@@ -40,7 +42,5 @@
       <string>UIInterfaceOrientationLandscapeLeft</string>
       <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
-    <key>NSCameraUsageDescription</key>
-    <string>Waypoints uses the camera to scan setup codes when pairing a new device.</string>
   </dict>
 </plist>
