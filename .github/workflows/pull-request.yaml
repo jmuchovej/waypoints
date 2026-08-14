@@ -5,6 +5,7 @@
 name: Tests
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SECRETSPEC_PROVIDER: sops
 on:
   pull_request:
     branches:
@@ -12,8 +13,7 @@ on:
   push:
     branches:
       - main
-permissions:
-  contents: read
+permissions: {}
 jobs:
   test-linux:
     name: Test Linux
@@ -23,25 +23,32 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        with:
+          cache: "true"
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Install system deps (Linux)
+      - id: linux-deps
+        name: Install system deps (Linux)
         run: |-
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+        shell: bash
       - id: test-plan
         name: cargo xtask test-plan
         run: "cargo xtask test-plan "
-      - name: Run affected tests
+        shell: bash
+      - id: nextest
+        name: Run affected tests
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        shell: bash
         env:
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
 concurrency:

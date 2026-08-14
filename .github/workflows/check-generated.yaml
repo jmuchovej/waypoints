@@ -3,6 +3,9 @@
 
 # $schema: https://www.schemastore.org/github-workflow.json
 name: assert generated files remain in lockstep
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SECRETSPEC_PROVIDER: sops
 on:
   pull_request:
     paths:
@@ -29,32 +32,35 @@ on:
       - .config/treefmt.toml
       - .pre-commit-config.yaml
   workflow_dispatch: {}
-permissions:
-  contents: read
+permissions: {}
 jobs:
   check-generated:
     name: check generated files match their sources
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
       - id: setup-nix
         name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
       - id: setup-devenv-cachix
         name: Use the devenv binary cache
-        uses: cachix/cachix-action@v17
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
         with:
           name: devenv
       - id: setup-nix-profile
         name: Install devenv and just
         run: "nix profile install nixpkgs#devenv nixpkgs#just"
+        shell: bash
       - id: check-generated
         name: Check generated files
         run: just check-generated
+        shell: bash
 concurrency:
   group: generated-${{ github.ref }}
   cancel-in-progress: true

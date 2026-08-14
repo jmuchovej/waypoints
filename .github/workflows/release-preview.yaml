@@ -29,6 +29,7 @@ on:
         description: Release tag (leave empty for build-only, no release)
         type: string
         default: ""
+permissions: {}
 jobs:
   test-macos:
     name: Test macOS
@@ -38,21 +39,22 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache: "false"
       - id: test-plan
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
-      - name: Run release tests
+        shell: bash
+      - id: nextest
+        name: Run release tests
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        shell: bash
         env:
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-windows:
@@ -63,21 +65,22 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache: "false"
       - id: test-plan
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
-      - name: Run release tests
+        shell: bash
+      - id: nextest
+        name: Run release tests
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        shell: bash
         env:
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-linux:
@@ -88,32 +91,74 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Install system deps (Linux)
+          cache: "false"
+      - id: linux-deps
+        name: Install system deps (Linux)
         run: |-
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+        shell: bash
       - id: test-plan
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
-      - name: Run release tests
+        shell: bash
+      - id: nextest
+        name: Run release tests
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        shell: bash
         env:
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
+  create-release:
+    needs:
+      - test-macos
+      - test-windows
+      - test-linux
+    name: Draft the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - id: checkout
+        name: Checkout
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: "false"
+          fetch-depth: "0"
+          fetch-tags: "true"
+      - name: Setup mise
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        with:
+          cache: "false"
+      - id: gen-release-notes
+        name: Generate release notes
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        run: git-cliff --latest --output "${RUNNER_TEMP}/notes.md"
+        shell: bash
+      - id: draft-release
+        name: Create the draft
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        run: |-
+          gh release view "${TAG}" >/dev/null 2>&1 \
+          || gh release create "${TAG}" --draft --verify-tag --notes-files "${RUNNER_TEMP}/notes.md" --prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
   build-macos:
     needs:
       - test-macos
       - test-windows
       - test-linux
+      - create-release
     if: github.event_name == 'push' || contains(fromJson('["All","Desktop","macOS"]'), inputs.platforms)
     name: Build macOS
     runs-on: macos-15
@@ -122,19 +167,26 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Install JS deps
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        with:
+          cache: "false"
+      - id: pnpm-install
+        name: Install JS deps
         run: pnpm install --frozen-lockfile
-      - name: Build macOS
+        shell: bash
+      - id: build-recipe
+        name: Build macOS
         run: "just tauri::macos::build-preview"
+        shell: bash
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - id: upload-artifacts
+        name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-macos-preview
           path: |-
@@ -142,21 +194,20 @@ jobs:
             target/release/bundle/macos/*.tar.gz
             target/release/bundle/macos/*.tar.gz.sig
           if-no-files-found: error
-      - name: Upload to GitHub Release
+      - id: upload-release
+        name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          prerelease: "true"
-          files: |-
-            target/release/bundle/dmg/*.dmg
-            target/release/bundle/macos/*.tar.gz
-            target/release/bundle/macos/*.tar.gz.sig
+        run: gh release upload "${TAG}" target/release/bundle/dmg/*.dmg target/release/bundle/macos/*.tar.gz target/release/bundle/macos/*.tar.gz.sig --clobber
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
   build-windows:
     needs:
       - test-macos
       - test-windows
       - test-linux
+      - create-release
     if: github.event_name == 'push' || contains(fromJson('["All","Desktop","Windows"]'), inputs.platforms)
     name: Build Windows
     runs-on: windows-latest
@@ -165,19 +216,26 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Install JS deps
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        with:
+          cache: "false"
+      - id: pnpm-install
+        name: Install JS deps
         run: pnpm install --frozen-lockfile
-      - name: Build Windows
+        shell: bash
+      - id: build-recipe
+        name: Build Windows
         run: "just tauri::windows::build-preview"
+        shell: bash
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - id: upload-artifacts
+        name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-windows-preview
           path: |-
@@ -185,21 +243,20 @@ jobs:
             target/release/bundle/nsis/*.nsis.zip
             target/release/bundle/nsis/*.nsis.zip.sig
           if-no-files-found: error
-      - name: Upload to GitHub Release
+      - id: upload-release
+        name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          prerelease: "true"
-          files: |-
-            target/release/bundle/nsis/*.exe
-            target/release/bundle/nsis/*.nsis.zip
-            target/release/bundle/nsis/*.nsis.zip.sig
+        run: gh release upload "${TAG}" target/release/bundle/nsis/*.exe target/release/bundle/nsis/*.nsis.zip target/release/bundle/nsis/*.nsis.zip.sig --clobber
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
   build-linux:
     needs:
       - test-macos
       - test-windows
       - test-linux
+      - create-release
     if: github.event_name == 'push' || contains(fromJson('["All","Desktop","Linux"]'), inputs.platforms)
     name: Build Linux
     runs-on: ubuntu-22.04
@@ -208,23 +265,32 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
-      - name: Install system deps (Linux)
+      - id: linux-deps
+        name: Install system deps (Linux)
         run: |-
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+        shell: bash
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Install JS deps
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        with:
+          cache: "false"
+      - id: pnpm-install
+        name: Install JS deps
         run: pnpm install --frozen-lockfile
-      - name: Build Linux
+        shell: bash
+      - id: build-recipe
+        name: Build Linux
         run: "just tauri::linux::build-preview"
+        shell: bash
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - id: upload-artifacts
+        name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-linux-preview
           path: |-
@@ -233,22 +299,20 @@ jobs:
             target/release/bundle/appimage/*.AppImage.tar.gz.sig
             target/release/bundle/deb/*.deb
           if-no-files-found: error
-      - name: Upload to GitHub Release
+      - id: upload-release
+        name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          prerelease: "true"
-          files: |-
-            target/release/bundle/appimage/*.AppImage
-            target/release/bundle/appimage/*.AppImage.tar.gz
-            target/release/bundle/appimage/*.AppImage.tar.gz.sig
-            target/release/bundle/deb/*.deb
+        run: gh release upload "${TAG}" target/release/bundle/appimage/*.AppImage target/release/bundle/appimage/*.AppImage.tar.gz target/release/bundle/appimage/*.AppImage.tar.gz.sig target/release/bundle/deb/*.deb --clobber
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
   build-ios:
     needs:
       - test-macos
       - test-windows
       - test-linux
+      - create-release
     if: github.event_name == 'push' || contains(fromJson('["All","Mobile","iOS"]'), inputs.platforms)
     name: Build iOS
     runs-on: macos-15
@@ -259,39 +323,51 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Install JS deps
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        with:
+          cache: "false"
+      - id: pnpm-install
+        name: Install JS deps
         run: pnpm install --frozen-lockfile
-      - name: Build iOS
+        shell: bash
+      - id: build-recipe
+        name: Build iOS
         run: "just tauri::ios::build-preview"
+        shell: bash
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - id: upload-artifacts
+        name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-ios-preview
           path: waypoints/src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
-      - name: Upload to GitHub Release
+      - id: upload-release
+        name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          prerelease: "true"
-          files: waypoints/src-tauri/gen/apple/build/**/*.ipa
-      - name: Upload to the App Store
-        run: secretspec run --profile release --scope ios -- fastlane ios preview
+        run: gh release upload "${TAG}" waypoints/src-tauri/gen/apple/build/**/*.ipa --clobber
+        shell: bash
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      - id: publish-mobile-app
+        name: Upload to the App Store
+        run: secretspec run --profile release --scope ios -- fastlane ios preview
+        shell: bash
+        env:
+          SECRETSPEC_PROVIDER: sops
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
   build-android:
     needs:
       - test-macos
       - test-windows
       - test-linux
+      - create-release
     if: github.event_name == 'push' || contains(fromJson('["All","Mobile","Android"]'), inputs.platforms)
     name: Build Android
     runs-on: ubuntu-22.04
@@ -300,45 +376,78 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - id: setup-java
+        name: Setup Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: zulu
           java-version: "21"
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-      - name: Install Android NDK
+      - id: setup-android-sdk
+        name: Setup Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+      - id: setup-android-ndk
+        name: Install Android NDK
         run: sdkmanager "ndk;26.1.10909125"
       - name: Setup mise
-        uses: jdx/mise-action@v2
-      - name: Install JS deps
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        with:
+          cache: "false"
+      - id: pnpm-install
+        name: Install JS deps
         run: pnpm install --frozen-lockfile
-      - name: Build Android
+        shell: bash
+      - id: build-recipe
+        name: Build Android
         run: "just tauri::android::build-preview"
+        shell: bash
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - id: upload-artifacts
+        name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-android-preview
           path: |-
             waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
             waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
           if-no-files-found: error
-      - name: Upload to GitHub Release
+      - id: upload-release
+        name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          prerelease: "true"
-          files: |-
-            waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
-            waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
-      - name: Upload to the Play Store
-        run: secretspec run --profile release --scope android -- fastlane android preview
+        run: gh release upload "${TAG}" waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
+        shell: bash
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      - id: publish-mobile-app
+        name: Upload to the Play Store
+        run: secretspec run --profile release --scope android -- fastlane android preview
+        shell: bash
+        env:
+          SECRETSPEC_PROVIDER: sops
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+  publish-release:
+    needs:
+      - build-macos
+      - build-windows
+      - build-linux
+      - build-ios
+      - build-android
+      - create-release
+    if: "!failure() && !cancelled() && ((github.event_name == 'push' && github.ref_name || inputs.tag) != '')"
+    name: Publish the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - id: publish-release
+        name: Publish the release
+        run: gh release edit "${TAG}" --draft=false
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
