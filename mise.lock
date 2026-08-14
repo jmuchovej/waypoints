@@ -92,44 +92,48 @@ url = "https://github.com/FiloSottile/age/releases/download/v1.3.1/age-v1.3.1-wi
 url_api = "https://api.github.com/repos/FiloSottile/age/releases/assets/333752673"
 provenance = "github-attestations"
 
+[[tools."aqua:cachix/secretspec"]]
+version = "0.19.0"
+backend = "aqua:cachix/secretspec"
+
 [[tools."aqua:casey/just"]]
-version = "1.57.0"
+version = "1.58.0"
 backend = "aqua:casey/just"
 
 [tools."aqua:casey/just"."platforms.linux-arm64"]
-checksum = "sha256:f225044a81adea6e0b3a8b9370aaf374e6af76c8735ae263ac993df55fd137ec"
-url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/casey/just/releases/assets/481976912"
+checksum = "sha256:748237128c4c40cbdabc65e841d05ceba13cc23a91eaba395495894c1d9764df"
+url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/casey/just/releases/assets/500510099"
 
 [tools."aqua:casey/just"."platforms.linux-arm64-musl"]
-checksum = "sha256:f225044a81adea6e0b3a8b9370aaf374e6af76c8735ae263ac993df55fd137ec"
-url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/casey/just/releases/assets/481976912"
+checksum = "sha256:748237128c4c40cbdabc65e841d05ceba13cc23a91eaba395495894c1d9764df"
+url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/casey/just/releases/assets/500510099"
 
 [tools."aqua:casey/just"."platforms.linux-x64"]
-checksum = "sha256:45b548094283cb9739af8f13273b8cddeee869f5b4ef2bb631b1f311cb566155"
-url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/casey/just/releases/assets/481976790"
+checksum = "sha256:4a5cc2f53e6f0f8c59092a6cc38291eb729d46a7dd95d3ae582008881b84931d"
+url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/casey/just/releases/assets/500509978"
 
 [tools."aqua:casey/just"."platforms.linux-x64-musl"]
-checksum = "sha256:45b548094283cb9739af8f13273b8cddeee869f5b4ef2bb631b1f311cb566155"
-url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/casey/just/releases/assets/481976790"
+checksum = "sha256:4a5cc2f53e6f0f8c59092a6cc38291eb729d46a7dd95d3ae582008881b84931d"
+url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/casey/just/releases/assets/500509978"
 
 [tools."aqua:casey/just"."platforms.macos-arm64"]
-checksum = "sha256:0381db216c2f97ce31d838a1562c1064dfbfa73f5a8a81581338a2cd9217df47"
-url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/casey/just/releases/assets/481976803"
+checksum = "sha256:50ae3e996c974a0bf32ea7d10f495070df33f1b43e0616b2769e3d4821ed8f48"
+url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/casey/just/releases/assets/500509965"
 
 [tools."aqua:casey/just"."platforms.macos-x64"]
-checksum = "sha256:5e6ade3698095576274b2b32cc9e5d467185e8e40b04949004c04cc3d7e962dc"
-url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/casey/just/releases/assets/481976824"
+checksum = "sha256:9a09cfef66aaa79da58203970103a0684307716caaabd3e9844cacc4dc0f4023"
+url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/casey/just/releases/assets/500510084"
 
 [tools."aqua:casey/just"."platforms.windows-x64"]
-checksum = "sha256:4c7391d17cb1d17b758b52004ee6411372b8a13ff37c3c9b9031625cb6026e09"
-url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/casey/just/releases/assets/481977734"
+checksum = "sha256:759f16fb7aa17c5c8b9594b6d4a8c1a6630dfd042cf2b3ff84841454d3d188dc"
+url = "https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/casey/just/releases/assets/500511374"
 
 [[tools."aqua:crate-ci/typos"]]
 version = "1.49.0"
@@ -277,43 +281,43 @@ url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/440146721"
 provenance = "cosign"
 
 [[tools."aqua:nextest-rs/nextest/cargo-nextest"]]
-version = "0.9.140"
+version = "0.9.143"
 backend = "aqua:nextest-rs/nextest/cargo-nextest"
 
 [tools."aqua:nextest-rs/nextest/cargo-nextest"."platforms.linux-arm64"]
-checksum = "sha256:8b3f4d4560b6b0f83774fecc6be07e47716dbad0eb0bb6c3890f478f4affe4b6"
-url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.140/cargo-nextest-0.9.140-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/467464894"
+checksum = "sha256:2a64b3566a92508550a7ab29c3e8db25472ca37730ecb4d22100b6aa440c2a68"
+url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/501881925"
 
 [tools."aqua:nextest-rs/nextest/cargo-nextest"."platforms.linux-arm64-musl"]
-checksum = "sha256:81fe08bda065ae74fa9092c444d797c31e12c245080bfb9f4dc207e21def4b98"
-url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.140/cargo-nextest-0.9.140-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/467465128"
+checksum = "sha256:0560ce0ce017f368c54b5db86588370fc03b470985490fa81200e62a657dda05"
+url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/501882957"
 
 [tools."aqua:nextest-rs/nextest/cargo-nextest"."platforms.linux-x64"]
-checksum = "sha256:bc2a998567816eef7b087b920036f49fb89aa2a8a603f6a3d84098be160b62c5"
-url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.140/cargo-nextest-0.9.140-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/467467089"
+checksum = "sha256:6d891c18105ec2d33f6e441a4f92b7ccab47ba263e22055c8bb66884243f3389"
+url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/501883394"
 
 [tools."aqua:nextest-rs/nextest/cargo-nextest"."platforms.linux-x64-musl"]
-checksum = "sha256:bc2a998567816eef7b087b920036f49fb89aa2a8a603f6a3d84098be160b62c5"
-url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.140/cargo-nextest-0.9.140-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/467467089"
+checksum = "sha256:6d891c18105ec2d33f6e441a4f92b7ccab47ba263e22055c8bb66884243f3389"
+url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/501883394"
 
 [tools."aqua:nextest-rs/nextest/cargo-nextest"."platforms.macos-arm64"]
-checksum = "sha256:58e0a722f9444078fab447783f322acf15a2a771ba785b3fbbe8bacda31c3df9"
-url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.140/cargo-nextest-0.9.140-universal-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/467468113"
+checksum = "sha256:4830d430411148d17602a75cc880bfb4dc8dac153dea59a48a2ef4cc93577f07"
+url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-universal-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/501885637"
 
 [tools."aqua:nextest-rs/nextest/cargo-nextest"."platforms.macos-x64"]
-checksum = "sha256:58e0a722f9444078fab447783f322acf15a2a771ba785b3fbbe8bacda31c3df9"
-url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.140/cargo-nextest-0.9.140-universal-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/467468113"
+checksum = "sha256:4830d430411148d17602a75cc880bfb4dc8dac153dea59a48a2ef4cc93577f07"
+url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-universal-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/501885637"
 
 [tools."aqua:nextest-rs/nextest/cargo-nextest"."platforms.windows-x64"]
-checksum = "sha256:b75c287b89df1fbfe033a98df058a94cd1f5119dab6ff56e4916e5a1597c7ac9"
-url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.140/cargo-nextest-0.9.140-x86_64-pc-windows-msvc.tar.gz"
-url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/467472280"
+checksum = "sha256:c42a1dbde532da06dc9b4a43d44fd0ce668b836c2ab7388410f10ff9834476a2"
+url = "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-x86_64-pc-windows-msvc.tar.gz"
+url_api = "https://api.github.com/repos/nextest-rs/nextest/releases/assets/501885753"
 
 [[tools."aqua:numtide/treefmt"]]
 version = "2.5.0"
@@ -348,6 +352,45 @@ url_api = "https://api.github.com/repos/numtide/treefmt/releases/assets/39104524
 checksum = "sha256:21388b1f7d6c2f572e1ce9231f7dfc08f80a062438908791ab078c1d76b10a49"
 url = "https://github.com/numtide/treefmt/releases/download/v2.5.0/treefmt_2.5.0_darwin_amd64.tar.gz"
 url_api = "https://api.github.com/repos/numtide/treefmt/releases/assets/391045231"
+
+[[tools."aqua:nushell/nushell"]]
+version = "0.114.1"
+backend = "aqua:nushell/nushell"
+
+[tools."aqua:nushell/nushell"."platforms.linux-arm64"]
+checksum = "sha256:39944812ee619736fd50828e66c96b91747c1e189ccddac89c3ac1a02e0614f2"
+url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473626043"
+
+[tools."aqua:nushell/nushell"."platforms.linux-arm64-musl"]
+checksum = "sha256:4f9e880e7bbf8ee58f3860ef49f453eb2628965b6f2c880fb03d4775f290b536"
+url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473626782"
+
+[tools."aqua:nushell/nushell"."platforms.linux-x64"]
+checksum = "sha256:ce3a1c5a07c784098b5675224a165e73a45f0f720a8392791d7c3a5b4720255e"
+url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473625296"
+
+[tools."aqua:nushell/nushell"."platforms.linux-x64-musl"]
+checksum = "sha256:ce3a1c5a07c784098b5675224a165e73a45f0f720a8392791d7c3a5b4720255e"
+url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473625296"
+
+[tools."aqua:nushell/nushell"."platforms.macos-arm64"]
+checksum = "sha256:cb0ac9b97b985cd217a952f44438a14d2df2a95504d9bd8bc01ec73e1351b179"
+url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473629724"
+
+[tools."aqua:nushell/nushell"."platforms.macos-x64"]
+checksum = "sha256:4659a78545b7f6a303e661fe3bd276a765c64ccde67112d32045be5fe075f206"
+url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473624186"
+
+[tools."aqua:nushell/nushell"."platforms.windows-x64"]
+checksum = "sha256:71a88cb74f51a9fdd91003273fb1f3361d7b393fb3a03014f43e5f111df9666f"
+url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473630966"
 
 [[tools."aqua:oxipng/oxipng"]]
 version = "10.1.1"
@@ -474,6 +517,45 @@ backend = "gem:fastlane"
 version = "0.18.1"
 backend = "gem:rufo"
 
+[[tools."github:JetBrains/kotlin"]]
+version = "2.4.10"
+backend = "github:JetBrains/kotlin"
+
+[tools."github:JetBrains/kotlin"."platforms.linux-arm64"]
+checksum = "sha256:473dd66c7a3ef4b182065b3da670466c1bf2773a9dbb0ed8b33a39fe9d4f876d"
+url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-compiler-2.4.10.zip"
+url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/476575537"
+
+[tools."github:JetBrains/kotlin"."platforms.linux-arm64-musl"]
+checksum = "sha256:473dd66c7a3ef4b182065b3da670466c1bf2773a9dbb0ed8b33a39fe9d4f876d"
+url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-compiler-2.4.10.zip"
+url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/476575537"
+
+[tools."github:JetBrains/kotlin"."platforms.linux-x64"]
+checksum = "sha256:c9e356e8518144f275f1514cfe38b07db949f93e47e054832b8974fff1fd33e0"
+url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-native-prebuilt-linux-x86_64-2.4.10.tar.gz"
+url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/476575589"
+
+[tools."github:JetBrains/kotlin"."platforms.linux-x64-musl"]
+checksum = "sha256:c9e356e8518144f275f1514cfe38b07db949f93e47e054832b8974fff1fd33e0"
+url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-native-prebuilt-linux-x86_64-2.4.10.tar.gz"
+url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/476575589"
+
+[tools."github:JetBrains/kotlin"."platforms.macos-arm64"]
+checksum = "sha256:55ded039bb56a69aec9df354a92b42df9e916104e3c53d8d9852d9cc6617ed9d"
+url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-native-prebuilt-macos-aarch64-2.4.10.tar.gz"
+url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/476575719"
+
+[tools."github:JetBrains/kotlin"."platforms.macos-x64"]
+checksum = "sha256:7bfda60c2a4ce859fc85011ea2c3229961b1eb40e9cc0b6b85fee885f23973cb"
+url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-native-prebuilt-macos-x86_64-2.4.10.tar.gz"
+url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/476576010"
+
+[tools."github:JetBrains/kotlin"."platforms.windows-x64"]
+checksum = "sha256:ce99eba1f4faec1d77f4bbd747bb722404ef11f2c349ec70c59d4c002859380f"
+url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-native-prebuilt-windows-x86_64-2.4.10.zip"
+url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/476576192"
+
 [[tools."github:facebook/ktfmt"]]
 version = "0.63"
 backend = "github:facebook/ktfmt"
@@ -553,40 +635,36 @@ url = "https://github.com/casey/just/releases/download/1.57.0/just-1.57.0-x86_64
 url_api = "https://api.github.com/repos/casey/just/releases/assets/481977734"
 
 [[tools.node]]
-version = "24.18.1"
+version = "24.19.0"
 backend = "core:node"
 
 [tools.node."platforms.linux-arm64"]
-checksum = "sha256:df224555a083b918e46260cc969838501b9f9a87140c1195e5b9597b56d5dae2"
-url = "https://nodejs.org/dist/v24.18.1/node-v24.18.1-linux-arm64.tar.gz"
+checksum = "sha256:d28c8a5bf0a808f0ed434a1dce8c54ae98f0371c0bd86ac58abc613f73e6643f"
+url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-arm64.tar.gz"
 
 [tools.node."platforms.linux-arm64-musl"]
-checksum = "sha256:ae1b6457edb875fd98130b37c853e51a53ac0cc40850ecccd490b61c5a3558fa"
-url = "https://unofficial-builds.nodejs.org/download/release/v24.18.1/node-v24.18.1-linux-arm64-musl.tar.gz"
+checksum = "sha256:20824e4d35948fae5b337dccef47813b04d8995312f59df7386f2256d9f9ab7e"
+url = "https://unofficial-builds.nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-arm64-musl.tar.gz"
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:9f5eb6ac21845a66c493c91a253b1da32fd684e89e9b7202d4936982336be4ca"
-url = "https://nodejs.org/dist/v24.18.1/node-v24.18.1-linux-x64.tar.gz"
+checksum = "sha256:f625d97cd707df4ff96254916fbc5ff014f09c09effe5a1e0ca8f6d41a8789d4"
+url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-x64.tar.gz"
 
 [tools.node."platforms.linux-x64-musl"]
-checksum = "sha256:696979caef92505ad7566a3674ca9a93d8558e282f34e7899181c0321821ae5f"
-url = "https://unofficial-builds.nodejs.org/download/release/v24.18.1/node-v24.18.1-linux-x64-musl.tar.gz"
+checksum = "sha256:c60223786df14a5d23e220ebb8e60318f5322640a62f90e6d9e54d3a18da532e"
+url = "https://unofficial-builds.nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-x64-musl.tar.gz"
 
 [tools.node."platforms.macos-arm64"]
-checksum = "sha256:eb02f7fab96d3d67de40c5ec8566096fcb4c2026728787683ae5a97eb612b941"
-url = "https://nodejs.org/dist/v24.18.1/node-v24.18.1-darwin-arm64.tar.gz"
+checksum = "sha256:8294b7aa9b03997481c06babf1e8b270c859358f27da57a11509afe537ac381d"
+url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-darwin-arm64.tar.gz"
 
 [tools.node."platforms.macos-x64"]
-checksum = "sha256:6fb20fceacbb157c2f95825b80df4a454a0f6d81cdcd7bb81eeae9147e0e76ec"
-url = "https://nodejs.org/dist/v24.18.1/node-v24.18.1-darwin-x64.tar.gz"
+checksum = "sha256:d1b5e999db158c62fe8f7267a4476b035d8bd93b1a605bac24a3f0dd166e3316"
+url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-darwin-x64.tar.gz"
 
 [tools.node."platforms.windows-x64"]
-checksum = "sha256:ec56b84a7551893ab2324ebdfdc4ab974a63b4781162600b68a1293cc3e53765"
-url = "https://nodejs.org/dist/v24.18.1/node-v24.18.1-win-x64.zip"
-
-[[tools."npm:@fission-ai/openspec"]]
-version = "1.6.0"
-backend = "npm:@fission-ai/openspec"
+checksum = "sha256:57f71ab3652e797d84acddc79c81cc9ff1c6ddb2a1974cdb83f00fee9bff4c73"
+url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-win-x64.zip"
 
 [[tools."npm:@tauri-apps/cli"]]
 version = "2.11.4"
@@ -687,6 +765,14 @@ provenance = "github-attestations"
 version = "3.4.9"
 backend = "core:ruby"
 
+[tools.ruby."platforms.windows-x64"]
+checksum = "sha256:4375268618b61dadf53bf8e54beaca74ea30580c90d3c47ea9f2a134bd3e494e"
+url = "https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.4.9-1/rubyinstaller-3.4.9-1-x64.7z"
+
+[[tools.ruby]]
+version = "3.4.9"
+backend = "core:ruby"
+
 [tools.ruby.options]
 compile = "false"
 precompiled_url = "jdx/ruby"
@@ -721,21 +807,6 @@ provenance = "github-attestations"
 [tools.ruby."platforms.macos-x64"]
 checksum = "sha256:7bb4d4f5e807cc27251d14d9d6086d182c5b25875191e44ab15b709cd7a7dd9c"
 url = "https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.9.tar.gz"
-
-[[tools.ruby]]
-version = "3.4.9"
-backend = "core:ruby"
-
-[tools.ruby."platforms.windows-x64"]
-checksum = "sha256:4375268618b61dadf53bf8e54beaca74ea30580c90d3c47ea9f2a134bd3e494e"
-url = "https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.4.9-1/rubyinstaller-3.4.9-1-x64.7z"
-
-[[tools.rust]]
-version = "stable"
-backend = "core:rust"
-
-[tools.rust.options]
-targets = "aarch64-apple-darwin,aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-apple-ios,x86_64-linux-android"
 
 [[tools.rust]]
 version = "stable"
@@ -803,6 +874,32 @@ url_api = "https://api.github.com/repos/getsops/sops/releases/assets/486808200"
 
 [tools.sops."platforms.windows-x64".provenance.slsa]
 url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.intoto.jsonl"
+
+[[tools.swift]]
+version = "5.10.1"
+backend = "core:swift"
+
+[tools.swift."platforms.macos-arm64"]
+url = "https://download.swift.org/swift-5.10.1-release/xcode/swift-5.10.1-RELEASE/swift-5.10.1-RELEASE-osx.pkg"
+
+[tools.swift."platforms.macos-x64"]
+url = "https://download.swift.org/swift-5.10.1-release/xcode/swift-5.10.1-RELEASE/swift-5.10.1-RELEASE-osx.pkg"
+
+[tools.swift."platforms.windows-x64"]
+url = "https://download.swift.org/swift-5.10.1-release/windows10/swift-5.10.1-RELEASE/swift-5.10.1-RELEASE-windows10.exe"
+
+[[tools.swift]]
+version = "5.10.1"
+backend = "core:swift"
+
+[tools.swift.options]
+swift_platform = "ubuntu24.04"
+
+[tools.swift."platforms.linux-arm64"]
+url = "https://download.swift.org/swift-5.10.1-release/ubuntu2404-aarch64/swift-5.10.1-RELEASE/swift-5.10.1-RELEASE-ubuntu24.04-aarch64.tar.gz"
+
+[tools.swift."platforms.linux-x64"]
+url = "https://download.swift.org/swift-5.10.1-release/ubuntu2404/swift-5.10.1-RELEASE/swift-5.10.1-RELEASE-ubuntu24.04.tar.gz"
 
 [[tools.tombi]]
 version = "1.2.7"

@@ -5,9 +5,10 @@ nixpkgs:
   allow_unfree: true
   permitted_insecure_packages: ["pnpm-9.15.9"]
 
-imports:
-  - ./waypoints/src-tauri/gen/android
-  - ./waypoints/src-tauri/gen/apple
+secretspec:
+  enable: true
+  provider: env
+  profile: default
 
 inputs:
   nixpkgs:
@@ -27,10 +28,3 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-  openspec:
-    url: github:jmuchovej/forked-openspec/add-nix-overlay
-    inputs:
-      nixpkgs:
-        url: github:NixOS/nixpkgs/9f0c42f8bc7151b8e7e5840fb3bd454ad850d8c5
-    overlays:
-      - default
