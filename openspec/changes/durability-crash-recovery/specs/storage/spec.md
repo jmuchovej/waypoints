@@ -50,13 +50,23 @@ distinguishable, structured mismatch when journal mode or synchronous level does
 required. Configuration that silently fails to apply is treated as a reportable fault, not as a
 warning to be swallowed.
 
-The open SHALL NOT fail. A user whose notes are on disk must still be able to reach them; refusing to
-open converts a durability degradation into total data inaccessibility, which is the worse outcome.
+The open SHALL NOT fail, and read access SHALL be preserved. A user whose notes are on disk must
+still be able to reach them; refusing to open converts a durability degradation into total data
+inaccessibility, which is the worse outcome.
+
+Write operations on a mismatched territory SHALL be refused, each refusal carrying the structured
+durability fault. Writing into a store whose durability posture is unknown is precisely the
+corruption risk this section exists to minimise; reads cannot make the situation worse, so the
+territory behaves as read-only until the mismatch is resolved. Resolution beyond retrying or
+reopening (for example, live-migrating the territory to a freshly created database) is the
+application layer's concern and out of scope here; the fault SHALL carry the information that layer
+needs to drive it.
 
 The mismatch SHALL be surfaced to the user rather than only logged, and the surface SHALL offer
 whatever remediation is available (for example, retrying the pragma, or reopening the territory) and
 SHALL offer to file a pre-filled bug report carrying the expected and effective values, the engine
-version, and the platform. A durability mismatch is expected to be rare; when it does occur it
+version or commit hash (recorded at build time from the pinned dependency — the engine exposes no
+runtime version API), and the platform. A durability mismatch is expected to be rare; when it does occur it
 erodes trust in the storage layer, so it must be visible and actionable rather than silent.
 
 Pragmas supplied by the caller beyond the durability pair remain best-effort: a rejection is
@@ -66,14 +76,21 @@ reported diagnostically and does not surface to the user.
 
 - **WHEN** a file-backed territory is opened and the engine does not report WAL journal mode, or does
   not report `FULL` synchronous
-- **THEN** a usable database handle is returned, and the mismatch is reported as a structured fault
+- **THEN** a readable database handle is returned, and the mismatch is reported as a structured fault
   naming the pragma, its required value, and its effective value
+
+#### Scenario: Writes are refused on a mismatched territory, reads preserved
+
+- **WHEN** a durability mismatch was reported at open and a write is attempted
+- **THEN** the write is refused with an error carrying the durability fault, the database file is
+  unchanged, and read operations continue to succeed
 
 #### Scenario: User is offered remediation and a bug report
 
 - **WHEN** a durability mismatch is reported at open
 - **THEN** the user is shown the degradation, offered the available remediation, and offered a
-  pre-filled bug report containing the expected value, effective value, engine version, and platform
+  pre-filled bug report containing the expected value, effective value, build-time engine
+  version or commit hash, and platform
 
 #### Scenario: Caller-supplied pragma is rejected
 
@@ -244,7 +261,8 @@ territory outside our control and outside our tests.
 **Decision.** Journal mode and synchronous level are read back after the write connection opens. A
 mismatch produces a structured, distinguishable fault that is **surfaced to the user** with available
 remediation and a pre-filled bug report — but the open **succeeds**. Other caller-supplied pragmas
-remain best-effort and are reported diagnostically only.
+remain best-effort and are reported diagnostically only. _(Refined 2026-08-30 — see below: the open
+succeeds read-only; writes are refused.)_
 
 _Superseded an earlier draft of this decision that failed the open._ That was reversed on the
 grounds below.
@@ -270,6 +288,28 @@ is what should keep this from reaching a user at all.
   needs to see them is a desktop application whose stderr nobody reads.
 - _Make every pragma fatal._ Caller-supplied pragmas are tuning knobs whose rejection is a legitimate
   engine-capability difference, not a correctness failure.
+
+### 2026-08-30 — A mismatched territory opens read-only
+
+**Decision.** Refines the decision above: on a durability mismatch the open succeeds and reads are
+preserved, but writes are refused, each refusal carrying the structured durability fault.
+
+**Rationale.** The entire durability posture exists to minimise the likelihood of corrupting the
+database. Continuing to accept writes into a store whose durability is unknown works directly
+against that: every accepted write is data whose survival cannot be vouched for. Reads cannot make
+the situation worse, so read access is what "the user can still reach their notes" requires — not
+write access. The refusal error is deliberately informative because resolution belongs one layer up:
+the application layer (`cartograph`) is where a real remedy — for example, live-migrating the
+territory to a freshly created database — would be driven, and that machinery is out of scope for
+this change. The fault is its raw material.
+
+**Rejected alternatives.**
+
+- _Keep the handle fully writable in the degraded posture_ (the earlier shape of this decision).
+  Lets a user accumulate arbitrary amounts of data the storage layer cannot vouch for, which is the
+  corruption-adjacent risk the posture exists to minimise.
+- _Fail the open._ Still rejected, for the original reason: it denies read access to data that is on
+  disk and readable.
 
 ### 2026-07-30 — Scope crash testing to process termination, and say so
 

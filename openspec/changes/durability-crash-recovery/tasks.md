@@ -19,11 +19,16 @@
       mode is not WAL on a file-backed database, or the synchronous level is not what `Config`
       requested, **return the handle successfully and attach a structured durability-mismatch fault**
       carrying the pragma, its required value, and its effective value. The open MUST NOT fail —
-      denying access to readable notes is worse than the degradation. Skip the journal-mode half for
-      `:memory:`.
+      denying access to readable notes is worse than the degradation — but the handle is
+      **read-only**: refuse write operations with an error carrying the fault, and leave reads
+      untouched. Skip the journal-mode half for `:memory:`.
 - [ ] 2.2a Surface the fault to the caller as retrievable state on `Database` (not a log line only),
       so the app layer can present it, offer available remediation, and offer a pre-filled bug report
-      containing expected value, effective value, engine version, and platform.
+      containing expected value, effective value, engine version or commit hash, and platform. The
+      engine identifier is recorded at build time from the pinned dependency (the `turso` facade
+      exposes no runtime version API). Keep the fault informative enough for `cartograph` to later
+      drive real resolution (for example, live-migrating to a fresh database) — that machinery is
+      out of scope here, but this error is its input.
 - [ ] 2.3 Narrow the doc comment on `apply_pragma` so its best-effort contract explicitly covers
       caller-supplied pragmas only, and points at the verified pair as the exception.
 - [ ] 2.4 Expose the effective durability state as a small public read-only method on `Database` in
@@ -31,6 +36,12 @@
       one code path.
 - [ ] 2.5 Add a public integrity-check method on `Database` that runs the engine's integrity check
       and reports its findings, for use after reopening a territory left by a killed process.
+- [ ] 2.6 Record the app-layer follow-up in `cartograph` as a written TODO, not an implementation:
+      next to the `store::open` call in `crates/cartograph/src/runtime.rs` (~line 48), note that the
+      durability fault retrievable from `Database` (2.2a) needs handling there — presenting the
+      read-only degradation to the user, offering remediation and the pre-filled bug report, and
+      eventually real resolution such as live-migrating the territory to a fresh database. Deferred
+      deliberately: it needs UI surface and UI testing beyond this change's scope.
 
 ## 3. Documentation corrections
 
@@ -68,7 +79,8 @@
       piped stdout, read markers on a reader thread with a receive timeout so a missing marker fails
       instead of hanging, kill on the target marker, and a guard type that kills the child on drop so
       a failing assertion never leaks a process. Per-test temp directories under the system temp dir,
-      following the pattern the existing pool tests use — no new dependency.
+      keyed by process id **and test name** (extending the existing pool test's pid-only pattern —
+      tests run as parallel threads in one process, so the pid alone is shared) — no new dependency.
 - [ ] 5.2 Test the in-flight single insert: kill after an acknowledged row while the next insert is
       in flight; reopen and assert integrity is clean and every acknowledged row is present, tolerating
       one extra row beyond the last acknowledgement.
@@ -93,9 +105,10 @@
       that flush operations on it succeed as no-ops.
 - [ ] 6.4 Add a test that a caller-supplied pragma the engine rejects does not fail the open, keeping
       the best-effort contract for non-durability pragmas covered.
-- [ ] 6.5 Add a test that a durability mismatch **still yields a usable handle** and that the
-      structured fault is retrievable from it — the open-succeeds contract must itself be guarded, or
-      a later refactor will quietly reintroduce a hard failure.
+- [ ] 6.5 Add a test that a durability mismatch **still yields a readable handle**: reads succeed,
+      write operations are refused with an error carrying the durability fault, and the structured
+      fault is retrievable from the handle — the opens-read-only contract must itself be guarded, or
+      a later refactor will quietly reintroduce either a hard open failure or silent writability.
 
 ## 6b. Release gate (storage engine is pre-v1 and deliberately pinned)
 

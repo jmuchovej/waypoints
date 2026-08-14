@@ -6,15 +6,18 @@ implementation has to work with:
 - The pool opens one write connection and lazily grows up to a ceiling of read connections, all from
   a single engine handle. Pragmas are applied per connection at creation time, and the engine's
   synchronous level is per-connection state.
-- Pragma application today is fire-and-forget: rejections print to stderr and the open proceeds.
+- Pragma application today is fire-and-forget: rejections are logged through `tracing::warn!` and
+  the open proceeds.
 - The engine's `PRAGMA synchronous` accepts SQLite's spellings and its per-connection default is
   the strictest level — a deliberate upstream deviation from SQLite, which we are choosing not to
   depend on.
 - Automatic WAL checkpointing is enabled by default with a frame threshold, so log growth is already
   bounded during operation. This is a fact to assert, not a gap to fix.
-- The engine's `Connection::close()` performs a shutdown checkpoint; its `Drop` deliberately does
-  not. The pool's close path drops connections, so no shutdown checkpoint happens. Committed frames
-  are already synced, so this is a documentation defect rather than a durability defect.
+- `turso_core::Connection::close()` performs a shutdown checkpoint; its `Drop` deliberately does
+  not — and the `turso` 0.7.0 facade bedrock actually depends on exposes no `close()` at all, so
+  the checkpoint is unreachable without a facade change or engine upgrade. The pool's close path
+  drops connections, so no shutdown checkpoint happens. Committed frames are already synced, so
+  this is a documentation defect rather than a durability defect.
 - No test in the crate reads any pragma back. The existing tests reach raw SQL through the
   transaction types, and roll their own temp directories out of `std::env::temp_dir()` rather than
   taking a dependency on a temp-file crate.
@@ -28,8 +31,9 @@ the per-commit hook and must be fast and non-flaky.
 **Goals:**
 
 - Make the durability configuration an enforced, readable property rather than an assumed one.
-- Give crash-recovery tests a real killed process, on all three CI platforms, with no new
-  dependencies and no sleep-based synchronization.
+- Give crash-recovery tests a real killed process, portable across all three OS targets, with no
+  new dependencies and no sleep-based synchronization. (CI today exercises them on Linux for PRs
+  and merges; the release workflows are where all three OSes build — see Risks.)
 - Keep assertions race-tolerant, so a test can never fail because a kill landed a few microseconds
   earlier or later than the previous run.
 
@@ -48,18 +52,23 @@ the per-commit hook and must be fast and non-flaky.
 `Config` grows an explicit synchronous setting alongside the existing `wal` flag, defaulting to
 `FULL`. After the write connection is created, the pool reads both `PRAGMA journal_mode` and
 `PRAGMA synchronous` back and reports a structured mismatch through a new fault type when either
-does not match what was requested. **The open still succeeds.** Caller-supplied pragmas keep their
-current best-effort contract.
+does not match what was requested. **The open still succeeds, but the handle is read-only: write
+operations are refused with an error carrying the durability fault, while reads are preserved.**
+Caller-supplied pragmas keep their current best-effort contract.
 
 _Why:_ the failure mode being closed is a silent one — a database that opens and works while
 quietly not being durable. Reading the value back from the connection that will do the writing is
 the only evidence that the pragma took.
 
-_Why not fail the open:_ refusing to open turns a degraded-but-usable database into an unreachable
+_Why not fail the open:_ refusing to open turns a degraded-but-readable database into an unreachable
 one. The user's notes are on disk and readable; denying access to protest a pragma is a worse
-outcome than the degradation. The mismatch is instead **surfaced to the user** with whatever
-remediation exists and a pre-filled bug report (expected value, effective value, engine version,
-platform). Rare faults that erode trust in the storage layer need to be visible and actionable, not
+outcome than the degradation. Writes are another matter: the whole posture exists to minimise the
+likelihood of corrupting the database, and accepting writes into a store whose durability is
+unknown works directly against that — so writes are refused while reads continue. The mismatch is
+**surfaced to the user** with whatever
+remediation exists and a pre-filled bug report (expected value, effective value, engine version or
+commit hash recorded at build time from the pinned dependency — the engine exposes no runtime
+version API — and platform). Rare faults that erode trust in the storage layer need to be visible and actionable, not
 silent — and not weaponised against the user's access to their own data.
 
 _Where detection really belongs:_ the release gate. The durability assertions run against the real
@@ -68,16 +77,19 @@ upgrade (the engine is pre-v1 and deliberately pinned). A pragma that does not t
 never reach a user; the runtime surface is the backstop, not the primary control.
 
 _Alternatives rejected:_ failing the open (trades recoverable degradation for guaranteed
-inaccessibility); asserting the pragmas only in a test with no runtime check (leaves the user with
-no signal if it does slip through); making every pragma fatal (turns legitimate engine-capability
-differences into open failures).
+inaccessibility); keeping the handle fully writable in the degraded posture (accumulates data whose
+durability nobody can vouch for — the corruption-adjacent risk the posture exists to minimise);
+asserting the pragmas only in a test with no runtime check (leaves the user with no signal if it
+does slip through); making every pragma fatal (turns legitimate engine-capability differences into
+open failures).
 
-_Consequence worth naming:_ this converts a silent degrade into a **visible** one. A platform or
-engine that cannot provide WAL plus `FULL` still opens the territory, but the user is told the
-storage layer is operating below its guarantee, offered any available remediation, and offered a
-one-click report. The cost is that a user _can_ keep working in a degraded posture — accepted
-deliberately, because the alternative is denying them their notes. The release gate is what keeps
-that path rare.
+_Consequence worth naming:_ this converts a silent degrade into a **visible, write-blocking** one.
+A platform or engine that cannot provide WAL plus `FULL` still opens the territory read-only: the
+user is told the storage layer is operating below its guarantee, can read everything, and is
+offered a one-click report — but cannot write until the mismatch is resolved. Real resolution (for
+example, live-migrating the territory to a freshly created database) belongs to the app layer in
+`cartograph` and is out of scope here; the structured fault deliberately carries what that layer
+will need to drive it. The release gate is what keeps this path rare.
 
 ### Verify on the write connection only
 
@@ -164,9 +176,11 @@ uses internally.
 Per-test unique directories under the system temp dir, keyed by process id and test name, cleaned on
 success.
 
-_Why:_ the crate's existing tests already do this and adding a temp-file dependency for parity with
-them is not worth a dependency. Per-test uniqueness matters because the test harness runs tests
-concurrently and each victim needs its own file.
+_Why:_ the crate's existing pool test already rolls a pid-keyed directory out of
+`std::env::temp_dir()`; adding the test name extends that scheme to be collision-free. The test
+name is what matters: the harness runs a crate's tests as parallel threads in one process, so the
+pid is shared across them — but test function names are unique, so `(pid, test name)` cannot
+collide. Not worth a temp-file dependency.
 
 ## Risks / Trade-offs
 
@@ -177,15 +191,20 @@ concurrently and each victim needs its own file.
 - **Windows termination semantics differ from a Unix signal.** → Both the Unix and Windows paths of
   the standard kill primitive terminate without giving the child a chance to clean up, which is what
   the scenario requires. The risk is not the kill; it is whether the engine's recovery is exercised
-  as thoroughly on Windows, and the full matrix only runs on merge. Accepted: a platform-specific
-  recovery failure surfaces at merge rather than at commit.
+  as thoroughly on Windows. CI workflows are generated from Rust (`tooling/xtask/src/tasks/workflows`
+  via `gh-workflow`), and today the PR/merge workflow tests on Linux only — macOS and Windows build
+  only in the release workflows, which do not run this test suite. Accepted for now: a
+  platform-specific recovery failure surfaces no earlier than a release build, until a
+  multi-platform test workflow exists to pull that signal forward.
 - **Spawning processes inside the per-commit test hook costs wall-clock time.** → Row counts stay in
   the low hundreds and there are no sleeps, so each scenario is dominated by process startup. Keep
   the scenario count at the four above; if the hook budget becomes a problem, the mitigation is
   fewer scenarios, not sleep-shortened ones.
-- **Failing the open on a durability mismatch is a hard behaviour change.** → It only triggers where
-  the previous behaviour was to run non-durably in silence. The error is distinguishable, so a
-  caller that genuinely wants a weaker configuration can ask for one explicitly.
+- **Refusing writes on a durability mismatch is a hard behaviour change.** → It only triggers where
+  the previous behaviour was to accept writes non-durably in silence; reads are unaffected. The
+  refusal error is distinguishable and carries the structured fault, so the app layer can present
+  it and later drive resolution, and a caller that genuinely wants a weaker configuration can ask
+  for one explicitly through the pragma map.
 - **Setting `synchronous = FULL` explicitly where the engine already defaulted to it means no
   measurable change today, so the guard could be mistaken for dead code.** → The regression guard
   test is what makes the intent legible; the spec decision entry records why the explicit set exists
@@ -208,3 +227,10 @@ Rollback is reverting the commits; nothing written under the new code is unreada
   restarting one, now that closing is confirmed not to checkpoint. This affects reopen cost and
   on-disk log size, not durability, and can be decided from measurement later without touching the
   specs, the approach, or the task breakdown.
+- Whether to reach the shutdown checkpoint by pulling the connection type from `turso_core` directly
+  rather than through the `turso` facade. `Connection::close()` has existed in `turso_core` since
+  before turso 0.5.0, so the capability is present in the pinned engine copy — the facade simply
+  does not surface it. To explore in the pinned `turso_core` source; worst case, bedrock takes its
+  connection from `turso_core` instead of the facade. Affects the `Database::close` documentation
+  (task 3.3) and could eventually restore the shutdown checkpoint, but changes none of this
+  change's guarantees.

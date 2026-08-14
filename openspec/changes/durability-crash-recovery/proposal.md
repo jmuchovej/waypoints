@@ -14,14 +14,16 @@ Investigation of the current code turned up three concrete holes:
    turso's own source comments say so. Depending on an intentional upstream deviation, unasserted,
    is the single largest durability risk in the layer: an engine bump could silently downgrade every
    territory to `NORMAL` with no test failing.
-2. **Pragma application is best-effort and unverified.** `apply_pragma` logs a rejection to stderr
-   and continues, so a `journal_mode = WAL` that the engine refuses produces a working database in
-   an unknown journal mode. No test reads `PRAGMA journal_mode` back.
-3. **The documented close-time behaviour is false.** `Database::close()` drops connections; it never
-   calls turso's `Connection::close()`, and turso's `Drop` impl deliberately skips the shutdown
-   checkpoint that `close()` performs. A comment in `store` asserts "the bedrock engine flushes WAL
-   on close" — it does not. This is not data loss (committed frames are already fsynced and replayed
-   on reopen), but it is a belief the code does not support.
+2. **Pragma application is best-effort and unverified.** `apply_pragma` logs a rejection via
+   `tracing::warn!` and continues, so a `journal_mode = WAL` that the engine refuses produces a
+   working database in an unknown journal mode. No test reads `PRAGMA journal_mode` back.
+3. **The documented close-time behaviour is false.** `Database::close()` drops connections. The
+   shutdown checkpoint lives on `turso_core::Connection::close()`, which the `turso` 0.7.0 facade
+   bedrock depends on does not expose at all — and turso's `Drop` impl deliberately skips it. So no
+   close path bedrock can reach performs that checkpoint. (Reaching it via `turso_core` directly is
+   tracked in design.md, Open Questions.) A comment in `store` asserts "the bedrock
+   engine flushes WAL on close" — it does not. This is not data loss (committed frames are already
+   fsynced and replayed on reopen), but it is a belief the code does not support.
 
 This change is therefore mostly **verification, not implementation**: state the durability
 invariants as testable facts, prove them against the real engine, and guard them.
@@ -36,10 +38,14 @@ invariants as testable facts, prove them against the real engine, and guard them
   through the existing pragma map; nothing in Waypoints does.
 - **Make the WAL pragma verifiable.** After the pool opens the write connection, read
   `PRAGMA journal_mode` and `PRAGMA synchronous` back and report a structured mismatch rather than
-  leaving a stderr line as the only evidence. The open still succeeds — a durability mismatch must
-  not deny the user access to notes that are on disk and readable. Instead the mismatch is surfaced
-  to the user with available remediation and a pre-filled bug report. Caller-supplied pragmas keep
-  their best-effort, diagnostic-only contract.
+  leaving a log line as the only evidence. The open still succeeds but the territory is
+  **read-only**: reads are preserved — a durability mismatch must not deny the user access to notes
+  that are on disk and readable — while writes are refused with an informative, structured error,
+  because writing into a store whose durability is unknown is the corruption risk this change
+  exists to minimise. The mismatch is surfaced to the user with available remediation and a
+  pre-filled bug report; richer resolution (for example, live-migrating to a fresh database) is the
+  app layer's concern in `cartograph` and out of scope here, with the structured fault as its raw
+  material. Caller-supplied pragmas keep their best-effort, diagnostic-only contract.
 - **Gate durability before release.** The pragma assertions run against the real engine as a release
   precondition, and are re-run when accepting any storage-engine upgrade. The engine is pre-v1 and
   deliberately pinned, so an upstream default change must fail a test rather than drift silently
