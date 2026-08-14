@@ -53,11 +53,12 @@
       "npm:renovate" = pkgs.renovate;
 
       "gem:fastlane" = pkgs.fastlane;
-      "npm:@tauri-apps/cli" = pkgs.cargo-tauri;
+      "aqua:tauri-apps/tauri/cargo-tauri" = pkgs.cargo-tauri;
 
       "aqua:nextest-rs/nextest/cargo-nextest" = pkgs.cargo-nextest;
       "aqua:numtide/treefmt" = config.treefmt.config.package;
       "aqua:nushell/nushell" = pkgs.nushell;
+      "aqua:EmbarkStudios/cargo-deny" = pkgs.cargo-deny;
 
       "core:node" = config.languages.javascript.package;
       "core:deno" = config.languages.deno.package;
