@@ -15,36 +15,30 @@ publish.workspace = true
 name = "waypoints-serve"
 path = "src/main.rs"
 
-# HTTP backend for the Waypoints web UI — currently a development convenience
-# (run the SPA in a browser without Tauri). Not feature-gated for now; gating
-# can return once browser-mode behavior actually diverges from the desktop app.
 [dependencies]
-async-trait = { workspace = true }
-axum = { workspace = true }
-cartograph = { workspace = true }
-clap = { workspace = true }
-directories = { workspace = true }
-domain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
+cartograph.workspace = true
+domain.workspace = true
+
+async-trait.workspace = true
+axum.workspace = true
+clap.workspace = true
+directories.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 tokio = {
   workspace = true,
-  features = [
-    "fs",
-    "macros",
-    "net",
-    "rt-multi-thread",
-  ]
+  features = ["fs", "macros", "net", "rt-multi-thread"]
 }
-tower-http = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-uuid = { workspace = true }
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+server = { workspace = true, features = ["development"] }
 
 [features]
 default = []
-# Dev-only: seeds the demo-data corpus on store open (via cartograph → store).
-# `just server::dev` enables this; a plain build stays lean.
 development = ["cartograph/development"]
 
 [lints]

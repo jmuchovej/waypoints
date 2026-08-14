@@ -34,6 +34,8 @@ publish = false
 [workspace.dependencies]
 Waypoints = { path = "waypoints/src-tauri" }
 bedrock = { path = "crates/bedrock" }
+bedrock-core = { path = "crates/bedrock-core" }
+bedrock-derive = { path = "crates/bedrock-derive" }
 cartograph = { path = "crates/cartograph" }
 domain = { path = "crates/domain" }
 importer = { path = "crates/importer" }
@@ -41,6 +43,7 @@ outpost = { path = "crates/outpost", default-features = false }
 outpost-fabric = { path = "crates/outpost-fabric" }
 outpost-hold = { path = "crates/outpost-hold" }
 outpost-protocol = { path = "crates/outpost-protocol" }
+server = { path = "crates/server" }
 store = { path = "crates/store" }
 
 anyhow = "1.0.103"
@@ -50,17 +53,13 @@ base64 = "0.22"
 bip39 = { version = "2", features = ["rand"] }
 blake3 = "1.8"
 bytes = { version = "1.11", features = ["serde"] }
+cargo_metadata = "0.23.1"
 chacha20poly1305 = "0.11"
 chrono = { version = "0.4.45", default-features = false, features = ["serde"] }
-chrono-tz = { version = "0.10.4", default-features = false, features = [
-  "serde",
-] }
+chrono-tz = { version = "0.10.4", default-features = false, features = ["serde"] }
 clap = { version = "4.6.1", features = ["derive"] }
 derive_more = "2.1.1"
 directories = "6.0.0"
-# iroh 1.0.x pins ed25519-dalek exactly; keep in lockstep and upgrade the
-# whole curve25519-family set together.
-ed25519-dalek = { version = "=3.0.0-rc.0", features = ["serde"] }
 eyre = "0.6.12"
 fake = { version = "5.1.0", default-features = false }
 fast_qr = { version = "0.13", features = ["svg"] }
@@ -71,12 +70,12 @@ hex = "0.4"
 hmac = "0.13"
 hostname = "0.4"
 iana-time-zone = "0.1.65"
+image = "0.25.10"
 indexmap = { version = "2.14", features = ["serde"] }
-# iroh 1.0.x pins ed25519-dalek =3.0.0-rc.0 — kept in lockstep (see above).
-iroh = "1"
+indoc = "2"
 objc2-app-kit = { version = "0.3", default-features = false, features = [
   "NSScrollView",
-  "NSView",
+  "NSView"
 ] }
 open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
 paste = "1.0.15"
@@ -87,34 +86,19 @@ pretty_assertions = "1.4.1"
 proc-macro2 = "1"
 pulldown-cmark = { version = "0.13", default-features = false }
 quote = "1"
-rand = "0.10"
-rand_core = "0.10"
 refinery = { version = "0.9", default-features = false }
 refinery-core = { version = "0.9", default-features = false }
 regex = "1.12.4"
 reqwest = { version = "0.12", default-features = false, features = [
   "json",
-  "rustls-tls",
+  "rustls-tls"
 ] }
 resvg = "0.47.0"
-rstest = "0.26.1"
+rqrr = "0.10.1"
+rstest = { version = "0.26.1", default-features = false, features = [
+  "async-timeout"
+] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
-sea-orm = { version = "1.1.20", default-features = false, features = [
-  "macros",
-  "runtime-tokio",
-  "sqlx-sqlite",
-  "with-chrono",
-  "with-json",
-  "with-uuid",
-] }
-sea-query = { version = "1.0.1", default-features = false, features = [
-  "backend-sqlite",
-  "derive",
-  "sea-query-derive",
-  "with-chrono",
-  "with-json",
-  "with-uuid",
-] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.150", features = [
   "arbitrary_precision",
@@ -133,7 +117,23 @@ specta = { version = "=2.0.0-rc.25", features = [
 ] }
 specta-serde = "0.0.12"
 specta-typescript = "0.0.12"
+strum = { version = "0.28.0", features = ["derive"] }
 syn = { version = "2", features = ["full"] }
+tempfile = "3"
+thiserror = "2.0.18"
+time = { version = "0.3", features = ["formatting", "parsing"] }
+tokio = { version = "1.52.3", features = ["sync"] }
+toml = "0.9"
+tower-http = { version = "0.7.0", features = ["fs", "trace"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+trybuild = "1"
+turso = "=0.7.0"
+typed-builder = "0.23.2"
+uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }
+validator = { version = "0.20.0", features = ["indexmap"] }
+zeroize = { version = "1", features = ["zeroize_derive"] }
+
 tauri = { version = "2.11.5", features = ["unstable"] }
 tauri-build = { version = "2.6.3", features = ["config-toml"] }
 tauri-plugin-barcode-scanner = "2"
@@ -147,33 +147,26 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-store = "2.4.3"
 tauri-plugin-updater = "2.10.1"
 tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
-tempfile = "3"
-thiserror = "2.0.18"
-time = { version = "0.3", features = ["formatting", "parsing"] }
-tokio = { version = "1.52.3", features = ["sync"] }
-tower-http = { version = "0.7.0", features = ["fs", "trace"] }
-tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-trybuild = "1"
-turso = "=0.7.0"
-typed-builder = "0.23.2"
-uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }
-validator = { version = "0.20.0", features = ["derive", "indexmap"] }
 wry = { version = "0.55.1", features = [
   "os-webview",
   "protocol",
   "serde",
-  "tracing",
+  "tracing"
 ] }
-# rc pin until x-wing stabilizes; part of the curve25519-v5 / rand_core 0.10
-# crypto generation — upgrade the whole set together.
+
+# iroh 1.0.x pins ed25519-dalek exactly; keep in lockstep and upgrade the
+# whole curve25519-family set together.
+ed25519-dalek = { version = "=3.0.0-rc.0", features = ["serde"] }
+iroh = "1"
+rand = "0.10"
+rand_core = "0.10"
 x-wing = "=0.1.0-rc.0"
-zeroize = { version = "1", features = ["zeroize_derive"] }
 
 [workspace.lints.clippy]
 blocks_in_conditions = "allow"
 comparison_chain = "allow"
 dbg_macro = "deny"
+disallowed_macros = "deny"
 iter_over_hash_type = "warn"
 manual_range_contains = "allow"
 mutable_key_type = "allow"

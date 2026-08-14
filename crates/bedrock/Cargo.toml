@@ -3,20 +3,24 @@ name = "bedrock"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description.workspace = true
-documentation.workspace = true
+description = """
+Bedrock — the database engine for Waypoints, built on Turso.
+"""
+documentation = "https://docs.waypoints.so/bedrock"
 readme.workspace = true
 homepage.workspace = true
-repository.workspace = true
+repository = "https://github.com/waypoints-hq/waypoints/tree/main/crates/bedrock"
 license.workspace = true
 publish.workspace = true
 
 [dependencies]
-bedrock-core = { path = "../bedrock-core" }
-bedrock-derive = { path = "../bedrock-derive" }
+bedrock-core.workspace = true
+bedrock-derive.workspace = true
+
 serde_json.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true }
+tokio.workspace = true
+tracing.workspace = true
 turso.workspace = true
 
 [dev-dependencies]

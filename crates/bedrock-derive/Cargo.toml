@@ -1,13 +1,15 @@
 [package]
 name = "bedrock-derive"
-version.workspace = true
+version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
-description.workspace = true
-documentation.workspace = true
+description = """
+Bedrock's `#[derive(...)]` macros.
+"""
+documentation = "https://docs.waypoints.so/bedrock"
 readme.workspace = true
 homepage.workspace = true
-repository.workspace = true
+repository = "https://github.com/waypoints-hq/waypoints/tree/main/crates/bedrock-derive"
 license.workspace = true
 publish.workspace = true
 
@@ -19,10 +21,6 @@ heck.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
 syn.workspace = true
-
-# No dev-dependencies: the derives emit `::bedrock::…` paths, so they're
-# exercised from `bedrock`'s own test suite (crates/bedrock/tests), where the
-# façade crate is available.
 
 [lints]
 workspace = true

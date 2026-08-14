@@ -12,19 +12,15 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-bedrock = { workspace = true }
+bedrock.workspace = true
+domain.workspace = true
+importer = { workspace = true, optional = true }
+
 chrono.workspace = true
 derive_more = {
   workspace = true,
-  features = [
-    "debug",
-    "display",
-    "error",
-    "from",
-  ]
+  features = ["debug", "display", "error", "from"]
 }
-domain.workspace = true
-importer = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
@@ -36,8 +32,9 @@ turso.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
-rstest = { workspace = true }
-tempfile = { workspace = true }
+rstest.workspace = true
+store = { workspace = true, features = ["development"] }
+tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]

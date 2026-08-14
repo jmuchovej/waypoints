@@ -13,6 +13,7 @@ publish.workspace = true
 
 [dependencies]
 domain.workspace = true
+
 pulldown-cmark.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
