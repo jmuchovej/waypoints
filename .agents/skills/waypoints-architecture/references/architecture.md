@@ -20,11 +20,10 @@ The Rust backend is organized into domain-focused crates:
 - **`importer`** — Markdown parsing and import (Waypoints format, GitHub Flavored Markdown with GFM alert → callout mapping).
 - **`bedrock-core`, `bedrock-derive`, `bedrock`** — Typed document storage over turso. Collections, derive macros, queries (including JSON-path filters), pooling, and durability. `domain` depends only on the `bedrock` façade.
 - **`outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost`** — The E2EE local-first sync engine. `outpost-protocol` is pure (no tokio/iroh/bedrock). See §11.
-- **`server`** — Dev-only HTTP transport. Not a product surface.
 
 Layering note: **Waypoints uses outpost, never the reverse.**
 
-Type bindings are **specta-generated** TypeScript in `crates/domain/typescript/` (`types.g.ts`, `schema.g.ts`). The frontend consumes these via the `@waypoints/domain` package. Tauri commands are defined in `waypoints/src-tauri/src/commands/` and invoked through a typed IPC layer (`waypoints/app/ipc/`); commands are thin wrappers — test the crates, not the Tauri harness.
+Type bindings are **specta-generated** TypeScript in `crates/domain/typescript/` (`types.g.ts`, `schema.g.ts`). The frontend consumes these via the `@waypoints/domain` package. Tauri commands are defined in `src-tauri/src/commands/` and invoked through a typed IPC layer (`src/app/utils/ipc/`); commands are thin wrappers — test the crates, not the Tauri harness. For browser-based development without Tauri, `cargo xtask dev-server` (in `tooling/xtask`) exposes the same commands over HTTP at `/ipc/<command>` — dev-only, not a product surface.
 
 ---
 

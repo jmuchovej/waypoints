@@ -59,17 +59,17 @@ open-ended and names the capability the commit is part of.
 A region maps to actual crates/areas; it is **not** a rollup of unrelated crates.
 Do not invent regions (the one-offs `flux`, `vox`, `obx`, `things` are retired).
 
-| Region       | Covers                                                                            |
-| ------------ | --------------------------------------------------------------------------------- |
-| `domain`     | the `domain` crate — the core definitions                                         |
-| `cartograph` | the `cartograph` crate — the core app engine                                      |
-| `bedrock`    | the `bedrock*` crates **only** (storage engine)                                   |
-| `outpost`    | the `outpost*` crates **only** (sync/networking)                                  |
-| `store`      | the `store` data layer _(transitional — expected to fold into `cartograph`)_      |
-| `importer`   | the `importer` crate _(kept out of `cartograph` on purpose, to limit its sprawl)_ |
-| `app`        | the Tauri app + frontend                                                          |
-| `website`    | the marketing/docs site                                                           |
-| `dev`        | developer tooling — the `server` crate, `devenv`, build/codegen scripts           |
+| Region       | Covers                                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------ |
+| `domain`     | the `domain` crate — the core definitions                                                                    |
+| `cartograph` | the `cartograph` crate — the core app engine                                                                 |
+| `bedrock`    | the `bedrock*` crates **only** (storage engine)                                                              |
+| `outpost`    | the `outpost*` crates **only** (sync/networking)                                                             |
+| `store`      | the `store` data layer _(transitional — expected to fold into `cartograph`)_                                 |
+| `importer`   | the `importer` crate _(kept out of `cartograph` on purpose, to limit its sprawl)_                            |
+| `app`        | the Tauri app + frontend                                                                                     |
+| `website`    | the marketing/docs site                                                                                      |
+| `dev`        | developer tooling — `tooling/xtask` (the Rust dev-toolchain: codegen, CI planning, the dev server), `devenv` |
 
 For a repo-wide change, omit the scope. Special scopes `deps` (dependency bumps)
 and `release` (release plumbing) may be used in place of a region.
