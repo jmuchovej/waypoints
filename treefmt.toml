@@ -1,0 +1,91 @@
+allow-missing-formatter = true
+excludes = ["*.lock", "*.patch", "package-lock.json", "go.mod", "go.sum", ".gitattributes", ".gitignore", ".gitmodules", ".hgignore", ".svnignore", "LICENSE", "*/node_modules*", ".{dev,dir}env/*", "*/.envrc*", "vendor/*", "*.{gif,ico}", "*.{properties,gradle}", "*.{pbxproj,xcconfig}", "{mise,treefmt}.toml"]
+on-unmatched = "info"
+verbose = 1
+
+[formatter.alejandra]
+command = "alejandra"
+excludes = []
+includes = ["*.nix"]
+options = []
+priority = 3
+
+[formatter.clang-format]
+command = "clang-format"
+excludes = []
+includes = ["*.c", "*.cc", "*.cpp", "*.h", "*.hh", "*.hpp", "*.glsl", "*.vert", ".tesc", ".tese", ".geom", ".frag", ".comp"]
+options = ["-i"]
+
+[formatter.deadnix]
+command = "deadnix"
+excludes = []
+includes = ["*.nix"]
+options = ["--edit"]
+priority = 2
+
+[formatter.just]
+command = "fmt-just"
+excludes = []
+includes = ["[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]", "*/[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]", ".[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]", "*/.[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]", "*.[Jj][Uu][Ss][Tt]", "*.[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]"]
+options = []
+
+[formatter.ktfmt]
+command = "ktfmt"
+excludes = []
+includes = ["*.kt", "*.kts"]
+options = []
+
+[formatter.oxfmt]
+command = "oxfmt"
+excludes = ["website/*/*.{md,mdx}", "docs/*/*.{md,mdx}"]
+includes = ["*.cjs", "*.css", "*.graphql", "*.hbs", "*.html", "*.js", "*.json", "*.json5", "*.jsonc", "*.jsx", "*.md", "*.mdx", "*.mjs", "*.mustache", "*.scss", "*.ts", "*.tsx", "*.vue", "*.yaml", "*.yml"]
+options = []
+
+[formatter.oxipng]
+command = "oxipng"
+excludes = []
+includes = ["*.png"]
+options = ["--opt", "2"]
+
+[formatter.rufo]
+command = "rufo"
+excludes = []
+includes = ["*.rb", "**/Podfile", "*.podspec"]
+options = ["-x"]
+
+[formatter.rustfmt]
+command = "rustfmt"
+excludes = []
+includes = ["*.rs"]
+options = ["--config", "skip_children=true", "--edition", "2024"]
+
+[formatter.statix]
+command = "fmt-statix"
+excludes = []
+includes = ["*.nix"]
+options = []
+priority = 1
+
+[formatter.swift-format]
+command = "swift-format"
+excludes = []
+includes = ["*.swift"]
+options = ["-i"]
+
+[formatter.tombi]
+command = "tombi"
+excludes = []
+includes = ["*.toml"]
+options = ["format"]
+
+[formatter.typos]
+command = "typos"
+excludes = []
+includes = ["*"]
+options = ["--write-changes", "--force-exclude"]
+
+[formatter.xmllint]
+command = "fmt-xml"
+excludes = []
+includes = ["*.xml", "*.svg", "*.xhtml", "*.xsl", "*.xslt", "*.dtd", "*.xsd", "*.entitlements", "*.manifest", "*.plist", "*.storyboard", "*.xc{scheme,settings,workspacedata}"]
+options = []

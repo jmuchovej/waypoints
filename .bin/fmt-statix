@@ -1,0 +1,5 @@
+#!/usr/bin/env bash -eu
+
+for file in "$@"; do
+  statix fix "$file"
+done

@@ -1,0 +1,26 @@
+#:tombi toml-version = "v1.0.0"
+#:schema https://raw.githubusercontent.com/crate-ci/typos/master/config.schema.json
+
+[files]
+ignore-files = true
+ignore-hidden = false
+extend-exclude = [".git/", ".jj/", ".mailmap"]
+
+[default]
+extend-ignore-re = [
+  # PNG is a file format, not a typo
+  "PNG",
+  "doas",
+  # macOS version
+  "Big Sur",
+  # Stripped version of reserved keyword `type`
+  "typ",
+  # `image` crate method: Delay::from_numer_denom_ms
+  "numer",
+  # Abbreviation for foreignObject in mermaid SVG processing
+  "fo",
+]
+check-filename = true
+
+[default.extend-words]
+writeable = "writeable"

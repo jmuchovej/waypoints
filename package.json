@@ -2,9 +2,27 @@
   "$schema": "https://www.schemastore.org/package.json",
   "private": true,
   "dependencies": {},
-  "engines": {
-    "node": ">=24.0.0",
-    "pnpm": ">=10.6.0"
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=11.0.0 <12.0.0",
+      "onFail": "error"
+    },
+    "runtime": [
+      {
+        "name": "node",
+        "version": "^24.4.0",
+        "onFail": "error"
+      },
+      {
+        "name": "deno",
+        "version": "^2.9.4",
+        "onFail": "error"
+      }
+    ]
   },
-  "packageManager": "pnpm@10.32.1"
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11"
+  }
 }

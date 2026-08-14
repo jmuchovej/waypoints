@@ -1,9 +1,23 @@
 [settings]
 experimental = true
+idiomatic_version_file_enable_tools = ["rust", "pnpm"]
+lockfile = true
 
 [tools]
-sops = "3.12.1"
-yq = "4.53.2"
-age = "1.3.1"
-just = "1.46.0"
-bun = "1.3.10"
+"aqua:FiloSottile/age" = "1.3.1"
+"aqua:casey/just" = "1.57.0"
+"aqua:crate-ci/typos" = "1.49.0"
+"aqua:getsops/sops" = "3.13.3"
+"aqua:mikefarah/yq" = "4.53.3"
+"aqua:numtide/treefmt" = "2.5.0"
+"aqua:oxipng/oxipng" = "10.1.1"
+"aqua:tombi-toml/tombi" = "1.2.7"
+"core:deno" = "2.9.4"
+"core:node" = "24.18.1"
+"gem:fastlane" = "2.232.2"
+"gem:rufo" = "0.18.1"
+"github:facebook/ktfmt" = "0.63"
+"npm:@fission-ai/openspec" = "1.6.0"
+"npm:@tauri-apps/cli" = "2.11.4"
+"npm:oxfmt" = "0.61.0"
+"npm:wrangler" = "4.93.0"
