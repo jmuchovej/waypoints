@@ -1,3 +1,5 @@
+#![warn(unused, dead_code)]
+
 pub mod tasks {
     pub mod devenv_files;
     pub mod nightly_plan;
