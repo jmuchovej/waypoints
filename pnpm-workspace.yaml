@@ -4,7 +4,6 @@ packages:
   - crates/domain
   - crates/cartograph
   - waypoints/src-tauri/icons
-  - .github/actions/nightly-plan/
 
 allowBuilds:
   better-sqlite3: true

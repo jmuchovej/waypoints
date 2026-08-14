@@ -1,8 +1,9 @@
-pub(crate) mod tasks {
-    pub(crate) mod workflows;
+pub mod tasks {
+    pub mod nightly_plan;
+    pub mod workflows;
 }
-pub(crate) mod utils {
-    pub(crate) mod devenv;
+pub mod utils {
+    pub mod devenv;
 }
 
 use anyhow::Result;
@@ -17,6 +18,8 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Resolves the release tag for a Nightly workflow run.
+    NightlyPlan(tasks::nightly_plan::NightlyPlanArgs),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(utils::devenv::DevenvFilesArgs),
     /// Regenerates every checked-in GitHub Actions workflow.
@@ -27,6 +30,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
+        Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
         Command::DevenvFiles(args) => utils::devenv::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
     }

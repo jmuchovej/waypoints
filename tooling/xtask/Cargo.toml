@@ -14,12 +14,21 @@ publish.workspace = true
 [dependencies]
 anyhow.workspace = true
 cargo_metadata = "0.23.1"
+chrono = { workspace = true, features = ["clock", "std"] }
 clap.workspace = true
-derive_more = { workspace = true, features = ["as_ref"] }
+derive_more = {
+  workspace = true,
+  features = ["as_ref", "display", "into", "unwrap"]
+}
 gh-workflow.workspace = true
 indexmap = "2"
 indoc = "2"
+octocrab = "0.47"
+serde.workspace = true
+serde_json.workspace = true
 strum = { version = "0.28.0", features = ["derive"] }
+tokio = { workspace = true, features = ["net", "rt", "time"] }
+toml = "0.9"
 
 [lints]
 workspace = true
