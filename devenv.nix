@@ -100,6 +100,19 @@ in {
     export PATH="$DEVENV_ROOT/.bin:$PATH"
   '';
 
+  android = {
+    enable = true;
+    ndk.enable = true;
+    platforms.version = [
+      "36"
+      "34"
+    ];
+    buildTools.version = [
+      "35.0.0"
+      "34.0.0"
+    ];
+  };
+
   packages =
     (lib.attrValues mise-tools)
     ++ [
