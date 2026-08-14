@@ -3,7 +3,7 @@ packages:
   - website
   - crates/domain
   - crates/cartograph
-  - waypoints/src-tauri/icons
+  - tooling/icongen
 
 allowBuilds:
   better-sqlite3: true

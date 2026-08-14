@@ -1,5 +1,5 @@
 {
-  "name": "@waypoints/icons",
+  "name": "@waypoints/icongen",
   "private": true,
   "description": "Build-time icon generator for Waypoints desktop flavors",
   "type": "module",

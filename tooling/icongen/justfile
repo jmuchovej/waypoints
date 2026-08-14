@@ -1,0 +1,50 @@
+# Icon generation for every app flavor
+set script-interpreter := ["bash", "-euo", "pipefail"]
+
+# Anchored to `module_directory()`: `justfile_directory()` is invocation-dependent
+# (this file's own directory when run standalone, the root justfile's when run as
+# `just icons::…`).
+TAURI_ROOT := module_directory() / "../../waypoints/src-tauri"
+ICONS_ROOT := TAURI_ROOT / "icons"
+GEN_ROOT := TAURI_ROOT / "gen"
+
+[private]
+default: stable
+
+# Generate icons for the dev flavor
+dev: (generate "development")
+
+# Generate icons for the nightly (nightly) flavor
+nightly: (generate "nightly")
+
+# Generate icons for the preview (preview) flavor
+preview: (generate "preview")
+
+# Generate icons for the stable (mainline) flavor
+stable: (generate "stable")
+
+# Generate icons for a given flavor
+[script]
+generate FLAVOR:
+    [ -d node_modules ] || just icons::setup
+    node icongen.ts --flavor {{ FLAVOR }} \
+      --out-dir {{ ICONS_ROOT }} \
+      --gen-dir {{ GEN_ROOT }}
+
+# Install tooling dependencies
+setup:
+    pnpm install --filter @waypoints/icongen...
+
+# Remove all generated icon artifacts
+clean: clean-ios clean-android
+    rm -rf {{ ICONS_ROOT }}/development {{ ICONS_ROOT }}/nightly {{ ICONS_ROOT }}/preview {{ ICONS_ROOT }}/stable
+
+[private]
+[working-directory("{{ GEN_ROOT }}/apple")]
+clean-ios:
+    rm -rf Assets.xcassets/AppIcon.appiconset
+
+[private]
+[working-directory("{{ GEN_ROOT }}/android/app/src/main/res")]
+clean-android:
+    fd "ic_launcher*" . -x rm {}
