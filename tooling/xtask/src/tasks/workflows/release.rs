@@ -36,16 +36,34 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
     // Named up front so every build can wait on the whole set.
     let gates: Vec<String> = tests.iter().map(|named| named.name.clone()).collect();
 
-    // Builds wait on the test gates; `build` wires their planner dependency.
+    // The draft the builds upload into — behind the same gates, so a failed
+    // suite never drafts a release.
+    let create = jobs::create_release(channel, prepare.as_ref()).map(|job| {
+        gates
+            .iter()
+            .fold(job, |job, gate| job.add_needs(gate.clone()))
+    });
+
+    // Builds wait on the test gates and the draft; `build` wires their
+    // planner dependency.
     let builds: Vec<NamedJob> = Platform::iter()
         .map(|platform| {
             jobs::build(channel, context, platform, prepare.as_ref()).map(|job| {
                 gates
                     .iter()
                     .fold(job, |job, gate| job.add_needs(gate.clone()))
+                    .add_needs(create.name.clone())
             })
         })
         .collect();
+
+    // Flips the draft public once every build has reported in.
+    let publish = jobs::publish_release(prepare.as_ref()).map(|job| {
+        builds
+            .iter()
+            .fold(job, |job, build| job.add_needs(build.name.clone()))
+            .add_needs(create.name.clone())
+    });
 
     let platforms = WorkflowInput::choices("platforms", channel.dispatch_platforms(), "All".into())
         .description("Platforms to build");
@@ -83,7 +101,9 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
         .map(|workflow| {
             tests
                 .into_iter()
+                .chain([create])
                 .chain(builds)
+                .chain([publish])
                 .fold(workflow, |workflow, named| {
                     workflow.add_job(named.name, named.job)
                 })

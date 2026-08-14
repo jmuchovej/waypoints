@@ -243,21 +243,73 @@ pub fn upload_artifact(channel: Channel, platform: Platform) -> Step<Use> {
     .add_with(("if-no-files-found", "error"))
     .id("upload-artifacts")
 }
+
+/// Renders the notes for `tag` with git-cliff: everything since the previous
+/// tag, grouped straight from the Conventional Commit history.
+pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
+    Step::new("Generate release notes")
+        .run(r#"git-cliff --latest --output "${RUNNER_TEMP}/notes.md""#)
         .shell("bash")
+        .if_condition(Channel::tag_condition(tag))
+        .id("gen-release-notes")
+}
+
+/// Drafts the release for `tag`, carrying the notes from [`release_notes`].
+///
+/// A draft: the platform builds upload into it, and it goes public only when
+/// [`publish_release`] flips it — so a failed build never leaves a
+/// half-populated release visible. The `view` guard makes a re-run reuse the
+/// draft it left behind; `gh` resolves drafts by tag name.
+pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
+    let view = r#"gh release view "${TAG}" >/dev/null 2>&1"#;
+    let create = r#"gh release create "${TAG}" --draft --verify-tag --notes-files "${RUNNER_TEMP}/notes.md""#;
+    let create = format!(
+        "{view} \\\n|| {create}{prerelease}",
+        prerelease = if channel.prerelease() {
+            " --prerelease"
+        } else {
+            ""
+        },
+    );
+
+    Step::new("Create the draft")
+        .run(create)
+        .shell("bash")
+        .if_condition(Channel::tag_condition(tag))
+        .add_env(("GH_TOKEN", GITHUB_TOKEN))
+        .add_env(("TAG", Channel::tag(tag)))
+        .id("draft-release")
+}
+
+/// Uploads the platform's artifacts to the release for `tag`. Skipped entirely
+/// on a build-only run, where the tag is empty.
 ///
 /// `tag` is the planner's output on nightly, and `None` elsewhere — where the
 /// tag comes from the pushed ref or the dispatch input instead.
-pub fn publish_to_release(
-    channel: Channel,
-    platform: Platform,
-    tag: Option<&JobOutput>,
-) -> Step<Use> {
-    Action::new("softprops", "action-gh-release", "v3")
-        .step("Upload to GitHub Release")
+pub fn upload_to_release(platform: Platform, tag: Option<&JobOutput>) -> Step<Run> {
+    let globs = platform
+        .artifacts()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    Step::new("Upload to GitHub Release")
+        .run(format!(r#"gh release upload "${{TAG}}" {globs} --clobber"#))
+        .shell("bash")
         .if_condition(Channel::tag_condition(tag))
-        .add_with(("tag_name", Channel::tag(tag)))
-        .add_with(("prerelease", channel.prerelease()))
-        .add_with(("files", platform.artifacts()))
+        .add_env(("GH_TOKEN", GITHUB_TOKEN))
+        .add_env(("TAG", Channel::tag(tag)))
+        .id("upload-release")
+}
+
+/// Flips the draft public. When this runs is the publish job's decision.
+pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
+    Step::new("Publish the release")
+        .run(r#"gh release edit "${TAG}" --draft=false"#)
+        .shell("bash")
+        .add_env(("GH_TOKEN", GITHUB_TOKEN))
+        .add_env(("TAG", Channel::tag(tag)))
+        .id("publish-release")
 }
 
 pub(crate) struct Nextest(Step<Run>);

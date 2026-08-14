@@ -27,6 +27,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .collect();
 
     let check_generated = Job::new("check generated files match their sources")
+        .permissions(Permissions::default().contents(Level::Read))
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
         .add_step(steps::install_nix())

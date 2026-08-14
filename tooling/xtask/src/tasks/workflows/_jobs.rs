@@ -37,16 +37,16 @@ pub fn prepare() -> PrepareJob {
     let p_bundle = StepOutput::new_trusted(&planner, "bundle_version");
 
     let job = NamedJob::new(
-        "prepare".into(),
-        // Republished under the same names the planner wrote, so `needs.prepare`
-        // reads exactly what `$GITHUB_OUTPUT` carried.
+        "prepare",
         Job::default()
             .name("Plan the nightly")
+            // Write: the planner creates the nightly tag ref.
+            .permissions(Permissions::default().contents(Level::Write))
             .runs_on(runners::LINUX)
             // Tags without history: the planner resolves them to commits but
             // never walks between them.
             .add_step(steps::checkout().add_with(("fetch-tags", true)))
-            .add_step(steps::setup_mise())
+            .add_step(steps::setup_mise(false.into()))
             .add_step(planner)
             .outputs([
                 p_tag.clone().as_output(),
@@ -80,9 +80,15 @@ pub fn test(suite: TestSuite, platform: Platform) -> NamedJob {
         // The change-scoped plan diffs against the merge base, which a shallow
         // clone does not contain.
         .add_step(steps::checkout().add_with(("fetch-depth", 0)))
-        .add_step(steps::setup_mise())
+        // Release workflows run cold: their caching steps would count against
+        // the artifacts the sibling build jobs publish.
+        .add_step(steps::setup_mise(
+            matches!(suite, TestSuite::Changed).into(),
+        ))
         // After mise: the cache key fingerprints the resolved rustc version.
-        .add_step(steps::rust_cache())
+        .when(matches!(suite, TestSuite::Changed), |job| {
+            job.add_step(steps::rust_cache())
+        })
         // Tauri links WebKitGTK on Linux, so even a library test build needs it.
         .when(platform.is_linux(), |job| {
             job.add_step(steps::install_linux_deps())
@@ -91,6 +97,67 @@ pub fn test(suite: TestSuite, platform: Platform) -> NamedJob {
         .add_step(steps::cargo_nextest(suite).with_filter_expr(&filterset.to_string()));
 
     NamedJob::new(format!("test-{}", platform.slug()), job)
+}
+
+/// Drafts the release every build uploads into, with git-cliff notes.
+///
+/// The tag guards sit on the steps, not the job: the builds `need` this job,
+/// and a skipped job would drag them down with it — on a build-only run the
+/// job runs and every step no-ops.
+pub fn create_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
+    let tag = prepare.map(|prepare| &prepare.tag);
+    let publishing = || Channel::tag_condition(tag);
+
+    let job = Job::default()
+        .name("Draft the release")
+        .permissions(Permissions::default().contents(Level::Write))
+        .runs_on(runners::LINUX)
+        // A nightly that builds nothing drafts nothing; the builds skip on
+        // the same verdict.
+        .when_some(prepare, |job, prepare| {
+            let expr = format!("{} == 'true'", prepare.should_build.expr());
+            job.add_needs(prepare.name().to_owned())
+                .cond(Expression::new(expr))
+        })
+        // git-cliff walks from the release tag back to the tag before it.
+        .add_step(
+            steps::checkout()
+                .add_with(("fetch-depth", 0))
+                .add_with(("fetch-tags", true))
+                .if_condition(publishing()),
+        )
+        .add_step(steps::setup_mise(false.into()).if_condition(publishing()))
+        .add_step(steps::release_notes(tag))
+        .add_step(steps::create_release(channel, tag));
+
+    NamedJob::new("create-release", job)
+}
+
+/// Publishes the draft once every upload has had its say.
+///
+/// `!failure() && !cancelled()`: a platform-filtered dispatch skips some
+/// builds and must still publish, while one failed build leaves the draft
+/// unpublished rather than shipping a partial release. The tag guard skips
+/// build-only runs and nightlies that built nothing.
+pub fn publish_release(prepare: Option<&PrepareJob>) -> NamedJob {
+    let tag = prepare.map(|prepare| &prepare.tag);
+    let expr = format!(
+        "!failure() && !cancelled() && ({tag})",
+        tag = Channel::tag_condition(tag).0
+    );
+
+    let job = Job::default()
+        .name("Publish the release")
+        .permissions(Permissions::default().contents(Level::Write))
+        .runs_on(runners::LINUX)
+        .cond(Expression::new(expr))
+        .add_step(steps::publish_release(tag))
+        // Reads the planner's tag, so it waits on the planner.
+        .when_some(prepare, |job, prepare| {
+            job.add_needs(prepare.name().to_owned())
+        });
+
+    NamedJob::new("publish-release", job)
 }
 
 pub fn build(
@@ -123,7 +190,7 @@ pub fn build(
             // Tauri's Linux backend is WebKitGTK, absent from the runner image.
             job.add_step(steps::install_linux_deps())
         })
-        .add_step(steps::setup_mise())
+        .add_step(steps::setup_mise(false.into()))
         .add_step(steps::pnpm_install())
         .add_step(
             steps::build(channel, platform)
@@ -138,8 +205,7 @@ pub fn build(
                 }),
         )
         .add_step(steps::upload_artifact(channel, platform))
-        .add_step(steps::publish_to_release(
-            channel,
+        .add_step(steps::upload_to_release(
             platform,
             prepare.map(|prepare| &prepare.tag),
         ))
