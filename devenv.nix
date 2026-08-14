@@ -42,17 +42,20 @@
       "aqua:FiloSottile/age" = pkgs.age;
       "npm:wrangler" = pkgs.wrangler;
       "aqua:mikefarah/yq" = pkgs.yq-go;
+      "aqua:cachix/secretspec" = pkgs.secretspec;
 
       "gem:fastlane" = pkgs.fastlane;
-      "npm:@fission-ai/openspec" = pkgs.openspec;
       "npm:@tauri-apps/cli" = pkgs.cargo-tauri;
 
       "aqua:nextest-rs/nextest/cargo-nextest" = pkgs.cargo-nextest;
       "aqua:numtide/treefmt" = config.treefmt.config.package;
+      "aqua:nushell/nushell" = pkgs.nushell;
 
       "core:node" = config.languages.javascript.package;
       "core:deno" = config.languages.deno.package;
       "core:ruby" = config.languages.ruby.package;
+      "core:swift" = config.languages.swift.package;
+      "github:JetBrains/kotlin" = pkgs.kotlin; # NOTE: languages.kotlin doesn't specify a `.package` option
     }
     // mise-formatters;
 
@@ -89,6 +92,9 @@ in {
   stdenv = pkgs.clangStdenv;
   env.LD_LIBRARY_PATH = lib.mkForce "";
   env.PROJECT_ROOT = config.env.DEVENV_ROOT;
+  env.TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/waypoints/src-tauri";
+  env.TAURI_ANDROID_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/gen/android";
+  env.TAURI_IOS_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/gen/apple";
 
   enterShell = ''
     export PATH="$DEVENV_ROOT/.bin:$PATH"
@@ -117,10 +123,9 @@ in {
     toolchainFile = ./rust-toolchain.toml;
   };
   languages.deno.enable = true;
-  languages.ruby = {
-    enable = true;
-    lsp.enable = false;
-  };
+  languages.ruby.enable = true;
+  languages.kotlin.enable = true;
+  languages.swift.enable = true;
   languages.javascript = {
     enable = true;
     lsp.enable = true;

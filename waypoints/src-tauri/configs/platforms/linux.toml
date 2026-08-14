@@ -1,0 +1,9 @@
+#:schema https://schema.tauri.app/config/2
+# tombi: lint.rules.table-key-required.disabled = true
+
+[bundle.linux.deb]
+
+[bundle.linux.appimage]
+bundleMediaFramework = true
+
+[bundle.linux.rpm]

@@ -1,0 +1,6 @@
+#:schema https://schema.tauri.app/config/2
+# tombi: lint.rules.table-key-required.disabled = true
+
+[bundle.windows]
+digestAlgorithm = "sha256"
+timestampUrl = ""
