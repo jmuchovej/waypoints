@@ -51,6 +51,7 @@
 
       "core:node" = config.languages.javascript.package;
       "core:deno" = config.languages.deno.package;
+      "core:ruby" = config.languages.ruby.package;
     }
     // mise-formatters;
 
@@ -94,6 +95,9 @@ in {
 
   packages =
     (lib.attrValues mise-tools)
+    ++ [
+      (pkgs.writeShellScriptBin "tauri" ''exec ${pkgs.cargo-tauri}/bin/cargo-tauri "$@"'')
+    ]
     ++ (with pkgs; [
       act
       cargo-binstall
@@ -112,6 +116,10 @@ in {
     toolchainFile = ./rust-toolchain.toml;
   };
   languages.deno.enable = true;
+  languages.ruby = {
+    enable = true;
+    lsp.enable = false;
+  };
   languages.javascript = {
     enable = true;
     lsp.enable = true;
@@ -230,7 +238,7 @@ in {
           ];
           lockfile = true;
         };
-        tools = lib.mapAttrs (_: pkg: pkg.version) mise-tools;
+        tools = lib.mapAttrs (_: pkg: toString pkg.version) mise-tools;
       };
     };
   };
