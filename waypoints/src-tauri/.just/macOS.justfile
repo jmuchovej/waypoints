@@ -1,6 +1,8 @@
 # macOS — desktop dev + Apple-signed builds
-
+set script-interpreter := ["bash", "-euo", "pipefail"]
 set working-directory := ".."
+TAURI_ROOT := module_directory() / "../"
+TAURI_CONFIGS_ROOT := TAURI_ROOT / "configs"
 
 dev *ARGS: (_dev "development" ARGS)
 
@@ -12,39 +14,37 @@ build *ARGS: (_build "stable" ARGS)
 
 build-preview *ARGS: (_build "preview" ARGS)
 
-[private]
-_dev feature $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
-    cargo tauri dev \
-      --features {{ feature }} \
-      --config Tauri.flavor={{ feature }}.toml \
-      {{ ARGS }}
+build-nightly *ARGS: (_build "nightly" ARGS)
 
 [private]
-_build feature *ARGS:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    just icons::{{ feature }}
-    repo_root=$(git rev-parse --show-toplevel)
-    apple_sops="${repo_root}/.secrets/apple.sops.yaml"
-    updater_sops="${repo_root}/.secrets/updater.sops.yaml"
-    key_path=$(mktemp "${TMPDIR:-/tmp}/AuthKey.XXXXXX.p8")
-    trap 'rm -f "${key_path}"' EXIT
-    js_bins="$(dirname "$(command -v node)"):$(dirname "$(command -v pnpm)")"
-    apple_secrets=$(sops -d "${apple_sops}")
-    updater_secrets=$(sops -d "${updater_sops}")
-    echo "${apple_secrets}" | yq '.developer-id.key-prv' > "${key_path}"
+[script]
+_dev flavor $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
+    export WAYPOINTS_FLAVOR={{ flavor }}
+    tauri dev \
+        --features {{ flavor }} \
+        --config {{ TAURI_CONFIGS_ROOT }}/platforms/macos.toml \
+        --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
+        {{ ARGS }}
+
+[private]
+[script]
+_build flavor *ARGS:
+    # `env -i` because the *environment* is what contaminates a shipped binary:
+    # Nix's SDKROOT/NIX_LDFLAGS make it link against store paths instead of
+    # /usr/lib. PATH is not the problem, so the ambient one is kept whole —
+    # every tool the build shells out to (yq, deno, pnpm, …) stays reachable
+    # without maintaining a list. Prepending the system directories is what
+    # makes /usr/bin/clang win over Nix's wrapper.
     env -i \
-        HOME="$HOME" \
-        USER="$USER" \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nix-profile/bin:$HOME/.cargo/bin:${js_bins}" \
-        APPLE_API_ISSUER="$(echo "${apple_secrets}" | yq '.developer-id.issuer-id')" \
-        APPLE_API_KEY="$(echo "${apple_secrets}" | yq '.developer-id.key-id')" \
-        APPLE_API_KEY_PATH="${key_path}" \
-        APPLE_CERTIFICATE="$(echo "${apple_secrets}" | yq '.developer-id.certificate')" \
-        APPLE_CERTIFICATE_PASSWORD="$(echo "${apple_secrets}" | yq '.developer-id.password')" \
-        TAURI_SIGNING_PRIVATE_KEY="$(echo "${updater_secrets}" | yq '.private-key')" \
-        TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(echo "${updater_secrets}" | yq '.password')" \
-        cargo tauri build \
-          --features {{ feature }} \
-          --config Tauri.flavor={{ feature }}.toml \
+      HOME="$HOME" \
+      USER="$USER" \
+      PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
+      SOPS_AGE_KEY="${SOPS_AGE_KEY:-}" \
+      WAYPOINTS_FLAVOR={{ flavor }} \
+      WAYPOINTS_BUILD=1 \
+      secretspec run --profile release --scope macos -- \
+        tauri build \
+          --features {{ flavor }} \
+          --config {{ TAURI_CONFIGS_ROOT }}/platforms/macos.toml \
+          --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
           {{ ARGS }}

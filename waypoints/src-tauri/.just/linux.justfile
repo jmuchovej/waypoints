@@ -1,6 +1,8 @@
 # Linux — desktop dev + unsigned builds
-
+set script-interpreter := ["bash", "-euo", "pipefail"]
 set working-directory := ".."
+TAURI_ROOT := module_directory() / "../"
+TAURI_CONFIGS_ROOT := TAURI_ROOT / "configs"
 
 dev *ARGS: (_dev "development" ARGS)
 
@@ -12,17 +14,26 @@ build *ARGS: (_build "stable" ARGS)
 
 build-preview *ARGS: (_build "preview" ARGS)
 
-[private]
-_dev feature $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
-    cargo tauri dev --features {{ feature }} --config Tauri.flavor={{ feature }}.toml {{ ARGS }}
+build-nightly *ARGS: (_build "nightly" ARGS)
 
 [private]
-_build feature *ARGS:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    just icons::{{ feature }}
-    repo_root=$(git rev-parse --show-toplevel)
-    updater_secrets=$(sops -d "${repo_root}/.secrets/updater.sops.yaml")
-    export TAURI_SIGNING_PRIVATE_KEY="$(echo "${updater_secrets}" | yq '.private-key')"
-    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$(echo "${updater_secrets}" | yq '.password')"
-    cargo tauri build --features {{ feature }} --config Tauri.flavor={{ feature }}.toml {{ ARGS }}
+[script]
+_dev flavor $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
+    export WAYPOINTS_FLAVOR={{ flavor }}
+    tauri dev \
+      --features {{ flavor }} \
+      --config {{ TAURI_CONFIGS_ROOT }}/platforms/linux.toml \
+      --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
+      {{ ARGS }}
+
+[private]
+[script]
+_build flavor *ARGS:
+    export WAYPOINTS_FLAVOR={{ flavor }}
+    export WAYPOINTS_BUILD=1
+    secretspec run --profile release --scope linux -- \
+      tauri build \
+        --features {{ flavor }} \
+        --config {{ TAURI_CONFIGS_ROOT }}/platforms/linux.toml \
+        --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
+        {{ ARGS }}

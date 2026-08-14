@@ -22,3 +22,6 @@ build *ARGS:
 
 build-preview *ARGS:
     @just {{ os() }}::build-preview {{ ARGS }}
+
+build-nightly *ARGS:
+    @just {{ os() }}::build-nightly {{ ARGS }}
