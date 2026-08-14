@@ -21,9 +21,9 @@
 //!
 //! [nextest filterset]: https://nexte.st/docs/filtersets/
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
-use std::{collections::BTreeSet, process::Command};
+use std::collections::BTreeSet;
 
 /// Crates the release artifacts are built from. Their in-tree dependencies come
 /// along via `deps()`, so this lists only the roots.
@@ -35,6 +35,7 @@ use std::{collections::BTreeSet, process::Command};
 /// plugins and `xtask` are maintained here but linked into nothing that ships,
 /// so a half-finished test in one of them must not block an app release. Their
 /// tests still run on any pull request that touches them.
+use crate::shell;
 const RELEASE_ROOTS: [&str; 2] = ["Waypoints", "cartograph"];
 
 /// Paths that invalidate every crate, so a change to one tests the lot.
@@ -123,34 +124,16 @@ fn union(terms: impl Iterator<Item = String>) -> String {
 /// The merge base on a pull request, the previous commit on a push.
 fn default_base() -> Result<String> {
     match std::env::var("GITHUB_BASE_REF") {
-        Ok(base) if !base.is_empty() => git(&["merge-base", &format!("origin/{base}"), "HEAD"]),
+        Ok(base) if !base.is_empty() => {
+            shell::git(&["merge-base", &format!("origin/{base}"), "HEAD"])
+        }
         _ => Ok("HEAD~1".to_owned()),
     }
 }
 
 fn changed_files(base: &str) -> Result<Vec<String>> {
-    let out = git(&["diff", "--name-only", base, "HEAD"])?;
+    let out = shell::git(&["diff", "--name-only", base, "HEAD"])?;
     Ok(out.lines().map(str::to_owned).collect())
-}
-
-fn git(args: &[&str]) -> Result<String> {
-    let output = Command::new("git")
-        .args(args)
-        .output()
-        .context("Failed to run `git`")?;
-
-    if !output.status.success() {
-        anyhow::bail!(
-            "`git {}` failed:\n{}",
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr).trim()
-        );
-    }
-
-    Ok(String::from_utf8(output.stdout)
-        .context("`git` emitted invalid UTF-8")?
-        .trim()
-        .to_owned())
 }
 
 #[cfg(test)]

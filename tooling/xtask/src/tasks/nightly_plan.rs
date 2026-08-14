@@ -9,6 +9,7 @@
 //! job needs only a shallow checkout and tag creation needs no committer
 //! identity or push credentials.
 
+use crate::shell;
 use anyhow::{Context, Result, bail};
 use cargo_metadata::semver::Version;
 use chrono::{DateTime, Utc};

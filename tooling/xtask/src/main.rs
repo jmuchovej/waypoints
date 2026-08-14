@@ -1,11 +1,18 @@
 pub mod tasks {
+    pub mod devenv_files;
     pub mod nightly_plan;
     pub mod test_plan;
     pub mod workflows;
+
+    pub use devenv_files::DevenvFilesArgs;
+    pub use nightly_plan::NightlyPlanArgs;
+    pub use test_plan::TestPlanArgs;
+    pub use workflows::WorkflowArgs;
 }
 pub mod utils {
     pub mod devenv;
 }
+pub mod shell;
 pub mod workspace;
 
 use anyhow::Result;
@@ -21,13 +28,14 @@ struct Args {
 #[derive(Subcommand)]
 enum Command {
     /// Prints the nextest filterset a CI run should use.
-    TestPlan(tasks::test_plan::TestPlanArgs),
+    TestPlan(tasks::TestPlanArgs),
     /// Resolves the release tag for a Nightly workflow run.
-    NightlyPlan(tasks::nightly_plan::NightlyPlanArgs),
+    NightlyPlan(tasks::NightlyPlanArgs),
     /// Prints the files devenv materializes into the working tree.
-    DevenvFiles(utils::devenv::DevenvFilesArgs),
+    DevenvFiles(tasks::DevenvFilesArgs),
     /// Regenerates every checked-in GitHub Actions workflow.
-    Workflows(tasks::workflows::WorkflowArgs),
+    #[command(alias = "gen-workflows")]
+    Workflows(tasks::WorkflowArgs),
 }
 
 fn main() -> Result<()> {
@@ -36,7 +44,7 @@ fn main() -> Result<()> {
     match args.command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
-        Command::DevenvFiles(args) => utils::devenv::run(args),
+        Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
     }
 }
