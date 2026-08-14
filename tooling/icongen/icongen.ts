@@ -9,14 +9,39 @@ import { defineCommand, runMain } from "citty";
 import { parseTOML } from "confbox";
 import pngToIco from "png-to-ico";
 import sharp, { type Sharp } from "sharp";
-import {
-  type INode,
-  parse as parseSvg,
-  stringify as stringifySvg,
-} from "svgson";
+import { type INode, parse as parseSvg, stringify as stringifySvg } from "svgson";
 import tailwindColors from "tailwindcss/colors";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+
+interface TauriRoots {
+  /** The Tauri app crate: holds `icons/` and, by default, `gen/`. */
+  app: string;
+  android: string;
+  ios: string;
+}
+
+/**
+ * Where Tauri places the app and its generated mobile projects.
+ *
+ * Read from the same variables `tauri {ios,android} build` reads, so relocating
+ * a project moves the icons with it and nothing here encodes the repo layout.
+ * Resolved on demand rather than at module load so `--help` still works when
+ * the environment is not set up.
+ */
+function tauriRoots(): TauriRoots {
+  const app = env.TAURI_APP_PATH;
+  if (!app) {
+    throw new Error(
+      "TAURI_APP_PATH is unset — enter the devenv shell, or run this through `just icons::<flavor>`",
+    );
+  }
+  return {
+    app,
+    android: env.TAURI_ANDROID_PROJECT_PATH || path.join(app, "gen/android"),
+    ios: env.TAURI_IOS_PROJECT_PATH || path.join(app, "gen/apple"),
+  };
+}
 
 type TailwindColors = typeof tailwindColors;
 type TailwindColor = keyof TailwindColors;
@@ -53,9 +78,10 @@ type Fill = LogoFill & {
 
 type Fills = Record<Theme, Fill>;
 
-const SIZES = parseTOML(
-  readFileSync(resolve(HERE, `./sizes.toml`), "utf-8"),
-) as Record<string, Record<string, string | number>>;
+const SIZES = parseTOML(readFileSync(resolve(HERE, `./sizes.toml`), "utf-8")) as Record<
+  string,
+  Record<string, string | number>
+>;
 
 const LINUX_PNGS = SIZES["linux"] as unknown as ReadonlyArray<{
   name: string;
@@ -101,11 +127,7 @@ function pickSource(px: number): SourceKey {
   return px <= 64 ? "xs" : "md";
 }
 
-async function loadLogoSVG(
-  srcDir: string,
-  px: number,
-  fill: Fill,
-): Promise<INode> {
+async function loadLogoSVG(srcDir: string, px: number, fill: Fill): Promise<INode> {
   const suffix = pickSource(px);
   const path = resolve(srcDir, `icon/${suffix}.svg`);
   const file = await readFile(path, "utf-8");
@@ -121,18 +143,9 @@ async function loadLogoSVG(
 
 // Mask structural IDs — these are handled by paintInnerBG, paintOuterBG,
 // and injectLogo, not by the generic fill painter in loadMaskSVG.
-const MASK_STRUCTURAL_IDS = new Set([
-  "background",
-  "inner",
-  "inner-shadow",
-  "drop-shadow",
-]);
+const MASK_STRUCTURAL_IDS = new Set(["background", "inner", "inner-shadow", "drop-shadow"]);
 
-async function loadMaskSVG(
-  srcDir: string,
-  platform: Platform,
-  fill: Fill,
-): Promise<INode> {
+async function loadMaskSVG(srcDir: string, platform: Platform, fill: Fill): Promise<INode> {
   const path = resolve(srcDir, `masks/${platform}.svg`);
   const file = await readFile(path, "utf-8");
   const tree = await parseSvg(file);
@@ -155,9 +168,7 @@ function parsePlatforms(raw: string): Set<Platform> {
   const result = new Set<Platform>();
   for (const item of items) {
     if (!(PLATFORMS as readonly string[]).includes(item)) {
-      throw new Error(
-        `Unknown platform "${item}" (expected: ${PLATFORMS.join("|")}|all)`,
-      );
+      throw new Error(`Unknown platform "${item}" (expected: ${PLATFORMS.join("|")}|all)`);
     }
     result.add(item as Platform);
   }
@@ -189,13 +200,9 @@ function resolveToken(token: string): string {
   // Pass-through for literal hex (used by the synthetic mono palette).
   if (token.startsWith("#")) return token;
 
-  const match = token.match(
-    /(?<family>\w+)\.?(?<shade>\d+)?\/?(?<opacity>\d+)?/,
-  );
+  const match = token.match(/(?<family>\w+)\.?(?<shade>\d+)?\/?(?<opacity>\d+)?/);
   if (!match?.groups) {
-    throw new Error(
-      `Could not find any <family>, <shade>, or <opacity> in ${token}!`,
-    );
+    throw new Error(`Could not find any <family>, <shade>, or <opacity> in ${token}!`);
   }
   const { family, shade, opacity } = match.groups as TailwindTokenMatch;
   if (!family) {
@@ -221,7 +228,7 @@ function resolveToken(token: string): string {
     return chroma(color).hex() + alpha;
   } catch (err) {
     throw new Error(
-      `chroma-js failed to parse tailwind color "${token}" (raw: "${raw}"): ${(err as Error).message}`,
+      `chroma-js failed to parse tailwind color "${token}": ${(err as Error).message}`,
     );
   }
 }
@@ -234,11 +241,7 @@ function walk(node: INode, visit: (n: INode) => void): void {
   for (const child of node.children ?? []) walk(child, visit);
 }
 
-async function loadFlavor(
-  sourceDir: string,
-  flavor: Flavor,
-  theme: Theme,
-): Promise<FlavorConfig> {
+async function loadFlavor(sourceDir: string, flavor: Flavor, theme: Theme): Promise<FlavorConfig> {
   const path = resolve(sourceDir, `flavors/${flavor}.toml`);
   const raw = await readFile(path, "utf-8");
   const config = parseTOML(raw) as FlavorConfig;
@@ -259,10 +262,7 @@ async function loadFlavor(
 }
 
 function flavorFill(config: FlavorConfig, theme: Theme): Fill {
-  const fill = Object.entries(config.fills[theme]).map(([k, v]) => [
-    k,
-    resolveToken(v),
-  ]);
+  const fill = Object.entries(config.fills[theme]).map(([k, v]) => [k, resolveToken(v)]);
   return {
     ...Object.fromEntries(fill),
     inner: resolveToken(config.app["background-inner"] ?? "transparent"),
@@ -326,9 +326,7 @@ function injectLogo(tree: INode, logo: INode, width: number): INode {
     const { id, transform } = node.attributes;
     if (!transform) throw new Error(`Could not find \`transform\` on ${id}!`);
 
-    const match = transform.match(
-      /translate\(\s*([\d.]+)\s*[,\s]\s*([\d.]+)\s*\)/,
-    );
+    const match = transform.match(/translate\(\s*([\d.]+)\s*[,\s]\s*([\d.]+)\s*\)/);
     if (!match) throw new Error(`no translate() on ${id}`);
 
     const tx = parseFloat(match[1]);
@@ -417,15 +415,9 @@ const main = defineCommand({
     },
     "out-dir": {
       type: "string",
-      default: resolve(HERE, "../../waypoints/src-tauri/icons"),
-      description:
-        "Directory holding one subdirectory per flavor, named in Tauri.toml and the flavor configs",
-    },
-    "gen-dir": {
-      type: "string",
       default: "",
       description:
-        "Tauri's gen/ tree, where the iOS asset catalogue and Android mipmaps are written (default: <out-dir>/../gen)",
+        "Directory holding one subdirectory per flavor, named in Tauri.toml and the flavor configs (default: $TAURI_APP_PATH/icons)",
     },
     platforms: {
       type: "string",
@@ -437,25 +429,16 @@ const main = defineCommand({
     const flavor = args.flavor;
     const theme = args.theme;
     if (!isFlavor(flavor)) {
-      throw new Error(
-        `Invalid flavor "${flavor}" (expected one of: ${FLAVORS.join(", ")})`,
-      );
+      throw new Error(`Invalid flavor "${flavor}" (expected one of: ${FLAVORS.join(", ")})`);
     }
     if (!isTheme(theme)) {
-      throw new Error(
-        `Invalid theme "${theme}" (expected one of: ${THEMES.join(", ")})`,
-      );
+      throw new Error(`Invalid theme "${theme}" (expected one of: ${THEMES.join(", ")})`);
     }
     const platforms = parsePlatforms(args.platforms);
 
+    const tauri = tauriRoots();
     const srcDir = resolve(args["source-dir"]);
-    const dstDir = resolve(args["out-dir"]);
-    // Tauri's gen/ tree sits beside the icon output, not under it, and this
-    // generator now lives outside both — so it is derived from --out-dir rather
-    // than from the script's own location.
-    const genDir = args["gen-dir"]
-      ? resolve(args["gen-dir"])
-      : resolve(dstDir, "../gen");
+    const dstDir = args["out-dir"] ? resolve(args["out-dir"]) : resolve(tauri.app, "icons");
 
     const config = await loadFlavor(srcDir, flavor, theme);
     const fills: Record<Theme, Fill> = {
@@ -473,7 +456,7 @@ const main = defineCommand({
       android: writeAndroid,
     };
     for await (const platform of platforms) {
-      await writers[platform](flavor, srcDir, dstDir, fills, genDir);
+      await writers[platform](flavor, srcDir, dstDir, fills, tauri);
     }
     await writeMenuIcons(flavor, srcDir, dstDir, fills);
   },
@@ -556,9 +539,9 @@ async function writeiOS(
   srcDir: string,
   dstDir: string,
   fills: Fills,
-  genDir: string,
+  tauri: TauriRoots,
 ): Promise<void> {
-  const iosDir = resolve(genDir, `apple/Assets.xcassets/${flavor}.appiconset`);
+  const iosDir = resolve(tauri.ios, `Assets.xcassets/${flavor}.appiconset`);
   await mkdir(iosDir, { recursive: true });
 
   const manifest: Array<iOSManifestEntry> = [];
@@ -568,9 +551,7 @@ async function writeiOS(
     let filename = writtenByPx.get(entry.px);
     if (!filename) {
       filename = `icon-${entry.px}.png`;
-      const png = await toPng(
-        await renderSvg(srcDir, "iOS", entry.px, fills["dark"]),
-      );
+      const png = await toPng(await renderSvg(srcDir, "iOS", entry.px, fills["dark"]));
       await writeFile(resolve(iosDir, filename), png);
       writtenByPx.set(entry.px, filename);
     }
@@ -613,9 +594,9 @@ async function writeAndroid(
   srcDir: string,
   dstDir: string,
   fills: Fills,
-  genDir: string,
+  tauri: TauriRoots,
 ): Promise<void> {
-  const resDir = resolve(genDir, `android/app/src/${flavor}/res`);
+  const resDir = resolve(tauri.android, `app/src/${flavor}/res`);
 
   // Foreground layer (logo on transparent bg) + monochrome silhouette per
   // mipmap density, as WebP. The monochrome layer is what Material You
