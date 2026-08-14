@@ -1,23 +1,17 @@
-# $schema: https://devenv.sh/devenv.schema.json
-impure: false
-
-nixpkgs:
-  allow_unfree: true
-  permitted_insecure_packages: ["pnpm-9.15.9"]
-
-secretspec:
-  enable: true
-  provider: env
-  profile: default
-
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
 inputs:
-  nixpkgs:
-    url: github:cachix/devenv-nixpkgs/rolling
+  android-nixpkgs:
+    url: github:tadfisher/android-nixpkgs
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
   git-hooks:
     url: github:cachix/git-hooks.nix
     inputs:
       nixpkgs:
         follows: nixpkgs
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
   rust-overlay:
     url: github:oxalica/rust-overlay
     inputs:
@@ -28,3 +22,11 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
+nixpkgs:
+  allow_unfree: true
+  permitted_insecure_packages:
+    - pnpm-9.15.9
+secretspec:
+  enable: true
+  profile: default
+  provider: env
