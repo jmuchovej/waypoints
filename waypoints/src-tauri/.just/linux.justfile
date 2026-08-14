@@ -1,7 +1,7 @@
 # Linux — desktop dev + unsigned builds
 set script-interpreter := ["bash", "-euo", "pipefail"]
 set working-directory := ".."
-TAURI_ROOT := module_directory() / "../"
+TAURI_ROOT := env("TAURI_APP_PATH")
 TAURI_CONFIGS_ROOT := TAURI_ROOT / "configs"
 
 dev *ARGS: (_dev "development" ARGS)

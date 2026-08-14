@@ -1,13 +1,21 @@
+set script-interpreter := ["bash", "-euo", "pipefail"]
+# Loading `.dev.vars` for tools with no dotenv flag. Also optional on purpose.
+set dotenv-filename := ".dev.vars"
+set dotenv-required := false
+
+worker := "website"
+
 [private]
 default:
     @just --list
 
 [private]
 via-nuxi +ARGS:
-    bunx --bun nuxi {{ ARGS }}
+    pnpm exec nuxi {{ ARGS }}
 
-dev:
-    @just via-nuxi dev
+# Run the dev server, with Cloudflare bindings emulated by wrangler.
+dev: gen-dev-vars
+    @just via-nuxi dev --dotenv .dev.vars
 
 setup: postinstall
 
@@ -24,7 +32,70 @@ clean:
     @just via-nuxi cleanup
 
 test *ARGS:
-    bunx vitest {{ ARGS }}
+    pnpm exec vitest {{ ARGS }}
 
 add +ARGS:
-    bun add {{ ARGS }}
+    pnpm add {{ ARGS }}
+
+# Build vs runtime, because the split is not obvious:
+#
+#   BUILD TIME  — anything inlined into the client bundle or needed while
+#                 prerendering. That is every NUXT_PUBLIC_* value, plus
+#                 NUXT_GITHUB_TOKEN (the /api/v1/update/*.json routes are
+#                 prerendered and call the GitHub API). These must be in the
+#                 environment when `nuxi build` runs. Locally that happens via
+#                 the parse-time load of .dev.vars above (run `dev-vars` first);
+#                 in CI, export them from sops before building.
+#
+#   RUNTIME     — everything the Worker reads per request. Uploaded to
+#                 Cloudflare with `secrets-push` and read through
+#                 `useRuntimeConfig(event)`.
+
+# Build the SSR Worker bundle into .output/ (server + public assets).
+build:
+    @just via-nuxi build
+
+# Deploy the built Worker using the config Nitro generates from wrangler.toml.
+deploy: build
+    wrangler deploy --config .output/server/wrangler.json
+
+# Serve the built Worker in workerd itself, the closest local mirror of prod.
+preview: build
+    wrangler dev --config .output/server/wrangler.json
+
+# Reads NUXT_TURSO_* from the parse-time .dev.vars load above, so it must be run
+# through just rather than `pnpm exec drizzle-kit` directly.
+#
+# Run drizzle-kit, e.g. `just website::db push` or `just website::db studio`.
+db +ARGS:
+    pnpm exec drizzle-kit {{ ARGS }}
+
+# Render .dev.vars from secrets.sops.yaml (needs SOPS_AGE_KEY in the env).
+[script]
+gen-dev-vars:
+    [ -z "${SOPS_AGE_KEY}" ] && echo "\$SOP_AGE_KEY not set."
+    umask 077
+    tmp="$(mktemp .dev.vars.XXXXXX)"
+    trap 'rm -f "$tmp"' EXIT
+    sops -d secrets.sops.yaml \
+      | yq -r 'to_entries | .[] | "\(.key)=\(.value | tostring | @json)"' \
+      > "$tmp"
+    mv "$tmp" .dev.vars
+    echo "wrote .dev.vars ($(grep -c . .dev.vars) vars) from secrets.sops.yaml"
+
+# Push all secrets from secrets.sops.yaml to the Worker in one call.
+[script]
+secrets-push:
+    sops -d secrets.sops.yaml \
+      | yq -o=json 'to_entries | map(.value |= tostring) | from_entries' \
+      | wrangler secret bulk --name {{ worker }}
+
+# Show which secret names are currently set on the Worker.
+secrets-list:
+    wrangler secret list --name {{ worker }}
+
+# Export the sops secrets into the current shell, for a build that needs them
+# at BUILD time (CI). Usage: `eval "$(just website::secrets-export)"`
+[private]
+secrets-export:
+    @sops -d secrets.sops.yaml | yq -r 'to_entries | .[] | "export \(.key)=\(.value | @sh)"'

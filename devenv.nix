@@ -4,6 +4,11 @@
   config,
   ...
 }: let
+  tauri-lib-path = "waypoints/src-tauri";
+  tauri-app-path = "waypoints";
+  tauri-android-path = "gen/android";
+  tauri-ios-path = "gen/apple";
+
   is-enabled = prog: prog.enable or false;
   has-package = prog: prog ? package;
   mise-formatters = let
@@ -93,9 +98,10 @@ in {
   stdenv = pkgs.clangStdenv;
   env.LD_LIBRARY_PATH = lib.mkForce "";
   env.PROJECT_ROOT = config.env.DEVENV_ROOT;
-  env.TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/waypoints/src-tauri";
-  env.TAURI_ANDROID_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/gen/android";
-  env.TAURI_IOS_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/gen/apple";
+  env.TAURI_FRONTEND_PATH = "${config.env.PROJECT_ROOT}/${tauri-app-path}";
+  env.TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/${tauri-lib-path}";
+  env.TAURI_ANDROID_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/${tauri-android-path}";
+  env.TAURI_IOS_PROJECT_PATH = "${config.env.TAURI_APP_PATH}/${tauri-ios-path}";
 
   enterShell = ''
     export PATH="$DEVENV_ROOT/.bin:$PATH"
@@ -256,33 +262,42 @@ in {
           ];
           lockfile = true;
         };
+        env = {
+          PROJECT_ROOT = "{{ config_root }}";
+          TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
+          TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-lib-path}";
+          TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-android-path}";
+          TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-ios-path}";
+        };
         tools = lib.mapAttrs (_: pkg: toString pkg.version) mise-tools;
       };
     };
   };
 
-  git-hooks.hooks.trim-trailing-whitespace.enable = true;
-  git-hooks.hooks.end-of-file-fixer.enable = true;
-  git-hooks.hooks.mixed-line-endings.enable = true;
-  git-hooks.hooks.check-yaml.enable = true;
-  git-hooks.hooks.check-symlinks.enable = true;
-  git-hooks.hooks.check-added-large-files.enable = true;
-  git-hooks.hooks.clippy.enable = true;
-  git-hooks.hooks.cargo-check.enable = true;
-  git-hooks.hooks.keep-sorted.enable = true;
-  git-hooks.hooks.cargo-test = {
-    enable = true;
-    package = pkgs.cargo;
-    id = "cargo-test";
-    name = "cargo-test";
-    after = ["cargo-check"];
-    language = "system";
-    entry = "${config.git-hooks.hooks.cargo-test.package}/bin/cargo test";
-    files = "\\.rs$";
-    pass_filenames = false;
-  };
-  git-hooks.hooks.treefmt = {
-    enable = true;
-    settings.fail-on-change = false;
+  git-hooks.hooks = {
+    trim-trailing-whitespace.enable = true;
+    end-of-file-fixer.enable = true;
+    mixed-line-endings.enable = true;
+    check-yaml.enable = true;
+    check-symlinks.enable = true;
+    check-added-large-files.enable = true;
+    clippy.enable = true;
+    cargo-check.enable = true;
+    keep-sorted.enable = true;
+    cargo-test = {
+      enable = true;
+      package = pkgs.cargo;
+      id = "cargo-test";
+      name = "cargo-test";
+      after = ["cargo-check"];
+      language = "system";
+      entry = "${config.git-hooks.hooks.cargo-test.package}/bin/cargo test";
+      files = "\\.rs$";
+      pass_filenames = false;
+    };
+    treefmt = {
+      enable = true;
+      settings.fail-on-change = false;
+    };
   };
 }

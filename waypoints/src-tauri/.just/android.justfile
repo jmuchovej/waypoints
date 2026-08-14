@@ -1,10 +1,10 @@
 # Android — dev + builds
 set script-interpreter := ["bash", "-euo", "pipefail"]
 set working-directory := ".."
-TAURI_ROOT := module_directory() / "../"
-ANDROID_ROOT := env("TAURI_ANDROID_PROJECT_PATH", TAURI_ROOT / "gen/android")
+TAURI_ROOT := env("TAURI_APP_PATH")
+ANDROID_ROOT := env("TAURI_ANDROID_PROJECT_PATH")
 TAURI_CONFIGS_ROOT := TAURI_ROOT / "configs"
-RUST_TOOLCHAIN := TAURI_ROOT / "../../rust-toolchain.toml"
+RUST_TOOLCHAIN := env("PROJECT_ROOT") / "rust-toolchain.toml"
 PLATFORM_CONFIG := TAURI_CONFIGS_ROOT / "platforms/android.toml"
 
 dev *ARGS: (_dev "development" ARGS)
@@ -105,6 +105,10 @@ _build flavor *ARGS:
         $"USER=($env.USER)"
         $"PATH=/usr/bin:/bin:/usr/sbin:/sbin:($env.PATH | str join ':')"
         $"SOPS_AGE_KEY=($env.SOPS_AGE_KEY? | default '')"
+        # `build.rs` stamps these into `BuildInfo`, preferring them over
+        # shelling out to git. Empty locally, which it treats as absent.
+        $"GITHUB_SHA=($env.GITHUB_SHA? | default '')"
+        $"GITHUB_REF_NAME=($env.GITHUB_REF_NAME? | default '')"
         $"ANDROID_HOME=($android_home)"
         $"ANDROID_NDK_HOME=($ndk_home)"
         $"NDK_HOME=($ndk_home)"

@@ -8,29 +8,48 @@ set script-interpreter := ["bash", "-euo", "pipefail"]
 default:
     @just --list
 
+# App (front-end) scoped recipes
 mod app "waypoints/justfile"
+
+# App (back-end) scoped recipes
 mod tauri "waypoints/src-tauri/justfile"
+
+# Recipes for `cartograph`
 mod cartograph "crates/cartograph/justfile"
+
+# Recipes for `domain`
 mod domain "crates/domain/justfile"
+
+# Recipes for `store`
 mod store "crates/store/justfile"
+
+# Recipes for `server`
 mod server "crates/server/justfile"
+
+# Recipes for the `website`
 mod website "website/justfile"
+
+# Icon generation for every app flavor
+mod icons "tooling/icongen/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
     @just domain::typegen
     @just cartograph::typegen
 
+# Validate TypeScript types on the app & website
 typecheck:
     just app::typecheck
     just website::typecheck
 
+# Clean-up dependency installations
 clean:
     cargo clean
     @just app::clean
     @just tauri::clean
     devenv gc
 
+# Run the full test-suite
 test *ARGS:
     @just app::test {{ ARGS }}
 
@@ -42,6 +61,11 @@ setup:
 [doc("Verifies that devenv-managed files and xtask-generated workflows don't differ from committed files.")]
 [script]
 check-generated:
+    # devenv's secretspec integration gates evaluation behind a stated reason.
+    # This recipe reads generated file lists and regenerates workflows; it never
+    # reads a secret value.
+    export SECRETSPEC_REASON="just check-generated compares devenv- and xtask-generated files against the committed tree; no secret values are read"
+
     # Entering the devenv shell is what regenerates devenv's outputs, so the
     # baseline cannot be a pre-run snapshot of the tree — asking xtask for the
     # file list would already have rewritten it. Git holds the baseline anyway:

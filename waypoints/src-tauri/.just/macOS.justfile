@@ -1,7 +1,7 @@
 # macOS — desktop dev + Apple-signed builds
 set script-interpreter := ["bash", "-euo", "pipefail"]
 set working-directory := ".."
-TAURI_ROOT := module_directory() / "../"
+TAURI_ROOT := env("TAURI_APP_PATH")
 TAURI_CONFIGS_ROOT := TAURI_ROOT / "configs"
 
 dev *ARGS: (_dev "development" ARGS)
@@ -40,6 +40,8 @@ _build flavor *ARGS:
       USER="$USER" \
       PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
       SOPS_AGE_KEY="${SOPS_AGE_KEY:-}" \
+      GITHUB_SHA="${GITHUB_SHA:-}" \
+      GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \
       WAYPOINTS_FLAVOR={{ flavor }} \
       WAYPOINTS_BUILD=1 \
       secretspec run --profile release --scope macos -- \

@@ -1,8 +1,8 @@
 # iOS — dev + builds
 set script-interpreter := ["bash", "-euo", "pipefail"]
 set working-directory := ".."
-TAURI_ROOT := module_directory() / "../"
-IOS_ROOT := env("TAURI_IOS_PROJECT_PATH", TAURI_ROOT / "gen/apple")
+TAURI_ROOT := env("TAURI_APP_PATH")
+IOS_ROOT := env("TAURI_IOS_PROJECT_PATH")
 TAURI_CONFIGS_ROOT := TAURI_ROOT / "configs"
 
 dev *ARGS: (_dev "development" ARGS)
@@ -52,7 +52,7 @@ _build flavor *ARGS:
 
     # Built as a record and serialized rather than written as a JSON literal:
     # `to json --raw` is what keeps the quoting out of the string.
-    let build_number = $env.WAYPOINTS_BUILD_NUMBER? | default ""
+    let build_number = $env.WAYPOINTS_BUILD_CODE? | default ""
     let version_config = if ($build_number | is-empty) { [] } else {
       ["--config" ({bundle: {iOS: {bundleVersion: $build_number}}} | to json --raw)]
     }
@@ -69,6 +69,8 @@ _build flavor *ARGS:
       $"PATH=/usr/bin:/bin:/usr/sbin:/sbin:($developer_dir)/Toolchains/XcodeDefault.xctoolchain/usr/bin:($env.PATH | str join ':')"
       $"DEVELOPER_DIR=($developer_dir)"
       $"SOPS_AGE_KEY=($env.SOPS_AGE_KEY? | default '')"
+      $"GITHUB_SHA=($env.GITHUB_SHA? | default '')"
+      $"GITHUB_REF_NAME=($env.GITHUB_REF_NAME? | default '')"
       "CC_aarch64_apple_ios=/usr/bin/clang"
       "CXX_aarch64_apple_ios=/usr/bin/clang++"
       "CARGO_TARGET_AARCH64_APPLE_IOS_LINKER=/usr/bin/clang"

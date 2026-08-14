@@ -1,4 +1,7 @@
-mod icons "./icons/justfile"
+set script-interpreter := ["bash", "-euo", "pipefail"]
+TAURI_ROOT := env("TAURI_APP_PATH")
+TAURI_CONFIGS_ROOT := TAURI_ROOT / "configs"
+
 mod macos ".just/macOS.justfile"
 mod linux ".just/linux.justfile"
 mod windows ".just/windows.justfile"
@@ -12,3 +15,63 @@ default:
 
 clean:
     cargo clean
+
+[script]
+via-secretspec profile scope cmd:
+    secretspec run --profile {{ profile }} --scope {{ scope }} -- {{ cmd }}
+
+[script]
+dev platform=os() flavor="development" $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
+    case {{ platform }} in
+        android) scope="android";;
+        ios) scope="ios";;
+        *) scope="";;
+    esac
+
+    case {{ flavor }} in
+      "dev"|"development") flavor="development";;
+      "alpha"|"nightly") flavor="nightly";;
+      "beta"|"pre"|"preview") flavor="preview";;
+      "release"|"prod"|"production"|"stable") flavor="stable";;
+      *)
+        echo "Received invalid flavor: {{ flavor }}"
+        exit 1
+        ;;
+    esac
+
+    export WAYPOINTS_FLAVOR={{ flavor }}
+    tauri ${scope} dev \
+      --features {{ flavor }} \
+      --config {{ TAURI_CONFIGS_ROOT }}/platforms/{{ platform }}.toml \
+      --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
+      {{ ARGS }}
+
+[script]
+build platform=os() flavor="development" $RUST_LOG="debug" $RUST_BACKTRACE="1" prebuild="" *ARGS:
+    case {{ platform }} in
+        android) tauri_scope="android";;
+        ios) tauri_scope="ios";;
+        *) tauri_scope="";;
+    esac
+
+    case {{ flavor }} in
+      "dev"|"development") flavor="development";;
+      "alpha"|"nightly") flavor="nightly";;
+      "beta"|"pre"|"preview") flavor="preview";;
+      "release"|"prod"|"production"|"stable") flavor="stable";;
+      *)
+        echo "Received invalid flavor: {{ flavor }}"
+        exit 1
+        ;;
+    esac
+
+    export WAYPOINTS_FLAVOR={{ flavor }}
+    export WAYPOINTS_BUILD=1
+    @just via-secretspec "release" "{{ platform }}" <<EOS
+      {{ prebuild }}
+      tauri ${tauri_scope} build \
+        --features {{ flavor }} \
+        --config {{ TAURI_CONFIGS_ROOT }}/platforms/{{ platform }}.toml \
+        --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
+        {{ ARGS }}
+    EOS

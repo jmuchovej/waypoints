@@ -5,8 +5,8 @@ set script-interpreter := ["bash", "-euo", "pipefail"]
 # reads, so nothing here encodes the repo layout. devenv exports all three.
 TAURI_ROOT := env("TAURI_APP_PATH")
 ICONS_ROOT := TAURI_ROOT / "icons"
-IOS_ROOT := env("TAURI_IOS_PROJECT_PATH", TAURI_ROOT / "gen/apple")
-ANDROID_ROOT := env("TAURI_ANDROID_PROJECT_PATH", TAURI_ROOT / "gen/android")
+IOS_ROOT := env("TAURI_IOS_PROJECT_PATH")
+ANDROID_ROOT := env("TAURI_ANDROID_PROJECT_PATH")
 
 [private]
 default: stable
