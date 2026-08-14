@@ -1,0 +1,18 @@
+# Canonicalized author names and emails.
+#
+# Take a look at the reference (linked below) — but the gist is: the first
+# name/email is "canonical" while the second name/email is what we're
+# cannonicalizing! To specify multiple names/emails, put one on each line.
+# ```
+# Proper Name <canonical@email.com> [<commit@email.xx>]
+# Proper Name <canonical@email.com> [Commit Name <commit@email.xx>]
+# ```
+#
+# Reference: https://git-scm.com/docs/gitmailmap
+
+# Keep these entries sorted alphabetically.
+# In Zed: `editor: sort lines case insensitive`
+
+John Muchovej <john@waypoints.so>
+John Muchovej <john@waypoints.so> <git@jmuchovej.com>
+John Muchovej <john@waypoints.so> <jmuchovej@users.noreply.github.com>
