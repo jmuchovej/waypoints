@@ -30,10 +30,10 @@
   customManagers: [
     {
       customType: "regex",
-      description: "Actions pinned in xtask, which generates .github/workflows from them.",
+      description: "Actions pinned in xtask, which generates .github/workflows from them. The digest is the commit the release in the trailing comment pointed at when pinned; Renovate moves comment and digest together.",
       managerFilePatterns: ["tooling/xtask/src/tasks/workflows/_steps.rs"],
       matchStrings: [
-        'Action::new\\("(?<owner>[^"]+)",\\s*"(?<repo>[^"]+)",\\s*"(?<currentValue>[^"]+)"\\)',
+        'Action::new\\(\\s*"(?<owner>[^"]+)",\\s*"(?<repo>[^"]+)",\\s*"(?<currentDigest>[0-9a-f]{40})", // (?<currentValue>\\S+)',
       ],
       depNameTemplate: "{{{owner}}}/{{{repo}}}",
       datasourceTemplate: "github-tags",
