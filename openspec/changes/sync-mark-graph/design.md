@@ -4,7 +4,7 @@ See proposal.md — Why. This section records only the current-state facts that 
 
 **What already exists**
 
-- `domain::sync::hlc` — hybrid logical clock packing 48 bits physical ms and 16 bits logical into one `i64`. The derived `Ord` matches `(physical, logical)` because logical occupies the low bits and physical is non-negative. Unit-tested with an injectable `Clock`. Nothing consumes it today.
+- `domain::HLC` (`crates/domain/src/sync/hlc.rs`; the `sync::hlc` module is `pub(crate)`, re-exported at the crate root) — hybrid logical clock packing 48 bits physical ms and 16 bits logical into one `i64`. The derived `Ord` matches `(physical, logical)` because logical occupies the low bits and physical is non-negative. Unit-tested with an injectable `Clock`. Nothing consumes it today.
 - `Maneuver` (`crates/cartograph/src/editor/maneuver.rs`) — already documented as a wire type ("ops travel between devices inside `Envelope`s") with `#[serde(skip)]` on undo-only fields, and `ManeuverTarget` already carries the comment that its mapping is wire-protocol semantics, not resolver policy. `TextPayload` is already a tagged enum with a single `Snapshot` variant, explicitly so a char-level variant can join without a wire break.
 - `SyncService` (`crates/cartograph/src/sync/service.rs`) — identity, territory, station, pairing, device registry, and `sync_now` (which calls `vessel.register(...)` then `vessel.sync_with(station)`).
 - Outpost's Track assignment is structural, in `Replica::ingest`: no parents ⇒ the Notice's own ID becomes the `TrackID`; otherwise inherit `parents[0]`'s Track. The app's only lever is what it passes as `parents` to `Vessel::author`.
@@ -16,10 +16,12 @@ See proposal.md — Why. This section records only the current-state facts that 
 
 - `Vessel::author` hardcodes `timestamp: 0` and `is_snapshot: false`.
 - `EditorService` has no sync references; no code anywhere produces `payload_type: "waypoints.page.v1"` outside tests.
-- `Endpoint::bind` uses `iroh::endpoint::presets::Minimal`, sets `PortmapperConfig::Disabled`, calls `.clear_ip_transports()`, and binds `127.0.0.1:0` / `[::1]:0`. `bind_routable` exists (`endpoint.rs:116`) with zero callers.
+- `Endpoint::bind` uses `iroh::endpoint::presets::Minimal`, sets `PortmapperConfig::Disabled`, calls `.clear_ip_transports()`, and binds `127.0.0.1:0` / `[::1]:0`. `bind_routable` exists (`endpoint.rs:118`) with zero callers.
 - No heartbeat, keepalive, idle timeout, or session reaping exists in `outpost-fabric` or `station.rs` (confirmed by grep).
 
 **Constraint carried from the domain registry:** `sync` may cite `sync-protocol` guarantees, never the reverse. The fold, the arbitration key, and the Track index are all app-layer (`sync`); only HLC population, routable binds, and liveness are engine-layer (`sync-protocol`).
+
+**Crate-layering constraint (2026-08-30):** `domain` never depends on `outpost-protocol`. The arbitration key names `NoticeID` and its derivation reads `EnvelopeHeader` — both `outpost-protocol` types — so neither the key type nor its derivation can live in `domain`; they belong with the fold in `cartograph`'s sync layer. `store`'s sync-owned persistence (winning keys, `MarkID → TrackID`, publish queue, deferred ops) names `TrackID`/`NoticeID` too; a scoped `store → outpost-protocol` dependency confined to sync-owned tables is the candidate resolution. See Open Questions.
 
 ## Goals / Non-Goals
 
@@ -167,3 +169,14 @@ Filtering on `ManeuverTarget` answers it exactly, is independent of partitioning
 ## Migration Plan
 
 No data migration. The only existing Territory data is transient dev seed; it is reseeded rather than migrated, and no backfill path is written. Rollback is to stop publishing — a Territory containing `waypoints.page.v1` Notices is inert to a build that does not fold them, since the fold is the only consumer.
+
+## Open Questions
+
+- **Where the HLC and the arbitration-key type live (raised 2026-08-30).** The key is
+  `(HLC, author_verifying_key_bytes, NoticeID)`; `NoticeID` and `EnvelopeHeader` are
+  `outpost-protocol` types, and `domain` must never depend on `outpost-protocol` — so neither the
+  key type nor a load-bearing HLC can stay in `domain` as originally sketched. Likely resolution:
+  the HLC migrates into the outpost stack (or is dropped in favour of a clock that already fits
+  there), and the key type lives with the fold in `cartograph`'s sync layer. `store` may take a
+  scoped `outpost-protocol` dependency for sync-owned persistence only. To be settled before
+  starting section 2 of tasks.

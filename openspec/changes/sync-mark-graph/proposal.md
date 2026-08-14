@@ -1,6 +1,6 @@
 ## Why
 
-Outpost works end to end — identity, ACL, encrypted notices, Territory/Station/Vessel roles, QR pairing, device registry, `sync_with`, `subscribe` — and `crates/cartograph/src/sync/service.rs` already drives it from the app. But **none of the user's actual notes sync.** The `Maneuver` op enum is used only for local undo/redo, `EditorService` holds zero sync references, and `payload_type: "waypoints.page.v1"` appears only inside outpost's own tests: there is no producer anywhere in app code. Waypoints is a local-first app whose sync engine carries no user data.
+Outpost works end to end — identity, ACL, encrypted notices, Territory/Station/Vessel roles, QR pairing, device registry, `sync_with`, `subscribe` — and `crates/cartograph/src/sync/service.rs` already drives it from the app. But **none of the user's actual notes sync.** The `Maneuver` op enum — the editor's local write path — has no sync consumer, `EditorService` holds zero sync references, and `payload_type: "waypoints.page.v1"` appears only in outpost-crate tests and a doc example: there is no producer anywhere in app code. Waypoints is a local-first app whose sync engine carries no user data.
 
 This change closes exactly that gap: it makes editor `Maneuver`s the payload of outpost Notices, defines the merge law that turns concurrent Notices back into one Mark/Terrain graph, and fixes the two transport gaps (loopback-only binds, no connection liveness) that stop two real devices from reaching each other.
 
@@ -15,7 +15,7 @@ This change closes exactly that gap: it makes editor `Maneuver`s the payload of 
 **Merge law — per-target last-write-wins under a content-derived total order**
 
 - Arbitration key per `ManeuverTarget` is `(hlc, author_verifying_key_bytes, notice_id)`. Every component lives in the signed `EnvelopeHeader`, so every device derives an identical total order from content alone.
-- `EnvelopeHeader.timestamp` — currently hardcoded to `0` in `Vessel::author`, documented "advisory only, never ordering", signed and AAD-bound — is populated from the existing `domain::sync::hlc` HLC. Its advisory status in the protocol is unchanged; ordering is an app-layer reading of a field the protocol does not interpret.
+- `EnvelopeHeader.timestamp` — currently hardcoded to `0` in `Vessel::author`, documented "advisory only, never ordering", signed and AAD-bound — is populated from the existing `domain::HLC` (implemented in `crates/domain/src/sync/hlc.rs`; the module is `pub(crate)`, re-exported at the crate root). Its advisory status in the protocol is unchanged; ordering is an app-layer reading of a field the protocol does not interpret.
 - The fold sorts by that key and applies in order. The winning key per target is persisted, so a late-arriving older Notice is rejected on incremental apply rather than clobbering newer state.
 - Order-independence comes from sorting a content-derived total order, **not** from algebraic CRDT design.
 
@@ -69,12 +69,12 @@ None — no spec exists yet for either domain.
 
 **Code**
 
-- `crates/cartograph` — `sync/service.rs` (publish/fold driver, liveness, measurement), `editor/service.rs` (mutations emit for publication), new fold and Track-index modules.
-- `crates/domain` — `sync/hlc.rs` becomes load-bearing rather than unused; arbitration-key types.
-- `crates/store` — persistence for the per-target winning arbitration key, the write-side `MarkID → TrackID` index, the outbound publish queue, and deferred dangling-reference ops.
+- `crates/cartograph` — `sync/service.rs` (publish/fold driver, liveness, measurement), `editor/service.rs` (mutations emit for publication), new fold and Track-index modules, and the arbitration-key type (it names `NoticeID`, so it cannot live in `domain` — see the layering constraint below).
+- `crates/domain` — the HLC (`src/sync/hlc.rs`) becomes load-bearing rather than unused, but is expected to migrate out of `domain` (or be replaced by a clock in the outpost stack) rather than stay: **`domain` never gains a dependency on `outpost-protocol`.** See design.md, Open Questions.
+- `crates/store` — persistence for the per-target winning arbitration key, the write-side `MarkID → TrackID` index, the outbound publish queue, and deferred dangling-reference ops. These key types (`TrackID`, `NoticeID`) live in `outpost-protocol`, which `store` does not currently depend on; a scoped dependency confined to sync-owned tables is the candidate resolution — see design.md, Open Questions.
 - `crates/outpost` — `vessel.rs` (`author` populates `timestamp` from the HLC instead of `0`), `station.rs` (routable bind, public address, session reaping).
 - `crates/outpost-fabric` — `endpoint.rs` (routable binds for Vessels), heartbeat/idle-timeout.
-- `waypoints/src-tauri` + Nuxt app — surfacing sync state and reconnect; commands stay thin wrappers.
+- `src-tauri/` + the Nuxt app (`src/`) — surfacing sync state and reconnect; commands stay thin wrappers.
 
 **Data**
 

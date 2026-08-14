@@ -8,7 +8,7 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 2. Arbitration key
 
-- [ ] 2.1 Define the arbitration key type `(HLC, [u8; 32] author key bytes, NoticeID)` in `domain`, with a total `Ord` that compares lexicographically in that sequence.
+- [ ] 2.1 Settle the placement question first (design.md, Open Questions), then define the arbitration key type `(HLC, [u8; 32] author key bytes, NoticeID)` in `cartograph`'s sync layer — not `domain`, which must not depend on `outpost-protocol` — with a total `Ord` that compares lexicographically in that sequence.
 - [ ] 2.2 Implement derivation of the key from a parsed `EnvelopeHeader` alone, with no local-state inputs.
 - [ ] 2.3 Unit-test totality and determinism: equal clocks tie-break by author key then notice id; the comparison never returns `Equal` for distinct Notices; two independent derivations from the same header bytes agree.
 - [ ] 2.4 Property-test that sorting a shuffled vector of keys yields one canonical sequence regardless of input permutation.
@@ -31,7 +31,7 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 5. Fold persistence
 
-- [ ] 5.1 Add persistence for the winning arbitration key per `ManeuverTarget` (real-engine tests only).
+- [ ] 5.1 Add persistence for the winning arbitration key per `ManeuverTarget` (real-engine tests only). Note the key names `NoticeID`: this is where `store`'s scoped `outpost-protocol` dependency (design.md, Open Questions) is introduced, confined to sync-owned tables.
 - [ ] 5.2 Reject on incremental apply any operation whose key is lower than the persisted key for its target, leaving the target untouched.
 - [ ] 5.3 Test that a late-arriving older Notice does not clobber newer state.
 - [ ] 5.4 Test that a full re-fold from empty reproduces the same graph _and_ the same persisted keys as incremental folding of the same Notice set.
