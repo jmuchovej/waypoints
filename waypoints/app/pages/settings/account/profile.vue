@@ -55,7 +55,7 @@ function onFileClick() {
     <UForm id="settings" :schema="profileSchema" :state="profile" @submit="onSubmit">
       <UPageCard
         title="Profile"
-        description="These information will be displayed publicly."
+        description="This information will be displayed publicly."
         variant="naked"
         orientation="horizontal"
         class="mb-4"

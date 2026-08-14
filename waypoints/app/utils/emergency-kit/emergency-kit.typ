@@ -48,8 +48,8 @@
 }
 
 #set page(paper: "us-letter", margin: 56pt)
-#set text(font: "Brandon Text", size: 10.5pt, fill: rgb("#3c3c3c"))
-#show raw: set text(font: "Monaspace Krypton", size: 0.875em)
+#set text(font: "Albert Sans", size: 10.5pt, fill: rgb("#3c3c3c"))
+#show raw: set text(font: "Maple Mono", size: 0.875em)
 
 #let kitbox = block.with(
   width: 100%,
