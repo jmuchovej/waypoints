@@ -264,9 +264,16 @@ in {
           "*.storyboard"
           "*.xc{scheme,settings,workspacedata}"
         ];
-        oxfmt.excludes = [
-          "website/*/*.md"
-        ];
+        typos.options = ["-c" ".config/typos.toml"];
+        oxfmt = {
+          options = [
+            "-c"
+            ".config/oxfmtrc.jsonc"
+          ];
+          excludes = [
+            "website/*.md"
+          ];
+        };
       };
     }
   ];
@@ -372,6 +379,10 @@ in {
       entry = "${config.git-hooks.hooks.cargo-test.package}/bin/cargo test";
       files = "\\.rs$";
       pass_filenames = false;
+    };
+    lychee = {
+      enable = true;
+      settings.configPath = ".config/lychee.toml";
     };
     treefmt = {
       enable = true;

@@ -23,26 +23,11 @@ autobenches = false
 description = "Macros for specta. Don't use directly!"
 documentation = "https://docs.rs/specta/latest/specta"
 readme = "README.md"
-keywords = [
-    "async",
-    "specta",
-    "rspc",
-    "typescript",
-    "typesafe",
-]
-categories = [
-    "web-programming",
-    "asynchronous",
-]
+keywords = ["async", "rspc", "specta", "typesafe", "typescript"]
+categories = ["asynchronous", "web-programming"]
 license = "MIT"
 repository = "https://github.com/specta-rs/specta"
 resolver = "2"
-
-[features]
-DO_NOT_USE_collect = []
-DO_NOT_USE_function = ["syn/full"]
-default = []
-serde = []
 
 [lib]
 name = "specta_macros"
@@ -61,16 +46,14 @@ version = "1"
 
 [dependencies.syn]
 version = "2"
-features = [
-    "clone-impls",
-    "derive",
-    "parsing",
-    "printing",
-    "proc-macro",
-    "visit",
-    "visit-mut",
-]
 default-features = false
+features = ["clone-impls", "derive", "parsing", "printing", "proc-macro", "visit", "visit-mut"]
+
+[features]
+default = []
+DO_NOT_USE_collect = []
+DO_NOT_USE_function = ["syn/full"]
+serde = []
 
 [lints.clippy.all]
 level = "warn"

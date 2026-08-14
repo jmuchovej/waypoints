@@ -1431,8 +1431,7 @@ fn variant_repr_already_rewritten(name: &str, variant: &Variant) -> bool {
             .first()
             .and_then(|field| field.ty.as_ref())
             .is_some_and(|ty| {
-                is_generated_string_literal_datatype(ty)
-                    || is_internally_tagged_intersection(ty)
+                is_generated_string_literal_datatype(ty) || is_internally_tagged_intersection(ty)
             }),
         Fields::Named(fields) => fields.fields.iter().any(|(field_name, field)| {
             field_name == name

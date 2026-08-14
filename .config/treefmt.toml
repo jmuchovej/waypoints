@@ -43,9 +43,9 @@ options = []
 
 [formatter.oxfmt]
 command = "oxfmt"
-excludes = ["website/*/*.md"]
+excludes = ["website/*.md"]
 includes = ["*.cjs", "*.css", "*.graphql", "*.hbs", "*.html", "*.js", "*.json", "*.json5", "*.jsonc", "*.jsx", "*.md", "*.mdx", "*.mjs", "*.mustache", "*.scss", "*.ts", "*.tsx", "*.vue", "*.yaml", "*.yml"]
-options = []
+options = ["-c", ".config/oxfmtrc.jsonc"]
 
 [formatter.oxipng]
 command = "oxipng"
@@ -88,7 +88,7 @@ options = ["format"]
 command = "typos"
 excludes = []
 includes = ["*"]
-options = ["--write-changes", "--force-exclude"]
+options = ["--write-changes", "--force-exclude", "-c", ".config/typos.toml"]
 
 [formatter.xmllint]
 command = "fmt-xml"

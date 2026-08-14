@@ -128,3 +128,26 @@ renovate-plan mode="full":
 
     sed -n '/"managers": {/,/"total"/p' "$log"
     echo "Full output: $log"
+
+[doc("Runs the cargo-deny supply-chain checks, verifying its target list first.")]
+deny: deny-targets
+    cargo-deny check
+
+[doc("Fails if .cargo/deny.toml graph.targets drifted from rust-toolchain.toml's targets.")]
+[script("nu")]
+deny-targets:
+    let toolchain = (open rust-toolchain.toml | get toolchain.targets | sort)
+    let deny = (open .cargo/deny.toml | get graph.targets | sort)
+    let missing = ($toolchain | where {|t| $t not-in $deny})
+    let extra = ($deny | where {|t| $t not-in $toolchain})
+    if ($missing | is-empty) and ($extra | is-empty) {
+        print $"deny.toml graph.targets in sync with rust-toolchain.toml \(($deny | length) targets)"
+    } else {
+        if ($missing | is-not-empty) {
+            print $"missing from deny.toml graph.targets: ($missing | str join ', ')"
+        }
+        if ($extra | is-not-empty) {
+            print $"in deny.toml but not rust-toolchain.toml: ($extra | str join ', ')"
+        }
+        error make {msg: "deny.toml graph.targets drifted from rust-toolchain.toml"}
+    }

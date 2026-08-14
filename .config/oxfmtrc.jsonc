@@ -8,5 +8,4 @@
   "singleQuote": false,
   "vueIndentScriptAndStyle": true,
   "tabWidth": 2,
-  "ignorePatterns": ["website/**/*.md"],
 }
