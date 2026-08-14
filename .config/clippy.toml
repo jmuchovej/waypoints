@@ -1,4 +1,4 @@
-#:tombi toml-version = "v1.1.0"
+#:tombi toml-version = "v1.0.0"
 
 allow-print-in-tests = true
 allow-expect-in-tests = true
@@ -6,36 +6,15 @@ allow-unwrap-in-tests = true
 allow-dbg-in-tests = true
 
 disallowed-macros = [
-  {
-    path = "std::println",
-    reason = "use tracing::info!; stdout is unstructured and is swallowed under the Tauri runtime"
-  },
+  { path = "std::println", reason = "use tracing::info!; stdout is unstructured and is swallowed under the Tauri runtime" },
   { path = "std::eprintln", reason = "use tracing::warn! or tracing::error!" },
 ]
 
 disallowed-methods = [
-  {
-    path = "std::option::Option::map_or",
-    reason = "prefer `map(..).unwrap_or(..)` for legibility"
-  },
-  {
-    path = "std::option::Option::map_or_else",
-    reason = "prefer `map(..).unwrap_or_else(..)` for legibility"
-  },
-  {
-    path = "std::result::Result::map_or",
-    reason = "prefer `map(..).unwrap_or(..)` for legibility"
-  },
-  {
-    path = "std::result::Result::map_or_else",
-    reason = "prefer `map(..).unwrap_or_else(..)` for legibility"
-  },
-  {
-    path = "std::iter::Iterator::for_each",
-    reason = "prefer `for` for side-effects"
-  },
-  {
-    path = "std::iter::Iterator::try_for_each",
-    reason = "prefer `for` for side-effects"
-  },
+  { path = "std::option::Option::map_or", reason = "prefer `map(..).unwrap_or(..)` for legibility" },
+  { path = "std::option::Option::map_or_else", reason = "prefer `map(..).unwrap_or_else(..)` for legibility" },
+  { path = "std::result::Result::map_or", reason = "prefer `map(..).unwrap_or(..)` for legibility" },
+  { path = "std::result::Result::map_or_else", reason = "prefer `map(..).unwrap_or_else(..)` for legibility" },
+  { path = "std::iter::Iterator::for_each", reason = "prefer `for` for side-effects" },
+  { path = "std::iter::Iterator::try_for_each", reason = "prefer `for` for side-effects" },
 ]
