@@ -59,6 +59,7 @@
       "aqua:numtide/treefmt" = config.treefmt.config.package;
       "aqua:nushell/nushell" = pkgs.nushell;
       "aqua:EmbarkStudios/cargo-deny" = pkgs.cargo-deny;
+      "aqua:orhun/git-cliff" = pkgs.git-cliff;
 
       "core:node" = config.languages.javascript.package;
       "core:deno" = config.languages.deno.package;

@@ -30,6 +30,7 @@ lockfile = true
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.143"
 "aqua:numtide/treefmt" = "2.5.0"
 "aqua:nushell/nushell" = "0.114.1"
+"aqua:orhun/git-cliff" = "2.13.1"
 "aqua:oxipng/oxipng" = "10.1.1"
 "aqua:rhysd/actionlint" = "1.7.12"
 "aqua:tauri-apps/tauri/cargo-tauri" = "2.11.4"
