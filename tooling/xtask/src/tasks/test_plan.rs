@@ -46,7 +46,7 @@ const RELEASE_ROOTS: [&str; 2] = ["Waypoints", "cartograph"];
 const GLOBAL_PATHS: [&str; 4] = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/"];
 
 #[derive(Parser)]
-pub(crate) struct TestPlanArgs {
+pub struct TestPlanArgs {
     /// Plan the pre-release suite instead of a change-scoped one.
     #[arg(long)]
     release: bool,
@@ -57,34 +57,41 @@ pub(crate) struct TestPlanArgs {
     base: Option<String>,
 }
 
-pub(crate) fn run(args: TestPlanArgs) -> Result<()> {
-    if args.release {
-        println!(
-            "{}",
-            union(RELEASE_ROOTS.iter().map(|root| format!("deps({root})")))
-        );
-        return Ok(());
-    }
+/// The step output the test job reads, named for the key its `if:` guard
+/// checks. Serialized field-for-field into `$GITHUB_OUTPUT`.
+#[derive(serde::Serialize)]
+struct TestPlan {
+    filterset: String,
+}
 
-    let base = match args.base {
-        Some(base) => base,
-        None => default_base()?,
+pub fn run(args: TestPlanArgs) -> Result<()> {
+    let filterset = if args.release {
+        union(RELEASE_ROOTS.iter().map(|root| format!("deps({root})")))
+    } else {
+        let base = match args.base {
+            Some(base) => base,
+            None => default_base()?,
+        };
+
+        let metadata = crate::workspace::load()?;
+        let root = metadata.workspace_root.as_std_path();
+        let directories: Vec<(String, String)> = metadata
+            .workspace_packages()
+            .iter()
+            .filter_map(|package| {
+                let dir = package.manifest_path.as_std_path().parent()?;
+                let relative = dir.strip_prefix(root).ok()?;
+                Some((package.name.to_string(), relative.to_string_lossy().into()))
+            })
+            .collect();
+
+        plan(&changed_files(&base)?, &directories)
     };
 
-    let metadata = crate::workspace::load_workspace()?;
-    let root = metadata.workspace_root.as_std_path();
-    let directories: Vec<(String, String)> = metadata
-        .workspace_packages()
-        .iter()
-        .filter_map(|package| {
-            let dir = package.manifest_path.as_std_path().parent()?;
-            let relative = dir.strip_prefix(root).ok()?;
-            Some((package.name.to_string(), relative.to_string_lossy().into()))
-        })
-        .collect();
-
-    println!("{}", plan(&changed_files(&base)?, &directories));
-    Ok(())
+    // Printed as well as published, so a manual run and the job log both show
+    // the filterset.
+    println!("{filterset}");
+    crate::utils::github::set_outputs_if_available(&TestPlan { filterset })
 }
 
 /// The filterset for a set of changed files, or empty when nothing Rust-facing
