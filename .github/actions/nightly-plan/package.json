@@ -6,22 +6,23 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --target node --target node --outdir ./dist",
+    "build": "esbuild ./src/index.ts --bundle --platform=node --format=esm --outfile=./dist/index.js",
     "typecheck": "tsc",
-    "test": "bun test"
+    "test": "node --test src/*.test.ts"
   },
   "dependencies": {
-    "@actions/core": "^3.0.1",
-    "@actions/github": "^9.1.1",
-    "semver": "^7.7.1",
-    "smol-toml": "^1.4.2"
+    "@actions/core": "catalog:",
+    "@actions/github": "catalog:",
+    "semver": "catalog:",
+    "smol-toml": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "@types/semver": "^7.7.1"
+    "@types/node": "catalog:",
+    "@types/semver": "catalog:",
+    "esbuild": "catalog:"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"

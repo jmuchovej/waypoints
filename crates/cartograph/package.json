@@ -6,6 +6,6 @@
     ".": "./typescript/types.g.ts"
   },
   "dependencies": {
-    "@waypoints/domain": "catalog:"
+    "@waypoints/domain": "workspace:*"
   }
 }

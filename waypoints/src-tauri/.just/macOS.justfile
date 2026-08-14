@@ -29,13 +29,14 @@ _build feature *ARGS:
     updater_sops="${repo_root}/.secrets/updater.sops.yaml"
     key_path=$(mktemp "${TMPDIR:-/tmp}/AuthKey.XXXXXX.p8")
     trap 'rm -f "${key_path}"' EXIT
+    js_bins="$(dirname "$(command -v node)"):$(dirname "$(command -v pnpm)")"
     apple_secrets=$(sops -d "${apple_sops}")
     updater_secrets=$(sops -d "${updater_sops}")
     echo "${apple_secrets}" | yq '.developer-id.key-prv' > "${key_path}"
     env -i \
         HOME="$HOME" \
         USER="$USER" \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nix-profile/bin:$HOME/.cargo/bin:$HOME/.bun/bin" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nix-profile/bin:$HOME/.cargo/bin:${js_bins}" \
         APPLE_API_ISSUER="$(echo "${apple_secrets}" | yq '.developer-id.issuer-id')" \
         APPLE_API_KEY="$(echo "${apple_secrets}" | yq '.developer-id.key-id')" \
         APPLE_API_KEY_PATH="${key_path}" \

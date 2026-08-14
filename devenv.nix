@@ -23,6 +23,7 @@
     sops
     age
     openspec
+    wrangler
   ];
 
   languages.rust = {
@@ -34,14 +35,14 @@
   languages.javascript = {
     enable = true;
     lsp.enable = true;
-    bun.enable = true;
-    bun.install.enable = true;
+    pnpm.enable = true;
+    pnpm.install.enable = true;
   };
   languages.typescript = {
     enable = true;
     lsp.enable = true;
   };
-  # https://devenv.sh/git-hooks/
+
   git-hooks.hooks.trim-trailing-whitespace.enable = true;
   git-hooks.hooks.end-of-file-fixer.enable = true;
   git-hooks.hooks.mixed-line-endings.enable = true;

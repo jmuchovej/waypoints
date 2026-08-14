@@ -5,5 +5,5 @@ default:
 
 typegen:
     cargo run --bin typegen --features development
-    bun run bin/schemagen.ts
+    node bin/schemagen.ts
     treefmt typescript/*.g.ts

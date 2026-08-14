@@ -1,7 +1,8 @@
+import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
 import {
   commitsSince,
   createTag,
@@ -22,35 +23,37 @@ const never = async () => false;
 
 describe("dateStamp", () => {
   test("formats a UTC date as YYYYMMDD", () => {
-    expect(dateStamp(new Date("2026-07-26T23:59:59Z"))).toBe("20260726");
+    assert.equal(dateStamp(new Date("2026-07-26T23:59:59Z")), "20260726");
   });
 });
 
 describe("nextNightlyTag", () => {
   test("stamps the base version", async () => {
-    expect(await nextNightlyTag("0.2.0", "20260726", never)).toBe("v0.2.0-nightly.20260726");
+    assert.equal(await nextNightlyTag("0.2.0", "20260726", never), "v0.2.0-nightly.20260726");
   });
 
   test("strips a pre-release suffix from the base", async () => {
-    expect(await nextNightlyTag("0.2.0-pre.3", "20260726", never)).toBe("v0.2.0-nightly.20260726");
+    assert.equal(await nextNightlyTag("0.2.0-pre.3", "20260726", never), "v0.2.0-nightly.20260726");
   });
 
   test("disambiguates a same-day collision", async () => {
     const taken = new Set(["v0.2.0-nightly.20260726"]);
-    expect(await nextNightlyTag("0.2.0", "20260726", async (t) => taken.has(t))).toBe(
+    assert.equal(
+      await nextNightlyTag("0.2.0", "20260726", async (t) => taken.has(t)),
       "v0.2.0-nightly.20260726.2",
     );
   });
 
   test("walks past multiple same-day collisions", async () => {
     const taken = new Set(["v0.2.0-nightly.20260726", "v0.2.0-nightly.20260726.2"]);
-    expect(await nextNightlyTag("0.2.0", "20260726", async (t) => taken.has(t))).toBe(
+    assert.equal(
+      await nextNightlyTag("0.2.0", "20260726", async (t) => taken.has(t)),
       "v0.2.0-nightly.20260726.3",
     );
   });
 
-  test("rejects a non-semver version", () => {
-    expect(nextNightlyTag("not-a-version", "20260726", never)).rejects.toThrow(/not valid semver/);
+  test("rejects a non-semver version", async () => {
+    await assert.rejects(nextNightlyTag("not-a-version", "20260726", never), /not valid semver/);
   });
 });
 
@@ -69,16 +72,16 @@ describe("latestNightlyTag", () => {
       "v0.2.0-nightly.20260726.2",
       "v0.2.0-pre.1",
     ];
-    expect(await latestNightlyTag(octokit(tags), "o", "r")).toBe("v0.2.0-nightly.20260726.2");
+    assert.equal(await latestNightlyTag(octokit(tags), "o", "r"), "v0.2.0-nightly.20260726.2");
   });
 
   test("orders across base versions", async () => {
     const tags = ["v0.9.0-nightly.20260101", "v0.10.0-nightly.20251231"];
-    expect(await latestNightlyTag(octokit(tags), "o", "r")).toBe("v0.10.0-nightly.20251231");
+    assert.equal(await latestNightlyTag(octokit(tags), "o", "r"), "v0.10.0-nightly.20251231");
   });
 
   test("returns null when there are no nightly tags", async () => {
-    expect(await latestNightlyTag(octokit(["v0.1.0", "v0.2.0-pre.1"]), "o", "r")).toBeNull();
+    assert.equal(await latestNightlyTag(octokit(["v0.1.0", "v0.2.0-pre.1"]), "o", "r"), null);
   });
 });
 
@@ -91,15 +94,15 @@ describe("commitsSince", () => {
     });
 
   test("returns ahead_by from the comparison", async () => {
-    expect(await commitsSince(octokit(0), "o", "r", "base", "head")).toBe(0);
-    expect(await commitsSince(octokit(3), "o", "r", "base", "head")).toBe(3);
+    assert.equal(await commitsSince(octokit(0), "o", "r", "base", "head"), 0);
+    assert.equal(await commitsSince(octokit(3), "o", "r", "base", "head"), 3);
   });
 });
 
 describe("tagExists", () => {
   test("true when the ref resolves", async () => {
     const octokit = stubOctokit({ rest: { git: { getRef: async () => ({ data: {} }) } } });
-    expect(await tagExists(octokit, "o", "r", "v1")).toBe(true);
+    assert.equal(await tagExists(octokit, "o", "r", "v1"), true);
   });
 
   test("false on a 404", async () => {
@@ -112,10 +115,10 @@ describe("tagExists", () => {
         },
       },
     });
-    expect(await tagExists(octokit, "o", "r", "v1")).toBe(false);
+    assert.equal(await tagExists(octokit, "o", "r", "v1"), false);
   });
 
-  test("rethrows any non-404 error", () => {
+  test("rethrows any non-404 error", async () => {
     const octokit = stubOctokit({
       rest: {
         git: {
@@ -125,7 +128,10 @@ describe("tagExists", () => {
         },
       },
     });
-    expect(tagExists(octokit, "o", "r", "v1")).rejects.toEqual({ status: 500 });
+    await assert.rejects(tagExists(octokit, "o", "r", "v1"), (error: unknown) => {
+      assert.deepEqual(error, { status: 500 });
+      return true;
+    });
   });
 });
 
@@ -149,7 +155,7 @@ describe("createTag", () => {
 
     await createTag(octokit, "o", "r", "v0.2.0-nightly.20260726", "COMMITSHA");
 
-    expect(calls.createTag).toMatchObject({
+    assert.partialDeepStrictEqual(calls.createTag, {
       owner: "o",
       repo: "r",
       tag: "v0.2.0-nightly.20260726",
@@ -157,7 +163,7 @@ describe("createTag", () => {
       type: "commit",
     });
     // The ref must point at the tag *object*, not the commit.
-    expect(calls.createRef).toMatchObject({
+    assert.partialDeepStrictEqual(calls.createRef, {
       owner: "o",
       repo: "r",
       ref: "refs/tags/v0.2.0-nightly.20260726",
@@ -175,11 +181,11 @@ describe("workspaceVersion", () => {
 
   test("reads [workspace.package].version", async () => {
     const dir = await fixture('[workspace.package]\nversion = "0.3.1"\n');
-    expect(await workspaceVersion(dir)).toBe("0.3.1");
+    assert.equal(await workspaceVersion(dir), "0.3.1");
   });
 
   test("throws when the version is missing", async () => {
     const dir = await fixture("[workspace]\nmembers = []\n");
-    expect(workspaceVersion(dir)).rejects.toThrow(/no \[workspace.package\].version/);
+    await assert.rejects(workspaceVersion(dir), /no \[workspace.package\].version/);
   });
 });

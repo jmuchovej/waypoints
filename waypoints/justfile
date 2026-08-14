@@ -4,7 +4,7 @@ default:
 
 [private]
 via-nuxi +ARGS:
-    bunx nuxi {{ ARGS }}
+    pnpm exec nuxi {{ ARGS }}
 
 # Resolve a flavor's bundle identifier from its Tauri config (single source of truth).
 [private]
@@ -30,7 +30,7 @@ clean:
 
 [private]
 via-storybook +ARGS:
-    bunx storybook {{ ARGS }}
+    pnpm exec storybook {{ ARGS }}
 
 storybook-dev:
     @just via-storybook dev --port 9298
@@ -39,7 +39,7 @@ storybook-build:
     @just via-storybook build
 
 test *ARGS:
-    bunx vitest {{ ARGS }}
+    pnpm exec vitest {{ ARGS }}
 
 add +ARGS:
-    bun add {{ ARGS }}
+    pnpm add {{ ARGS }}

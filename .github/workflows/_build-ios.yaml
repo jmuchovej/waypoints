@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup mise (bun, just, sops, age, yq, xcodegen)
+      - name: Setup mise (node, pnpm, just, sops, age, yq, xcodegen)
         uses: jdx/mise-action@v2
 
       - name: Setup Rust
@@ -50,7 +50,7 @@ jobs:
       - run: cargo binstall -y tauri-cli@^2.10.1
 
       - name: Install JS deps
-        run: bun install
+        run: pnpm install --frozen-lockfile
 
       - name: Decrypt Apple signing secrets
         env:

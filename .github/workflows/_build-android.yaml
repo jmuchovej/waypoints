@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup mise (bun, just, sops, age, yq)
+      - name: Setup mise (node, pnpm, just, sops, age, yq)
         uses: jdx/mise-action@v2
 
       - name: Setup Java
@@ -67,7 +67,7 @@ jobs:
       - run: cargo binstall -y tauri-cli@^2.10.1
 
       - name: Install JS deps
-        run: bun install
+        run: pnpm install --frozen-lockfile
 
       - name: Decrypt Android signing secrets
         env:

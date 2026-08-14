@@ -17,12 +17,12 @@ stable: (generate "stable")
 generate FLAVOR:
     #!/usr/bin/env bash
     set -euo pipefail
-    [ -d node_modules ] || bun install
-    bun --bun icongen.ts --flavor {{ FLAVOR }}
+    [ -d node_modules ] || pnpm install --filter @waypoints/icons...
+    node icongen.ts --flavor {{ FLAVOR }}
 
 # Install tooling dependencies
 setup:
-    bun install
+    pnpm install --filter @waypoints/icons...
 
 # Remove all generated icon artifacts
 clean: clean-ios clean-android

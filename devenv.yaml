@@ -2,7 +2,8 @@
 impure: false
 
 nixpkgs:
-  allowUnfree: true
+  allow_unfree: true
+  permitted_insecure_packages: ["pnpm-9.15.9"]
 
 imports:
   - ./waypoints/src-tauri/gen/android

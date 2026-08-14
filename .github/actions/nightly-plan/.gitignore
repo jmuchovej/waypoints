@@ -1,8 +1,8 @@
-# dependencies (bun install)
+# dependencies (pnpm install)
 node_modules
 
 # dist/ is intentionally committed — a repo-local `uses:` action runs
-# dist/index.js as-is, with no build step in CI. Rebuild with `bun run build`.
+# dist/index.js as-is, with no build step in CI. Rebuild with `pnpm run build`.
 # Override the repo-root `dist` ignore for this action.
 !dist/
 !dist/index.js
