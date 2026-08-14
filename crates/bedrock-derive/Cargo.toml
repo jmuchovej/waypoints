@@ -7,9 +7,9 @@ description = """
 Bedrock's `#[derive(...)]` macros.
 """
 documentation = "https://docs.waypoints.so/bedrock"
-readme.workspace = true
+readme = "README.md"
 homepage.workspace = true
-repository = "https://github.com/waypoints-hq/waypoints/tree/main/crates/bedrock-derive"
+repository = "https://dev.waypoints.so/bedrock-derive"
 license.workspace = true
 publish.workspace = true
 

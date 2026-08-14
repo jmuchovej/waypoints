@@ -19,14 +19,13 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
 edition = "2024"
 rust-version = "1.91"
 description = "Oh the places we'll go on this non-linear thought journey!"
 documentation = "https://docs.waypoints.so"
 readme = ".github/README.md"
 homepage = "https://waypoints.so"
-repository = "https://github.com/waypoints-hq/waypoints"
+repository = "https://dev.waypoints.so/"
 license = "Apache-2.0"
 publish = false
 

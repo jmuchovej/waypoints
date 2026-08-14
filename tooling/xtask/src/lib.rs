@@ -1,3 +1,11 @@
+//! `xtask` — the Rust-based dev-toolchain for Waypoints.
+//!
+//! Developer tooling lives here as tasks (`cargo xtask <task>`, or the
+//! `just xtask::*` recipes) rather than as separate workspace crates: workflow
+//! generation, CI test planning, devenv file listing, and the browser-dev HTTP
+//! server. Nothing in this crate ships in a release artifact, so a task can
+//! depend on app crates (e.g. `cartograph`) without gating one.
+
 #![allow(clippy::disallowed_macros)]
 
 pub mod tasks {

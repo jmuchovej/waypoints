@@ -1,6 +1,5 @@
 [package]
 name = "xtask"
-version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 description.workspace = true
@@ -18,10 +17,12 @@ name = "xtask"
 [dependencies]
 cartograph = { workspace = true, features = ["development"] }
 domain.workspace = true
+next_version = "0.2"
 
 anyhow.workspace = true
 async-trait.workspace = true
 axum.workspace = true
+base64.workspace = true
 cargo_metadata.workspace = true
 chrono = { workspace = true, features = ["clock", "std"] }
 clap.workspace = true
