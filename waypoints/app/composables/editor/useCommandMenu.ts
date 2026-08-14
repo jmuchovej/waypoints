@@ -1,4 +1,5 @@
 import { readonly, ref } from "vue";
+
 import type { CommandMenuKind, OnSelectCallback } from "~/utils/tiptap";
 
 export type MenuPosition = {

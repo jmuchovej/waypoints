@@ -1,4 +1,5 @@
 import type { ContentKind, InlineMarkKind, MarkID } from "@waypoints/domain";
+
 import { MarkIDDataKey } from "#imports";
 
 export interface BlockElement extends HTMLElement {

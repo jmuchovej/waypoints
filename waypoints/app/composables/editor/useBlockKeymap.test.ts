@@ -1,12 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ref, nextTick } from "vue";
 import type { RenderNode } from "@waypoints/cartograph";
 import type { MarkData } from "@waypoints/domain";
 import { emptyRichText } from "@waypoints/domain";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ref, nextTick } from "vue";
+
 import { useBlockFocus, type EditorHandle } from "./useBlockFocus";
-import { useBlockSelection } from "./useBlockSelection";
 import { useBlockKeymap } from "./useBlockKeymap";
 import type { OrchestratorContext } from "./useBlockOrchestrator";
+import { useBlockSelection } from "./useBlockSelection";
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 

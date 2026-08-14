@@ -1,9 +1,9 @@
 <script setup lang="ts">
-const revealed = ref(false);
+  const revealed = ref(false);
 
-function toggle() {
-  revealed.value = !revealed.value;
-}
+  function toggle() {
+    revealed.value = !revealed.value;
+  }
 </script>
 
 <template>

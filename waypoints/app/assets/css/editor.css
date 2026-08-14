@@ -5,7 +5,7 @@
   --margin-width: minmax(--spacing(4), 1fr);
   --content-width: minmax(auto, 100%);
 
-  @apply w-full grid;
+  @apply grid w-full;
 
   grid-template-columns:
     [full-start] var(--margin-left-width, var(--margin-width))
@@ -40,7 +40,7 @@
 
 .editor-document,
 .inline-editor {
-  @apply outline-none caret-primary;
+  @apply caret-primary outline-none;
 }
 
 .landmark-title {
@@ -90,7 +90,7 @@
 
     /* Block-level theme: applies fg, bg, and border from data-theme */
     &[data-theme] {
-      @apply text-(--theme-fg) bg-(--theme-bg) border-(--theme-border) rounded-sm;
+      @apply rounded-sm border-(--theme-border) bg-(--theme-bg) text-(--theme-fg);
     }
 
     &.dragging {
@@ -98,13 +98,13 @@
     }
 
     &.inside-drop-target {
-      @apply outline-2 outline-dashed outline-primary/50;
+      @apply outline-primary/50 outline-2 outline-dashed;
       @apply bg-primary/5;
       @apply rounded;
     }
 
     &[data-type^="heading"] {
-      @apply text-highlighted font-bold flex leading-snug;
+      @apply text-highlighted flex leading-snug font-bold;
     }
 
     &[data-type="heading-1"] {
@@ -120,38 +120,38 @@
     }
 
     &[data-type="paragraph"] {
-      @apply leading-snug min-h-6;
+      @apply min-h-6 leading-snug;
     }
 
     &[data-type="list-item"],
     &[data-type="enum-item"] {
-      @apply relative py-0.5 leading-snug flex;
+      @apply relative flex py-0.5 leading-snug;
 
       .prefix {
-        @apply select-none text-dimmed min-w-[2ch] pe-1 text-end;
+        @apply text-dimmed min-w-[2ch] pe-1 text-end select-none;
       }
 
       .rich-text {
-        @apply ps-2 flex-1;
+        @apply flex-1 ps-2;
       }
     }
 
     &[data-type="code"] {
       .code-block {
-        @apply relative rounded-md border border-muted overflow-hidden;
+        @apply border-muted relative overflow-hidden rounded-md border;
         @apply bg-muted/50;
 
         .code-header {
           @apply flex items-center justify-between;
-          @apply px-3 py-1.5 text-xs text-dimmed;
-          @apply border-b border-muted;
+          @apply text-dimmed px-3 py-1.5 text-xs;
+          @apply border-muted border-b;
 
           .code-lang {
-            @apply font-mono font-medium flex items-center gap-1.5;
+            @apply flex items-center gap-1.5 font-mono font-medium;
           }
 
           .code-copy {
-            @apply p-1 rounded hover:bg-elevated cursor-pointer transition-colors;
+            @apply hover:bg-elevated cursor-pointer rounded p-1 transition-colors;
           }
         }
 
@@ -161,19 +161,19 @@
           @apply rounded-md;
 
           pre {
-            @apply text-sm leading-6 font-mono;
-            @apply px-4 py-3 m-0;
+            @apply font-mono text-sm leading-6;
+            @apply m-0 px-4 py-3;
             @apply bg-muted rounded-md;
 
             code {
-              @apply p-0 rounded-none border-0 bg-transparent;
-              @apply text-inherit font-mono;
+              @apply rounded-none border-0 bg-transparent p-0;
+              @apply font-mono text-inherit;
             }
           }
 
           /* Shiki generates its own <pre> with inline styles — override bg */
           :deep(pre) {
-            @apply !bg-muted !rounded-none !m-0 !px-4 !py-3;
+            @apply !bg-muted !m-0 !rounded-none !px-4 !py-3;
           }
         }
       }
@@ -183,10 +183,10 @@
       .wrapper {
         @apply flex flex-row gap-x-2;
         @apply rounded-md px-4 py-3;
-        @apply bg-(--theme-bg) border border-(--theme-border) text-(--theme-fg);
+        @apply border border-(--theme-border) bg-(--theme-bg) text-(--theme-fg);
 
         .prefix {
-          @apply text-xl shrink-0;
+          @apply shrink-0 text-xl;
           @apply size-6;
         }
 
@@ -204,7 +204,7 @@
       }
 
       .body {
-        @apply italic flex-1;
+        @apply flex-1 italic;
       }
     }
   }
@@ -212,7 +212,7 @@
   .drop-indicator {
     --indent-width: calc(var(--drop-depth, 0) * --spacing(6));
 
-    @apply relative h-0 pointer-events-none z-10;
+    @apply pointer-events-none relative z-10 h-0;
 
     /* Indent segment (muted) — shows the depth zone */
     &::before {
@@ -251,7 +251,7 @@
   /* ── Inspector hover highlight ─────────────────────────────────────────── */
 
   [data-mark-id].inspector-highlight {
-    @apply outline-2 outline-dashed outline-offset-2;
+    @apply outline-2 outline-offset-2 outline-dashed;
     @apply outline-primary/50 bg-primary/5;
     @apply rounded;
     @apply duration-150;
@@ -274,23 +274,23 @@
   }
 
   [data-inline="strikethrough"] {
-    @apply line-through text-default/50 decoration-primary decoration-2;
+    @apply text-default/50 decoration-primary line-through decoration-2;
   }
 
   [data-inline="link"] {
-    @apply underline text-primary underline-offset-2 cursor-pointer;
+    @apply text-primary cursor-pointer underline underline-offset-2;
   }
 
   [data-inline="code"] {
-    @apply px-1.5 py-0.5 text-sm font-mono font-medium rounded-md border border-muted text-highlighted bg-muted;
+    @apply border-muted text-highlighted bg-muted rounded-md border px-1.5 py-0.5 font-mono text-sm font-medium;
   }
 
   [data-inline="comment"] {
-    @apply bg-warning/10 border-b-2 border-warning cursor-pointer;
+    @apply bg-warning/10 border-warning cursor-pointer border-b-2;
   }
 
   [data-inline="highlight"] {
-    @apply px-0.5 rounded-sm bg-(--theme-bg);
+    @apply rounded-sm bg-(--theme-bg) px-0.5;
   }
 
   [data-inline="color"] {
@@ -300,26 +300,26 @@
   [data-inline="mention"] {
     @apply inline-flex cursor-pointer rounded-md px-1 py-0.5;
     @apply transition-colors duration-100 ease-in-out;
-    @apply relative after:absolute overflow-hidden;
+    @apply relative overflow-hidden after:absolute;
     @apply bg-accented/50 hover:bg-primary/10;
     @apply bg-accented/50 hover:after:bg-primary/50;
 
     &:after {
       content: "";
       @apply transition-colors duration-100 ease-in-out;
-      @apply absolute h-1 w-full bottom-0 left-0 right-0;
+      @apply absolute right-0 bottom-0 left-0 h-1 w-full;
       @apply bg-accented/50;
     }
 
     &.mention--broken {
-      @apply line-through text-dimmed cursor-not-allowed;
+      @apply text-dimmed cursor-not-allowed line-through;
       @apply hover:bg-error/10;
     }
   }
 
   [data-inline="spoiler"] {
     @apply transition-[colors,background-color] duration-100 ease-in-out;
-    @apply bg-accented rounded-sm px-1 py-1 cursor-pointer;
+    @apply bg-accented cursor-pointer rounded-sm px-1 py-1;
     color: transparent;
 
     &:has(.spoiler-active) {
@@ -340,7 +340,7 @@
     }
 
     .math-text:not(.math-text--rendered) {
-      @apply font-mono text-sm bg-muted/50;
+      @apply bg-muted/50 font-mono text-sm;
     }
 
     .katex {
@@ -348,13 +348,13 @@
     }
 
     &.math-editing {
-      @apply font-mono text-sm bg-muted/50;
+      @apply bg-muted/50 font-mono text-sm;
       color: inherit;
     }
   }
 
   .math-preview {
-    @apply inline-block ml-1 align-middle;
+    @apply ml-1 inline-block align-middle;
     @apply pointer-events-none;
 
     .katex {
@@ -371,7 +371,7 @@
     @apply leading-snug;
     @apply relative;
     @apply wrap-break-word;
-    @apply whitespace-pre-wrap whitespace-break-spaces;
+    @apply whitespace-break-spaces whitespace-pre-wrap;
 
     [contenteditable="false"] {
       white-space: normal;
@@ -388,15 +388,15 @@
 }
 
 .drag-ghost {
-  @apply fixed pointer-events-none z-[1000];
-  @apply py-1 px-1;
+  @apply pointer-events-none fixed z-[1000];
+  @apply px-1 py-1;
   @apply leading-snug;
   @apply rounded-sm;
   @apply bg-elevated/40;
   @apply transition-[transform,opacity,box-shadow,background-color] duration-150 ease-out;
 
   &.lifting {
-    @apply opacity-85 rotate-1 scale-98;
+    @apply scale-98 rotate-1 opacity-85;
     @apply bg-elevated;
     @apply shadow-md;
   }
@@ -409,23 +409,23 @@
 .drag-ghost-item {
   @apply max-h-8 overflow-hidden;
   @apply truncate;
-  @apply border-b border-primary/10;
+  @apply border-primary/10 border-b;
   @apply text-sm leading-tight;
   @apply px-1 py-0.5;
 }
 
 .drag-ghost-overflow {
-  @apply text-xs text-primary font-medium px-2 py-1;
+  @apply text-primary px-2 py-1 text-xs font-medium;
 }
 
 .mark.long-press-active {
-  @apply scale-[0.98] bg-primary/5;
+  @apply bg-primary/5 scale-[0.98];
   @apply transition-transform duration-200 ease-out;
 }
 
 .floating-handles {
   @apply absolute z-10;
-  @apply h-6 text-dimmed;
+  @apply text-dimmed h-6;
   @apply hidden items-center justify-center;
   @apply gap-2;
   @apply touch-none select-none;
@@ -440,7 +440,7 @@
     @apply flex items-center justify-center;
     @apply bg-elevated/40;
     @apply transition-all duration-150 ease-out;
-    @apply hover:opacity-100! hover:bg-elevated;
+    @apply hover:bg-elevated hover:opacity-100!;
 
     &.handle-add {
       @apply cursor-pointer;
@@ -466,7 +466,7 @@
 .inline-editor {
   .is-empty[data-placeholder]::before {
     content: attr(data-placeholder);
-    @apply pointer-events-none text-dimmed;
+    @apply text-dimmed pointer-events-none;
   }
 }
 
@@ -474,7 +474,7 @@
   --label-width: minmax(8rem, max-content);
   --input-width: minmax(0, 1fr);
 
-  @apply w-full grid;
+  @apply grid w-full;
 
   grid-template-columns:
     [label-start] var(--label-width)
@@ -494,18 +494,18 @@
 }
 
 .reading-label {
-  @apply text-sm text-dimmed font-medium text-end pt-1;
+  @apply text-dimmed pt-1 text-end text-sm font-medium;
 }
 
 .reading-input {
-  @apply flex flex-col gap-1 min-w-0;
+  @apply flex min-w-0 flex-col gap-1;
 }
 
 .reading-description {
-  @apply text-xs text-dimmed;
+  @apply text-dimmed text-xs;
 }
 
 .sweep-selection-box {
-  @apply fixed pointer-events-none z-40;
-  @apply border border-primary/40 bg-primary/5 rounded-sm;
+  @apply pointer-events-none fixed z-40;
+  @apply border-primary/40 bg-primary/5 rounded-sm border;
 }

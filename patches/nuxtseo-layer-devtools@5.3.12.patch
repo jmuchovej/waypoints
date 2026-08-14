@@ -1,0 +1,23 @@
+diff --git a/plugins/devtools-connection.client.ts b/plugins/devtools-connection.client.ts
+index 9ffb4f9aebf3f73074cb57f9fef0546c52281c6e..095f0da141f824b47a7d35240cffe9cbaabd8d44 100644
+--- a/plugins/devtools-connection.client.ts
++++ b/plugins/devtools-connection.client.ts
+@@ -7,10 +7,14 @@ export default defineNuxtPlugin(() => {
+   }
+ 
+   useDevtoolsConnection({
+-    onConnected(client) {
+-      const props = client.host?.nuxt?.vueApp?.config?.globalProperties
+-      base.value = props?.$router?.options?.history?.base || client.host?.app?.baseURL || '/'
+-      const $route = props?.$route
++    onConnected(host) {
++      // useDevtoolsConnection hands this callback the guarded DevtoolsHost
++      // adapter, not the raw devtools-kit client. Reading client.host.* here
++      // resolved to undefined on every version, so base/path/query silently
++      // fell back to '/'. host.baseURL already applies the same fallback
++      // chain, and host.route is the typed $router.currentRoute.
++      base.value = host.baseURL
++      const $route = host.route?.value
+       if ($route) {
+         path.value = $route.path || '/'
+         query.value = $route.query

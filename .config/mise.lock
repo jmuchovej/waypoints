@@ -635,6 +635,10 @@ backend = "npm:@tauri-apps/cli"
 version = "0.61.0"
 backend = "npm:oxfmt"
 
+[[tools."npm:renovate"]]
+version = "44.24.3"
+backend = "npm:renovate"
+
 [[tools."npm:wrangler"]]
 version = "4.93.0"
 backend = "npm:wrangler"

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-const showTooltip = ref(false);
+  const showTooltip = ref(false);
 
-function handleClick() {
-  showTooltip.value = true;
-  setTimeout(() => {
-    showTooltip.value = false;
-  }, 2000);
-}
+  function handleClick() {
+    showTooltip.value = true;
+    setTimeout(() => {
+      showTooltip.value = false;
+    }, 2000);
+  }
 </script>
 
 <template>

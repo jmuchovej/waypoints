@@ -6,6 +6,7 @@ import type {
   SyncDevice,
   SyncStatus,
 } from "@waypoints/cartograph";
+
 import { invoke } from "./invoke";
 
 export async function status(): Promise<SyncStatus> {

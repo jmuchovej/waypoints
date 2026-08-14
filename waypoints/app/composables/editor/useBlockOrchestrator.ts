@@ -1,3 +1,4 @@
+import type { RenderNode } from "@waypoints/cartograph";
 import {
   type MarkID,
   type RichText,
@@ -8,7 +9,8 @@ import {
   isIndentableType,
   isCompoundType,
 } from "@waypoints/domain";
-import type { RenderNode } from "@waypoints/cartograph";
+import { type Ref, provide } from "vue";
+
 import {
   createLogger,
   ipc,
@@ -17,8 +19,6 @@ import {
   useBlockFocus,
   useBlockSelection,
 } from "#imports";
-
-import { type Ref, provide } from "vue";
 
 const log = createLogger("editor");
 

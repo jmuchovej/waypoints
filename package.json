@@ -1,7 +1,9 @@
 {
   "$schema": "https://www.schemastore.org/package.json",
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "@fission-ai/openspec": "catalog:"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",

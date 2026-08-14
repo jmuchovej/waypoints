@@ -6,6 +6,6 @@
     ".": "./typescript/index.ts"
   },
   "dependencies": {
-    "scule": "catalog:"
+    "scule": "catalog:app"
   }
 }

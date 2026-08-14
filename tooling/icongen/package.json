@@ -4,18 +4,18 @@
   "description": "Build-time icon generator for Waypoints desktop flavors",
   "type": "module",
   "dependencies": {
-    "@fiahfy/icns": "catalog:",
-    "chroma-js": "catalog:",
-    "citty": "catalog:",
-    "confbox": "catalog:",
-    "png-to-ico": "catalog:",
-    "sharp": "catalog:",
-    "svgson": "catalog:",
-    "tailwindcss": "catalog:"
+    "@fiahfy/icns": "catalog:app",
+    "chroma-js": "catalog:app",
+    "citty": "catalog:app",
+    "confbox": "catalog:app",
+    "png-to-ico": "catalog:app",
+    "sharp": "catalog:app",
+    "svgson": "catalog:app",
+    "tailwindcss": "catalog:app"
   },
   "devDependencies": {
-    "@types/chroma-js": "catalog:",
-    "@types/node": "catalog:",
-    "typescript": "catalog:"
+    "@types/chroma-js": "catalog:app",
+    "@types/node": "catalog:app",
+    "typescript": "catalog:app"
   }
 }

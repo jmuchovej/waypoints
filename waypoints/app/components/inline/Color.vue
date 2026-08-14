@@ -1,9 +1,9 @@
 <script setup lang="ts">
-const props = defineProps<{
-  data: unknown;
-}>();
+  const props = defineProps<{
+    data: unknown;
+  }>();
 
-const color = (props.data as Record<string, unknown> | null)?.color as string | undefined;
+  const color = (props.data as Record<string, unknown> | null)?.color as string | undefined;
 </script>
 
 <template>

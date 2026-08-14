@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { ContentNode } from "#imports";
-import { RichTextEditor } from "#components";
+  import { RichTextEditor } from "#components";
+  import type { ContentNode } from "#imports";
 
-const props = defineProps<{
-  block: ContentNode<"heading-1" | "heading-2" | "heading-3">;
-}>();
+  const props = defineProps<{
+    block: ContentNode<"heading-1" | "heading-2" | "heading-3">;
+  }>();
 </script>
 
 <template>

@@ -1,3 +1,4 @@
+import { TextSelection } from "@tiptap/pm/state";
 import type { RichText } from "@waypoints/domain";
 import {
   type Ref,
@@ -9,6 +10,7 @@ import {
   shallowRef,
   watch,
 } from "vue";
+
 import {
   createEditor as createBridgedEditor,
   mkDocument,
@@ -16,7 +18,7 @@ import {
   type Editor,
   type EditorOptions,
 } from "~/utils/tiptap";
-import { TextSelection } from "@tiptap/pm/state";
+
 import type { CursorPosition, EditorHandle } from "./useBlockFocus";
 import { BlockOrchestratorKey, type OrchestratorContext } from "./useBlockOrchestrator";
 import { CommandMenuKey, type CommandMenuContext } from "./useCommandMenu";

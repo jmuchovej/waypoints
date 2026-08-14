@@ -1,37 +1,37 @@
 <script lang="ts">
-import type { Reading, Feature } from "@waypoints/domain";
+  import type { Reading, Feature } from "@waypoints/domain";
 
-export interface EmailReadingProps {
-  value: Reading | undefined;
-  feature: Feature;
-}
+  export interface EmailReadingProps {
+    value: Reading | undefined;
+    feature: Feature;
+  }
 
-export interface EmailReadingEmits {
-  update: [reading: Reading];
-}
+  export interface EmailReadingEmits {
+    update: [reading: Reading];
+  }
 </script>
 <script setup lang="ts">
-const props = defineProps<EmailReadingProps>();
-const emit = defineEmits<EmailReadingEmits>();
+  const props = defineProps<EmailReadingProps>();
+  const emit = defineEmits<EmailReadingEmits>();
 
-const localValue = ref<string>(props.value?.type === "email" ? props.value.value : "");
+  const localValue = ref<string>(props.value?.type === "email" ? props.value.value : "");
 
-watch(
-  () => props.value,
-  (val) => {
-    localValue.value = val?.type === "email" ? val.value : "";
-  },
-);
+  watch(
+    () => props.value,
+    (val) => {
+      localValue.value = val?.type === "email" ? val.value : "";
+    },
+  );
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function onInput(val: string) {
-  localValue.value = val;
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    emit("update", { type: "email", value: val });
-  }, 250);
-}
+  function onInput(val: string) {
+    localValue.value = val;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      emit("update", { type: "email", value: val });
+    }, 250);
+  }
 </script>
 
 <template>
@@ -41,6 +41,5 @@ function onInput(val: string) {
     placeholder="Empty"
     size="md"
     variant="ghost"
-    @update:model-value="onInput"
-  />
+    @update:model-value="onInput" />
 </template>

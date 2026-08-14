@@ -1,5 +1,5 @@
-import { computed } from "vue";
 import { createSharedComposable } from "@vueuse/core";
+import { computed } from "vue";
 
 export interface ParsedKeyCombo {
   key: string;

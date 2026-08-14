@@ -1,22 +1,22 @@
 <script lang="ts">
-import type { RichText } from "@waypoints/domain";
+  import type { RichText } from "@waypoints/domain";
 
-export type ReadonlyRichTextProps = {
-  richText: RichText;
-  placeholder?: string;
-};
+  export type ReadonlyRichTextProps = {
+    richText: RichText;
+    placeholder?: string;
+  };
 </script>
 
 <script setup lang="ts">
-import { RichTextSegment } from "#components";
+  import { RichTextSegment } from "#components";
 
-const props = defineProps<ReadonlyRichTextProps>();
+  const props = defineProps<ReadonlyRichTextProps>();
 
-const isEmpty = computed(() => {
-  const rt = props.richText;
-  if (!rt.segments.length) return true;
-  return rt.segments.every((s) => !s.text);
-});
+  const isEmpty = computed(() => {
+    const rt = props.richText;
+    if (!rt.segments.length) return true;
+    return rt.segments.every((s) => !s.text);
+  });
 </script>
 
 <template>

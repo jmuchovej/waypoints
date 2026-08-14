@@ -1,5 +1,5 @@
-import { ref, watch, type Ref } from "vue";
 import { createHighlighter, type Highlighter, type BundledLanguage } from "shiki";
+import { ref, watch, type Ref } from "vue";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 

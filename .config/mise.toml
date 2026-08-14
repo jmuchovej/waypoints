@@ -1,12 +1,18 @@
-[env]
-CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}"
-PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"
+[[env]]
 PROJECT_ROOT = "{{ config_root }}"
-TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/android"
+
+[[env]]
+PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"
+
+[[env]]
+CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}"
 TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/waypoints/src-tauri"
 TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/waypoints"
-TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/apple"
 TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml"
+
+[[env]]
+TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/android"
+TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/apple"
 
 [settings]
 experimental = true
@@ -26,6 +32,7 @@ lockfile = true
 "aqua:oxipng/oxipng" = "10.1.1"
 "aqua:rhysd/actionlint" = "1.7.12"
 "aqua:tombi-toml/tombi" = "1.2.7"
+"aqua:zizmorcore/zizmor" = "1.29.0"
 "core:deno" = "2.9.4"
 "core:node" = "24.19.0"
 "core:ruby" = "3.4.9"

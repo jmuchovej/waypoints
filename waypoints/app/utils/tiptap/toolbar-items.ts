@@ -1,4 +1,5 @@
 import { InlineKind } from "@waypoints/domain";
+
 import type { EditorToolbarItem } from "#ui/components/EditorToolbar.vue";
 
 /**

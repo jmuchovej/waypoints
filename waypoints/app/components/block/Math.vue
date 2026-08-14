@@ -1,69 +1,70 @@
 <script setup lang="ts">
-import { ContentType } from "@waypoints/domain";
-import { useMathRenderer, type OrchestratorContext, type ContentNode } from "#imports";
+  import { ContentType } from "@waypoints/domain";
 
-const props = defineProps<{ block: ContentNode<"math"> }>();
+  import { useMathRenderer, type OrchestratorContext, type ContentNode } from "#imports";
 
-const orchestrator = inject<OrchestratorContext>("block-orchestrator");
-const { render, loading } = useMathRenderer();
+  const props = defineProps<{ block: ContentNode<"math"> }>();
 
-const localExpression = ref(props.block.data.expression);
-const renderedHtml = ref("");
+  const orchestrator = inject<OrchestratorContext>("block-orchestrator");
+  const { render, loading } = useMathRenderer();
 
-// Map domain engine to renderer engine
-function toRendererEngine(e: string) {
-  if (e === "latex") return "katex" as const;
-  return "typst" as const;
-}
+  const localExpression = ref(props.block.data.expression);
+  const renderedHtml = ref("");
 
-// Sync from external changes
-watch(
-  () => props.block.data.expression,
-  (val) => {
-    if (val !== localExpression.value) {
-      localExpression.value = val;
-    }
-  },
-);
+  // Map domain engine to renderer engine
+  function toRendererEngine(e: string) {
+    if (e === "latex") return "katex" as const;
+    return "typst" as const;
+  }
 
-// Debounced render + persist
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
+  // Sync from external changes
+  watch(
+    () => props.block.data.expression,
+    (val) => {
+      if (val !== localExpression.value) {
+        localExpression.value = val;
+      }
+    },
+  );
 
-watch(
-  localExpression,
-  async (expr) => {
-    if (!expr) {
-      renderedHtml.value = "";
-      return;
-    }
-    const result = await render(expr, toRendererEngine(props.block.data.engine), true);
-    renderedHtml.value = result.html;
-  },
-  { immediate: true },
-);
+  // Debounced render + persist
+  let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
-function onInput(e: Event) {
-  const val = (e.target as HTMLTextAreaElement).value;
-  localExpression.value = val;
+  watch(
+    localExpression,
+    async (expr) => {
+      if (!expr) {
+        renderedHtml.value = "";
+        return;
+      }
+      const result = await render(expr, toRendererEngine(props.block.data.engine), true);
+      renderedHtml.value = result.html;
+    },
+    { immediate: true },
+  );
 
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
+  function onInput(e: Event) {
+    const val = (e.target as HTMLTextAreaElement).value;
+    localExpression.value = val;
+
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => {
+      orchestrator?.onChangeBlockType(props.block.id, {
+        type: ContentType.Math,
+        expression: val,
+        engine: props.block.data.engine,
+      });
+    }, 300);
+  }
+
+  function toggleEngine() {
+    const newEngine = props.block.data.engine === "typst" ? "latex" : "typst";
     orchestrator?.onChangeBlockType(props.block.id, {
       type: ContentType.Math,
-      expression: val,
-      engine: props.block.data.engine,
+      expression: localExpression.value,
+      engine: newEngine,
     });
-  }, 300);
-}
-
-function toggleEngine() {
-  const newEngine = props.block.data.engine === "typst" ? "latex" : "typst";
-  orchestrator?.onChangeBlockType(props.block.id, {
-    type: ContentType.Math,
-    expression: localExpression.value,
-    engine: newEngine,
-  });
-}
+  }
 </script>
 
 <template>
@@ -80,39 +81,38 @@ function toggleEngine() {
       placeholder="Enter expression..."
       rows="2"
       spellcheck="false"
-      @input="onInput"
-    />
+      @input="onInput" />
     <div v-if="renderedHtml" class="math-block-preview" v-html="renderedHtml" />
     <div v-else-if="loading" class="math-block-preview math-loading">Rendering...</div>
   </div>
 </template>
 
 <style scoped>
-@reference "~/assets/css/main.css";
+  @reference "~/assets/css/main.css";
 
-.math-block {
-  @apply border border-muted rounded-md overflow-hidden;
-}
+  .math-block {
+    @apply border-muted overflow-hidden rounded-md border;
+  }
 
-.math-block-header {
-  @apply flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-muted;
-}
+  .math-block-header {
+    @apply bg-muted/50 border-muted flex items-center justify-between border-b px-3 py-1.5;
+  }
 
-.math-block-label {
-  @apply text-xs font-medium text-dimmed;
-}
+  .math-block-label {
+    @apply text-dimmed text-xs font-medium;
+  }
 
-.math-block-engine {
-  @apply text-xs px-2 py-0.5 rounded-sm bg-elevated text-dimmed cursor-pointer;
-  @apply hover:text-default transition-colors;
-}
+  .math-block-engine {
+    @apply bg-elevated text-dimmed cursor-pointer rounded-sm px-2 py-0.5 text-xs;
+    @apply hover:text-default transition-colors;
+  }
 
-.math-block-input {
-  @apply w-full px-3 py-2 font-mono text-sm bg-transparent resize-y outline-none;
-  @apply min-h-10;
-}
+  .math-block-input {
+    @apply w-full resize-y bg-transparent px-3 py-2 font-mono text-sm outline-none;
+    @apply min-h-10;
+  }
 
-.math-block-preview {
-  @apply px-3 py-3 border-t border-muted flex items-center justify-center overflow-x-auto;
-}
+  .math-block-preview {
+    @apply border-muted flex items-center justify-center overflow-x-auto border-t px-3 py-3;
+  }
 </style>

@@ -1,6 +1,7 @@
-import { ContentConverters, ContentType, type Content, type ContentKind } from "@waypoints/domain";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
+import { ContentConverters, ContentType, type Content, type ContentKind } from "@waypoints/domain";
+
 import { toDomain } from "#imports";
 
 export interface BlockTypeDelegate {

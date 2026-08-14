@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path, { dirname, resolve } from "node:path";
 import { env } from "node:process";
 import { fileURLToPath } from "node:url";
+
 import { Icns, IcnsImage } from "@fiahfy/icns";
 import chroma from "chroma-js";
 import { defineCommand, runMain } from "citty";

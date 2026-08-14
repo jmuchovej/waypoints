@@ -3,8 +3,8 @@ export * from "./floating-handle";
 export * from "./list-item";
 export * from "./registries";
 
-import type { ContentData, ContentKind, LandmarkData } from "@waypoints/domain";
 import type { RenderNode } from "@waypoints/cartograph";
+import type { ContentData, ContentKind, LandmarkData } from "@waypoints/domain";
 
 export { ContentType, InlineKind } from "@waypoints/domain";
 

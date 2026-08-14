@@ -8,6 +8,7 @@ import type {
   MarkKind,
   RichText,
 } from "@waypoints/domain";
+
 import { invoke } from "./invoke";
 
 interface LandmarkListOptions {

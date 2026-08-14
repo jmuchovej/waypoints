@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
 import { InlineKind } from "@waypoints/domain";
 import type { RichText, InlineMark, TextSegment } from "@waypoints/domain";
+import { describe, it, expect } from "vitest";
+
 import { toTipTapMark, toInlineMark, toTipTap, toDomain } from "./converters";
 
 function seg(text: string, marks: InlineMark[] = []): TextSegment {

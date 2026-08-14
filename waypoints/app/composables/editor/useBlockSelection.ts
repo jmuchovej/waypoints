@@ -1,8 +1,10 @@
-import { type MarkID, isCompoundType } from "@waypoints/domain";
 import type { RenderNode } from "@waypoints/cartograph";
+import { type MarkID, isCompoundType } from "@waypoints/domain";
 import type { Ref } from "vue";
 import { computed, readonly, ref, watch } from "vue";
+
 import { createLogger } from "~/utils/logger";
+
 import type { FocusContext } from "./useBlockFocus";
 
 const log = createLogger("selection");

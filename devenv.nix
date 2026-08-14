@@ -31,6 +31,7 @@
       oxipng = "aqua:oxipng/oxipng";
       tombi = "aqua:tombi-toml/tombi";
       actionlint = "aqua:rhysd/actionlint";
+      zizmor = "aqua:zizmorcore/zizmor";
     };
     is-available = name: !(builtins.elem name unavailable);
   in
@@ -179,6 +180,7 @@ in {
       statix.enable = true;
       deadnix.enable = true;
       alejandra.enable = true;
+      zizmor.enable = true;
     }
     {
       statix.priority = 1;
@@ -265,16 +267,20 @@ in {
           ];
           lockfile = true;
         };
-        env = {
-          PROJECT_ROOT = "{{ config_root }}";
-          PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";
-          TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
-          TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-lib-path}";
-          TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-android-path}";
-          TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-ios-path}";
-          TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
-          CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
-        };
+        env = [
+          {PROJECT_ROOT = "{{ config_root }}";}
+          {PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";}
+          {
+            CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
+            TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-lib-path}";
+            TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
+            TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
+          }
+          {
+            TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-android-path}";
+            TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/${tauri-ios-path}";
+          }
+        ];
         tools = lib.mapAttrs (_: pkg: toString pkg.version) mise-tools;
       };
     };

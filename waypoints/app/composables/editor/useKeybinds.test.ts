@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createApp, type App } from "vue";
+
 import { useEditorKeybind, type ParsedKeyCombo } from "./useKeybinds";
 
 // ── Helpers ─────────────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { defineComponent, h, nextTick, ref } from "vue";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import type { RichText } from "@waypoints/domain";
 import { emptyRichText, toRichText } from "@waypoints/domain";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { defineComponent, h, nextTick, ref } from "vue";
+
 import { useInlineEditor, type UseInlineEditorOptions } from "./useInlineEditor";
 
 // ── Helpers ─────────────────────────────────────────────────────────────

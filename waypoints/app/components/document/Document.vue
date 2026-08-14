@@ -1,282 +1,283 @@
 <script lang="ts">
-import type { MarkID } from "@waypoints/domain";
-export interface DocumentBodyProps {
-  landmarkId: MarkID;
-  onExitTop?: () => void;
-}
+  import type { MarkID } from "@waypoints/domain";
+  export interface DocumentBodyProps {
+    landmarkId: MarkID;
+    onExitTop?: () => void;
+  }
 </script>
 
 <script setup lang="ts">
-import type { RenderNode } from "@waypoints/cartograph";
-import {
-  ipc,
-  listen,
-  useBlockOrchestrator,
-  useBlockKeymap,
-  useCommandMenu,
-  useLongPressDrag,
-  indexFor,
-  getBlocks,
-  getMarkID,
-} from "#imports";
-import { ContentType, isCompoundType, isContent, isEmpty } from "@waypoints/domain";
-import {
-  Block,
-  DocumentFloatingHandles,
-  DocumentSlashMenu,
-  DocumentMentionMenu,
-} from "#components";
+  import type { RenderNode } from "@waypoints/cartograph";
+  import { ContentType, isCompoundType, isContent, isEmpty } from "@waypoints/domain";
 
-const props = defineProps<DocumentBodyProps>();
+  import {
+    Block,
+    DocumentFloatingHandles,
+    DocumentSlashMenu,
+    DocumentMentionMenu,
+  } from "#components";
+  import {
+    ipc,
+    listen,
+    useBlockOrchestrator,
+    useBlockKeymap,
+    useCommandMenu,
+    useLongPressDrag,
+    indexFor,
+    getBlocks,
+    getMarkID,
+  } from "#imports";
 
-const blocks = ref<RenderNode[]>([]);
-const loading = ref(true);
-const error = ref<string | null>(null);
+  const props = defineProps<DocumentBodyProps>();
 
-const landmarkIdRef = computed(() => props.landmarkId);
-const commandMenu = useCommandMenu();
-provide("command-menu", commandMenu);
+  const blocks = ref<RenderNode[]>([]);
+  const loading = ref(true);
+  const error = ref<string | null>(null);
 
-const containerRef = ref<HTMLDivElement | null>(null);
-const orchestrator = useBlockOrchestrator(landmarkIdRef, blocks, containerRef);
-const { focus, selection, dragDrop } = orchestrator;
+  const landmarkIdRef = computed(() => props.landmarkId);
+  const commandMenu = useCommandMenu();
+  provide("command-menu", commandMenu);
 
-// Wire up external navigation callback
-orchestrator.onExitTop = props.onExitTop;
-const { handleKeydown: baseHandleKeydown } = useBlockKeymap(orchestrator);
-const { pressing, pressMarkId } = useLongPressDrag(containerRef, dragDrop);
-const slashMenuRef = ref<InstanceType<typeof DocumentSlashMenu> | null>(null);
-const mentionMenuRef = ref<InstanceType<typeof DocumentMentionMenu> | null>(null);
+  const containerRef = ref<HTMLDivElement | null>(null);
+  const orchestrator = useBlockOrchestrator(landmarkIdRef, blocks, containerRef);
+  const { focus, selection, dragDrop } = orchestrator;
 
-// Listen for native menu undo/redo events (Cmd+Z / Cmd+Shift+Z are intercepted by
-// the Tauri menu before they reach the web view's keydown handler).
-const unlisteners: (() => void)[] = [];
-onMounted(async () => {
-  unlisteners.push(await listen("app:edit:undo", () => orchestrator.onUndo()));
-  unlisteners.push(await listen("app:edit:redo", () => orchestrator.onRedo()));
-});
-onUnmounted(() => unlisteners.forEach((fn) => fn()));
+  // Wire up external navigation callback
+  orchestrator.onExitTop = props.onExitTop;
+  const { handleKeydown: baseHandleKeydown } = useBlockKeymap(orchestrator);
+  const { pressing, pressMarkId } = useLongPressDrag(containerRef, dragDrop);
+  const slashMenuRef = ref<InstanceType<typeof DocumentSlashMenu> | null>(null);
+  const mentionMenuRef = ref<InstanceType<typeof DocumentMentionMenu> | null>(null);
 
-// Toggle .long-press-active on the pressed mark element
-watchEffect(() => {
-  const id = pressMarkId.value;
-  const active = pressing.value;
-  const el = id
-    ? containerRef.value?.querySelector<HTMLElement>(`.mark[data-mark-id="${id}"]`)
-    : null;
+  // Listen for native menu undo/redo events (Cmd+Z / Cmd+Shift+Z are intercepted by
+  // the Tauri menu before they reach the web view's keydown handler).
+  const unlisteners: (() => void)[] = [];
+  onMounted(async () => {
+    unlisteners.push(await listen("app:edit:undo", () => orchestrator.onUndo()));
+    unlisteners.push(await listen("app:edit:redo", () => orchestrator.onRedo()));
+  });
+  onUnmounted(() => unlisteners.forEach((fn) => fn()));
 
-  if (el && active) {
-    el.classList.add("long-press-active");
+  // Toggle .long-press-active on the pressed mark element
+  watchEffect(() => {
+    const id = pressMarkId.value;
+    const active = pressing.value;
+    const el = id
+      ? containerRef.value?.querySelector<HTMLElement>(`.mark[data-mark-id="${id}"]`)
+      : null;
+
+    if (el && active) {
+      el.classList.add("long-press-active");
+    }
+
+    // Clean up any stale highlights
+    const prev = containerRef.value?.querySelector(".long-press-active");
+    if (prev && prev !== el) {
+      prev.classList.remove("long-press-active");
+    }
+    if (prev === el && !active) {
+      prev?.classList.remove("long-press-active");
+    }
+  });
+
+  // When entering selection mode (selection active, no block editing), focus the
+  // container so keyboard events still reach the @keydown.capture handler.
+  watch([selection.hasSingleSelect, focus.blockID], ([hasSelection, focusedId]) => {
+    if (hasSelection && !focusedId) {
+      nextTick(() => containerRef.value?.focus());
+    }
+  });
+
+  function handleKeydown(e: KeyboardEvent) {
+    // Let the slash menu consume arrow/enter/escape when open
+    if (commandMenu.isOpen.value && commandMenu.handleKey(e)) {
+      if (commandMenu.menuKind.value === "mention") {
+        mentionMenuRef.value?.handleKeydown(e);
+      } else {
+        slashMenuRef.value?.handleKeydown(e);
+      }
+      return;
+    }
+    baseHandleKeydown(e);
   }
 
-  // Clean up any stale highlights
-  const prev = containerRef.value?.querySelector(".long-press-active");
-  if (prev && prev !== el) {
-    prev.classList.remove("long-press-active");
-  }
-  if (prev === el && !active) {
-    prev?.classList.remove("long-press-active");
-  }
-});
+  /** Filter out blocks that are descendants of a compound container (they render inside their ancestor). */
+  const topLevelBlocks = computed(() => {
+    // Build a set of all block IDs that live inside a compound's subtree
+    const insideCompound = new Set<string>();
+    for (const b of blocks.value) {
+      if (insideCompound.has(b.parent_id ?? "")) {
+        // Parent is inside a compound → so is this block
+        insideCompound.add(b.id);
+        continue;
+      }
+      const parent = blocks.value.find((p) => p.id === b.parent_id);
+      if (parent && isCompoundType(parent.data)) {
+        insideCompound.add(b.id);
+      }
+    }
+    return blocks.value.filter((b) => !insideCompound.has(b.id));
+  });
 
-// When entering selection mode (selection active, no block editing), focus the
-// container so keyboard events still reach the @keydown.capture handler.
-watch([selection.hasSingleSelect, focus.blockID], ([hasSelection, focusedId]) => {
-  if (hasSelection && !focusedId) {
-    nextTick(() => containerRef.value?.focus());
+  function enumIndexFor(block: RenderNode, index: number): number | undefined {
+    return indexFor(block, index, blocks.value);
   }
-});
 
-function handleKeydown(e: KeyboardEvent) {
-  // Let the slash menu consume arrow/enter/escape when open
-  if (commandMenu.isOpen.value && commandMenu.handleKey(e)) {
-    if (commandMenu.menuKind.value === "mention") {
-      mentionMenuRef.value?.handleKeydown(e);
+  async function load() {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      blocks.value = await ipc.editor.projectLandmark(props.landmarkId, null);
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : String(e);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  onMounted(load);
+
+  watch(() => props.landmarkId, load);
+
+  /** Click on document background blurs any active editor */
+  function onBackgroundClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) {
+      focus.blurAll();
+    }
+  }
+
+  /** Click in the overscroll area: focus last empty block or append a new one.
+   *  Always operates at the top level — never inside compound blocks. */
+  async function onOverscrollClick() {
+    const top = topLevelBlocks.value;
+
+    if (top.length === 0) {
+      await orchestrator.onCreateFirstBlock();
+      return;
+    }
+
+    const last = top[top.length - 1]!;
+
+    if (isContent(last.data, ContentType.Paragraph) && isEmpty(last.data)) {
+      focus.focusBlock(last.id, "start");
     } else {
-      slashMenuRef.value?.handleKeydown(e);
-    }
-    return;
-  }
-  baseHandleKeydown(e);
-}
-
-/** Filter out blocks that are descendants of a compound container (they render inside their ancestor). */
-const topLevelBlocks = computed(() => {
-  // Build a set of all block IDs that live inside a compound's subtree
-  const insideCompound = new Set<string>();
-  for (const b of blocks.value) {
-    if (insideCompound.has(b.parent_id ?? "")) {
-      // Parent is inside a compound → so is this block
-      insideCompound.add(b.id);
-      continue;
-    }
-    const parent = blocks.value.find((p) => p.id === b.parent_id);
-    if (parent && isCompoundType(parent.data)) {
-      insideCompound.add(b.id);
-    }
-  }
-  return blocks.value.filter((b) => !insideCompound.has(b.id));
-});
-
-function enumIndexFor(block: RenderNode, index: number): number | undefined {
-  return indexFor(block, index, blocks.value);
-}
-
-async function load() {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    blocks.value = await ipc.editor.projectLandmark(props.landmarkId, null);
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(load);
-
-watch(() => props.landmarkId, load);
-
-/** Click on document background blurs any active editor */
-function onBackgroundClick(e: MouseEvent) {
-  if (e.target === e.currentTarget) {
-    focus.blurAll();
-  }
-}
-
-/** Click in the overscroll area: focus last empty block or append a new one.
- *  Always operates at the top level — never inside compound blocks. */
-async function onOverscrollClick() {
-  const top = topLevelBlocks.value;
-
-  if (top.length === 0) {
-    await orchestrator.onCreateFirstBlock();
-    return;
-  }
-
-  const last = top[top.length - 1]!;
-
-  if (isContent(last.data, ContentType.Paragraph) && isEmpty(last.data)) {
-    focus.focusBlock(last.id, "start");
-  } else {
-    await orchestrator.onCreateBlockAfter(last.id);
-  }
-}
-
-// ── Gutter sweep selection ─────────────────────────────────────────────
-// Pointerdown in the margin area (outside the content column) starts a
-// vertical sweep. As the cursor moves, all blocks whose Y range overlaps
-// the sweep are selected via selection.range().
-
-let sweeping = false;
-let sweepStartX = 0;
-let sweepStartY = 0;
-const sweepBox = ref<{
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-} | null>(null);
-
-function isInMargin(e: PointerEvent): boolean {
-  if (!containerRef.value) return false;
-  const rect = containerRef.value.getBoundingClientRect();
-  return e.clientX < rect.left || e.clientX > rect.right;
-}
-
-function findBlocksInYRange(y1: number, y2: number): { first: MarkID; last: MarkID } | null {
-  const minY = Math.min(y1, y2);
-  const maxY = Math.max(y1, y2);
-
-  let first: MarkID | null = null;
-  let last: MarkID | null = null;
-
-  for (const el of getBlocks()) {
-    const rect = el.getBoundingClientRect();
-    // Block overlaps the sweep range if its top is above maxY and bottom is below minY
-    if (rect.bottom > minY && rect.top < maxY) {
-      const id = getMarkID(el);
-      if (!first) first = id;
-      last = id;
+      await orchestrator.onCreateBlockAfter(last.id);
     }
   }
 
-  if (first && last) return { first, last };
-  return null;
-}
+  // ── Gutter sweep selection ─────────────────────────────────────────────
+  // Pointerdown in the margin area (outside the content column) starts a
+  // vertical sweep. As the cursor moves, all blocks whose Y range overlaps
+  // the sweep are selected via selection.range().
 
-function onSweepMove(e: PointerEvent) {
-  if (!sweeping) return;
+  let sweeping = false;
+  let sweepStartX = 0;
+  let sweepStartY = 0;
+  const sweepBox = ref<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
-  // Update selection box
-  const left = Math.min(sweepStartX, e.clientX);
-  const top = Math.min(sweepStartY, e.clientY);
-  sweepBox.value = {
-    left,
-    top,
-    width: Math.abs(e.clientX - sweepStartX),
-    height: Math.abs(e.clientY - sweepStartY),
-  };
-
-  const range = findBlocksInYRange(sweepStartY, e.clientY);
-  if (range) {
-    selection.range(range.first, range.last);
+  function isInMargin(e: PointerEvent): boolean {
+    if (!containerRef.value) return false;
+    const rect = containerRef.value.getBoundingClientRect();
+    return e.clientX < rect.left || e.clientX > rect.right;
   }
-}
 
-function onSweepUp() {
-  if (!sweeping) return;
-  sweeping = false;
-  sweepBox.value = null;
-  document.removeEventListener("pointermove", onSweepMove);
-  document.removeEventListener("pointerup", onSweepUp);
+  function findBlocksInYRange(y1: number, y2: number): { first: MarkID; last: MarkID } | null {
+    const minY = Math.min(y1, y2);
+    const maxY = Math.max(y1, y2);
 
-  // Focus the container so keyboard events (Backspace, Escape, arrows) work
-  nextTick(() => containerRef.value?.focus());
-}
+    let first: MarkID | null = null;
+    let last: MarkID | null = null;
 
-function onDocumentPointerDown(e: PointerEvent) {
-  if (e.button !== 0) return;
-  if (!isInMargin(e)) return;
+    for (const el of getBlocks()) {
+      const rect = el.getBoundingClientRect();
+      // Block overlaps the sweep range if its top is above maxY and bottom is below minY
+      if (rect.bottom > minY && rect.top < maxY) {
+        const id = getMarkID(el);
+        if (!first) first = id;
+        last = id;
+      }
+    }
 
-  // Only start sweep if the click is vertically within the container
-  if (!containerRef.value) return;
-  const rect = containerRef.value.getBoundingClientRect();
-  if (e.clientY < rect.top || e.clientY > rect.bottom) return;
+    if (first && last) return { first, last };
+    return null;
+  }
 
-  e.preventDefault();
-  focus.blurAll();
-  selection.clear();
+  function onSweepMove(e: PointerEvent) {
+    if (!sweeping) return;
 
-  sweeping = true;
-  sweepStartX = e.clientX;
-  sweepStartY = e.clientY;
+    // Update selection box
+    const left = Math.min(sweepStartX, e.clientX);
+    const top = Math.min(sweepStartY, e.clientY);
+    sweepBox.value = {
+      left,
+      top,
+      width: Math.abs(e.clientX - sweepStartX),
+      height: Math.abs(e.clientY - sweepStartY),
+    };
 
-  document.addEventListener("pointermove", onSweepMove);
-  document.addEventListener("pointerup", onSweepUp);
-}
+    const range = findBlocksInYRange(sweepStartY, e.clientY);
+    if (range) {
+      selection.range(range.first, range.last);
+    }
+  }
 
-onMounted(() => {
-  document.addEventListener("pointerdown", onDocumentPointerDown);
-});
-onUnmounted(() => {
-  document.removeEventListener("pointerdown", onDocumentPointerDown);
-  if (sweeping) {
+  function onSweepUp() {
+    if (!sweeping) return;
+    sweeping = false;
+    sweepBox.value = null;
     document.removeEventListener("pointermove", onSweepMove);
     document.removeEventListener("pointerup", onSweepUp);
-  }
-});
 
-defineExpose({
-  blocks,
-  loading,
-  error,
-  reload: load,
-  orchestrator,
-  commandMenu,
-});
+    // Focus the container so keyboard events (Backspace, Escape, arrows) work
+    nextTick(() => containerRef.value?.focus());
+  }
+
+  function onDocumentPointerDown(e: PointerEvent) {
+    if (e.button !== 0) return;
+    if (!isInMargin(e)) return;
+
+    // Only start sweep if the click is vertically within the container
+    if (!containerRef.value) return;
+    const rect = containerRef.value.getBoundingClientRect();
+    if (e.clientY < rect.top || e.clientY > rect.bottom) return;
+
+    e.preventDefault();
+    focus.blurAll();
+    selection.clear();
+
+    sweeping = true;
+    sweepStartX = e.clientX;
+    sweepStartY = e.clientY;
+
+    document.addEventListener("pointermove", onSweepMove);
+    document.addEventListener("pointerup", onSweepUp);
+  }
+
+  onMounted(() => {
+    document.addEventListener("pointerdown", onDocumentPointerDown);
+  });
+  onUnmounted(() => {
+    document.removeEventListener("pointerdown", onDocumentPointerDown);
+    if (sweeping) {
+      document.removeEventListener("pointermove", onSweepMove);
+      document.removeEventListener("pointerup", onSweepUp);
+    }
+  });
+
+  defineExpose({
+    blocks,
+    loading,
+    error,
+    reload: load,
+    orchestrator,
+    commandMenu,
+  });
 </script>
 
 <template>
@@ -285,13 +286,12 @@ defineExpose({
     class="editor-document editor-content"
     tabindex="-1"
     @click="onBackgroundClick"
-    @keydown.capture="handleKeydown"
-  >
+    @keydown.capture="handleKeydown">
     <div v-if="loading" class="flex items-center justify-center py-8">
-      <UIcon name="i-lucide-loader" class="animate-spin size-6 text-dimmed" />
+      <UIcon name="i-lucide-loader" class="text-dimmed size-6 animate-spin" />
     </div>
 
-    <div v-else-if="error" class="text-error text-sm p-4">
+    <div v-else-if="error" class="text-error p-4 text-sm">
       {{ error }}
     </div>
 
@@ -300,13 +300,11 @@ defineExpose({
         v-for="(block, i) in topLevelBlocks"
         :key="block.id"
         :block="block"
-        :enum-index="enumIndexFor(block, i)"
-      />
+        :enum-index="enumIndexFor(block, i)" />
 
       <div
-        class="min-h-[25vh] max-h-[40vh] h-[32.5vh] cursor-text"
-        @click.self="onOverscrollClick"
-      />
+        class="h-[32.5vh] max-h-[40vh] min-h-[25vh] cursor-text"
+        @click.self="onOverscrollClick" />
     </template>
 
     <DocumentFloatingHandles :container="containerRef" />
@@ -322,8 +320,7 @@ defineExpose({
           top: `${sweepBox.top}px`,
           width: `${sweepBox.width}px`,
           height: `${sweepBox.height}px`,
-        }"
-      />
+        }" />
     </Teleport>
   </div>
 </template>

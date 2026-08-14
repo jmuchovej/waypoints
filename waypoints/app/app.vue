@@ -11,10 +11,10 @@
 </template>
 
 <style>
-@reference "~/assets/css/main.css";
+  @reference "~/assets/css/main.css";
 
-.app-wrapper {
-  @apply flex flex-col h-dvh overflow-hidden;
-  @apply pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)];
-}
+  .app-wrapper {
+    @apply flex h-dvh flex-col overflow-hidden;
+    @apply pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)];
+  }
 </style>

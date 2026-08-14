@@ -1,6 +1,6 @@
 import * as charts from "./charts";
-import * as marks from "./marks";
 import * as editor from "./editor";
+import * as marks from "./marks";
 import * as sync from "./sync";
 import * as territory from "./territory";
 

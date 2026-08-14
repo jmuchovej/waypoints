@@ -107,16 +107,6 @@ serde_json = { version = "1.0.150", features = [
   "raw_value",
 ] }
 sha2 = "0.11"
-specta = { version = "=2.0.0-rc.25", features = [
-  "chrono",
-  "derive",
-  "function",
-  "indexmap",
-  "serde_json",
-  "uuid",
-] }
-specta-serde = "0.0.12"
-specta-typescript = "0.0.12"
 strum = { version = "0.28.0", features = ["derive"] }
 syn = { version = "2", features = ["full"] }
 tempfile = "3"
@@ -128,12 +118,23 @@ tower-http = { version = "0.7.0", features = ["fs", "trace"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 trybuild = "1"
-turso = "=0.7.0"
 typed-builder = "0.23.2"
 uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }
 validator = { version = "0.20.0", features = ["indexmap"] }
 zeroize = { version = "1", features = ["zeroize_derive"] }
 
+turso = "=0.7.0"
+
+specta = { version = "=2.0.0-rc.25", features = [
+  "chrono",
+  "derive",
+  "function",
+  "indexmap",
+  "serde_json",
+  "uuid",
+] }
+specta-serde = "0.0.12"
+specta-typescript = "0.0.12"
 tauri = { version = "2.11.5", features = ["unstable"] }
 tauri-build = { version = "2.6.3", features = ["config-toml"] }
 tauri-plugin-barcode-scanner = "2"
@@ -154,8 +155,6 @@ wry = { version = "0.55.1", features = [
   "tracing"
 ] }
 
-# iroh 1.0.x pins ed25519-dalek exactly; keep in lockstep and upgrade the
-# whole curve25519-family set together.
 ed25519-dalek = { version = "=3.0.0-rc.0", features = ["serde"] }
 iroh = "1"
 rand = "0.10"

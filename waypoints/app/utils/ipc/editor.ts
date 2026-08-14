@@ -1,4 +1,11 @@
 import type {
+  CreateResult,
+  MutationResult,
+  RenderNode,
+  SplitResult,
+  UndoRedoResult,
+} from "@waypoints/cartograph";
+import type {
   Content,
   FeatureID,
   Mark,
@@ -7,13 +14,7 @@ import type {
   Reading,
   RichText,
 } from "@waypoints/domain";
-import type {
-  CreateResult,
-  MutationResult,
-  RenderNode,
-  SplitResult,
-  UndoRedoResult,
-} from "@waypoints/cartograph";
+
 import { invoke } from "./invoke";
 
 export async function getMark(markId: MarkID): Promise<Mark> {

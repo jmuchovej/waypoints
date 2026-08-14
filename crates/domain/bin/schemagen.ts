@@ -8,6 +8,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { pascalCase } from "scule";
 
 const root = resolve(import.meta.dirname, "..");

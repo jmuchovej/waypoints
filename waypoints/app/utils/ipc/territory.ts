@@ -1,4 +1,5 @@
 import type { Territory } from "@waypoints/cartograph";
+
 import { invoke } from "./invoke";
 
 export async function list(): Promise<Territory[]> {

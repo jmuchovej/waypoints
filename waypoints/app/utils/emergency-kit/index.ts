@@ -1,6 +1,7 @@
 import { ipc } from "#imports";
-import kitSource from "./emergency-kit.typ?raw";
+
 import { loadTypst } from "../typst";
+import kitSource from "./emergency-kit.typ?raw";
 
 /**
  * The Waypoints Emergency Kit — see `emergency-kit.typ` for the document

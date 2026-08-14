@@ -1,32 +1,32 @@
 <script lang="ts">
-import type { Chart, Feature, FeatureID, Reading } from "@waypoints/domain";
-type OnUpdate = (id: FeatureID, reading: Reading) => void | Promise<void>;
+  import type { Chart, Feature, FeatureID, Reading } from "@waypoints/domain";
+  type OnUpdate = (id: FeatureID, reading: Reading) => void | Promise<void>;
 
-export interface ReadingsTableProps {
-  chart: Chart;
-  readings: Partial<Record<FeatureID, Reading>>;
-  onUpdate: OnUpdate;
-}
+  export interface ReadingsTableProps {
+    chart: Chart;
+    readings: Partial<Record<FeatureID, Reading>>;
+    onUpdate: OnUpdate;
+  }
 </script>
 
 <script setup lang="ts">
-import { featureComponent } from "#imports";
+  import { featureComponent } from "#imports";
 
-const props = defineProps<ReadingsTableProps>();
+  const props = defineProps<ReadingsTableProps>();
 
-const features = computed<[FeatureID, Feature][]>(() => {
-  return Object.entries(props.chart.features ?? {})
-    .filter(([, f]) => f != null)
-    .map(([id, f]) => [id as FeatureID, f as Feature]);
-});
+  const features = computed<[FeatureID, Feature][]>(() => {
+    return Object.entries(props.chart.features ?? {})
+      .filter(([, f]) => f != null)
+      .map(([id, f]) => [id as FeatureID, f as Feature]);
+  });
 
-function valueFor(featureId: FeatureID): Reading | undefined {
-  return props.readings[featureId];
-}
+  function valueFor(featureId: FeatureID): Reading | undefined {
+    return props.readings[featureId];
+  }
 
-function handleUpdate(featureId: FeatureID, reading: Reading) {
-  props.onUpdate(featureId, reading);
-}
+  function handleUpdate(featureId: FeatureID, reading: Reading) {
+    props.onUpdate(featureId, reading);
+  }
 </script>
 
 <template>
@@ -42,8 +42,7 @@ function handleUpdate(featureId: FeatureID, reading: Reading) {
           :id="featureId"
           :value="valueFor(featureId)"
           :feature="feature"
-          @update="(r: Reading) => handleUpdate(featureId, r)"
-        />
+          @update="(r: Reading) => handleUpdate(featureId, r)" />
         <p v-if="feature.description" class="reading-description">
           {{ feature.description }}
         </p>

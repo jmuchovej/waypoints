@@ -78,7 +78,6 @@ check-generated:
 
     rc=0
     git --no-pager diff HEAD --exit-code -- $files || rc=1
-    # xtask can answer without writing, so it does.
     devenv shell cargo xtask workflows --check || rc=1
 
     if [ "$rc" -ne 0 ]; then

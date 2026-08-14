@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, inject, type Ref } from "vue";
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { createReusableTemplate } from "@vueuse/core";
+import { ref, inject, type Ref } from "vue";
+
 import { LazyUCalendar, UTooltip, UButton } from "#components";
 
 const open = inject<Ref<boolean>>("sidebar-open", ref(false));
@@ -25,7 +26,6 @@ const links: NavigationMenuItem[] = [
     },
     children: [
       // TODO: dynamically populate with first 5–10 recently visited landmarks
-
     ],
   },
   {
@@ -37,7 +37,6 @@ const links: NavigationMenuItem[] = [
     defaultOpen: true,
     children: [
       // TODO: dynamically populate with first 5–10 pinned landmarks
-
     ],
   },
   {

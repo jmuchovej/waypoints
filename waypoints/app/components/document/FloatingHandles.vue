@@ -1,189 +1,188 @@
 <script lang="ts">
-export interface FloatingHandlesProps {
-  container: HTMLDivElement | null;
-}
+  export interface FloatingHandlesProps {
+    container: HTMLDivElement | null;
+  }
 
-import {
-  isInGutter,
-  handlePosition,
-  getMarkID,
-  getClosestBlock,
-  type BlockElement,
-} from "#imports";
-import { DocumentContextMenu } from "#components";
-import type { MarkID } from "@waypoints/domain";
+  import type { MarkID } from "@waypoints/domain";
+
+  import { DocumentContextMenu } from "#components";
+  import {
+    isInGutter,
+    handlePosition,
+    getMarkID,
+    getClosestBlock,
+    type BlockElement,
+  } from "#imports";
 </script>
 
 <script setup lang="ts">
-import { BlockOrchestratorKey, type OrchestratorContext } from "#imports";
+  import { BlockOrchestratorKey, type OrchestratorContext } from "#imports";
 
-const props = defineProps<FloatingHandlesProps>();
+  const props = defineProps<FloatingHandlesProps>();
 
-const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey)!;
-const { dragDrop } = orchestrator;
+  const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey)!;
+  const { dragDrop } = orchestrator;
 
-const hoveredMarkId = ref<MarkID | null>(null);
-const handleTop = ref(0);
-const handleLeft = ref(0);
-const isVisible = ref(false);
+  const hoveredMarkId = ref<MarkID | null>(null);
+  const handleTop = ref(0);
+  const handleLeft = ref(0);
+  const isVisible = ref(false);
 
-function positionFor(markEl: HTMLElement) {
-  const pos = handlePosition(markEl, props.container!);
-  handleTop.value = pos.top;
-  handleLeft.value = pos.left;
-  hoveredMarkId.value = getMarkID(markEl);
-  isVisible.value = true;
-}
-
-// Non-reactive dedup ref — avoids recalculating when the cursor stays on the same block
-let lastMarkEl: HTMLElement | null = null;
-
-const shouldShow = computed(
-  () => (isVisible.value || contextMenuOpen.value) && dragDrop.blockIDs.value.length === 0,
-);
-
-function onContainerPointerMove(event: PointerEvent) {
-  if (dragDrop.blockIDs.value.length > 0) return;
-
-  let el = getClosestBlock(event);
-  if (el) {
-    // If the resolved block is inside a compound, check whether the cursor
-    // is in the compound's "own" zone (left of the child's indent area).
-    // If so, prefer the compound block for the drag handle.
-    const parent = el.parentElement?.closest<BlockElement>(`[data-mark-id]`);
-    if (parent) {
-      const childLeft = el.getBoundingClientRect().left;
-      if (event.clientX < childLeft) {
-        el = parent;
-      }
-    }
-
-    if (el !== lastMarkEl) {
-      lastMarkEl = el;
-      positionFor(el);
-    }
-    return;
+  function positionFor(markEl: HTMLElement) {
+    const pos = handlePosition(markEl, props.container!);
+    handleTop.value = pos.top;
+    handleLeft.value = pos.left;
+    hoveredMarkId.value = getMarkID(markEl);
+    isVisible.value = true;
   }
 
-  // Inside the container but not over a block — check gutter
-  if (lastMarkEl && isInGutter(lastMarkEl, event)) return;
+  // Non-reactive dedup ref — avoids recalculating when the cursor stays on the same block
+  let lastMarkEl: HTMLElement | null = null;
 
-  lastMarkEl = null;
-  isVisible.value = false;
-}
+  const shouldShow = computed(
+    () => (isVisible.value || contextMenuOpen.value) && dragDrop.blockIDs.value.length === 0,
+  );
 
-/** Global pointermove — keeps the handle alive when the cursor is in the gutter outside the container. */
-function onDocumentPointerMove(event: PointerEvent) {
-  if (!isVisible.value || !lastMarkEl) return;
+  function onContainerPointerMove(event: PointerEvent) {
+    if (dragDrop.blockIDs.value.length > 0) return;
 
-  // If the cursor is back inside the container, onContainerPointerMove handles it
-  if (props.container?.contains(event.target as Node)) return;
+    let el = getClosestBlock(event);
+    if (el) {
+      // If the resolved block is inside a compound, check whether the cursor
+      // is in the compound's "own" zone (left of the child's indent area).
+      // If so, prefer the compound block for the drag handle.
+      const parent = el.parentElement?.closest<BlockElement>(`[data-mark-id]`);
+      if (parent) {
+        const childLeft = el.getBoundingClientRect().left;
+        if (event.clientX < childLeft) {
+          el = parent;
+        }
+      }
 
-  if (isInGutter(lastMarkEl, event)) return;
+      if (el !== lastMarkEl) {
+        lastMarkEl = el;
+        positionFor(el);
+      }
+      return;
+    }
 
-  lastMarkEl = null;
-  isVisible.value = false;
-}
+    // Inside the container but not over a block — check gutter
+    if (lastMarkEl && isInGutter(lastMarkEl, event)) return;
 
-const DRAG_THRESHOLD_PX = 5;
-let dragStartX = 0;
-let dragStartY = 0;
-let pendingDragEvent: PointerEvent | null = null;
-let dragStarted = false;
+    lastMarkEl = null;
+    isVisible.value = false;
+  }
 
-function onDragPointerDown(e: PointerEvent) {
-  if (!hoveredMarkId.value || e.button !== 0) return;
+  /** Global pointermove — keeps the handle alive when the cursor is in the gutter outside the container. */
+  function onDocumentPointerMove(event: PointerEvent) {
+    if (!isVisible.value || !lastMarkEl) return;
 
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-  pendingDragEvent = e;
-  dragStarted = false;
+    // If the cursor is back inside the container, onContainerPointerMove handles it
+    if (props.container?.contains(event.target as Node)) return;
 
-  document.addEventListener("pointermove", onDragThresholdMove);
-  document.addEventListener("pointerup", onDragThresholdUp);
-}
+    if (isInGutter(lastMarkEl, event)) return;
 
-function onDragThresholdMove(e: PointerEvent) {
-  const dx = e.clientX - dragStartX;
-  const dy = e.clientY - dragStartY;
-  if (Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD_PX && pendingDragEvent) {
-    dragStarted = true;
-    contextMenuOpen.value = false;
-    e.preventDefault();
+    lastMarkEl = null;
+    isVisible.value = false;
+  }
+
+  const DRAG_THRESHOLD_PX = 5;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let pendingDragEvent: PointerEvent | null = null;
+  let dragStarted = false;
+
+  function onDragPointerDown(e: PointerEvent) {
+    if (!hoveredMarkId.value || e.button !== 0) return;
+
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    pendingDragEvent = e;
+    dragStarted = false;
+
+    document.addEventListener("pointermove", onDragThresholdMove);
+    document.addEventListener("pointerup", onDragThresholdUp);
+  }
+
+  function onDragThresholdMove(e: PointerEvent) {
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    if (Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD_PX && pendingDragEvent) {
+      dragStarted = true;
+      contextMenuOpen.value = false;
+      e.preventDefault();
+      document.removeEventListener("pointermove", onDragThresholdMove);
+      document.removeEventListener("pointerup", onDragThresholdUp);
+
+      const { dragDrop, selection } = orchestrator;
+      const ids = selection.isSelected(hoveredMarkId.value!)
+        ? sortByVisualOrder([...selection.selectedIDs.value])
+        : [hoveredMarkId.value!];
+      dragDrop.onPointerDown(ids, pendingDragEvent);
+      pendingDragEvent = null;
+    }
+  }
+
+  function onDragThresholdUp(_e: PointerEvent) {
     document.removeEventListener("pointermove", onDragThresholdMove);
     document.removeEventListener("pointerup", onDragThresholdUp);
-
-    const { dragDrop, selection } = orchestrator;
-    const ids = selection.isSelected(hoveredMarkId.value!)
-      ? sortByVisualOrder([...selection.selectedIDs.value])
-      : [hoveredMarkId.value!];
-    dragDrop.onPointerDown(ids, pendingDragEvent);
     pendingDragEvent = null;
+
+    // If no drag started, the UDropdownMenu trigger handles the click natively.
   }
-}
 
-function onDragThresholdUp(_e: PointerEvent) {
-  document.removeEventListener("pointermove", onDragThresholdMove);
-  document.removeEventListener("pointerup", onDragThresholdUp);
-  pendingDragEvent = null;
+  const contextMenuOpen = ref(false);
 
-  // If no drag started, the UDropdownMenu trigger handles the click natively.
-}
-
-const contextMenuOpen = ref(false);
-
-function onAddClick(e: MouseEvent) {
-  if (!hoveredMarkId.value) return;
-  if (e.altKey) {
-    // Alt+click: insert block above
-    orchestrator.onCreateBlockBefore(hoveredMarkId.value);
-  } else {
-    // Click: insert block below
-    orchestrator.onCreateBlockAfter(hoveredMarkId.value);
+  function onAddClick(e: MouseEvent) {
+    if (!hoveredMarkId.value) return;
+    if (e.altKey) {
+      // Alt+click: insert block above
+      orchestrator.onCreateBlockBefore(hoveredMarkId.value);
+    } else {
+      // Click: insert block below
+      orchestrator.onCreateBlockAfter(hoveredMarkId.value);
+    }
   }
-}
 
-/** Sort IDs into the order they appear in the rendered block list. */
-function sortByVisualOrder(ids: string[]): string[] {
-  const idSet = new Set(ids);
-  return blocks.value.filter((b) => idSet.has(b.id)).map((b) => b.id);
-}
+  /** Sort IDs into the order they appear in the rendered block list. */
+  function sortByVisualOrder(ids: string[]): string[] {
+    const idSet = new Set(ids);
+    return blocks.value.filter((b) => idSet.has(b.id)).map((b) => b.id);
+  }
 
-const blocks = orchestrator.blocks;
+  const blocks = orchestrator.blocks;
 
-watchEffect((onCleanup) => {
-  const el = props.container;
-  if (!el) return;
+  watchEffect((onCleanup) => {
+    const el = props.container;
+    if (!el) return;
 
-  el.addEventListener("pointermove", onContainerPointerMove, { passive: true });
-  document.addEventListener("pointermove", onDocumentPointerMove, {
-    passive: true,
+    el.addEventListener("pointermove", onContainerPointerMove, { passive: true });
+    document.addEventListener("pointermove", onDocumentPointerMove, {
+      passive: true,
+    });
+
+    onCleanup(() => {
+      el.removeEventListener("pointermove", onContainerPointerMove);
+      document.removeEventListener("pointermove", onDocumentPointerMove);
+    });
   });
-
-  onCleanup(() => {
-    el.removeEventListener("pointermove", onContainerPointerMove);
-    document.removeEventListener("pointermove", onDocumentPointerMove);
-  });
-});
 </script>
 
 <template>
   <div
     class="floating-handles"
-    :class="{ 'opacity-0 pointer-events-none': !shouldShow }"
+    :class="{ 'pointer-events-none opacity-0': !shouldShow }"
     :style="{
       top: `${handleTop}px`,
       left: `${handleLeft}px`,
-    }"
-  >
+    }">
     <div class="floating-handle handle-add" @click.stop="onAddClick">
       <UIcon name="i-lucide-plus" />
     </div>
     <DocumentContextMenu
       v-if="hoveredMarkId"
       v-model:open="contextMenuOpen"
-      :block-id="hoveredMarkId"
-    >
+      :block-id="hoveredMarkId">
       <div class="floating-handle handle-drag" @pointerdown.stop="onDragPointerDown">
         <UIcon name="i-lucide-grip-vertical" />
       </div>

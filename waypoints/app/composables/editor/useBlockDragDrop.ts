@@ -1,7 +1,7 @@
-import { isCompoundType, isIndentableType, isNestableType, type MarkID } from "@waypoints/domain";
 import type { RenderNode } from "@waypoints/cartograph";
+import { isCompoundType, isIndentableType, isNestableType, type MarkID } from "@waypoints/domain";
 import { readonly, ref, type Ref } from "vue";
-import { createLogger } from "~/utils/logger";
+
 import {
   getBlock,
   getBlocks,
@@ -9,6 +9,7 @@ import {
   getMarkID,
   type BlockElement,
 } from "~/utils/editor/elements";
+import { createLogger } from "~/utils/logger";
 
 const log = createLogger("drag");
 

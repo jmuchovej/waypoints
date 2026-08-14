@@ -21,7 +21,7 @@ body {
 }
 
 .page-content {
-  @apply flex-1 flex flex-col overflow-hidden;
+  @apply flex flex-1 flex-col overflow-hidden;
   @apply md:peer-data-[variant=floating]:my-4;
   @apply peer-data-[variant=inset]:mt-1;
   /*@apply peer-data-[variant=inset]:ms-4;*/
@@ -30,6 +30,6 @@ body {
   /*@apply lg:peer-data-[variant=inset]:not-peer-data-[collapsible=offcanvas]:me-0;*/
   @apply lg:peer-data-[variant=inset]:rounded-tl-xl;
   @apply peer-data-[variant=inset]:shadow-sm;
-  @apply peer-data-[variant=inset]:ring peer-data-[variant=inset]:ring-default;
+  @apply peer-data-[variant=inset]:ring-default peer-data-[variant=inset]:ring;
   @apply bg-default;
 }

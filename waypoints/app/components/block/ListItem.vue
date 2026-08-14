@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ContentType, isContent } from "@waypoints/domain";
-import type { ContentNode } from "#imports";
-import { RichTextEditor } from "#components";
+  import { ContentType, isContent } from "@waypoints/domain";
 
-const props = defineProps<{
-  block: ContentNode<"list-item" | "enum-item">;
-  enumIndex?: number;
-}>();
+  import { RichTextEditor } from "#components";
+  import type { ContentNode } from "#imports";
+
+  const props = defineProps<{
+    block: ContentNode<"list-item" | "enum-item">;
+    enumIndex?: number;
+  }>();
 </script>
 
 <template>

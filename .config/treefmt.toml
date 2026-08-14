@@ -95,3 +95,9 @@ command = "fmt-xml"
 excludes = []
 includes = ["*.xml", "*.svg", "*.xhtml", "*.xsl", "*.xslt", "*.dtd", "*.xsd", "*.entitlements", "*.manifest", "*.plist", "*.storyboard", "*.xc{scheme,settings,workspacedata}"]
 options = []
+
+[formatter.zizmor]
+command = "zizmor"
+excludes = []
+includes = [".github/workflows/*.yml", ".github/workflows/*.yaml", ".github/actions/**/*.yml", ".github/actions/**/*.yaml"]
+options = []

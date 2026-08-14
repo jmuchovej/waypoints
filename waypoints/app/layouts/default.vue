@@ -1,56 +1,57 @@
 <script setup lang="ts">
-import { today, getLocalTimeZone } from "@internationalized/date";
-import { ref } from "vue";
-import { ipc, listen } from "#imports";
-import { AppSidebar } from "#components";
+  import { today, getLocalTimeZone } from "@internationalized/date";
+  import { ref } from "vue";
 
-const route = useRoute();
+  import { AppSidebar } from "#components";
+  import { ipc, listen } from "#imports";
 
-const siderbarOpen = ref(true);
-provide("sidebar-open", siderbarOpen);
+  const route = useRoute();
 
-const newLandmarkOpen = ref(false);
-provide("new-landmark-open", newLandmarkOpen);
-const date = shallowRef(today(getLocalTimeZone()));
+  const siderbarOpen = ref(true);
+  provide("sidebar-open", siderbarOpen);
 
-// Listen for File > New menu event from native menu (⌘N / Ctrl+N)
-let unlisten: (() => void) | undefined;
-onMounted(async () => {
-  unlisten = await listen("app:mark:new", () => {
-    newLandmarkOpen.value = true;
+  const newLandmarkOpen = ref(false);
+  provide("new-landmark-open", newLandmarkOpen);
+  const date = shallowRef(today(getLocalTimeZone()));
+
+  // Listen for File > New menu event from native menu (⌘N / Ctrl+N)
+  let unlisten: (() => void) | undefined;
+  onMounted(async () => {
+    unlisten = await listen("app:mark:new", () => {
+      newLandmarkOpen.value = true;
+    });
   });
-});
-onUnmounted(() => unlisten?.());
+  onUnmounted(() => unlisten?.());
 
-useHead({
-  titleTemplate: (title) => title ?? "Waypoints",
-  meta: [
-    { charset: "utf-8" },
-    { name: "format-detection", content: "no" },
-    {
-      name: "viewport",
-      content: [
-        "width=device-width",
-        "initial-scale=1",
-        "maximum-scale=1",
-        "viewport-fit=cover",
-      ].join(", "),
+  useHead({
+    titleTemplate: (title) => title ?? "Waypoints",
+    meta: [
+      { charset: "utf-8" },
+      { name: "format-detection", content: "no" },
+      {
+        name: "viewport",
+        content: [
+          "width=device-width",
+          "initial-scale=1",
+          "maximum-scale=1",
+          "viewport-fit=cover",
+        ].join(", "),
+      },
+    ],
+  });
+
+  watch(
+    () => route.fullPath,
+    async () => {
+      await nextTick(); // let useHead flush the new document.title first
+      await setNativeTitle(document.title || "Waypoints");
     },
-  ],
-});
-
-watch(
-  () => route.fullPath,
-  async () => {
-    await nextTick(); // let useHead flush the new document.title first
-    await setNativeTitle(document.title || "Waypoints");
-  },
-  { immediate: true },
-);
+    { immediate: true },
+  );
 </script>
 
 <template>
-  <div class="flex flex-row h-dvh">
+  <div class="flex h-dvh flex-row">
     <AppSidebar />
 
     <NewLandmarkPalette v-model:open="newLandmarkOpen" />

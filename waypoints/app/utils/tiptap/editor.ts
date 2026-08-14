@@ -1,5 +1,4 @@
 import type { JSONContent, EditorOptions as TipTapEditorOptions } from "@tiptap/core";
-import { Editor } from "@tiptap/vue-3";
 import TipTapDocument from "@tiptap/extension-document";
 import TipTapEmoji from "@tiptap/extension-emoji";
 import TipTapLink from "@tiptap/extension-link";
@@ -8,9 +7,11 @@ import TipTapPlaceholder from "@tiptap/extension-placeholder";
 import TipTapText from "@tiptap/extension-text";
 import { UndoRedo } from "@tiptap/extensions";
 import type { EditorProps } from "@tiptap/pm/view";
+import { Editor } from "@tiptap/vue-3";
 import type { RichText } from "@waypoints/domain";
-import { CommandMenu, type CommandMenuDelegate } from "./extensions/command-menu";
-import { MarkdownShortcuts, type BlockTypeDelegate } from "./extensions/markdown-shortcuts";
+
+import { toTipTap } from "#imports";
+
 import {
   Bold,
   Code,
@@ -25,7 +26,8 @@ import { Math } from "./bridge/math";
 import { Mention } from "./bridge/mention";
 import { Spoiler } from "./bridge/spoiler";
 import { TextColor } from "./bridge/text-color";
-import { toTipTap } from "#imports";
+import { CommandMenu, type CommandMenuDelegate } from "./extensions/command-menu";
+import { MarkdownShortcuts, type BlockTypeDelegate } from "./extensions/markdown-shortcuts";
 
 export type { Editor } from "@tiptap/vue-3";
 

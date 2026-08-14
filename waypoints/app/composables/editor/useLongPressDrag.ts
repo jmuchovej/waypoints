@@ -1,5 +1,6 @@
-import { type Ref, ref, readonly, watchEffect } from "vue";
 import { onLongPress, useMediaQuery } from "@vueuse/core";
+import { type Ref, ref, readonly, watchEffect } from "vue";
+
 import type { DragDropContext } from "./useBlockDragDrop";
 
 export function useLongPressDrag(containerEl: Ref<HTMLElement | null>, dragDrop: DragDropContext) {

@@ -1,124 +1,125 @@
 <script lang="ts">
-import type { RenderNode } from "@waypoints/cartograph";
+  import type { RenderNode } from "@waypoints/cartograph";
 
-export interface BlockProps {
-  block: RenderNode;
-  /** Sequential index for enum-item numbering */
-  enumIndex?: number;
-}
+  export interface BlockProps {
+    block: RenderNode;
+    /** Sequential index for enum-item numbering */
+    enumIndex?: number;
+  }
 </script>
 
 <script setup lang="ts">
-import { createReusableTemplate } from "@vueuse/core";
-import {
-  BlockOrchestratorKey,
-  type OrchestratorContext,
-  type OrderPosition,
-  isClosestTargetMark,
-  blockComponent,
-  ariaSemantics,
-} from "#imports";
-import { isFocusableType, isLandmark, isContent } from "@waypoints/domain";
+  import { createReusableTemplate } from "@vueuse/core";
+  import { isFocusableType, isLandmark, isContent } from "@waypoints/domain";
 
-const props = defineProps<BlockProps>();
+  import {
+    BlockOrchestratorKey,
+    type OrchestratorContext,
+    type OrderPosition,
+    isClosestTargetMark,
+    blockComponent,
+    ariaSemantics,
+  } from "#imports";
 
-const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey)!;
-const { focus, dragDrop, selection } = orchestrator;
+  const props = defineProps<BlockProps>();
 
-const [DefineDropIndicator, DropIndicator] = createReusableTemplate<{
-  position: OrderPosition;
-}>();
+  const orchestrator = inject<OrchestratorContext>(BlockOrchestratorKey)!;
+  const { focus, dragDrop, selection } = orchestrator;
 
-/** Compound parents inject their own depth so children indent relative to the container. */
-const parentDepthOverride = inject<Ref<number> | number>("compound-parent-depth", -1);
+  const [DefineDropIndicator, DropIndicator] = createReusableTemplate<{
+    position: OrderPosition;
+  }>();
 
-const isSelected = computed(() => selection.isSelected(props.block.id));
-const isDragging = computed(() => dragDrop?.isDragging(props.block.id));
-const isInsideDropTarget = computed(
-  () => dragDrop?.isTarget(props.block.id) && dragDrop?.isInside(),
-);
+  /** Compound parents inject their own depth so children indent relative to the container. */
+  const parentDepthOverride = inject<Ref<number> | number>("compound-parent-depth", -1);
 
-/**
- * Intercept pointerdown with Shift/Cmd to handle block selection before
- * ProseMirror can grab focus.
- */
-function onPointerDown(e: PointerEvent) {
-  const hasModifier = e.shiftKey || e.metaKey || e.ctrlKey;
-  if (!hasModifier) return;
+  const isSelected = computed(() => selection.isSelected(props.block.id));
+  const isDragging = computed(() => dragDrop?.isDragging(props.block.id));
+  const isInsideDropTarget = computed(
+    () => dragDrop?.isTarget(props.block.id) && dragDrop?.isInside(),
+  );
 
-  // Don't interfere with clicks on child blocks inside compounds
-  if (isClosestTargetMark(e, props.block.id)) return;
+  /**
+   * Intercept pointerdown with Shift/Cmd to handle block selection before
+   * ProseMirror can grab focus.
+   */
+  function onPointerDown(e: PointerEvent) {
+    const hasModifier = e.shiftKey || e.metaKey || e.ctrlKey;
+    if (!hasModifier) return;
 
-  e.preventDefault();
-  e.stopPropagation();
+    // Don't interfere with clicks on child blocks inside compounds
+    if (isClosestTargetMark(e, props.block.id)) return;
 
-  if (e.shiftKey) {
-    selection.shiftClick(props.block.id);
-  } else {
-    // Cmd/Ctrl+Click
-    selection.toggle(props.block.id);
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.shiftKey) {
+      selection.shiftClick(props.block.id);
+    } else {
+      // Cmd/Ctrl+Click
+      selection.toggle(props.block.id);
+    }
+
+    focus.blurAll();
   }
 
-  focus.blurAll();
-}
+  function onClick(e: MouseEvent) {
+    // Modifier clicks are handled by onPointerDown
+    if (e.shiftKey || e.metaKey || e.ctrlKey) return;
 
-function onClick(e: MouseEvent) {
-  // Modifier clicks are handled by onPointerDown
-  if (e.shiftKey || e.metaKey || e.ctrlKey) return;
+    // Blocks with a live editor handle: let clicks pass through to the editor
+    if (focus?.getHandle(props.block.id)) return;
 
-  // Blocks with a live editor handle: let clicks pass through to the editor
-  if (focus?.getHandle(props.block.id)) return;
+    // Don't interfere with clicks on child blocks
+    if (isClosestTargetMark(e, props.block.id)) return;
 
-  // Don't interfere with clicks on child blocks
-  if (isClosestTargetMark(e, props.block.id)) return;
+    // Text-editable blocks without a handle yet: focus to start editing
+    const type = props.block.data.mark === "content" ? props.block.data.type : null;
+    if (type && isFocusableType(type)) {
+      focus?.focusBlockAt(props.block.id, e);
+      return;
+    }
 
-  // Text-editable blocks without a handle yet: focus to start editing
-  const type = props.block.data.mark === "content" ? props.block.data.type : null;
-  if (type && isFocusableType(type)) {
-    focus?.focusBlockAt(props.block.id, e);
-    return;
+    // Compound/non-editable blocks: select
+    focus?.blurAll();
+    selection?.select(props.block.id);
   }
 
-  // Compound/non-editable blocks: select
-  focus?.blurAll();
-  selection?.select(props.block.id);
-}
+  const parentDepth = computed(() =>
+    typeof parentDepthOverride === "number" ? parentDepthOverride : parentDepthOverride.value,
+  );
 
-const parentDepth = computed(() =>
-  typeof parentDepthOverride === "number" ? parentDepthOverride : parentDepthOverride.value,
-);
+  const effectiveDepth = computed(() => {
+    if (parentDepth.value >= 0) {
+      return props.block.depth - parentDepth.value - 1;
+    }
+    return props.block.depth;
+  });
 
-const effectiveDepth = computed(() => {
-  if (parentDepth.value >= 0) {
-    return props.block.depth - parentDepth.value - 1;
-  }
-  return props.block.depth;
-});
+  const depth = computed(() => {
+    return Math.max(0, effectiveDepth.value);
+  });
 
-const depth = computed(() => {
-  return Math.max(0, effectiveDepth.value);
-});
+  const blockType = computed(() => {
+    const { data } = props.block;
+    if (isLandmark(data)) return "landmark";
+    if (isContent(data)) return data.type;
+    return undefined;
+  });
 
-const blockType = computed(() => {
-  const { data } = props.block;
-  if (isLandmark(data)) return "landmark";
-  if (isContent(data)) return data.type;
-  return undefined;
-});
+  const blockTheme = computed(() => {
+    const { data } = props.block;
+    if (isContent(data) && "theme" in data) return data.theme;
+    return null;
+  });
 
-const blockTheme = computed(() => {
-  const { data } = props.block;
-  if (isContent(data) && "theme" in data) return data.theme;
-  return null;
-});
-
-const effectiveDropDepth = computed(() => {
-  const raw = dragDrop.dropDepth.value;
-  if (parentDepth.value >= 0) {
-    return Math.max(0, raw - parentDepth.value - 1);
-  }
-  return raw;
-});
+  const effectiveDropDepth = computed(() => {
+    const raw = dragDrop.dropDepth.value;
+    if (parentDepth.value >= 0) {
+      return Math.max(0, raw - parentDepth.value - 1);
+    }
+    return raw;
+  });
 </script>
 
 <template>
@@ -127,8 +128,7 @@ const effectiveDropDepth = computed(() => {
       class="drop-indicator"
       aria-hidden="true"
       :style="`--drop-depth: ${effectiveDropDepth};`"
-      v-if="dragDrop.showDropTarget(block.id, position)"
-    />
+      v-if="dragDrop.showDropTarget(block.id, position)" />
   </DefineDropIndicator>
 
   <div class="block">
@@ -147,8 +147,7 @@ const effectiveDropDepth = computed(() => {
       :data-theme="blockTheme?.color ?? 'default'"
       v-bind="ariaSemantics(block.data)"
       @pointerdown.capture="onPointerDown"
-      @click="onClick"
-    >
+      @click="onClick">
       <component :is="blockComponent(block.data)" :block="block" :enum-index="enumIndex" />
     </div>
     <DropIndicator position="after" />

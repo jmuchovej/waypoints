@@ -57,10 +57,11 @@ context: |
         code: cartograph, app, domain — cross-cutting by nature; may cite
         sync-protocol guarantees, never the reverse.
 
-  Seed sources are read-only donors. Once a domain spec covers a topic, the spec is authoritative — pull invariants from seeds into deltas; never edit a seed.
+  Seed sources are read-only donors. Once a domain spec covers a topic, the spec
+  is authoritative — pull invariants from seeds into deltas; never edit a seed.
 
-  Conventions: Conventional Commits, signed; jj-colocated repo; bun (never
-  pnpm); devenv + just + treefmt (never hand-format); derive_more for trait
+  Conventions: Conventional Commits, signed; jj-colocated repo; pnpm (never
+  bun); devenv + just + treefmt (never hand-format); derive_more for trait
   impls; prek runs clippy, cargo-check, cargo-test, treefmt.
 
 rules:

@@ -1,10 +1,10 @@
 import * as tauriApp from "@tauri-apps/api/app";
 import * as tauriWebviewWindow from "@tauri-apps/api/webviewWindow";
+import * as tauriDialog from "@tauri-apps/plugin-dialog";
 import * as tauriFs from "@tauri-apps/plugin-fs";
 import * as tauriNotification from "@tauri-apps/plugin-notification";
 import * as tauriOs from "@tauri-apps/plugin-os";
 import * as tauriShell from "@tauri-apps/plugin-shell";
-import * as tauriDialog from "@tauri-apps/plugin-dialog";
 import * as tauriStore from "@tauri-apps/plugin-store";
 import { addImports, defineNuxtModule } from "nuxt/kit";
 
