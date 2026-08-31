@@ -17,10 +17,6 @@ export interface EditorHandle {
   isCursorOnLastLine(): boolean;
   getContentLength(): number;
   flush(): Promise<void>;
-  canUndo(): boolean;
-  canRedo(): boolean;
-  undo(): void;
-  redo(): void;
 }
 
 type PendingFocus =
