@@ -16,7 +16,7 @@
   deno,
   flavor,
 }: let
-  identifier = (builtins.fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml)).identifier;
+  inherit ((builtins.fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml))) identifier;
 
   root = ../../..;
   # Everything pnpm needs to resolve the workspace — and nothing that would

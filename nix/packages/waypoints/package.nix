@@ -60,12 +60,12 @@
       }
     else rustPlatform;
 in
-  rust-platform.buildRustPackage (finalAttrs: {
+  rust-platform.buildRustPackage (_finalAttrs: {
     pname =
       if flavor == "stable"
       then "waypoints"
       else "waypoints-${flavor}";
-    version = flavor-config.version;
+    inherit (flavor-config) version;
 
     src = lib.fileset.toSource {
       root = ../../..;
