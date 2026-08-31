@@ -59,11 +59,15 @@ tauri-plugin-single-instance.workspace = true
 objc2-app-kit.workspace = true
 
 [features]
-default = ["desktop"]
+default = ["desktop", "self-update"]
 desktop = ["tauri/tray-icon"]
 development = ["store/development"]
 nightly = ["store/nightly"]
 preview = ["store/preview"]
+# In-place upgrades via the updater plugin. Off for store-installed builds
+# (e.g. Nix), which check the endpoint and notify but never write to their
+# own install path.
+self-update = []
 stable = ["store/stable"]
 
 [lints]
