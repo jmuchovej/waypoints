@@ -1,38 +1,38 @@
 <script setup lang="ts">
-const route = useRoute();
-const channel = computed(() => route.params.channel as "stable" | "preview");
-const version = computed(() => route.params.version as string | undefined);
+  const route = useRoute();
+  const channel = computed(() => route.params.channel as "stable" | "preview");
+  const version = computed(() => route.params.version as string | undefined);
 
-if (!["stable", "preview"].includes(channel.value)) {
-  throw createError({ statusCode: 404, statusMessage: "Not Found" });
-}
-
-const channels = ref<ButtonProps[]>([
-  {
-    label: "Stable",
-    to: "/releases/stable",
-    active: channel.value === "stable",
-  },
-  {
-    label: "Preview",
-    to: "/releases/preview",
-    active: channel.value === "preview",
-  },
-]);
-
-const { data: releases } = await useReleases(channel);
-
-const filtered = computed(() => {
-  if (!releases.value) return [];
-  if (version.value) {
-    return releases.value.filter((r) => r.tag === version.value);
+  if (!["stable", "preview"].includes(channel.value)) {
+    throw createError({ statusCode: 404, statusMessage: "Not Found" });
   }
-  return releases.value;
-});
 
-if (version.value && !filtered.value.length) {
-  throw createError({ statusCode: 404, statusMessage: "Release not found" });
-}
+  const channels = ref<ButtonProps[]>([
+    {
+      label: "Stable",
+      to: "/releases/stable",
+      active: channel.value === "stable",
+    },
+    {
+      label: "Preview",
+      to: "/releases/preview",
+      active: channel.value === "preview",
+    },
+  ]);
+
+  const { data: releases } = await useReleases(channel);
+
+  const filtered = computed(() => {
+    if (!releases.value) return [];
+    if (version.value) {
+      return releases.value.filter((r) => r.tag === version.value);
+    }
+    return releases.value;
+  });
+
+  if (version.value && !filtered.value.length) {
+    throw createError({ statusCode: 404, statusMessage: "Release not found" });
+  }
 </script>
 
 <template>
@@ -41,25 +41,22 @@ if (version.value && !filtered.value.length) {
       <UPageHero
         title="Releases"
         :links="channels"
-        class="md:border-b border-default"
-        :ui="{ container: 'relative py-10 sm:py-16 lg:py-24' }"
-      >
+        class="border-default md:border-b"
+        :ui="{ container: 'relative py-10 sm:py-16 lg:py-24' }">
         <template #top>
           <div
-            class="absolute z-[-1] rounded-full bg-primary blur-[300px] size-60 sm:size-80 transform -translate-x-1/2 left-1/2 -translate-y-80"
-          />
+            class="bg-primary absolute left-1/2 z-[-1] size-60 -translate-x-1/2 -translate-y-80 transform rounded-full blur-[300px] sm:size-80" />
         </template>
 
         <BackgroundStars />
 
         <div
           aria-hidden="true"
-          class="hidden md:block absolute z-[-1] border-x border-default inset-0 mx-4 sm:mx-6 lg:mx-8"
-        />
+          class="border-default absolute inset-0 z-[-1] mx-4 hidden border-x sm:mx-6 md:block lg:mx-8" />
       </UPageHero>
 
       <UPageSection :ui="{ container: '!py-0' }">
-        <div class="py-4 md:py-8 lg:py-16 md:border-x border-default">
+        <div class="border-default py-4 md:border-x md:py-8 lg:py-16">
           <UContainer class="max-w-5xl">
             <UChangelogVersions :indicator="false" v-if="filtered.length">
               <UChangelogVersion
@@ -83,15 +80,14 @@ if (version.value && !filtered.value.length) {
                   // date: 'text-xs text-muted font-mono',
                   // indicator:
                   // 'justify-start sticky top-(--ui-header-height) pt-4 -mt-4 flex flex-col items-end',
-                }"
-              >
+                }">
                 <template #body>
                   <MDC :value="release.markdown" />
                 </template>
               </UChangelogVersion>
             </UChangelogVersions>
 
-            <div v-else class="text-center py-24 text-muted">
+            <div v-else class="text-muted py-24 text-center">
               <p>No {{ channel }} releases yet.</p>
             </div>
           </UContainer>

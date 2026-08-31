@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from "@nuxt/ui";
-import { resourceGroups } from "~/data/navigation";
+  import type { NavigationMenuItem } from "@nuxt/ui";
 
-const menu: NavigationMenuItem[] = [
-  {
-    label: "Resources",
-    value: "resources",
-    slot: "resources" as const,
-    children: [{ label: "_placeholder" }],
-  },
-  {
-    label: "Docs",
-    to: "/docs/",
-  },
-];
+  import { resourceGroups } from "~/data/navigation";
+
+  const menu: NavigationMenuItem[] = [
+    {
+      label: "Resources",
+      value: "resources",
+      slot: "resources" as const,
+      children: [{ label: "_placeholder" }],
+    },
+    {
+      label: "Docs",
+      to: "/docs/",
+    },
+  ];
 </script>
 
 <template>
   <UNavigationMenu
     :items="menu"
-    :ui="{ root: 'flex-1', viewportWrapper: 'absolute top-full left-0 flex' }"
-  >
+    :ui="{ root: 'flex-1', viewportWrapper: 'absolute top-full left-0 flex' }">
     <template #resources-content>
-      <div class="grid grid-flow-col-dense divide-x divide-default">
+      <div class="divide-default grid grid-flow-col-dense divide-x">
         <div v-for="group in resourceGroups" :key="group.label" class="p-2 pt-1">
-          <p class="text-xs font-semibold text-muted uppercase tracking-wider py-1 px-2">
+          <p class="text-muted px-2 py-1 text-xs font-semibold tracking-wider uppercase">
             {{ group.label }}
           </p>
           <ul class="space-y-0.5">
@@ -32,13 +32,12 @@ const menu: NavigationMenuItem[] = [
               <NuxtLink
                 :to="link.to"
                 :target="link.target"
-                class="flex items-start gap-2.5 px-2 py-1.5 rounded-md hover:bg-elevated transition-colors"
-              >
+                class="hover:bg-elevated flex items-start gap-2.5 rounded-md px-2 py-1.5 transition-colors">
                 <div class="min-w-0">
-                  <p class="text-sm font-medium text-highlighted truncate">
+                  <p class="text-highlighted truncate text-sm font-medium">
                     {{ link.label }}
                   </p>
-                  <p class="text-xs text-muted truncate">
+                  <p class="text-muted truncate text-xs">
                     {{ link.description }}
                   </p>
                 </div>

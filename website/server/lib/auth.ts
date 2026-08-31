@@ -1,9 +1,10 @@
+import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { twoFactor } from "better-auth/plugins";
-import { passkey } from "@better-auth/passkey";
-import { db } from "./database";
+
 import * as schema from "../database/schema";
+import { db } from "./database";
 
 const config = useRuntimeConfig();
 

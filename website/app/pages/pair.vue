@@ -1,40 +1,40 @@
 <script setup lang="ts">
-// The landing half of a pairing link: https://waypoints.so/pair#<payload>.
-// On a device with Waypoints installed the OS opens the app directly and
-// this page is never seen; without the app (or on desktop browsers with no
-// link association) it becomes the install funnel.
-//
-// The payload rides the URL FRAGMENT, which never reaches the server —
-// everything here is client-side only, and the fragment is only ever
-// re-emitted into the waypoints:// scheme or the clipboard. It must never
-// be logged, sent, or rendered.
+  // The landing half of a pairing link: https://waypoints.so/pair#<payload>.
+  // On a device with Waypoints installed the OS opens the app directly and
+  // this page is never seen; without the app (or on desktop browsers with no
+  // link association) it becomes the install funnel.
+  //
+  // The payload rides the URL FRAGMENT, which never reaches the server —
+  // everything here is client-side only, and the fragment is only ever
+  // re-emitted into the waypoints:// scheme or the clipboard. It must never
+  // be logged, sent, or rendered.
 
-const fragment = ref<string | null>(null);
-const copied = ref(false);
+  const fragment = ref<string | null>(null);
+  const copied = ref(false);
 
-onMounted(() => {
-  fragment.value = window.location.hash.length > 1 ? window.location.hash.slice(1) : null;
-});
+  onMounted(() => {
+    fragment.value = window.location.hash.length > 1 ? window.location.hash.slice(1) : null;
+  });
 
-function openInApp() {
-  if (!fragment.value) return;
-  // Hand the fragment to the installed app via the custom scheme — works
-  // on desktop where https link association doesn't exist.
-  window.location.href = `waypoints://pair#${fragment.value}`;
-}
+  function openInApp() {
+    if (!fragment.value) return;
+    // Hand the fragment to the installed app via the custom scheme — works
+    // on desktop where https link association doesn't exist.
+    window.location.href = `waypoints://pair#${fragment.value}`;
+  }
 
-async function copyCode() {
-  if (!fragment.value) return;
-  await navigator.clipboard.writeText(`https://waypoints.so/pair#${fragment.value}`);
-  copied.value = true;
-  setTimeout(() => (copied.value = false), 2000);
-}
+  async function copyCode() {
+    if (!fragment.value) return;
+    await navigator.clipboard.writeText(`https://waypoints.so/pair#${fragment.value}`);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 2000);
+  }
 
-useHead({ title: "Pair a device — Waypoints" });
+  useHead({ title: "Pair a device — Waypoints" });
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-6 max-w-lg mx-auto py-24 px-4 text-center">
+  <div class="mx-auto flex max-w-lg flex-col items-center gap-6 px-4 py-24 text-center">
     <h1 class="text-2xl font-semibold">Pair this device with Waypoints</h1>
 
     <template v-if="fragment">
@@ -52,8 +52,7 @@ useHead({ title: "Pair a device — Waypoints" });
           variant="ghost"
           :icon="copied ? 'i-lucide-check' : 'i-lucide-clipboard-copy'"
           :label="copied ? 'Copied' : 'Copy pairing link'"
-          @click="copyCode"
-        />
+          @click="copyCode" />
       </div>
 
       <p class="text-xs opacity-60">
