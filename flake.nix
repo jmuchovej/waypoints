@@ -21,8 +21,18 @@
 
       flake.overlays.default = import ./nix/overlay.nix {};
 
-      perSystem = _: {
-        # `packages`/`checks` are wired in task 6.4 once the derivations exist.
+      perSystem = {pkgs, ...}: let
+        overlaid = pkgs.extend (import ./nix/overlay.nix {});
+        # Stamp build metadata from the flake source when available; build.rs
+        # falls back to "unknown" on dirty/unknown trees.
+        stamp = drv: drv.override {rev = inputs.self.rev or inputs.self.dirtyRev or null;};
+      in {
+        packages = {
+          waypoints = stamp overlaid.waypoints;
+          waypoints-preview = stamp overlaid.waypoints-preview;
+          waypoints-nightly = stamp overlaid.waypoints-nightly;
+          default = stamp overlaid.waypoints;
+        };
       };
     };
 }
