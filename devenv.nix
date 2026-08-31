@@ -279,7 +279,7 @@ in {
       ".config/mise.toml"
       ".config/mise.lock"
     ];
-    exec = builtins.readFile "${config.git.root}/.bin/sync-mise";
+    exec = builtins.readFile "${config.devenv.root}/.bin/sync-mise";
   };
 
   tasks."waypoints:sync-deny-targets" = {
@@ -290,7 +290,7 @@ in {
       "rust-toolchain.toml"
       ".cargo/deny.toml"
     ];
-    exec = builtins.readFile "${config.git.root}/.bin/sync-deny-targets";
+    exec = builtins.readFile "${config.devenv.root}/.bin/sync-deny-targets";
   };
 
   files = {

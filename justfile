@@ -77,7 +77,18 @@ check-generated:
     fi
 
     rc=0
-    git --no-pager diff HEAD --exit-code -- $files || rc=1
+    # Colocated checkouts have a .git where HEAD is jj's @-; added jj
+    # workspaces have no .git, but `jj diff -r @` asks the same question
+    # against the same baseline (the working-copy commit's parent).
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+      git --no-pager diff HEAD --exit-code -- $files || rc=1
+    else
+      stale="$(jj diff -r @ --name-only -- $files)"
+      if [ -n "$stale" ]; then
+        jj diff -r @ --git -- $files
+        rc=1
+      fi
+    fi
     devenv shell cargo xtask workflows --check || rc=1
 
     if [ "$rc" -ne 0 ]; then
