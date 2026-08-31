@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { useDocusColorMode, useDocusI18n, useSubNavigation } from "#imports";
+  import { useDocusColorMode, useDocusI18n, useSubNavigation } from "#imports";
 
-const { forced: forcedColorMode } = useDocusColorMode();
-const { isEnabled: isAssistantEnabled } = useAssistant();
-const { isEnabled, locales } = useDocusI18n();
-const { subNavigationMode } = useSubNavigation();
+  const { forced: forcedColorMode } = useDocusColorMode();
+  const { isEnabled: isAssistantEnabled } = useAssistant();
+  const { isEnabled, locales } = useDocusI18n();
+  const { subNavigationMode } = useSubNavigation();
 
-const { data: session } = await useSession();
-const { signOut } = useAuth();
+  const { data: session } = await useSession();
+  const { signOut } = useAuth();
 
-defineShortcuts({
-  d: () => navigateTo("/download"),
-});
+  defineShortcuts({
+    d: () => navigateTo("/download"),
+  });
 </script>
 
 <template>
@@ -24,7 +24,7 @@ defineShortcuts({
       <LanguageSelect />
 
       <template #fallback>
-        <div class="h-8 w-8 animate-pulse bg-neutral-200 dark:bg-neutral-800 rounded-md" />
+        <div class="h-8 w-8 animate-pulse rounded-md bg-neutral-200 dark:bg-neutral-800" />
       </template>
     </ClientOnly>
 
@@ -38,7 +38,7 @@ defineShortcuts({
     <UKbd variant="subtle" value="K" />
   </UContentSearchButton>
 
-  <USeparator orientation="vertical" class="hidden lg:block h-8" />
+  <USeparator orientation="vertical" class="hidden h-8 lg:block" />
 
   <ClientOnly>
     <UButton
@@ -47,16 +47,14 @@ defineShortcuts({
       variant="subtle"
       color="neutral"
       to="/auth/login"
-      class="hidden lg:inline-flex"
-    />
+      class="hidden lg:inline-flex" />
     <UButton
       v-else
       label="Sign Out"
       variant="subtle"
       color="neutral"
       class="hidden lg:inline-flex"
-      @click="signOut()"
-    />
+      @click="signOut()" />
   </ClientOnly>
   <UButton variant="subtle" color="primary" to="/download" class="hidden lg:inline-flex">
     <template #default> Download </template>

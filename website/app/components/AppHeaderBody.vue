@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { ContentNavigationItem } from "@nuxt/content";
-import { resourceLinks } from "~/data/navigation";
+  import type { ContentNavigationItem } from "@nuxt/content";
 
-const navigation = inject<Ref<ContentNavigationItem[]>>("navigation");
-const contentNavVariants = useUIConfig("contentNavigation");
+  import { resourceLinks } from "~/data/navigation";
+
+  const navigation = inject<Ref<ContentNavigationItem[]>>("navigation");
+  const contentNavVariants = useUIConfig("contentNavigation");
 </script>
 
 <template>
@@ -16,6 +17,5 @@ const contentNavVariants = useUIConfig("contentNavigation");
     :highlight-color="contentNavVariants.highlightColor"
     :variant="contentNavVariants.variant ?? 'link'"
     :color="contentNavVariants.color"
-    :navigation="navigation"
-  />
+    :navigation="navigation" />
 </template>

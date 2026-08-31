@@ -1,51 +1,51 @@
 <script setup lang="ts">
-const { data: roadmap } = await useAsyncData("roadmap", () => queryCollection("roadmap").first());
+  const { data: roadmap } = await useAsyncData("roadmap", () => queryCollection("roadmap").first());
 
-type RoadmapItem = { title: string; description: string; status: string };
+  type RoadmapItem = { title: string; description: string; status: string };
 
-const grouped = computed(() => {
-  const empty = {
-    done: [] as RoadmapItem[],
-    "in-progress": [] as RoadmapItem[],
-    next: [] as RoadmapItem[],
-    later: [] as RoadmapItem[],
-  };
-  if (!roadmap.value?.items) return empty;
+  const grouped = computed(() => {
+    const empty = {
+      done: [] as RoadmapItem[],
+      "in-progress": [] as RoadmapItem[],
+      next: [] as RoadmapItem[],
+      later: [] as RoadmapItem[],
+    };
+    if (!roadmap.value?.items) return empty;
 
-  const groups = { ...empty };
+    const groups = { ...empty };
 
-  for (const item of roadmap.value.items) {
-    groups[item.status as keyof typeof groups]?.push(item);
-  }
+    for (const item of roadmap.value.items) {
+      groups[item.status as keyof typeof groups]?.push(item);
+    }
 
-  return groups;
-});
+    return groups;
+  });
 
-const columns = [
-  {
-    key: "in-progress",
-    label: "What we're currently working on",
-    badge: { label: "In Progress", color: "primary" as const },
-  },
-  { key: "next", label: "What we're working on next", badge: null },
-];
+  const columns = [
+    {
+      key: "in-progress",
+      label: "What we're currently working on",
+      badge: { label: "In Progress", color: "primary" as const },
+    },
+    { key: "next", label: "What we're working on next", badge: null },
+  ];
 
-const channels = [
-  {
-    label: "Contribute",
-    to: "https://github.com/waypoints-hq/waypoints",
-    target: "_blank",
-    trailingIcon: "i-lucide-arrow-right",
-  },
-  {
-    label: "Issues",
-    to: "https://github.com/waypoints-hq/waypoints/issues",
-    target: "_blank",
-    icon: "i-simple-icons-github",
-    color: "neutral",
-    variant: "subtle",
-  },
-];
+  const channels = [
+    {
+      label: "Contribute",
+      to: "https://github.com/waypoints-hq/waypoints",
+      target: "_blank",
+      trailingIcon: "i-lucide-arrow-right",
+    },
+    {
+      label: "Issues",
+      to: "https://github.com/waypoints-hq/waypoints/issues",
+      target: "_blank",
+      icon: "i-simple-icons-github",
+      color: "neutral",
+      variant: "subtle",
+    },
+  ];
 </script>
 
 <template>
@@ -54,30 +54,27 @@ const channels = [
       title="Roadmap"
       description="Keep up with what the Waypoints team is building next."
       :links="channels"
-      class="md:border-b border-default"
-      :ui="{ container: 'relative py-10 sm:py-16 lg:py-24' }"
-    >
+      class="border-default md:border-b"
+      :ui="{ container: 'relative py-10 sm:py-16 lg:py-24' }">
       <template #top>
         <div
-          class="absolute z-[-1] rounded-full bg-primary blur-[300px] size-60 sm:size-80 transform -translate-x-1/2 left-1/2 -translate-y-80"
-        />
+          class="bg-primary absolute left-1/2 z-[-1] size-60 -translate-x-1/2 -translate-y-80 transform rounded-full blur-[300px] sm:size-80" />
       </template>
 
       <BackgroundStars />
 
       <div
         aria-hidden="true"
-        class="hidden md:block absolute z-[-1] border-x border-default inset-0 mx-4 sm:mx-6 lg:mx-8"
-      />
+        class="border-default absolute inset-0 z-[-1] mx-4 hidden border-x sm:mx-6 md:block lg:mx-8" />
     </UPageHero>
 
     <UPageSection :ui="{ container: '!py-0' }">
-      <div class="md:border-x border-default">
+      <div class="border-default md:border-x">
         <UContainer class="max-w-5xl py-12">
           <div v-if="grouped.done.length" class="mx-auto">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-highlighted">Recently completed</h2>
-              <span class="text-sm text-muted">{{ grouped.done.length }}</span>
+            <div class="mb-4 flex items-center justify-between">
+              <h2 class="text-highlighted text-lg font-semibold">Recently completed</h2>
+              <span class="text-muted text-sm">{{ grouped.done.length }}</span>
             </div>
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <UPageCard
@@ -85,8 +82,7 @@ const channels = [
                 :key="item.title"
                 :title="item.title"
                 :description="item.description"
-                spotlight
-              >
+                spotlight>
                 <template #trailing>
                   <UBadge color="success" variant="subtle" label="Done" />
                 </template>
@@ -96,11 +92,11 @@ const channels = [
 
           <div class="grid gap-8 lg:grid-cols-2">
             <div v-for="col in columns" :key="col.key">
-              <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-highlighted">
+              <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-highlighted text-lg font-semibold">
                   {{ col.label }}
                 </h2>
-                <span class="text-sm text-muted">{{ grouped[col.key]?.length ?? 0 }}</span>
+                <span class="text-muted text-sm">{{ grouped[col.key]?.length ?? 0 }}</span>
               </div>
               <div class="space-y-3">
                 <UPageCard
@@ -108,8 +104,7 @@ const channels = [
                   :key="item.title"
                   :title="item.title"
                   :description="item.description"
-                  spotlight
-                >
+                  spotlight>
                   <template v-if="col.badge" #trailing>
                     <UBadge v-bind="col.badge" variant="subtle" />
                   </template>
@@ -121,18 +116,17 @@ const channels = [
 
         <USeparator />
 
-        <UContainer class="py-12 max-w-5xl" v-if="grouped.later.length">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-highlighted">Longer term</h2>
-            <span class="text-sm text-muted">{{ grouped.later.length }}</span>
+        <UContainer class="max-w-5xl py-12" v-if="grouped.later.length">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-highlighted text-lg font-semibold">Longer term</h2>
+            <span class="text-muted text-sm">{{ grouped.later.length }}</span>
           </div>
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <UPageCard
               v-for="item in grouped.later"
               :key="item.title"
               :title="item.title"
-              :description="item.description"
-            />
+              :description="item.description" />
           </div>
         </UContainer>
       </div>

@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { useDocusColorMode, useDocusI18n, useSubNavigation } from "#imports";
+  import { useDocusColorMode, useDocusI18n, useSubNavigation } from "#imports";
 
-const appConfig = useAppConfig();
-const { header } = appConfig;
-const { forced: forcedColorMode } = useDocusColorMode();
+  const appConfig = useAppConfig();
+  const { header } = appConfig;
+  const { forced: forcedColorMode } = useDocusColorMode();
 
-const { isEnabled: isAssistantEnabled } = useAssistant();
-const { isEnabled, locales } = useDocusI18n();
-const { subNavigationMode } = useSubNavigation();
+  const { isEnabled: isAssistantEnabled } = useAssistant();
+  const { isEnabled, locales } = useDocusI18n();
+  const { subNavigationMode } = useSubNavigation();
 
-const drawerOpen = ref(false);
+  const drawerOpen = ref(false);
 
-useHead({
-  link: [{ rel: "icon", type: "image/svg+xml", href: header.logo.favicon }],
-});
+  useHead({
+    link: [{ rel: "icon", type: "image/svg+xml", href: header.logo.favicon }],
+  });
 </script>
 
 <template>
@@ -23,8 +23,7 @@ useHead({
       right: 'lg:flex-none',
       center: 'flex-1',
     }"
-    :class="{ 'flex flex-col': subNavigationMode === 'header' }"
-  >
+    :class="{ 'flex flex-col': subNavigationMode === 'header' }">
     <template #left>
       <AppHeaderLeft />
     </template>
