@@ -45,6 +45,9 @@ impl WaypointsRuntime {
         tracing::info!(id = %last_id, path = %workspace_dir.display(), "resuming territory");
 
         let db_path = workspace_dir.join("waypoints.db");
+        // TODO(durability): a durability-faulted open succeeds read-only, with the structured fault retrievable via `Database::durability_fault`.
+        // Handling it belongs here: present the read-only degradation to the user, offer remediation and the pre-filled bug report (`DurabilityFault::report`), and eventually drive real resolution —
+        // e.g. live-migrating the territory to a fresh database. Deferred deliberately: it needs UI surface and UI testing beyond the durability-crash-recovery change's scope.
         match store::open(&db_path).await {
             Ok(db) => {
                 *self.manager.active_db.lock().await = Some(db);
