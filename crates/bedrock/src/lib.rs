@@ -35,11 +35,16 @@ mod value;
 // Engine surface (this crate).
 pub use config::Config;
 pub use database::Database;
-pub use durability::FlushMode;
+pub use durability::{DurabilityFault, DurabilityState, ENGINE_VERSION, FlushMode, JournalMode};
 pub use error::BedrockError;
 pub use explain::QueryPlan;
 pub use migrate::MigrationError;
 pub use tx::{ReadTx, Savepoint, WriteTx};
+
+// The synchronous level is the engine's own type, re-exported: `Config` takes
+// it and the durability readback reports it. (The engine's `JournalMode` is
+// crate-private upstream, so that one is bedrock's — see `durability`.)
+pub use turso_core::SyncMode;
 
 pub(crate) use bedrock_core as core;
 

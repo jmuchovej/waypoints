@@ -1,186 +1,225 @@
 #:tombi toml-version = "v1.0.0"
 
 [workspace]
-resolver = "3"
-members = [
-  "crates/bedrock",
-  "crates/bedrock-core",
-  "crates/bedrock-derive",
-  "crates/cartograph",
-  "crates/domain",
-  "crates/importer",
-  "crates/outpost",
-  "crates/outpost-fabric",
-  "crates/outpost-hold",
-  "crates/outpost-protocol",
-  "crates/store",
-  "src-tauri",
-  "tooling/xtask",
-]
+  resolver = "3"
+  members  = [
+    "crates/bedrock",
+    "crates/bedrock-core",
+    "crates/bedrock-derive",
+    "crates/cartograph",
+    "crates/domain",
+    "crates/importer",
+    "crates/outpost",
+    "crates/outpost-fabric",
+    "crates/outpost-hold",
+    "crates/outpost-protocol",
+    "crates/store",
+    "src-tauri",
+    "tooling/xtask",
+  ]
 
-[workspace.package]
-edition = "2024"
-rust-version = "1.91"
-description = "Oh the places we'll go on this non-linear thought journey!"
-documentation = "https://docs.waypoints.so"
-readme = ".github/README.md"
-homepage = "https://waypoints.so"
-repository = "https://dev.waypoints.so/"
-license = "Apache-2.0"
-publish = false
+  [workspace.package]
+    edition       = "2024"
+    rust-version  = "1.91"
+    description   = "Oh the places we'll go on this non-linear thought journey!"
+    documentation = "https://docs.waypoints.so"
+    readme        = ".github/README.md"
+    homepage      = "https://waypoints.so"
+    repository    = "https://dev.waypoints.so/"
+    license       = "Apache-2.0"
+    publish       = false
 
-[workspace.dependencies]
-Waypoints = { path = "src-tauri" }
-bedrock = { path = "crates/bedrock" }
-bedrock-core = { path = "crates/bedrock-core" }
-bedrock-derive = { path = "crates/bedrock-derive" }
-cartograph = { path = "crates/cartograph" }
-domain = { path = "crates/domain" }
-importer = { path = "crates/importer" }
-outpost = { path = "crates/outpost", default-features = false }
-outpost-fabric = { path = "crates/outpost-fabric" }
-outpost-hold = { path = "crates/outpost-hold" }
-outpost-protocol = { path = "crates/outpost-protocol" }
-store = { path = "crates/store" }
+  [workspace.dependencies]
+    Waypoints        = { path = "src-tauri" }
+    bedrock          = { path = "crates/bedrock" }
+    bedrock-core     = { path = "crates/bedrock-core" }
+    bedrock-derive   = { path = "crates/bedrock-derive" }
+    cartograph       = { path = "crates/cartograph" }
+    domain           = { path = "crates/domain" }
+    importer         = { path = "crates/importer" }
+    outpost          = { path = "crates/outpost", default-features = false }
+    outpost-fabric   = { path = "crates/outpost-fabric" }
+    outpost-hold     = { path = "crates/outpost-hold" }
+    outpost-protocol = { path = "crates/outpost-protocol" }
+    store            = { path = "crates/store" }
 
-anyhow = "1.0.103"
-async-trait = "0.1.89"
-axum = "0.8.9"
-base64 = "0.22"
-bip39 = { version = "2", features = ["rand"] }
-blake3 = "1.8"
-bytes = { version = "1.11", features = ["serde"] }
-cargo_metadata = "0.23.1"
-chacha20poly1305 = "0.11"
-chrono = { version = "0.4.45", default-features = false, features = ["serde"] }
-chrono-tz = { version = "0.10.4", default-features = false, features = ["serde"] }
-clap = { version = "4.6.1", features = ["derive"] }
-derive_more = "2.1.1"
-directories = "6.0.0"
-eyre = "0.6.12"
-fake = { version = "5.1.0", default-features = false }
-fast_qr = { version = "0.13", features = ["svg"] }
-geo = { version = "0.33.1", features = ["use-serde"] }
-gh-workflow = { git = "https://github.com/waypoints-hq/gh-workflow", rev = "e4f02895aa72", version = "0.9.0" }
-heck = "0.5"
-hex = "0.4"
-hmac = "0.13"
-hostname = "0.4"
-iana-time-zone = "0.1.65"
-image = "0.25.10"
-indexmap = { version = "2.14", features = ["serde"] }
-indoc = "2"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["NSScrollView", "NSView"] }
-open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
-paste = "1.0.15"
-pest = "2.8.6"
-pest_derive = "2.8.6"
-postcard = { version = "1.1", default-features = false, features = ["alloc"] }
-pretty_assertions = "1.4.1"
-proc-macro2 = "1"
-pulldown-cmark = { version = "0.13", default-features = false }
-quote = "1"
-refinery = { version = "0.9", default-features = false }
-refinery-core = { version = "0.9", default-features = false }
-regex = "1.12.4"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-resvg = "0.47.0"
-rqrr = "0.10.1"
-rstest = { version = "0.26.1", default-features = false, features = ["async-timeout"] }
-rustls = { version = "0.23", default-features = false, features = ["ring"] }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = { version = "1.0.150", features = [
-  "arbitrary_precision",
-  "indexmap",
-  "preserve_order",
-  "raw_value",
-] }
-sha2 = "0.11"
-strum = { version = "0.28.0", features = ["derive"] }
-syn = { version = "2", features = ["full"] }
-tempfile = "3"
-thiserror = "2.0.18"
-time = { version = "0.3", features = ["formatting", "parsing"] }
-tokio = { version = "1.52.3", features = ["sync"] }
-toml = "0.9"
-tower-http = { version = "0.7.0", features = ["fs", "trace"] }
-tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-trybuild = "1"
-typed-builder = "0.23.2"
-uuid = { version = "1.23.4", features = ["js", "serde", "v4"] }
-validator = { version = "0.20.0", features = ["indexmap"] }
-zeroize = { version = "1", features = ["zeroize_derive"] }
+    anyhow             = "1.0.103"
+    async-trait        = "0.1.89"
+    axum               = "0.8.9"
+    base64             = "0.22"
+    bip39              = { version = "2", features = [ "rand" ] }
+    blake3             = "1.8"
+    bytes              = { version = "1.11", features = [ "serde" ] }
+    cargo-lock         = { version = "11", default-features = false }
+    cargo_metadata     = "0.23.1"
+    chacha20poly1305   = "0.11"
+    chrono             = { version = "0.4.45", default-features = false, features = [
+      "serde"
+    ] }
+    chrono-tz          = { version = "0.10.4", default-features = false, features = [
+      "serde"
+    ] }
+    clap               = { version = "4.6.1", features = [ "derive" ] }
+    derive_more        = "2.1.1"
+    directories        = "6.0.0"
+    eyre               = "0.6.12"
+    fake               = { version = "5.1.0", default-features = false }
+    fast_qr            = { version = "0.13", features = [ "svg" ] }
+    geo                = { version = "0.33.1", features = [ "use-serde" ] }
+    gh-workflow        = { git = "https://github.com/waypoints-hq/gh-workflow", rev = "e4f02895aa72", version = "0.9.0" }
+    heck               = "0.5"
+    hex                = "0.4"
+    hmac               = "0.13"
+    hostname           = "0.4"
+    iana-time-zone     = "0.1.65"
+    image              = "0.25.10"
+    indexmap           = { version = "2.14", features = [ "serde" ] }
+    indoc              = "2"
+    objc2-app-kit      = { version = "0.3", default-features = false, features = [
+      "NSScrollView",
+      "NSView"
+    ] }
+    open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
+    paste              = "1.0.15"
+    pest               = "2.8.6"
+    pest_derive        = "2.8.6"
+    postcard           = { version = "1.1", default-features = false, features = [
+      "alloc"
+    ] }
+    pretty_assertions  = "1.4.1"
+    proc-macro2        = "1"
+    pulldown-cmark     = { version = "0.13", default-features = false }
+    quote              = "1"
+    refinery           = { version = "0.9", default-features = false }
+    refinery-core      = { version = "0.9", default-features = false }
+    regex              = "1.12.4"
+    reqwest            = { version = "0.12", default-features = false, features = [
+      "json",
+      "rustls-tls"
+    ] }
+    resvg              = "0.47.0"
+    rqrr               = "0.10.1"
+    rstest             = { version = "0.26.1", default-features = false, features = [
+      "async-timeout"
+    ] }
+    rustls             = { version = "0.23", default-features = false, features = [
+      "ring"
+    ] }
+    serde              = { version = "1.0.228", features = [ "derive" ] }
+    serde_json         = { version = "1.0.150", features = [
+      "arbitrary_precision",
+      "indexmap",
+      "preserve_order",
+      "raw_value",
+    ] }
+    sha2               = "0.11"
+    strum              = { version = "0.28.0", features = [ "derive" ] }
+    syn                = { version = "2", features = [ "full" ] }
+    tempfile           = "3"
+    thiserror          = "2.0.18"
+    time               = { version = "0.3", features = [ "formatting", "parsing" ] }
+    tokio              = { version = "1.52.3", features = [ "sync" ] }
+    toml               = "0.9"
+    tower-http         = { version = "0.7.0", features = [ "fs", "trace" ] }
+    tracing            = "0.1.44"
+    tracing-subscriber = { version = "0.3.23", features = [ "env-filter" ] }
+    trybuild           = "1"
+    typed-builder      = "0.23.2"
+    uuid               = { version = "1.23.4", features = [ "js", "serde", "v4" ] }
+    validator          = { version = "0.20.0", features = [ "indexmap" ] }
+    zeroize            = { version = "1", features = [ "zeroize_derive" ] }
 
-turso = "=0.7.0"
+    # The storage engine is pre-v1 and deliberately pinned — both halves of it.
+    # `turso` is only the facade; the actual engine is `turso_core`, a caret
+    # dependency of the facade that would float within 0.7.x on fresh resolves if
+    # it weren't clamped here (bedrock references the clamp as a direct
+    # dependency, which is what makes it bind). Renovate bumps the pair in
+    # lockstep (grouped + dashboard-gated in .github/renovate.json5).
+    #
+    # Accepting any engine upgrade REQUIRES re-running and reviewing bedrock's
+    # durability assertions
+    # (`cargo test -p bedrock --test durability --test crash_recovery`): an
+    # upstream change to a default journal mode or synchronous level must fail a
+    # test, never drift in silently. bedrock's build.rs records the *resolved*
+    # turso_core version from the lockfile as the engine identifier durability
+    # fault reports carry.
+    turso      = "=0.7.0"
+    turso_core = "=0.7.2"
 
-specta = { version = "=2.0.0-rc.25", features = [
-  "chrono",
-  "derive",
-  "function",
-  "indexmap",
-  "serde_json",
-  "uuid",
-] }
-specta-serde = "0.0.12"
-specta-typescript = "0.0.12"
-tauri = { version = "2.11.5", features = ["unstable"] }
-tauri-build = { version = "2.6.3", features = ["config-toml"] }
-tauri-plugin-barcode-scanner = "2"
-tauri-plugin-deep-link = "2"
-tauri-plugin-dialog = "2.7.1"
-tauri-plugin-fs = "2.5.1"
-tauri-plugin-notification = "2.3.3"
-tauri-plugin-os = "2.3.2"
-tauri-plugin-shell = "2.3.5"
-tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
-tauri-plugin-store = "2.4.3"
-tauri-plugin-updater = "2.10.1"
-tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
-wry = { version = "0.55.1", features = ["os-webview", "protocol", "serde", "tracing"] }
+    specta                       = { version = "=2.0.0-rc.25", features = [
+      "chrono",
+      "derive",
+      "function",
+      "indexmap",
+      "serde_json",
+      "uuid",
+    ] }
+    specta-serde                 = "0.0.12"
+    specta-typescript            = "0.0.12"
+    tauri                        = { version = "2.11.5", features = [ "unstable" ] }
+    tauri-build                  = { version = "2.6.3", features = [ "config-toml" ] }
+    tauri-plugin-barcode-scanner = "2"
+    tauri-plugin-deep-link       = "2"
+    tauri-plugin-dialog          = "2.7.1"
+    tauri-plugin-fs              = "2.5.1"
+    tauri-plugin-notification    = "2.3.3"
+    tauri-plugin-os              = "2.3.2"
+    tauri-plugin-shell           = "2.3.5"
+    tauri-plugin-single-instance = { version = "2", features = [ "deep-link" ] }
+    tauri-plugin-store           = "2.4.3"
+    tauri-plugin-updater         = "2.10.1"
+    tauri-specta                 = { version = "2.0.0-rc.25", features = [
+      "typescript"
+    ] }
+    wry                          = { version = "0.55.1", features = [
+      "os-webview",
+      "protocol",
+      "serde",
+      "tracing"
+    ] }
 
-ed25519-dalek = { version = "=3.0.0-rc.0", features = ["serde"] }
-iroh = "1"
-rand = "0.10"
-rand_core = "0.10"
-x-wing = "=0.1.0-rc.0"
+    ed25519-dalek = { version = "=3.0.0-rc.0", features = [ "serde" ] }
+    iroh          = "1"
+    rand          = "0.10"
+    rand_core     = "0.10"
+    x-wing        = "=0.1.0-rc.0"
 
-[workspace.lints.clippy]
-blocks_in_conditions = "allow"
-comparison_chain = "allow"
-dbg_macro = "deny"
-disallowed_macros = "deny"
-iter_over_hash_type = "warn"
-manual_range_contains = "allow"
-mutable_key_type = "allow"
-todo = "deny"
-uninlined_format_args = "warn"
-wildcard_in_or_patterns = "allow"
+  [workspace.lints.clippy]
+    blocks_in_conditions    = "allow"
+    comparison_chain        = "allow"
+    dbg_macro               = "deny"
+    disallowed_macros       = "deny"
+    iter_over_hash_type     = "warn"
+    manual_range_contains   = "allow"
+    mutable_key_type        = "allow"
+    todo                    = "deny"
+    uninlined_format_args   = "warn"
+    wildcard_in_or_patterns = "allow"
 
-[workspace.lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(frb_expand)"] }
-# TODO: figure out how to _only_ allow this in development!
-unused = { level = "allow", priority = -1 }
+  [workspace.lints.rust]
+    unexpected_cfgs = { level = "warn", check-cfg = [ "cfg(frb_expand)" ] }
+    # TODO: figure out how to _only_ allow this in development!
+    unused          = { level = "allow", priority = -1 }
 
 [patch.crates-io]
-# Local fork of specta-macros 2.0.0-rc.25: upstream's derive eagerly parses every
-# list-attribute (incl. foreign ones like derive_more `#[display]` / typed_builder
-# `#[builder(mutators(...))]`) as specta's grammar and errors. The patch skips
-# unparseable non-`specta` attributes. Drop this once upstream ships a fix.
-specta-macros = { path = "vendor/specta-macros" }
-# Local fork of specta-serde 0.0.12: PhasesFormat re-nests internally-tagged
-# newtype-variant enums (e.g. `MarkData`) under the variant name on its second
-# rewrite pass, because it fails to detect the already-merged tag intersection.
-# The patch teaches `variant_repr_already_rewritten` to recognise that shape.
-# Drop once upstream ships a fix.
-specta-serde = { path = "vendor/specta-serde" }
+  # Local fork of specta-macros 2.0.0-rc.25: upstream's derive eagerly parses every
+  # list-attribute (incl. foreign ones like derive_more `#[display]` / typed_builder
+  # `#[builder(mutators(...))]`) as specta's grammar and errors. The patch skips
+  # unparsable non-`specta` attributes. Drop this once upstream ships a fix.
+  specta-macros = { path = "vendor/specta-macros" }
+  # Local fork of specta-serde 0.0.12: PhasesFormat re-nests internally-tagged
+  # newtype-variant enums (e.g. `MarkData`) under the variant name on its second
+  # rewrite pass, because it fails to detect the already-merged tag intersection.
+  # The patch teaches `variant_repr_already_rewritten` to recognise that shape.
+  # Drop once upstream ships a fix.
+  specta-serde  = { path = "vendor/specta-serde" }
 
 [profile.dev]
-incremental = true  # Compile your binary in smaller steps.
+  incremental = true  # Compile your binary in smaller steps.
 
 [profile.release]
-opt-level = "s"  # Prioritizes small binary size. Use `3` if you prefer speed.
-strip = true  # Ensures debug symbols are removed.
-lto = true  # Enables link-time-optimizations.
-panic = "abort"  # Higher performance by disabling panic handlers.
-codegen-units = 1  # Allows LLVM to perform better optimization.
+  opt-level     = "s"      # Prioritizes small binary size. Use `3` if you prefer speed.
+  strip         = true     # Ensures debug symbols are removed.
+  lto           = true     # Enables link-time-optimizations.
+  panic         = "abort"  # Higher performance by disabling panic handlers.
+  codegen-units = 1        # Allows LLVM to perform better optimization.

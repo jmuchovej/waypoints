@@ -44,6 +44,13 @@ pub enum BedrockError {
     #[error("database is closed")]
     Closed,
 
+    /// A durability pragma's effective value does not match what was
+    /// requested. Carried by every refused write on a mismatched territory;
+    /// the fault names the pragma, the requested value, and the effective
+    /// value (see [`DurabilityFault`](crate::DurabilityFault)).
+    #[error("durability mismatch, database is read-only: {0}")]
+    DurabilityMismatch(crate::DurabilityFault),
+
     /// The turso engine reported an error.
     #[error("engine error: {0}")]
     Engine(#[from] turso::Error),
