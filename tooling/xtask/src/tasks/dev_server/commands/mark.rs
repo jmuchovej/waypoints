@@ -108,5 +108,9 @@ pub async fn update_title(
     Instance(rt): Instance,
     Json(args): Json<MarkUpdateTitle>,
 ) -> Result<Json<()>, ApiError> {
-    Ok(Json(rt.marks().update_title(args.id, args.title).await?))
+    Ok(Json(
+        rt.editor()
+            .update_mark_title(args.id.into(), args.title)
+            .await?,
+    ))
 }

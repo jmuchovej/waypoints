@@ -16,6 +16,24 @@ pub struct CommandGroup {
     pub cursor_after: CursorState,
 }
 
+impl CommandGroup {
+    /// A pure text group — one whose ops are all `UpdateRichText`. Only such
+    /// groups coalesce, so a burst of typing undoes as one step while a
+    /// structural group never absorbs a later text edit, even on the same
+    /// mark. Derived from the ops themselves rather than tracked as a flag,
+    /// so a group cannot lie about its kind.
+    fn is_text_edit(&self) -> bool {
+        is_text_edit(&self.ops)
+    }
+}
+
+fn is_text_edit(ops: &[Maneuver]) -> bool {
+    !ops.is_empty()
+        && ops
+            .iter()
+            .all(|op| matches!(op, Maneuver::UpdateRichText { .. }))
+}
+
 /// Per-landmark undo/redo history.
 pub struct CommandHistory {
     undo_stack: Vec<CommandGroup>,
@@ -30,22 +48,29 @@ impl CommandHistory {
         }
     }
 
-    /// Push an operation. Text edits to the same mark within the coalesce window
-    /// are merged into the current group; structural ops always start a new group.
+    /// Push an operation group. Pure text groups (all ops `UpdateRichText`)
+    /// targeting the same mark within the coalesce window merge into the
+    /// current group; any other group starts a new undo step.
     pub fn push(
         &mut self,
         ops: Vec<Maneuver>,
         primary_mark_id: MarkID,
         cursor_before: CursorState,
         cursor_after: CursorState,
-        is_text_edit: bool,
     ) {
         let now = Instant::now();
 
-        // Try coalescing with the last group for text edits
-        if is_text_edit && let Some(last) = self.undo_stack.last_mut() {
+        // Coalesce text into text: both the incoming ops and the last group
+        // must be pure text edits — a structural group on the same mark must
+        // stay a separate undo step.
+        if is_text_edit(&ops)
+            && let Some(last) = self.undo_stack.last_mut()
+        {
             let elapsed = now.duration_since(last.last_timestamp).as_millis();
-            if last.primary_mark_id == primary_mark_id && elapsed < COALESCE_WINDOW_MS {
+            if last.is_text_edit()
+                && last.primary_mark_id == primary_mark_id
+                && elapsed < COALESCE_WINDOW_MS
+            {
                 last.ops.extend(ops);
                 last.last_timestamp = now;
                 last.cursor_after = cursor_after;

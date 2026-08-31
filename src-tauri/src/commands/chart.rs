@@ -1,4 +1,4 @@
-use cartograph::{MarkResult, WaypointsRuntime};
+use cartograph::{EditorResult, MarkResult, WaypointsRuntime};
 use domain::{Chart, ChartID, Mark};
 use std::sync::Arc;
 use tauri::State;
@@ -20,6 +20,6 @@ pub async fn chart_get(
 pub async fn landmark_create(
     rt: State<'_, Arc<WaypointsRuntime>>,
     chart_id: ChartID,
-) -> MarkResult<Mark> {
-    rt.charts().create_landmark(chart_id).await
+) -> EditorResult<Mark> {
+    rt.editor().create_landmark(chart_id).await
 }

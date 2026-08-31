@@ -90,28 +90,78 @@ async fn undo_merge_marks(#[future] env: Env) {
     assert_eq!(blocks.len(), 2);
 }
 
+async fn mark_text(svc: &EditorService, id: domain::MarkID) -> String {
+    let m = svc.get_mark(id).await.unwrap();
+    match &m.data {
+        MarkData::Content(c) => c.rich_text().unwrap().plain_text().to_owned(),
+        _ => panic!("expected content mark"),
+    }
+}
+
 #[rstest]
 #[tokio::test]
-async fn update_text_does_not_push_undo(#[future] env: Env) {
+async fn undo_restores_previous_text(#[future] env: Env) {
     let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
 
     svc.update_mark_text(children[0], RichText::from("changed".to_string()), lm)
         .await
         .unwrap();
+    assert_eq!(mark_text(&svc, children[0]).await, "changed");
 
-    let m = svc.get_mark(children[0]).await.unwrap();
-    let text = match &m.data {
-        MarkData::Content(c) => c.rich_text().unwrap().plain_text().to_owned(),
-        _ => panic!(),
-    };
-    assert_eq!(text, "changed");
+    svc.undo(lm).await.unwrap().unwrap();
+    assert_eq!(mark_text(&svc, children[0]).await, "Block 1");
+}
 
-    let result = svc.undo(lm).await.unwrap();
-    assert!(
-        result.is_none(),
-        "text edits should not be in the undo stack"
-    );
+#[rstest]
+#[tokio::test]
+async fn text_burst_undoes_as_one_step(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+    let (lm, children) = seed_landmark(&db, 1).await;
+
+    // Three updates well inside the 500ms coalesce window.
+    for text in ["o", "on", "one"] {
+        svc.update_mark_text(children[0], RichText::from(text.to_string()), lm)
+            .await
+            .unwrap();
+    }
+
+    svc.undo(lm).await.unwrap().unwrap();
+    assert_eq!(mark_text(&svc, children[0]).await, "Block 1");
+
+    // The burst is also one redo step.
+    svc.redo(lm).await.unwrap().unwrap();
+    assert_eq!(mark_text(&svc, children[0]).await, "one");
+}
+
+#[rstest]
+#[tokio::test]
+async fn structural_edit_interrupts_coalescing(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+    let (lm, children) = seed_landmark(&db, 2).await;
+
+    svc.update_mark_text(children[0], RichText::from("first".to_string()), lm)
+        .await
+        .unwrap();
+
+    // Structural edit on the same mark: move it after its sibling. It must
+    // start a new group and never absorb the following text edit.
+    svc.move_marks(lm, &[children[0]], Some(children[1]), lm)
+        .await
+        .unwrap();
+
+    svc.update_mark_text(children[0], RichText::from("second".to_string()), lm)
+        .await
+        .unwrap();
+
+    // One undo reverses only the later text update...
+    svc.undo(lm).await.unwrap().unwrap();
+    assert_eq!(mark_text(&svc, children[0]).await, "first");
+
+    // ...leaving the structural move in place.
+    let blocks = svc.project_landmark(lm, None).await.unwrap();
+    let ids: Vec<domain::MarkID> = blocks.iter().map(|b| b.id).collect();
+    assert_eq!(ids, vec![children[1], children[0]]);
 }
 
 #[rstest]
@@ -254,4 +304,89 @@ async fn multiple_undos(#[future] env: Env) {
 
     svc.undo(lm).await.unwrap();
     assert_eq!(svc.project_landmark(lm, None).await.unwrap().len(), 1);
+}
+
+async fn landmark_title(svc: &EditorService, id: domain::MarkID) -> String {
+    let m = svc.get_mark(id).await.unwrap();
+    match m.data {
+        MarkData::Landmark(l) => l.title.plain_text().to_owned(),
+        _ => panic!("expected landmark"),
+    }
+}
+
+#[rstest]
+#[tokio::test]
+async fn undo_restores_previous_title(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+    let (lm, _) = seed_landmark(&db, 0).await;
+
+    svc.update_mark_title(lm, RichText::from("Renamed".to_string()))
+        .await
+        .unwrap();
+    assert_eq!(landmark_title(&svc, lm).await, "Renamed");
+
+    svc.undo(lm).await.unwrap().unwrap();
+    assert_eq!(landmark_title(&svc, lm).await, "Test Page");
+
+    svc.redo(lm).await.unwrap().unwrap();
+    assert_eq!(landmark_title(&svc, lm).await, "Renamed");
+}
+
+#[rstest]
+#[tokio::test]
+async fn successive_title_edits_undo_one_at_a_time(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+    let (lm, _) = seed_landmark(&db, 0).await;
+
+    svc.update_mark_title(lm, RichText::from("B".to_string()))
+        .await
+        .unwrap();
+    svc.update_mark_title(lm, RichText::from("C".to_string()))
+        .await
+        .unwrap();
+
+    svc.undo(lm).await.unwrap().unwrap();
+    assert_eq!(landmark_title(&svc, lm).await, "B");
+
+    svc.undo(lm).await.unwrap().unwrap();
+    assert_eq!(landmark_title(&svc, lm).await, "Test Page");
+}
+
+#[rstest]
+#[tokio::test]
+async fn rejected_title_edit_pushes_nothing(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+    let (lm, children) = seed_landmark(&db, 1).await;
+
+    let result = svc
+        .update_mark_title(children[0], RichText::from("nope".to_string()))
+        .await;
+    assert!(result.is_err());
+
+    // Nothing was recorded — for the content mark's bucket or the landmark's.
+    assert!(svc.undo(children[0]).await.unwrap().is_none());
+    assert!(svc.undo(lm).await.unwrap().is_none());
+}
+
+#[rstest]
+#[tokio::test]
+async fn create_landmark_records_and_undoes(#[future] env: Env) {
+    let (mut svc, _db) = env.await;
+
+    let created = svc.create_landmark(ChartID::builtin("page")).await.unwrap();
+    let id = created.id;
+    assert!(matches!(created.data, MarkData::Landmark(_)));
+
+    // Persisted, and its create op sits in the new landmark's own bucket.
+    svc.get_mark(id).await.unwrap();
+
+    // Undo soft-deletes the landmark.
+    svc.undo(id).await.unwrap().unwrap();
+    assert!(svc.get_mark(id).await.is_err());
+
+    // Redo restores it with its original identity.
+    svc.redo(id).await.unwrap().unwrap();
+    let restored = svc.get_mark(id).await.unwrap();
+    assert_eq!(restored.id, id);
+    assert!(matches!(restored.data, MarkData::Landmark(_)));
 }
