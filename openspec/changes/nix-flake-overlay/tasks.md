@@ -2,17 +2,17 @@
 
 ## 1. Spikes (throwaway; results decide structure, code is discarded)
 
-- [ ] 1.1 Verify devenv 2.2.1 accepts `imports` in `devenv.nix` — add a trivial module (one env var), enter the shell, confirm the var is set; then remove it
-- [ ] 1.2 Verify devenv coexists with a root `flake.nix` — drop a minimal stub flake at repo root, run `devenv shell` and `just check-generated`, confirm zero behavior change; keep or delete stub per result
+- [x] 1.1 Verify devenv 2.2.1 accepts `imports` in `devenv.nix` — add a trivial module (one env var), enter the shell, confirm the var is set; then remove it
+- [x] 1.2 Verify devenv coexists with a root `flake.nix` — drop a minimal stub flake at repo root, run `devenv shell` and `just check-generated`, confirm zero behavior change; keep or delete stub per result
 - [ ] 1.3 Spike the pnpm FOD: minimal derivation running `pnpm.fetchDeps`/`pnpmConfigHook` (pnpm 11) against `pnpm-lock.yaml`, verified by an offline `pnpm install --frozen-lockfile` succeeding inside the sandbox; record the working hook combination (or the fallback needed) in design.md
 
 ## 2. devenv module extraction (byte-identical gate)
 
-- [ ] 2.1 Capture the baseline: enter the current shell, commit/stash any pending generated-file drift so `just check-generated` passes clean before the refactor
-- [ ] 2.2 Extract `nix/devenv/treefmt.nix` (wrapper table, excludes, bare-command rewrite, `.config/treefmt.toml` files entry) behind `waypoints.treefmt.*` options; verify shell entry + `just check-generated` zero diff
-- [ ] 2.3 Extract `nix/devenv/mise.nix` (spec table, `unavailable` list, formatter projection, `mise-tools`, `.config/mise.toml`/`.config/mise.lock` files entries, `mise:lock` task) behind `waypoints.mise.*` options; verify shell entry + `just check-generated` zero diff
-- [ ] 2.4 Extract `nix/devenv/android.nix` (version spec, system-image expansion, SDK assembly, `ANDROID_*`/`GRADLE_OPTS`/`LD_LIBRARY_PATH`/`PATH` env, `local.properties` + `libs.versions.toml` files entries) behind `waypoints.android.*` options; verify shell entry + `just check-generated` zero diff
-- [ ] 2.5 Confirm `devenv.nix` is reduced to `imports` + configuration (no transformation helpers remain) and delete the stale `nix/mise.nix`/`nix/tools.nix` stubs; verify `just check-generated` and a full `just tauri::android::dev` toolchain resolution still work
+- [x] 2.1 Capture the baseline: enter the current shell, commit/stash any pending generated-file drift so `just check-generated` passes clean before the refactor
+- [x] 2.2 Extract `nix/devenv/treefmt.nix` (wrapper table, excludes, bare-command rewrite, `.config/treefmt.toml` files entry) behind `waypoints.treefmt.*` options; verify shell entry + `just check-generated` zero diff
+- [x] 2.3 Extract `nix/devenv/mise.nix` (spec table, `unavailable` list, formatter projection, `mise-tools`, `.config/mise.toml`/`.config/mise.lock` files entries, `mise:lock` task) behind `waypoints.mise.*` options; verify shell entry + `just check-generated` zero diff
+- [x] 2.4 Extract `nix/devenv/android.nix` (version spec, system-image expansion, SDK assembly, `ANDROID_*`/`GRADLE_OPTS`/`LD_LIBRARY_PATH`/`PATH` env, `local.properties` + `libs.versions.toml` files entries) behind `waypoints.android.*` options; verify shell entry + `just check-generated` zero diff
+- [x] 2.5 Confirm `devenv.nix` is reduced to `imports` + configuration (no transformation helpers remain) and delete the stale `nix/mise.nix`/`nix/tools.nix` stubs; verify `just check-generated` and a full `just tauri::android::dev` toolchain resolution still work
 
 ## 3. Flake skeleton and overlay plumbing
 

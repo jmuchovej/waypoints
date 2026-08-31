@@ -2,17 +2,22 @@
   pkgs,
   lib,
   config,
-  inputs,
   ...
 }: let
   tauri-app-path = "src-tauri";
   tauri-frontend-path = "src";
   tauri-android-path = "${tauri-app-path}/gen/android";
   tauri-ios-path = "${tauri-app-path}/gen/apple";
+in {
+  imports = [
+    ./nix/devenv/treefmt.nix
+    ./nix/devenv/mise.nix
+    ./nix/devenv/android.nix
+  ];
 
-  is-enabled = prog: prog.enable or false;
-  has-package = prog: prog ? package;
-  mise-formatters = let
+  stdenv = pkgs.clangStdenv;
+
+  waypoints.mise = {
     unavailable = [
       "alejandra" # crates.io lags nixpkgs
       "clang-format" # comes from the system toolchain
@@ -22,7 +27,6 @@
       "swift-format" # comes from the Xcode toolchain
       "xmllint" # comes from libxml2
     ];
-
     specs = {
       just = "aqua:casey/just";
       ktfmt = "github:facebook/ktfmt";
@@ -34,17 +38,7 @@
       actionlint = "aqua:rhysd/actionlint";
       zizmor = "aqua:zizmorcore/zizmor";
     };
-    is-available = name: !(builtins.elem name unavailable);
-  in
-    lib.mapAttrs' (name: prog: lib.nameValuePair (specs.${name} or name) prog.package) (
-      lib.filterAttrs (
-        name: prog: (is-enabled prog) && (has-package prog) && (is-available name)
-      )
-      config.treefmt.config.programs
-    );
-
-  mise-tools =
-    {
+    tools = {
       "aqua:casey/just" = pkgs.just;
       "aqua:getsops/sops" = pkgs.sops;
       "aqua:FiloSottile/age" = pkgs.age;
@@ -67,84 +61,39 @@
       "core:ruby" = config.languages.ruby.package;
       "core:swift" = config.languages.swift.package;
       "github:JetBrains/kotlin" = pkgs.kotlin; # NOTE: languages.kotlin doesn't specify a `.package` option
-    }
-    // mise-formatters;
+    };
+    env = [
+      {PROJECT_ROOT = "{{ config_root }}";}
+      {PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";}
+      {
+        CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
+        TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
+        TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-frontend-path}";
+        TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-android-path}";
+        TAURI_IOS_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-ios-path}";
+        TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
+      }
+    ];
+  };
 
-  treefmt-formatters = let
+  waypoints.treefmt = {
     wrappers = {
       just = "fmt-just";
       statix = "fmt-statix";
       xmllint = "fmt-xml";
     };
-
-    bare = name: fmt:
-      if wrappers ? ${name}
-      then
-        fmt
-        // {
-          command = wrappers.${name};
-          options = [];
-        }
-      else fmt // {command = baseNameOf fmt.command;};
-  in
-    lib.mapAttrs bare config.treefmt.config.settings.formatter;
-
-  treefmt-excludes = [
-    "*/node_modules*"
-    ".{dev,dir}env/*"
-    "*/.envrc*"
-    "vendor/*"
-    ".scratch/*"
-    "*.{gif,ico}"
-    "*.{properties,gradle}"
-    "*.{pbxproj,xcconfig}"
-    "*{mise,treefmt}.toml"
-  ];
-
-  # Map a version (e.g. "35.0.0") to its android-nixpkgs attribute suffix ("35-0-0").
-  dash-version = lib.replaceStrings ["."] ["-"];
-
-  android = {
-    agp.version = "8.13.2";
-    build-tools.version = "35.0.0";
-    platforms.versions = [
-      "36"
-      "30"
+    excludes = [
+      "*/node_modules*"
+      ".{dev,dir}env/*"
+      "*/.envrc*"
+      "vendor/*"
+      ".scratch/*"
+      "*.{gif,ico}"
+      "*.{properties,gradle}"
+      "*.{pbxproj,xcconfig}"
+      "*{mise,treefmt}.toml"
     ];
-    ndk.version = "30.0.16138531";
   };
-
-  # ps16k (16 KB page-size) system images only exist for API >= 35.
-  system-images = sdk-pkgs: let
-    base-variants = [
-      "google-apis"
-      "google-apis-playstore"
-    ];
-    variants = v: base-variants ++ lib.optionals (lib.versionAtLeast v "35") (map (s: "${s}-ps16k") base-variants);
-  in
-    lib.concatMap (
-      v: map (s: sdk-pkgs."system-images-android-${dash-version v}-${s}-arm64-v8a") (variants v)
-    )
-    android.platforms.versions;
-
-  android-sdk = inputs.android-nixpkgs.sdk.${pkgs.stdenv.hostPlatform.system} (
-    sdk-pkgs: (
-      [
-        sdk-pkgs.cmdline-tools-22-0
-        sdk-pkgs.platform-tools
-        sdk-pkgs.emulator
-        sdk-pkgs."build-tools-${dash-version android.build-tools.version}"
-        sdk-pkgs."ndk-${dash-version android.ndk.version}"
-      ]
-      ++ map (v: sdk-pkgs."platforms-android-${dash-version v}") android.platforms.versions
-      ++ (system-images sdk-pkgs)
-    )
-  );
-  android-home = "${android-sdk}/share/android-sdk";
-  ndk-version = android.ndk.version;
-  build-tools-version = android.build-tools.version;
-in {
-  stdenv = pkgs.clangStdenv;
 
   env = {
     PROJECT_ROOT = config.devenv.root;
@@ -155,37 +104,23 @@ in {
     TAURI_IOS_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-ios-path}";
     TREEFMT_CONFIG = "${config.env.PROJECT_CONFIG_PATH}/treefmt.toml";
     CLIPPY_CONF_DIR = "${config.env.PROJECT_CONFIG_PATH}";
+  };
 
-    ANDROID_HOME = android-home;
-    ANDROID_NDK_ROOT = "${config.env.ANDROID_HOME}/ndk/${ndk-version}";
-    ANDROID_USER_HOME = "${config.env.DEVENV_STATE}/android";
-    ANDROID_AVD_HOME = "${config.env.ANDROID_USER_HOME}/avd";
-    LD_LIBRARY_PATH = lib.concatStringsSep ":" [
-      "$LD_LIBRARY_PATH"
-      (pkgs.lib.makeLibraryPath [
-        pkgs.vulkan-loader
-        pkgs.libGL
-      ])
-      "${config.env.ANDROID_HOME}/build-tools/${build-tools-version}/lib64/"
-      "${config.env.ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/lib/"
-      "$LD_LIBRARY_PATH"
+  waypoints.android = {
+    agp.version = "8.13.2";
+    build-tools.version = "35.0.0";
+    platforms.versions = [
+      "36"
+      "30"
     ];
-    PATH = lib.concatStringsSep ":" [
-      "${config.env.DEVENV_ROOT}/.bin"
-      "$PATH"
-      "${config.env.ANDROID_HOME}/tools"
-      "${config.env.ANDROID_HOME}/tools/bin"
-      "${config.env.ANDROID_HOME}/platform-tools"
-      "${config.env.ANDROID_HOME}/cmdline-tools/bin"
-      "${config.env.ANDROID_HOME}/emulator"
-    ];
+    ndk.version = "30.0.16138531";
+    project-path = tauri-android-path;
   };
 
   enterShell = "";
 
   packages =
-    (lib.attrValues mise-tools)
-    ++ [android-sdk]
+    (lib.attrValues config.waypoints.mise.resolved-tools)
     ++ (with pkgs; [
       act
       cargo-binstall
@@ -251,7 +186,6 @@ in {
       on-unmatched = "info";
       allow-missing-formatter = true;
       verbose = 1;
-      excludes = treefmt-excludes;
       formatter = {
         rufo.includes = [
           "**/Podfile"
@@ -271,17 +205,6 @@ in {
     }
   ];
 
-  tasks."mise:lock" = {
-    description = "Regenerate mise.lock and verify every declared tool resolved";
-    package = pkgs.nushell;
-    after = ["devenv:enterShell"];
-    execIfModified = [
-      ".config/mise.toml"
-      ".config/mise.lock"
-    ];
-    exec = builtins.readFile "${config.devenv.root}/.bin/sync-mise";
-  };
-
   tasks."waypoints:sync-deny-targets" = {
     description = "Sync .cargo/deny.toml graph.targets from rust-toolchain.toml";
     package = pkgs.nushell;
@@ -291,65 +214,6 @@ in {
       ".cargo/deny.toml"
     ];
     exec = builtins.readFile "${config.devenv.root}/.bin/sync-deny-targets";
-  };
-
-  files = {
-    ".config/mise.lock" = {
-      copyMode = "seed";
-      text = "# This should be overwritten on re-entry.";
-    };
-
-    ".config/treefmt.toml" = {
-      copyMode = "copy";
-      toml =
-        lib.filterAttrs (name: _: name != "global") config.treefmt.config.settings
-        // {
-          formatter = treefmt-formatters;
-        };
-    };
-
-    ".config/mise.toml" = {
-      copyMode = "copy";
-      toml = {
-        settings = {
-          experimental = true;
-          idiomatic_version_file_enable_tools = [
-            "rust"
-            "pnpm"
-          ];
-          lockfile = true;
-        };
-        env = [
-          {PROJECT_ROOT = "{{ config_root }}";}
-          {PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";}
-          {
-            CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
-            TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
-            TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-frontend-path}";
-            TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-android-path}";
-            TAURI_IOS_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-ios-path}";
-            TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
-          }
-        ];
-        tools = lib.mapAttrs (_: pkg: toString pkg.version) mise-tools;
-      };
-    };
-    "${tauri-android-path}/local.properties".text = ''
-      # This file was automatically generated by nix-shell.
-      sdk.dir=${config.env.ANDROID_HOME}
-      ndk.dir=${config.env.ANDROID_NDK_ROOT}
-      android.aapt2FromMavenOverride=${config.env.ANDROID_HOME}/build-tools/${build-tools-version}/aapt2
-    '';
-    "${tauri-android-path}/gradle/libs.versions.toml" = {
-      copyMode = "copy";
-      toml = {
-        versions = {
-          kotlin = mise-tools."github:JetBrains/kotlin".version;
-          buildTools = android.build-tools.version;
-          agp = android.agp.version;
-        };
-      };
-    };
   };
 
   git-hooks.hooks = {
