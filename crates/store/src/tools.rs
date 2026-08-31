@@ -36,10 +36,13 @@ pub async fn reset(_old_store: Store, path: &Path) -> StoreResult<Store> {
     Store::open(path).await
 }
 
-/// Flush pending writes to disk.
+/// Checkpoint the write-ahead log.
 ///
-/// The bedrock engine flushes WAL on close; call this at territory-close
-/// time as a best-effort durability bump.
+/// Closing the bedrock engine does *not* checkpoint — it only releases
+/// connections — which is why this explicit flush at territory-close time
+/// exists. Committed writes are already durable either way; checkpointing
+/// here trades a little close-time work for a compact log and a faster
+/// reopen.
 pub async fn checkpoint(store: &Store) {
     if let Err(e) = store.db().flush().await {
         tracing::warn!("flush failed: {e}");
