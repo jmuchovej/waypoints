@@ -27,8 +27,6 @@ import type {
   Reading,
   Reading_Deserialize,
   Reading_Serialize,
-  ReferenceDisplayMode,
-  RichReference,
   RichText,
   RichTextDTO,
   RichTextDTO_Deserialize,

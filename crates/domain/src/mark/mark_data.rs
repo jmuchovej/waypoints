@@ -1,4 +1,4 @@
-use super::{MarkID, Reading, ReferenceDisplayMode, RichReference, RichText};
+use super::{MarkID, Reading, ReferenceDisplayMode, RichText};
 use crate::{ChartID, Color, FeatureID, Icon};
 use derive_more::{IsVariant, Unwrap};
 use indexmap::IndexMap;
@@ -342,10 +342,14 @@ impl Content {
 
 /// Landmark marks &ndash; semantic objects defined by [`Charts`][C].
 ///
-/// Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`, `children`)
+/// Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`)
 /// plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
 ///
+/// A Landmark's content is expressed as [`TerrainKind::Child`][T] edges and
+/// ordered by their fractional index.
+///
 /// [C]: crate::chart::Chart
+/// [T]: crate::TerrainKind::Child
 #[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Landmark {
@@ -365,21 +369,6 @@ pub struct Landmark {
 
     /// Typed icon with rendering properties (preferred)
     pub icon: Option<Icon>,
-
-    /// Child block references with display information
-    #[builder(
-      via_mutators(init = Vec::new()),
-      mutators(
-        pub fn add_child(&self, child: RichReference) {
-          self.children.push(child);
-        }
-
-        pub fn with_children(&self, children: Vec<RichReference>) {
-          self.children = children;
-        }
-      )
-    )]
-    pub children: Vec<RichReference>,
 
     /// User-defined fields (preserves field order, direct JSON values)
     #[builder(
@@ -701,5 +690,32 @@ mod tests {
         let deserialized: Content = serde_json::from_str(&json).unwrap();
 
         assert_eq!(content, deserialized);
+    }
+
+    /// Landmark rows persisted before the `children` field was removed still
+    /// carry the key in their stored JSON; it must be ignored on read. Pins
+    /// the no-migration claim against a future `deny_unknown_fields`.
+    #[test]
+    fn test_landmark_ignores_stored_children_key() {
+        let landmark = MarkData::Landmark(
+            Landmark::builder()
+                .with_chart(ChartID::builtin("page"))
+                .with_title("Legacy Row".to_string())
+                .build(),
+        );
+
+        let mut json: serde_json::Value = serde_json::to_value(&landmark).unwrap();
+        json.as_object_mut().unwrap().insert(
+            "children".to_string(),
+            serde_json::json!([{ "id": "b7f9d43c-3b9f-4d0a-93bd-0f8bd0f8b0f8", "as": "inline" }]),
+        );
+        assert!(json.get("children").is_some());
+
+        let deserialized: MarkData = serde_json::from_value(json).unwrap();
+        assert_eq!(landmark, deserialized);
+
+        // Newly written rows omit the key entirely.
+        let rewritten = serde_json::to_value(&deserialized).unwrap();
+        assert!(rewritten.get("children").is_none());
     }
 }
