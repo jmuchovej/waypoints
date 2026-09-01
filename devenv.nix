@@ -147,7 +147,7 @@ in {
   stdenv = pkgs.clangStdenv;
 
   env = {
-    PROJECT_ROOT = config.env.DEVENV_ROOT;
+    PROJECT_ROOT = config.devenv.root;
     PROJECT_CONFIG_PATH = "${config.env.PROJECT_ROOT}/.config";
     TAURI_FRONTEND_PATH = "${config.env.PROJECT_ROOT}/${tauri-frontend-path}";
     TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/${tauri-app-path}";
