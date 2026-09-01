@@ -24,8 +24,6 @@ inputs:
         follows: nixpkgs
 nixpkgs:
   allow_unfree: true
-  permitted_insecure_packages:
-    - pnpm-9.15.9
 secretspec:
   enable: true
   profile: default
