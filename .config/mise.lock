@@ -86,8 +86,33 @@ url_api = "https://api.github.com/repos/FiloSottile/age/releases/assets/33375267
 provenance = "github-attestations"
 
 [[tools."aqua:cachix/secretspec"]]
-version = "0.19.0"
+version = "0.19.1"
 backend = "aqua:cachix/secretspec"
+
+[tools."aqua:cachix/secretspec"."platforms.linux-arm64"]
+checksum = "sha256:9b0804932f011ee13709d06a342cd7d30222a764bb62d343771964471b2a7e25"
+url = "https://github.com/cachix/secretspec/releases/download/v0.19.1/secretspec-aarch64-unknown-linux-gnu.tar.xz"
+url_api = "https://api.github.com/repos/cachix/secretspec/releases/assets/511815634"
+
+[tools."aqua:cachix/secretspec"."platforms.linux-x64"]
+checksum = "sha256:9a0b5882532f5ffbb1c687d9284fa8041949962b05f14fc131050f86c70e1efc"
+url = "https://github.com/cachix/secretspec/releases/download/v0.19.1/secretspec-x86_64-unknown-linux-gnu.tar.xz"
+url_api = "https://api.github.com/repos/cachix/secretspec/releases/assets/511815680"
+
+[tools."aqua:cachix/secretspec"."platforms.macos-arm64"]
+checksum = "sha256:076536200199540515ebdf929f7cb3f413d82be3524771a2a5975b80ca85d727"
+url = "https://github.com/cachix/secretspec/releases/download/v0.19.1/secretspec-aarch64-apple-darwin.tar.xz"
+url_api = "https://api.github.com/repos/cachix/secretspec/releases/assets/511815626"
+
+[tools."aqua:cachix/secretspec"."platforms.macos-x64"]
+checksum = "sha256:c622690f2c7037e113e94411311fe7f7158692f8e048d75fddec6e2933968228"
+url = "https://github.com/cachix/secretspec/releases/download/v0.19.1/secretspec-x86_64-apple-darwin.tar.xz"
+url_api = "https://api.github.com/repos/cachix/secretspec/releases/assets/511815653"
+
+[tools."aqua:cachix/secretspec"."platforms.windows-x64"]
+checksum = "sha256:563bf248bdbeac90cacc9c8706ca11d16504947b91a132632c45285dc80d4f75"
+url = "https://github.com/cachix/secretspec/releases/download/v0.19.1/secretspec-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/cachix/secretspec/releases/assets/511815664"
 
 [[tools."aqua:casey/just"]]
 version = "1.58.0"
@@ -347,43 +372,43 @@ url = "https://github.com/numtide/treefmt/releases/download/v2.5.0/treefmt_2.5.0
 url_api = "https://api.github.com/repos/numtide/treefmt/releases/assets/391045231"
 
 [[tools."aqua:nushell/nushell"]]
-version = "0.114.1"
+version = "0.115.0"
 backend = "aqua:nushell/nushell"
 
 [tools."aqua:nushell/nushell"."platforms.linux-arm64"]
-checksum = "sha256:39944812ee619736fd50828e66c96b91747c1e189ccddac89c3ac1a02e0614f2"
-url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473626043"
+checksum = "sha256:508f00f858474e754335bea741c8f729b8ae526451aa01b9c1e36944311b846a"
+url = "https://github.com/nushell/nushell/releases/download/0.115.0/nu-0.115.0-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/516036041"
 
 [tools."aqua:nushell/nushell"."platforms.linux-arm64-musl"]
-checksum = "sha256:4f9e880e7bbf8ee58f3860ef49f453eb2628965b6f2c880fb03d4775f290b536"
-url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473626782"
+checksum = "sha256:7e60824f66b8c814fdbb52741047d38c8379e4bc5e8271135667ef04e3c55324"
+url = "https://github.com/nushell/nushell/releases/download/0.115.0/nu-0.115.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/516032451"
 
 [tools."aqua:nushell/nushell"."platforms.linux-x64"]
-checksum = "sha256:ce3a1c5a07c784098b5675224a165e73a45f0f720a8392791d7c3a5b4720255e"
-url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473625296"
+checksum = "sha256:d510565b039b5384986652e579fe443877fcc4df86f16072ed5edca641ad92f1"
+url = "https://github.com/nushell/nushell/releases/download/0.115.0/nu-0.115.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/516035896"
 
 [tools."aqua:nushell/nushell"."platforms.linux-x64-musl"]
-checksum = "sha256:ce3a1c5a07c784098b5675224a165e73a45f0f720a8392791d7c3a5b4720255e"
-url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473625296"
+checksum = "sha256:d510565b039b5384986652e579fe443877fcc4df86f16072ed5edca641ad92f1"
+url = "https://github.com/nushell/nushell/releases/download/0.115.0/nu-0.115.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/516035896"
 
 [tools."aqua:nushell/nushell"."platforms.macos-arm64"]
-checksum = "sha256:cb0ac9b97b985cd217a952f44438a14d2df2a95504d9bd8bc01ec73e1351b179"
-url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473629724"
+checksum = "sha256:91f3c77e4f634b54029b07e3dc4e99ffec5fc0f98537f9b630bda32b4d06da5e"
+url = "https://github.com/nushell/nushell/releases/download/0.115.0/nu-0.115.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/516037608"
 
 [tools."aqua:nushell/nushell"."platforms.macos-x64"]
-checksum = "sha256:4659a78545b7f6a303e661fe3bd276a765c64ccde67112d32045be5fe075f206"
-url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473624186"
+checksum = "sha256:0bddb610efd2a3567076af9a337c6dd078582e8e9e9af76e0cc2204cbfe3e6d1"
+url = "https://github.com/nushell/nushell/releases/download/0.115.0/nu-0.115.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/516042388"
 
 [tools."aqua:nushell/nushell"."platforms.windows-x64"]
-checksum = "sha256:71a88cb74f51a9fdd91003273fb1f3361d7b393fb3a03014f43e5f111df9666f"
-url = "https://github.com/nushell/nushell/releases/download/0.114.1/nu-0.114.1-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/473630966"
+checksum = "sha256:4f6a0bcbbc2975cf46f3ff93aecc7093c91fa59aca28020e4294906db13ace23"
+url = "https://github.com/nushell/nushell/releases/download/0.115.0/nu-0.115.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/nushell/nushell/releases/assets/516052087"
 
 [[tools."aqua:orhun/git-cliff"]]
 version = "2.13.1"
@@ -534,49 +559,49 @@ url = "https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.11.4/c
 url_api = "https://api.github.com/repos/tauri-apps/tauri/releases/assets/460373091"
 
 [[tools."aqua:tombi-toml/tombi"]]
-version = "1.2.7"
+version = "1.4.0"
 backend = "aqua:tombi-toml/tombi"
 
 [tools."aqua:tombi-toml/tombi"."platforms.linux-arm64"]
-checksum = "sha256:f09256852be93b1b06596dfad1a5b2717b4ca78d33e487d817caa94fef729381"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.7/tombi-cli-1.2.7-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/503838582"
+checksum = "sha256:b70750d462954294c354a014bb90399273876b953c21e3a136aafd3d1d41f5e8"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163060"
 provenance = "github-attestations"
 
 [tools."aqua:tombi-toml/tombi"."platforms.linux-arm64-musl"]
-checksum = "sha256:f09256852be93b1b06596dfad1a5b2717b4ca78d33e487d817caa94fef729381"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.7/tombi-cli-1.2.7-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/503838582"
+checksum = "sha256:b70750d462954294c354a014bb90399273876b953c21e3a136aafd3d1d41f5e8"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163060"
 provenance = "github-attestations"
 
 [tools."aqua:tombi-toml/tombi"."platforms.linux-x64"]
-checksum = "sha256:f7353252b12d0132eaefcd234890d478580e60e13fd9b4a7a918995acfa2c139"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.7/tombi-cli-1.2.7-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/503838599"
+checksum = "sha256:e2dc1190e0590b1fd0581fa8f85017215ed9b05a4d85c1cf18e0979b6cf24fe1"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163088"
 provenance = "github-attestations"
 
 [tools."aqua:tombi-toml/tombi"."platforms.linux-x64-musl"]
-checksum = "sha256:f7353252b12d0132eaefcd234890d478580e60e13fd9b4a7a918995acfa2c139"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.7/tombi-cli-1.2.7-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/503838599"
+checksum = "sha256:e2dc1190e0590b1fd0581fa8f85017215ed9b05a4d85c1cf18e0979b6cf24fe1"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163088"
 provenance = "github-attestations"
 
 [tools."aqua:tombi-toml/tombi"."platforms.macos-arm64"]
-checksum = "sha256:d9d73bf090b447bd631767fa68aefd1ad5dab46ee9607e4f4b3dbf291c4edce5"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.7/tombi-cli-1.2.7-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/503838579"
+checksum = "sha256:248159d26488f11fe8c36b9239b1ab84abe3533f4a5d8d066e56c091a99ffde1"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163062"
 provenance = "github-attestations"
 
 [tools."aqua:tombi-toml/tombi"."platforms.macos-x64"]
-checksum = "sha256:39a0efc27a07f16cd7f7bb930bc993ba2816b4a52c4db7e00f140fee35ff7194"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.7/tombi-cli-1.2.7-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/503838577"
+checksum = "sha256:7016e0028bf0ff122faeb49b0bb248c9d73885ce73b8ada26be6248e207977bc"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163065"
 provenance = "github-attestations"
 
 [tools."aqua:tombi-toml/tombi"."platforms.windows-x64"]
-checksum = "sha256:81987e4f5cd25cb57f9d46e9a353ef1226869fbf9b2c889220a67d420bb4f0e9"
-url = "https://github.com/tombi-toml/tombi/releases/download/v1.2.7/tombi-cli-1.2.7-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/503838597"
+checksum = "sha256:376f26ef04c32b7de57352fb1572d550d2f728958f00bfa585cec94a1df677ab"
+url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.4.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163086"
 provenance = "github-attestations"
 
 [[tools."aqua:zizmorcore/zizmor"]]
@@ -774,11 +799,11 @@ version = "0.61.0"
 backend = "npm:oxfmt"
 
 [[tools."npm:renovate"]]
-version = "44.24.3"
+version = "44.37.1"
 backend = "npm:renovate"
 
 [[tools."npm:wrangler"]]
-version = "4.93.0"
+version = "4.94.0"
 backend = "npm:wrangler"
 
 [[tools.pnpm]]

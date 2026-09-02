@@ -70,10 +70,7 @@ iana-time-zone = "0.1.65"
 image = "0.25.10"
 indexmap = { version = "2.14", features = ["serde"] }
 indoc = "2"
-objc2-app-kit = { version = "0.3", default-features = false, features = [
-  "NSScrollView",
-  "NSView"
-] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["NSScrollView", "NSView"] }
 open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
 paste = "1.0.15"
 pest = "2.8.6"
@@ -86,15 +83,10 @@ quote = "1"
 refinery = { version = "0.9", default-features = false }
 refinery-core = { version = "0.9", default-features = false }
 regex = "1.12.4"
-reqwest = { version = "0.12", default-features = false, features = [
-  "json",
-  "rustls-tls"
-] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 resvg = "0.47.0"
 rqrr = "0.10.1"
-rstest = { version = "0.26.1", default-features = false, features = [
-  "async-timeout"
-] }
+rstest = { version = "0.26.1", default-features = false, features = ["async-timeout"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.150", features = [
@@ -145,12 +137,7 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-store = "2.4.3"
 tauri-plugin-updater = "2.10.1"
 tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
-wry = { version = "0.55.1", features = [
-  "os-webview",
-  "protocol",
-  "serde",
-  "tracing"
-] }
+wry = { version = "0.55.1", features = ["os-webview", "protocol", "serde", "tracing"] }
 
 ed25519-dalek = { version = "=3.0.0-rc.0", features = ["serde"] }
 iroh = "1"

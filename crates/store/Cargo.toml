@@ -17,10 +17,7 @@ domain.workspace = true
 importer = { workspace = true, optional = true }
 
 chrono.workspace = true
-derive_more = {
-  workspace = true,
-  features = ["debug", "display", "error", "from"]
-}
+derive_more = { workspace = true, features = ["debug", "display", "error", "from"] }
 indexmap = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true

@@ -39,9 +39,7 @@ host = "waypoints.so"
 pathPrefix = ["/pair"]
 
 [plugins.updater]
-endpoints = [
-  "https://api.waypoints.so/releases/{{target}}/{{arch}}/{{current_version}}"
-]
+endpoints = ["https://api.waypoints.so/releases/{{target}}/{{arch}}/{{current_version}}"]
 pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
 
 [[app.windows]]

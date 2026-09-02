@@ -28,10 +28,7 @@ tracing.workspace = true
 [dev-dependencies]
 outpost-hold.workspace = true
 
-tokio = {
-  workspace = true,
-  features = ["io-util", "macros", "rt-multi-thread", "sync"]
-}
+tokio = { workspace = true, features = ["io-util", "macros", "rt-multi-thread", "sync"] }
 
 [lints]
 workspace = true
