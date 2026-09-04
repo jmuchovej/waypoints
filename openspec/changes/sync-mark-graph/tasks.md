@@ -10,10 +10,10 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 2. Arbitration key
 
-- [ ] 2.1 Settle the placement question first (design.md, Open Questions), then define the arbitration key type `(HLC, [u8; 32] author key bytes, NoticeID)` in `cartograph`'s sync layer — not `domain`, which must not depend on `outpost-protocol` — with a total `Ord` that compares lexicographically in that sequence.
-- [ ] 2.2 Implement derivation of the key from a parsed `EnvelopeHeader` alone, with no local-state inputs.
-- [ ] 2.3 Unit-test totality and determinism: equal clocks tie-break by author key then notice id; the comparison never returns `Equal` for distinct Notices; two independent derivations from the same header bytes agree.
-- [ ] 2.4 Property-test that sorting a shuffled vector of keys yields one canonical sequence regardless of input permutation.
+- [x] 2.1 Settle the placement question first (design.md, Open Questions), then define the arbitration key type `(HLC, [u8; 32] author key bytes, NoticeID)` in `cartograph`'s sync layer — not `domain`, which must not depend on `outpost-protocol` — with a total `Ord` that compares lexicographically in that sequence.
+- [x] 2.2 Implement derivation of the key from a parsed `EnvelopeHeader` alone, with no local-state inputs.
+- [x] 2.3 Unit-test totality and determinism: equal clocks tie-break by author key then notice id; the comparison never returns `Equal` for distinct Notices; two independent derivations from the same header bytes agree.
+- [x] 2.4 Property-test that sorting a shuffled vector of keys yields one canonical sequence regardless of input permutation.
 
 ## 3. HLC on the wire
 

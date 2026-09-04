@@ -1,55 +1,59 @@
 [package]
-name = "cartograph"
-version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-description.workspace = true
-documentation.workspace = true
-readme.workspace = true
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-publish.workspace = true
+  name                    = "cartograph"
+  version                 = "0.1.0"
+  edition.workspace       = true
+  rust-version.workspace  = true
+  description.workspace   = true
+  documentation.workspace = true
+  readme.workspace        = true
+  homepage.workspace      = true
+  repository.workspace    = true
+  license.workspace       = true
+  publish.workspace       = true
 
 [[bin]]
-name = "typegen"
-path = "bin/typegen.rs"
-required-features = ["development"]
+  name              = "typegen"
+  path              = "bin/typegen.rs"
+  required-features = [ "development" ]
 
 [dependencies]
-domain.workspace = true
-outpost = { workspace = true, features = ["vessel"] }
-store.workspace = true
+  domain.workspace = true
+  outpost          = { workspace = true, features = [ "vessel" ] }
+  store.workspace  = true
 
-async-trait.workspace = true
-base64.workspace = true
-chrono.workspace = true
-fast_qr.workspace = true
-hex.workspace = true
-rand.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-specta.workspace = true
-specta-serde.workspace = true
-specta-typescript.workspace = true
-thiserror.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-uuid.workspace = true
+  async-trait.workspace       = true
+  base64.workspace            = true
+  chrono.workspace            = true
+  fast_qr.workspace           = true
+  hex.workspace               = true
+  rand.workspace              = true
+  serde.workspace             = true
+  serde_json.workspace        = true
+  specta.workspace            = true
+  specta-serde.workspace      = true
+  specta-typescript.workspace = true
+  thiserror.workspace         = true
+  tokio.workspace             = true
+  tracing.workspace           = true
+  uuid.workspace              = true
 
 [dev-dependencies]
-cartograph = { workspace = true, features = ["development"] }
-store = { workspace = true, features = ["development", "test-utils"] }
+  cartograph = { workspace = true, features = [ "development" ] }
+  store      = { workspace = true, features = [ "development", "test-utils" ] }
 
-image.workspace = true
-resvg.workspace = true
-rqrr.workspace = true
-rstest.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+  ed25519-dalek.workspace = true
+  image.workspace         = true
+  resvg.workspace         = true
+  rqrr.workspace          = true
+  rstest.workspace        = true
+  tokio                   = {
+    workspace = true,
+    features  = [ "macros", "rt-multi-thread" ]
+  }
 
 [features]
-default = []
-development = ["store/development"]
+  default     = []
+  development = [ "store/development" ]
 
 [lints]
-workspace = true
+  workspace = true

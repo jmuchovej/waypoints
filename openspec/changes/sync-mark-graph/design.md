@@ -172,11 +172,13 @@ No data migration. The only existing Territory data is transient dev seed; it is
 
 ## Open Questions
 
-- **Where the HLC and the arbitration-key type live (raised 2026-08-30).** The key is
-  `(HLC, author_verifying_key_bytes, NoticeID)`; `NoticeID` and `EnvelopeHeader` are
-  `outpost-protocol` types, and `domain` must never depend on `outpost-protocol` — so neither the
-  key type nor a load-bearing HLC can stay in `domain` as originally sketched. Likely resolution:
-  the HLC migrates into the outpost stack (or is dropped in favour of a clock that already fits
-  there), and the key type lives with the fold in `cartograph`'s sync layer. `store` may take a
-  scoped `outpost-protocol` dependency for sync-owned persistence only. To be settled before
-  starting section 2 of tasks.
+- **Where the HLC and the arbitration-key type live (raised 2026-08-30; settled 2026-09-04).**
+  Resolved along the sketched lines:
+  - The HLC migrated from `crates/domain/src/sync/hlc.rs` to `crates/outpost-protocol/src/hlc.rs`
+    unchanged in semantics (chrono swapped for `std::time`, specta export dropped — nothing
+    consumed the TS type). `domain` no longer exports `HLC`/`Clock`/`SystemClock`.
+  - The arbitration-key type and its derivation live in `cartograph`'s sync layer
+    (`crates/cartograph/src/sync/arbitration.rs`), reaching protocol types through the existing
+    `outpost::protocol` re-export — no new cartograph dependency.
+  - `store` takes the scoped `outpost-protocol` dependency when sync-owned persistence lands
+    (tasks section 5), confined to sync-owned tables as sketched.

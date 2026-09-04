@@ -72,19 +72,21 @@ pub use territory::{
 };
 
 pub(crate) mod sync {
+    mod arbitration;
     mod error;
     mod service;
     mod setup_code;
     mod types;
 
+    pub use arbitration::ArbitrationKey;
     pub use error::{SyncError, SyncResult};
     pub use service::SyncService;
     pub use setup_code::{SetupCode, classify, encode_pair_url};
     pub use types::{IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncStatus};
 }
 pub use sync::{
-    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncError, SyncResult,
-    SyncService, SyncStatus, classify, encode_pair_url,
+    ArbitrationKey, IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncError,
+    SyncResult, SyncService, SyncStatus, classify, encode_pair_url,
 };
 
 mod runtime;
