@@ -1,7 +1,7 @@
 //! Real-engine tests for sync-owned persistence: winning arbitration keys
 //! per fold target, and the incremental fold cursor.
 
-use outpost_protocol::{HLC, NoticeID};
+use outpost_protocol::{HLC, NoticeID, TrackID};
 use store::query::sync::{self, StoredKey};
 
 fn key(hlc: i64, author: u8, notice: u8) -> StoredKey {
@@ -31,6 +31,28 @@ async fn winner_round_trips_and_overwrites() {
     sync::set_winner(&db, "title:x", first).await.unwrap();
     assert_eq!(sync::winner(&db, "title:x").await.unwrap(), Some(first));
     assert_eq!(sync::winner(&db, "mark:x").await.unwrap(), Some(second));
+}
+
+#[tokio::test]
+async fn track_index_round_trips_and_overwrites() {
+    let db = store::test_utils::temp_db().await;
+
+    assert_eq!(sync::track_of(&db, "landmark-a").await.unwrap(), None);
+
+    let first = TrackID::from(NoticeID::from_bytes([3; 32]));
+    sync::set_track(&db, "landmark-a", first).await.unwrap();
+    assert_eq!(
+        sync::track_of(&db, "landmark-a").await.unwrap(),
+        Some(first)
+    );
+
+    // Re-indexing (e.g. after a stale Track roots a fresh one) overwrites.
+    let second = TrackID::from(NoticeID::from_bytes([4; 32]));
+    sync::set_track(&db, "landmark-a", second).await.unwrap();
+    assert_eq!(
+        sync::track_of(&db, "landmark-a").await.unwrap(),
+        Some(second)
+    );
 }
 
 #[tokio::test]

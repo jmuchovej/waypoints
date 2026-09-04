@@ -235,7 +235,7 @@ impl EditorService {
             Some((cursor, ops)) => {
                 // An undo mutates the graph like any command: its inverse
                 // ops publish like one.
-                mutation::enqueue_for_publish(&db, &ops).await?;
+                mutation::enqueue_for_publish(&db, &ops, landmark_id).await?;
                 let blocks = project_after_history_walk(&db, landmark_id).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,
@@ -251,7 +251,7 @@ impl EditorService {
         let h = history_entry(&mut self.histories, landmark_id);
         match h.redo(&db).await? {
             Some((cursor, ops)) => {
-                mutation::enqueue_for_publish(&db, &ops).await?;
+                mutation::enqueue_for_publish(&db, &ops, landmark_id).await?;
                 let blocks = project_after_history_walk(&db, landmark_id).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,

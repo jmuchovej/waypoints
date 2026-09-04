@@ -20,22 +20,28 @@ async fn record(
     db: &Store,
     history: &mut CommandHistory,
     ops: Vec<Maneuver>,
+    landmark: MarkID,
     primary: MarkID,
     cursor_before: CursorState,
     cursor_after: CursorState,
 ) -> EditorResult<()> {
-    enqueue_for_publish(db, &ops).await?;
+    enqueue_for_publish(db, &ops, landmark).await?;
     history.push(ops, primary, cursor_before, cursor_after);
     Ok(())
 }
 
-/// Durably enqueue applied ops as one future `waypoints.page.v1` Notice.
-/// Also used by undo/redo, whose inverse ops mutate the graph like any
-/// other command and must publish like one.
-pub(crate) async fn enqueue_for_publish(db: &Store, ops: &[Maneuver]) -> EditorResult<()> {
+/// Durably enqueue applied ops as one future `waypoints.page.v1` Notice,
+/// tagged with the Landmark the batch concerns (publication picks that
+/// Landmark's Track). Also used by undo/redo, whose inverse ops mutate the
+/// graph like any other command and must publish like one.
+pub(crate) async fn enqueue_for_publish(
+    db: &Store,
+    ops: &[Maneuver],
+    landmark: MarkID,
+) -> EditorResult<()> {
     let payload =
         crate::sync::encode_page_v1(ops).map_err(|e| EditorError::Serialization(e.to_string()))?;
-    store::query::sync::enqueue_publish(db, payload).await?;
+    store::query::sync::enqueue_publish(db, payload, landmark.to_string()).await?;
     Ok(())
 }
 
@@ -146,7 +152,16 @@ pub async fn update_mark(
         old: old_data.into(),
         new: new_data.into(),
     }];
-    record(db, history, ops.clone(), id, cursor.clone(), cursor).await?;
+    record(
+        db,
+        history,
+        ops.clone(),
+        landmark_id,
+        id,
+        cursor.clone(),
+        cursor,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -180,7 +195,16 @@ pub async fn delete_mark(
         block_id: id,
         offset: None,
     };
-    record(db, history, ops.clone(), id, cursor.clone(), cursor).await?;
+    record(
+        db,
+        history,
+        ops.clone(),
+        landmark_id,
+        id,
+        cursor.clone(),
+        cursor,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -222,7 +246,16 @@ pub async fn move_marks(
             block_id: first,
             offset: None,
         };
-        record(db, history, ops.clone(), first, cursor.clone(), cursor).await?;
+        record(
+            db,
+            history,
+            ops.clone(),
+            landmark_id,
+            first,
+            cursor.clone(),
+            cursor,
+        )
+        .await?;
     }
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
@@ -255,7 +288,7 @@ pub async fn update_mark_title(
         block_id: id,
         offset: None,
     };
-    record(db, history, vec![op], id, cursor.clone(), cursor).await?;
+    record(db, history, vec![op], id, id, cursor.clone(), cursor).await?;
     Ok(())
 }
 
@@ -344,7 +377,7 @@ pub async fn update_mark_reading(
         block_id: id,
         offset: None,
     };
-    record(db, history, vec![op], id, cursor.clone(), cursor).await?;
+    record(db, history, vec![op], id, id, cursor.clone(), cursor).await?;
 
     // Re-fetch and return the updated mark
     let updated = mark::get(db, id)
@@ -377,7 +410,7 @@ pub async fn create_landmark(
         offset: None,
     };
     let history = histories.entry(id).or_insert_with(CommandHistory::new);
-    record(db, history, vec![op], id, cursor.clone(), cursor).await?;
+    record(db, history, vec![op], id, id, cursor.clone(), cursor).await?;
 
     let created = mark::get(db, id)
         .await?
@@ -419,7 +452,16 @@ pub async fn create_mark_after(
             extra: None,
         },
     ];
-    record(db, history, ops.clone(), new_id, cursor.clone(), cursor).await?;
+    record(
+        db,
+        history,
+        ops.clone(),
+        landmark_id,
+        new_id,
+        cursor.clone(),
+        cursor,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(CreateResult {
@@ -460,7 +502,16 @@ pub async fn update_mark_text(
         block_id: mark_id,
         offset: None,
     };
-    record(db, history, vec![op], mark_id, cursor.clone(), cursor).await?;
+    record(
+        db,
+        history,
+        vec![op],
+        landmark_id,
+        mark_id,
+        cursor.clone(),
+        cursor,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -546,6 +597,7 @@ pub async fn split_mark(
         db,
         history,
         ops.clone(),
+        landmark_id,
         mark_id,
         cursor_before,
         cursor_after,
@@ -636,6 +688,7 @@ pub async fn merge_marks(
         db,
         history,
         ops.clone(),
+        landmark_id,
         target_id,
         cursor_before,
         cursor_after,
@@ -745,6 +798,7 @@ pub async fn wrap_in_compound(
         db,
         history,
         ops.clone(),
+        landmark_id,
         compound_id,
         cursor.clone(),
         cursor,
@@ -789,7 +843,16 @@ pub async fn delete_marks(
             block_id: first,
             offset: None,
         };
-        record(db, history, ops.clone(), first, cursor.clone(), cursor).await?;
+        record(
+            db,
+            history,
+            ops.clone(),
+            landmark_id,
+            first,
+            cursor.clone(),
+            cursor,
+        )
+        .await?;
     }
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
@@ -822,7 +885,16 @@ pub async fn reparent_mark(
         new_src: new_parent_id,
         new_order: Some(new_order),
     }];
-    record(db, history, ops.clone(), mark_id, cursor.clone(), cursor).await?;
+    record(
+        db,
+        history,
+        ops.clone(),
+        landmark_id,
+        mark_id,
+        cursor.clone(),
+        cursor,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })

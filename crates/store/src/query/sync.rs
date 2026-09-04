@@ -10,7 +10,7 @@
 //! `ManeuverTarget`; it is opaque here.
 
 use crate::{Store, StoreResult};
-use outpost_protocol::{HLC, NoticeID};
+use outpost_protocol::{HLC, NoticeID, TrackID};
 
 /// The winning arbitration key currently materialized into one fold target.
 #[derive(Debug, Clone, PartialEq, bedrock::Collection)]
@@ -44,11 +44,19 @@ pub struct SyncOutbox {
     #[bedrock(id)]
     pub seq: i64,
     pub payload: Vec<u8>,
+    /// The Landmark this batch concerns (lowercase-uuid `MarkID`), chosen
+    /// deterministically by the enqueuer — publication picks that
+    /// Landmark's Track. Empty ⇒ unknown; the Notice roots a new Track.
+    pub landmark: String,
 }
 
 /// Durably enqueue a payload for publication. `seq` assignment assumes a
 /// single writer (the editor serializes mutations).
-pub async fn enqueue_publish(store: &Store, payload: Vec<u8>) -> StoreResult<i64> {
+pub async fn enqueue_publish(
+    store: &Store,
+    payload: Vec<u8>,
+    landmark: String,
+) -> StoreResult<i64> {
     let seq = store
         .db()
         .query::<SyncOutbox>(&bedrock::Query::new().sort_desc("seq").limit(1))
@@ -56,8 +64,50 @@ pub async fn enqueue_publish(store: &Store, payload: Vec<u8>) -> StoreResult<i64
         .first()
         .map(|row| row.seq + 1)
         .unwrap_or(0);
-    store.db().insert(SyncOutbox { seq, payload }).await?;
+    store
+        .db()
+        .insert(SyncOutbox {
+            seq,
+            payload,
+            landmark,
+        })
+        .await?;
     Ok(seq)
+}
+
+/// The write-side `MarkID → TrackID` index: which Track a Landmark's
+/// history occupies. Consulted only when choosing the parents of a Notice
+/// being authored — never on the fold path — so loss, staleness, or
+/// corruption degrades partitioning, never graph state.
+#[derive(Debug, Clone, PartialEq, bedrock::Collection)]
+pub struct SyncTrack {
+    /// Lowercase-uuid `MarkID` of the Landmark.
+    #[bedrock(id)]
+    pub mark: String,
+    /// Root-Notice bytes of the Track.
+    pub track: [u8; 32],
+}
+
+/// The Track a Landmark's history occupies, if this device has authored
+/// (and indexed) one.
+pub async fn track_of(store: &Store, mark: &str) -> StoreResult<Option<TrackID>> {
+    Ok(store
+        .db()
+        .get::<SyncTrack>(&mark.to_owned())
+        .await?
+        .map(|row| TrackID::from(NoticeID::from_bytes(row.track))))
+}
+
+/// Record the Track a Landmark's history occupies.
+pub async fn set_track(store: &Store, mark: &str, track: TrackID) -> StoreResult<()> {
+    store
+        .db()
+        .upsert::<SyncTrack>(SyncTrack {
+            mark: mark.to_owned(),
+            track: *track.root_notice().as_bytes(),
+        })
+        .await?;
+    Ok(())
 }
 
 /// Every queued publication, oldest first.

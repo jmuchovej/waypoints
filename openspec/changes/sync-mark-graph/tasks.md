@@ -49,12 +49,12 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 7. Track selection
 
-- [ ] 7.1 Add the write-side `MarkID → TrackID` index in `store` (real-engine tests).
-- [ ] 7.2 Author Notices with `parents = track_heads(track_of(landmark))`, so a Landmark's history occupies one Track.
-- [ ] 7.3 Define and implement the deterministic Track choice for operations concerning two Landmarks (e.g. `UpdateTerrain` moving a mark between Landmarks), derived from operation content so every device chooses identically. Test that two devices agree.
-- [ ] 7.4 Assert the index is never read on the fold path — fold with the index absent, empty, and deliberately corrupted, and confirm an identical graph each time.
-- [ ] 7.5 Test the degraded case: a stale index causes a Landmark's history to fragment across two Tracks, and the resulting state is still correct.
-- [ ] 7.6 Test that divergence in one Landmark triggers resupply only for that Landmark's Track, via `TallyDigest::divergent`.
+- [x] 7.1 Add the write-side `MarkID → TrackID` index in `store` (real-engine tests).
+- [x] 7.2 Author Notices with `parents = track_heads(track_of(landmark))`, so a Landmark's history occupies one Track.
+- [x] 7.3 Define and implement the deterministic Track choice for operations concerning two Landmarks (e.g. `UpdateTerrain` moving a mark between Landmarks), derived from operation content so every device chooses identically. Test that two devices agree.
+- [x] 7.4 Assert the index is never read on the fold path — fold with the index absent, empty, and deliberately corrupted, and confirm an identical graph each time.
+- [x] 7.5 Test the degraded case: a stale index causes a Landmark's history to fragment across two Tracks, and the resulting state is still correct.
+- [x] 7.6 Test that divergence in one Landmark triggers resupply only for that Landmark's Track, via `TallyDigest::divergent`.
 
 ## 8. Dangling references
 
