@@ -54,6 +54,17 @@ pub struct ACLs {
     pub proof: Vec<u8>,
 }
 
+/// Single-row, per-hold mutable state that is not content-addressed —
+/// currently only the replica's hybrid logical clock, persisted so authored
+/// timestamps stay monotonic across restarts. `id` is always 0.
+#[derive(Debug, Clone, PartialEq, Collection)]
+pub struct Meta {
+    #[bedrock(id)]
+    pub id: i64,
+    /// The packed HLC (`outpost-protocol` layout) of the last tick/receive.
+    pub clock: i64,
+}
+
 /// A parent edge awaiting its parent: the child cannot be accepted until
 /// `parent` arrives (`Pending`). Keyed by the missing parent so the
 /// arrival of a Notice can look up who was waiting on it.

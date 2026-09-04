@@ -17,11 +17,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 3. HLC on the wire
 
-- [ ] 3.1 Give `Vessel` an HLC that ticks on author and applies `HLC::receive` when ingesting Notices, persisting the clock across restarts.
-- [ ] 3.2 Replace the hardcoded `timestamp: 0` in `Vessel::author` (`crates/outpost/src/vessel.rs`) with the ticked HLC value.
-- [ ] 3.3 Assert in tests that `validate()` outcomes are unchanged across header clock values (past, future, zero) — the field stays advisory at the protocol layer.
-- [ ] 3.4 Assert that mutating the header clock on a signed Notice breaks both signature verification and payload decryption (AAD binding).
-- [ ] 3.5 Test that a Vessel observing a Notice with a clock ahead of its own subsequently authors clock values exceeding it.
+- [x] 3.1 Give `Vessel` an HLC that ticks on author and applies `HLC::receive` when ingesting Notices, persisting the clock across restarts.
+- [x] 3.2 Replace the hardcoded `timestamp: 0` in `Vessel::author` (`crates/outpost/src/vessel.rs`) with the ticked HLC value.
+- [x] 3.3 Assert in tests that `validate()` outcomes are unchanged across header clock values (past, future, zero) — the field stays advisory at the protocol layer.
+- [x] 3.4 Assert that mutating the header clock on a signed Notice breaks both signature verification and payload decryption (AAD binding).
+- [x] 3.5 Test that a Vessel observing a Notice with a clock ahead of its own subsequently authors clock values exceeding it.
 
 ## 4. Fold core
 

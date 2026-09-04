@@ -244,7 +244,10 @@ impl Vessel {
             snapshot_base,
             is_snapshot: false,
             payload_type: payload_type.to_owned(),
-            timestamp: 0,
+            // Advisory at the protocol layer (never inspected by
+            // validation); app-layer consumers read it as the HLC
+            // component of the arbitration key.
+            timestamp: self.replica.clock_tick().await?.inner(),
         };
         let payload = seal_payload(rng, &key, &header, plaintext)?;
         let notice = SignedNotice::sign(&Envelope { header, payload }, &self.identity)?;

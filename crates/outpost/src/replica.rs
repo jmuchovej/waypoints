@@ -19,7 +19,7 @@ use crate::{
     fabric::SyncPeer,
     hold::{ACLIndex, NoticeIndex, TerritoryHold},
     protocol::{
-        ACLRecord, NoticeID, OrderProof, OrderedRecord, RecordID, SignedNotice, TallyDigest,
+        ACLRecord, HLC, NoticeID, OrderProof, OrderedRecord, RecordID, SignedNotice, TallyDigest,
         TerritoryID, TrackID, Validated, validate,
     },
 };
@@ -48,6 +48,12 @@ pub enum ReplicaError {
 pub struct Replica {
     hold: TerritoryHold,
     next_topo: AtomicI64,
+    /// The hybrid logical clock: ticked when a Vessel authors, advanced by
+    /// `HLC::receive` when remote Notices ingest, persisted to the hold so
+    /// authored timestamps stay monotonic across restarts. The async mutex
+    /// keeps compute-and-persist one critical section, so a slower writer
+    /// can never persist a stale (lower) clock over a newer one.
+    clock: tokio::sync::Mutex<HLC>,
     /// The fleet's verifying key, when this Territory is homed to a fleet
     /// (fleet). When set, ACL records arriving over sync must carry a valid
     /// orderer proof; when `None` (self-hosted solo, or tests), ordering is
@@ -101,11 +107,39 @@ impl Replica {
             return Err(ReplicaError::NoACL);
         }
         let next_topo = AtomicI64::new(hold.max_topo().await? + 1);
+        let clock = tokio::sync::Mutex::new(HLC(hold.clock().await?));
         Ok(Self {
             hold,
             next_topo,
+            clock,
             fleet_key,
         })
+    }
+
+    /// Tick the clock for a locally authored Notice and persist it. The
+    /// returned value strictly exceeds every previously ticked or observed
+    /// clock, so an author's own Notices always order by authoring sequence.
+    pub async fn clock_tick(&self) -> ReplicaResult<HLC> {
+        let mut clock = self.clock.lock().await;
+        let next = HLC::tick(*clock);
+        self.hold.set_clock(next.inner()).await?;
+        *clock = next;
+        Ok(next)
+    }
+
+    /// Observe a remote clock value: advance the local clock past it
+    /// (`HLC::receive`) and persist. Called by ingest for accepted Notices.
+    async fn clock_receive(&self, remote: HLC) -> ReplicaResult<()> {
+        let mut clock = self.clock.lock().await;
+        let next = HLC::receive(*clock, remote);
+        self.hold.set_clock(next.inner()).await?;
+        *clock = next;
+        Ok(())
+    }
+
+    /// The current clock value — diagnostics and tests.
+    pub async fn clock(&self) -> HLC {
+        *self.clock.lock().await
     }
 
     /// The current head of the ACL log — what a locally-authored Notice pins.
@@ -261,6 +295,10 @@ impl Replica {
     pub async fn ingest(&self, incoming: Vec<SignedNotice>) -> ReplicaResult<()> {
         let acl = self.hold.acl_index().await?;
         let mut queue = incoming;
+        // The greatest header clock among accepted Notices; observed into
+        // the local clock once at the end (equivalent to receiving each in
+        // turn — the result exceeds every input).
+        let mut observed: Option<HLC> = None;
         loop {
             let store = NoticeIndex::snapshot(&self.hold).await?;
             let mut pending = Vec::new();
@@ -288,6 +326,8 @@ impl Replica {
                         self.hold
                             .append_notice(&notice, track, self.take_topo())
                             .await?;
+                        let remote = HLC(envelope.header.timestamp);
+                        observed = Some(observed.map(|seen| seen.max(remote)).unwrap_or(remote));
                         progressed = true;
                     }
                     Ok(Validated::Pending { .. }) => pending.push(notice),
@@ -298,6 +338,9 @@ impl Replica {
             if queue.is_empty() || !progressed {
                 break;
             }
+        }
+        if let Some(remote) = observed {
+            self.clock_receive(remote).await?;
         }
         Ok(())
     }
