@@ -11,11 +11,13 @@
 pub(crate) mod endpoint;
 pub mod fleet;
 pub(crate) mod framing;
+pub mod liveness;
 pub(crate) mod session;
 pub(crate) use outpost_protocol as protocol;
 
 pub use endpoint::{ALPN, Endpoint, EndpointAddr, Session, TransportError};
 pub use framing::{FrameError, MAX_FRAME, read_frame, write_frame};
+pub use liveness::{HEARTBEAT_INTERVAL, IDLE_TIMEOUT, Liveness, is_keepalive, keepalive};
 pub use session::{
     SessionError, SyncPeer, initiate, serve, serve_gated, serve_sync, serve_sync_gated,
 };

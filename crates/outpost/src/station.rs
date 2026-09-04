@@ -114,6 +114,8 @@ pub struct Station {
     /// [`advertised_addr`](Self::advertised_addr) falls back to the bound
     /// sockets — the same-host posture.
     advertise: Vec<std::net::SocketAddr>,
+    /// Keepalive/idle-timeout timings for parked live sessions.
+    liveness: crate::fabric::Liveness,
 }
 
 /// One batch of freshly-accepted records on a Territory's bus, tagged with
@@ -295,7 +297,14 @@ impl Station {
             buses: Mutex::new(BTreeMap::new()),
             next_session: AtomicU64::new(1),
             advertise: Vec::new(),
+            liveness: crate::fabric::Liveness::default(),
         })
+    }
+
+    /// Override the live-session liveness timings (tests inject short ones).
+    pub fn with_liveness(mut self, liveness: crate::fabric::Liveness) -> Self {
+        self.liveness = liveness;
+        self
     }
 
     /// Configure the sockets this Station advertises to Vessels — the
@@ -804,14 +813,28 @@ impl Station {
             return;
         }
 
-        // Live phase: vessel pushes in, bus events out (minus our own).
+        // Live phase: vessel pushes in, bus events out (minus our own). A
+        // heartbeat keeps the session warm; a subscriber that produces no
+        // frame within the idle threshold is reaped (the loop breaks, its
+        // bus subscription drops, and its sighting goes disconnected).
         let mut rx = bus.subscribe();
+        let mut heartbeat = tokio::time::interval(self.liveness.heartbeat);
+        heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // A single deadline reset only by inbound frames — kept out of the
+        // read future so the heartbeat tick (which restarts `select!`) does
+        // not keep cancelling and restarting the idle countdown.
+        let idle = tokio::time::sleep(self.liveness.idle_timeout);
+        tokio::pin!(idle);
         loop {
             tokio::select! {
-                frame = read_frame::<SyncMessage>(&mut session.recv) => match frame {
+                frame = read_frame::<SyncMessage>(&mut session.recv) => {
+                    idle
+                        .as_mut()
+                        .reset(tokio::time::Instant::now() + self.liveness.idle_timeout);
+                    match frame {
                     Ok(SyncMessage::NoticePush { notices }) => {
                         if notices.is_empty() {
-                            continue;
+                            continue; // keepalive: liveness only
                         }
                         if let Err(e) = replica.ingest(notices.clone()).await {
                             tracing::warn!("live notice ingest failed: {e}");
@@ -837,6 +860,7 @@ impl Station {
                     }
                     Ok(_) => {} // unknown live frame: ignore
                     Err(_) => break, // vessel closed / transport gone
+                    }
                 },
                 event = rx.recv() => match event {
                     Ok(event) => {
@@ -856,8 +880,25 @@ impl Station {
                     Err(broadcast::error::RecvError::Lagged(_)) => break,
                     Err(broadcast::error::RecvError::Closed) => break,
                 },
+                _ = heartbeat.tick() => {
+                    // Keep the session warm so the Vessel's own idle timer
+                    // does not reap a quiet-but-live Station.
+                    if write_frame(&mut session.send, &crate::fabric::keepalive())
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+                // No inbound frame — keepalive included — within the idle
+                // threshold: the Vessel is gone. Reap.
+                _ = &mut idle => break,
             }
         }
+        // The live phase is over — reaped, closed, or lagged. Close our side
+        // so the caller's `drain` does not block on a vanished Vessel that
+        // will never close, and its sighting flips to disconnected promptly.
+        session.close();
     }
 
     /// This Territory's live-push bus, created on first use.

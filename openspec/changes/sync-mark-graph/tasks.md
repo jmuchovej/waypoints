@@ -74,11 +74,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 10. Liveness
 
-- [ ] 10.1 Add periodic liveness signalling to sessions in `outpost-fabric`, reusing existing session framing rather than adding a new wire message type where possible.
-- [ ] 10.2 Add an idle threshold and stale-session reaping on the Station, releasing subscription and delivery state for sessions that stop signalling.
-- [ ] 10.3 Test that a subscription whose Vessel vanishes without closing is reaped, and that an idle-but-signalling subscription is retained.
+- [x] 10.1 Add periodic liveness signalling to sessions in `outpost-fabric`, reusing existing session framing rather than adding a new wire message type where possible.
+- [x] 10.2 Add an idle threshold and stale-session reaping on the Station, releasing subscription and delivery state for sessions that stop signalling.
+- [x] 10.3 Test that a subscription whose Vessel vanishes without closing is reaped, and that an idle-but-signalling subscription is retained.
 - [ ] 10.4 Add Vessel-side dead-session detection and reconnect, resuming from the local `topo` cursor.
-- [ ] 10.5 Test sleep / network-change / cellular-drop reconnect: the Vessel receives Notices authored while disconnected, with no redundant resupply, and reaches the same state as a cold-start Vessel syncing once.
+- [x] 10.5 Test sleep / network-change / cellular-drop reconnect: the Vessel receives Notices authored while disconnected, with no redundant resupply, and reaches the same state as a cold-start Vessel syncing once.
 
 ## 11. Measurement
 
