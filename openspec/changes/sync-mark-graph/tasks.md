@@ -2,9 +2,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 1. Preflight
 
-- [ ] 1.1 Confirm the `op-log-completeness` change has landed: every editor mutation emits `Maneuver`s, and the per-field `UpdateLandmarkTitle` (target `Title(MarkID)`) and `UpdateReading` (target `Reading(MarkID, FeatureID)`) variants exist. Do not start section 2 before this holds.
-- [ ] 1.2 Reseed the dev Territory from scratch and confirm no data backfill path is needed (existing Territory data is transient dev seed only).
-- [ ] 1.3 Record a baseline of the current dev Territory's Notice count and hold file size, for comparison against the measurement added in section 10.
+- [x] 1.1 Confirm the `op-log-completeness` change has landed: every editor mutation emits `Maneuver`s, and the per-field `UpdateLandmarkTitle` (target `Title(MarkID)`) and `UpdateReading` (target `Reading(MarkID, FeatureID)`) variants exist. Do not start section 2 before this holds.
+- [x] 1.2 Reseed the dev Territory from scratch and confirm no data backfill path is needed (existing Territory data is transient dev seed only).
+      Verified 2026-09-04: `so.waypoints.dev/sync/` holds only `mnemonic.txt` + `sync.json`; `territory.db` has never been created on this machine, so there is no Territory data to migrate and the hold seeds from scratch on first creation.
+- [x] 1.3 Record a baseline of the current dev Territory's Notice count and hold file size, for comparison against the measurement added in section 10.
+      Baseline 2026-09-04: Notice count 0, hold file absent (0 bytes) — no dev Territory hold exists yet.
 
 ## 2. Arbitration key
 
