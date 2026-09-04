@@ -39,6 +39,8 @@
 
 [dev-dependencies]
   cartograph = { workspace = true, features = [ "development" ] }
+  # The station role, for convergence tests that stand up a real Station.
+  outpost    = { workspace = true, features = [ "station", "vessel" ] }
   store      = { workspace = true, features = [ "development", "test-utils" ] }
 
   ed25519-dalek.workspace = true

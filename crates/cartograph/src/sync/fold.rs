@@ -282,8 +282,16 @@ pub async fn fold_incremental(db: &Store, mut ops: Vec<KeyedOp>) -> Result<(), F
         }
     }
 
-    for (target, key) in advanced {
-        sync_store::set_winner(db, &target_key(&target), to_stored(key)).await?;
+    // One row per target; persisted in target-key order so the write
+    // sequence is deterministic (and the lint about hash-order iteration
+    // stays honest).
+    let mut rows: Vec<(String, ArbitrationKey)> = advanced
+        .into_iter()
+        .map(|(target, key)| (target_key(&target), key))
+        .collect();
+    rows.sort_by(|a, b| a.0.cmp(&b.0));
+    for (target, key) in rows {
+        sync_store::set_winner(db, &target, to_stored(key)).await?;
     }
     Ok(())
 }
@@ -712,7 +720,9 @@ mod tests {
         fold_incremental(&db_full, s.ops.clone()).await.unwrap();
 
         assert_eq!(snapshot(&db_inc, &s).await, snapshot(&db_full, &s).await);
-        for target in winners(&s.ops).keys() {
+        let mut targets: Vec<_> = winners(&s.ops).into_keys().collect();
+        targets.sort_by_key(|t| target_key(t));
+        for target in &targets {
             let inc = sync_store::winner(&db_inc, &target_key(target))
                 .await
                 .unwrap();
