@@ -111,7 +111,7 @@ pub enum Maneuver {
 /// resolution consults. This mapping is part of the wire protocol's
 /// semantics, not resolver policy: every device must derive the same
 /// target from the same op, or their resolutions diverge.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ManeuverTarget {
     Mark(MarkID),
     Title(MarkID),

@@ -74,19 +74,25 @@ pub use territory::{
 pub(crate) mod sync {
     mod arbitration;
     mod error;
+    mod fold;
     mod service;
     mod setup_code;
     mod types;
 
     pub use arbitration::ArbitrationKey;
     pub use error::{SyncError, SyncResult};
+    pub use fold::{
+        FoldError, KeyedOp, PAGE_V1, decode_page_v1, encode_page_v1, fold, keyed_ops,
+        sort_canonical, winners,
+    };
     pub use service::SyncService;
     pub use setup_code::{SetupCode, classify, encode_pair_url};
     pub use types::{IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncStatus};
 }
 pub use sync::{
-    ArbitrationKey, IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncError,
-    SyncResult, SyncService, SyncStatus, classify, encode_pair_url,
+    ArbitrationKey, FoldError, IdentityCreated, KeyedOp, PAGE_V1, PairingCode, SetupCode,
+    StationStatus, SyncDevice, SyncError, SyncResult, SyncService, SyncStatus, classify,
+    decode_page_v1, encode_page_v1, encode_pair_url, fold, keyed_ops, sort_canonical, winners,
 };
 
 mod runtime;

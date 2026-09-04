@@ -29,6 +29,16 @@ pub struct ArbitrationKey {
 }
 
 impl ArbitrationKey {
+    /// Reassemble a key from its stored components — the inverse of the
+    /// accessors, for persistence that records winning keys per target.
+    pub fn new(hlc: HLC, author: [u8; 32], notice: NoticeID) -> Self {
+        Self {
+            hlc,
+            author,
+            notice,
+        }
+    }
+
     /// Derive the key for an operation carried by the Notice with header
     /// `header` and content address `notice`. Pure: reads only signed
     /// content, never local state.

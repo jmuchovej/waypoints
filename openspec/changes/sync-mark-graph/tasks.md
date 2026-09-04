@@ -25,11 +25,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 4. Fold core
 
-- [ ] 4.1 Define the payload codec for `waypoints.page.v1`: a batch of `Maneuver`s, with a round-trip test over every `Maneuver` variant confirming `#[serde(skip)]` undo-only fields deserialize to defaults and are never read.
-- [ ] 4.2 Implement the fold as a pure function over `(Notice header, batch of Maneuver)` pairs: sort by arbitration key, apply in order.
-- [ ] 4.3 Implement per-target resolution: group by `ManeuverTarget`, and for each target let the greatest key materialize.
-- [ ] 4.4 Test order independence directly — fold the same Notice set under many permutations and assert an identical resulting graph.
-- [ ] 4.5 Test that operations on distinct targets never interfere, and that concurrent operations on one target resolve to the higher key on every device.
+- [x] 4.1 Define the payload codec for `waypoints.page.v1`: a batch of `Maneuver`s, with a round-trip test over every `Maneuver` variant confirming `#[serde(skip)]` undo-only fields deserialize to defaults and are never read.
+- [x] 4.2 Implement the fold as a pure function over `(Notice header, batch of Maneuver)` pairs: sort by arbitration key, apply in order.
+- [x] 4.3 Implement per-target resolution: group by `ManeuverTarget`, and for each target let the greatest key materialize.
+- [x] 4.4 Test order independence directly — fold the same Notice set under many permutations and assert an identical resulting graph.
+- [x] 4.5 Test that operations on distinct targets never interfere, and that concurrent operations on one target resolve to the higher key on every device.
 
 ## 5. Fold persistence
 
