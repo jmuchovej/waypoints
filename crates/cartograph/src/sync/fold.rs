@@ -137,17 +137,74 @@ fn from_stored(key: sync_store::StoredKey) -> ArbitrationKey {
     ArbitrationKey::new(key.hlc, key.author, key.notice)
 }
 
+/// The Marks an op requires to exist (created and folded) before it can
+/// apply. Tombstoned marks count as existing — their creation folded.
+fn required_marks(op: &Maneuver) -> Vec<domain::MarkID> {
+    use Maneuver::*;
+    match op {
+        CreateMark { .. } => vec![],
+        UpdateMarkData { mark_id, .. }
+        | UpdateLandmarkTitle { mark_id, .. }
+        | UpdateReading { mark_id, .. }
+        | UpdateRichText { mark_id, .. }
+        | SoftDeleteMark { mark_id, .. }
+        | RestoreMark { mark_id } => vec![*mark_id],
+        CreateTerrain { src, dst, .. } => vec![*src, *dst],
+        UpdateTerrain { new_src, .. } => vec![*new_src],
+        // Deleting an edge that never folded is gated by its endpoints
+        // arriving with the missing `CreateTerrain`.
+        DeleteTerrain { src, dst, .. } => vec![*src, *dst],
+    }
+}
+
+/// The Mark a deferred op anchors to when apply fails on a missing entity
+/// the pre-check cannot name (e.g. an edge whose `CreateTerrain` has not
+/// folded): the containment side of the op.
+fn anchor_mark(op: &Maneuver) -> domain::MarkID {
+    use Maneuver::*;
+    match op {
+        CreateMark { mark_id, .. }
+        | UpdateMarkData { mark_id, .. }
+        | UpdateLandmarkTitle { mark_id, .. }
+        | UpdateReading { mark_id, .. }
+        | UpdateRichText { mark_id, .. }
+        | SoftDeleteMark { mark_id, .. }
+        | RestoreMark { mark_id } => *mark_id,
+        CreateTerrain { src, .. } | DeleteTerrain { src, .. } => *src,
+        UpdateTerrain { new_src, .. } => *new_src,
+    }
+}
+
+async fn defer(db: &Store, missing: domain::MarkID, keyed: &KeyedOp) -> Result<(), FoldError> {
+    let op = serde_json::to_vec(&keyed.op)?;
+    sync_store::defer_op(
+        db,
+        &missing.to_string(),
+        to_stored(keyed.key),
+        keyed.index as i64,
+        op,
+    )
+    .await?;
+    Ok(())
+}
+
 /// Incremental fold: apply ops in canonical order, rejecting any op whose
 /// key is lower than the persisted winning key for its target (a
-/// late-arriving older Notice must not clobber newer state), and persist
-/// the advanced winners. Folding incrementally in any batching produces
-/// the same graph and the same persisted winners as one fold from empty.
+/// late-arriving older Notice must not clobber newer state), deferring any
+/// op that references a Mark whose creation has not folded, and persisting
+/// the advanced winners. When a `CreateMark` folds, the ops deferred on it
+/// release back into the fold in arbitration-key order — so folding in any
+/// batching produces the same graph and the same persisted winners as one
+/// fold from empty.
 pub async fn fold_incremental(db: &Store, mut ops: Vec<KeyedOp>) -> Result<(), FoldError> {
+    use store::query::mark;
+
     sort_canonical(&mut ops);
+    let mut queue = std::collections::VecDeque::from(ops);
     let mut current: HashMap<ManeuverTarget, ArbitrationKey> = HashMap::new();
     let mut advanced: HashMap<ManeuverTarget, ArbitrationKey> = HashMap::new();
 
-    for keyed in ops {
+    while let Some(keyed) = queue.pop_front() {
         let target = keyed.op.target();
         let winner = match current.get(&target) {
             Some(key) => Some(*key),
@@ -166,9 +223,63 @@ pub async fn fold_incremental(db: &Store, mut ops: Vec<KeyedOp>) -> Result<(), F
         if winner.is_some_and(|w| w > keyed.key) {
             continue;
         }
-        keyed.op.apply(db).await?;
+
+        // Defer, never apply or drop, an op whose referenced Mark has no
+        // folded creation.
+        let mut missing = None;
+        for id in required_marks(&keyed.op) {
+            if !mark::exists(db, id).await? {
+                missing = Some(id);
+                break;
+            }
+        }
+        if let Some(id) = missing {
+            defer(db, id, &keyed).await?;
+            continue;
+        }
+
+        match keyed.op.apply(db).await {
+            Ok(()) => {}
+            // The pre-check passed but a referenced entity is still missing
+            // (a Mark raced away, or an edge whose creation has not folded):
+            // defer on the missing Mark, or the op's anchor for non-Mark
+            // entities, so the reference stays observable rather than lost.
+            Err(EditorError::NotFound(uuid)) => {
+                defer(db, domain::MarkID(uuid), &keyed).await?;
+                continue;
+            }
+            Err(EditorError::Store(store::StoreError::EdgeNotFound(_))) => {
+                defer(db, anchor_mark(&keyed.op), &keyed).await?;
+                continue;
+            }
+            Err(e) => return Err(e.into()),
+        }
+
         current.insert(target.clone(), keyed.key);
         advanced.insert(target, keyed.key);
+
+        // A folded creation releases everything deferred on it, in
+        // arbitration-key order alongside whatever work remains.
+        if let Maneuver::CreateMark { mark_id, .. } = &keyed.op {
+            let rows = sync_store::deferred_on(db, &mark_id.to_string()).await?;
+            if !rows.is_empty() {
+                let mut merged: Vec<KeyedOp> = queue.drain(..).collect();
+                for row in rows {
+                    sync_store::remove_deferred(db, row.seq).await?;
+                    merged.push(KeyedOp {
+                        key: from_stored(sync_store::StoredKey {
+                            hlc: outpost::protocol::HLC(row.hlc),
+                            author: row.author,
+                            notice: NoticeID::from_bytes(row.notice),
+                        }),
+                        index: row.batch_index as usize,
+                        op: serde_json::from_slice(&row.op)?,
+                    });
+                }
+                sort_canonical(&mut merged);
+                queue = merged.into();
+            }
+        }
     }
 
     for (target, key) in advanced {
@@ -184,6 +295,9 @@ pub struct FoldReport {
     pub folded_notices: usize,
     /// The topo cursor after this pass.
     pub cursor: i64,
+    /// Ops still deferred on a Mark whose creation has not folded — a
+    /// permanently unresolved reference shows up here rather than nowhere.
+    pub deferred_ops: u64,
 }
 
 /// Fold every Notice the hold has accepted since the last pass.
@@ -221,6 +335,7 @@ pub async fn fold_new_notices(db: &Store, vessel: &Vessel) -> Result<FoldReport,
     Ok(FoldReport {
         folded_notices,
         cursor,
+        deferred_ops: sync_store::deferred_count(db).await?,
     })
 }
 
@@ -693,5 +808,86 @@ mod tests {
         let again = fold_new_notices(&db_a, &vessel_a).await.unwrap();
         assert_eq!(again.folded_notices, 0);
         assert_eq!(again.cursor, report_a.cursor);
+    }
+
+    #[tokio::test]
+    async fn ops_on_missing_marks_defer_then_release_in_key_order() {
+        let page = MarkID::new();
+        let create = keyed(
+            key(1, 1, 1),
+            0,
+            Maneuver::create_mark(page, landmark("Deferred")),
+        );
+        let low_title = keyed(key(2, 1, 2), 0, title_op(page, "First rename"));
+        let high_title = keyed(key(3, 1, 3), 0, title_op(page, "Final rename"));
+
+        // Fold-then-create: the title edits arrive before the creation.
+        let db_late = store::test_utils::temp_db().await;
+        fold_incremental(&db_late, vec![high_title.clone(), low_title.clone()])
+            .await
+            .unwrap();
+        assert!(
+            mark::get(&db_late, page).await.unwrap().is_none(),
+            "no row may be written for a missing Mark"
+        );
+        assert_eq!(sync_store::deferred_count(&db_late).await.unwrap(), 2);
+
+        fold_incremental(&db_late, vec![create.clone()])
+            .await
+            .unwrap();
+        assert_eq!(
+            sync_store::deferred_count(&db_late).await.unwrap(),
+            0,
+            "the folded creation must release its deferred ops"
+        );
+
+        // Create-then-fold: the causal order.
+        let db_causal = store::test_utils::temp_db().await;
+        fold_incremental(&db_causal, vec![create, low_title, high_title])
+            .await
+            .unwrap();
+
+        // Same state either way, including the LWW outcome among the
+        // released ops (applied in arbitration-key order).
+        assert_eq!(title_of(&db_late, page).await, "Final rename");
+        assert_eq!(title_of(&db_causal, page).await, "Final rename");
+        let late_winner = sync_store::winner(&db_late, &target_key(&ManeuverTarget::Title(page)))
+            .await
+            .unwrap();
+        let causal_winner =
+            sync_store::winner(&db_causal, &target_key(&ManeuverTarget::Title(page)))
+                .await
+                .unwrap();
+        assert_eq!(late_winner, causal_winner);
+    }
+
+    #[tokio::test]
+    async fn unresolved_references_stay_deferred_and_observable() {
+        use outpost::protocol::{EpochID, KeyRoot};
+        use rand::SeedableRng;
+
+        let root = KeyRoot::from_seed([11u8; 64]);
+        let mut rng = StdRng::seed_from_u64(0xDEF);
+        let vessel =
+            Vessel::create_territory(&root.identity(), &root.device(0), ":memory:", &mut rng)
+                .await
+                .unwrap();
+
+        // A Notice referencing a Mark whose creation is never authored.
+        let ghost = MarkID::new();
+        let payload = encode_page_v1(&[title_op(ghost, "Never lands")]).unwrap();
+        vessel
+            .author(&mut rng, vec![], EpochID::ZERO, PAGE_V1, &payload)
+            .await
+            .unwrap();
+
+        let db = store::test_utils::temp_db().await;
+        let report = fold_new_notices(&db, &vessel).await.unwrap();
+        assert_eq!(report.deferred_ops, 1, "the dangling op must be counted");
+        assert!(mark::get(&db, ghost).await.unwrap().is_none());
+
+        // Another pass neither loses nor duplicates it.
+        let again = fold_new_notices(&db, &vessel).await.unwrap();
+        assert_eq!(again.deferred_ops, 1);
     }
 }

@@ -58,11 +58,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 8. Dangling references
 
-- [ ] 8.1 Add persistence for operations deferred on a missing `MarkID` (real-engine tests).
-- [ ] 8.2 Defer, rather than apply or drop, any operation referencing a `MarkID` with no folded `CreateMark`.
-- [ ] 8.3 Release deferred operations in arbitration-key order when the missing `CreateMark` folds.
-- [ ] 8.4 Test that fold-then-create produces the same state as create-then-fold.
-- [ ] 8.5 Expose the deferred-operation count so a permanently unresolved reference is observable rather than silent.
+- [x] 8.1 Add persistence for operations deferred on a missing `MarkID` (real-engine tests).
+- [x] 8.2 Defer, rather than apply or drop, any operation referencing a `MarkID` with no folded `CreateMark`.
+- [x] 8.3 Release deferred operations in arbitration-key order when the missing `CreateMark` folds.
+- [x] 8.4 Test that fold-then-create produces the same state as create-then-fold.
+- [x] 8.5 Expose the deferred-operation count so a permanently unresolved reference is observable rather than silent.
 
 ## 9. Transport
 

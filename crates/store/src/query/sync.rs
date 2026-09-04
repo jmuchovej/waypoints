@@ -124,6 +124,80 @@ pub async fn clear_published(store: &Store, seq: i64) -> StoreResult<()> {
     Ok(())
 }
 
+/// One operation deferred on a Mark whose creation has not folded yet.
+/// Keyed rows release — in arbitration-key order — when the missing
+/// `CreateMark` folds; until then they are neither applied nor dropped.
+#[derive(Debug, Clone, PartialEq, bedrock::Collection)]
+pub struct SyncDeferred {
+    #[bedrock(id)]
+    pub seq: i64,
+    /// Lowercase-uuid `MarkID` the op waits on.
+    #[bedrock(index)]
+    pub missing: String,
+    /// Arbitration-key components of the carrying Notice.
+    pub hlc: i64,
+    pub author: [u8; 32],
+    pub notice: [u8; 32],
+    /// The op's index within its Notice's batch.
+    pub batch_index: i64,
+    /// The serialized op (`waypoints.page.v1` single-op encoding).
+    pub op: Vec<u8>,
+}
+
+/// Defer an op on a missing Mark.
+pub async fn defer_op(
+    store: &Store,
+    missing: &str,
+    key: StoredKey,
+    batch_index: i64,
+    op: Vec<u8>,
+) -> StoreResult<i64> {
+    let seq = store
+        .db()
+        .query::<SyncDeferred>(&bedrock::Query::new().sort_desc("seq").limit(1))
+        .await?
+        .first()
+        .map(|row| row.seq + 1)
+        .unwrap_or(0);
+    store
+        .db()
+        .insert(SyncDeferred {
+            seq,
+            missing: missing.to_owned(),
+            hlc: key.hlc.inner(),
+            author: key.author,
+            notice: *key.notice.as_bytes(),
+            batch_index,
+            op,
+        })
+        .await?;
+    Ok(seq)
+}
+
+/// Every op deferred on `missing`.
+pub async fn deferred_on(store: &Store, missing: &str) -> StoreResult<Vec<SyncDeferred>> {
+    Ok(store
+        .db()
+        .query::<SyncDeferred>(
+            &bedrock::Query::new()
+                .filter(bedrock::Filter::eq("missing", missing.to_owned()))
+                .sort_asc("seq"),
+        )
+        .await?)
+}
+
+/// Remove one deferred op (it is being released back into the fold).
+pub async fn remove_deferred(store: &Store, seq: i64) -> StoreResult<()> {
+    store.db().delete::<SyncDeferred>(&seq).await?;
+    Ok(())
+}
+
+/// How many ops are currently deferred — the observability hook for
+/// permanently unresolved references.
+pub async fn deferred_count(store: &Store) -> StoreResult<u64> {
+    Ok(store.db().count::<SyncDeferred>().await?)
+}
+
 /// A winning key, decomposed into its stored components. The sequence
 /// `(hlc, author, notice)` is the arbitration order; comparisons happen in
 /// cartograph's key type, never here.

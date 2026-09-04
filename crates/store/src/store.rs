@@ -46,6 +46,8 @@ impl Store {
             .await?;
         db.ensure_collection::<crate::query::sync::SyncTrack>()
             .await?;
+        db.ensure_collection::<crate::query::sync::SyncDeferred>()
+            .await?;
         collections::seed::run(&db).await?;
 
         // Dev-only: seed the demo document corpus so a fresh DB has something
