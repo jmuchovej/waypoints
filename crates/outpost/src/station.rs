@@ -109,6 +109,11 @@ pub struct Station {
     buses: Mutex<BTreeMap<TerritoryID, broadcast::Sender<BusEvent>>>,
     /// Monotonic session ids — the echo-suppression key on [`BusEvent`].
     next_session: AtomicU64,
+    /// Operator-configured sockets to advertise to Vessels
+    /// ([`with_advertised`](Self::with_advertised)). Empty ⇒
+    /// [`advertised_addr`](Self::advertised_addr) falls back to the bound
+    /// sockets — the same-host posture.
+    advertise: Vec<std::net::SocketAddr>,
 }
 
 /// One batch of freshly-accepted records on a Territory's bus, tagged with
@@ -184,7 +189,15 @@ impl Station {
     /// accepts no new registrations. For tests and single-Territory embeds;
     /// a self-host Station uses [`hosting`](Self::hosting).
     pub async fn new(secret: &SigningKey, replica: Replica) -> StationResult<Self> {
-        Self::build(secret, None, None, vec![replica]).await
+        Self::build(secret, None, None, vec![replica], false).await
+    }
+
+    /// [`new`](Self::new) on a routable bind — reachable from other hosts.
+    /// Pair with [`with_advertised`](Self::with_advertised) so
+    /// [`advertised_addr`](Self::advertised_addr) hands Vessels an address
+    /// that routes to this host.
+    pub async fn new_routable(secret: &SigningKey, replica: Replica) -> StationResult<Self> {
+        Self::build(secret, None, None, vec![replica], true).await
     }
 
     /// [`new`](Self::new) that also runs the per-Fleet **orderer**,
@@ -194,7 +207,7 @@ impl Station {
         fleet_key: SigningKey,
         replica: Replica,
     ) -> StationResult<Self> {
-        Self::build(secret, Some(fleet_key), None, vec![replica]).await
+        Self::build(secret, Some(fleet_key), None, vec![replica], false).await
     }
 
     /// Bind a Station that homes many Territories under `storage` (a
@@ -203,7 +216,14 @@ impl Station {
     ///
     /// [`Register`]: crate::protocol::SyncMessage::Register
     pub async fn hosting(secret: &SigningKey, storage: &Path) -> StationResult<Self> {
-        Self::build(secret, None, Some(storage.to_owned()), Vec::new()).await
+        Self::build(secret, None, Some(storage.to_owned()), Vec::new(), false).await
+    }
+
+    /// [`hosting`](Self::hosting) on a routable bind — the self-host
+    /// posture: reachable from other hosts at an operator-advertised
+    /// address ([`with_advertised`](Self::with_advertised)).
+    pub async fn hosting_routable(secret: &SigningKey, storage: &Path) -> StationResult<Self> {
+        Self::build(secret, None, Some(storage.to_owned()), Vec::new(), true).await
     }
 
     /// [`hosting`](Self::hosting) that also runs the per-Fleet **orderer**.
@@ -217,6 +237,7 @@ impl Station {
             Some(fleet_key),
             Some(storage.to_owned()),
             Vec::new(),
+            false,
         )
         .await
     }
@@ -226,8 +247,13 @@ impl Station {
         fleet_key: Option<SigningKey>,
         storage: Option<PathBuf>,
         seed: Vec<Replica>,
+        routable: bool,
     ) -> StationResult<Self> {
-        let endpoint = Endpoint::bind_identity(secret).await?;
+        let endpoint = if routable {
+            Endpoint::bind_routable_identity(secret).await?
+        } else {
+            Endpoint::bind_identity(secret).await?
+        };
         let mut territories = BTreeMap::new();
         let mut hold = None;
         let mut sightings: BTreeMap<TerritoryID, Sightings> = BTreeMap::new();
@@ -268,7 +294,28 @@ impl Station {
             sync_policy: SyncPolicy::default(),
             buses: Mutex::new(BTreeMap::new()),
             next_session: AtomicU64::new(1),
+            advertise: Vec::new(),
         })
+    }
+
+    /// Configure the sockets this Station advertises to Vessels — the
+    /// operator's public `host:port`(s). Without it,
+    /// [`advertised_addr`](Self::advertised_addr) falls back to the bound
+    /// sockets, which only works same-host.
+    pub fn with_advertised(mut self, addrs: Vec<std::net::SocketAddr>) -> Self {
+        self.advertise = addrs;
+        self
+    }
+
+    /// The address Vessels should dial: the configured advertised sockets
+    /// when set, else the actual bound sockets (same-host fallback).
+    pub fn advertised_addr(&self) -> crate::fabric::EndpointAddr {
+        if self.advertise.is_empty() {
+            self.endpoint.direct_addr()
+        } else {
+            self.endpoint
+                .advertised_addr(self.advertise.iter().copied())
+        }
     }
 
     /// Override the [`RegisterPolicy`] (default: [`RegisterPolicy::Owner`]).

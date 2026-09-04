@@ -165,7 +165,9 @@ impl SyncService {
             let replica = Replica::reopen(hold)
                 .await
                 .map_err(outpost::vessel::VesselError::from)?;
-            *guard = Some(Vessel::from_identity(&identity, &device, replica).await?);
+            // Routable: the Station may live on another host, and a
+            // loopback-bound source socket could not reach it.
+            *guard = Some(Vessel::from_identity_routable(&identity, &device, replica).await?);
         }
         Ok(guard)
     }
@@ -262,7 +264,7 @@ impl SyncService {
         // A seeded `StdRng` rather than the thread rng: the handle must be
         // `Send` for the command future that holds it across awaits.
         let mut rng = StdRng::from_rng(&mut rand::rng());
-        let vessel = Vessel::create_territory(&identity, &device, path, &mut rng).await?;
+        let vessel = Vessel::create_territory_routable(&identity, &device, path, &mut rng).await?;
         let territory = vessel.territory_id().await?;
 
         let mut config = self.load_config()?;
@@ -486,7 +488,7 @@ impl SyncService {
             .to_str()
             .ok_or_else(|| SyncError::Io(std::io::Error::other("non-utf8 sync root path")))?;
         let replica = open_replica(path, &log).await?;
-        let mut vessel = Vessel::from_identity(&identity, &device, replica).await?;
+        let mut vessel = Vessel::from_identity_routable(&identity, &device, replica).await?;
         vessel.sync_with(payload.station.clone()).await?;
 
         self.save_mnemonic(payload.mnemonic.trim())?;

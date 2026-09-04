@@ -125,6 +125,28 @@ impl Vessel {
         replica: Replica,
     ) -> VesselResult<Self> {
         let endpoint = Endpoint::bind_identity(&device.signing).await?;
+        Self::with_endpoint(identity, device, replica, endpoint).await
+    }
+
+    /// [`from_identity`](Self::from_identity) with a routable bind, so
+    /// outbound packets can leave the host and reach a Station elsewhere.
+    /// Inbound reachability is still not required — a Vessel only ever
+    /// dials.
+    pub async fn from_identity_routable(
+        identity: &Identity,
+        device: &DeviceKey,
+        replica: Replica,
+    ) -> VesselResult<Self> {
+        let endpoint = Endpoint::bind_routable_identity(&device.signing).await?;
+        Self::with_endpoint(identity, device, replica, endpoint).await
+    }
+
+    async fn with_endpoint(
+        identity: &Identity,
+        device: &DeviceKey,
+        replica: Replica,
+        endpoint: Endpoint,
+    ) -> VesselResult<Self> {
         let mut vessel = Self {
             identity: identity.signing_key().clone(),
             kem: Arc::new(identity.secret_key()),
@@ -469,6 +491,27 @@ impl Vessel {
         path: &str,
         rng: &mut impl CryptoRNG,
     ) -> VesselResult<Self> {
+        let replica = Self::bootstrap_territory(identity, path, rng).await?;
+        Self::from_identity(identity, device, replica).await
+    }
+
+    /// [`create_territory`](Self::create_territory) with a routable bind —
+    /// see [`from_identity_routable`](Self::from_identity_routable).
+    pub async fn create_territory_routable(
+        identity: &Identity,
+        device: &DeviceKey,
+        path: &str,
+        rng: &mut impl CryptoRNG,
+    ) -> VesselResult<Self> {
+        let replica = Self::bootstrap_territory(identity, path, rng).await?;
+        Self::from_identity_routable(identity, device, replica).await
+    }
+
+    async fn bootstrap_territory(
+        identity: &Identity,
+        path: &str,
+        rng: &mut impl CryptoRNG,
+    ) -> VesselResult<Replica> {
         let mut territory_seed = [0u8; 32];
         rng.fill_bytes(&mut territory_seed);
         let epoch0 = ReadKey::generate(rng);
@@ -483,8 +526,7 @@ impl Vessel {
             },
         }
         .sign(identity.signing_key())?;
-        let replica = Replica::bootstrap(path, &[root]).await?;
-        Self::from_identity(identity, device, replica).await
+        Ok(Replica::bootstrap(path, &[root]).await?)
     }
 
     /// This Vessel's Territory id (hash of the root ACL record).

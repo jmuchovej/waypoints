@@ -66,11 +66,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 9. Transport
 
-- [ ] 9.1 Switch `Station` to `Endpoint::bind_routable` and add configuration for the address it advertises to Vessels.
-- [ ] 9.2 Switch `Vessel` endpoints to a routable bind so outbound traffic can leave the host, without requiring inbound reachability.
+- [x] 9.1 Switch `Station` to `Endpoint::bind_routable` and add configuration for the address it advertises to Vessels.
+- [x] 9.2 Switch `Vessel` endpoints to a routable bind so outbound traffic can leave the host, without requiring inbound reachability.
 - [ ] 9.3 Give dev builds a stable OS-facing identity (signed binary / stable identifier) so the macOS application firewall authorizes once rather than per rebuild. Verify by rebuilding and rerunning without a new prompt.
-- [ ] 9.4 Test a Vessel with no inbound reachability syncing against a Station at an advertised address, including live `NoticePush` delivery over the Vessel-opened session.
-- [ ] 9.5 Confirm by inspection and test that `station.rs` still opens no outbound connections to Vessels.
+- [x] 9.4 Test a Vessel with no inbound reachability syncing against a Station at an advertised address, including live `NoticePush` delivery over the Vessel-opened session.
+- [x] 9.5 Confirm by inspection and test that `station.rs` still opens no outbound connections to Vessels.
 
 ## 10. Liveness
 
