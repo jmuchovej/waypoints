@@ -10,6 +10,7 @@ pub(crate) mod auth;
 pub(crate) mod crypto;
 mod envelope;
 mod error;
+mod hlc;
 mod id;
 pub(crate) mod identity;
 pub(crate) mod sync;
@@ -27,6 +28,7 @@ pub use crypto::{
 };
 pub use envelope::{ENVELOPE_VERSION, Envelope, EnvelopeHeader, SignedNotice};
 pub use error::{CryptoError, WireError};
+pub use hlc::{Clock, HLC, SystemClock};
 pub use id::{BlobHash, EpochID, MemberID, NoticeID, RecordID, TerritoryID, TrackID};
 pub use identity::{DeviceKey, Identity, IdentityError, KeyRoot};
 pub use sync::{DeviceSighting, SyncMessage, TallyDigest, wanted};
