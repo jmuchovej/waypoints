@@ -16,8 +16,9 @@
 use crate::sync::arbitration::ArbitrationKey;
 use crate::{EditorError, Maneuver, ManeuverTarget};
 use outpost::protocol::{EnvelopeHeader, NoticeID};
+use outpost::vessel::Vessel;
 use std::collections::HashMap;
-use store::Store;
+use store::{Store, query::sync as sync_store};
 
 /// The payload type tag for editor-operation Notices.
 pub const PAGE_V1: &str = "waypoints.page.v1";
@@ -30,6 +31,12 @@ pub enum FoldError {
     /// An op that failed to apply to the graph.
     #[error("fold apply: {0}")]
     Apply(#[from] EditorError),
+    /// Sync-owned persistence (winners, cursor) failed.
+    #[error("fold store: {0}")]
+    Store(#[from] store::StoreError),
+    /// Reading Notices out of the Territory hold failed.
+    #[error("territory hold: {0}")]
+    Hold(#[from] outpost::hold::HoldError),
 }
 
 /// Encode a batch of ops as a `waypoints.page.v1` payload (the plaintext a
@@ -101,6 +108,117 @@ pub async fn fold(
         keyed.op.apply(db).await?;
     }
     Ok(winners(&ops))
+}
+
+/// Canonical persistence key for a target — the string the winner table is
+/// keyed by. Stable across devices: every component renders from content
+/// (`MarkID`/`TerrainID` lowercase-uuid `Display`, `FeatureID` base36).
+pub fn target_key(target: &ManeuverTarget) -> String {
+    match target {
+        ManeuverTarget::Mark(id) => format!("mark:{id}"),
+        ManeuverTarget::Title(id) => format!("title:{id}"),
+        ManeuverTarget::Reading(id, feature) => format!("reading:{id}:{feature}"),
+        ManeuverTarget::Terrain(id) => format!("terrain:{id}"),
+    }
+}
+
+fn to_stored(key: ArbitrationKey) -> sync_store::StoredKey {
+    sync_store::StoredKey {
+        hlc: key.hlc(),
+        author: *key.author(),
+        notice: key.notice(),
+    }
+}
+
+fn from_stored(key: sync_store::StoredKey) -> ArbitrationKey {
+    ArbitrationKey::new(key.hlc, key.author, key.notice)
+}
+
+/// Incremental fold: apply ops in canonical order, rejecting any op whose
+/// key is lower than the persisted winning key for its target (a
+/// late-arriving older Notice must not clobber newer state), and persist
+/// the advanced winners. Folding incrementally in any batching produces
+/// the same graph and the same persisted winners as one fold from empty.
+pub async fn fold_incremental(db: &Store, mut ops: Vec<KeyedOp>) -> Result<(), FoldError> {
+    sort_canonical(&mut ops);
+    let mut current: HashMap<ManeuverTarget, ArbitrationKey> = HashMap::new();
+    let mut advanced: HashMap<ManeuverTarget, ArbitrationKey> = HashMap::new();
+
+    for keyed in ops {
+        let target = keyed.op.target();
+        let winner = match current.get(&target) {
+            Some(key) => Some(*key),
+            None => {
+                let persisted = sync_store::winner(db, &target_key(&target))
+                    .await?
+                    .map(from_stored);
+                if let Some(key) = persisted {
+                    current.insert(target.clone(), key);
+                }
+                persisted
+            }
+        };
+        // Strictly lower loses; an equal key is the same Notice re-delivered
+        // and re-applies idempotently.
+        if winner.is_some_and(|w| w > keyed.key) {
+            continue;
+        }
+        keyed.op.apply(db).await?;
+        current.insert(target.clone(), keyed.key);
+        advanced.insert(target, keyed.key);
+    }
+
+    for (target, key) in advanced {
+        sync_store::set_winner(db, &target_key(&target), to_stored(key)).await?;
+    }
+    Ok(())
+}
+
+/// One incremental fold pass over the hold's new Notices.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FoldReport {
+    /// `waypoints.page.v1` Notices decoded and offered to the fold.
+    pub folded_notices: usize,
+    /// The topo cursor after this pass.
+    pub cursor: i64,
+}
+
+/// Fold every Notice the hold has accepted since the last pass.
+///
+/// `topo` selects *which* Notices are new locally — the arbitration key
+/// alone decides order, so two replicas assigning different `topo` to the
+/// same Notices converge. Non-`page.v1` payloads are skipped;
+/// an undecryptable payload is skipped without writing partial state (the
+/// Notice stays in the hold — a deliberate re-fold after key acquisition
+/// is the recovery path).
+pub async fn fold_new_notices(db: &Store, vessel: &Vessel) -> Result<FoldReport, FoldError> {
+    let after = sync_store::fold_cursor(db).await?;
+    let rows = vessel.replica().hold().notices_after(after).await?;
+
+    let mut ops = Vec::new();
+    let mut cursor = after;
+    let mut folded_notices = 0;
+    for row in rows {
+        cursor = cursor.max(row.topo);
+        let Ok(envelope) = row.notice.parse_and_verify() else {
+            continue;
+        };
+        if envelope.header.payload_type != PAGE_V1 {
+            continue;
+        }
+        let Ok(plaintext) = vessel.decrypt(&row.notice) else {
+            continue;
+        };
+        ops.extend(keyed_ops(&envelope.header, row.id, &plaintext)?);
+        folded_notices += 1;
+    }
+
+    fold_incremental(db, ops).await?;
+    sync_store::set_fold_cursor(db, cursor).await?;
+    Ok(FoldReport {
+        folded_notices,
+        cursor,
+    })
 }
 
 #[cfg(test)]
@@ -422,5 +540,155 @@ mod tests {
             key(2, 2, 4)
         );
         assert_eq!(winners.len(), 5, "one winner per distinct target");
+    }
+
+    fn title_op(page: MarkID, title: &str) -> Maneuver {
+        Maneuver::update_landmark_title(page, rich(""), rich(title))
+    }
+
+    async fn title_of(db: &Store, page: MarkID) -> String {
+        match mark::get(db, page).await.unwrap().unwrap().data {
+            MarkData::Landmark(lm) => lm.title.plain_text().to_owned(),
+            other => panic!("expected landmark, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn incremental_apply_rejects_lower_keys_and_admits_higher() {
+        let s = scenario();
+        let db = store::test_utils::temp_db().await;
+        fold_incremental(&db, s.ops.clone()).await.unwrap();
+        assert_eq!(title_of(&db, s.page).await, "Winner title");
+
+        // A late-arriving older op for a settled target: rejected, target
+        // untouched — even across a fresh pass with no in-memory state.
+        let stale = keyed(key(2, 1, 7), 0, title_op(s.page, "Late loser"));
+        fold_incremental(&db, vec![stale]).await.unwrap();
+        assert_eq!(title_of(&db, s.page).await, "Winner title");
+
+        // A genuinely newer op still lands.
+        let newer = keyed(key(9, 1, 8), 0, title_op(s.page, "Even newer"));
+        fold_incremental(&db, vec![newer]).await.unwrap();
+        assert_eq!(title_of(&db, s.page).await, "Even newer");
+    }
+
+    #[tokio::test]
+    async fn full_refold_from_empty_matches_incremental_folding() {
+        let s = scenario();
+
+        // Incremental: everything except the losing title edit lands first;
+        // the older concurrent edit arrives late and is rejected. (Batches
+        // referencing not-yet-created marks are the dangling-reference case,
+        // deferred by section 8 — not exercised here.)
+        let db_inc = store::test_utils::temp_db().await;
+        let (stale, fresh): (Vec<_>, Vec<_>) = s
+            .ops
+            .clone()
+            .into_iter()
+            .partition(|op| op.key == key(2, 2, 2));
+        fold_incremental(&db_inc, fresh).await.unwrap();
+        fold_incremental(&db_inc, stale).await.unwrap();
+
+        // Full re-fold from empty, everything in one batch.
+        let db_full = store::test_utils::temp_db().await;
+        fold_incremental(&db_full, s.ops.clone()).await.unwrap();
+
+        assert_eq!(snapshot(&db_inc, &s).await, snapshot(&db_full, &s).await);
+        for target in winners(&s.ops).keys() {
+            let inc = sync_store::winner(&db_inc, &target_key(target))
+                .await
+                .unwrap();
+            let full = sync_store::winner(&db_full, &target_key(target))
+                .await
+                .unwrap();
+            assert!(inc.is_some(), "winner must be persisted for {target:?}");
+            assert_eq!(inc, full, "persisted winner differs for {target:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn replicas_with_divergent_topo_assignments_converge() {
+        use outpost::protocol::{EpochID, KeyRoot};
+        use outpost::replica::Replica;
+        use rand::SeedableRng;
+
+        let root = KeyRoot::from_seed([9u8; 64]);
+        let identity = root.identity();
+        let mut rng = StdRng::seed_from_u64(0x7090);
+
+        // Device A owns the Territory and authors three page.v1 Notices.
+        let vessel_a = Vessel::create_territory(&identity, &root.device(0), ":memory:", &mut rng)
+            .await
+            .unwrap();
+
+        let page = MarkID::new();
+        let block = MarkID::new();
+        let edge = TerrainID::new();
+        let batches = vec![
+            vec![
+                Maneuver::create_mark(page, landmark("Converge")),
+                Maneuver::create_mark(block, paragraph("hello")),
+                Maneuver::CreateTerrain {
+                    edge_id: edge,
+                    src: page,
+                    dst: block,
+                    kind: TerrainKind::Child,
+                    order: Some("a0".into()),
+                    extra: None,
+                },
+            ],
+            vec![title_op(page, "Renamed")],
+            vec![Maneuver::update_rich_text(
+                block,
+                rich(""),
+                rich("hello, world"),
+            )],
+        ];
+        let mut notices = Vec::new();
+        for batch in &batches {
+            let plaintext = encode_page_v1(batch).unwrap();
+            notices.push(
+                vessel_a
+                    .author(&mut rng, vec![], EpochID::ZERO, PAGE_V1, &plaintext)
+                    .await
+                    .unwrap(),
+            );
+        }
+
+        // Device B (same identity, second device) receives them in reverse:
+        // its topo assignment is the mirror of A's.
+        let acl = vessel_a.replica().hold().acl_records().await.unwrap();
+        let replica_b = Replica::bootstrap(":memory:", &acl).await.unwrap();
+        let vessel_b = Vessel::from_identity(&identity, &root.device(1), replica_b)
+            .await
+            .unwrap();
+        let reversed: Vec<_> = notices.iter().rev().cloned().collect();
+        vessel_b.replica().ingest(reversed).await.unwrap();
+
+        let db_a = store::test_utils::temp_db().await;
+        let db_b = store::test_utils::temp_db().await;
+        let report_a = fold_new_notices(&db_a, &vessel_a).await.unwrap();
+        let report_b = fold_new_notices(&db_b, &vessel_b).await.unwrap();
+        assert_eq!(report_a.folded_notices, 3);
+        assert_eq!(report_b.folded_notices, 3);
+
+        let s = Scenario {
+            page,
+            block,
+            edge,
+            feature: "abcd".parse().unwrap(),
+            ops: vec![],
+        };
+        assert_eq!(
+            snapshot(&db_a, &s).await,
+            snapshot(&db_b, &s).await,
+            "divergent topo assignments must not affect the folded graph"
+        );
+        assert_eq!(title_of(&db_a, page).await, "Renamed");
+
+        // A second pass folds nothing new — the cursor advanced.
+        let again = fold_new_notices(&db_a, &vessel_a).await.unwrap();
+        assert_eq!(again.folded_notices, 0);
+        assert_eq!(again.cursor, report_a.cursor);
     }
 }

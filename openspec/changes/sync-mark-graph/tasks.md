@@ -33,11 +33,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 5. Fold persistence
 
-- [ ] 5.1 Add persistence for the winning arbitration key per `ManeuverTarget` (real-engine tests only). Note the key names `NoticeID`: this is where `store`'s scoped `outpost-protocol` dependency (design.md, Open Questions) is introduced, confined to sync-owned tables.
-- [ ] 5.2 Reject on incremental apply any operation whose key is lower than the persisted key for its target, leaving the target untouched.
-- [ ] 5.3 Test that a late-arriving older Notice does not clobber newer state.
-- [ ] 5.4 Test that a full re-fold from empty reproduces the same graph _and_ the same persisted keys as incremental folding of the same Notice set.
-- [ ] 5.5 Wire the incremental cursor to `TerritoryHold::notices_after(topo)` — `topo` selects which Notices are new locally; the arbitration key alone decides order. Add a test that two replicas with different `topo` assignments for the same Notices converge.
+- [x] 5.1 Add persistence for the winning arbitration key per `ManeuverTarget` (real-engine tests only). Note the key names `NoticeID`: this is where `store`'s scoped `outpost-protocol` dependency (design.md, Open Questions) is introduced, confined to sync-owned tables.
+- [x] 5.2 Reject on incremental apply any operation whose key is lower than the persisted key for its target, leaving the target untouched.
+- [x] 5.3 Test that a late-arriving older Notice does not clobber newer state.
+- [x] 5.4 Test that a full re-fold from empty reproduces the same graph _and_ the same persisted keys as incremental folding of the same Notice set.
+- [x] 5.5 Wire the incremental cursor to `TerritoryHold::notices_after(topo)` — `topo` selects which Notices are new locally; the arbitration key alone decides order. Add a test that two replicas with different `topo` assignments for the same Notices converge.
 
 ## 6. Publication
 

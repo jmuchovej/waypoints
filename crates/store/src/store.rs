@@ -38,6 +38,10 @@ impl Store {
         db.ensure_collection::<domain::Mark>().await?;
         db.ensure_collection::<domain::Chart>().await?;
         db.ensure_collection::<domain::Terrain>().await?;
+        db.ensure_collection::<crate::query::sync::SyncWinner>()
+            .await?;
+        db.ensure_collection::<crate::query::sync::SyncFoldState>()
+            .await?;
         collections::seed::run(&db).await?;
 
         // Dev-only: seed the demo document corpus so a fresh DB has something
