@@ -89,14 +89,16 @@ pub(crate) mod sync {
     pub use publish::{choose_track_landmark, publish_queued};
     pub use service::SyncService;
     pub use setup_code::{SetupCode, classify, encode_pair_url};
-    pub use types::{IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncStatus};
+    pub use types::{
+        IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncState, SyncStatus,
+    };
 }
 pub use sync::{
     ArbitrationKey, FoldError, FoldReport, IdentityCreated, KeyedOp, PAGE_V1, PairingCode,
-    SetupCode, StationStatus, SyncDevice, SyncError, SyncResult, SyncService, SyncStatus,
-    choose_track_landmark, classify, decode_page_v1, encode_page_v1, encode_pair_url, fold,
-    fold_incremental, fold_new_notices, keyed_ops, publish_queued, sort_canonical, target_key,
-    winners,
+    SetupCode, StationStatus, SyncDevice, SyncError, SyncResult, SyncService, SyncState,
+    SyncStatus, choose_track_landmark, classify, decode_page_v1, encode_page_v1, encode_pair_url,
+    fold, fold_incremental, fold_new_notices, keyed_ops, publish_queued, sort_canonical,
+    target_key, winners,
 };
 
 mod runtime;

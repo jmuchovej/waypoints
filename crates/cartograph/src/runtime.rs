@@ -9,7 +9,7 @@ pub struct WaypointsRuntime {
     manager: TerritoryManager,
     pub(crate) editor: Mutex<EditorService>,
     registry: Arc<dyn RegistryStore>,
-    sync: SyncService,
+    sync: Arc<SyncService>,
 }
 
 impl WaypointsRuntime {
@@ -20,7 +20,7 @@ impl WaypointsRuntime {
     ) -> Self {
         let manager = TerritoryManager::new(managed_root);
         let editor = EditorService::new(manager.active_db.clone());
-        let sync = SyncService::new(sync_root).with_app_db(manager.active_db.clone());
+        let sync = Arc::new(SyncService::new(sync_root).with_app_db(manager.active_db.clone()));
         Self {
             manager,
             editor: Mutex::new(editor),
@@ -75,6 +75,12 @@ impl WaypointsRuntime {
     }
 
     pub fn sync(&self) -> &SyncService {
+        &self.sync
+    }
+
+    /// The shared sync-service handle — what
+    /// [`SyncService::start_live`] needs to spawn its maintenance loop.
+    pub fn sync_service(&self) -> &Arc<SyncService> {
         &self.sync
     }
 

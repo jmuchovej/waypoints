@@ -4,6 +4,7 @@ import type {
   SetupCode,
   StationStatus,
   SyncDevice,
+  SyncState,
   SyncStatus,
 } from "@waypoints/cartograph";
 
@@ -11,6 +12,14 @@ import { invoke } from "./invoke";
 
 export async function status(): Promise<SyncStatus> {
   return invoke<SyncStatus>("sync_status");
+}
+
+/**
+ * Runtime sync observability: last sync, pending publications, deferred
+ * operations, log growth, and live-session connectivity.
+ */
+export async function state(): Promise<SyncState> {
+  return invoke<SyncState>("sync_state");
 }
 
 export async function identityCreate(): Promise<IdentityCreated> {

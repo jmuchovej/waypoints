@@ -219,6 +219,47 @@ mod tests {
         assert_eq!(after, before + 1, "an undo must enqueue its inverse ops");
     }
 
+    /// `SyncService::sync_state` surfaces the store-backed counters — the
+    /// crate-level test behind the thin `sync_state` Tauri command.
+    #[tokio::test]
+    async fn sync_state_reflects_pending_and_deferred_counts() {
+        let db = store::test_utils::temp_db().await;
+        let shared: crate::Database =
+            std::sync::Arc::new(tokio::sync::Mutex::new(Some(db.clone())));
+        let dir = tempfile::tempdir().unwrap().keep();
+        let svc = crate::SyncService::new(dir).with_app_db(shared);
+
+        let initial = svc.sync_state().await.unwrap();
+        assert_eq!(initial.pending_publications, 0);
+        assert_eq!(initial.deferred_ops, 0);
+        assert!(!initial.live_connected);
+        assert_eq!(initial.last_sync_ms, None);
+
+        // One queued publication and one deferred op become visible.
+        let page = MarkID::new();
+        let ops = vec![Maneuver::create_mark(page, landmark("Stateful"))];
+        store::query::sync::enqueue_publish(&db, encode_page_v1(&ops).unwrap(), page.to_string())
+            .await
+            .unwrap();
+        store::query::sync::defer_op(
+            &db,
+            &MarkID::new().to_string(),
+            store::query::sync::StoredKey {
+                hlc: outpost::protocol::HLC(1),
+                author: [1; 32],
+                notice: outpost::protocol::NoticeID::from_bytes([1; 32]),
+            },
+            0,
+            b"{}".to_vec(),
+        )
+        .await
+        .unwrap();
+
+        let state = svc.sync_state().await.unwrap();
+        assert_eq!(state.pending_publications, 1);
+        assert_eq!(state.deferred_ops, 1);
+    }
+
     /// Enqueue a single-op batch that retitles `page`, tagged with `page`
     /// as the concerned Landmark.
     async fn enqueue_title(db: &store::Store, page: MarkID, title: &str) {

@@ -20,6 +20,28 @@ pub struct SyncStatus {
     pub station_addr: Option<String>,
 }
 
+/// Live sync state for the UI: what moved, what is waiting, and whether the
+/// live session is up. Complements [`SyncStatus`] (lifecycle) with runtime
+/// observability — including the log-growth measurement and the
+/// deferred-operation count, so a permanently unresolved reference is
+/// visible rather than silent.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncState {
+    /// Milliseconds since epoch of the last completed sync, if any.
+    pub last_sync_ms: Option<f64>,
+    /// Locally applied op batches still queued for publication.
+    pub pending_publications: u32,
+    /// Ops deferred on a Mark whose creation has not folded.
+    pub deferred_ops: u32,
+    /// Notices held in the Territory (log-growth measurement).
+    pub notices: u32,
+    /// On-disk size of the Territory hold in bytes.
+    pub hold_bytes: f64,
+    /// Whether the maintained live subscription is currently connected.
+    pub live_connected: bool,
+}
+
 /// The Add-device pairing code, ready to display: the shareable URL form
 /// and its QR rendering. Treat both like the recovery phrase itself.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
