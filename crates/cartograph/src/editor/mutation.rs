@@ -11,6 +11,34 @@ use store::{
     query::{chart, mark, terrain},
 };
 
+/// Record a completed mutation: durably enqueue its ops for publication,
+/// then push them to the history bucket. Runs in the same unit as the
+/// applies that precede it, so any mutation that reached the local graph is
+/// queued for sync before control returns — a crash afterwards leaves the
+/// edit queued (published on the next sync), never silently dropped.
+async fn record(
+    db: &Store,
+    history: &mut CommandHistory,
+    ops: Vec<Maneuver>,
+    primary: MarkID,
+    cursor_before: CursorState,
+    cursor_after: CursorState,
+) -> EditorResult<()> {
+    enqueue_for_publish(db, &ops).await?;
+    history.push(ops, primary, cursor_before, cursor_after);
+    Ok(())
+}
+
+/// Durably enqueue applied ops as one future `waypoints.page.v1` Notice.
+/// Also used by undo/redo, whose inverse ops mutate the graph like any
+/// other command and must publish like one.
+pub(crate) async fn enqueue_for_publish(db: &Store, ops: &[Maneuver]) -> EditorResult<()> {
+    let payload =
+        crate::sync::encode_page_v1(ops).map_err(|e| EditorError::Serialization(e.to_string()))?;
+    store::query::sync::enqueue_publish(db, payload).await?;
+    Ok(())
+}
+
 /// Compute a fractional index for inserting after `after_id` among `parent_id`'s children.
 async fn compute_order(
     db: &Store,
@@ -118,7 +146,7 @@ pub async fn update_mark(
         old: old_data.into(),
         new: new_data.into(),
     }];
-    history.push(ops.clone(), id, cursor.clone(), cursor);
+    record(db, history, ops.clone(), id, cursor.clone(), cursor).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -152,7 +180,7 @@ pub async fn delete_mark(
         block_id: id,
         offset: None,
     };
-    history.push(ops.clone(), id, cursor.clone(), cursor);
+    record(db, history, ops.clone(), id, cursor.clone(), cursor).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -194,7 +222,7 @@ pub async fn move_marks(
             block_id: first,
             offset: None,
         };
-        history.push(ops.clone(), first, cursor.clone(), cursor);
+        record(db, history, ops.clone(), first, cursor.clone(), cursor).await?;
     }
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
@@ -227,7 +255,7 @@ pub async fn update_mark_title(
         block_id: id,
         offset: None,
     };
-    history.push(vec![op], id, cursor.clone(), cursor);
+    record(db, history, vec![op], id, cursor.clone(), cursor).await?;
     Ok(())
 }
 
@@ -316,7 +344,7 @@ pub async fn update_mark_reading(
         block_id: id,
         offset: None,
     };
-    history.push(vec![op], id, cursor.clone(), cursor);
+    record(db, history, vec![op], id, cursor.clone(), cursor).await?;
 
     // Re-fetch and return the updated mark
     let updated = mark::get(db, id)
@@ -349,7 +377,7 @@ pub async fn create_landmark(
         offset: None,
     };
     let history = histories.entry(id).or_insert_with(CommandHistory::new);
-    history.push(vec![op], id, cursor.clone(), cursor);
+    record(db, history, vec![op], id, cursor.clone(), cursor).await?;
 
     let created = mark::get(db, id)
         .await?
@@ -391,7 +419,7 @@ pub async fn create_mark_after(
             extra: None,
         },
     ];
-    history.push(ops.clone(), new_id, cursor.clone(), cursor);
+    record(db, history, ops.clone(), new_id, cursor.clone(), cursor).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(CreateResult {
@@ -432,7 +460,7 @@ pub async fn update_mark_text(
         block_id: mark_id,
         offset: None,
     };
-    history.push(vec![op], mark_id, cursor.clone(), cursor);
+    record(db, history, vec![op], mark_id, cursor.clone(), cursor).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -514,7 +542,15 @@ pub async fn split_mark(
             extra: None,
         },
     ];
-    history.push(ops.clone(), mark_id, cursor_before, cursor_after);
+    record(
+        db,
+        history,
+        ops.clone(),
+        mark_id,
+        cursor_before,
+        cursor_after,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(SplitResult {
@@ -596,7 +632,15 @@ pub async fn merge_marks(
         },
     ];
     ops.extend(source_edges.into_iter().map(delete_edge_op));
-    history.push(ops.clone(), target_id, cursor_before, cursor_after);
+    record(
+        db,
+        history,
+        ops.clone(),
+        target_id,
+        cursor_before,
+        cursor_after,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })
@@ -697,7 +741,15 @@ pub async fn wrap_in_compound(
         block_id: focus_id,
         offset: Some(0),
     };
-    history.push(ops.clone(), compound_id, cursor.clone(), cursor);
+    record(
+        db,
+        history,
+        ops.clone(),
+        compound_id,
+        cursor.clone(),
+        cursor,
+    )
+    .await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(CreateResult {
@@ -737,7 +789,7 @@ pub async fn delete_marks(
             block_id: first,
             offset: None,
         };
-        history.push(ops.clone(), first, cursor.clone(), cursor);
+        record(db, history, ops.clone(), first, cursor.clone(), cursor).await?;
     }
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
@@ -770,7 +822,7 @@ pub async fn reparent_mark(
         new_src: new_parent_id,
         new_order: Some(new_order),
     }];
-    history.push(ops.clone(), mark_id, cursor.clone(), cursor);
+    record(db, history, ops.clone(), mark_id, cursor.clone(), cursor).await?;
 
     let blocks = projection::project_landmark(db, landmark_id, None).await?;
     Ok(MutationResult { blocks })

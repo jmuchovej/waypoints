@@ -39,6 +39,10 @@ pub struct SyncService {
     /// The live Vessel (an open replica + bound endpoint), built lazily and
     /// dropped whenever identity or Territory change underneath it.
     vessel: Mutex<Option<Vessel>>,
+    /// The app's active store slot, shared with `TerritoryManager` — where
+    /// sync publishes from (the outbox) and folds into (the graph). `None`
+    /// when the service runs without an app store (tests, CLI probes).
+    app_db: Option<crate::Database>,
 }
 
 impl SyncService {
@@ -46,6 +50,22 @@ impl SyncService {
         Self {
             root,
             vessel: Mutex::new(None),
+            app_db: None,
+        }
+    }
+
+    /// Attach the shared app-store slot so syncs publish queued edits and
+    /// fold received ones.
+    pub fn with_app_db(mut self, db: crate::Database) -> Self {
+        self.app_db = Some(db);
+        self
+    }
+
+    /// The active app store, if a Territory is open.
+    async fn app_store(&self) -> Option<store::Store> {
+        match &self.app_db {
+            Some(db) => db.lock().await.clone(),
+            None => None,
         }
     }
 
@@ -335,7 +355,17 @@ impl SyncService {
         let vessel = guard.as_mut().expect("vessel opened above");
         let territory = vessel.territory_id().await?;
         vessel.register(station.clone(), territory).await?;
+
+        // Publish queued local edits before reconciling, then fold whatever
+        // the sync delivered — both only while a Territory store is open.
+        if let Some(db) = self.app_store().await {
+            let mut rng = StdRng::from_rng(&mut rand::rng());
+            crate::sync::publish_queued(&db, vessel, &mut rng).await?;
+        }
         vessel.sync_with(station).await?;
+        if let Some(db) = self.app_store().await {
+            crate::sync::fold_new_notices(&db, vessel).await?;
+        }
         drop(guard);
         self.status().await
     }

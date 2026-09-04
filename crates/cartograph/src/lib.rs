@@ -75,6 +75,7 @@ pub(crate) mod sync {
     mod arbitration;
     mod error;
     mod fold;
+    mod publish;
     mod service;
     mod setup_code;
     mod types;
@@ -85,6 +86,7 @@ pub(crate) mod sync {
         FoldError, FoldReport, KeyedOp, PAGE_V1, decode_page_v1, encode_page_v1, fold,
         fold_incremental, fold_new_notices, keyed_ops, sort_canonical, target_key, winners,
     };
+    pub use publish::publish_queued;
     pub use service::SyncService;
     pub use setup_code::{SetupCode, classify, encode_pair_url};
     pub use types::{IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncStatus};
@@ -93,7 +95,7 @@ pub use sync::{
     ArbitrationKey, FoldError, FoldReport, IdentityCreated, KeyedOp, PAGE_V1, PairingCode,
     SetupCode, StationStatus, SyncDevice, SyncError, SyncResult, SyncService, SyncStatus, classify,
     decode_page_v1, encode_page_v1, encode_pair_url, fold, fold_incremental, fold_new_notices,
-    keyed_ops, sort_canonical, target_key, winners,
+    keyed_ops, publish_queued, sort_canonical, target_key, winners,
 };
 
 mod runtime;

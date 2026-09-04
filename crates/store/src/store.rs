@@ -42,6 +42,8 @@ impl Store {
             .await?;
         db.ensure_collection::<crate::query::sync::SyncFoldState>()
             .await?;
+        db.ensure_collection::<crate::query::sync::SyncOutbox>()
+            .await?;
         collections::seed::run(&db).await?;
 
         // Dev-only: seed the demo document corpus so a fresh DB has something

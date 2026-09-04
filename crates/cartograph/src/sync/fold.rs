@@ -37,6 +37,9 @@ pub enum FoldError {
     /// Reading Notices out of the Territory hold failed.
     #[error("territory hold: {0}")]
     Hold(#[from] outpost::hold::HoldError),
+    /// Authoring a Notice during publication failed.
+    #[error("vessel: {0}")]
+    Vessel(#[from] outpost::vessel::VesselError),
 }
 
 /// Encode a batch of ops as a `waypoints.page.v1` payload (the plaintext a

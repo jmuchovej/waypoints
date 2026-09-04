@@ -35,6 +35,45 @@ pub struct SyncFoldState {
     pub cursor: i64,
 }
 
+/// One queued publication: a `waypoints.page.v1` plaintext (an encoded op
+/// batch) awaiting authorship as a Notice. Rows publish in `seq` order and
+/// are deleted only on confirmed authorship, so a crash between local apply
+/// and publication leaves the edit queued rather than dropped.
+#[derive(Debug, Clone, PartialEq, bedrock::Collection)]
+pub struct SyncOutbox {
+    #[bedrock(id)]
+    pub seq: i64,
+    pub payload: Vec<u8>,
+}
+
+/// Durably enqueue a payload for publication. `seq` assignment assumes a
+/// single writer (the editor serializes mutations).
+pub async fn enqueue_publish(store: &Store, payload: Vec<u8>) -> StoreResult<i64> {
+    let seq = store
+        .db()
+        .query::<SyncOutbox>(&bedrock::Query::new().sort_desc("seq").limit(1))
+        .await?
+        .first()
+        .map(|row| row.seq + 1)
+        .unwrap_or(0);
+    store.db().insert(SyncOutbox { seq, payload }).await?;
+    Ok(seq)
+}
+
+/// Every queued publication, oldest first.
+pub async fn publish_queue(store: &Store) -> StoreResult<Vec<SyncOutbox>> {
+    Ok(store
+        .db()
+        .query::<SyncOutbox>(&bedrock::Query::new().sort_asc("seq"))
+        .await?)
+}
+
+/// Remove one queued publication after its Notice's authorship is confirmed.
+pub async fn clear_published(store: &Store, seq: i64) -> StoreResult<()> {
+    store.db().delete::<SyncOutbox>(&seq).await?;
+    Ok(())
+}
+
 /// A winning key, decomposed into its stored components. The sequence
 /// `(hlc, author, notice)` is the arbitration order; comparisons happen in
 /// cartograph's key type, never here.

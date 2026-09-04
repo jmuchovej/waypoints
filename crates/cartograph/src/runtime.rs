@@ -20,11 +20,12 @@ impl WaypointsRuntime {
     ) -> Self {
         let manager = TerritoryManager::new(managed_root);
         let editor = EditorService::new(manager.active_db.clone());
+        let sync = SyncService::new(sync_root).with_app_db(manager.active_db.clone());
         Self {
             manager,
             editor: Mutex::new(editor),
             registry,
-            sync: SyncService::new(sync_root),
+            sync,
         }
     }
 

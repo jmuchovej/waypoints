@@ -41,11 +41,11 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 
 ## 6. Publication
 
-- [ ] 6.1 Add a durable outbound publish queue in `store` for locally applied, not-yet-published operations (real-engine tests).
-- [ ] 6.2 Make local application and enqueue for publication a single unit in `EditorService`, so a crash between them cannot drop an edit.
-- [ ] 6.3 Publish queued operations as `waypoints.page.v1` Notices during sync, batching per Notice, and clear them from the queue only on confirmed authorship.
-- [ ] 6.4 Test the crash window: apply, simulate termination before publication, restart, and assert the operation is still queued and then publishes.
-- [ ] 6.5 Test that re-publishing an already-published operation leaves every recipient in the same state (idempotence via the arbitration key).
+- [x] 6.1 Add a durable outbound publish queue in `store` for locally applied, not-yet-published operations (real-engine tests).
+- [x] 6.2 Make local application and enqueue for publication a single unit in `EditorService`, so a crash between them cannot drop an edit.
+- [x] 6.3 Publish queued operations as `waypoints.page.v1` Notices during sync, batching per Notice, and clear them from the queue only on confirmed authorship.
+- [x] 6.4 Test the crash window: apply, simulate termination before publication, restart, and assert the operation is still queued and then publishes.
+- [x] 6.5 Test that re-publishing an already-published operation leaves every recipient in the same state (idempotence via the arbitration key).
 
 ## 7. Track selection
 
