@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# macOS linker wrapper: link exactly as `cc` would, then code-sign the
+# resulting executable with a *stable* identity.
+#
+# Why: the application firewall keys its "allow incoming connections" grant
+# on an app's code signature. The default ad-hoc signature is a hash of the
+# binary, so every rebuild of a routable-binding binary (the app's Vessel,
+# the outpost transport tests) is a brand-new app to the firewall and
+# prompts again. Signed with a real identity, rebuilds are recognized and
+# macOS asks once per binary path.
+#
+# Wired through .cargo/config.toml for the *-apple-darwin targets rather than
+# cargo's `runner`, because `tauri dev` spawns the built binary itself and
+# never goes through a runner — the linker is the one choke point every
+# executable (app, tests, xtask) passes through.
+#
+# Identity resolution, first match wins:
+#   1. $WAYPOINTS_CODESIGN_IDENTITY
+#   2. the keychain's first "Apple Development" identity
+#   3. the keychain's first "Developer ID Application" identity
+# No identity (CI, fresh machines) or WAYPOINTS_CODESIGN=0 ⇒ plain link,
+# ad-hoc signature, exactly the pre-wrapper behavior.
+set -euo pipefail
+
+cc "$@"
+
+[[ "${WAYPOINTS_CODESIGN:-1}" == "0" ]] && exit 0
+
+# Find `-o <output>`, looking inside @response-files too (rustc spills long
+# link lines into one).
+out=""
+scan() {
+  local prev=""
+  for arg in "$@"; do
+    if [[ "$prev" == "-o" ]]; then
+      out="$arg"
+      return 0
+    fi
+    if [[ "$arg" == @* && -f "${arg#@}" ]]; then
+      local -a inner=()
+      while IFS= read -r line; do inner+=("$line"); done < "${arg#@}"
+      scan "${inner[@]}" && [[ -n "$out" ]] && return 0
+    fi
+    prev="$arg"
+  done
+  return 1
+}
+scan "$@" || true
+[[ -n "$out" && -f "$out" ]] || exit 0
+
+# Only executables listen on sockets; libraries and build scripts are
+# skipped to keep link times flat.
+case "$(basename "$out")" in
+  *.dylib | *.so | *.rlib | *.a | build_script_*) exit 0 ;;
+esac
+
+identity="${WAYPOINTS_CODESIGN_IDENTITY:-}"
+if [[ -z "$identity" ]]; then
+  identities="$(/usr/bin/security find-identity -v -p codesigning 2> /dev/null || true)"
+  for kind in "Apple Development" "Developer ID Application"; do
+    identity="$(printf '%s\n' "$identities" | sed -n "s/.*\"\($kind: [^\"]*\)\".*/\1/p" | head -n 1)"
+    [[ -n "$identity" ]] && break
+  done
+fi
+[[ -n "$identity" ]] || exit 0
+
+/usr/bin/codesign --force --sign "$identity" --timestamp=none "$out" \
+  || echo "warning: codesign failed for $out; keeping the ad-hoc signature" >&2
