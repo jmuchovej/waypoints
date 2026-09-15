@@ -43,5 +43,4 @@ lockfile = true
 "github:JetBrains/kotlin" = "2.4.10"
 "github:facebook/ktfmt" = "0.63"
 "npm:oxfmt" = "0.61.0"
-"npm:renovate" = "44.37.1"
 "npm:wrangler" = "4.94.0"

@@ -51,7 +51,7 @@
       "npm:wrangler" = pkgs.wrangler;
       "aqua:mikefarah/yq" = pkgs.yq-go;
       "aqua:cachix/secretspec" = pkgs.secretspec;
-      "npm:renovate" = pkgs.renovate;
+      # NOTE: renovate omitted — its dependency tree trips mise's npm trust policy in CI.
 
       "gem:fastlane" = pkgs.fastlane;
       "aqua:tauri-apps/tauri/cargo-tauri" = pkgs.cargo-tauri;
