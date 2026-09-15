@@ -32,8 +32,8 @@ jobs:
         with:
           name: devenv
       - id: setup-nix-profile
-        name: Install devenv and secretspec
-        run: "nix profile install nixpkgs#devenv nixpkgs#secretspec"
+        name: Install devenv
+        run: "nix profile install nixpkgs#devenv"
         shell: bash
       - id: devenv-update
         name: Update devenv inputs

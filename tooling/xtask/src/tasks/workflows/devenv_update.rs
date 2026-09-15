@@ -66,9 +66,8 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .add_step(steps::checkout())
         .add_step(steps::install_nix())
         .add_step(steps::cachix("devenv"))
-        // Both run before any devenv shell exists, so they come from the
-        // ambient profile.
-        .add_step(steps::nix_profile_install(&["devenv", "secretspec"]))
+        // devenv provides us with secretspec already.
+        .add_step(steps::nix_profile_install(&["devenv"]))
         .add_step(steps::devenv_update())
         .add_step(export)
         .add_step(app_token)
