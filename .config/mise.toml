@@ -26,7 +26,6 @@ lockfile = true
 "aqua:getsops/sops" = "3.13.3"
 "aqua:mikefarah/yq" = "4.53.3"
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.143"
-"aqua:numtide/treefmt" = "2.5.0"
 "aqua:nushell/nushell" = "0.115.0"
 "aqua:orhun/git-cliff" = "2.13.1"
 "aqua:oxipng/oxipng" = "10.1.1"
@@ -38,10 +37,17 @@ lockfile = true
 "core:node" = "24.19.0"
 "core:ruby" = "3.4.9"
 "core:swift" = "5.10.1"
-"gem:fastlane" = "2.232.2"
 "gem:rufo" = "0.18.1"
 "github:JetBrains/kotlin" = "2.4.10"
 "github:facebook/ktfmt" = "0.63"
 "npm:oxfmt" = "0.61.0"
 "npm:renovate" = "44.37.1"
 "npm:wrangler" = "4.94.0"
+
+[tools."aqua:numtide/treefmt"]
+os = ["linux", "macos"]
+version = "2.5.0"
+
+[tools."gem:fastlane"]
+os = ["linux", "macos"]
+version = "2.232.2"

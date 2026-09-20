@@ -39,6 +39,18 @@ in {
       default = {};
       description = "mise tool spec -> nix package providing it in the shell; versions project into `.config/mise.toml`.";
     };
+    os = lib.mkOption {
+      # mise also accepts `os/arch` pairs ("macos/arm64"); add them if a tool
+      # ever needs that granularity.
+      type = lib.types.attrsOf (lib.types.listOf (lib.types.enum [
+        "linux"
+        "macos"
+        "windows"
+        "unix" # everything but windows
+      ]));
+      default = {};
+      description = "mise tool spec -> operating systems it installs on (mise's `os` option); unlisted tools install everywhere.";
+    };
     env = lib.mkOption {
       type = lib.types.listOf (lib.types.attrsOf lib.types.str);
       default = [];
@@ -83,7 +95,19 @@ in {
             lockfile = true;
           };
           inherit (cfg) env;
-          tools = lib.mapAttrs (_: pkg: toString pkg.version) cfg.resolved-tools;
+          # A bare version string unless the tool is OS-restricted, in which
+          # case mise wants the table form.
+          tools =
+            lib.mapAttrs (
+              name: pkg:
+                if cfg.os ? ${name}
+                then {
+                  version = toString pkg.version;
+                  os = cfg.os.${name};
+                }
+                else toString pkg.version
+            )
+            cfg.resolved-tools;
         };
       };
     };

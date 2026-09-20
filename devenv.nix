@@ -62,6 +62,12 @@ in {
       "core:swift" = config.languages.swift.package;
       "github:JetBrains/kotlin" = pkgs.kotlin; # NOTE: languages.kotlin doesn't specify a `.package` option
     };
+    # Tools with no Windows build. Restricting them lets mise skip them there
+    # instead of failing the whole install; the Windows test job needs neither.
+    os = {
+      "aqua:numtide/treefmt" = ["linux" "macos"];
+      "gem:fastlane" = ["linux" "macos"]; # native gem extensions need a Unix toolchain
+    };
     env = [
       {PROJECT_ROOT = "{{ config_root }}";}
       {PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";}
