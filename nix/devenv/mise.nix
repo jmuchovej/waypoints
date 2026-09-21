@@ -3,6 +3,12 @@
 # the `mise:lock` task keeps the lockfile's provenance entries fresh. mise never
 # provides dependencies inside the shell — nix does; the projection exists for
 # consumers outside it (CI runners).
+#
+# Every tool is one `waypoints.mise.tools.<name>` entry carrying its nix
+# package, its backend-qualified mise spec, and any OS restriction. A tool with
+# a package but no mise backend (the nix-only formatters) lives in the shell
+# alone: `include = false` keeps it out of the projection. The assertion refuses
+# anything projected without both halves.
 {
   lib,
   config,
@@ -10,31 +16,63 @@
   ...
 }:
 let
-  inherit (lib) mkOption types;
+  inherit (lib)
+    attrNames
+    attrValues
+    filter
+    filterAttrs
+    mapAttrs
+    mapAttrs'
+    mkOption
+    nameValuePair
+    types
+    ;
   cfg = config.waypoints.mise;
-in
-{
-  options.waypoints.mise = {
-    tools = mkOption {
-      type = types.attrsOf types.package;
-      default = { };
-      description = "mise tool spec -> nix package providing it in the shell; versions project into `.config/mise.toml`.";
-    };
-    os = mkOption {
-      # mise also accepts `os/arch` pairs ("macos/arm64"); add them if a tool
-      # ever needs that granularity.
-      type = types.attrsOf (
-        types.listOf (
+
+  tool-type = types.submodule {
+    options = {
+      package = mkOption {
+        type = types.nullOr types.package;
+        default = null;
+        description = "The nix package providing the tool in the shell; its version is what mise pins.";
+      };
+      spec = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Backend-qualified mise tool spec, e.g. `aqua:casey/just`.";
+      };
+      os = mkOption {
+        # mise also accepts `os/arch` pairs ("macos/arm64"); add them if a tool
+        # ever needs that granularity.
+        type = types.listOf (
           types.enum [
             "linux"
             "macos"
             "windows"
             "unix" # everything but windows
           ]
-        )
-      );
+        );
+        default = [ ];
+        description = "Operating systems mise installs the tool on (its `os` option); empty means everywhere.";
+      };
+      include = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Project the tool into `.config/mise.toml`. `false` keeps a nix-only tool in the shell without a mise entry.";
+      };
+    };
+  };
+
+  in-shell = filter (tool: tool.package != null) (attrValues cfg.tools);
+  included = filterAttrs (_: tool: tool.include) cfg.tools;
+  by-spec = mapAttrs' (_: tool: nameValuePair tool.spec tool) included;
+in
+{
+  options.waypoints.mise = {
+    tools = mkOption {
+      type = types.attrsOf tool-type;
       default = { };
-      description = "mise tool spec -> operating systems it installs on (mise's `os` option); unlisted tools install everywhere.";
+      description = "Tools by name: nix package, mise spec, and OS restriction together.";
     };
     env = mkOption {
       type = types.listOf types.attrs;
@@ -44,6 +82,19 @@ in
   };
 
   config = {
+    assertions = map (
+      name:
+      let
+        tool = cfg.tools.${name};
+      in
+      {
+        assertion = !tool.include || (tool.package != null && tool.spec != null);
+        message = "waypoints.mise.tools.${name}: set both `package` and `spec`, or `include = false`.";
+      }
+    ) (attrNames cfg.tools);
+
+    packages = map (tool: tool.package) in-shell;
+
     tasks."mise:lock" = {
       description = "Regenerate mise.lock and verify every declared tool resolved";
       package = pkgs.nushell;
@@ -52,7 +103,7 @@ in
         ".config/mise.toml"
         ".config/mise.lock"
       ];
-      exec = builtins.readFile "${config.devenv.root}/.bin/sync-mise";
+      exec = builtins.readFile ./bin/sync-mise;
     };
 
     files = {
@@ -75,16 +126,16 @@ in
           inherit (cfg) env;
           # A bare version string unless the tool is OS-restricted, in which
           # case mise wants the table form.
-          tools = lib.mapAttrs (
-            name: pkg:
-            if cfg.os ? ${name} then
-              {
-                version = toString pkg.version;
-                os = cfg.os.${name};
-              }
+          tools = mapAttrs (
+            _: tool:
+            if tool.os == [ ] then
+              toString tool.package.version
             else
-              toString pkg.version
-          ) cfg.tools;
+              {
+                version = toString tool.package.version;
+                inherit (tool) os;
+              }
+          ) by-spec;
         };
       };
     };

@@ -9,27 +9,33 @@
   pkgs,
   inputs,
   ...
-}: let
+}:
+let
+  inherit (lib) mkOption types;
+
   cfg = config.waypoints.android;
 
   # Map a version (e.g. "35.0.0") to its android-nixpkgs attribute suffix ("35-0-0").
-  dash-version = lib.replaceStrings ["."] ["-"];
+  dash-version = lib.replaceStrings [ "." ] [ "-" ];
 
   # ps16k (16 KB page-size) system images only exist for API >= 35.
-  system-images = sdk-pkgs: let
-    base-variants = [
-      "google-apis"
-      "google-apis-playstore"
-    ];
-    variants = v: base-variants ++ lib.optionals (lib.versionAtLeast v "35") (map (s: "${s}-ps16k") base-variants);
-  in
+  system-images =
+    sdk-pkgs:
+    let
+      base-variants = [
+        "google-apis"
+        "google-apis-playstore"
+      ];
+      variants =
+        v: base-variants ++ lib.optionals (lib.versionAtLeast v "35") (map (s: "${s}-ps16k") base-variants);
+    in
     lib.concatMap (
       v: map (s: sdk-pkgs."system-images-android-${dash-version v}-${s}-arm64-v8a") (variants v)
-    )
-    cfg.platforms.versions;
+    ) cfg.platforms.versions;
 
   android-sdk = inputs.android-nixpkgs.sdk.${pkgs.stdenv.hostPlatform.system} (
-    sdk-pkgs: (
+    sdk-pkgs:
+    (
       [
         sdk-pkgs.cmdline-tools-22-0
         sdk-pkgs.platform-tools
@@ -42,27 +48,28 @@
     )
   );
   android-home = "${android-sdk}/share/android-sdk";
-in {
+in
+{
   options.waypoints.android = {
-    agp.version = lib.mkOption {
-      type = lib.types.str;
+    agp.version = mkOption {
+      type = types.str;
       description = "Android Gradle Plugin version pinned into the generated version catalog.";
     };
-    build-tools.version = lib.mkOption {
-      type = lib.types.str;
+    build-tools.version = mkOption {
+      type = types.str;
       description = "Android build-tools version (SDK component and version catalog).";
     };
-    platforms.versions = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [];
+    platforms.versions = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
       description = "Android platform (API level) versions to install, with matching system images.";
     };
-    ndk.version = lib.mkOption {
-      type = lib.types.str;
+    ndk.version = mkOption {
+      type = types.str;
       description = "Android NDK version (SDK component and ANDROID_NDK_ROOT).";
     };
-    project-path = lib.mkOption {
-      type = lib.types.str;
+    project-path = mkOption {
+      type = types.str;
       description = "Repo-relative path of the generated Tauri Android project; gradle-facing files land here.";
     };
   };
@@ -86,7 +93,6 @@ in {
       # env.PATH merges as one string, so this module owns the whole
       # definition; the non-Android `.bin` prefix rides along.
       PATH = lib.concatStringsSep ":" [
-        "${config.env.DEVENV_ROOT}/.bin"
         "$PATH"
         "${config.env.ANDROID_HOME}/tools"
         "${config.env.ANDROID_HOME}/tools/bin"
@@ -96,7 +102,7 @@ in {
       ];
     };
 
-    packages = [android-sdk];
+    packages = [ android-sdk ];
 
     files = {
       "${cfg.project-path}/local.properties".text = ''
@@ -109,7 +115,7 @@ in {
         copyMode = "copy";
         toml = {
           versions = {
-            kotlin = config.waypoints.mise.tools."github:JetBrains/kotlin".version;
+            kotlin = config.waypoints.mise.tools.kotlin.package.version;
             buildTools = cfg.build-tools.version;
             agp = cfg.agp.version;
           };

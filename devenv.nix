@@ -1,6 +1,5 @@
 {
   pkgs,
-  lib,
   config,
   ...
 }:
@@ -20,52 +19,141 @@ in
 
   waypoints.mise = {
     tools = {
-      "aqua:casey/just" = pkgs.just;
-      "aqua:getsops/sops" = pkgs.sops;
-      "aqua:FiloSottile/age" = pkgs.age;
-      "npm:wrangler" = pkgs.wrangler;
-      "aqua:mikefarah/yq" = pkgs.yq-go;
-      "aqua:cachix/secretspec" = pkgs.secretspec;
+      just = {
+        package = pkgs.just;
+        spec = "aqua:casey/just";
+      };
+      nixfmt = {
+        package = pkgs.nixfmt-rs;
+        spec = "aqua:mic92/nixfmt-rs";
+      };
+      ktfmt = {
+        package = pkgs.ktfmt;
+        spec = "github:facebook/ktfmt";
+      };
+      rufo = {
+        package = pkgs.rufo;
+        spec = "gem:rufo";
+      };
+      typos = {
+        package = pkgs.typos;
+        spec = "aqua:crate-ci/typos";
+      };
+      oxfmt = {
+        package = pkgs.oxfmt;
+        spec = "npm:oxfmt";
+      };
+      oxipng = {
+        package = pkgs.oxipng;
+        spec = "aqua:oxipng/oxipng";
+      };
+      tombi = {
+        package = pkgs.tombi;
+        spec = "aqua:tombi-toml/tombi";
+      };
+      zizmor = {
+        package = pkgs.zizmor;
+        spec = "aqua:zizmorcore/zizmor";
+      };
+      keep-sorted = {
+        package = pkgs.keep-sorted;
+        spec = "aqua:google/keep-sorted";
+      };
+      # nix-only formatters: in the shell, never in mise. treefmt's
+      # allow-missing-formatter lets mise users skip them.
+      deadnix = {
+        package = pkgs.deadnix;
+        include = false;
+      };
+      statix = {
+        package = pkgs.statix;
+        include = false;
+      };
+      nixf-diagnose = {
+        package = pkgs.nixf-diagnose;
+        include = false;
+      };
+      treefmt = {
+        package = config.treefmt.config.package;
+        spec = "aqua:numtide/treefmt";
+        os = [
+          "linux"
+          "macos"
+        ]; # no Windows release exists
+      };
+
+      sops = {
+        package = pkgs.sops;
+        spec = "aqua:getsops/sops";
+      };
+      age = {
+        package = pkgs.age;
+        spec = "aqua:FiloSottile/age";
+      };
+      wrangler = {
+        package = pkgs.wrangler;
+        spec = "npm:wrangler";
+      };
+      yq = {
+        package = pkgs.yq-go;
+        spec = "aqua:mikefarah/yq";
+      };
+      secretspec = {
+        package = pkgs.secretspec;
+        spec = "aqua:cachix/secretspec";
+      };
       # NOTE: renovate omitted — its dependency tree trips mise's npm trust policy in CI.
 
-      # The formatters .config/treefmt.toml names that mise can supply; the
-      # nix-only ones sit in `packages` below.
-      "aqua:mic92/nixfmt-rs" = pkgs.nixfmt-rs;
-      "github:facebook/ktfmt" = pkgs.ktfmt;
-      "gem:rufo" = pkgs.rufo;
-      "aqua:crate-ci/typos" = pkgs.typos;
-      "npm:oxfmt" = pkgs.oxfmt;
-      "aqua:oxipng/oxipng" = pkgs.oxipng;
-      "aqua:tombi-toml/tombi" = pkgs.tombi;
-      "aqua:zizmorcore/zizmor" = pkgs.zizmor;
-      "aqua:google/keep-sorted" = pkgs.keep-sorted;
+      fastlane = {
+        package = pkgs.fastlane;
+        spec = "gem:fastlane";
+        os = [
+          "linux"
+          "macos"
+        ]; # native gem extensions need a Unix toolchain
+      };
+      cargo-tauri = {
+        package = pkgs.cargo-tauri;
+        spec = "aqua:tauri-apps/tauri/cargo-tauri";
+      };
 
-      "gem:fastlane" = pkgs.fastlane;
-      "aqua:tauri-apps/tauri/cargo-tauri" = pkgs.cargo-tauri;
+      cargo-nextest = {
+        package = pkgs.cargo-nextest;
+        spec = "aqua:nextest-rs/nextest/cargo-nextest";
+      };
+      nushell = {
+        package = pkgs.nushell;
+        spec = "aqua:nushell/nushell";
+      };
+      cargo-deny = {
+        package = pkgs.cargo-deny;
+        spec = "aqua:EmbarkStudios/cargo-deny";
+      };
+      git-cliff = {
+        package = pkgs.git-cliff;
+        spec = "aqua:orhun/git-cliff";
+      };
 
-      "aqua:nextest-rs/nextest/cargo-nextest" = pkgs.cargo-nextest;
-      "aqua:numtide/treefmt" = config.treefmt.config.package;
-      "aqua:nushell/nushell" = pkgs.nushell;
-      "aqua:EmbarkStudios/cargo-deny" = pkgs.cargo-deny;
-      "aqua:orhun/git-cliff" = pkgs.git-cliff;
-
-      "core:node" = config.languages.javascript.package;
-      "core:deno" = config.languages.deno.package;
-      "core:ruby" = config.languages.ruby.package;
-      "core:swift" = config.languages.swift.package;
-      "github:JetBrains/kotlin" = pkgs.kotlin; # NOTE: languages.kotlin doesn't specify a `.package` option
-    };
-    # Tools with no Windows build. Restricting them lets mise skip them there
-    # instead of failing the whole install; the Windows test job needs neither.
-    os = {
-      "aqua:numtide/treefmt" = [
-        "linux"
-        "macos"
-      ];
-      "gem:fastlane" = [
-        "linux"
-        "macos"
-      ]; # native gem extensions need a Unix toolchain
+      node = {
+        package = config.languages.javascript.package;
+        spec = "core:node";
+      };
+      deno = {
+        package = config.languages.deno.package;
+        spec = "core:deno";
+      };
+      ruby = {
+        package = config.languages.ruby.package;
+        spec = "core:ruby";
+      };
+      swift = {
+        package = config.languages.swift.package;
+        spec = "core:swift";
+      };
+      kotlin = {
+        package = pkgs.kotlin; # NOTE: languages.kotlin doesn't specify a `.package` option
+        spec = "github:JetBrains/kotlin";
+      };
     };
     env = [
       { PROJECT_ROOT = "{{ config_root }}"; }
@@ -109,25 +197,17 @@ in
     export PATH="${config.devenv.root}/tooling/bin:$PATH"
   '';
 
-  packages =
-    (lib.attrValues config.waypoints.mise.tools)
-    ++ (with pkgs; [
-      # nix-only formatters: no mise backend, so treefmt's
-      # allow-missing-formatter skips them outside the shell.
-      deadnix
-      nixf-diagnose
-      statix
-
-      act
-      cargo-binstall
-      cargo-expand
-      fd
-      git
-      imagemagick
-      jujutsu
-      mise
-      ripgrep
-    ]);
+  packages = with pkgs; [
+    act
+    cargo-binstall
+    cargo-expand
+    fd
+    git
+    imagemagick
+    jujutsu
+    mise
+    ripgrep
+  ];
 
   languages.rust = {
     enable = true;
@@ -152,7 +232,7 @@ in
   };
 
   treefmt.enable = true;
-  treefmt.config.settings = lib.importTOML config.env.TREEFMT_CONFIG;
+  treefmt.config.settings = pkgs.lib.importTOML config.env.TREEFMT_CONFIG;
 
   tasks."waypoints:sync-deny-targets" = {
     description = "Sync .cargo/deny.toml graph.targets from rust-toolchain.toml";
@@ -162,7 +242,7 @@ in
       "rust-toolchain.toml"
       ".cargo/deny.toml"
     ];
-    exec = builtins.readFile "${config.devenv.root}/.bin/sync-deny-targets";
+    exec = builtins.readFile ./nix/devenv/bin/sync-deny-targets;
   };
 
   git-hooks.hooks = {
