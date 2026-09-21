@@ -396,6 +396,11 @@ pub(crate) fn cargo_nextest(suite: TestSuite) -> Nextest {
     let step = Step::new(format!("Run {} tests", suite.describe()))
         .run("cargo nextest run --workspace --no-fail-fast")
         .shell("bash")
+        // The release suite compiles the whole workspace cold, and the hosted
+        // Linux runner has run out of disk doing it. Debuginfo and incremental
+        // artifacts are most of `target/`, and neither is worth anything here.
+        .add_env(("CARGO_INCREMENTAL", "0"))
+        .add_env(("CARGO_PROFILE_DEV_DEBUG", "0"))
         .id("nextest");
     Nextest(step)
 }

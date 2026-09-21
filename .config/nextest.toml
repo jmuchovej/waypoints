@@ -1,2 +1,8 @@
 [profile.default]
 slow-timeout = { period = "60s", terminate-after = 1 }
+
+# trybuild spawns a real cargo build per case, so a cold CI runner needs
+# minutes here, not seconds.
+[[profile.default.overrides]]
+filter = "test(=compile_fail)"
+slow-timeout = { period = "300s", terminate-after = 2 }

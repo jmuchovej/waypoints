@@ -10,7 +10,23 @@ let mise_toml = $root | path join ".config" "mise.toml"
 mise lock
 
 # mise lists `core:` backend tools under their bare names (core:node -> node).
-let declared = open $mise_toml | get tools | columns | each {|tool| $tool | str replace -r '^core:' ''}
+# A tool restricted to other OSes (`os = [...]`) is skipped here on purpose.
+let this_os = $nu.os-info.name
+let declared = (
+  open $mise_toml
+  | get tools
+  | transpose tool spec
+  | where {|row|
+      let spec = $row.spec
+      if ($spec | describe | str starts-with "record") {
+        $this_os in ($spec.os? | default [$this_os])
+      } else {
+        true
+      }
+    }
+  | get tool
+  | each {|tool| $tool | str replace -r '^core:' ''}
+)
 let resolved = (
   mise ls --current --json
   | from json

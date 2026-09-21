@@ -81,6 +81,8 @@ jobs:
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-windows:
     needs:
@@ -110,6 +112,8 @@ jobs:
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-linux:
     needs:
@@ -145,6 +149,8 @@ jobs:
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   create-release:
     needs:
