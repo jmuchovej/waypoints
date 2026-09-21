@@ -53,6 +53,10 @@ lockfile = true
 os = ["linux", "macos"]
 version = "2.5.0"
 
+[tools."aqua:yonaskolb/XcodeGen"]
+os = ["macos"]
+version = "2.44.1"
+
 [tools."gem:fastlane"]
 os = ["linux", "macos"]
 version = "2.232.2"

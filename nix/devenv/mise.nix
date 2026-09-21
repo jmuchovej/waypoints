@@ -102,7 +102,11 @@ in
       }
     ) (attrNames cfg.tools);
 
-    packages = map (tool: tool.package) in-shell;
+    # Every tool with a package, minus what cannot be built on this platform
+    # (xcodegen off macOS); those still project their versions into mise.toml.
+    packages = filter (lib.meta.availableOn pkgs.stdenv.hostPlatform) (
+      map (tool: tool.package) in-shell
+    );
 
     tasks."mise:lock" = {
       description = "Regenerate mise.lock and verify every declared tool resolved";

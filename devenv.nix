@@ -123,6 +123,11 @@ in
           "macos"
         ]; # native gem extensions need a Unix toolchain
       };
+      xcodegen = {
+        package = pkgs.xcodegen;
+        spec = "aqua:yonaskolb/XcodeGen";
+        os = [ "macos" ]; # generates the Xcode project; nothing else needs it
+      };
       cargo-tauri = {
         package = pkgs.cargo-tauri;
         spec = "aqua:tauri-apps/tauri/cargo-tauri";

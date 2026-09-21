@@ -562,6 +562,20 @@ url = "https://github.com/tombi-toml/tombi/releases/download/v1.4.0/tombi-cli-1.
 url_api = "https://api.github.com/repos/tombi-toml/tombi/releases/assets/513163086"
 provenance = "github-attestations"
 
+[[tools."aqua:yonaskolb/XcodeGen"]]
+version = "2.44.1"
+backend = "aqua:yonaskolb/XcodeGen"
+
+[tools."aqua:yonaskolb/XcodeGen"."platforms.macos-arm64"]
+checksum = "sha256:a2e905fb68446e9bb4008cdfe2e13e3f176d0cbcca828b71770f8e53fca91b73"
+url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.44.1/xcodegen.zip"
+url_api = "https://api.github.com/repos/yonaskolb/XcodeGen/releases/assets/275202612"
+
+[tools."aqua:yonaskolb/XcodeGen"."platforms.macos-x64"]
+checksum = "sha256:a2e905fb68446e9bb4008cdfe2e13e3f176d0cbcca828b71770f8e53fca91b73"
+url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.44.1/xcodegen.zip"
+url_api = "https://api.github.com/repos/yonaskolb/XcodeGen/releases/assets/275202612"
+
 [[tools."aqua:zizmorcore/zizmor"]]
 version = "1.29.0"
 backend = "aqua:zizmorcore/zizmor"

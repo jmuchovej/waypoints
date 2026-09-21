@@ -203,10 +203,6 @@ pub fn build(
                 .add_step(steps::setup_android_sdk())
                 .add_step(steps::install_ndk(&context.android_ndk))
         })
-        .when(platform.is_ios(), |job| {
-            // Adds `xcodegen` toolset
-            job.add_env(("MISE_ENV", "ios"))
-        })
         .when(platform.is_linux(), |job| {
             // Tauri's Linux backend is WebKitGTK, absent from the runner image.
             job.add_step(steps::install_linux_deps())
