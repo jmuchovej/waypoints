@@ -3,14 +3,15 @@
   lib,
   config,
   ...
-}: let
+}:
+let
   tauri-app-path = "src-tauri";
   tauri-frontend-path = "src";
   tauri-android-path = "${tauri-app-path}/gen/android";
   tauri-ios-path = "${tauri-app-path}/gen/apple";
-in {
+in
+{
   imports = [
-    ./nix/devenv/treefmt.nix
     ./nix/devenv/mise.nix
     ./nix/devenv/android.nix
   ];
@@ -18,26 +19,6 @@ in {
   stdenv = pkgs.clangStdenv;
 
   waypoints.mise = {
-    unavailable = [
-      "alejandra" # crates.io lags nixpkgs
-      "clang-format" # comes from the system toolchain
-      "deadnix" # crates.io lags nixpkgs
-      "rustfmt" # ships within rust
-      "statix" # an un-related crate
-      "swift-format" # comes from the Xcode toolchain
-      "xmllint" # comes from libxml2
-    ];
-    specs = {
-      just = "aqua:casey/just";
-      ktfmt = "github:facebook/ktfmt";
-      rufo = "gem:rufo";
-      typos = "aqua:crate-ci/typos";
-      oxfmt = "npm:oxfmt";
-      oxipng = "aqua:oxipng/oxipng";
-      tombi = "aqua:tombi-toml/tombi";
-      actionlint = "aqua:rhysd/actionlint";
-      zizmor = "aqua:zizmorcore/zizmor";
-    };
     tools = {
       "aqua:casey/just" = pkgs.just;
       "aqua:getsops/sops" = pkgs.sops;
@@ -46,6 +27,18 @@ in {
       "aqua:mikefarah/yq" = pkgs.yq-go;
       "aqua:cachix/secretspec" = pkgs.secretspec;
       # NOTE: renovate omitted — its dependency tree trips mise's npm trust policy in CI.
+
+      # The formatters .config/treefmt.toml names that mise can supply; the
+      # nix-only ones sit in `packages` below.
+      "aqua:mic92/nixfmt-rs" = pkgs.nixfmt-rs;
+      "github:facebook/ktfmt" = pkgs.ktfmt;
+      "gem:rufo" = pkgs.rufo;
+      "aqua:crate-ci/typos" = pkgs.typos;
+      "npm:oxfmt" = pkgs.oxfmt;
+      "aqua:oxipng/oxipng" = pkgs.oxipng;
+      "aqua:tombi-toml/tombi" = pkgs.tombi;
+      "aqua:zizmorcore/zizmor" = pkgs.zizmor;
+      "aqua:google/keep-sorted" = pkgs.keep-sorted;
 
       "gem:fastlane" = pkgs.fastlane;
       "aqua:tauri-apps/tauri/cargo-tauri" = pkgs.cargo-tauri;
@@ -65,12 +58,20 @@ in {
     # Tools with no Windows build. Restricting them lets mise skip them there
     # instead of failing the whole install; the Windows test job needs neither.
     os = {
-      "aqua:numtide/treefmt" = ["linux" "macos"];
-      "gem:fastlane" = ["linux" "macos"]; # native gem extensions need a Unix toolchain
+      "aqua:numtide/treefmt" = [
+        "linux"
+        "macos"
+      ];
+      "gem:fastlane" = [
+        "linux"
+        "macos"
+      ]; # native gem extensions need a Unix toolchain
     };
     env = [
-      {PROJECT_ROOT = "{{ config_root }}";}
-      {PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config";}
+      { PROJECT_ROOT = "{{ config_root }}"; }
+      { PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"; }
+      # The treefmt-* wrappers, as enterShell puts them on PATH in the shell.
+      { _.path = [ "tooling/bin" ]; }
       {
         CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
         TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
@@ -79,25 +80,6 @@ in {
         TAURI_IOS_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-ios-path}";
         TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
       }
-    ];
-  };
-
-  waypoints.treefmt = {
-    wrappers = {
-      just = "fmt-just";
-      statix = "fmt-statix";
-      xmllint = "fmt-xml";
-    };
-    excludes = [
-      "*/node_modules*"
-      ".{dev,dir}env/*"
-      "*/.envrc*"
-      "vendor/*"
-      ".scratch/*"
-      "*.{gif,ico}"
-      "*.{properties,gradle}"
-      "*.{pbxproj,xcconfig}"
-      "*{mise,treefmt}.toml"
     ];
   };
 
@@ -123,11 +105,19 @@ in {
     project-path = tauri-android-path;
   };
 
-  enterShell = "";
+  enterShell = ''
+    export PATH="${config.devenv.root}/tooling/bin:$PATH"
+  '';
 
   packages =
-    (lib.attrValues config.waypoints.mise.resolved-tools)
+    (lib.attrValues config.waypoints.mise.tools)
     ++ (with pkgs; [
+      # nix-only formatters: no mise backend, so treefmt's
+      # allow-missing-formatter skips them outside the shell.
+      deadnix
+      nixf-diagnose
+      statix
+
       act
       cargo-binstall
       cargo-expand
@@ -162,66 +152,12 @@ in {
   };
 
   treefmt.enable = true;
-  treefmt.config.programs = lib.mkMerge [
-    {
-      actionlint.enable = true;
-      clang-format.enable = true;
-      just.enable = true;
-      ktfmt.enable = true;
-      oxfmt.enable = true;
-      oxipng.enable = true;
-      rufo.enable = true;
-      rustfmt.enable = true;
-      swift-format.enable = true;
-      tombi.enable = true;
-      typos.enable = true;
-      xmllint.enable = true;
-      statix.enable = true;
-      deadnix.enable = true;
-      alejandra.enable = true;
-      zizmor.enable = true;
-    }
-    {
-      statix.priority = 1;
-      deadnix.priority = 2;
-      alejandra.priority = 3;
-    }
-  ];
-  treefmt.config.settings = lib.mkMerge [
-    {
-      on-unmatched = "info";
-      allow-missing-formatter = true;
-      verbose = 1;
-      formatter = {
-        rufo.includes = [
-          "**/Podfile"
-          "*.podspec"
-        ];
-        xmllint.includes = [
-          "*.entitlements"
-          "*.manifest"
-          "*.plist"
-          "*.storyboard"
-          "*.xc{scheme,settings,workspacedata}"
-        ];
-        typos.options = ["-c" ".config/typos.toml"];
-        oxfmt = {
-          options = [
-            "-c"
-            ".config/oxfmtrc.jsonc"
-          ];
-          excludes = [
-            "website/*.md"
-          ];
-        };
-      };
-    }
-  ];
+  treefmt.config.settings = lib.importTOML config.env.TREEFMT_CONFIG;
 
   tasks."waypoints:sync-deny-targets" = {
     description = "Sync .cargo/deny.toml graph.targets from rust-toolchain.toml";
     package = pkgs.nushell;
-    after = ["devenv:enterShell"];
+    after = [ "devenv:enterShell" ];
     execIfModified = [
       "rust-toolchain.toml"
       ".cargo/deny.toml"
@@ -238,13 +174,12 @@ in {
     check-added-large-files.enable = true;
     clippy.enable = true;
     cargo-check.enable = true;
-    keep-sorted.enable = true;
     cargo-test = {
       enable = true;
       package = pkgs.cargo;
       id = "cargo-test";
       name = "cargo-test";
-      after = ["cargo-check"];
+      after = [ "cargo-check" ];
       language = "system";
       entry = "${config.git-hooks.hooks.cargo-test.package}/bin/cargo test";
       files = "\\.rs$";

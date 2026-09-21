@@ -1,75 +1,53 @@
-# Owns the mise projection: the dev shell's tool set (declared tools plus
-# treefmt formatters that mise can supply) is mirrored into `.config/mise.toml`
-# with pinned versions, `.config/mise.lock` is seeded, and the `mise:lock`
-# task keeps the lockfile's provenance entries fresh. mise never provides
-# dependencies inside the shell — nix does; the projection exists for
+# Owns the mise projection: every tool the shell provides is mirrored into
+# `.config/mise.toml` with pinned versions, `.config/mise.lock` is seeded, and
+# the `mise:lock` task keeps the lockfile's provenance entries fresh. mise never
+# provides dependencies inside the shell — nix does; the projection exists for
 # consumers outside it (CI runners).
 {
   lib,
   config,
   pkgs,
   ...
-}: let
+}:
+let
+  inherit (lib) mkOption types;
   cfg = config.waypoints.mise;
-
-  is-enabled = prog: prog.enable or false;
-  has-package = prog: prog ? package;
-  is-available = name: !(builtins.elem name cfg.unavailable);
-
-  mise-formatters = lib.mapAttrs' (name: prog: lib.nameValuePair (cfg.specs.${name} or name) prog.package) (
-    lib.filterAttrs (
-      name: prog: (is-enabled prog) && (has-package prog) && (is-available name)
-    )
-    config.treefmt.config.programs
-  );
-in {
+in
+{
   options.waypoints.mise = {
-    specs = lib.mkOption {
-      type = lib.types.attrsOf lib.types.str;
-      default = {};
-      description = "treefmt formatter name -> mise tool spec (backend-qualified); unmapped formatters project under their own name.";
-    };
-    unavailable = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [];
-      description = "treefmt formatters with no usable mise backend; excluded from the projection.";
-    };
-    tools = lib.mkOption {
-      type = lib.types.attrsOf lib.types.package;
-      default = {};
+    tools = mkOption {
+      type = types.attrsOf types.package;
+      default = { };
       description = "mise tool spec -> nix package providing it in the shell; versions project into `.config/mise.toml`.";
     };
-    os = lib.mkOption {
+    os = mkOption {
       # mise also accepts `os/arch` pairs ("macos/arm64"); add them if a tool
       # ever needs that granularity.
-      type = lib.types.attrsOf (lib.types.listOf (lib.types.enum [
-        "linux"
-        "macos"
-        "windows"
-        "unix" # everything but windows
-      ]));
-      default = {};
+      type = types.attrsOf (
+        types.listOf (
+          types.enum [
+            "linux"
+            "macos"
+            "windows"
+            "unix" # everything but windows
+          ]
+        )
+      );
+      default = { };
       description = "mise tool spec -> operating systems it installs on (mise's `os` option); unlisted tools install everywhere.";
     };
-    env = lib.mkOption {
-      type = lib.types.listOf (lib.types.attrsOf lib.types.str);
-      default = [];
-      description = "Entries for the `[[env]]` array of the projected `.config/mise.toml`.";
-    };
-    resolved-tools = lib.mkOption {
-      type = lib.types.attrsOf lib.types.package;
-      readOnly = true;
-      description = "Declared tools merged with the projected treefmt formatters (read-only).";
+    env = mkOption {
+      type = types.listOf types.attrs;
+      default = [ ];
+      description = "Entries for the `[[env]]` array of the projected `.config/mise.toml`, `_` directives included.";
     };
   };
 
   config = {
-    waypoints.mise.resolved-tools = cfg.tools // mise-formatters;
-
     tasks."mise:lock" = {
       description = "Regenerate mise.lock and verify every declared tool resolved";
       package = pkgs.nushell;
-      after = ["devenv:enterShell"];
+      after = [ "devenv:enterShell" ];
       execIfModified = [
         ".config/mise.toml"
         ".config/mise.lock"
@@ -97,17 +75,16 @@ in {
           inherit (cfg) env;
           # A bare version string unless the tool is OS-restricted, in which
           # case mise wants the table form.
-          tools =
-            lib.mapAttrs (
-              name: pkg:
-                if cfg.os ? ${name}
-                then {
-                  version = toString pkg.version;
-                  os = cfg.os.${name};
-                }
-                else toString pkg.version
-            )
-            cfg.resolved-tools;
+          tools = lib.mapAttrs (
+            name: pkg:
+            if cfg.os ? ${name} then
+              {
+                version = toString pkg.version;
+                os = cfg.os.${name};
+              }
+            else
+              toString pkg.version
+          ) cfg.tools;
         };
       };
     };

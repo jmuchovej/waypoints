@@ -5,6 +5,11 @@ PROJECT_ROOT = "{{ config_root }}"
 PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"
 
 [[env]]
+
+[env._]
+path = ["tooling/bin"]
+
+[[env]]
 CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}"
 TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/src-tauri/gen/android"
 TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/src-tauri"
@@ -24,12 +29,13 @@ lockfile = true
 "aqua:casey/just" = "1.58.0"
 "aqua:crate-ci/typos" = "1.49.0"
 "aqua:getsops/sops" = "3.13.3"
+"aqua:google/keep-sorted" = "0.9.0"
+"aqua:mic92/nixfmt-rs" = "0.4.1"
 "aqua:mikefarah/yq" = "4.53.3"
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.143"
 "aqua:nushell/nushell" = "0.115.0"
 "aqua:orhun/git-cliff" = "2.13.1"
 "aqua:oxipng/oxipng" = "10.1.1"
-"aqua:rhysd/actionlint" = "1.7.12"
 "aqua:tauri-apps/tauri/cargo-tauri" = "2.11.4"
 "aqua:tombi-toml/tombi" = "1.4.0"
 "aqua:zizmorcore/zizmor" = "1.29.0"
