@@ -33,9 +33,16 @@ fn build_code(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
 const BUILD_ONLY_ON_DISPATCH: &str =
     "${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}";
 
+/// Release jobs never format, so mise skips the formatter tool set devenv
+/// projects into `[vars].WAYPOINTS_FORMATTERS` — one config file, and one
+/// fewer install per formatter on every release runner.
+fn without_formatters(job: Job, formatters: &str) -> Job {
+    job.add_env(("MISE_DISABLE_TOOLS", formatters.to_owned()))
+}
+
 /// Resolves the nightly tag: derive it from the workspace version, skip the run
 /// when nothing landed since the last nightly, and create the tag.
-pub fn prepare() -> PrepareJob {
+pub fn prepare(formatters: &str) -> PrepareJob {
     let planner = steps::cargo_xtask("nightly-plan", &[(BUILD_ONLY_ON_DISPATCH, None)])
         .id("nightly-plan")
         .add_env(("GH_TOKEN", GITHUB_TOKEN));
@@ -47,7 +54,7 @@ pub fn prepare() -> PrepareJob {
 
     let job = NamedJob::new(
         "prepare",
-        Job::default()
+        without_formatters(Job::default(), formatters)
             .name("Plan the nightly")
             // Write: the planner creates the nightly tag ref.
             .permissions(Permissions::default().contents(Level::Write))
@@ -76,13 +83,18 @@ pub fn prepare() -> PrepareJob {
 
 /// Runs the suite on one platform, as two steps: the plan resolves the
 /// filterset, and the run is skipped when it comes back empty.
-pub fn test(suite: TestSuite, platform: Platform) -> NamedJob {
+pub fn test(suite: TestSuite, platform: Platform, formatters: &str) -> NamedJob {
     // The command publishes its own step output, so no shell redirection and
     // nothing spelled differently for PowerShell on Windows.
     let plan = steps::cargo_xtask("test-plan", &[(suite.flag(), None)]).id("test-plan");
     let filterset = StepOutput::new_trusted(&plan, "filterset");
 
     let job = Job::default()
+        // The changed-suite job is the one formatter-adjacent CI run, so it
+        // keeps the full tool set.
+        .when(matches!(suite, TestSuite::Release), |job| {
+            without_formatters(job, formatters)
+        })
         .name(format!("Test {platform}"))
         .permissions(Permissions::default().contents(Level::Read))
         .runs_on(platform.runner())
@@ -178,7 +190,7 @@ pub fn build(
     // Absent off nightly, where the tag's own semver suffices.
     let build_code = prepare.and_then(|prepare| build_code(prepare, platform));
 
-    let job = Job::default()
+    let job = without_formatters(Job::default(), &context.formatters)
         .permissions(Permissions::default().contents(Level::Write))
         .name(format!("Build {platform}"))
         .runs_on(platform.runner())
@@ -237,7 +249,7 @@ mod tests {
     /// Swapping these would hand Play a value it cannot parse.
     #[test]
     fn each_platform_draws_its_own_build_code() {
-        let prepare = prepare();
+        let prepare = prepare("aqua:numtide/treefmt");
 
         assert_eq!(
             build_code(&prepare, Platform::Android).map(JobOutput::expr),

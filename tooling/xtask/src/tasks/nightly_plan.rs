@@ -394,7 +394,7 @@ mod tests {
             .map(String::as_str)
             .collect();
 
-        let prepare: NamedJob = jobs::prepare().into();
+        let prepare: NamedJob = jobs::prepare("aqua:numtide/treefmt").into();
         let republished: BTreeSet<&str> = prepare
             .job
             .outputs

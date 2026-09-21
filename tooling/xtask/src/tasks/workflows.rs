@@ -137,6 +137,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         devenv_files: crate::utils::devenv::managed_files()?,
         android_ndk: crate::utils::devenv::android_ndk_version()?,
         android_jdk: crate::utils::devenv::android_jdk_major()?,
+        formatters: crate::utils::mise::formatters()?,
     };
 
     let rendered = workflows
@@ -276,6 +277,9 @@ pub struct WorkflowContext {
     /// The JDK major version devenv installs. See
     /// [`crate::utils::devenv::android_jdk_major`].
     pub android_jdk: String,
+    /// Every mise tool that exists only to format, for release jobs to skip.
+    /// See [`crate::utils::mise::formatters`].
+    pub formatters: String,
 }
 
 /// Boxed rather than a `fn` pointer so one builder can emit a family of

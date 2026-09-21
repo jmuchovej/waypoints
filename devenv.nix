@@ -22,42 +22,52 @@ in
       just = {
         package = pkgs.just;
         spec = "aqua:casey/just";
+        formatter = false; # the task runner too, so release CI keeps it
       };
       nixfmt = {
         package = pkgs.nixfmt-rs;
         spec = "aqua:mic92/nixfmt-rs";
+        formatter = true;
       };
       ktfmt = {
         package = pkgs.ktfmt;
         spec = "github:facebook/ktfmt";
+        formatter = true;
       };
       rufo = {
         package = pkgs.rufo;
         spec = "gem:rufo";
+        formatter = true;
       };
       typos = {
         package = pkgs.typos;
         spec = "aqua:crate-ci/typos";
+        formatter = true;
       };
       oxfmt = {
         package = pkgs.oxfmt;
         spec = "npm:oxfmt";
+        formatter = true;
       };
       oxipng = {
         package = pkgs.oxipng;
         spec = "aqua:oxipng/oxipng";
+        formatter = true;
       };
       tombi = {
         package = pkgs.tombi;
         spec = "aqua:tombi-toml/tombi";
+        formatter = true;
       };
       zizmor = {
         package = pkgs.zizmor;
         spec = "aqua:zizmorcore/zizmor";
+        formatter = true;
       };
       keep-sorted = {
         package = pkgs.keep-sorted;
         spec = "aqua:google/keep-sorted";
+        formatter = true;
       };
       # nix-only formatters: in the shell, never in mise. treefmt's
       # allow-missing-formatter lets mise users skip them.
@@ -80,6 +90,7 @@ in
           "linux"
           "macos"
         ]; # no Windows release exists
+        formatter = true;
       };
 
       sops = {

@@ -56,3 +56,6 @@ version = "2.5.0"
 [tools."gem:fastlane"]
 os = ["linux", "macos"]
 version = "2.232.2"
+
+[vars]
+WAYPOINTS_FORMATTERS = "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"

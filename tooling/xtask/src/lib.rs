@@ -26,6 +26,7 @@ pub mod tasks {
 pub mod utils {
     pub mod devenv;
     pub mod github;
+    pub mod mise;
 }
 pub mod botswain;
 pub mod shell;

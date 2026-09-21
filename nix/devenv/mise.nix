@@ -60,12 +60,21 @@ let
         default = true;
         description = "Project the tool into `.config/mise.toml`. `false` keeps a nix-only tool in the shell without a mise entry.";
       };
+      formatter = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Exists only to format: listed in `WAYPOINTS_FORMATTERS` so release CI can skip it.";
+      };
     };
   };
 
   in-shell = filter (tool: tool.package != null) (attrValues cfg.tools);
   included = filterAttrs (_: tool: tool.include) cfg.tools;
   by-spec = mapAttrs' (_: tool: nameValuePair tool.spec tool) included;
+
+  # Emitted as a `[vars]` entry so release CI can hand the list to
+  # MISE_DISABLE_TOOLS without a second config file.
+  formatter-specs = lib.sort lib.lessThan (attrNames (filterAttrs (_: tool: tool.formatter) by-spec));
 in
 {
   options.waypoints.mise = {
@@ -124,6 +133,7 @@ in
             lockfile = true;
           };
           inherit (cfg) env;
+          vars.WAYPOINTS_FORMATTERS = lib.concatStringsSep "," formatter-specs;
           # A bare version string unless the tool is OS-restricted, in which
           # case mise wants the table form.
           tools = mapAttrs (

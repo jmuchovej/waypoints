@@ -15,7 +15,9 @@ const NIGHTLY_CRON: &str = "0 7 * * *";
 pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
     // Built once and lent to everything that depends on it; only nightly has
     // a planner.
-    let prepare = channel.is_nightly().then(jobs::prepare);
+    let prepare = channel
+        .is_nightly()
+        .then(|| jobs::prepare(&context.formatters));
 
     // Nothing ships until the release suite passes on every desktop platform.
     let tests: Vec<NamedJob> = Platform::iter()
@@ -23,7 +25,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
         .map(|platform| {
             // A nightly that finds nothing new skips its builds, so its gates
             // skip with them.
-            jobs::test(TestSuite::Release, platform).map(|job| {
+            jobs::test(TestSuite::Release, platform, &context.formatters).map(|job| {
                 job.when_some(prepare.as_ref(), |job, prepare| {
                     let expr = format!("{} == 'true'", prepare.should_build.expr());
                     job.add_needs(prepare.name().to_owned())
