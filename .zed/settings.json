@@ -1,4 +1,11 @@
 {
+  "format_on_save": "on",
+  "formatter": {
+    "external": {
+      "command": "treefmt",
+      "arguments": ["--no-cache", "--stdin", "{buffer_path}"]
+    }
+  },
   "lsp": {
     "vue": {
       "settings": {

@@ -30,5 +30,19 @@
     "deny": ["Bash(npx:*)", "Bash(pnpx:*)"]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["nuxt-ui", "filesystem", "devenv"]
+  "enabledMcpjsonServers": ["nuxt-ui", "filesystem", "devenv"],
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v hk >/dev/null 2>&1; then hk fix; else SECRETSPEC_REASON=\"Claude Code Stop hook runs hk fix to format and apply lint fixes to the working copy; no secret values are read\" devenv shell -- hk fix; fi || true",
+            "statusMessage": "Formatting and applying lint fixes",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
 }

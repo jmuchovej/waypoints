@@ -5,19 +5,14 @@ allow-missing-formatter = true
 excludes                = [
   "*.lock",
   "*.patch",
-  "go.mod",
-  "go.sum",
-  ".gitattributes",
-  ".gitignore",
-  ".gitmodules",
-  ".hgignore",
-  ".svnignore",
+  ".git{attributes,ignore,modules}",
   "LICENSE",
   "vendor/*",
   "*.{gif,ico}",
   "*.{properties,gradle}",
   "*.{pbxproj,xcconfig}",
-  "*mise.toml"
+  "mise.toml",
+  "*/mise.toml",
 ]
 on-unmatched            = "info"
 verbose                 = 1
@@ -30,49 +25,19 @@ verbose                 = 1
   command  = "keep-sorted"
   includes = [ "*" ]
 
-[formatter.nixf-diagnose]
-  command  = "nixf-diagnose"
-  options  = [
-    "--auto-fix",
-    "--ignore=sema-unused-def-lambda-witharg-formal",
-    "--ignore=sema-unused-def-lambda-noarg-formal",
-    "--ignore=sema-primop-overridden"
-  ]
-  includes = [ "*.nix" ]
-
 [formatter.clang-format]
   command  = "clang-format"
   options  = [ "-i" ]
   includes = [
-    "*.c",
-    "*.cc",
-    "*.cpp",
-    "*.h",
-    "*.hh",
-    "*.hpp",
-    "*.glsl",
-    "*.vert",
-    ".tesc",
-    ".tese",
-    ".geom",
-    ".frag",
-    ".comp"
+    "*.{c,cc,cpp}",
+    "*.{h,hh,hpp}",
   ]
-
-[formatter.deadnix]
-  command  = "deadnix"
-  options  = [ "--edit" ]
-  includes = [ "*.nix" ]
 
 [formatter.just]
   command  = "treefmt-just"
   includes = [
     "[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]",
     "*/[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]",
-    ".[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]",
-    "*/.[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]",
-    "*.[Jj][Uu][Ss][Tt]",
-    "*.[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee]"
   ]
 
 [formatter.ktfmt]
@@ -86,7 +51,6 @@ verbose                 = 1
   includes = [
     "*.{css,scss}",
     "*.graphql",
-    "*.hbs",
     "*.html",
     "*.{cjs,mjs,js,jsx}",
     "*.{json,json5,jsonc}",
@@ -112,10 +76,6 @@ verbose                 = 1
   options  = [ "--config", "skip_children=true", "--edition", "2024" ]
   includes = [ "*.rs" ]
 
-[formatter.statix]
-  command  = "treefmt-statix"
-  includes = [ "*.nix" ]
-
 [formatter.swift-format]
   command  = "swift-format"
   options  = [ "-i" ]
@@ -131,28 +91,14 @@ verbose                 = 1
   options  = [ "--write-changes", "--force-exclude", "-c", ".config/typos.toml" ]
   includes = [ "*" ]
 
-[formatter.xmllint]
+[formatter.xml]
   command  = "treefmt-xml"
   includes = [
     "*.xml",
     "*.svg",
-    "*.xhtml",
-    "*.xsl",
-    "*.xslt",
-    "*.dtd",
-    "*.xsd",
     "*.entitlements",
     "*.manifest",
     "*.plist",
     "*.storyboard",
     "*.xc{scheme,settings,workspacedata}"
-  ]
-
-[formatter.zizmor]
-  command  = "zizmor"
-  includes = [
-    ".github/workflows/*.yml",
-    ".github/workflows/*.yaml",
-    ".github/actions/**/*.yml",
-    ".github/actions/**/*.yaml"
   ]

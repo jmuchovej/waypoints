@@ -11,6 +11,7 @@ path = ["tooling/bin"]
 
 [[env]]
 CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}"
+JJ_HOOKS_RUNNER = "hk"
 TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/src-tauri/gen/android"
 TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/src-tauri"
 TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/src"
@@ -30,6 +31,8 @@ lockfile = true
 "aqua:crate-ci/typos" = "1.49.0"
 "aqua:getsops/sops" = "3.13.3"
 "aqua:google/keep-sorted" = "0.9.0"
+"aqua:jdx/hk" = "1.55.0"
+"aqua:lycheeverse/lychee" = "0.24.2"
 "aqua:mic92/nixfmt-rs" = "0.4.1"
 "aqua:mikefarah/yq" = "4.53.3"
 "aqua:nextest-rs/nextest/cargo-nextest" = "0.9.143"

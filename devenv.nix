@@ -22,7 +22,7 @@ in
       just = {
         package = pkgs.just;
         spec = "aqua:casey/just";
-        formatter = false; # the task runner too, so release CI keeps it
+        formatter = false;
       };
       nixfmt = {
         package = pkgs.nixfmt-rs;
@@ -64,6 +64,14 @@ in
         spec = "aqua:zizmorcore/zizmor";
         formatter = true;
       };
+      hk = {
+        package = pkgs.hk;
+        spec = "aqua:jdx/hk";
+      };
+      lychee = {
+        package = pkgs.lychee;
+        spec = "aqua:lycheeverse/lychee";
+      };
       keep-sorted = {
         package = pkgs.keep-sorted;
         spec = "aqua:google/keep-sorted";
@@ -84,12 +92,12 @@ in
         include = false;
       };
       treefmt = {
-        package = config.treefmt.config.package;
+        package = pkgs.treefmt;
         spec = "aqua:numtide/treefmt";
         os = [
           "linux"
           "macos"
-        ]; # no Windows release exists
+        ];
         formatter = true;
       };
 
@@ -121,12 +129,12 @@ in
         os = [
           "linux"
           "macos"
-        ]; # native gem extensions need a Unix toolchain
+        ];
       };
       xcodegen = {
         package = pkgs.xcodegen;
         spec = "aqua:yonaskolb/XcodeGen";
-        os = [ "macos" ]; # generates the Xcode project; nothing else needs it
+        os = [ "macos" ];
       };
       cargo-tauri = {
         package = pkgs.cargo-tauri;
@@ -183,6 +191,7 @@ in
         TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-android-path}";
         TAURI_IOS_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-ios-path}";
         TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
+        JJ_HOOKS_RUNNER = "hk";
       }
     ];
   };
@@ -196,6 +205,8 @@ in
     TAURI_IOS_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-ios-path}";
     TREEFMT_CONFIG = "${config.env.PROJECT_CONFIG_PATH}/treefmt.toml";
     CLIPPY_CONF_DIR = "${config.env.PROJECT_CONFIG_PATH}";
+    TREEFMT_TREE_ROOT = config.env.PROJECT_ROOT;
+    JJ_HOOKS_RUNNER = "hk";
   };
 
   waypoints.android = {
@@ -247,9 +258,6 @@ in
     lsp.enable = true;
   };
 
-  treefmt.enable = true;
-  treefmt.config.settings = pkgs.lib.importTOML config.env.TREEFMT_CONFIG;
-
   tasks."waypoints:sync-deny-targets" = {
     description = "Sync .cargo/deny.toml graph.targets from rust-toolchain.toml";
     package = pkgs.nushell;
@@ -259,35 +267,5 @@ in
       ".cargo/deny.toml"
     ];
     exec = builtins.readFile ./nix/devenv/bin/sync-deny-targets;
-  };
-
-  git-hooks.hooks = {
-    trim-trailing-whitespace.enable = true;
-    end-of-file-fixer.enable = true;
-    mixed-line-endings.enable = true;
-    check-yaml.enable = true;
-    check-symlinks.enable = true;
-    check-added-large-files.enable = true;
-    clippy.enable = true;
-    cargo-check.enable = true;
-    cargo-test = {
-      enable = true;
-      package = pkgs.cargo;
-      id = "cargo-test";
-      name = "cargo-test";
-      after = [ "cargo-check" ];
-      language = "system";
-      entry = "${config.git-hooks.hooks.cargo-test.package}/bin/cargo test";
-      files = "\\.rs$";
-      pass_filenames = false;
-    };
-    lychee = {
-      enable = true;
-      settings.configPath = ".config/lychee.toml";
-    };
-    treefmt = {
-      enable = true;
-      settings.fail-on-change = false;
-    };
   };
 }
