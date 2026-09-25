@@ -7,6 +7,7 @@
 # fetch, and app-code edits never invalidate it. To refresh the hash after a
 # `pnpm-lock.yaml` change, see the comment at `hash` below.
 {
+  root,
   lib,
   stdenv,
   fetchPnpmDeps,
@@ -15,25 +16,28 @@
   nodejs,
   deno,
   flavor,
+  # Passed down from package.nix, which reads it from the app manifest — the
+  # single place the version is tracked. Not re-read here: one parse, one
+  # source. See design.md D9.
+  version,
 }:
 let
-  inherit ((fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml)))
+  inherit ((fromTOML (builtins.readFile "${root}/src-tauri/configs/flavors/${flavor}.toml")))
     identifier
     ;
 
-  root = ../../..;
   # Everything pnpm needs to resolve the workspace — and nothing that would
   # vary per flavor or per app-code edit.
   manifests = lib.fileset.unions [
-    ../../../package.json
-    ../../../pnpm-lock.yaml
-    ../../../pnpm-workspace.yaml
-    ../../../patches
-    ../../../src/package.json
-    ../../../website/package.json
-    ../../../crates/domain/package.json
-    ../../../crates/cartograph/package.json
-    ../../../tooling/icongen/package.json
+    (root + "/package.json")
+    (root + "/pnpm-lock.yaml")
+    (root + "/pnpm-workspace.yaml")
+    (root + "/patches")
+    (root + "/src/package.json")
+    (root + "/website/package.json")
+    (root + "/crates/domain/package.json")
+    (root + "/crates/cartograph/package.json")
+    (root + "/tooling/icongen/package.json")
   ];
   # `devEngines` in package.json (node ^24.4, deno ^2.9.4, onFail: error) is
   # enforced at every pnpm boot, including inside the fetch sandbox.
@@ -44,24 +48,24 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "waypoints-frontend-${flavor}";
-  version = (fromTOML (builtins.readFile ../../../src-tauri/Cargo.toml)).package.version;
+  inherit version;
 
-  src = lib.fileset.toSource {
-    inherit root;
-    fileset = lib.fileset.unions [
-      manifests
-      # Workspace packages the app imports: plain checked-in TS exports.
-      ../../../crates/domain/typescript
-      ../../../crates/cartograph/typescript
-      (lib.fileset.difference ../../../src (
-        lib.fileset.unions [
-          (lib.fileset.maybeMissing ../../../src/node_modules)
-          (lib.fileset.maybeMissing ../../../src/.nuxt)
-          (lib.fileset.maybeMissing ../../../src/.output)
-        ]
-      ))
-    ];
-  };
+  src =
+    with lib.fileset;
+    toSource {
+      inherit root;
+      fileset = unions [
+        manifests
+        # Workspace packages the app imports: plain checked-in TS exports.
+        (root + "/crates/domain/typescript")
+        (root + "/crates/cartograph/typescript")
+        (difference (root + "/src") (unions [
+          (maybeMissing (root + "/src/node_modules"))
+          (maybeMissing (root + "/src/.nuxt"))
+          (maybeMissing (root + "/src/.output"))
+        ]))
+      ];
+    };
 
   nativeBuildInputs = [
     pnpm_11

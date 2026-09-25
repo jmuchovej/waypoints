@@ -8,6 +8,7 @@
 # Nix builds compile without the `self-update` feature: store paths cannot
 # rewrite themselves, so the updater notifies and never installs.
 {
+  root,
   lib,
   stdenv,
   rustPlatform,
@@ -19,6 +20,7 @@
   wrapGAppsHook4,
   glib-networking,
   webkitgtk_4_1,
+  libayatana-appindicator,
   flavor,
   # Escape hatch (see nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
   # e.g. from rust-overlay. Default: the consumer nixpkgs' rustPlatform.
@@ -28,11 +30,23 @@
   rev ? null,
 }:
 let
-  flavor-config = fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml);
+  inherit (stdenv.hostPlatform) isLinux;
+  inherit (lib) optionals;
+
+  # Channel identity (product name, identifier, icons, update endpoint) — never
+  # the version: a Tauri config `version` would override the manifest's.
+  flavor-config = fromTOML (builtins.readFile "${root}/src-tauri/configs/flavors/${flavor}.toml");
+
+  # The single source of the version, tracking the branch this tree sits on.
+  # Kept parseable by `builtins.fromTOML` (strict TOML 1.0) — see design.md D10.
+  app-version = (fromTOML (builtins.readFile "${root}/src-tauri/Cargo.toml")).package.version;
 
   platform = if stdenv.hostPlatform.isDarwin then "macos" else "linux";
 
-  frontend = callPackage ./_frontend.nix { inherit flavor; };
+  frontend = callPackage ./_frontend.nix {
+    inherit flavor root;
+    version = app-version;
+  };
 
   # Neutralize the dev-pipeline hooks: the frontend is prebuilt (no
   # beforeBuildCommand) and staged into the build tree — a relative path,
@@ -62,23 +76,25 @@ let
 in
 rust-platform.buildRustPackage (_finalAttrs: {
   pname = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
-  inherit (flavor-config) version;
+  version = app-version;
 
-  src = lib.fileset.toSource {
-    root = ../../..;
-    fileset = lib.fileset.unions [
-      ../../../Cargo.toml
-      ../../../Cargo.lock
-      ../../../crates
-      ../../../tooling
-      ../../../vendor
-      # Desktop build only — the generated mobile projects stay out.
-      (lib.fileset.difference ../../../src-tauri ../../../src-tauri/gen)
-    ];
-  };
+  src =
+    with lib.fileset;
+    toSource {
+      inherit root;
+      fileset = unions [
+        (root + "/Cargo.toml")
+        (root + "/Cargo.lock")
+        (root + "/crates")
+        (root + "/tooling")
+        (root + "/vendor")
+        # Desktop build only — the generated mobile projects stay out.
+        (difference (root + "/src-tauri") (root + "/src-tauri/gen"))
+      ];
+    };
 
   cargoLock = {
-    lockFile = ../../../Cargo.lock;
+    lockFile = root + "/Cargo.lock";
     outputHashes = {
       "gh-workflow-0.9.0" = "sha256-CMzElgOmzseY3JOw7g2Q9uDGrS3usCzzdQt/nVNcn+E=";
     };
@@ -106,14 +122,20 @@ rust-platform.buildRustPackage (_finalAttrs: {
   nativeBuildInputs = [
     cargo-tauri.hook
   ]
-  ++ lib.optionals stdenv.hostPlatform.isLinux [
+  ++ optionals isLinux [
     pkg-config
     wrapGAppsHook4
   ];
 
-  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+  buildInputs = optionals isLinux [
     glib-networking
     webkitgtk_4_1
+    # StatusNotifierItem client library — how `builders/tray.rs` publishes its
+    # tray icon on Linux, so load-bearing at runtime rather than build-only.
+    # The deb bundler is just where a missing one first shows up (it panics
+    # picking between the libayatana-/libappindicator3-1 `Depends:`), which
+    # means a green Rust build says nothing about this being present.
+    libayatana-appindicator
   ];
 
   # Stage the prebuilt frontend where the relative frontendDist expects it
