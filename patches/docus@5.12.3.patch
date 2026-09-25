@@ -15,7 +15,7 @@ index c2b099e..62cd43e 100644
 +        { rel: 'canonical', href: string } |
 +        { rel: 'alternate', href: string, hreflang: string }
 +      > = []
- 
+
        // Canonical URL
        if (canonicalUrl.value) {
 @@ -125,7 +132,8 @@ export function useSeo(options: UseSeoOptions) {
@@ -25,9 +25,9 @@ index c2b099e..62cd43e 100644
 -      const scripts: Array<{ type: string, innerHTML: string }> = []
 +      // `type` must be the literal to select unhead's JsonLdScript member.
 +      const scripts: Array<{ type: 'application/ld+json', innerHTML: string }> = []
- 
+
        if (!baseUrl.value || !title.value) return scripts
- 
+
 diff --git a/app/plugins/i18n.ts b/app/plugins/i18n.ts
 index 1d568b7..16a581d 100644
 --- a/app/plugins/i18n.ts
@@ -35,24 +35,24 @@ index 1d568b7..16a581d 100644
 @@ -1,4 +1,3 @@
 -import type { RouteLocationNormalized } from 'vue-router'
  import { consola } from 'consola'
- 
+
  const log = consola.withTag('docus')
 @@ -9,7 +8,10 @@ const localeFiles = import.meta.glob<{ default: Record<string, unknown> }>('../.
  export default defineNuxtPlugin(async () => {
    const nuxtApp = useNuxtApp()
- 
+
 -  const i18nConfig = nuxtApp.$config.public.i18n
 +  // Typed explicitly: when @nuxtjs/i18n is not installed the module adds no
 +  // runtime-config augmentation, so `public.i18n` widens to `{}`. The guard
 +  // below already handles it being absent at runtime.
 +  const i18nConfig = nuxtApp.$config.public.i18n as { defaultLocale?: string } | undefined
- 
+
    // If i18n is not enabled, fetch and provide the configured locale in app config
    if (!i18nConfig) {
 @@ -47,7 +49,10 @@ export default defineNuxtPlugin(async () => {
      return
    }
- 
+
 -  addRouteMiddleware((to: RouteLocationNormalized) => {
 +  // `to` is left to contextual typing from RouteMiddleware. Annotating it
 +  // pulled RouteLocationNormalized from docus' own vue-router instance, which
@@ -60,7 +60,7 @@ index 1d568b7..16a581d 100644
 +  addRouteMiddleware((to) => {
      if (to.path === '/') {
        const cookieLocale = useCookie('i18n_redirected').value || i18nConfig.defaultLocale || 'en'
- 
+
 diff --git a/content.config.ts b/content.config.ts
 index b6a9890..6f96fc8 100644
 --- a/content.config.ts
@@ -71,23 +71,23 @@ index b6a9890..6f96fc8 100644
  import { joinURL } from 'ufo'
 -import { landingPageExists, docsFolderExists } from './utils/pages'
 +import { docsFolderExists } from './utils/pages'
- 
+
  const { options } = useNuxt()
  const cwd = joinURL(options.rootDir, 'content')
  const locales = options.i18n?.locales
- 
+
 -const hasLandingPage = landingPageExists(options.rootDir)
 +// Landing collections removed by patch: this site owns its landing page
 +// (app/pages/index.vue + the pages_* collections); docus's index.md-driven
 +// landing_* collections would otherwise be force-created whenever index.md
 +// exists, and @nuxt/content has no hook to delete a merged collection.
  const hasDocsFolder = docsFolderExists(options.rootDir)
- 
+
  const createDocsSchema = () => z.object({
 @@ -28,16 +31,6 @@ if (locales && Array.isArray(locales)) {
      const code = (typeof locale === 'string' ? locale : locale.code).replace('-', '_')
      const hasLocaleDocs = docsFolderExists(options.rootDir, code)
- 
+
 -    if (!hasLandingPage) {
 -      collections[`landing_${code}`] = defineCollection({
 -        type: 'page',
@@ -117,7 +117,7 @@ index b6a9890..6f96fc8 100644
 -    })
 -  }
  }
- 
+
  export default defineContentConfig({ collections })
 diff --git a/modules/assistant/runtime/composables/useAssistant.ts b/modules/assistant/runtime/composables/useAssistant.ts
 index 7c40d8d..388db81 100644
@@ -130,7 +130,7 @@ index 7c40d8d..388db81 100644
 -      const defaultLocale = config.public.i18n?.defaultLocale || 'en'
 +      // See app/plugins/i18n.ts: `public.i18n` is `{}` without @nuxtjs/i18n.
 +      const defaultLocale = (config.public.i18n as { defaultLocale?: string } | undefined)?.defaultLocale || 'en'
- 
+
        const questions = localizedConfig[currentLocale]
          || localizedConfig[defaultLocale]
 diff --git a/nuxt.config.ts b/nuxt.config.ts
@@ -142,11 +142,11 @@ index 5a5267d..ca3ade6 100644
 +import { defineNuxtConfig } from 'nuxt/config'
  import { extendViteConfig, createResolver, useNuxt } from '@nuxt/kit'
 +import type { NitroConfig } from 'nitropack'
- 
+
  const { resolve } = createResolver(import.meta.url)
- 
+
  type DocusI18nOptions = { locales?: Array<string | { code: string }> }
- 
+
 -export default defineNuxtConfig({
 +// Assigned to an (un-annotated) const so the object is not subject to TS's
 +// excess-property check: several keys here (content/mdc/icon/ogImage/robots)
@@ -179,7 +179,7 @@ index 5a5267d..ca3ade6 100644
 -    'nitro:config'(nitroConfig) {
 +    'nitro:config'(nitroConfig: NitroConfig) {
        const nuxt = useNuxt()
- 
+
        const i18nOptions = (nuxt.options as typeof nuxt.options & { i18n?: DocusI18nOptions }).i18n
 @@ -133,4 +142,9 @@ export default defineNuxtConfig({
      ],

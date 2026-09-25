@@ -1,8 +1,8 @@
 #:schema ../gen/schemas/desktop-schema.json
 
-identifier = "main"
+identifier  = "main"
 description = "Capabilities for the app window"
-windows = ["*"]
+windows     = [ "*" ]
 permissions = [
   # https://tauri.app/reference/acl/core-permissions/
   "core:default",
@@ -25,7 +25,7 @@ permissions = [
   "store:default",
 
   "fs:default",
-  { identifier = "fs:allow-exists", allow = [{ path = "$APPDATA/*" }] },
+  { identifier = "fs:allow-exists", allow = [ { path = "$APPDATA/*" } ] },
   "fs:allow-runtime-meta-recursive",
   "fs:allow-runtime-read-recursive",
   "fs:allow-runtime-write-recursive",

@@ -1,6 +1,23 @@
 toml-version = "v1.1.0"
 
 [files]
-include = ["**/*.toml"]
-exclude = ["vendor/**/*.toml"]
-respect-ignore-files = true
+  include              = [ "**/*.toml" ]
+  exclude              = [ "vendor/**/*.toml" ]
+  respect-ignore-files = true
+
+[format]
+  [format.rules]
+    array-bracket-space-width         = 1
+    array-comma-space-width           = 1
+    comment-style                     = "normalize"
+    indent-style                      = "space"
+    indent-sub-tables                 = true
+    indent-table-key-value-pairs      = true
+    inline-table-brace-space-width    = 1
+    key-quote-style                   = "double"
+    key-value-equals-sign-alignment   = true
+    key-value-equals-sign-space-width = 1
+
+    line-width                 = 88
+    string-quote-style         = "double"
+    trailing-comment-alignment = true

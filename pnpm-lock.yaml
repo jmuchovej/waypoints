@@ -653,8 +653,8 @@ catalogs:
       version: 4.4.3
 
 patchedDependencies:
-  docus@5.12.3: 39723d051dcf90b36f7b893cfc5e4cff34ce0cd49e6b3ecdd59ca373a1b7e0bc
-  nuxtseo-layer-devtools@5.3.12: 9d6cc2cb626171e994a874e2f0a80d91341adb0b69d1479d9e8cf774ce5ac1a7
+  docus@5.12.3: ba6979a4c8f70b07f671ebd9a1a935bd5bd029ad40b6c3f9810d6197f2bbb7b9
+  nuxtseo-layer-devtools@5.3.12: 925513116146eb3669dd216fd6ab8194ddabd78725c847f8f9026afaf2a9fb9d
 
 importers:
 
@@ -1063,7 +1063,7 @@ importers:
         version: 0.6.2(beautiful-mermaid@1.1.3)(shiki@4.4.3)
       docus:
         specifier: catalog:website
-        version: 5.12.3(patch_hash=39723d051dcf90b36f7b893cfc5e4cff34ce0cd49e6b3ecdd59ca373a1b7e0bc)(d535b82573ed318d9ddbb129a190621e)
+        version: 5.12.3(patch_hash=ba6979a4c8f70b07f671ebd9a1a935bd5bd029ad40b6c3f9810d6197f2bbb7b9)(d535b82573ed318d9ddbb129a190621e)
       drizzle-orm:
         specifier: catalog:website
         version: 0.44.7(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.15.15)(@opentelemetry/api@1.9.1)(better-sqlite3@12.11.1)(kysely@0.29.5)
@@ -1127,7 +1127,7 @@ importers:
         version: 0.31.10
       nuxtseo-layer-devtools:
         specifier: catalog:website
-        version: 5.3.12(patch_hash=9d6cc2cb626171e994a874e2f0a80d91341adb0b69d1479d9e8cf774ce5ac1a7)(048a60ca5e36be94003a988766b6e974)
+        version: 5.3.12(patch_hash=925513116146eb3669dd216fd6ab8194ddabd78725c847f8f9026afaf2a9fb9d)(048a60ca5e36be94003a988766b6e974)
       typescript:
         specifier: catalog:website
         version: 6.0.3
@@ -18934,7 +18934,7 @@ snapshots:
 
   doctypes@1.1.0: {}
 
-  docus@5.12.3(patch_hash=39723d051dcf90b36f7b893cfc5e4cff34ce0cd49e6b3ecdd59ca373a1b7e0bc)(d535b82573ed318d9ddbb129a190621e):
+  docus@5.12.3(patch_hash=ba6979a4c8f70b07f671ebd9a1a935bd5bd029ad40b6c3f9810d6197f2bbb7b9)(d535b82573ed318d9ddbb129a190621e):
     dependencies:
       '@ai-sdk/gateway': 3.0.173(zod@4.4.3)
       '@ai-sdk/mcp': 1.0.70(zod@4.4.3)
@@ -22379,7 +22379,7 @@ snapshots:
       - xml2js
       - yaml
 
-  nuxtseo-layer-devtools@5.3.12(patch_hash=9d6cc2cb626171e994a874e2f0a80d91341adb0b69d1479d9e8cf774ce5ac1a7)(048a60ca5e36be94003a988766b6e974):
+  nuxtseo-layer-devtools@5.3.12(patch_hash=925513116146eb3669dd216fd6ab8194ddabd78725c847f8f9026afaf2a9fb9d)(048a60ca5e36be94003a988766b6e974):
     dependencies:
       '@iconify-json/carbon': 1.2.25
       '@nuxt/devtools-kit': 4.0.0-alpha.7(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.135.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)))(vite@8.2.1(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0))

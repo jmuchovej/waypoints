@@ -11,28 +11,32 @@
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
   };
 
-  outputs = inputs @ {flake-parts, ...}:
-    flake-parts.lib.mkFlake {inherit inputs;} {
+  outputs =
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "aarch64-darwin"
         "x86_64-linux"
         "aarch64-linux"
       ];
 
-      flake.overlays.default = import ./nix/overlay.nix {};
+      flake.overlays.default = import ./nix/overlay.nix { };
 
-      perSystem = {pkgs, ...}: let
-        overlaid = pkgs.extend (import ./nix/overlay.nix {});
-        # Stamp build metadata from the flake source when available; build.rs
-        # falls back to "unknown" on dirty/unknown trees.
-        stamp = drv: drv.override {rev = inputs.self.rev or inputs.self.dirtyRev or null;};
-      in {
-        packages = {
-          waypoints = stamp overlaid.waypoints;
-          waypoints-preview = stamp overlaid.waypoints-preview;
-          waypoints-nightly = stamp overlaid.waypoints-nightly;
-          default = stamp overlaid.waypoints;
+      perSystem =
+        { pkgs, ... }:
+        let
+          overlaid = pkgs.extend (import ./nix/overlay.nix { });
+          # Stamp build metadata from the flake source when available; build.rs
+          # falls back to "unknown" on dirty/unknown trees.
+          stamp = drv: drv.override { rev = inputs.self.rev or inputs.self.dirtyRev or null; };
+        in
+        {
+          packages = {
+            waypoints = stamp overlaid.waypoints;
+            waypoints-preview = stamp overlaid.waypoints-preview;
+            waypoints-nightly = stamp overlaid.waypoints-nightly;
+            default = stamp overlaid.waypoints;
+          };
         };
-      };
     };
 }

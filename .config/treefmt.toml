@@ -84,26 +84,17 @@ verbose                 = 1
   options  = [ "-c", ".config/oxfmtrc.jsonc" ]
   excludes = [ "website/*.md" ]
   includes = [
-    "*.cjs",
-    "*.css",
+    "*.{css,scss}",
     "*.graphql",
     "*.hbs",
     "*.html",
-    "*.js",
-    "*.json",
-    "*.json5",
-    "*.jsonc",
-    "*.jsx",
-    "*.md",
-    "*.mdx",
-    "*.mjs",
-    "*.mustache",
-    "*.scss",
-    "*.ts",
-    "*.tsx",
+    "*.{cjs,mjs,js,jsx}",
+    "*.{json,json5,jsonc}",
+    "*.{md,mdx}",
+    "*.{hbs,mustache}",
+    "*.{ts,tsx}",
     "*.vue",
-    "*.yaml",
-    "*.yml"
+    "*.{yaml,yml}",
   ]
 
 [formatter.oxipng]

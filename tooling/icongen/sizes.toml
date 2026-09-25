@@ -19,7 +19,7 @@ macOS = [
 ]
 
 # Windows .ico multi-resolution set.
-windows = [{ px = 16 }, { px = 32 }, { px = 48 }, { px = 256 }]
+windows = [ { px = 16 }, { px = 32 }, { px = 48 }, { px = 256 } ]
 
 # iOS AppIcon.appiconset manifest (full modern set: iPhone + iPad + marketing).
 iOS = [
@@ -54,9 +54,9 @@ menu-bar = [
 
 # Android adaptive-icon foreground layer: 108dp at each mipmap density.
 android = [
-  { density = "mdpi", px = 108 },
-  { density = "hdpi", px = 162 },
-  { density = "xhdpi", px = 216 },
-  { density = "xxhdpi", px = 324 },
-  { density = "xxxhdpi", px = 432 },
+  { px = 108, density = "mdpi" },
+  { px = 162, density = "hdpi" },
+  { px = 216, density = "xhdpi" },
+  { px = 324, density = "xxhdpi" },
+  { px = 432, density = "xxxhdpi" },
 ]

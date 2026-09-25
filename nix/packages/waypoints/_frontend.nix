@@ -15,8 +15,11 @@
   nodejs,
   deno,
   flavor,
-}: let
-  inherit ((builtins.fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml))) identifier;
+}:
+let
+  inherit ((fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml)))
+    identifier
+    ;
 
   root = ../../..;
   # Everything pnpm needs to resolve the workspace — and nothing that would
@@ -39,89 +42,88 @@
     deno
   ];
 in
-  stdenv.mkDerivation (finalAttrs: {
-    pname = "waypoints-frontend-${flavor}";
-    version = (builtins.fromTOML (builtins.readFile ../../../src-tauri/Cargo.toml)).package.version;
+stdenv.mkDerivation (finalAttrs: {
+  pname = "waypoints-frontend-${flavor}";
+  version = (fromTOML (builtins.readFile ../../../src-tauri/Cargo.toml)).package.version;
 
+  src = lib.fileset.toSource {
+    inherit root;
+    fileset = lib.fileset.unions [
+      manifests
+      # Workspace packages the app imports: plain checked-in TS exports.
+      ../../../crates/domain/typescript
+      ../../../crates/cartograph/typescript
+      (lib.fileset.difference ../../../src (
+        lib.fileset.unions [
+          (lib.fileset.maybeMissing ../../../src/node_modules)
+          (lib.fileset.maybeMissing ../../../src/.nuxt)
+          (lib.fileset.maybeMissing ../../../src/.output)
+        ]
+      ))
+    ];
+  };
+
+  nativeBuildInputs = [
+    pnpm_11
+    pnpmConfigHook
+  ]
+  ++ runtimes;
+
+  pnpmDeps = fetchPnpmDeps {
+    pname = "waypoints-frontend";
+    inherit (finalAttrs) version;
     src = lib.fileset.toSource {
       inherit root;
-      fileset = lib.fileset.unions [
-        manifests
-        # Workspace packages the app imports: plain checked-in TS exports.
-        ../../../crates/domain/typescript
-        ../../../crates/cartograph/typescript
-        (lib.fileset.difference ../../../src (
-          lib.fileset.unions [
-            (lib.fileset.maybeMissing ../../../src/node_modules)
-            (lib.fileset.maybeMissing ../../../src/.nuxt)
-            (lib.fileset.maybeMissing ../../../src/.output)
-          ]
-        ))
-      ];
+      fileset = manifests;
     };
+    pnpm = pnpm_11;
+    fetcherVersion = 4;
+    nativeBuildInputs = [ deno ];
+    # Refresh after any pnpm-lock.yaml change:
+    #   set to lib.fakeHash, run `nix build .#waypoints`, copy the
+    #   "got:" hash from the mismatch error back here.
+    hash = "sha256-zFz9iUIhZQ66U5lSjCQ+RKiAXfUC7HcWuEAMd2CKgcU=";
+  };
 
-    nativeBuildInputs =
-      [
-        pnpm_11
-        pnpmConfigHook
-      ]
-      ++ runtimes;
+  env = {
+    VITE_WAYPOINTS_FLAVOR = identifier;
+    NUXT_TELEMETRY_DISABLED = "1";
+  };
 
-    pnpmDeps = fetchPnpmDeps {
-      pname = "waypoints-frontend";
-      inherit (finalAttrs) version;
-      src = lib.fileset.toSource {
-        inherit root;
-        fileset = manifests;
-      };
-      pnpm = pnpm_11;
-      fetcherVersion = 4;
-      nativeBuildInputs = [deno];
-      # Refresh after any pnpm-lock.yaml change:
-      #   set to lib.fakeHash, run `nix build .#waypoints`, copy the
-      #   "got:" hash from the mismatch error back here.
-      hash = "sha256-zFz9iUIhZQ66U5lSjCQ+RKiAXfUC7HcWuEAMd2CKgcU=";
-    };
+  buildPhase = ''
+    runHook preBuild
 
-    env = {
-      VITE_WAYPOINTS_FLAVOR = identifier;
-      NUXT_TELEMETRY_DISABLED = "1";
-    };
+    # Verification hook (task 5.2): production DCE strips the only consumer
+    # of VITE_WAYPOINTS_FLAVOR (dev-only httpTransport), so the identifier
+    # never appears in emitted assets. Assert the injection at build time
+    # instead — auditable via `nix log`.
+    [ -n "$VITE_WAYPOINTS_FLAVOR" ] || {
+      echo "VITE_WAYPOINTS_FLAVOR is empty" >&2
+      exit 1
+    }
+    echo "building frontend flavor=${flavor} VITE_WAYPOINTS_FLAVOR=$VITE_WAYPOINTS_FLAVOR"
 
-    buildPhase = ''
-      runHook preBuild
+    cd src
+    pnpm exec nuxi generate
 
-      # Verification hook (task 5.2): production DCE strips the only consumer
-      # of VITE_WAYPOINTS_FLAVOR (dev-only httpTransport), so the identifier
-      # never appears in emitted assets. Assert the injection at build time
-      # instead — auditable via `nix log`.
-      [ -n "$VITE_WAYPOINTS_FLAVOR" ] || {
-        echo "VITE_WAYPOINTS_FLAVOR is empty" >&2
-        exit 1
-      }
-      echo "building frontend flavor=${flavor} VITE_WAYPOINTS_FLAVOR=$VITE_WAYPOINTS_FLAVOR"
+    runHook postBuild
+  '';
 
-      cd src
-      pnpm exec nuxi generate
+  # `nuxi generate` emits the browsable site under `.output/public`
+  # (`.output` itself carries nitro metadata). Normalize: $out is the
+  # directory that holds index.html.
+  installPhase = ''
+    runHook preInstall
 
-      runHook postBuild
-    '';
+    if [ -f .output/public/index.html ]; then
+      cp -r .output/public $out
+    elif [ -f .output/index.html ]; then
+      cp -r .output $out
+    else
+      echo "no index.html under src/.output — nuxi generate layout changed?" >&2
+      exit 1
+    fi
 
-    # `nuxi generate` emits the browsable site under `.output/public`
-    # (`.output` itself carries nitro metadata). Normalize: $out is the
-    # directory that holds index.html.
-    installPhase = ''
-      runHook preInstall
-
-      if [ -f .output/public/index.html ]; then
-        cp -r .output/public $out
-      elif [ -f .output/index.html ]; then
-        cp -r .output $out
-      else
-        echo "no index.html under src/.output — nuxi generate layout changed?" >&2
-        exit 1
-      fi
-
-      runHook postInstall
-    '';
-  })
+    runHook postInstall
+  '';
+})

@@ -1,18 +1,18 @@
 #:schema https://schema.tauri.app/config/2
 
 productName = "Waypoints"
-version = "0.1.0"
-identifier = "so.waypoints"
+version     = "0.1.0"
+identifier  = "so.waypoints"
 
 [plugins.updater]
-pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
-endpoints = ["https://waypoints.so/api/v1/update/stable.json"]
+  pubkey    = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
+  endpoints = [ "https://waypoints.so/api/v1/update/stable.json" ]
 
 [bundle]
-icon = [
-  "icons/stable/32x32.png",
-  "icons/stable/128x128.png",
-  "icons/stable/128x128@2x.png",
-  "icons/stable/icon.icns",
-  "icons/stable/icon.ico",
-]
+  icon = [
+    "icons/stable/32x32.png",
+    "icons/stable/128x128.png",
+    "icons/stable/128x128@2x.png",
+    "icons/stable/icon.icns",
+    "icons/stable/icon.ico",
+  ]

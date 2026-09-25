@@ -1,31 +1,31 @@
 [package]
-name = "outpost-hold"
-version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-description = """
+  name                   = "outpost-hold"
+  version                = "0.1.0"
+  edition.workspace      = true
+  rust-version.workspace = true
+  description            = """
 Outpost Hold — the storage interface for Outpost records.
 """
-documentation = "https://docs.waypoints.so/outpost/hold"
-readme.workspace = true
-homepage.workspace = true
-repository = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost-hold"
-license.workspace = true
-publish.workspace = true
+  documentation          = "https://docs.waypoints.so/outpost/hold"
+  readme.workspace       = true
+  homepage.workspace     = true
+  repository             = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost-hold"
+  license.workspace      = true
+  publish.workspace      = true
 
 [dependencies]
-bedrock.workspace = true
+  bedrock.workspace = true
 
-blake3.workspace = true
-bytes.workspace = true
-ed25519-dalek.workspace = true
-outpost-protocol.workspace = true
-postcard.workspace = true
-thiserror.workspace = true
+  blake3.workspace           = true
+  bytes.workspace            = true
+  ed25519-dalek.workspace    = true
+  outpost-protocol.workspace = true
+  postcard.workspace         = true
+  thiserror.workspace        = true
 
 [dev-dependencies]
-tempfile.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+  tempfile.workspace = true
+  tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
 
 [lints]
-workspace = true
+  workspace = true

@@ -1,25 +1,25 @@
 [package]
-name = "bedrock-core"
-version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-description = """
+  name                   = "bedrock-core"
+  version                = "0.1.0"
+  edition.workspace      = true
+  rust-version.workspace = true
+  description            = """
 Bedrock's core schema vocabulary.
 """
-documentation = "https://docs.waypoints.so/bedrock"
-readme = "README.md"
-homepage.workspace = true
-repository = "https://dev.waypoints.so/bedrock-core"
-license.workspace = true
-publish.workspace = true
+  documentation          = "https://docs.waypoints.so/bedrock"
+  readme                 = "README.md"
+  homepage.workspace     = true
+  repository             = "https://dev.waypoints.so/bedrock-core"
+  license.workspace      = true
+  publish.workspace      = true
 
 [dependencies]
-chrono = { workspace = true, features = ["alloc"] }
-indexmap.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-uuid.workspace = true
+  chrono               = { workspace = true, features = [ "alloc" ] }
+  indexmap.workspace   = true
+  serde.workspace      = true
+  serde_json.workspace = true
+  thiserror.workspace  = true
+  uuid.workspace       = true
 
 [lints]
-workspace = true
+  workspace = true

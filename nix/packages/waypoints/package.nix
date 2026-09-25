@@ -26,15 +26,13 @@
   # Commit stamped into build metadata (flake passes self.rev/dirtyRev;
   # build.rs falls back to "unknown" when absent).
   rev ? null,
-}: let
-  flavor-config = builtins.fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml);
+}:
+let
+  flavor-config = fromTOML (builtins.readFile ../../../src-tauri/configs/flavors/${flavor}.toml);
 
-  platform =
-    if stdenv.hostPlatform.isDarwin
-    then "macos"
-    else "linux";
+  platform = if stdenv.hostPlatform.isDarwin then "macos" else "linux";
 
-  frontend = callPackage ./_frontend.nix {inherit flavor;};
+  frontend = callPackage ./_frontend.nix { inherit flavor; };
 
   # Neutralize the dev-pipeline hooks: the frontend is prebuilt (no
   # beforeBuildCommand) and staged into the build tree — a relative path,
@@ -43,101 +41,101 @@
   # site into the runtime closure alongside the embedded copy. No updater
   # artifacts: they exist for the self-updating bundler pipeline and demand
   # the signing key, which the sandbox rightly lacks.
-  build-config = writeText "waypoints-${flavor}-build.json" (builtins.toJSON {
-    build = {
-      beforeBuildCommand = "";
-      frontendDist = "./frontend-dist";
-    };
-    bundle.createUpdaterArtifacts = false;
-  });
+  build-config = writeText "waypoints-${flavor}-build.json" (
+    builtins.toJSON {
+      build = {
+        beforeBuildCommand = "";
+        frontendDist = "./frontend-dist";
+      };
+      bundle.createUpdaterArtifacts = false;
+    }
+  );
 
   rust-platform =
-    if rustToolchain != null
-    then
+    if rustToolchain != null then
       makeRustPlatform {
         cargo = rustToolchain;
         rustc = rustToolchain;
       }
-    else rustPlatform;
+    else
+      rustPlatform;
 in
-  rust-platform.buildRustPackage (_finalAttrs: {
-    pname =
-      if flavor == "stable"
-      then "waypoints"
-      else "waypoints-${flavor}";
-    inherit (flavor-config) version;
+rust-platform.buildRustPackage (_finalAttrs: {
+  pname = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
+  inherit (flavor-config) version;
 
-    src = lib.fileset.toSource {
-      root = ../../..;
-      fileset = lib.fileset.unions [
-        ../../../Cargo.toml
-        ../../../Cargo.lock
-        ../../../crates
-        ../../../tooling
-        ../../../vendor
-        # Desktop build only — the generated mobile projects stay out.
-        (lib.fileset.difference ../../../src-tauri ../../../src-tauri/gen)
-      ];
-    };
-
-    cargoLock = {
-      lockFile = ../../../Cargo.lock;
-      outputHashes = {
-        "gh-workflow-0.9.0" = "sha256-CMzElgOmzseY3JOw7g2Q9uDGrS3usCzzdQt/nVNcn+E=";
-      };
-    };
-
-    buildAndTestSubdir = "src-tauri";
-
-    # Flavors are additive cargo features over `desktop`; `self-update` (a
-    # default feature) is deliberately absent.
-    cargoBuildNoDefaultFeatures = true;
-    cargoBuildFeatures = [
-      "desktop"
-      flavor
+  src = lib.fileset.toSource {
+    root = ../../..;
+    fileset = lib.fileset.unions [
+      ../../../Cargo.toml
+      ../../../Cargo.lock
+      ../../../crates
+      ../../../tooling
+      ../../../vendor
+      # Desktop build only — the generated mobile projects stay out.
+      (lib.fileset.difference ../../../src-tauri ../../../src-tauri/gen)
     ];
+  };
 
-    tauriBuildFlags = [
-      "--config"
-      "configs/platforms/${platform}.toml"
-      "--config"
-      "configs/flavors/${flavor}.toml"
-      "--config"
-      "${build-config}"
-    ];
-
-    nativeBuildInputs =
-      [cargo-tauri.hook]
-      ++ lib.optionals stdenv.hostPlatform.isLinux [
-        pkg-config
-        wrapGAppsHook4
-      ];
-
-    buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
-      glib-networking
-      webkitgtk_4_1
-    ];
-
-    # Stage the prebuilt frontend where the relative frontendDist expects it
-    # (preBuild runs at the workspace root, before the src-tauri pushd).
-    preBuild = ''
-      cp -r ${frontend} src-tauri/frontend-dist
-    '';
-
-    env = lib.optionalAttrs (rev != null) {
-      GITHUB_SHA = rev;
+  cargoLock = {
+    lockFile = ../../../Cargo.lock;
+    outputHashes = {
+      "gh-workflow-0.9.0" = "sha256-CMzElgOmzseY3JOw7g2Q9uDGrS3usCzzdQt/nVNcn+E=";
     };
+  };
 
-    doCheck = false;
+  buildAndTestSubdir = "src-tauri";
 
-    meta = {
-      description = "Local-first Markdown knowledge management (${flavor-config.productName})";
-      homepage = "https://waypoints.so";
-      platforms = [
-        "aarch64-darwin"
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
-      mainProgram = "waypoints";
-    };
-  })
+  # Flavors are additive cargo features over `desktop`; `self-update` (a
+  # default feature) is deliberately absent.
+  cargoBuildNoDefaultFeatures = true;
+  cargoBuildFeatures = [
+    "desktop"
+    flavor
+  ];
+
+  tauriBuildFlags = [
+    "--config"
+    "configs/platforms/${platform}.toml"
+    "--config"
+    "configs/flavors/${flavor}.toml"
+    "--config"
+    "${build-config}"
+  ];
+
+  nativeBuildInputs = [
+    cargo-tauri.hook
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    pkg-config
+    wrapGAppsHook4
+  ];
+
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    glib-networking
+    webkitgtk_4_1
+  ];
+
+  # Stage the prebuilt frontend where the relative frontendDist expects it
+  # (preBuild runs at the workspace root, before the src-tauri pushd).
+  preBuild = ''
+    cp -r ${frontend} src-tauri/frontend-dist
+  '';
+
+  env = lib.optionalAttrs (rev != null) {
+    GITHUB_SHA = rev;
+  };
+
+  doCheck = false;
+
+  meta = {
+    description = "Local-first Markdown knowledge management (${flavor-config.productName})";
+    homepage = "https://waypoints.so";
+    platforms = [
+      "aarch64-darwin"
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
+    mainProgram = "waypoints";
+  };
+})

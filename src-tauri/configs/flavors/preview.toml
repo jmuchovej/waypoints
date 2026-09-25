@@ -1,18 +1,18 @@
 #:schema https://schema.tauri.app/config/2
 
 productName = "Waypoints (Preview)"
-version = "0.1.0"
-identifier = "so.waypoints.preview"
+version     = "0.1.0"
+identifier  = "so.waypoints.preview"
 
 [plugins.updater]
-pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
-endpoints = ["https://waypoints.so/api/v1/update/preview.json"]
+  pubkey    = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
+  endpoints = [ "https://waypoints.so/api/v1/update/preview.json" ]
 
 [bundle]
-icon = [
-  "icons/preview/32x32.png",
-  "icons/preview/128x128.png",
-  "icons/preview/128x128@2x.png",
-  "icons/preview/icon.icns",
-  "icons/preview/icon.ico",
-]
+  icon = [
+    "icons/preview/32x32.png",
+    "icons/preview/128x128.png",
+    "icons/preview/128x128@2x.png",
+    "icons/preview/icon.icns",
+    "icons/preview/icon.ico",
+  ]
