@@ -1,0 +1,12 @@
+[alias]
+xtask = "run --package xtask --"
+
+# macOS: sign every linked executable with a stable identity so the
+# application firewall recognizes rebuilt dev binaries (routable binds) and
+# prompts once instead of on every rebuild. A no-op without an identity in
+# the keychain — see tooling/bin/macos-codesigning-linker.
+[target.aarch64-apple-darwin]
+linker = "tooling/bin/macos-codesigning-linker"
+
+[target.x86_64-apple-darwin]
+linker = "tooling/bin/macos-codesigning-linker"
