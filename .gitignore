@@ -1,6 +1,9 @@
 .devenv/
 .direnv/
 .devenv.flake.nix
+# `nix build` out-links. Also gc roots, so a stray one pins its closure.
+result
+result-*
 local.properties
 .mcp.json
 .android/
