@@ -144,7 +144,15 @@ rust-platform.buildRustPackage (_finalAttrs: {
     cp -r ${frontend} src-tauri/frontend-dist
   '';
 
-  env = lib.optionalAttrs (rev != null) {
+  # `WAYPOINTS_FLAVOR` is what build.rs reads for the channel it stamps, and
+  # `src-tauri/justfile` exports the same — without it every package reports
+  # itself as `development`, whatever its cargo features say. `WAYPOINTS_BUILD`
+  # stays unset on purpose: it only enables a wall-clock timestamp, and the
+  # store path already identifies the build.
+  env = {
+    WAYPOINTS_FLAVOR = flavor;
+  }
+  // lib.optionalAttrs (rev != null) {
     GITHUB_SHA = rev;
   };
 
