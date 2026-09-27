@@ -20,6 +20,10 @@ mod commands {
     pub mod territory;
 }
 
+/// This build's identity, readable without starting the app — backs the
+/// `--version` flag so a packaged build can be identified headlessly.
+pub use commands::meta::info as build_info;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::fmt()
