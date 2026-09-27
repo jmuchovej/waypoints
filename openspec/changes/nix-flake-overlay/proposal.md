@@ -40,3 +40,4 @@ None. The devenv module extraction is a pure refactor — byte-identical generat
 - Android/iOS builds via Nix.
 - Making `nix build` the developer inner loop — `just` + cargo remains the iteration path.
 - Binary cache (cachix) publishing for overlay consumers.
+- Asserting the Linux package's **graphical** launch (2026-09-27). Everything checkable without a display is verified — the binary, a `desktop-file-validate`-clean entry, hicolor icons, closure hygiene, and the version the build reports. Confirming a window actually draws needs a GUI Linux environment with a window manager, which is disproportionate infrastructure here. The spec's "Linux desktop integration" scenario is consequently asserted rather than verified.
