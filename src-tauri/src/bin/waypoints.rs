@@ -2,12 +2,15 @@
 
 fn main() {
     // Answered before any runtime starts, so a packaged build can be identified
-    // without a display. Matched exactly, so a forwarded `waypoints://` URL or
-    // any other launch argument still falls through to the app.
-    if std::env::args()
-        .skip(1)
-        .any(|arg| arg == "--version" || arg == "-V")
-    {
+    // without a display.
+    //
+    // Matched as the *sole* argument rather than anywhere in argv: a Tauri app
+    // receives arguments it must not interpret — deep links arrive this way on
+    // Linux and Windows and are forwarded by the single-instance plugin, and
+    // macOS passes process serial numbers on some launch paths. Anything else,
+    // including `waypoints://… --version`, falls through to the app.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if matches!(args.as_slice(), [flag] if flag == "--version" || flag == "-V") {
         let build = waypoints::build_info();
         // `built_at` is empty unless the build opted into a wall-clock stamp, so
         // omit the clause rather than inventing one.
