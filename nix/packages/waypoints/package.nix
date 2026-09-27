@@ -28,6 +28,12 @@
   # Commit stamped into build metadata (flake passes self.rev/dirtyRev;
   # build.rs falls back to "unknown" when absent).
   rev ? null,
+  # Replaces the flavor's updater endpoints, for exercising the notify-only
+  # update path against a controlled feed without editing a tracked config:
+  #   (pkgs.waypoints.override { updaterEndpoints = [ "https://…/test.json" ]; })
+  # Leave null for real builds — a package that ships pointing at a test feed
+  # would never see genuine releases.
+  updaterEndpoints ? null,
 }:
 let
   inherit (stdenv.hostPlatform) isLinux;
@@ -56,13 +62,18 @@ let
   # artifacts: they exist for the self-updating bundler pipeline and demand
   # the signing key, which the sandbox rightly lacks.
   build-config = writeText "waypoints-${flavor}-build.json" (
-    builtins.toJSON {
-      build = {
-        beforeBuildCommand = "";
-        frontendDist = "./frontend-dist";
-      };
-      bundle.createUpdaterArtifacts = false;
-    }
+    builtins.toJSON (
+      {
+        build = {
+          beforeBuildCommand = "";
+          frontendDist = "./frontend-dist";
+        };
+        bundle.createUpdaterArtifacts = false;
+      }
+      // lib.optionalAttrs (updaterEndpoints != null) {
+        plugins.updater.endpoints = updaterEndpoints;
+      }
+    )
   );
 
   rust-platform =
