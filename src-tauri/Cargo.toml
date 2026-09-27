@@ -1,3 +1,6 @@
+# Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
+#:tombi toml-version = "v1.0.0"
+
 [package]
   name                   = "Waypoints"
   version                = "0.1.0"
@@ -25,11 +28,9 @@
   async-trait.workspace        = true
   chrono.workspace             = true
   resvg.workspace              = true
-  rustls                       = {
-    workspace        = true,
-    default-features = false,
-    features         = [ "ring" ]
-  }
+  rustls                       = { workspace = true, default-features = false, features = [
+    "ring"
+  ] }
   serde.workspace              = true
   serde_json.workspace         = true
   thiserror.workspace          = true
@@ -68,9 +69,6 @@
   development = [ "store/development" ]
   nightly     = [ "store/nightly" ]
   preview     = [ "store/preview" ]
-  # In-place upgrades via the updater plugin. Off for store-installed builds
-  # (e.g. Nix), which check the endpoint and notify but never write to their
-  # own install path.
   self-update = []
   stable      = [ "store/stable" ]
 
