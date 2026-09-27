@@ -26,9 +26,9 @@ None. The devenv module extraction is a pure refactor — byte-identical generat
 ## Impact
 
 - **`devenv.nix`**: shrinks to configuration + `imports`; new `nix/devenv/{mise,treefmt,android}.nix` modules own their transformation logic and the generated files they feed.
-- **New files**: `flake.nix`, `flake.lock`, `nix/overlay.nix`, `nix/packages/{frontend,waypoints}.nix`.
-- **`src-tauri`**: the updater path needs a build-time distinction so Nix builds check-and-notify without installing (exact mechanism is a design decision).
-- **Version control**: `flake.lock` and the pnpm fixed-output hash become committed artifacts that must track `pnpm-lock.yaml` changes.
+- **New files**: `flake.nix`, `flake.lock`, `nix/overlay.nix`, `nix/packages/waypoints/{package,_frontend}.nix`.
+- **`src-tauri`**: the updater path needs a build-time distinction so Nix builds check-and-notify without installing (exact mechanism is a design decision). The app manifest also becomes the single source of the packaged version, so the flavor configs drop their `version` fields (see design.md D9).
+- **Version control**: `flake.lock`, `Cargo.lock`, and the pnpm fixed-output hash become committed artifacts. `Cargo.lock` must be tracked at all — the flake source omits gitignored files, so an untracked lock is invisible to the build; the FOD hash must track `pnpm-lock.yaml` changes.
 - **No consumer-imposed dependencies**: the overlay uses only `final:`/`prev:`; the flake's own nixpkgs pin serves CI/local `nix build` only.
 
 ## Non-goals

@@ -22,6 +22,13 @@ The repository SHALL be consumable as a Nix flake providing `overlays.default`. 
 
 `waypoints` SHALL build the stable flavor, `waypoints-preview` the preview flavor, and `waypoints-nightly` the nightly flavor. Each package SHALL carry its flavor's product name, bundle identifier, icons, and update endpoint. Because flavors have distinct product names and identifiers, any combination of the three packages SHALL be installable side by side without file or identity collisions. The development flavor SHALL NOT be exposed as a package.
 
+A package's version SHALL come from the app manifest (`src-tauri/Cargo.toml`), which tracks the version of the branch it is built from. Flavor configs define channel identity only and SHALL NOT declare a `version`, because a Tauri config `version` overrides the manifest and would pin every branch's bundle to a single value.
+
+#### Scenario: Version follows the manifest, not the flavor
+
+- **WHEN** a package of any flavor is built from a branch whose app manifest declares version `X`
+- **THEN** the resulting bundle reports version `X`, and no flavor config overrides it
+
 #### Scenario: Nightly and stable coexist
 
 - **WHEN** a user installs both `waypoints` and `waypoints-nightly` in the same profile

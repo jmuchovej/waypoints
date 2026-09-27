@@ -56,6 +56,8 @@ flake-parts structures the build side only. `devenv.yaml`/`devenv.lock`/secretsp
 Each derivation in `nix/packages/` builds its `src` with `lib.fileset.toSource`, enumerating exactly the workspace paths it needs.
 
 - **Why**: jj colocation makes "what does git see right now" a snapshot-timing question — flake `self` silently omits files git hasn't been told about. Explicit filesets are deterministic regardless of git/jj state, keep source copies small (repo carries `target/`, `node_modules/`, a 296-entry `.devenv/`), and stop `website/` edits from invalidating app builds.
+- **Amendment (2026-09-26)**: filesets select paths; they do not escape git filtering, so D4's headline ("never `self`") overstates the protection. The packages take a single `root` parameter (`nix/overlay.nix`, defaulting to `../.`), which under `nix build .#` resolves to the flake source — and that source _is_ git-filtered, the exact exposure D4 set out to avoid. It surfaced as a build failure: `Cargo.lock` was gitignored (the gitignore.io Rust template's leave-it-for-libraries default), so the flake source omitted it and `cargoLock.lockFile` died with `No such file or directory`. Resolved by committing `Cargo.lock` — correct for a workspace that ships executables, and already anticipated by proposal.md's note that the lock becomes a committed artifact. **The operative rule: every path a fileset names must be git-tracked, or the flake build cannot see it.**
+- **Amendment (2026-09-26)**: `root` must be a real Nix _path_. `lib.fileset` rejects string-encoded paths and flake-input attrsets outright (`Paths represented as strings are not supported by lib.fileset`), so paths are built by concatenation (`root + "/Cargo.toml"`) against a path-valued `root` — never interpolation (`"${root}/Cargo.toml"`), and never `inputs.self`, which coerces to a store-path string.
 
 ### D5 (2026-08-30): Frontend as a flavor-parameterized derivation (pnpm FOD)
 
@@ -68,7 +70,8 @@ Each derivation in `nix/packages/` builds its `src` with `lib.fileset.toSource`,
   - `pkgs.fetchPnpmDeps { pnpm = pkgs.pnpm_11; fetcherVersion = 4; ... }` + `pkgs.pnpmConfigHook` (top-level attrs; the `pnpm_11.fetchDeps`/`pnpm_11.configHook` package attrs are deprecated, and `fetcherVersion <= 3` is rejected for pnpm 11).
   - `package.json`'s `devEngines` (node ^24.4, deno ^2.9.4, `onFail: error`) is enforced at every pnpm boot — including inside the fetch sandbox, before install flags apply. The fetcher therefore needs `nativeBuildInputs = [deno]` (appended, not clobbered, by `fetchPnpmDeps`); node rides in via pnpm's runtime. The outer derivation needs `nodejs` + `deno` for the same reason. nixpkgs deno 2.9.5 satisfies the bound.
   - The FOD `src` fileset must carry: root `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` (it holds `patchedDependencies`), `patches/`, and every workspace member's `package.json`.
-  - Verified fetch hash (whole workspace, `--force` all-platform): `sha256-zFz9iUIhZQ66U5lSjCQ+RKiAXfUC7HcWuEAMd2CKgcU=`.
+  - Verified fetch hash (whole workspace, `--force` all-platform): `sha256-zFz9iUIhZQ66U5lSjCQ+RKiAXfUC7HcWuEAMd2CKgcU=`. Still current as of 2026-09-26.
+- **Failure mode (2026-09-26)**: editing a file under `patches/` without reinstalling desyncs it from `pnpm-lock.yaml`, which records patch hashes under `patchedDependencies`. The FOD then fails `--frozen-lockfile` with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`, _not_ a hash mismatch — the fix is `pnpm install` to refresh the lockfile, not a new FOD hash. Confirmed by doing it: the refreshed lockfile produced a byte-identical dependency set, so the recorded hash above was unchanged. Worth knowing because the error text points at the lockfile while the hash comment points at the FOD.
 - **Finding (5.2, 2026-08-31)**: `VITE_WAYPOINTS_FLAVOR`'s only consumer is the dev-only `httpTransport` (`src/app/utils/ipc/invoke.ts`), which Vite dead-code-eliminates from production builds — the identifier cannot appear in packaged assets, for any flavor. Per-flavor frontend builds are kept anyway (user decision, 2026-08-31): the parameterization mirrors `src/justfile`, and any future production consumer of the var lights up correctly. Verification is a build-time assertion (`nix log` shows the injected identifier) instead of asset grep.
 - **Deviation from D6's mechanism (2026-08-31)**: implementation uses nixpkgs' `cargo-tauri.hook` with the platform's bare bundle type (`--bundles app` on darwin, `--bundles deb` unpacked to `$out` on Linux) instead of `--no-bundle` + hand-assembled wrappers. D6 rejected "bundles" over dmg/nsis sandbox-hostility — the bare app/deb types involve none of that (no codesign/notarize/hdiutil), and tauri itself generates the Info.plist (identifier, URL schemes), `.desktop` entry, and icons from the same layered config the release pipeline uses, which is less drift-prone than replicating them in Nix. The spec's wrapper-layout requirements are unchanged; `beforeBuildCommand` is neutralized and `frontendDist` store-pointed via a third `--config` layer, exactly as designed. — Rust wiring proven by a throwaway `tooling/xtask` build: `lib.fileset` src (root `Cargo.toml`/`Cargo.lock`, `crates/`, `tooling/`, `vendor/`, `src-tauri/{Cargo.toml,build.rs,src}` — cargo demands every workspace member's manifest and target sources), `rustPlatform.buildRustPackage` with `cargoLock.lockFile` + `outputHashes."gh-workflow-0.9.0" = "sha256-CMzElgOmzseY3JOw7g2Q9uDGrS3usCzzdQt/nVNcn+E="` (the one git dependency), `cargoBuildFlags = ["--package" "<member>"]`. The `[patch.crates-io]` path-forks under `vendor/` resolve in-tree with no extra plumbing.
 
@@ -91,6 +94,22 @@ Add a `self-update` feature to the `Waypoints` crate, included in `default`. `ch
 - **Rejected**: compile-time env marker (`option_env!`) — a second, less discoverable configuration channel alongside existing features; runtime `/nix/store` path detection — implicit and clever where explicit and boring works, and false behavior if the bundle is copied out of the store.
 - The updater _plugin_ stays in the build in both modes — `check()` is what queries the flavor endpoint; only the install path is gated. Endpoint-unreachable stays a logged non-event (already the case).
 
+### D9 (2026-09-26): Version comes from the app manifest, not the flavor configs
+
+`src-tauri/Cargo.toml`'s `[package] version` is the single source of truth, tracking the version of the branch it sits on (`main` and `v0.2.x` at `0.2.0`, `v0.1.x` at `0.1.0`). Flavor configs carry channel _identity_ — product name, bundle identifier, icons, update endpoint — and MUST NOT declare `version`.
+
+- **Why**: a Tauri config `version` overrides the Cargo.toml fallback, so the four flavor configs' hardcoded `version = "0.1.0"` pinned every branch's bundle to `0.1.0` regardless of what the manifest said. Nothing maintained those fields either — `configs/flavors` has zero references anywhere in `tooling/` or `.github/`. Observed directly: a build stamped `CFBundleShortVersionString = 0.1.0` while cargo compiled `Waypoints v0.0.0`.
+- Release tooling already treats the manifest as authoritative — `release_plan.rs`'s `APP_MANIFEST`, `set_package_version`, and `workspace::version` all read it, and `workspace.rs` carries a test asserting the app declares its own version rather than inheriting one.
+- **Consequence**: the frontend derivation takes `version` as a parameter from the app derivation rather than parsing a manifest of its own. One parse, one source.
+
+### D10 (2026-09-26): Manifests Nix parses stay TOML 1.0
+
+`builtins.fromTOML` is a strict TOML **1.0** parser. The tree standardizes on TOML **1.1** via tombi (`#:tombi toml-version = "v1.1.0"` in `.config/treefmt.toml` and elsewhere), which permits multi-line inline tables — `src-tauri/Cargo.toml`'s `rustls` dependency is written as one and is unparsable by Nix, although cargo's lenient `toml_edit` accepts it (`cargo metadata` exits 0).
+
+- Any manifest the Nix build reads is therefore pinned to TOML 1.0 (`#:tombi toml-version = "v1.0.0"`, as `.config/clippy.toml` already does) and kept free of 1.1-only constructs.
+- **Rejected**: reformatting the offending entry without pinning the version — tombi would be free to re-expand it and nothing would warn.
+- **Rejected**: reading the version from the flavor configs instead because they happen to be 1.0-clean — that is precisely the drift D9 removes.
+
 ### D8 (2026-08-30): Layout
 
 ```
@@ -101,13 +120,17 @@ nix/
     mise.nix
     treefmt.nix
     android.nix
-  overlay.nix                  # final: prev: — pure, flake-independent
+  overlay.nix                  # final: prev: — pure; takes `root` (path) and optional `rustToolchain`
   packages/                    # callPackage derivations (build universe)
-    frontend.nix
-    waypoints.nix
+    waypoints/
+      package.nix              # the desktop app, one flavor per call
+      _frontend.nix            # build-graph intermediate; underscore = never a package
 ```
 
 The `devenv/` vs `packages/` split is load-bearing: two universes, two input graphs, two calling conventions. `overlay.nix` is the boundary and the only file that must import cleanly without flakes.
+
+- **Amendment (2026-09-26)**: the packages live one directory deeper than planned (`packages/waypoints/{package,_frontend}.nix`, not `packages/{waypoints,frontend}.nix`) so each package owns a directory and its intermediates; the `_` prefix marks a file that is never exposed as a package. Noted in task 5.1 when it landed, recorded here for the layout of record.
+- **Amendment (2026-09-26)**: "the only file that must import cleanly without flakes" is a comment in `overlay.nix`, not a requirement — spec.md asks only that the overlay be self-contained (no _extra_ consumer inputs), and consumers are expected to add the Waypoints flake itself. Flake-free import does work and was verified, but nothing tests it; treat it as a property, not a contract.
 
 ## Risks / Trade-offs
 
@@ -136,3 +159,6 @@ Rollback: the flake layer is purely additive (delete `flake.nix`/`nix/overlay.ni
 - Which directory `nuxi generate` output hands to `frontendDist` (`.output` vs `.output/public`) — resolved by inspection at implementation; does not affect specs or task breakdown.
 - Whether CI should build the Nix packages (and enforce FOD hash freshness) — deferrable; the PR CI workspace is a separate effort.
 - Whether the notify-only dialog should link users to update instructions (e.g. "update via your Nix profile") — UX copy decision, safely made during implementation.
+- **Published-release fidelity — deferred to its own change (2026-09-26).** This change builds all three flavors from whichever ref the consumer pins, so of the nine flavor×ref combinations only three are meaningful: the rest produce artifacts that misrepresent their channel (a stable-branded, `so.waypoints`-identified build of `main`'s code, which would also collide with a real stable install). Nightly is the sharpest case: `nightly_plan` computes `-nightly.N+YYYY.MM.DD` and emits it as a CI plan without ever committing it, and flake metadata exposes `self.rev` but never the tag name — so a nightly's version is unrecoverable from any tree at any ref, and a Nix build on 2027-05-17 cannot reproduce the 2027-05-15 nightly's stamp. Two directions were explored:
+  - **Ref selects the channel**: version from the manifest (D9), flavor derived from it (`channel_for` already does most of this, though it classifies a nightly prerelease as preview). One package attribute, which contradicts this spec's three-attribute requirement. Cannot reproduce published nightly versions.
+  - **Committed release index**: `nix/releases/{stable,preview,nightly}.json` on `main`, each recording the published tag plus rev, source hash, and pnpm FOD hash; packages `fetchFromGitHub` their tag and take the version from it. Preserves nightly dates exactly, keeps the three-attribute surface, and works for tags on release branches because tags are repo-global and the index is metadata rather than code. Costs: cross-branch writes from release CI, two hashes captured post-tag (the pnpm hash _must_ be recorded — `fetchFromGitHub` yields a store path at build time while `fetchPnpmDeps` needs its hash at eval time), a bootstrap gap for pre-index releases, and a one-line change to `nightly_plan`'s `commits_since` to exclude the index path — otherwise every index commit manufactures the justification for the next nightly and the quiet-repo skip is destroyed.
