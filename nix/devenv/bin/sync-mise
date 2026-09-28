@@ -7,7 +7,21 @@
 let root = $env.PROJECT_ROOT? | default (pwd)
 let mise_toml = $root | path join ".config" "mise.toml"
 
-mise lock
+# mise reads `GITHUB_TOKEN`/`MISE_GITHUB_TOKEN`, not `GH_TOKEN` — the name
+# secretspec declares and the one the gh CLI uses. Without a token it falls back
+# to sixty anonymous API requests an hour, which this tool set exhausts before
+# it finishes: the lockfile then comes out short, and mise reports success
+# anyway. Map whichever name is present.
+let token = ($env.GITHUB_TOKEN? | default ($env.GH_TOKEN? | default ""))
+
+if ($token | is-empty) {
+  print -e "warning: no GITHUB_TOKEN or GH_TOKEN in the environment."
+  print -e "mise will make anonymous GitHub requests, capped at sixty an hour,"
+  print -e "and may write a lockfile missing entries without reporting an error."
+  mise lock
+} else {
+  with-env {GITHUB_TOKEN: $token} { mise lock }
+}
 
 # mise lists `core:` backend tools under their bare names (core:node -> node).
 # A tool restricted to other OSes (`os = [...]`) is skipped here on purpose.
