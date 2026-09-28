@@ -1,8 +1,56 @@
 ## Purpose
 
-Defines the invariants the release and nightly planners must hold when deciding whether and what to publish, so that the bookkeeping a release produces cannot itself be mistaken for the product work that justifies the next release.
+Defines where a build's version comes from, how versions move across the release branches, and the invariants the release and nightly planners must hold when deciding whether and what to publish — so that the bookkeeping a release produces cannot itself be mistaken for the product work that justifies the next release.
 
 ## ADDED Requirements
+
+### Requirement: The app manifest is the sole source of a build's version
+
+Every build's version SHALL be read from the app manifest (`src-tauri/Cargo.toml`) of the commit being built. No other file SHALL supply or override it — in particular, a flavor's Tauri config SHALL NOT declare a `version`, since a Tauri config `version` takes precedence over the manifest and would pin every branch's bundle to one value.
+
+This governs every distribution channel, not any single packaging mechanism: the bundler pipeline's platform artifacts, the store build numbers, the identity a build reports about itself, and the Nix packages alike.
+
+A publish MAY append prerelease and build-metadata suffixes that exist only at publish time — a nightly's counter and date stamp are assigned by the planner and appear in no manifest. Such a suffix SHALL extend the manifest's version rather than replace it, so the base version of a published artifact always equals the manifest version of the commit it was built from.
+
+#### Scenario: Version comes from the built commit's manifest
+
+- **WHEN** a build is produced from a commit whose app manifest declares version `X`
+- **THEN** the artifact reports version `X`, optionally extended by a publish-time suffix, and no flavor config overrides it
+
+#### Scenario: Publish-time suffix extends rather than replaces
+
+- **WHEN** a nightly is published from a commit whose manifest declares `X`
+- **THEN** its version is `X` plus the planner's prerelease counter and date stamp, and stripping that suffix yields exactly `X`
+
+### Requirement: Version tracks the branch a commit sits on
+
+Each release line carries its own version in its own branch's manifest, and the lines advance independently except where they are deliberately coupled:
+
+- `main` and the current preview branch (`v{minor}.x`) SHALL always declare the same version. A change that advances one SHALL advance the other.
+- The stable branch (`v{minor}.x` for the released minor) SHALL advance independently of the preview line.
+- A nightly's base version SHALL equal `main`'s manifest version, so a nightly's base advances only when the preview line cuts a new version.
+
+Until `v1`, divergence between the stable and preview lines is confined to the patch component; from `v1` it extends to minor and patch.
+
+#### Scenario: Patch to preview only
+
+- **WHEN** a patch lands in the preview line while stable is at `0.1.0` and preview at `0.2.0`
+- **THEN** `main` and the preview branch both declare `0.2.1`, and the stable branch still declares `0.1.0`
+
+#### Scenario: Patch to stable only
+
+- **WHEN** a patch lands in the stable line and does not belong in preview
+- **THEN** the stable branch declares `0.1.1`, while `main` and the preview branch are unchanged at `0.2.0`
+
+#### Scenario: Patch to both lines
+
+- **WHEN** a patch lands in stable and is also carried into preview
+- **THEN** the stable branch declares `0.1.1` and `main` and the preview branch both declare `0.2.1`
+
+#### Scenario: Nightly base follows the preview line
+
+- **WHEN** the preview line advances from `0.2.0` to `0.2.1`
+- **THEN** subsequently published nightlies carry base `0.2.1`, and no nightly changes its base without such a cut
 
 ### Requirement: A nightly publishes only when product work landed
 

@@ -4,22 +4,22 @@
 
 `waypoints` SHALL build the stable flavor, `waypoints-preview` the preview flavor, and `waypoints-nightly` the nightly flavor. Each package SHALL carry its flavor's product name, bundle identifier, icons, and update endpoint. Because flavors have distinct product names and identifiers, any combination of the three packages SHALL be installable side by side without file or identity collisions. The development flavor SHALL NOT be exposed as a package.
 
-A package's version SHALL come from the release tag recorded in its channel's release-index entry, and SHALL be the version that channel actually published. It SHALL NOT be taken from the app manifest of the ref the consumer pinned, and SHALL NOT be derived from the build's own wall-clock date. Flavor configs define channel identity only and SHALL NOT declare a `version`, because a Tauri config `version` overrides the manifest and would pin every branch's bundle to a single value.
+Where a version comes from is governed by `distribution/release-planning`, not by this capability: it is read from the app manifest of the commit being built, and a flavor config SHALL NOT declare a `version`. What this capability adds is _which_ commit that is — the one its channel's release-index entry names — and that a publish-time suffix carried by the recorded tag, which appears in no manifest, SHALL be preserved rather than recomputed.
 
-#### Scenario: Version follows the channel's published tag
+#### Scenario: Version follows the manifest, not the flavor
 
-- **WHEN** a package is built and its channel's index entry records tag `vX`
-- **THEN** the resulting bundle reports version `X`, and no flavor config overrides it
+- **WHEN** a package is built from the commit its channel's index entry names, whose app manifest declares version `X`
+- **THEN** the resulting bundle reports version `X` — extended by any publish-time suffix the recorded tag carries — and no flavor config overrides it
 
 #### Scenario: Nightly date stamp survives the passage of time
 
 - **WHEN** `waypoints-nightly` is built on a date later than the one on which its recorded nightly was published
-- **THEN** the bundle reports the published nightly's version, date stamp included, rather than a version stamped with the build date
+- **THEN** the bundle reports the published nightly's version, counter and date stamp included, rather than recomputing a suffix from the build date
 
-#### Scenario: Pinned ref does not set the version
+#### Scenario: Pinned ref selects the release, not the version
 
 - **WHEN** a consumer pins a ref whose app manifest declares a version different from the recorded tags
-- **THEN** each package still reports its own channel's published version, and the pinned manifest's version appears in no package
+- **THEN** each package reports the version of the commit its own channel's entry names, and the pinned ref's manifest version appears in no package
 
 #### Scenario: Nightly and stable coexist
 
