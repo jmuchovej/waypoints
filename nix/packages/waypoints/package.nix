@@ -115,8 +115,14 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   # Flavors are additive cargo features over `desktop`; `self-update` (a
   # default feature) is deliberately absent.
-  cargoBuildNoDefaultFeatures = true;
-  cargoBuildFeatures = [
+  #
+  # These must be `buildFeatures`/`buildNoDefaultFeatures`, not the `cargo*`
+  # spellings the build hook reads: `buildRustPackage` *computes* the `cargo*`
+  # attrs from these, so setting the `cargo*` names directly is silently
+  # overwritten by the defaults (`[]` and `false`) and the build quietly gets
+  # every default feature — `self-update` included.
+  buildNoDefaultFeatures = true;
+  buildFeatures = [
     "desktop"
     flavor
   ];
