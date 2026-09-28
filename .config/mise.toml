@@ -31,7 +31,6 @@ lockfile = true
 "aqua:cachix/secretspec" = "0.19.1"
 "aqua:casey/just" = "1.58.0"
 "aqua:crate-ci/typos" = "1.49.0"
-"aqua:getsops/sops" = "3.13.3"
 "aqua:google/keep-sorted" = "0.9.0"
 "aqua:jdx/hk" = "1.55.0"
 "aqua:lycheeverse/lychee" = "0.24.2"
@@ -65,6 +64,11 @@ version = "2.44.1"
 [tools."gem:fastlane"]
 os = ["linux", "macos"]
 version = "2.232.2"
+
+[tools."github:getsops/sops"]
+slsa_signer_identity = "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@refs/tags/v2.1.0"
+slsa_signer_issuer = "https://token.actions.githubusercontent.com"
+version = "3.13.3"
 
 [vars]
 WAYPOINTS_FORMATTERS = "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"

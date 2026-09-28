@@ -65,6 +65,16 @@ let
         default = false;
         description = "Exists only to format: listed in `WAYPOINTS_FORMATTERS` so release CI can skip it.";
       };
+      options = mkOption {
+        type = types.attrsOf types.str;
+        default = { };
+        description = ''
+          Extra backend options for the tool's mise entry, e.g. the
+          `slsa_signer_identity`/`slsa_signer_issuer` a `github:` tool needs to
+          verify SLSA provenance against the workflow that actually signed it.
+          Forces the table form.
+        '';
+      };
     };
   };
 
@@ -149,13 +159,14 @@ in
           # case mise wants the table form.
           tools = mapAttrs (
             _: tool:
-            if tool.os == [ ] then
+            if tool.os == [ ] && tool.options == { } then
               toString tool.package.version
             else
               {
                 version = toString tool.package.version;
-                inherit (tool) os;
               }
+              // lib.optionalAttrs (tool.os != [ ]) { inherit (tool) os; }
+              // tool.options
           ) by-spec;
         };
       };

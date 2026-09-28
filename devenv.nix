@@ -101,9 +101,24 @@ in
         formatter = true;
       };
 
+      # `github:` rather than `aqua:` so the SLSA provenance sops publishes is
+      # checked against the workflow that actually signed it. The aqua registry
+      # declares no `signer_identity`/`signer_issuer`, so mise verified any
+      # valid Sigstore signature — including one from an unrelated workflow —
+      # until it began refusing that check outright in 2026.9.16.
+      #
+      # The identity is slsa-github-generator's, not sops': sops calls it as a
+      # reusable workflow, and the certificate records the callee. Read from the
+      # signing certificate rather than inferred. It therefore tracks the
+      # *generator's* version, so a sops release built with a newer generator
+      # fails closed here until this is updated — which is the point.
       sops = {
         package = pkgs.sops;
-        spec = "aqua:getsops/sops";
+        spec = "github:getsops/sops";
+        options = {
+          slsa_signer_identity = "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@refs/tags/v2.1.0";
+          slsa_signer_issuer = "https://token.actions.githubusercontent.com";
+        };
       };
       age = {
         package = pkgs.age;
