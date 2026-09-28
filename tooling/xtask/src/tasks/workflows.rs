@@ -138,6 +138,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         android_ndk: crate::utils::devenv::android_ndk_version()?,
         android_jdk: crate::utils::devenv::android_jdk_major()?,
         formatters: crate::utils::mise::formatters()?,
+        mise_version: crate::utils::mise::version()?,
     };
 
     let rendered = workflows
@@ -280,6 +281,9 @@ pub struct WorkflowContext {
     /// Every mise tool that exists only to format, for release jobs to skip.
     /// See [`crate::utils::mise::formatters`].
     pub formatters: String,
+    /// The mise that writes the lockfile, for CI to install the same one.
+    /// See [`crate::utils::mise::version`].
+    pub mise_version: String,
 }
 
 /// Boxed rather than a `fn` pointer so one builder can emit a family of

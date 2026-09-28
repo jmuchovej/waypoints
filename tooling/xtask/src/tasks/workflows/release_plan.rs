@@ -13,7 +13,7 @@
 use super::{WorkflowContext, WorkflowInput, helpers, runners, steps};
 use gh_workflow::{Event, Job, Level, Permissions, Workflow, WorkflowDispatch};
 
-pub fn workflow(_: &WorkflowContext) -> Workflow {
+pub fn workflow(context: &WorkflowContext) -> Workflow {
     let transition = WorkflowInput::choices(
         "transition",
         crate::tasks::release_plan::transitions(),
@@ -28,7 +28,7 @@ pub fn workflow(_: &WorkflowContext) -> Workflow {
         // Tags without history: the planner reads them to find the last
         // release, and walks commits only from there.
         .add_step(steps::checkout().add_with(("fetch-tags", true)))
-        .add_step(steps::setup_mise(false.into()))
+        .add_step(steps::setup_mise(false.into(), &context.mise_version))
         .add_step(
             steps::cargo_xtask("release-plan", &[("${{ inputs.transition }}", None)])
                 .id("release-plan")

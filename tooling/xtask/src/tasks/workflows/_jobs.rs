@@ -42,7 +42,8 @@ fn without_formatters(job: Job, formatters: &str) -> Job {
 
 /// Resolves the nightly tag: derive it from the workspace version, skip the run
 /// when nothing landed since the last nightly, and create the tag.
-pub fn prepare(formatters: &str) -> PrepareJob {
+pub fn prepare(context: &WorkflowContext) -> PrepareJob {
+    let formatters = &context.formatters;
     let planner = steps::cargo_xtask("nightly-plan", &[(BUILD_ONLY_ON_DISPATCH, None)])
         .id("nightly-plan")
         .add_env(("GH_TOKEN", GITHUB_TOKEN));
@@ -62,7 +63,7 @@ pub fn prepare(formatters: &str) -> PrepareJob {
             // Tags without history: the planner resolves them to commits but
             // never walks between them.
             .add_step(steps::checkout().add_with(("fetch-tags", true)))
-            .add_step(steps::setup_mise(false.into()))
+            .add_step(steps::setup_mise(false.into(), &context.mise_version))
             .add_step(planner)
             .outputs([
                 p_tag.clone().as_output(),
@@ -83,7 +84,8 @@ pub fn prepare(formatters: &str) -> PrepareJob {
 
 /// Runs the suite on one platform, as two steps: the plan resolves the
 /// filterset, and the run is skipped when it comes back empty.
-pub fn test(suite: TestSuite, platform: Platform, formatters: &str) -> NamedJob {
+pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> NamedJob {
+    let formatters = &context.formatters;
     // The command publishes its own step output, so no shell redirection and
     // nothing spelled differently for PowerShell on Windows.
     let plan = steps::cargo_xtask("test-plan", &[(suite.flag(), None)]).id("test-plan");
@@ -112,6 +114,7 @@ pub fn test(suite: TestSuite, platform: Platform, formatters: &str) -> NamedJob 
         // the artifacts the sibling build jobs publish.
         .add_step(steps::setup_mise(
             matches!(suite, TestSuite::Changed).into(),
+            &context.mise_version,
         ))
         // After mise: the cache key fingerprints the resolved rustc version.
         .when(matches!(suite, TestSuite::Changed), |job| {
@@ -132,7 +135,11 @@ pub fn test(suite: TestSuite, platform: Platform, formatters: &str) -> NamedJob 
 /// The tag guards sit on the steps, not the job: the builds `need` this job,
 /// and a skipped job would drag them down with it — on a build-only run the
 /// job runs and every step no-ops.
-pub fn create_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
+pub fn create_release(
+    channel: Channel,
+    prepare: Option<&PrepareJob>,
+    context: &WorkflowContext,
+) -> NamedJob {
     let tag = prepare.map(|prepare| &prepare.tag);
     let publishing = || Channel::tag_condition(tag);
 
@@ -154,7 +161,7 @@ pub fn create_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJo
                 .add_with(("fetch-tags", true))
                 .if_condition(publishing()),
         )
-        .add_step(steps::setup_mise(false.into()).if_condition(publishing()))
+        .add_step(steps::setup_mise(false.into(), &context.mise_version).if_condition(publishing()))
         .add_step(steps::release_notes(tag))
         .add_step(steps::create_release(channel, tag));
 
@@ -221,7 +228,7 @@ pub fn build(
             // Tauri's Linux backend is WebKitGTK, absent from the runner image.
             job.add_step(steps::install_linux_deps())
         })
-        .add_step(steps::setup_mise(false.into()))
+        .add_step(steps::setup_mise(false.into(), &context.mise_version))
         .add_step(steps::pnpm_install())
         .add_step(
             steps::build(channel, platform)

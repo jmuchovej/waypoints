@@ -48,6 +48,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: nightly-plan
         name: cargo xtask nightly-plan
@@ -75,6 +76,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: test-plan
         name: cargo xtask test-plan
@@ -108,6 +110,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: test-plan
         name: cargo xtask test-plan
@@ -152,6 +155,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: linux-deps
         name: Install system deps (Linux)
@@ -195,6 +199,7 @@ jobs:
         if: needs.prepare.outputs.tag != ''
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: gen-release-notes
         name: Generate release notes
@@ -234,6 +239,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -286,6 +292,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -355,6 +362,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -408,6 +416,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -488,6 +497,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps

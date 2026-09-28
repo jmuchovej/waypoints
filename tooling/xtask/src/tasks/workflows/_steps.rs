@@ -197,13 +197,19 @@ pub fn create_pull_request(
 
 /// Installs the whole toolchain — node, pnpm, just, sops, age, yq, nu, and
 /// rust with every cross-compilation target, read from `rust-toolchain.toml`.
-pub fn setup_mise(with_cache: Option<bool>) -> Step<Use> {
+///
+/// Pinned to the mise devenv provides — the one that writes
+/// `.config/mise.lock`. Unpinned, the action installs whatever released most
+/// recently, so a committed lockfile is only as reproducible as an upstream
+/// release schedule.
+pub fn setup_mise(with_cache: Option<bool>, version: &str) -> Step<Use> {
     Action::new(
         "jdx",
         "mise-action",
         "c2a87611a18de5b3828c5652fe268e992400cb5c", // v4.3.0
     )
     .step("Setup mise")
+    .add_with(("version", version.to_owned()))
     .add_with(("cache", with_cache.unwrap_or(true)))
 }
 

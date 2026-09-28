@@ -138,6 +138,13 @@ in
           };
           inherit (cfg) env;
           vars.WAYPOINTS_FORMATTERS = lib.concatStringsSep "," formatter-specs;
+          # The mise devenv provides — the one that writes `.config/mise.lock`.
+          # mise reads this itself and refuses an older one, and CI installs
+          # exactly it rather than whatever released most recently: a lockfile
+          # is only as reproducible as the tool reading it. mise 2026.9.16
+          # tightened SLSA provenance and broke a nightly hours after
+          # publishing, with nothing changed here.
+          min_version = pkgs.mise.version;
           # A bare version string unless the tool is OS-restricted, in which
           # case mise wants the table form.
           tools = mapAttrs (
