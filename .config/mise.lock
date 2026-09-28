@@ -530,6 +530,46 @@ checksum = "sha256:0f57b33abb46c76258ac8e20be604a48208141d514bc2936b5200ed626976
 url = "https://github.com/oxipng/oxipng/releases/download/v10.1.1/oxipng-10.1.1-x86_64-pc-windows-msvc.zip"
 url_api = "https://api.github.com/repos/oxipng/oxipng/releases/assets/402844774"
 
+[[tools."aqua:pnpm/pnpm"]]
+version = "11.21.0"
+backend = "aqua:pnpm/pnpm"
+
+[tools."aqua:pnpm/pnpm"."platforms.linux-arm64"]
+checksum = "sha256:64eb219b008f7a4c176d81fbce919c20b0b7e093e815cbb669d46e681451f43b"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.21.0/pnpm-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/507585528"
+provenance = "github-attestations"
+
+[tools."aqua:pnpm/pnpm"."platforms.linux-arm64-musl"]
+checksum = "sha256:43587a1f3d26ee009c640378ef377cac3531990579acf0f35646531b7832831d"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.21.0/pnpm-linux-arm64-musl.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/507585511"
+provenance = "github-attestations"
+
+[tools."aqua:pnpm/pnpm"."platforms.linux-x64"]
+checksum = "sha256:aadc489ce4473c2af0fec06a5c19e113b5793d404eac49853c8153bf4b0d8263"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.21.0/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/507585503"
+provenance = "github-attestations"
+
+[tools."aqua:pnpm/pnpm"."platforms.linux-x64-musl"]
+checksum = "sha256:8cad0a4d20318c0445d992630ace51edc0853fd259573f50ee5d0216dce9b420"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.21.0/pnpm-linux-x64-musl.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/507585524"
+provenance = "github-attestations"
+
+[tools."aqua:pnpm/pnpm"."platforms.macos-arm64"]
+checksum = "sha256:860a96978a79ca5132bdc247375f94150a3c98edbecbee36e9f8e0c9e2f7f056"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.21.0/pnpm-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/507585526"
+provenance = "github-attestations"
+
+[tools."aqua:pnpm/pnpm"."platforms.windows-x64"]
+checksum = "sha256:6643043caa3b01c65c431039926a2af954326d5cefbdb4da7baceceb17f5051f"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.21.0/pnpm-win32-x64.zip"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/507585516"
+provenance = "github-attestations"
+
 [[tools."aqua:tauri-apps/tauri/cargo-tauri"]]
 version = "2.11.4"
 backend = "aqua:tauri-apps/tauri/cargo-tauri"
@@ -733,6 +773,53 @@ checksum = "sha256:ce99eba1f4faec1d77f4bbd747bb722404ef11f2c349ec70c59d4c0028593
 url = "https://github.com/JetBrains/kotlin/releases/download/v2.4.10/kotlin-native-prebuilt-2.4.10-windows-x86_64.zip"
 url_api = "https://api.github.com/repos/JetBrains/kotlin/releases/assets/585408320"
 
+[[tools."github:Mic92/nixfmt-rs"]]
+version = "0.4.1"
+backend = "github:Mic92/nixfmt-rs"
+
+[tools."github:Mic92/nixfmt-rs"."platforms.linux-arm64"]
+checksum = "sha256:f6759ba990d389232cf3a0d6284cf22a33a8e3c2cbba44d7c1934189c5266362"
+url = "https://github.com/Mic92/nixfmt-rs/releases/download/0.4.1/nixfmt-aarch64-linux"
+url_api = "https://api.github.com/repos/Mic92/nixfmt-rs/releases/assets/414255451"
+provenance = "github-attestations"
+
+[tools."github:Mic92/nixfmt-rs"."platforms.linux-arm64-musl"]
+checksum = "sha256:f6759ba990d389232cf3a0d6284cf22a33a8e3c2cbba44d7c1934189c5266362"
+url = "https://github.com/Mic92/nixfmt-rs/releases/download/0.4.1/nixfmt-aarch64-linux"
+url_api = "https://api.github.com/repos/Mic92/nixfmt-rs/releases/assets/414255451"
+provenance = "github-attestations"
+
+[tools."github:Mic92/nixfmt-rs"."platforms.linux-x64"]
+checksum = "sha256:e095255a25a4614953b8afa83ccf84bddc91aa4155cefc738142e8ed18050830"
+url = "https://github.com/Mic92/nixfmt-rs/releases/download/0.4.1/nixfmt-x86_64-linux"
+url_api = "https://api.github.com/repos/Mic92/nixfmt-rs/releases/assets/414255454"
+provenance = "github-attestations"
+
+[tools."github:Mic92/nixfmt-rs"."platforms.linux-x64-musl"]
+checksum = "sha256:e095255a25a4614953b8afa83ccf84bddc91aa4155cefc738142e8ed18050830"
+url = "https://github.com/Mic92/nixfmt-rs/releases/download/0.4.1/nixfmt-x86_64-linux"
+url_api = "https://api.github.com/repos/Mic92/nixfmt-rs/releases/assets/414255454"
+provenance = "github-attestations"
+
+[tools."github:Mic92/nixfmt-rs"."platforms.macos-arm64"]
+checksum = "sha256:8fe8ab468fd9747c756441f50c8d0fb5f27e764364a1fdea037365e5d9a7d95a"
+url = "https://github.com/Mic92/nixfmt-rs/releases/download/0.4.1/nixfmt-aarch64-darwin"
+url_api = "https://api.github.com/repos/Mic92/nixfmt-rs/releases/assets/414255453"
+provenance = "github-attestations"
+provenance_verified = true
+
+[tools."github:Mic92/nixfmt-rs"."platforms.macos-x64"]
+checksum = "sha256:c69d3b8b1d40130add7395b5ddc3890e8cbec7c9a9c6635f4a35ca7795d160c1"
+url = "https://github.com/Mic92/nixfmt-rs/releases/download/0.4.1/nixfmt-wasm.tar.gz"
+url_api = "https://api.github.com/repos/Mic92/nixfmt-rs/releases/assets/414255452"
+provenance = "github-attestations"
+
+[tools."github:Mic92/nixfmt-rs"."platforms.windows-x64"]
+checksum = "sha256:c69d3b8b1d40130add7395b5ddc3890e8cbec7c9a9c6635f4a35ca7795d160c1"
+url = "https://github.com/Mic92/nixfmt-rs/releases/download/0.4.1/nixfmt-wasm.tar.gz"
+url_api = "https://api.github.com/repos/Mic92/nixfmt-rs/releases/assets/414255452"
+provenance = "github-attestations"
+
 [[tools."github:facebook/ktfmt"]]
 version = "0.63"
 backend = "github:facebook/ktfmt"
@@ -812,6 +899,26 @@ url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.in
 checksum = "sha256:b97c0d434aab577dc40310e8d22ff9e45eef4c80638ab978daae9b4681c59286"
 url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.darwin.arm64"
 url_api = "https://api.github.com/repos/getsops/sops/releases/assets/486808198"
+provenance_verified = true
+
+[tools."github:getsops/sops"."platforms.macos-arm64".provenance.slsa]
+url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.intoto.jsonl"
+
+[tools."github:getsops/sops"."platforms.macos-x64"]
+checksum = "sha256:42162d5cef10b74fcf80a045a70e658d7ce6e63d6ea1be6f347e44015714468d"
+url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.darwin.amd64"
+url_api = "https://api.github.com/repos/getsops/sops/releases/assets/486808228"
+
+[tools."github:getsops/sops"."platforms.macos-x64".provenance.slsa]
+url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.intoto.jsonl"
+
+[tools."github:getsops/sops"."platforms.windows-x64"]
+checksum = "sha256:a4a9a398858fe8b2ef72d9686d930bf7c5cece9be74ad83ac3b53cfdd70e6b1c"
+url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.amd64.exe"
+url_api = "https://api.github.com/repos/getsops/sops/releases/assets/486808200"
+
+[tools."github:getsops/sops"."platforms.windows-x64".provenance.slsa]
+url = "https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.intoto.jsonl"
 
 [[tools.node]]
 version = "24.19.0"
@@ -853,46 +960,6 @@ backend = "npm:oxfmt"
 version = "4.94.0"
 backend = "npm:wrangler"
 
-[[tools.pnpm]]
-version = "11.28.0"
-backend = "aqua:pnpm/pnpm"
-
-[tools.pnpm."platforms.linux-arm64"]
-checksum = "sha256:278ca8e37aaf5ab4e2426e9c446d012169999e6ecc4623b1f821e6515fcedb50"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.28.0/pnpm-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/588125781"
-provenance = "github-attestations"
-
-[tools.pnpm."platforms.linux-arm64-musl"]
-checksum = "sha256:4e34fc1b7b3134c5e50368408f87b2e71322b6f3058688fca0fd25bc96479f8f"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.28.0/pnpm-linux-arm64-musl.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/588125782"
-provenance = "github-attestations"
-
-[tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:825bb72ffe090087e5c0b5ca215e8bc57d7e7e018f9fbfdcad094e351b2083e0"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.28.0/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/588125783"
-provenance = "github-attestations"
-
-[tools.pnpm."platforms.linux-x64-musl"]
-checksum = "sha256:a9a36e0d93962a8cd0d54e8c6d5301275fe020761a7e3064f9794198a40a32a7"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.28.0/pnpm-linux-x64-musl.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/588125780"
-provenance = "github-attestations"
-
-[tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:8fb093807a4aa93fae099629d5afcc99c7887d09b65a4f1de39d5066e178e339"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.28.0/pnpm-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/588125790"
-provenance = "github-attestations"
-
-[tools.pnpm."platforms.windows-x64"]
-checksum = "sha256:b8eb7d7c815733f19535998985f1f29ef2e266388458c7f229d9fa5f1b92cfaf"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.28.0/pnpm-win32-x64.zip"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/588125786"
-provenance = "github-attestations"
-
 [[tools.ruby]]
 version = "3.4.9"
 backend = "core:ruby"
@@ -904,28 +971,28 @@ ruby_build_repo = "https://github.com/rbenv/ruby-build.git"
 ruby_install = "false"
 
 [tools.ruby."platforms.linux-arm64"]
-checksum = "sha256:a8692a4ee561da41cc546998515c85ee863204b3898e326fb8ddb0e0f9e9f08b"
-url = "https://github.com/jdx/ruby/releases/download/3.4.9-5/ruby-3.4.9.arm64_linux.tar.gz"
+checksum = "sha256:57158038eb54f5b56d0ee9bea792c972643729a74e5dd2fd3eef30e79cef527b"
+url = "https://github.com/jdx/ruby/releases/download/3.4.9-6/ruby-3.4.9.arm64_linux.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.linux-arm64-musl"]
-checksum = "sha256:a8692a4ee561da41cc546998515c85ee863204b3898e326fb8ddb0e0f9e9f08b"
-url = "https://github.com/jdx/ruby/releases/download/3.4.9-5/ruby-3.4.9.arm64_linux.tar.gz"
+checksum = "sha256:57158038eb54f5b56d0ee9bea792c972643729a74e5dd2fd3eef30e79cef527b"
+url = "https://github.com/jdx/ruby/releases/download/3.4.9-6/ruby-3.4.9.arm64_linux.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.linux-x64"]
-checksum = "sha256:737594aed0caa74c4a79c578619f5b2d6ded4e5960ce19c3ac0c299a99ac7fe2"
-url = "https://github.com/jdx/ruby/releases/download/3.4.9-5/ruby-3.4.9.x86_64_linux.tar.gz"
+checksum = "sha256:47ce5b193d7a835944f2fb30562a6494eaaed4490e7228a455a88bb0f4fa6ad0"
+url = "https://github.com/jdx/ruby/releases/download/3.4.9-6/ruby-3.4.9.x86_64_linux.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.linux-x64-musl"]
-checksum = "sha256:737594aed0caa74c4a79c578619f5b2d6ded4e5960ce19c3ac0c299a99ac7fe2"
-url = "https://github.com/jdx/ruby/releases/download/3.4.9-5/ruby-3.4.9.x86_64_linux.tar.gz"
+checksum = "sha256:47ce5b193d7a835944f2fb30562a6494eaaed4490e7228a455a88bb0f4fa6ad0"
+url = "https://github.com/jdx/ruby/releases/download/3.4.9-6/ruby-3.4.9.x86_64_linux.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.macos-arm64"]
-checksum = "sha256:1633218d718e30f154eeb73697409558abbc34eb7408d64277a62a1da33e4652"
-url = "https://github.com/jdx/ruby/releases/download/3.4.9-5/ruby-3.4.9.macos.tar.gz"
+checksum = "sha256:ad3aada8e134fb7510d32f0f2e1d82dac352b711a61304f703d3ecd8a10833de"
+url = "https://github.com/jdx/ruby/releases/download/3.4.9-6/ruby-3.4.9.macos.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.macos-x64"]
@@ -939,20 +1006,6 @@ backend = "core:ruby"
 [tools.ruby."platforms.windows-x64"]
 checksum = "sha256:4375268618b61dadf53bf8e54beaca74ea30580c90d3c47ea9f2a134bd3e494e"
 url = "https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.4.9-1/rubyinstaller-3.4.9-1-x64.7z"
-
-[[tools.rust]]
-version = "stable"
-backend = "core:rust"
-
-[tools.rust.options]
-targets = "aarch64-apple-darwin,aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android"
-
-[[tools.rust]]
-version = "stable"
-backend = "core:rust"
-
-[tools.rust.options]
-targets = "aarch64-apple-darwin,aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,aarch64-pc-windows-gnullvm,aarch64-pc-windows-msvc,aarch64-unknown-linux-gnu,aarch64-unknown-linux-musl,armv7-linux-androideabi,x86_64-pc-windows-gnu,x86_64-pc-windows-gnullvm,x86_64-pc-windows-msvc,x86_64-unknown-linux-gnu,x86_64-unknown-linux-musl"
 
 [[tools.rust]]
 version = "stable"

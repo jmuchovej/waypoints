@@ -26,7 +26,7 @@ in
       };
       nixfmt = {
         package = pkgs.nixfmt-rs;
-        spec = "aqua:mic92/nixfmt-rs";
+        spec = "github:Mic92/nixfmt-rs";
         formatter = true;
       };
       ktfmt = {
@@ -176,6 +176,10 @@ in
       node = {
         package = config.languages.javascript.package;
         spec = "core:node";
+      };
+      pnpm = {
+        package = config.languages.javascript.pnpm.package;
+        spec = "aqua:pnpm/pnpm";
       };
       deno = {
         package = config.languages.deno.package;

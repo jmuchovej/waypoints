@@ -140,10 +140,7 @@ in
         toml = {
           settings = {
             experimental = true;
-            idiomatic_version_file_enable_tools = [
-              "rust"
-              "pnpm"
-            ];
+            idiomatic_version_file_enable_tools = [ "rust" ];
             lockfile = true;
           };
           inherit (cfg) env;
