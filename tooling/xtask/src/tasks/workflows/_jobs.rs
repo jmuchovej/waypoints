@@ -101,6 +101,13 @@ pub fn test(suite: TestSuite, platform: Platform, formatters: &str) -> NamedJob 
         // The change-scoped plan diffs against the merge base, which a shallow
         // clone does not contain.
         .add_step(steps::checkout().add_with(("fetch-depth", 0)))
+        // Before mise and before the build: the workspace's debug test build
+        // exhausts a stock Linux image on its own, and reclaiming afterwards
+        // would be too late. Safe to drop the SDK here — this job tests, it
+        // never builds for Android.
+        .when(platform.is_linux(), |job| {
+            job.add_step(steps::free_disk_space(true))
+        })
         // Release workflows run cold: their caching steps would count against
         // the artifacts the sibling build jobs publish.
         .add_step(steps::setup_mise(
@@ -196,6 +203,13 @@ pub fn build(
         .runs_on(platform.runner())
         .cond(channel.guard(platform, prepare.map(|prepare| &prepare.should_build)))
         .add_step(steps::checkout())
+        // Both of these build on an Ubuntu runner, and both are large enough to
+        // be worth the reclaim. It runs before `setup-android` so nothing is
+        // removed after being installed — and Android keeps its runtime, since
+        // `setup-android` configures the image's SDK rather than fetching one.
+        .when(platform.is_linux() || platform.is_android(), |job| {
+            job.add_step(steps::free_disk_space(!platform.is_android()))
+        })
         .when(platform.is_android(), |job| {
             // `setup-android` installs the SDK but not an NDK; the version devenv
             // pins has to be requested explicitly.

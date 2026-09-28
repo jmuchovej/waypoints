@@ -228,6 +228,45 @@ pub fn pnpm_install() -> Step<Run> {
         .id("pnpm-install")
 }
 
+/// Reclaims preinstalled toolchains the Ubuntu runner image ships and this
+/// workspace never uses. A debug test build of the whole workspace is large
+/// enough to exhaust a stock image part-way through linking, which surfaces as
+/// `No space left on device` from whichever crate happened to be writing.
+///
+/// `drop_android` is a parameter rather than an assumption: the Android build
+/// job also runs on Linux, and the runtime this removes is exactly what it
+/// needs. Callers that build for Android pass `false`.
+///
+/// Every input is set explicitly rather than left to the action's defaults, so
+/// bumping the pin cannot change what gets deleted without the diff saying so.
+/// The two that are off:
+///
+/// - `preinstalled-runtimes` removes Node, Go, Python and Ruby, which would
+///   strand any `setup-*` action on a re-download and possibly a version that
+///   is no longer published.
+/// - `swap-storage` removes the swapfile; upstream warns that jobs needing swap
+///   are then killed under memory pressure with no error naming the cause,
+///   which is a poor trade against Rust link steps.
+///
+/// `large-packages` costs a couple of minutes of apt removals. Worth it while
+/// the alternative is a job that cannot finish.
+pub fn free_disk_space(drop_android: bool) -> Step<Use> {
+    Action::new(
+        "jlumbroso",
+        "free-disk-space",
+        "ceedf095f4ec1a097402bc6bd80831f2e1a6fde6", // v2.0.0
+    )
+    .step("Free runner disk space")
+    .add_with(("android", drop_android.to_string()))
+    .add_with(("dotnet", "true"))
+    .add_with(("haskell", "true"))
+    .add_with(("large-packages", "true"))
+    .add_with(("docker-images", "true"))
+    .add_with(("preinstalled-runtimes", "false"))
+    .add_with(("swap-storage", "false"))
+    .id("free-disk")
+}
+
 /// Tauri's Linux backend is WebKitGTK, which the runner image does not carry.
 pub fn install_linux_deps() -> Step<Run> {
     Step::new("Install system deps (Linux)")
