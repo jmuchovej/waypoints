@@ -78,7 +78,6 @@ jobs:
             .github/workflows
             .config/mise.lock
             .config/mise.toml
-            .pre-commit-config.yaml
             src-tauri/gen/android/gradle/libs.versions.toml
             src-tauri/gen/android/local.properties
 concurrency:

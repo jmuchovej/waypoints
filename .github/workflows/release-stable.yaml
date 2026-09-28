@@ -46,7 +46,7 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: test-plan
@@ -76,7 +76,7 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: test-plan
@@ -106,7 +106,7 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: linux-deps
@@ -147,7 +147,7 @@ jobs:
           fetch-tags: "true"
       - name: Setup mise
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: gen-release-notes
@@ -185,7 +185,7 @@ jobs:
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: pnpm-install
@@ -236,7 +236,7 @@ jobs:
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: pnpm-install
@@ -293,7 +293,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         shell: bash
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: pnpm-install
@@ -345,7 +345,7 @@ jobs:
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: pnpm-install
@@ -412,7 +412,7 @@ jobs:
         name: Install Android NDK
         run: sdkmanager "ndk;26.1.10909125"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "false"
       - id: pnpm-install

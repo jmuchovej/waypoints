@@ -201,7 +201,7 @@ pub fn setup_mise(with_cache: Option<bool>) -> Step<Use> {
     Action::new(
         "jdx",
         "mise-action",
-        "c37c93293d6b742fc901e1406b8f764f6fb19dac", // v2
+        "c2a87611a18de5b3828c5652fe268e992400cb5c", // v4.3.0
     )
     .step("Setup mise")
     .add_with(("cache", with_cache.unwrap_or(true)))

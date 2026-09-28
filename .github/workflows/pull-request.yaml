@@ -28,7 +28,7 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           cache: "true"
       - name: Cache Rust dependencies
