@@ -13,15 +13,30 @@ Bedrock — the database engine for Waypoints, built on Turso.
   license.workspace      = true
   publish.workspace      = true
 
+# The crash-recovery tests' victim: spawned via `CARGO_BIN_EXE_crash-victim`
+# and SIGKILLed mid-write. Dev-only in spirit — the package is publish = false,
+# so the extra target costs nothing beyond its own compile.
+[[bin]]
+  name = "crash-victim"
+  path = "src/bin/crash_victim.rs"
+
 [dependencies]
   bedrock-core.workspace   = true
   bedrock-derive.workspace = true
 
+  indoc.workspace      = true
   serde_json.workspace = true
   thiserror.workspace  = true
-  tokio.workspace      = true
+  # "rt" is for the crash-victim bin (bins build with regular deps, not
+  # dev-deps); the library itself only needs "sync".
+  tokio                = { workspace = true, features = [ "rt" ] }
   tracing.workspace    = true
   turso.workspace      = true
+  # Direct dependency for two reasons: it makes the workspace's exact engine
+  # clamp bind (the facade alone would let turso_core float within its caret
+  # range), and it is the honest path for the engine types bedrock uses
+  # (`SyncMode`).
+  turso_core.workspace = true
 
 [dev-dependencies]
   chrono.workspace   = true
@@ -29,6 +44,10 @@ Bedrock — the database engine for Waypoints, built on Turso.
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
   trybuild.workspace = true
   uuid.workspace     = true
+
+[build-dependencies]
+  # Reads the resolved turso_core version out of Cargo.lock (see build.rs).
+  cargo-lock.workspace = true
 
 [lints]
   workspace = true

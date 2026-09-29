@@ -1,9 +1,14 @@
+mod maneuver;
 mod mutations;
 mod projection;
+mod readings;
 mod undo_redo;
 
 use crate::{Database, editor::service::EditorService};
-use domain::{ChartID, Content, Landmark, MarkData, MarkID, RichText, fractional_index};
+use domain::{
+    Chart, ChartID, Content, Feature, FeatureKind, Landmark, MarkData, MarkID, RichText,
+    fractional_index,
+};
 use rstest::fixture;
 use std::sync::Arc;
 use store::{
@@ -52,6 +57,29 @@ fn new_id() -> MarkID {
 
 fn now() -> chrono::NaiveDateTime {
     chrono::Local::now().naive_utc()
+}
+
+fn feature(name: &str, kind: FeatureKind) -> Feature {
+    Feature::builder().with_name(name).with_kind(kind).build()
+}
+
+/// Upsert a chart with the given features; re-upserting with the same chart
+/// replaces it in-place (how tests narrow a feature's constraints).
+async fn seed_chart(db: &Store, chart: &Chart) {
+    db.db().upsert::<Chart>(chart.clone()).await.unwrap();
+}
+
+/// Insert a landmark of an arbitrary chart, without children.
+async fn seed_landmark_of(db: &Store, chart_id: ChartID, title: &str) -> MarkID {
+    let id = new_id();
+    let data = MarkData::Landmark(
+        Landmark::builder()
+            .with_chart(chart_id)
+            .with_title(title.to_string())
+            .build(),
+    );
+    mark::insert(db, id, &data, now()).await.unwrap();
+    id
 }
 
 async fn seed_landmark(db: &Store, n: usize) -> (MarkID, Vec<MarkID>) {

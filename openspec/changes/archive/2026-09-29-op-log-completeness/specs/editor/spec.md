@@ -221,7 +221,7 @@ Whole-Mark operations name the Mark. Edge operations name the edge.
 Projecting a Landmark into an ordered block list SHALL determine both membership
 and order from Terrain child edges, and SHALL NOT consult Landmark data for
 either. This capability restates, for the projection path it owns, the
-containment invariant owned by the `domain` capability.
+containment invariant owned by the `data-model` capability.
 
 Structural mutations that change what a Landmark contains or how its contents
 are ordered SHALL express that change as Terrain edge state.
@@ -355,11 +355,11 @@ Projection reads Terrain child edges and nothing else to determine what a
 Landmark contains and in what order.
 
 _Rationale:_ this is the projection-path consequence of a data-model invariant
-that the `domain` capability owns — a Landmark's content is expressed solely by
-Terrain child edges, and the child-reference field Landmark data used to carry
-is removed. The full decision, including why the field was deleted rather than
-annotated and why its reference type survives, lives in the `domain` spec's
-Decisions log. It is restated here only as the requirement above, because
+that the `data-model` capability owns — a Landmark's content is expressed solely
+by Terrain child edges, and the child-reference field Landmark data used to
+carry is removed. The full decision, including why the field was deleted rather
+than annotated and why its reference type survives, lives in the `data-model`
+spec's Decisions log. It is restated here only as the requirement above, because
 projection is this capability's to specify.
 
 _Why it matters to this capability:_ the premise here is that every state change

@@ -331,6 +331,6 @@ None that affect the specs, the approach, or the task breakdown.
 
 The `Landmark.children` question that this change previously carried as open is
 resolved, acted on, and specified — see Decision 9. The containment invariant it
-leaves behind is stated normatively in this change's new `domain` capability
+leaves behind is stated normatively in this change's new `data-model` capability
 spec, with the `editor` spec restating the projection-path consequence it owns.
 Nothing about it remains deferred.

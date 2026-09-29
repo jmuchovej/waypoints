@@ -645,7 +645,9 @@ version = "0.1.0"
 dependencies = [
  "bedrock-core",
  "bedrock-derive",
+ "cargo-lock",
  "chrono",
+ "indoc",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -653,6 +655,7 @@ dependencies = [
  "tracing",
  "trybuild",
  "turso",
+ "turso_core",
  "uuid",
 ]
 
@@ -1002,6 +1005,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbbad30e4b4c14a39e3cc8aed085a12a327257c316619c93581e017bc52be591"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "cargo-lock"
+version = "11.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50524592e6bfbb1bf6f94e8184a786f637faeaf1cf37bbe65502b9a2c5c48939"
+dependencies = [
+ "semver",
+ "serde",
+ "toml 1.1.6+spec-1.1.0",
+ "url",
 ]
 
 [[package]]

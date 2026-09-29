@@ -1422,8 +1422,12 @@ export type InlineMark_Serialize = {
 /**
  *  Landmark marks &ndash; semantic objects defined by [`Charts`][C].
  *
- *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`, `children`)
+ *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`)
  *  plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
+ *
+ *  A Landmark's content is expressed by Terrain `Child` edges (and their
+ *  fractional order index), not by any field on the Landmark itself — do not
+ *  add one.
  *
  *  [C]: crate::chart::Chart
  */
@@ -1432,8 +1436,12 @@ export type Landmark = Landmark_Serialize;
 /**
  *  Landmark marks &ndash; semantic objects defined by [`Charts`][C].
  *
- *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`, `children`)
+ *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`)
  *  plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
+ *
+ *  A Landmark's content is expressed by Terrain `Child` edges (and their
+ *  fractional order index), not by any field on the Landmark itself — do not
+ *  add one.
  *
  *  [C]: crate::chart::Chart
  */
@@ -1444,8 +1452,6 @@ export type Landmark_Deserialize = {
   title: RichText_Deserialize;
   /**  Typed icon with rendering properties (preferred) */
   icon: Icon_Deserialize | null;
-  /**  Child block references with display information */
-  children: RichReference[];
   /**  User-defined fields (preserves field order, direct JSON values) */
   readings: { [key in FeatureID]: Reading_Deserialize };
 };
@@ -1453,8 +1459,12 @@ export type Landmark_Deserialize = {
 /**
  *  Landmark marks &ndash; semantic objects defined by [`Charts`][C].
  *
- *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`, `children`)
+ *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`)
  *  plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
+ *
+ *  A Landmark's content is expressed by Terrain `Child` edges (and their
+ *  fractional order index), not by any field on the Landmark itself — do not
+ *  add one.
  *
  *  [C]: crate::chart::Chart
  */
@@ -1465,8 +1475,6 @@ export type Landmark_Serialize = {
   title: RichText_Serialize;
   /**  Typed icon with rendering properties (preferred) */
   icon: Icon_Serialize | null;
-  /**  Child block references with display information */
-  children: RichReference[];
   /**  User-defined fields (preserves field order, direct JSON values) */
   readings: { [key in FeatureID]: Reading_Serialize };
 };
@@ -1670,7 +1678,14 @@ export type ReferenceDisplayMode =
 
 /**
  *  A reference that includes display mode information.
- *  Used for top-level Thing fields like children, created_by, updated_by.
+ *
+ *  Currently has no use site — it is early, not dead. It is the typed payload
+ *  intended for inline Mark references inside `Content` marks (mentions,
+ *  inline cards, embeds), which today travel untyped as
+ *  `InlineMark { kind: Mention | Link, data: Option<Json> }`. Typing that
+ *  payload is a separate change. (Its former use site, a child-reference
+ *  field on Landmark data, was removed: containment is expressed solely by
+ *  Terrain `Child` edges.)
  */
 export type RichReference = {
   /**  The referenced block ID */

@@ -26,5 +26,5 @@ pub async fn landmark_create(
     Instance(rt): Instance,
     Json(args): Json<ChartId>,
 ) -> Result<Json<Mark>, ApiError> {
-    Ok(Json(rt.charts().create_landmark(args.chart_id).await?))
+    Ok(Json(rt.editor().create_landmark(args.chart_id).await?))
 }

@@ -65,8 +65,9 @@ needs to drive it.
 The mismatch SHALL be surfaced to the user rather than only logged, and the surface SHALL offer
 whatever remediation is available (for example, retrying the pragma, or reopening the territory) and
 SHALL offer to file a pre-filled bug report carrying the expected and effective values, the engine
-version or commit hash (recorded at build time from the pinned dependency — the engine exposes no
-runtime version API), and the platform. A durability mismatch is expected to be rare; when it does occur it
+version (recorded at build time from the workspace's locked dependency resolution — the pin names
+the engine's facade, not the engine, and the engine exposes no useful runtime version), and the
+platform. A durability mismatch is expected to be rare; when it does occur it
 erodes trust in the storage layer, so it must be visible and actionable rather than silent.
 
 Pragmas supplied by the caller beyond the durability pair remain best-effort: a rejection is
@@ -89,8 +90,8 @@ reported diagnostically and does not surface to the user.
 
 - **WHEN** a durability mismatch is reported at open
 - **THEN** the user is shown the degradation, offered the available remediation, and offered a
-  pre-filled bug report containing the expected value, effective value, build-time engine
-  version or commit hash, and platform
+  pre-filled bug report containing the expected value, effective value, build-time resolved
+  engine version, and platform
 
 #### Scenario: Caller-supplied pragma is rejected
 

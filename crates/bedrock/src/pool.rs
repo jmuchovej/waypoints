@@ -11,7 +11,10 @@
 //! dropped, uncommitted [`WriteTx`](crate::WriteTx)) is cleaned with a
 //! `ROLLBACK` on its *next* acquisition rather than on release.
 
-use crate::{BedrockError, Config};
+use crate::{
+    BedrockError, Config, SyncMode,
+    durability::{self, DurabilityFault, JournalMode},
+};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -29,13 +32,24 @@ pub(crate) struct Pool {
     read_limit: usize,
     pragma: Vec<(String, String)>,
     wal_for_files: bool,
+    synchronous: SyncMode,
     is_memory: bool,
     closed: AtomicBool,
+    /// Set once at open when a durability pragma did not take effect. A
+    /// faulted pool is read-only: [`write`](Pool::write) refuses, reads are
+    /// untouched.
+    fault: Option<DurabilityFault>,
 }
 
 impl Pool {
     /// Open the write connection, applying pragmas and enforcing
     /// `config.version` against `PRAGMA user_version`.
+    ///
+    /// The durability pair (journal mode, synchronous level) is read back from
+    /// the write connection and verified against the config. A mismatch does
+    /// **not** fail the open — denying access to readable notes is worse than
+    /// the degradation — it marks the pool faulted, and faulted pools refuse
+    /// writes.
     ///
     /// `is_new` must be computed by the caller *before* the engine is built:
     /// building creates the database file, so an existence check afterwards
@@ -49,7 +63,7 @@ impl Pool {
         let is_memory = path == ":memory:";
         let pragma: Vec<(String, String)> = config.pragma.into_iter().collect();
 
-        let pool = Pool {
+        let mut pool = Pool {
             engine,
             write: Arc::new(Mutex::new(None)),
             read_sem: Arc::new(Semaphore::new(config.read_connections)),
@@ -58,14 +72,64 @@ impl Pool {
             read_limit: config.read_connections,
             pragma,
             wal_for_files: config.wal,
+            synchronous: config.synchronous,
             is_memory,
             closed: AtomicBool::new(false),
+            fault: None,
         };
 
         let write = pool.new_connection().await?;
         check_version(&write, config.version, is_new).await?;
+        pool.fault = pool.verify_durability(&write).await?;
         *pool.write.lock().await = Some(write);
         Ok(pool)
+    }
+
+    /// Verify the durability pair took effect on the write connection —
+    /// synchronous level governs commits and only the write connection
+    /// commits; journal mode is a property of the database file. Read
+    /// connections re-prove nothing and are not checked.
+    ///
+    /// Journal mode is only required when the config asked for WAL on a
+    /// file-backed database (`:memory:` has no on-disk journal). The
+    /// synchronous level is verified against [`Config::synchronous`] — a
+    /// caller-supplied `pragma("synchronous", …)` diverging from it is applied
+    /// (best-effort, after the verified pair) and then reported as exactly
+    /// what it is: an effective level other than the one configured.
+    ///
+    /// Errs only on engine failure during readback; a mismatch is `Some`.
+    async fn verify_durability(
+        &self,
+        write: &Connection,
+    ) -> Result<Option<DurabilityFault>, BedrockError> {
+        let state = match durability::read_state(write).await {
+            Ok(state) => state,
+            // An unreadable synchronous level is itself the fault.
+            Err(BedrockError::DurabilityMismatch(fault)) => return Ok(Some(fault)),
+            Err(error) => return Err(error),
+        };
+
+        // A non-WAL journal makes synchronous semantics moot; report it first.
+        if self.wal_for_files && !self.is_memory && state.journal_mode != JournalMode::WAL {
+            return Ok(Some(DurabilityFault {
+                pragma: "journal_mode",
+                requested: JournalMode::WAL.to_string(),
+                effective: state.journal_mode.to_string(),
+            }));
+        }
+        if state.synchronous != self.synchronous {
+            return Ok(Some(DurabilityFault {
+                pragma: "synchronous",
+                requested: durability::sync_pragma_value(self.synchronous).into(),
+                effective: durability::sync_pragma_value(state.synchronous).into(),
+            }));
+        }
+        Ok(None)
+    }
+
+    /// The durability fault recorded at open, if any.
+    pub(crate) fn fault(&self) -> Option<&DurabilityFault> {
+        self.fault.as_ref()
     }
 
     /// Mark the pool closed and drop every pooled connection. Awaiting the write
@@ -78,7 +142,22 @@ impl Pool {
 
     /// Acquire the single write connection, first rolling back any transaction a
     /// previous holder left open.
+    ///
+    /// Refused on a durability-faulted pool: a mismatched territory is
+    /// read-only, and every refusal carries the structured fault.
     pub(crate) async fn write(&self) -> Result<WriteGuard, BedrockError> {
+        if let Some(fault) = &self.fault {
+            return Err(BedrockError::DurabilityMismatch(fault.clone()));
+        }
+        self.write_unchecked().await
+    }
+
+    /// Acquire the write connection without the durability-fault check.
+    ///
+    /// For the open path's own bookkeeping DDL (idempotent meta tables the
+    /// handle needs to function at all) and for durability readback — not for
+    /// user data. Everything else goes through [`write`](Pool::write).
+    pub(crate) async fn write_unchecked(&self) -> Result<WriteGuard, BedrockError> {
         self.check_open()?;
         let guard = self.write.clone().lock_owned().await;
         if guard.is_none() {
@@ -117,13 +196,20 @@ impl Pool {
         })
     }
 
-    /// Create a fresh connection and apply the configured pragmas (plus WAL on
-    /// file-backed databases).
+    /// Create a fresh connection: the durability pair first (WAL on
+    /// file-backed databases, then the synchronous level), caller-supplied
+    /// pragmas after — so a caller can still override deliberately.
     async fn new_connection(&self) -> Result<Connection, BedrockError> {
         let conn = self.engine.connect()?;
         if self.wal_for_files && !self.is_memory {
             apply_pragma(&conn, "journal_mode", "WAL").await;
         }
+        apply_pragma(
+            &conn,
+            "synchronous",
+            durability::sync_pragma_value(self.synchronous),
+        )
+        .await;
         for (key, value) in &self.pragma {
             apply_pragma(&conn, key, value).await;
         }
@@ -180,6 +266,13 @@ async fn rollback_if_dirty(conn: &Connection) {
 }
 
 /// Apply one `PRAGMA k = v`, tolerating engine rejection with a warning.
+///
+/// The best-effort contract here covers *caller-supplied* pragmas only —
+/// tuning knobs whose rejection is a legitimate engine-capability difference.
+/// The durability pair (`journal_mode`, `synchronous`) also passes through
+/// here, but is the exception: [`Pool::open`] reads it back and records a
+/// [`DurabilityFault`] when it did not take effect, rather than leaving a log
+/// line as the only evidence.
 ///
 /// Uses `query` rather than `execute`: some setter pragmas (notably
 /// `journal_mode`) return a result row, and turso's `execute` treats any row as

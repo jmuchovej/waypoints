@@ -66,9 +66,9 @@ outcome than the degradation. Writes are another matter: the whole posture exist
 likelihood of corrupting the database, and accepting writes into a store whose durability is
 unknown works directly against that — so writes are refused while reads continue. The mismatch is
 **surfaced to the user** with whatever
-remediation exists and a pre-filled bug report (expected value, effective value, engine version or
-commit hash recorded at build time from the pinned dependency — the engine exposes no runtime
-version API — and platform). Rare faults that erode trust in the storage layer need to be visible and actionable, not
+remediation exists and a pre-filled bug report (expected value, effective value, engine version
+recorded at build time from the workspace's locked dependency resolution — the exact pin names the
+engine's facade rather than the engine, and no useful version is exposed at runtime — and platform). Rare faults that erode trust in the storage layer need to be visible and actionable, not
 silent — and not weaponised against the user's access to their own data.
 
 _Where detection really belongs:_ the release gate. The durability assertions run against the real

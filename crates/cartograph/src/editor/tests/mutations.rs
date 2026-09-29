@@ -271,7 +271,7 @@ async fn reparent_with_none_after_appends(#[future] env: Env) {
 #[rstest]
 #[tokio::test]
 async fn update_mark_title_on_landmark(#[future] env: Env) {
-    let (svc, db) = env.await;
+    let (mut svc, db) = env.await;
     let (lm, _) = seed_landmark(&db, 0).await;
 
     svc.update_mark_title(lm, RichText::from("New Title".to_string()))
@@ -289,13 +289,45 @@ async fn update_mark_title_on_landmark(#[future] env: Env) {
 #[rstest]
 #[tokio::test]
 async fn update_mark_title_on_content_errors(#[future] env: Env) {
-    let (svc, db) = env.await;
+    let (mut svc, db) = env.await;
     let (lm, children) = seed_landmark(&db, 1).await;
 
     let result = svc
         .update_mark_title(children[0], RichText::from("nope".to_string()))
         .await;
     assert!(result.is_err());
+}
+
+#[rstest]
+#[tokio::test]
+async fn update_mark_title_leaves_other_fields_untouched(#[future] env: Env) {
+    let (mut svc, db) = env.await;
+
+    let lm = new_id();
+    let feature = domain::FeatureID::new();
+    let data = MarkData::Landmark(
+        Landmark::builder()
+            .with_chart(ChartID::builtin("page"))
+            .with_title("Before".to_string())
+            .with_icon(domain::Icon::new("iconify:mdi:home"))
+            .with_reading(feature.clone(), domain::Reading::Bool(true))
+            .build(),
+    );
+    mark::insert(&db, lm, &data, now()).await.unwrap();
+
+    svc.update_mark_title(lm, RichText::from("After".to_string()))
+        .await
+        .unwrap();
+
+    let fetched = svc.get_mark(lm).await.unwrap();
+    let (before, after) = match (data, fetched.data) {
+        (MarkData::Landmark(b), MarkData::Landmark(a)) => (b, a),
+        _ => panic!("expected landmarks"),
+    };
+    assert_eq!(after.title.plain_text(), "After");
+    assert_eq!(after.chart, before.chart);
+    assert_eq!(after.icon, before.icon);
+    assert_eq!(after.readings, before.readings);
 }
 
 /// Every mutation through the editor service is also logged to sync: one

@@ -44,10 +44,6 @@ function mockHandle(): EditorHandle {
     isCursorOnLastLine: vi.fn(() => false),
     getContentLength: vi.fn(() => 0),
     flush: vi.fn(async () => {}),
-    canUndo: vi.fn(() => false),
-    canRedo: vi.fn(() => false),
-    undo: vi.fn(),
-    redo: vi.fn(),
   };
 }
 
