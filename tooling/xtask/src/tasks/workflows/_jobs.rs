@@ -266,7 +266,7 @@ mod tests {
     /// Swapping these would hand Play a value it cannot parse.
     #[test]
     fn each_platform_draws_its_own_build_code() {
-        let prepare = prepare("aqua:numtide/treefmt");
+        let prepare = prepare(&WorkflowContext::fixture());
 
         assert_eq!(
             build_code(&prepare, Platform::Android).map(JobOutput::expr),

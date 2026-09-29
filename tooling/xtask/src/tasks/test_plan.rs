@@ -208,11 +208,13 @@ mod tests {
 
     #[test]
     fn a_toolchain_change_tests_everything() {
+        // `.cargo/config.toml` is a symlink to the real file, so an edit lands
+        // in the diff under `.config/` — the path the planner has to match.
         for path in [
             "Cargo.lock",
             "Cargo.toml",
             "rust-toolchain.toml",
-            ".cargo/config.toml",
+            ".config/cargo.toml",
         ] {
             assert_eq!(planned(&[path]), "all()", "{path} should widen");
         }

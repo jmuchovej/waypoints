@@ -286,6 +286,26 @@ pub struct WorkflowContext {
     pub mise_version: String,
 }
 
+#[cfg(test)]
+impl WorkflowContext {
+    /// Stands in for the devenv and mise lookups [`run`] performs, which shell
+    /// out and so cannot run under test. Job-wiring tests assert over step and
+    /// output structure, never over these values — treat them as opaque.
+    pub fn fixture() -> Self {
+        Self {
+            args: WorkflowArgs {
+                check: false,
+                sha: None,
+            },
+            devenv_files: Vec::new(),
+            android_ndk: "00.0.00000000".to_owned(),
+            android_jdk: "00".to_owned(),
+            formatters: "aqua:numtide/treefmt".to_owned(),
+            mise_version: "0.0.0".to_owned(),
+        }
+    }
+}
+
 /// Boxed rather than a `fn` pointer so one builder can emit a family of
 /// workflows by capturing what varies between them — see `release_file` in
 /// [`run`].

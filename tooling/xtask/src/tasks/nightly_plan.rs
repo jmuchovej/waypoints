@@ -382,7 +382,7 @@ mod tests {
     /// resolving to an empty string.
     #[test]
     fn the_prepare_job_republishes_exactly_the_plans_fields() {
-        use crate::tasks::workflows::jobs;
+        use crate::tasks::workflows::{WorkflowContext, jobs};
         use gh_workflow::NamedJob;
         use std::collections::BTreeSet;
 
@@ -394,7 +394,7 @@ mod tests {
             .map(String::as_str)
             .collect();
 
-        let prepare: NamedJob = jobs::prepare("aqua:numtide/treefmt").into();
+        let prepare: NamedJob = jobs::prepare(&WorkflowContext::fixture()).into();
         let republished: BTreeSet<&str> = prepare
             .job
             .outputs
