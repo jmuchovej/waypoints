@@ -95,8 +95,8 @@ trade-off this implies.
   the capability with the op-log completeness invariant and the `Maneuver` /
   `ManeuverTarget` vocabulary; it does not attempt to describe the capability
   exhaustively.
-- `domain`: the Mark data model — what a Landmark is, what it carries, and how
-  containment is expressed. This change seeds it with one invariant only:
+- `data-model`: the Mark data model — what a Landmark is, what it carries, and
+  how containment is expressed. This change seeds it with one invariant only:
   a Landmark's content is expressed solely by Terrain child edges, and Landmark
   data carries no child list. It makes no attempt to describe Charts, Readings,
   Beacons, or the rest of the model; those emerge from the changes that touch
@@ -105,8 +105,8 @@ trade-off this implies.
 ### Modified Capabilities
 
 None. `openspec/specs/` is empty — specs emerge from differentials rather than
-being backfilled, so this change creates the `editor` and `domain` specs rather
-than amending existing ones.
+being backfilled, so this change creates the `editor` and `data-model` specs
+rather than amending existing ones.
 
 ## Non-goals
 
@@ -154,10 +154,10 @@ cleanup_ and design.md, Decision 9.
 **The invariant it leaves behind is specified here, not deferred.**
 _Containment and ordering of a Landmark's content are expressed solely by
 Terrain `Child` edges_ is a data-model rule rather than an editor rule, so it
-is stated normatively in a new `domain` capability spec (`specs/domain/spec.md`)
-along with the decision record behind it. The `editor` spec restates the
-projection-path consequence it owns — projection reads edges and nothing else —
-and points at `domain` for the rest.
+is stated normatively in a new `data-model` capability spec
+(`specs/data-model/spec.md`) along with the decision record behind it. The
+`editor` spec restates the projection-path consequence it owns — projection
+reads edges and nothing else — and points at `data-model` for the rest.
 
 The split between requirement and decision is about where a reader looks, not
 about what survives — archived changes retain their artifacts, and those are
