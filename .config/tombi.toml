@@ -2,7 +2,7 @@ toml-version = "v1.1.0"
 
 [files]
   include              = [ "**/*.toml" ]
-  exclude              = [ "vendor/**/*.toml" ]
+  exclude              = [ "vendor/**/*.toml", ".config/mise*.toml" ]
   respect-ignore-files = true
 
 [format]
@@ -21,3 +21,12 @@ toml-version = "v1.1.0"
     line-width                 = 88
     string-quote-style         = "double"
     trailing-comment-alignment = true
+
+[[schemas]]
+  path         = "https://mise.jdx.dev/schema/mise.json"
+  toml-version = "v1.1.0"
+  include      = [
+    ".config/mise.toml",
+    ".config/mise.*.toml",
+    ".config/mise/conf.d/*.toml"
+  ]

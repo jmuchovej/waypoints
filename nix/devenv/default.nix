@@ -30,7 +30,6 @@ let
     filter
     foldlAttrs
     mapAttrs
-    removeAttrs
     ;
 
   anchors = {

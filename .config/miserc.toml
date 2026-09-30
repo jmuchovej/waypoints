@@ -1,10 +1,10 @@
-auto_env                            = true
-env_conf_d                          = true
-auto_update                         = false
-locked                              = true
-locked_verify_provenance            = true
-minimum_release_age                 = "7d"
-minimum_release_age_excludes        = []
-safe                                = true
-experimental                        = true
-idiomatic_version_file_enable_tools = [ "rust" ]
+# config *discovery* only — mise reads this before `mise*.toml` files (e.g.,
+# `auto_env`, `env`, etc.). all other settings go in `.config/mise/conf.d/base.toml`.
+#
+# `mise settings get` cannot test a key here — it reads a different subsystem
+# and reports "not set" for `auto_env` even while `auto_env` is working. probe
+# by behavior instead: set `env = [ "x" ]`, confirm `mise.x.toml` loads, remove
+# this file, confirm it stops.
+
+auto_env   = true
+env_conf_d = true

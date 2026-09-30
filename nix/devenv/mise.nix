@@ -143,6 +143,11 @@ in
       ".config/mise.toml" = {
         copyMode = "copy";
         toml = {
+          # Only what nix computes is projected. `[settings]` is hand-maintained
+          # in `.config/mise/conf.d/base.toml`, where a `#:schema` comment makes
+          # it lintable — treefmt has to exclude generated `mise.toml` outright,
+          # so anything projected here is unlintable by construction, and none
+          # of those settings derive from the package set anyway.
           inherit (cfg) env;
           vars.WAYPOINTS_FORMATTERS = lib.concatStringsSep "," formatter-specs;
           # The mise devenv provides — the one that writes `.config/mise.lock`.
