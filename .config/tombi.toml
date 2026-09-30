@@ -23,10 +23,9 @@ toml-version = "v1.1.0"
     trailing-comment-alignment = true
 
 [[schemas]]
-  path         = "https://mise.jdx.dev/schema/mise.json"
   toml-version = "v1.1.0"
-  include      = [
-    ".config/mise.toml",
-    ".config/mise.*.toml",
-    ".config/mise/conf.d/*.toml"
-  ]
+  path         = "https://mise.jdx.dev/schema/mise.json"
+  # hand-edited configs only. the generated `mise.toml`/`mise.*.toml` are
+  # excluded from treefmt, so a schema bound to them would never run — mise
+  # parsing them (or failing loudly) is the check that applies there.
+  include      = [ ".config/mise/conf.d/*.toml" ]

@@ -120,11 +120,64 @@ let
 
   in-shell = filter (tool: tool.package != null) (attrValues cfg.tools);
   included = filterAttrs (_: tool: tool.include) cfg.tools;
-  by-spec = mapAttrs' (_: tool: nameValuePair tool.spec tool) included;
 
   # Emitted as a `[vars]` entry so release CI can hand the list to
   # MISE_DISABLE_TOOLS without a second config file.
-  formatter-specs = lib.sort lib.lessThan (attrNames (filterAttrs (_: tool: tool.formatter) by-spec));
+  formatter-specs = lib.sort lib.lessThan (
+    map (tool: tool.spec) (attrValues (filterAttrs (_: tool: tool.formatter) included))
+  );
+
+  # A tool's mise entry: a bare version string unless something forces the
+  # table form.
+  entry =
+    tool:
+    if tool.os == [ ] && tool.options == { } && tool.depends == [ ] then
+      toString tool.package.version
+    else
+      {
+        version = toString tool.package.version;
+      }
+      // lib.optionalAttrs (tool.os != [ ]) { inherit (tool) os; }
+      // lib.optionalAttrs (tool.depends != [ ]) { depends = map displayed tool.depends; }
+      // tool.options;
+
+  tool-table =
+    names: lib.listToAttrs (map (n: nameValuePair included.${n}.spec (entry included.${n})) names);
+
+  # Tools with no environment go in the base, which every environment loads.
+  base-tools = attrNames (filterAttrs (_: tool: tool.envs == [ ]) included);
+
+  # Environments this one pulls in, itself included. Bounded rather than
+  # iterated to a fixpoint so a cycle in `composes` fails instead of hanging.
+  composed =
+    depth: env:
+    if depth == 0 then
+      [ env ]
+    else
+      lib.unique ([ env ] ++ lib.concatMap (composed (depth - 1)) cfg.environments.${env}.composes);
+
+  # Grow a tool set over `depends` until it stops changing. Terminates even on
+  # a dependency cycle: the set only grows and the tool set is finite.
+  close =
+    names:
+    let
+      next = lib.unique (lib.sort lib.lessThan (names ++ lib.concatMap (n: included.${n}.depends) names));
+    in
+    if next == names then names else close next;
+
+  # What an environment's file contains: everything assigned to it or to any
+  # environment it composes, closed over `depends`. A dependency already in the
+  # base is still written out — generated duplication is free, and relying on
+  # the base would break silently if the tool later moved.
+  membership =
+    env:
+    close (
+      lib.unique (
+        lib.sort lib.lessThan (
+          lib.concatMap (e: attrNames (filterAttrs (_: tool: lib.elem e tool.envs) included)) (composed 8 env)
+        )
+      )
+    );
 in
 {
   options.waypoints.mise = {
@@ -205,10 +258,9 @@ in
         copyMode = "copy";
         toml = {
           # Only what nix computes is projected. `[settings]` is hand-maintained
-          # in `.config/mise/conf.d/base.toml`, where a `#:schema` comment makes
-          # it lintable — treefmt has to exclude generated `mise.toml` outright,
-          # so anything projected here is unlintable by construction, and none
-          # of those settings derive from the package set anyway.
+          # in `.config/mise/conf.d/base.toml`: nothing there derives from the
+          # package set, and a generated file cannot be linted — treefmt has to
+          # exclude it or tombi reformats what devenv writes.
           inherit (cfg) env;
           vars.WAYPOINTS_FORMATTERS = lib.concatStringsSep "," formatter-specs;
           # The mise devenv provides — the one that writes `.config/mise.lock`.
@@ -218,22 +270,31 @@ in
           # tightened SLSA provenance and broke a nightly hours after
           # publishing, with nothing changed here.
           min_version = pkgs.mise.version;
-          # A bare version string unless the tool is OS-restricted, in which
-          # case mise wants the table form.
-          tools = mapAttrs (
-            _: tool:
-            if tool.os == [ ] && tool.options == { } && tool.depends == [ ] then
-              toString tool.package.version
-            else
-              {
-                version = toString tool.package.version;
-              }
-              // lib.optionalAttrs (tool.os != [ ]) { inherit (tool) os; }
-              // lib.optionalAttrs (tool.depends != [ ]) { depends = map displayed tool.depends; }
-              // tool.options
-          ) by-spec;
+          tools = tool-table base-tools;
         };
       };
-    };
+    }
+    # One config and one seeded lockfile per environment that has members. An
+    # environment with none emits nothing: mise treats a missing
+    # `mise.<env>.toml` as nothing to add, so selecting it degrades to
+    # base-only rather than failing.
+    // lib.concatMapAttrs (
+      name: _:
+      let
+        members = membership name;
+      in
+      lib.optionalAttrs (members != [ ]) {
+        ".config/mise.${name}.toml" = {
+          copyMode = "copy";
+          # `[tools]` and nothing else — settings, `min_version` and `[env]`
+          # stay in the base, so each is written in exactly one place.
+          toml.tools = tool-table members;
+        };
+        ".config/mise.${name}.lock" = {
+          copyMode = "seed";
+          text = "# This should be overwritten on re-entry.";
+        };
+      }
+    ) cfg.environments;
   };
 }
