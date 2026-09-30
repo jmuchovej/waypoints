@@ -94,9 +94,14 @@ in
       description = "Tools by name: nix package, mise spec, and OS restriction together.";
     };
     env = mkOption {
-      type = types.listOf types.attrs;
-      default = [ ];
-      description = "Entries for the `[[env]]` array of the projected `.config/mise.toml`, `_` directives included.";
+      type = types.attrs;
+      default = { };
+      description = ''
+        The `[env]` table of the projected `.config/mise.toml`, `_` directives
+        included. `_.file` points mise at `.env` — the environment description
+        devenv reads too, so the two cannot disagree; see nix/devenv/default.nix
+        for why each side resolves `PROJECT_ROOT` its own way.
+      '';
     };
   };
 
@@ -138,11 +143,6 @@ in
       ".config/mise.toml" = {
         copyMode = "copy";
         toml = {
-          settings = {
-            experimental = true;
-            idiomatic_version_file_enable_tools = [ "rust" ];
-            lockfile = true;
-          };
           inherit (cfg) env;
           vars.WAYPOINTS_FORMATTERS = lib.concatStringsSep "," formatter-specs;
           # The mise devenv provides — the one that writes `.config/mise.lock`.

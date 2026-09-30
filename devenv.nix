@@ -1,21 +1,13 @@
 {
   pkgs,
+  lib,
   config,
   ...
 }:
-let
-  tauri-app-path = "src-tauri";
-  tauri-frontend-path = "src";
-  tauri-android-path = "${tauri-app-path}/gen/android";
-  tauri-ios-path = "${tauri-app-path}/gen/apple";
-in
 {
-  imports = [
-    ./nix/devenv/mise.nix
-    ./nix/devenv/android.nix
-  ];
-
   stdenv = pkgs.clangStdenv;
+
+  imports = [ ./nix/devenv ];
 
   waypoints.mise = {
     tools = {
@@ -198,35 +190,19 @@ in
         spec = "github:JetBrains/kotlin";
       };
     };
-    env = [
-      { PROJECT_ROOT = "{{ config_root }}"; }
-      { PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"; }
-      # The treefmt-* wrappers, as enterShell puts them on PATH in the shell.
-      { _.path = [ "tooling/bin" ]; }
-      {
-        CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
-        TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
-        TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-frontend-path}";
-        TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-android-path}";
-        TAURI_IOS_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-ios-path}";
-        TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
-        JJ_HOOKS_RUNNER = "hk";
-      }
-    ];
+    env = {
+      PROJECT_ROOT = "{{ config_root }}";
+      _.file = {
+        path = config.dotenv.filename;
+        expand = true;
+      };
+    };
   };
 
-  env = {
-    PROJECT_ROOT = config.devenv.root;
-    PROJECT_CONFIG_PATH = "${config.env.PROJECT_ROOT}/.config";
-    TAURI_FRONTEND_PATH = "${config.env.PROJECT_ROOT}/${tauri-frontend-path}";
-    TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/${tauri-app-path}";
-    TAURI_ANDROID_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-android-path}";
-    TAURI_IOS_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-ios-path}";
-    TREEFMT_CONFIG = "${config.env.PROJECT_CONFIG_PATH}/treefmt.toml";
-    CLIPPY_CONF_DIR = "${config.env.PROJECT_CONFIG_PATH}";
-    TREEFMT_TREE_ROOT = config.env.PROJECT_ROOT;
-    JJ_HOOKS_RUNNER = "hk";
-  };
+  # `.env` and both of its substituters are owned by nix/devenv/default.nix.
+  env.PROJECT_ROOT = config.devenv.root;
+
+  delta.enable = true;
 
   waypoints.android = {
     agp.version = "8.13.2";
@@ -236,12 +212,11 @@ in
       "30"
     ];
     ndk.version = "30.0.16138531";
-    project-path = tauri-android-path;
+    # devenv writes `files."<project-path>/..."` relative to the root, while
+    # `.env` carries the absolute path both it and mise need. Re-relativize
+    # rather than restating the path in nix.
+    project-path = lib.removePrefix "${config.devenv.root}/" config.env.TAURI_ANDROID_PROJECT_PATH;
   };
-
-  enterShell = ''
-    export PATH="${config.devenv.root}/tooling/bin:$PATH"
-  '';
 
   packages = with pkgs; [
     act
@@ -283,7 +258,7 @@ in
     after = [ "devenv:enterShell" ];
     execIfModified = [
       "rust-toolchain.toml"
-      ".cargo/deny.toml"
+      ".config/deny.toml"
     ];
     exec = builtins.readFile ./nix/devenv/bin/sync-deny-targets;
   };
