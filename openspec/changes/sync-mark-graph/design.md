@@ -182,3 +182,22 @@ No data migration. The only existing Territory data is transient dev seed; it is
     `outpost::protocol` re-export — no new cartograph dependency.
   - `store` takes the scoped `outpost-protocol` dependency when sync-owned persistence lands
     (tasks section 5), confined to sync-owned tables as sketched.
+
+- **Hardware verification of the Success Condition is pulled from this change (2026-09-30).**
+  Task 13.5 — two real devices, each with its own Vessel, against a self-hosted Station,
+  including after offline divergence — cannot be performed before this change lands. It needs a
+  nightly build carrying outpost, and that nightly only exists once this is merged. A dev build
+  is not a substitute: mobile deployment would keep the phone tethered to the laptop, collapsing
+  the multi-network condition the test exists to exercise.
+
+  What 13.1–13.4 establish in software is unchanged — convergence, offline divergence, permuted
+  delivery, cross-Landmark moves. What remains unproven is the same condition over real radios
+  and real NAT. Nightlies sit at the top of the release ladder and carry the weakest stability
+  guarantee, which makes a nightly the right place to find this out and the wrong place to
+  assume it.
+
+  This is a live obligation, not a descope. Archiving freezes this record, so nothing written
+  here resurfaces on its own, and it is deliberately not filed as an issue — there is no merge
+  or pull request it could hang off. It is carried in the working tree's uncommitted TODOS.md
+  instead. Defects found once it is performed become legible the usual way, as the commits that
+  fix them.

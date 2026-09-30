@@ -97,4 +97,4 @@ Every task below must leave per-commit hooks green (clippy, cargo-test, treefmt)
 - [x] 13.2 Offline-divergence test: both Vessels edit while unable to reach each other, then both sync and converge.
 - [x] 13.3 Permuted-delivery convergence test at the integration level, proving order independence end to end and not only in the pure fold.
 - [x] 13.4 Cross-Landmark test: move a Content mark from one Landmark to another and confirm both Landmarks reflect the move on both devices.
-- [ ] 13.5 Manual verification of the success condition on real hardware — desktop plus mobile, each with its own Vessel, against a self-hosted Station, including after offline divergence.
+- [ ] ~~13.5 Manual verification of the success condition on real hardware — desktop plus mobile, each with its own Vessel, against a self-hosted Station, including after offline divergence.~~ Pulled from this change: it needs a nightly carrying outpost, which only landing this change produces. See design.md, Open Questions.
