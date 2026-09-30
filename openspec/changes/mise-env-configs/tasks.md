@@ -1,7 +1,7 @@
 ## 1. Early-init settings
 
-- [ ] 1.1 Commit `.config/miserc.toml` with `auto_env`, `env_conf_d`, `auto_update`, `locked`, `locked_verify_provenance`, `minimum_release_age`, `safe`, and `experimental`; verify `mise config` lists it as a loaded config file and `mise settings get auto_env` returns `true`
-- [ ] 1.2 Move `experimental` out of the generated `.config/mise.toml` settings block now that `miserc.toml` owns it, and verify `mise settings get experimental` is still `true` with no duplicate warning
+- [x] 1.1 Commit `.config/miserc.toml` carrying only the discovery keys mise honours there (`auto_env`, `env_conf_d`); verify behaviourally against a control that the file is read — an `env = [...]` entry loads the named config, and removing the file stops it
+- [x] 1.2 Move `[settings]` — `experimental`, `lockfile`, `idiomatic_version_file_enable_tools`, `locked`, `locked_verify_provenance`, `minimum_release_age` — into a hand-maintained `.config/mise/conf.d/base.toml` carrying `#:schema`, and drop it from the projection; verify each reads back in force, `idiomatic_version_file_enable_tools` behaviourally via `mise ls --current` resolving `rust` from `rust-toolchain.toml`, and verify treefmt lints the new file rather than skipping it as it must skip generated `mise.toml`. Omit `safe`: mise refuses it outside a global config
 - [ ] 1.3 Confirm `locked = true` does not break a cold `mise install` against the current single lockfile — run it in a scratch clone and verify every tool installs rather than failing on a missing lock entry
 
 ## 2. Declare environments and dependencies
@@ -19,6 +19,7 @@
 - [ ] 3.3 Derive `files` so the base entry is joined by `.config/mise.<env>.toml` and a seeded `.config/mise.<env>.lock` for each environment with at least one member; with all tools still defaulting to base, verify no environment file is emitted
 - [ ] 3.4 Keep `settings`, `min_version`, and `[env]` (including the `_.file` pointer at `.env`) in the base only — environment files carry `[tools]` and nothing else; verify by inspecting a generated environment file once section 5 populates one
 - [ ] 3.5 Delete `[vars].WAYPOINTS_FORMATTERS` from the projection and verify `just check-generated` reports `.config/mise.toml` as the only changed file
+- [ ] 3.6 Add the generated `.config/mise.*.toml` files to `.config/treefmt.toml`'s excludes and narrow the `[[schemas]]` glob in `.config/tombi.toml` to the hand-edited configs only; verify `just check-generated` converges across two consecutive shell entries. Schemas serve LSP-assisted edits — hand or agent — so generated files do not want one; a malformed tool table is caught by mise parsing it or failing loudly, which is the touchpoint that motivates generating it at all. Without the exclusion tombi indents `[tools]` entries while devenv writes them flush-left, and the check never converges
 
 ## 4. Lock verification vs regeneration
 

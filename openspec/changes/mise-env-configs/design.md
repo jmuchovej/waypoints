@@ -166,17 +166,64 @@ repository, not a mode of working in it, so no environment overrides them —
 and keeping the pointer in one place means an environment file never has to
 know the env file exists.
 
-### D6 — `.config/miserc.toml` is committed and hand-maintained
+### D6 — mise config splits three ways: discovery, settings, derived
 
-It cannot be generated: mise reads it before config loading, and devenv's
-`files` writes on shell entry, which is already too late for the first read in a
-fresh clone. It is also policy rather than derivation —
-`locked_verify_provenance`, `minimum_release_age`, `safe` are security posture
-decisions that should be reviewed as a diff, not recomputed from the package
-set.
+The dividing line is not "policy vs generated" but **what nix actually
+computes**. Only derived values are projected; constants are hand-maintained
+where they can be linted.
 
-Consequence: `miserc.toml` is outside `check-generated`'s remit, and a
-contributor editing it is editing policy deliberately. That is the intent.
+| file                            | holds                                       | why not elsewhere                                                     |
+| ------------------------------- | ------------------------------------------- | --------------------------------------------------------------------- |
+| `.config/miserc.toml`           | `auto_env`, `env_conf_d`, `env`             | read before config loading, so devenv's shell-entry write is too late |
+| `.config/mise/conf.d/base.toml` | `[settings]`                                | constants, and lintable — see below                                   |
+| `.config/mise.toml` (generated) | `min_version`, `[tools]`, `[env]`, `[vars]` | every value derives from the nix package set                          |
+
+**Generated config is unlintable config.** `.config/treefmt.toml` excludes
+`mise.toml` and `*/mise.toml`, and must: tombi would reformat what devenv
+writes, and `check-generated` would then never converge. tombi binds a schema
+through a `#:schema` comment, which devenv's TOML generator cannot emit — it
+serialises an attrset. So anything projected into `mise.toml` gets no schema
+validation at all. (`$schema` as a key is not an alternative: mise warns
+`unknown field` on it, in `mise.toml` and `conf.d` alike.)
+
+Since no setting derives from the package set — `min_version` does, but it is
+top-level, not a setting — moving `[settings]` out costs nothing and buys
+linting on the keys where a silent typo is most expensive.
+
+#### `.config/miserc.toml` accepts discovery keys only
+
+Measured: `locked`, `locked_verify_provenance`, `minimum_release_age` and
+`experimental` placed there all read back as their defaults, with no warning of
+any kind, while the same keys in a `[settings]` block take effect.
+
+That is the opposite of this decision's first draft, which put the security
+posture in `miserc.toml` on the assumption it was a general settings file. The
+consequence of being wrong was silent: `locked` and `locked_verify_provenance`
+read `false` while appearing to be set — exactly the failure shape this change
+exists to remove, and unnoticed because nothing asserted the settings were in
+force.
+
+`mise settings get` cannot be used to test a discovery key. It reads the
+settings subsystem, which `miserc.toml` does not feed, so it reports
+`not set`/`Unknown setting` for `auto_env` and `env_conf_d` even while both are
+working. It also misreports list-typed settings —
+`idiomatic_version_file_enable_tools` reads `[]` while genuinely `["rust"]`.
+Discovery keys are testable only behaviourally, against a control: set
+`env = [ "x" ]`, confirm `mise.x.toml` loads, remove the file, confirm it stops.
+
+`safe` belongs in none of the three. mise refuses it outside a global config and
+says so — the one key in this area that fails loudly.
+
+#### Consequence
+
+Two hand-maintained files sit outside `check-generated`'s remit, and each is
+small and slow-moving: `miserc.toml` is two lines deciding how config is
+discovered, `conf.d/base.toml` is one `[settings]` block. Both are reviewed as
+diffs, and `conf.d/base.toml` is schema-checked on top. `PROJECT_ROOT` stays in
+nix rather than joining them — the mise side needs `{{ config_root }}` and the
+devenv side `config.devenv.root`, neither derivable from the other, so the
+invariant is that the two agree and both declarations belong where a reader
+sees them together.
 
 ### D7 — Locking is an explicit recipe; shell entry verifies
 
