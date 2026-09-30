@@ -178,6 +178,16 @@ let
         )
       )
     );
+
+  # Environments that currently have members, and so have files on disk.
+  materialised = filter (env: membership env != [ ]) environment-names;
+
+  # The basenames those environments own. Anything else matching
+  # `mise.<something>.{toml,lock}` under `.config` is a leftover.
+  expected-files = lib.concatMap (env: [
+    "mise.${env}.toml"
+    "mise.${env}.lock"
+  ]) materialised;
 in
 {
   options.waypoints.mise = {
@@ -236,6 +246,21 @@ in
     packages = filter (lib.meta.availableOn pkgs.stdenv.hostPlatform) (
       map (tool: tool.package) in-shell
     );
+
+    # Runs after devenv has written its files, so the expected set is on disk
+    # and anything left over is genuinely orphaned.
+    tasks."mise:prune-environments" = {
+      description = "Remove generated mise environment configs whose environment no longer has members";
+      package = pkgs.nushell;
+      after = [ "devenv:files" ];
+      before = [ "devenv:enterShell" ];
+      # `exec` runs under nushell, so the expected set is bound the nu way
+      # rather than exported by a shell.
+      exec = ''
+        $env.WAYPOINTS_MISE_ENV_FILES = "${lib.concatStringsSep "," expected-files}"
+        ${builtins.readFile ./bin/prune-mise-environments}
+      '';
+    };
 
     tasks."mise:lock" = {
       description = "Regenerate mise.lock and verify every declared tool resolved";

@@ -1,0 +1,44 @@
+#!/usr/bin/env nu
+
+# Remove generated mise environment configs whose environment no longer has
+# members.
+#
+# devenv's own `files:cleanup` will not do this. It removes a file it has
+# stopped generating only when that file is a symlink into the nix store —
+# a deliberate rule, so it can never delete something a human edited. The
+# environment configs are `copyMode = "copy"` because CI has to read their
+# contents, so they are permanently exempt from it.
+#
+# Left alone, an emptied environment keeps its file, mise keeps loading it, and
+# `check-generated` cannot see the problem: it diffs the files devenv currently
+# declares, and a leftover is by definition no longer declared.
+#
+# WAYPOINTS_MISE_ENV_FILES is the set devenv expects to exist, projected from
+# the environments that have members.
+
+let root = $env.PROJECT_ROOT? | default (pwd)
+let config_dir = ($root | path join ".config")
+let expected = ($env.WAYPOINTS_MISE_ENV_FILES | split row "," | where {|f| $f != ""})
+
+# `mise.toml`/`mise.lock` are the base config and never environment files:
+# `mise.*.toml` cannot match them, since nothing sits between the two dots.
+let strays = (
+  ls $config_dir
+  | get name
+  | path basename
+  | where {|f| $f | str starts-with "mise." }
+  | where {|f| ($f | str ends-with ".toml") or ($f | str ends-with ".lock") }
+  | where {|f| $f != "mise.toml" }
+  | where {|f| $f != "mise.lock" }
+  | where {|f| $f not-in $expected }
+)
+
+if ($strays | is-empty) {
+  exit 0
+}
+
+for stray in $strays {
+  let path = ($config_dir | path join $stray)
+  print $"removing orphaned mise environment file: .config/($stray)"
+  rm --force $path
+}
