@@ -1,0 +1,10 @@
+auto_env                            = true
+env_conf_d                          = true
+auto_update                         = false
+locked                              = true
+locked_verify_provenance            = true
+minimum_release_age                 = "7d"
+minimum_release_age_excludes        = []
+safe                                = true
+experimental                        = true
+idiomatic_version_file_enable_tools = [ "rust" ]
