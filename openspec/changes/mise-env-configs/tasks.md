@@ -2,7 +2,7 @@
 
 - [x] 1.1 Commit `.config/miserc.toml` carrying only the discovery keys mise honours there (`auto_env`, `env_conf_d`); verify behaviourally against a control that the file is read — an `env = [...]` entry loads the named config, and removing the file stops it
 - [x] 1.2 Move `[settings]` — `experimental`, `lockfile`, `idiomatic_version_file_enable_tools`, `locked`, `locked_verify_provenance`, `minimum_release_age` — into a hand-maintained `.config/mise/conf.d/base.toml` carrying `#:schema`, and drop it from the projection; verify each reads back in force, `idiomatic_version_file_enable_tools` behaviourally via `mise ls --current` resolving `rust` from `rust-toolchain.toml`, and verify treefmt lints the new file rather than skipping it as it must skip generated `mise.toml`. Omit `safe`: mise refuses it outside a global config
-- [ ] 1.3 Confirm `locked = true` does not break a cold `mise install` against the current single lockfile — run it in a scratch clone and verify every tool installs rather than failing on a missing lock entry
+- [x] 1.3 Confirm `locked = true` does not break a cold `mise install` — verified in a scratch clone with an isolated `MISE_DATA_DIR`: `mise install --dry-run` resolves all 33 tools and exits 0. Note that `.config/mise/mise.lock` must ship alongside `.config/mise.lock`: `rust` reaches mise through `rust-toolchain.toml` rather than `[tools]`, its lock entry lands in the conf.d lockfile, and omitting it fails the install with `rust@stable is not in the lockfile`. A real provenance-checked install was not exercised — no GitHub token is available and the anonymous quota is spent; that is 7.6's job
 
 ## 2. Declare environments and dependencies
 
