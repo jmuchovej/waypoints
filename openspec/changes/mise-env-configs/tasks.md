@@ -24,12 +24,12 @@
 
 ## 4. Lock verification vs regeneration
 
-- [ ] 4.1 Split `nix/devenv/bin/sync-mise` into a verify-only script (no network, no writes) and a `lock` script that regenerates; verify entering the shell performs no `mise lock` and leaves `.config/mise.lock` byte-identical
-- [ ] 4.2 Change the `mise:lock` devenv task to run the verify-only script and drop `.config/mise.lock` from its `execIfModified`, so the task no longer watches a file it writes; verify two consecutive shell entries produce no diff
-- [ ] 4.3 Add a `just mise-lock` recipe that regenerates every environment's lockfile in one authenticated run, mapping `GH_TOKEN` to `GITHUB_TOKEN` as the current script does; verify it fails loudly with a stated reason when no token is present rather than silently writing a short lockfile
-- [ ] 4.4 Replace the resolution-only assertion with a platform-coverage check: per environment, compare declared tools × target platforms against the lockfile's entries, with a named exemption list for backends that produce none (`gem:`, `npm:`, `rust`); verify it passes on the current full lockfile
-- [ ] 4.5 Truncate a copy of `.config/mise.lock` and verify the coverage check fails and names the missing tool/platform pairs — the check is untrustworthy until its negative case is observed
-- [ ] 4.6 Update `devenv_update.rs` so the PR body and commit file list enumerate every mise config and lockfile rather than the two literal paths, and verify the regenerated `devenv-update.yaml` reflects it
+- [x] 4.1 Replace `sync-mise` with a hand-invoked `tooling/bin/mise-lock`. It lives there rather than `nix/devenv/bin` because that directory is for scripts nix deploys as devenv tasks, and this is no longer one; `tooling/bin` is on PATH, so `mise-lock` runs directly as well as through `just mise-lock`
+- [x] 4.2 Remove the lock task from devenv entirely rather than converting it to a verifier. Verified no remaining task writes a lockfile — `mise:prune-environments` is the only mise task left — and that two consecutive shell entries leave every lockfile byte-identical
+- [x] 4.3 Add a `just mise-lock` recipe that refreshes every environment's lockfile, mapping `GH_TOKEN` to `GITHUB_TOKEN`; verified it refuses with rc=1 and a stated reason when no token is present
+- [x] 4.4 **Dropped — the check was not worth its weight.** `locked = true` already refuses an install the lockfile does not cover, on whichever platform is short, and `check-generated` already fails on any lockfile diff; a local check could only add noticing before a push that some other platform is short. Against that, it needed a hand-maintained expected-platform set and an exemption table, and `mise lock` cannot even act on its findings — it refreshes the platforms a lockfile already carries and will not add one, so the remedy the check recommended could not fix what it reported. `mise lock --platform` is how a platform gets added, and `--dry-run --json` is how mise reports its own view without parsing anything
+- [x] 4.5 **Dropped with 4.4.** Recorded for the record: the check did work — truncating a lockfile produced `cargo-deny is not locked at all` and `just missing macos-arm64` at rc=1 — and the test was only possible after 4.2, because while the task still regenerated on entry it overwrote the truncation before the check could read it
+- [x] 4.6 Only the PR body needed changing. `paths()` already chains `context.devenv_files` from `devenv info`, so the commit file list was derived all along and picks up each new environment config and lockfile without an edit
 
 ## 5. Partition the tool set
 
@@ -57,5 +57,6 @@
 - [ ] 7.3 Verify a job whose environment omits a tool it needs fails on a missing binary rather than silently falling back, by temporarily removing one tool from an environment and observing the CI failure
 - [ ] 7.4 Verify the `depends` closure is load-bearing: temporarily disable it, confirm `build-mobile` generates without `ruby`, and confirm a `fastlane` invocation then fails at run time rather than at config load — the failure mode the closure exists to prevent
 - [ ] 7.5 Verify `locked = true` refuses an unlocked install: add a tool to a configuration without regenerating that environment's lockfile and confirm installation fails rather than resolving the version afresh
+- [x] 7.8 **Moot.** The `core:swift` / `macos-arm64` exemption is gone with the coverage check. The underlying question stands and is worth knowing: swift locks only Linux platforms while node, deno and ruby all lock `macos-arm64`, yet `mise install --dry-run` on macos-arm64 reports `swift@5.10.1 would install`. If a job installs swift through mise on macOS under `locked = true`, that is where it surfaces
 - [ ] 7.6 Re-verify the provenance negative case against the current mise — a deliberately wrong `slsa_signer_identity` on `github:getsops/sops` must fail with a signer-identity mismatch, not install
 - [ ] 7.7 Walk each scenario in `specs/toolchain/tool-projection/spec.md` and `specs/toolchain/lockfile-integrity/spec.md` and confirm a task above exercises it; record any scenario that is asserted but never executed rather than leaving it assumed

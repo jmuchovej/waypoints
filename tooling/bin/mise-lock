@@ -1,0 +1,63 @@
+#!/usr/bin/env nu
+
+# Refresh every mise lockfile. Hand-invoked — `just mise-lock`, or directly,
+# since tooling/bin is on PATH.
+#
+# Why not on shell entry: it used to be, and the devenv task listed the
+# lockfile it wrote in its own `execIfModified`, so entry rewrote the file it
+# was watching, over the network, unattended. mise reports success after a
+# rate-limited run that wrote only part of the lockfile, so the damage was
+# silent — and `locked = true` surfaces it as a failed install on a CI runner,
+# the furthest point from the machine that caused it.
+#
+# Nothing verifies the result afterwards. `locked = true` already refuses an
+# install the lockfile does not cover, on whichever platform is short, and
+# `just check-generated` already fails on any lockfile diff. A local check
+# could only add noticing before a push that some *other* platform is short.
+#
+# Note what `mise lock` does and does not do: it refreshes checksums and URLs
+# for the platforms a lockfile already carries. It will not add a platform.
+# Use `mise lock --platform <list>` for that — a lockfile first written narrow
+# stays narrow, and no amount of plain `mise lock` widens it.
+
+# mise reads GITHUB_TOKEN/MISE_GITHUB_TOKEN; secretspec and the gh CLI both
+# call it GH_TOKEN. Accept either.
+let token = ($env.GITHUB_TOKEN? | default ($env.GH_TOKEN? | default ""))
+
+if ($token | is-empty) {
+  print -e "error: no GITHUB_TOKEN or GH_TOKEN in the environment."
+  print -e ""
+  print -e "Refreshing the lockfiles needs an authenticated GitHub client."
+  print -e "Anonymous requests are capped at sixty an hour, which this tool set"
+  print -e "exhausts partway through — mise then writes a lockfile missing"
+  print -e "entries and reports success."
+  print -e ""
+  print -e "Run it through secretspec, which supplies GH_TOKEN:"
+  print -e "  secretspec run --reason '<why>' -- just mise-lock"
+  exit 1
+}
+
+let root = $env.PROJECT_ROOT? | default (pwd)
+
+# Each environment has its own lockfile, and locking under one also refreshes
+# the base. Locking each in turn leaves none stale relative to the others.
+let environments = (
+  ls ($root | path join ".config")
+  | get name
+  | path basename
+  | where {|f| $f | str starts-with "mise." }
+  | where {|f| $f | str ends-with ".toml" }
+  | where {|f| $f != "mise.toml" }
+  | each {|f| $f | str replace --regex '^mise\.' "" | str replace --regex '\.toml$' "" }
+  | sort
+)
+
+with-env {GITHUB_TOKEN: $token} {
+  print "locking base config"
+  mise lock
+
+  for environment in $environments {
+    print $"locking environment: ($environment)"
+    with-env {MISE_ENV: $environment} { mise lock }
+  }
+}

@@ -225,38 +225,48 @@ devenv side `config.devenv.root`, neither derivable from the other, so the
 invariant is that the two agree and both declarations belong where a reader
 sees them together.
 
-### D7 — Locking is an explicit recipe; shell entry verifies
+### D7 — Locking is hand-invoked; shell entry does nothing to lockfiles
 
-The `mise:lock` devenv task is split:
+`tooling/bin/mise-lock` refreshes every environment's lockfile and refuses to
+run without a GitHub token. Shell entry neither writes a lockfile nor checks
+one.
 
-- **On shell entry**: a check that each committed lockfile is present and covers
-  every tool its config declares, on every platform in the target set. No
-  network, no writes. A short or stale lockfile fails here, loudly, in the shell
-  that produced it.
-- **`just mise-lock`**: regenerates every environment's lockfile, in one run,
-  deliberately, with a token.
+**Why this now.** The task it replaces ran `mise lock` on entry and listed the
+lockfile it wrote in its own `execIfModified`, so entry rewrote the file it was
+watching, over the network, unattended. A rate-limited run writes a short
+lockfile and exits zero, so the damage was silent; with `locked = true` it
+surfaces at a CI install, the furthest point from the machine that caused it.
+It fired repeatedly while this change was being written, twice obstructing the
+verification of unrelated tasks.
 
-**Why this now.** The present task lists `.config/mise.lock` in its own
-`execIfModified`, so entering the shell regenerates the file it is watching.
-When GitHub rate-limits the unauthenticated path, mise writes a truncated
-lockfile and exits zero. Splitting one lockfile into four multiplies the blast
-radius, and `locked = true` with `locked_verify_provenance = true` moves the
-failure from the shell to a CI install — the furthest possible point from the
-machine that caused it.
+It lives in `tooling/bin` rather than `nix/devenv/bin` because the latter is
+for scripts nix deploys as devenv tasks, and this is deliberately not one.
 
-**Alternative considered**: keep automatic regeneration but fail on a short
-lockfile. That still requires the coverage check, and it still performs
-unattended network writes on every shell entry; the check alone is the useful
-half.
+**What `mise lock` does not do**, which took a reading of its help to notice:
+it refreshes checksums and URLs for the platforms a lockfile _already carries_
+and will not add one. A lockfile first written narrow stays narrow. Widening it
+takes `mise lock --platform <list>`.
 
-### D8 — The coverage assertion counts platform entries, not just resolution
+### D8 — No local lockfile verification
 
-Today's assertion passes on a lockfile missing a third of its entries. The
-replacement compares, per environment, the declared tool × target-platform
-product against what the lockfile actually holds, with a declared exemption list
-for backends that legitimately produce no per-platform entries (`gem:`, `npm:`,
-and `rust`). An exemption is a named entry, not a silent skip — an unexplained
-gap is a failure.
+Considered and rejected. A coverage check — every declared tool present, with
+an entry per target platform — was built, worked, and then removed.
+
+`locked = true` already refuses an install the lockfile does not cover, on
+whichever platform is short. `check-generated` already fails on any lockfile
+diff. The only thing a local check adds is noticing, before a push, that a
+platform you are not on is short.
+
+Against that it needed an expected-platform set and a per-tool exemption table,
+both hand-maintained, and neither derivable: the set of platforms mise _can_
+lock is not the set this repo targets, and `rust-toolchain.toml` enumerates
+build targets rather than mise hosts — it lists Android and iOS triples, where
+mise never runs, and a Windows ARM triple the lockfile has no slot for. Worse,
+`mise lock` cannot act on the check's findings, so the remedy it recommended
+could not fix what it reported.
+
+If a view of lockfile state is ever wanted, `mise lock --dry-run --json`
+reports mise's own rather than parsing the file.
 
 ### D9 — Jobs carry `MISE_ENV`; `WorkflowContext` carries nothing
 

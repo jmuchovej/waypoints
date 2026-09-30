@@ -21,8 +21,8 @@ const TITLE: &str = "chore(devenv): update locked inputs";
 
 const BODY: &str = concat!(
     "Ran `devenv update`, then regenerated everything that derives from the ",
-    "lockfile — devenv's `files.\"...\"` outputs, `mise.lock`, and the workflows ",
-    "under `.github/workflows`.\n\n",
+    "lockfile — devenv's `files.\"...\"` outputs, the mise configs and their ",
+    "lockfiles, and the workflows under `.github/workflows`.\n\n",
     "Opened by the weekly schedule in `xtask::workflows::devenv_update`. ",
     "Review the toolchain moves before merging; `check-generated` proves only ",
     "that the tree is self-consistent, not that the new versions work.",

@@ -1,8 +1,12 @@
 # Owns the mise projection: every tool the shell provides is mirrored into
-# `.config/mise.toml` with pinned versions, `.config/mise.lock` is seeded, and
-# the `mise:lock` task keeps the lockfile's provenance entries fresh. mise never
-# provides dependencies inside the shell — nix does; the projection exists for
-# consumers outside it (CI runners).
+# `.config/mise.toml` with pinned versions, and into `.config/mise.<env>.toml`
+# for the environments it belongs to. mise never provides dependencies inside
+# the shell — nix does; the projection exists for consumers outside it (CI
+# runners).
+#
+# Lockfiles are seeded here but never written on entry. `tooling/bin/mise-lock`
+# refreshes them when asked: mise reports success after a rate-limited run that
+# wrote only part of the file, so that cannot happen unattended.
 #
 # Every tool is one `waypoints.mise.tools.<name>` entry carrying its nix
 # package, its backend-qualified mise spec, and any OS restriction. A tool with
@@ -260,17 +264,6 @@ in
         $env.WAYPOINTS_MISE_ENV_FILES = "${lib.concatStringsSep "," expected-files}"
         ${builtins.readFile ./bin/prune-mise-environments}
       '';
-    };
-
-    tasks."mise:lock" = {
-      description = "Regenerate mise.lock and verify every declared tool resolved";
-      package = pkgs.nushell;
-      after = [ "devenv:enterShell" ];
-      execIfModified = [
-        ".config/mise.toml"
-        ".config/mise.lock"
-      ];
-      exec = builtins.readFile ./bin/sync-mise;
     };
 
     files = {
