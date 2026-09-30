@@ -75,6 +75,7 @@ pub fn run() {
             commands::territory::territory_remove,
             // sync
             commands::sync::sync_status,
+            commands::sync::sync_state,
             commands::sync::sync_identity_create,
             commands::sync::sync_submit_setup_code,
             commands::sync::sync_classify_setup_code,

@@ -11,6 +11,7 @@ pub use tools::{checkpoint, open, reset};
 pub mod query {
     pub mod chart;
     pub mod mark;
+    pub mod sync;
     pub mod terrain;
 }
 

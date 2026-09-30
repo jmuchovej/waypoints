@@ -1,8 +1,14 @@
-use chrono::Utc;
+//! Hybrid logical clock: the value carried by `EnvelopeHeader.timestamp`.
+//!
+//! The protocol never interprets the field — it is advisory, signed, and
+//! AAD-bound (see [`EnvelopeHeader`]). The type lives here so authoring
+//! Vessels and app-layer consumers share one packing and one receive rule
+//! without the app data model depending on this crate's internals.
+//!
+//! [`EnvelopeHeader`]: crate::EnvelopeHeader
+
 use derive_more::{Debug, Display};
 use serde::{Deserialize, Serialize};
-use specta::Type;
-use specta_typescript::BigInt;
 
 /// Injectable time source for HLC operations. Production code uses
 /// [`SystemClock`]; tests use a mock so HLC behavior is deterministic
@@ -12,13 +18,16 @@ pub trait Clock {
     fn now_ms(&self) -> i64;
 }
 
-/// The production [`Clock`]: wall-clock time via `chrono::Utc`.
+/// The production [`Clock`]: wall-clock time via `std::time::SystemTime`.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemClock;
 
 impl Clock for SystemClock {
     fn now_ms(&self) -> i64 {
-        Utc::now().timestamp_millis()
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0)
     }
 }
 
@@ -40,12 +49,12 @@ impl Clock for SystemClock {
 /// (through year ~6429) — beyond that, packed values go negative and
 /// ordering breaks.
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Display, Type,
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Display,
 )]
 #[display("{}", self.inner())]
 #[debug("HLC({}+{})", self.physical(), self.logical())]
 #[serde(transparent)]
-pub struct HLC(#[specta(type = BigInt)] pub i64);
+pub struct HLC(pub i64);
 
 impl HLC {
     pub const ZERO: HLC = HLC(0);
@@ -72,7 +81,7 @@ impl HLC {
     }
 
     /// [`HLC::tick`] with an explicit clock (for tests).
-    pub(crate) fn tick_with(prev: HLC, clock: &impl Clock) -> HLC {
+    pub fn tick_with(prev: HLC, clock: &impl Clock) -> HLC {
         let physical_ms = clock.now_ms();
         if physical_ms > prev.physical() {
             HLC::pack(physical_ms, 0)

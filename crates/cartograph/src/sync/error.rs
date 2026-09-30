@@ -28,6 +28,8 @@ pub enum SyncError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Vessel(#[from] outpost::vessel::VesselError),
+    #[error(transparent)]
+    Fold(#[from] crate::sync::FoldError),
 }
 
 impl Serialize for SyncError {

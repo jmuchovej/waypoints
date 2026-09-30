@@ -12,9 +12,11 @@
   publish.workspace       = true
 
 [dependencies]
-  bedrock.workspace = true
-  domain.workspace  = true
-  importer          = { workspace = true, optional = true }
+  bedrock.workspace          = true
+  domain.workspace           = true
+  importer                   = { workspace = true, optional = true }
+  # Scoped to the sync-owned tables in `query::sync` — see that module's doc.
+  outpost-protocol.workspace = true
 
   chrono.workspace     = true
   derive_more          = {
@@ -33,7 +35,7 @@
 
 [dev-dependencies]
   rstest.workspace   = true
-  store              = { workspace = true, features = [ "development" ] }
+  store              = { workspace = true, features = [ "development", "test-utils" ] }
   tempfile.workspace = true
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
 

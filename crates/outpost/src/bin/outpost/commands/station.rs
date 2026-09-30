@@ -17,24 +17,36 @@ pub struct StationArgs {
     /// Also run the per-Fleet orderer with a fresh fleet key (dev).
     #[arg(long)]
     orderer: bool,
+    /// Socket address(es) to advertise to Vessels (e.g. `203.0.113.7:7331`)
+    /// — the operator's public host:port. Repeatable. Binds routable and
+    /// publishes these instead of the bound sockets.
+    #[arg(long)]
+    advertise: Vec<std::net::SocketAddr>,
 }
 
 pub async fn run(args: StationArgs) -> Result<()> {
-    let StationArgs { data, orderer } = args;
+    let StationArgs {
+        data,
+        orderer,
+        advertise,
+    } = args;
     std::fs::create_dir_all(data.as_path())?;
     let secret = station_key(&data)?;
     let territories = data.join("territories");
 
+    // Self-hosting means other hosts must reach us: bind routable and
+    // advertise the operator-supplied address.
     let station = if orderer {
         // Dev: a fresh fleet key co-located with the station.
         let mut rng = rand::rng();
         Station::hosting_orderer(&secret, SigningKey::generate(&mut rng), &territories).await?
     } else {
-        Station::hosting(&secret, &territories).await?
-    };
+        Station::hosting_routable(&secret, &territories).await?
+    }
+    .with_advertised(advertise);
 
     // Publish the dialable address for vessels.
-    let addr = station.endpoint().direct_addr();
+    let addr = station.advertised_addr();
     std::fs::write(station_addr_path(&data), serde_json::to_vec(&addr)?)?;
 
     println!("Station running (Ctrl-C to stop)");

@@ -1301,27 +1301,6 @@ export type Feature_Serialize = {
 export type GlyphID = Base36ID;
 
 /**
- *  HLC is the total ordering primitive for sync. It combines a wall-clock millisecond with a logical counter for tie-breaking, packed into a single `i64` for SQLite-friendly storage.
- *  **Layout (i64):**
- *
- * ```text
- * ┌──────────────────────────────────────────────┬──────────────────┐
- * │  48 bits: physical (ms since UNIX epoch)     │ 16 bits: logical │
- * └──────────────────────────────────────────────┴──────────────────┘
- * ```
- *
- *  48 bits of milliseconds gets us through year 10889. 16 bits of logical counter handles 65,536 events per millisecond per device — vastly more than a human can produce.
- *
- *  Because logical occupies the low 16 bits and physical is always
- *  non-negative, the derived i64 `Ord` matches HLC semantics:
- *  `(physical, logical)` lexicographic order. Note the top physical bit
- *  doubles as the i64 sign bit, so the *usable* physical range is 47 bits
- *  (through year ~6429) — beyond that, packed values go negative and
- *  ordering breaks.
- */
-export type HLC = bigint;
-
-/**
  *  A flexible icon representation using hierarchical identifiers.
  *
  *  Icons are represented by structured identifier strings that indicate the source,
@@ -1425,11 +1404,11 @@ export type InlineMark_Serialize = {
  *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`)
  *  plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
  *
- *  A Landmark's content is expressed by Terrain `Child` edges (and their
- *  fractional order index), not by any field on the Landmark itself — do not
- *  add one.
+ *  A Landmark's content is expressed as [`TerrainKind::Child`][T] edges and
+ *  ordered by their fractional index.
  *
  *  [C]: crate::chart::Chart
+ *  [T]: crate::TerrainKind::Child
  */
 export type Landmark = Landmark_Serialize;
 
@@ -1439,11 +1418,11 @@ export type Landmark = Landmark_Serialize;
  *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`)
  *  plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
  *
- *  A Landmark's content is expressed by Terrain `Child` edges (and their
- *  fractional order index), not by any field on the Landmark itself — do not
- *  add one.
+ *  A Landmark's content is expressed as [`TerrainKind::Child`][T] edges and
+ *  ordered by their fractional index.
  *
  *  [C]: crate::chart::Chart
+ *  [T]: crate::TerrainKind::Child
  */
 export type Landmark_Deserialize = {
   /**  The schema this landmark conforms to */
@@ -1462,11 +1441,11 @@ export type Landmark_Deserialize = {
  *  Every Landmark has guaranteed top-level fields (`id`, `title`, `icon`)
  *  plus user-defined fields (`readings`) keyed by [`FeatureID`] for stability.
  *
- *  A Landmark's content is expressed by Terrain `Child` edges (and their
- *  fractional order index), not by any field on the Landmark itself — do not
- *  add one.
+ *  A Landmark's content is expressed as [`TerrainKind::Child`][T] edges and
+ *  ordered by their fractional index.
  *
  *  [C]: crate::chart::Chart
+ *  [T]: crate::TerrainKind::Child
  */
 export type Landmark_Serialize = {
   /**  The schema this landmark conforms to */
@@ -1679,13 +1658,12 @@ export type ReferenceDisplayMode =
 /**
  *  A reference that includes display mode information.
  *
- *  Currently has no use site — it is early, not dead. It is the typed payload
- *  intended for inline Mark references inside `Content` marks (mentions,
- *  inline cards, embeds), which today travel untyped as
- *  `InlineMark { kind: Mention | Link, data: Option<Json> }`. Typing that
- *  payload is a separate change. (Its former use site, a child-reference
- *  field on Landmark data, was removed: containment is expressed solely by
- *  Terrain `Child` edges.)
+ *  `RichReference` is the typed payload for [`InlineMark`][I] references
+ *  within [`MarkData::Content`][C] (e.g., mentions, inline cards, embeds).
+ *  Currently, it's unused but remains because it's early, not dead.
+ *
+ *  [I]: super::InlineMark
+ *  [C]: super::MarkData::Content
  */
 export type RichReference = {
   /**  The referenced block ID */

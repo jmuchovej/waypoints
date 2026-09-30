@@ -72,19 +72,33 @@ pub use territory::{
 };
 
 pub(crate) mod sync {
+    mod arbitration;
     mod error;
+    mod fold;
+    mod publish;
     mod service;
     mod setup_code;
     mod types;
 
+    pub use arbitration::ArbitrationKey;
     pub use error::{SyncError, SyncResult};
+    pub use fold::{
+        FoldError, FoldReport, KeyedOp, PAGE_V1, decode_page_v1, encode_page_v1, fold,
+        fold_incremental, fold_new_notices, keyed_ops, sort_canonical, target_key, winners,
+    };
+    pub use publish::{choose_track_landmark, publish_queued};
     pub use service::SyncService;
     pub use setup_code::{SetupCode, classify, encode_pair_url};
-    pub use types::{IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncStatus};
+    pub use types::{
+        IdentityCreated, PairingCode, StationStatus, SyncDevice, SyncState, SyncStatus,
+    };
 }
 pub use sync::{
-    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncError, SyncResult,
-    SyncService, SyncStatus, classify, encode_pair_url,
+    ArbitrationKey, FoldError, FoldReport, IdentityCreated, KeyedOp, PAGE_V1, PairingCode,
+    SetupCode, StationStatus, SyncDevice, SyncError, SyncResult, SyncService, SyncState,
+    SyncStatus, choose_track_landmark, classify, decode_page_v1, encode_page_v1, encode_pair_url,
+    fold, fold_incremental, fold_new_notices, keyed_ops, publish_queued, sort_canonical,
+    target_key, winners,
 };
 
 mod runtime;

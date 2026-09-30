@@ -172,11 +172,32 @@ No data migration. The only existing Territory data is transient dev seed; it is
 
 ## Open Questions
 
-- **Where the HLC and the arbitration-key type live (raised 2026-08-30).** The key is
-  `(HLC, author_verifying_key_bytes, NoticeID)`; `NoticeID` and `EnvelopeHeader` are
-  `outpost-protocol` types, and `domain` must never depend on `outpost-protocol` — so neither the
-  key type nor a load-bearing HLC can stay in `domain` as originally sketched. Likely resolution:
-  the HLC migrates into the outpost stack (or is dropped in favour of a clock that already fits
-  there), and the key type lives with the fold in `cartograph`'s sync layer. `store` may take a
-  scoped `outpost-protocol` dependency for sync-owned persistence only. To be settled before
-  starting section 2 of tasks.
+- **Where the HLC and the arbitration-key type live (raised 2026-08-30; settled 2026-09-04).**
+  Resolved along the sketched lines:
+  - The HLC migrated from `crates/domain/src/sync/hlc.rs` to `crates/outpost-protocol/src/hlc.rs`
+    unchanged in semantics (chrono swapped for `std::time`, specta export dropped — nothing
+    consumed the TS type). `domain` no longer exports `HLC`/`Clock`/`SystemClock`.
+  - The arbitration-key type and its derivation live in `cartograph`'s sync layer
+    (`crates/cartograph/src/sync/arbitration.rs`), reaching protocol types through the existing
+    `outpost::protocol` re-export — no new cartograph dependency.
+  - `store` takes the scoped `outpost-protocol` dependency when sync-owned persistence lands
+    (tasks section 5), confined to sync-owned tables as sketched.
+
+- **Hardware verification of the Success Condition is pulled from this change (2026-09-30).**
+  Task 13.5 — two real devices, each with its own Vessel, against a self-hosted Station,
+  including after offline divergence — cannot be performed before this change lands. It needs a
+  nightly build carrying outpost, and that nightly only exists once this is merged. A dev build
+  is not a substitute: mobile deployment would keep the phone tethered to the laptop, collapsing
+  the multi-network condition the test exists to exercise.
+
+  What 13.1–13.4 establish in software is unchanged — convergence, offline divergence, permuted
+  delivery, cross-Landmark moves. What remains unproven is the same condition over real radios
+  and real NAT. Nightlies sit at the top of the release ladder and carry the weakest stability
+  guarantee, which makes a nightly the right place to find this out and the wrong place to
+  assume it.
+
+  This is a live obligation, not a descope. Archiving freezes this record, so nothing written
+  here resurfaces on its own, and it is deliberately not filed as an issue — there is no merge
+  or pull request it could hang off. It is carried in the working tree's uncommitted TODOS.md
+  instead. Defects found once it is performed become legible the usual way, as the commits that
+  fix them.

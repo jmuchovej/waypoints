@@ -125,6 +125,28 @@ impl Vessel {
         replica: Replica,
     ) -> VesselResult<Self> {
         let endpoint = Endpoint::bind_identity(&device.signing).await?;
+        Self::with_endpoint(identity, device, replica, endpoint).await
+    }
+
+    /// [`from_identity`](Self::from_identity) with a routable bind, so
+    /// outbound packets can leave the host and reach a Station elsewhere.
+    /// Inbound reachability is still not required — a Vessel only ever
+    /// dials.
+    pub async fn from_identity_routable(
+        identity: &Identity,
+        device: &DeviceKey,
+        replica: Replica,
+    ) -> VesselResult<Self> {
+        let endpoint = Endpoint::bind_routable_identity(&device.signing).await?;
+        Self::with_endpoint(identity, device, replica, endpoint).await
+    }
+
+    async fn with_endpoint(
+        identity: &Identity,
+        device: &DeviceKey,
+        replica: Replica,
+        endpoint: Endpoint,
+    ) -> VesselResult<Self> {
         let mut vessel = Self {
             identity: identity.signing_key().clone(),
             kem: Arc::new(identity.secret_key()),
@@ -244,7 +266,10 @@ impl Vessel {
             snapshot_base,
             is_snapshot: false,
             payload_type: payload_type.to_owned(),
-            timestamp: 0,
+            // Advisory at the protocol layer (never inspected by
+            // validation); app-layer consumers read it as the HLC
+            // component of the arbitration key.
+            timestamp: self.replica.clock_tick().await?.inner(),
         };
         let payload = seal_payload(rng, &key, &header, plaintext)?;
         let notice = SignedNotice::sign(&Envelope { header, payload }, &self.identity)?;
@@ -466,6 +491,27 @@ impl Vessel {
         path: &str,
         rng: &mut impl CryptoRNG,
     ) -> VesselResult<Self> {
+        let replica = Self::bootstrap_territory(identity, path, rng).await?;
+        Self::from_identity(identity, device, replica).await
+    }
+
+    /// [`create_territory`](Self::create_territory) with a routable bind —
+    /// see [`from_identity_routable`](Self::from_identity_routable).
+    pub async fn create_territory_routable(
+        identity: &Identity,
+        device: &DeviceKey,
+        path: &str,
+        rng: &mut impl CryptoRNG,
+    ) -> VesselResult<Self> {
+        let replica = Self::bootstrap_territory(identity, path, rng).await?;
+        Self::from_identity_routable(identity, device, replica).await
+    }
+
+    async fn bootstrap_territory(
+        identity: &Identity,
+        path: &str,
+        rng: &mut impl CryptoRNG,
+    ) -> VesselResult<Replica> {
         let mut territory_seed = [0u8; 32];
         rng.fill_bytes(&mut territory_seed);
         let epoch0 = ReadKey::generate(rng);
@@ -480,8 +526,7 @@ impl Vessel {
             },
         }
         .sign(identity.signing_key())?;
-        let replica = Replica::bootstrap(path, &[root]).await?;
-        Self::from_identity(identity, device, replica).await
+        Ok(Replica::bootstrap(path, &[root]).await?)
     }
 
     /// This Vessel's Territory id (hash of the root ACL record).
@@ -814,6 +859,17 @@ impl Vessel {
         &self,
         station: impl Into<EndpointAddr>,
     ) -> Result<(Subscription, mpsc::Receiver<SubscriptionEvent>), VesselError> {
+        self.subscribe_with(station, crate::fabric::Liveness::default())
+            .await
+    }
+
+    /// [`subscribe`](Self::subscribe) with explicit liveness timings — tests
+    /// inject short durations to exercise reaping and reconnect.
+    pub async fn subscribe_with(
+        &self,
+        station: impl Into<EndpointAddr>,
+        liveness: crate::fabric::Liveness,
+    ) -> Result<(Subscription, mpsc::Receiver<SubscriptionEvent>), VesselError> {
         let mut session = self.endpoint.connect(station).await?;
         self.send_hello(&mut session).await?;
         let territory = self.replica.territory_id().await?;
@@ -840,6 +896,7 @@ impl Vessel {
             me,
             read_keys: Arc::clone(&self.read_keys),
             event_tx,
+            liveness,
         };
         tokio::spawn(worker.run(session, push_rx));
         Ok((Subscription { push_tx }, event_rx))
@@ -854,10 +911,17 @@ struct SubscriptionWorker {
     me: MemberID,
     read_keys: Arc<StdMutex<BTreeMap<EpochID, ReadKey>>>,
     event_tx: mpsc::Sender<SubscriptionEvent>,
+    liveness: crate::fabric::Liveness,
 }
 
 impl SubscriptionWorker {
     async fn run(self, mut session: Session, mut push_rx: mpsc::Receiver<Vec<SignedNotice>>) {
+        let mut heartbeat = tokio::time::interval(self.liveness.heartbeat);
+        heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // Idle deadline reset only by inbound frames — kept out of the read
+        // future so the heartbeat tick does not keep restarting it.
+        let idle = tokio::time::sleep(self.liveness.idle_timeout);
+        tokio::pin!(idle);
         loop {
             tokio::select! {
                 cmd = push_rx.recv() => match cmd {
@@ -874,13 +938,30 @@ impl SubscriptionWorker {
                     None => break,
                 },
                 frame = read_frame::<SyncMessage>(&mut session.recv) => {
+                    idle
+                        .as_mut()
+                        .reset(tokio::time::Instant::now() + self.liveness.idle_timeout);
                     match frame {
+                        // Empty NoticePush is a keepalive: proves the Station
+                        // is alive, no payload to ingest.
+                        Ok(SyncMessage::NoticePush { notices }) if notices.is_empty() => {}
                         Ok(SyncMessage::NoticePush { notices }) => self.on_notices(notices).await,
                         Ok(SyncMessage::ACLPush { records }) => self.on_acl(records).await,
                         Ok(_) => {} // unknown live frame: ignore
                         Err(_) => break, // peer closed / transport gone
                     }
                 }
+                _ = heartbeat.tick() => {
+                    if write_frame(&mut session.send, &crate::fabric::keepalive())
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+                // Silently-severed session (sleep, network change): no frame,
+                // not even a keepalive, within the idle threshold. Dead.
+                _ = &mut idle => break,
             }
         }
         session.close();

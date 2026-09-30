@@ -154,6 +154,16 @@ fn notice(
     acl_head: RecordID,
     epoch: EpochID,
 ) -> SignedNotice {
+    notice_at(author, parents, acl_head, epoch, 1)
+}
+
+fn notice_at(
+    author: &SigningKey,
+    parents: Vec<NoticeID>,
+    acl_head: RecordID,
+    epoch: EpochID,
+    timestamp: i64,
+) -> SignedNotice {
     let snapshot_base = if parents.is_empty() {
         NoticeID::SELF
     } else {
@@ -169,7 +179,7 @@ fn notice(
                 snapshot_base,
                 is_snapshot: false,
                 payload_type: "waypoints.test.v1".into(),
-                timestamp: 1,
+                timestamp,
             },
             payload: vec![0xCC; 8],
         },
@@ -335,6 +345,99 @@ fn epoch_ahead_of_pinned_state_is_rejected() {
         validate(&n, &log, &StoreFixture::default()),
         Err(RejectReason::EpochAhead)
     ));
+}
+
+#[test]
+fn validation_ignores_the_header_clock() {
+    // The clock is advisory at the protocol layer: any value — zero, far
+    // past, far future, even negative — leaves the verdict unchanged, for
+    // an accepted Notice and a rejected one alike.
+    let (log, _, writer, pre_removal, _) = removed_writer_log();
+    let clocks = [0, 1, -1, 1_700_000_000_000, i64::MIN, i64::MAX];
+
+    for timestamp in clocks {
+        let good = notice_at(&writer, vec![], pre_removal, EpochID::ZERO, timestamp);
+        assert!(
+            matches!(
+                validate(&good, &log, &StoreFixture::default()),
+                Ok(Validated::Ready { .. })
+            ),
+            "clock {timestamp} changed an accept verdict"
+        );
+
+        let bad = notice_at(
+            &writer,
+            vec![],
+            RecordID::from_bytes([0xFE; 32]),
+            EpochID::ZERO,
+            timestamp,
+        );
+        assert!(
+            matches!(
+                validate(&bad, &log, &StoreFixture::default()),
+                Err(RejectReason::UnknownACLHead)
+            ),
+            "clock {timestamp} changed a reject verdict"
+        );
+    }
+}
+
+#[test]
+fn mutating_the_header_clock_breaks_signature_and_decryption() {
+    use outpost_protocol::{ReadKey, open_payload, seal_payload};
+    use rand::SeedableRng;
+
+    let (_, _, writer, pre_removal, _) = removed_writer_log();
+    let key = ReadKey::from_bytes([0x42; 32]);
+    let mut rng = rand::rngs::StdRng::from_seed([7; 32]);
+
+    let header = EnvelopeHeader {
+        parents: vec![],
+        acl_head: pre_removal,
+        epoch: EpochID::ZERO,
+        author: writer.verifying_key(),
+        snapshot_base: NoticeID::SELF,
+        is_snapshot: false,
+        payload_type: "waypoints.test.v1".into(),
+        timestamp: 1_000,
+    };
+    let payload = seal_payload(&mut rng, &key, &header, b"plaintext").unwrap();
+    let notice = SignedNotice::sign(
+        &Envelope {
+            header: header.clone(),
+            payload: payload.clone(),
+        },
+        &writer,
+    )
+    .unwrap();
+
+    // Control: untampered, the signature verifies and the payload opens.
+    let envelope = notice.parse_and_verify().unwrap();
+    assert_eq!(
+        open_payload(&key, &envelope.header, &envelope.payload).unwrap(),
+        b"plaintext"
+    );
+
+    // Bump the clock in transit, keeping the original signature.
+    let mut tampered_header = header.clone();
+    tampered_header.timestamp += 1;
+    let tampered = SignedNotice {
+        bytes: Envelope {
+            header: tampered_header.clone(),
+            payload: payload.clone(),
+        }
+        .encode()
+        .unwrap(),
+        signature: notice.signature,
+    };
+    assert!(
+        tampered.parse_and_verify().is_err(),
+        "signature must not survive a clock mutation"
+    );
+    assert!(
+        open_payload(&key, &tampered_header, &payload).is_err(),
+        "AAD binding must not survive a clock mutation"
+    );
 }
 
 #[test]

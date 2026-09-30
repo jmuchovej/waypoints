@@ -10,6 +10,7 @@
 //! - `territory.db` — the Territory hold (replica storage)
 //! - `sync.json`   — device index, Station address, cached Territory id
 
+use crate::sync::SyncState;
 use crate::{IdentityCreated, StationStatus, SyncDevice, SyncError, SyncResult, SyncStatus};
 use outpost::{
     fabric::EndpointAddr,
@@ -34,11 +35,32 @@ struct SyncConfig {
     territory: Option<String>,
 }
 
+/// The log-growth measurement recorded on every sync (see
+/// [`SyncService::log_growth`] for the tripwire thresholds).
+#[derive(Debug, Clone, Copy)]
+struct SyncMeasurement {
+    notices: u64,
+    hold_bytes: u64,
+    deferred_ops: u64,
+    at_ms: i64,
+}
+
 pub struct SyncService {
     root: PathBuf,
     /// The live Vessel (an open replica + bound endpoint), built lazily and
     /// dropped whenever identity or Territory change underneath it.
     vessel: Mutex<Option<Vessel>>,
+    /// The app's active store slot, shared with `TerritoryManager` — where
+    /// sync publishes from (the outbox) and folds into (the graph). `None`
+    /// when the service runs without an app store (tests, CLI probes).
+    app_db: Option<crate::Database>,
+    /// The last log-growth measurement, for [`sync_state`](Self::sync_state).
+    last_measurement: Mutex<Option<SyncMeasurement>>,
+    /// Whether the maintained live subscription is currently connected.
+    live_connected: std::sync::atomic::AtomicBool,
+    /// Set once by [`start_live`](Self::start_live) so the maintenance loop
+    /// is never doubled.
+    live_started: std::sync::atomic::AtomicBool,
 }
 
 impl SyncService {
@@ -46,6 +68,25 @@ impl SyncService {
         Self {
             root,
             vessel: Mutex::new(None),
+            app_db: None,
+            last_measurement: Mutex::new(None),
+            live_connected: std::sync::atomic::AtomicBool::new(false),
+            live_started: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+
+    /// Attach the shared app-store slot so syncs publish queued edits and
+    /// fold received ones.
+    pub fn with_app_db(mut self, db: crate::Database) -> Self {
+        self.app_db = Some(db);
+        self
+    }
+
+    /// The active app store, if a Territory is open.
+    async fn app_store(&self) -> Option<store::Store> {
+        match &self.app_db {
+            Some(db) => db.lock().await.clone(),
+            None => None,
         }
     }
 
@@ -145,7 +186,9 @@ impl SyncService {
             let replica = Replica::reopen(hold)
                 .await
                 .map_err(outpost::vessel::VesselError::from)?;
-            *guard = Some(Vessel::from_identity(&identity, &device, replica).await?);
+            // Routable: the Station may live on another host, and a
+            // loopback-bound source socket could not reach it.
+            *guard = Some(Vessel::from_identity_routable(&identity, &device, replica).await?);
         }
         Ok(guard)
     }
@@ -154,6 +197,109 @@ impl SyncService {
     /// Territory on disk.
     async fn reset_vessel(&self) {
         *self.vessel.lock().await = None;
+    }
+
+    // ---- live sync state -------------------------------------------------
+
+    /// Runtime sync observability: last sync, pending publications, deferred
+    /// ops, the log-growth measurement, and live-session connectivity.
+    pub async fn sync_state(&self) -> SyncResult<SyncState> {
+        let (pending, deferred) = match self.app_store().await {
+            Some(db) => (
+                store::query::sync::publish_queue(&db)
+                    .await
+                    .map(|q| q.len() as u32)
+                    .unwrap_or(0),
+                store::query::sync::deferred_count(&db).await.unwrap_or(0) as u32,
+            ),
+            None => (0, 0),
+        };
+        let measurement = *self.last_measurement.lock().await;
+        Ok(SyncState {
+            last_sync_ms: measurement.map(|m| m.at_ms as f64),
+            pending_publications: pending,
+            deferred_ops: deferred,
+            notices: measurement.map(|m| m.notices as u32).unwrap_or(0),
+            hold_bytes: measurement.map(|m| m.hold_bytes as f64).unwrap_or(0.0),
+            live_connected: self
+                .live_connected
+                .load(std::sync::atomic::Ordering::Relaxed),
+        })
+    }
+
+    /// Start the maintained live subscription: subscribe to the configured
+    /// Station, fold doorbell deliveries into the app store as they land,
+    /// and on a dead session (liveness timeout — sleep, network change,
+    /// dropped cellular) reconnect with backoff. Reconnect resumes from the
+    /// local cursor: the resubscribe reconcile pulls exactly the missed
+    /// Notices, and the fold's topo cursor applies exactly the new ones —
+    /// the same incremental path as startup, not a special case.
+    ///
+    /// Idempotent: only the first call spawns the loop.
+    pub fn start_live(self: &std::sync::Arc<Self>) {
+        if self
+            .live_started
+            .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            return;
+        }
+        let svc = std::sync::Arc::clone(self);
+        tokio::spawn(async move {
+            let backoff = std::time::Duration::from_secs(5);
+            loop {
+                // Subscribe while holding the vessel lock only for the dial.
+                let subscribed = {
+                    let station = match svc.station() {
+                        Ok(s) => s,
+                        Err(_) => {
+                            tokio::time::sleep(backoff).await;
+                            continue;
+                        }
+                    };
+                    match svc.vessel().await {
+                        Ok(guard) => {
+                            let vessel = guard.as_ref().expect("vessel opened above");
+                            vessel.subscribe(station).await
+                        }
+                        Err(_) => {
+                            tokio::time::sleep(backoff).await;
+                            continue;
+                        }
+                    }
+                };
+                let (handle, mut events) = match subscribed {
+                    Ok(pair) => pair,
+                    Err(_) => {
+                        tokio::time::sleep(backoff).await;
+                        continue;
+                    }
+                };
+                svc.live_connected
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+
+                // Park on the doorbell; fold everything it announces.
+                while let Some(event) = events.recv().await {
+                    match event {
+                        outpost::vessel::SubscriptionEvent::Closed => break,
+                        _ => {
+                            if let Some(db) = svc.app_store().await
+                                && let Ok(guard) = svc.vessel().await
+                            {
+                                let vessel = guard.as_ref().expect("vessel opened above");
+                                if let Err(e) = crate::sync::fold_new_notices(&db, vessel).await {
+                                    tracing::warn!("live fold failed: {e}");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                svc.live_connected
+                    .store(false, std::sync::atomic::Ordering::Relaxed);
+                drop(handle);
+                tokio::time::sleep(backoff).await;
+            }
+        });
     }
 
     // ---- status ---------------------------------------------------------
@@ -242,7 +388,7 @@ impl SyncService {
         // A seeded `StdRng` rather than the thread rng: the handle must be
         // `Send` for the command future that holds it across awaits.
         let mut rng = StdRng::from_rng(&mut rand::rng());
-        let vessel = Vessel::create_territory(&identity, &device, path, &mut rng).await?;
+        let vessel = Vessel::create_territory_routable(&identity, &device, path, &mut rng).await?;
         let territory = vessel.territory_id().await?;
 
         let mut config = self.load_config()?;
@@ -335,9 +481,60 @@ impl SyncService {
         let vessel = guard.as_mut().expect("vessel opened above");
         let territory = vessel.territory_id().await?;
         vessel.register(station.clone(), territory).await?;
+
+        // Publish queued local edits before reconciling, then fold whatever
+        // the sync delivered — both only while a Territory store is open.
+        if let Some(db) = self.app_store().await {
+            let mut rng = StdRng::from_rng(&mut rand::rng());
+            crate::sync::publish_queued(&db, vessel, &mut rng).await?;
+        }
         vessel.sync_with(station).await?;
+        let deferred_ops = match self.app_store().await {
+            Some(db) => {
+                crate::sync::fold_new_notices(&db, vessel)
+                    .await?
+                    .deferred_ops
+            }
+            None => 0,
+        };
+        self.log_growth(vessel, deferred_ops).await;
         drop(guard);
         self.status().await
+    }
+
+    /// Log-growth measurement, on every sync and in normal operation — not
+    /// behind a diagnostic flag. Snapshots and compaction are deliberately
+    /// unimplemented (`is_snapshot` is hardcoded false and `snapshot_base`
+    /// resolution is deferred inside outpost), so the Notice log only grows.
+    ///
+    /// **Tripwire — revisit snapshots/compaction when any of these holds:**
+    /// - Notice count exceeds **100_000** for one Territory, or
+    /// - the hold file exceeds **256 MiB**, or
+    /// - `deferred_ops` stays nonzero across many consecutive syncs (a
+    ///   permanently dangling reference, not growth — but the same surface).
+    ///
+    /// The measurement surfaces here (a `tracing` info event per sync) and
+    /// through [`sync_state`](Self::sync_state) for the UI.
+    async fn log_growth(&self, vessel: &Vessel, deferred_ops: u64) {
+        let notices = match vessel.replica().hold().held_ids().await {
+            Ok(ids) => ids.len() as u64,
+            Err(_) => 0,
+        };
+        let hold_bytes = std::fs::metadata(self.territory_db_path())
+            .map(|m| m.len())
+            .unwrap_or(0);
+        *self.last_measurement.lock().await = Some(SyncMeasurement {
+            notices,
+            hold_bytes,
+            deferred_ops,
+            at_ms: chrono::Utc::now().timestamp_millis(),
+        });
+        tracing::info!(
+            notices,
+            hold_bytes,
+            deferred_ops,
+            "sync log-growth measurement"
+        );
     }
 
     // ---- device registry -------------------------------------------------
@@ -456,7 +653,7 @@ impl SyncService {
             .to_str()
             .ok_or_else(|| SyncError::Io(std::io::Error::other("non-utf8 sync root path")))?;
         let replica = open_replica(path, &log).await?;
-        let mut vessel = Vessel::from_identity(&identity, &device, replica).await?;
+        let mut vessel = Vessel::from_identity_routable(&identity, &device, replica).await?;
         vessel.sync_with(payload.station.clone()).await?;
 
         self.save_mnemonic(payload.mnemonic.trim())?;
