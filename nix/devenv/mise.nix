@@ -29,6 +29,24 @@ let
     ;
   cfg = config.waypoints.mise;
 
+  environment-names = attrNames cfg.environments;
+
+  environment-type = types.submodule {
+    options.composes = mkOption {
+      type = types.listOf (types.enum environment-names);
+      default = [ ];
+      description = ''
+        Environments whose members this one also contains, transitively. mise
+        composes environments at *selection* time (`MISE_ENV=a,b`) but a config
+        has no include directive, so a union has to be built here.
+      '';
+    };
+  };
+
+  # What mise calls the tool: its spec, minus the `core:` prefix mise strips
+  # when displaying and when matching `depends`.
+  displayed = name: lib.removePrefix "core:" cfg.tools.${name}.spec;
+
   tool-type = types.submodule {
     options = {
       package = mkOption {
@@ -54,6 +72,28 @@ let
         );
         default = [ ];
         description = "Operating systems mise installs the tool on (its `os` option); empty means everywhere.";
+      };
+      envs = mkOption {
+        type = types.listOf (types.enum environment-names);
+        default = [ ];
+        description = ''
+          Environments this tool belongs to. Empty puts it in the base config,
+          which every environment loads; a non-empty list writes it into each
+          named environment's file instead.
+        '';
+      };
+      depends = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+        description = ''
+          Other declared tools this one needs at run time — the runtime a
+          `gem:`/`npm:` tool executes on. Named as `waypoints.mise.tools.<name>`
+          and projected as mise's displayed name.
+
+          mise does not enforce this: a config naming an absent dependency
+          resolves the dependent tool and exits zero, so the closure is computed
+          here instead.
+        '';
       };
       include = mkOption {
         type = types.bool;
@@ -88,6 +128,16 @@ let
 in
 {
   options.waypoints.mise = {
+    environments = mkOption {
+      type = types.attrsOf environment-type;
+      default = { };
+      description = ''
+        Environments a consumer can select, each naming a unit of work rather
+        than an actor. Declaring one here is what makes it nameable in a tool's
+        `envs`, so a typo there is an evaluation error instead of a config file
+        that silently never loads.
+      '';
+    };
     tools = mkOption {
       type = types.attrsOf tool-type;
       default = { };
@@ -106,16 +156,27 @@ in
   };
 
   config = {
-    assertions = map (
-      name:
-      let
-        tool = cfg.tools.${name};
-      in
-      {
-        assertion = !tool.include || (tool.package != null && tool.spec != null);
-        message = "waypoints.mise.tools.${name}: set both `package` and `spec`, or `include = false`.";
-      }
-    ) (attrNames cfg.tools);
+    assertions =
+      map (
+        name:
+        let
+          tool = cfg.tools.${name};
+        in
+        {
+          assertion = !tool.include || (tool.package != null && tool.spec != null);
+          message = "waypoints.mise.tools.${name}: set both `package` and `spec`, or `include = false`.";
+        }
+      ) (attrNames cfg.tools)
+      # A dependency on an undeclared tool would project a `depends` entry mise
+      # resolves to nothing and reports success for — the failure this option
+      # exists to prevent, reintroduced one level up.
+      ++ lib.concatMap (
+        name:
+        map (dependency: {
+          assertion = cfg.tools ? ${dependency} && cfg.tools.${dependency}.include;
+          message = "waypoints.mise.tools.${name}.depends: no projected tool named `${dependency}`.";
+        }) cfg.tools.${name}.depends
+      ) (attrNames cfg.tools);
 
     # Every tool with a package, minus what cannot be built on this platform
     # (xcodegen off macOS); those still project their versions into mise.toml.
@@ -161,13 +222,14 @@ in
           # case mise wants the table form.
           tools = mapAttrs (
             _: tool:
-            if tool.os == [ ] && tool.options == { } then
+            if tool.os == [ ] && tool.options == { } && tool.depends == [ ] then
               toString tool.package.version
             else
               {
                 version = toString tool.package.version;
               }
               // lib.optionalAttrs (tool.os != [ ]) { inherit (tool) os; }
+              // lib.optionalAttrs (tool.depends != [ ]) { depends = map displayed tool.depends; }
               // tool.options
           ) by-spec;
         };

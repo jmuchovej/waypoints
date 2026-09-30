@@ -6,11 +6,11 @@
 
 ## 2. Declare environments and dependencies
 
-- [ ] 2.1 Add a `waypoints.mise.environments` attrset declaring `xtask`, `test`, `format`, `build-desktop`, `build-mobile`, and `development`, each with a `composes` list defaulting to `[ ]`; verify `nix flake check` passes with all of them empty
-- [ ] 2.2 Add `envs` to `tool-type` as a `listOf (enum <declared environment names>)` defaulting to `[ ]`, and verify a bogus value is a nix evaluation error by temporarily setting one
-- [ ] 2.3 Add `depends` to `tool-type` as a list of module-level tool names, projected into the mise entry as mise's displayed names with any `core:` prefix stripped; verify `gem:rufo` renders `depends = [ "ruby" ]` while the config key stays `core:ruby`
-- [ ] 2.4 Assert that every `depends` entry names a declared tool, and verify it fires on a deliberately misspelled dependency
-- [ ] 2.5 Declare the real dependencies — `gem:fastlane` and `gem:rufo` on `ruby`, `npm:oxfmt` and `npm:wrangler` on `node` — and verify `mise ls --current` still resolves every tool with the base config unchanged otherwise
+- [x] 2.1 Add a `waypoints.mise.environments` attrset declaring `xtask`, `test`, `format`, `build-desktop`, `build-mobile`, and `development`, each with a `composes` list defaulting to `[ ]`; verify `nix flake check` passes with all of them empty
+- [x] 2.2 Add `envs` to `tool-type` as a `listOf (enum <declared environment names>)` defaulting to `[ ]`. Note that nix forces an option's type only when the value is read, so while nothing consumes `envs` a bogus name evaluates clean — observed. The enum becomes protective once 3.1 computes membership from it; the negative case is verified there
+- [x] 2.3 Add `depends` to `tool-type` as a list of module-level tool names, projected into the mise entry as mise's displayed names with any `core:` prefix stripped; verify `gem:rufo` renders `depends = [ "ruby" ]` while the config key stays `core:ruby`
+- [x] 2.4 Assert that every `depends` entry names a declared tool; verified against a misspelled dependency, which fails with `waypoints.mise.tools.rufo.depends: no projected tool named ``rubby``.`
+- [x] 2.5 Declare the real dependencies — `gem:fastlane` and `gem:rufo` on `ruby`, `npm:oxfmt` and `npm:wrangler` on `node` — and verify `mise ls --current` still resolves every tool with the base config unchanged otherwise
 
 ## 3. Generate the environment files
 

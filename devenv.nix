@@ -10,6 +10,17 @@
   imports = [ ./nix/devenv ];
 
   waypoints.mise = {
+    # Units of work, not actors: a job names what it does, and `MISE_ENV` takes
+    # a comma-separated list, so a consumer composes the sets it needs.
+    environments = {
+      xtask = { };
+      test = { };
+      format = { };
+      build-desktop = { };
+      build-mobile = { };
+      development = { };
+    };
+
     tools = {
       just = {
         package = pkgs.just;
@@ -29,6 +40,7 @@
       rufo = {
         package = pkgs.rufo;
         spec = "gem:rufo";
+        depends = [ "ruby" ];
         formatter = true;
       };
       typos = {
@@ -39,6 +51,7 @@
       oxfmt = {
         package = pkgs.oxfmt;
         spec = "npm:oxfmt";
+        depends = [ "node" ];
         formatter = true;
       };
       oxipng = {
@@ -119,6 +132,7 @@
       wrangler = {
         package = pkgs.wrangler;
         spec = "npm:wrangler";
+        depends = [ "node" ];
       };
       yq = {
         package = pkgs.yq-go;
@@ -133,6 +147,7 @@
       fastlane = {
         package = pkgs.fastlane;
         spec = "gem:fastlane";
+        depends = [ "ruby" ];
         os = [
           "linux"
           "macos"

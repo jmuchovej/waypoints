@@ -29,12 +29,9 @@ path = ".env"
 "core:node" = "24.19.0"
 "core:ruby" = "3.4.9"
 "core:swift" = "5.10.1"
-"gem:rufo" = "0.18.1"
 "github:JetBrains/kotlin" = "2.4.10"
 "github:Mic92/nixfmt-rs" = "0.4.1"
 "github:facebook/ktfmt" = "0.63"
-"npm:oxfmt" = "0.61.0"
-"npm:wrangler" = "4.94.0"
 
 [tools."aqua:numtide/treefmt"]
 os = ["linux", "macos"]
@@ -45,13 +42,26 @@ os = ["macos"]
 version = "2.44.1"
 
 [tools."gem:fastlane"]
+depends = ["ruby"]
 os = ["linux", "macos"]
 version = "2.232.2"
+
+[tools."gem:rufo"]
+depends = ["ruby"]
+version = "0.18.1"
 
 [tools."github:getsops/sops"]
 slsa_signer_identity = "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@refs/tags/v2.1.0"
 slsa_signer_issuer = "https://token.actions.githubusercontent.com"
 version = "3.13.3"
+
+[tools."npm:oxfmt"]
+depends = ["node"]
+version = "0.61.0"
+
+[tools."npm:wrangler"]
+depends = ["node"]
+version = "4.94.0"
 
 [vars]
 WAYPOINTS_FORMATTERS = "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
