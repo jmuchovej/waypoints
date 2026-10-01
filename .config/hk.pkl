@@ -8,7 +8,7 @@ import "package://github.com/jdx/hk/releases/download/v1.55.0/hk@1.55.0#/Builtin
 //
 // sometimes tools can _legitimately_ be in both (e.g., `typos`)
 
-local nixf_ignores = List(
+local nixf_ignore_flags = List(
   "sema-unused-def-lambda-witharg-formal",
   "sema-unused-def-lambda-noarg-formal",
   "sema-primop-overridden"
