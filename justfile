@@ -58,14 +58,20 @@ setup:
     @just app::setup
     @just tauri::setup
 
-[doc("Refreshes every mise lockfile. Needs a GitHub token; run under secretspec.")]
+[doc("Refreshes every mise lockfile.")]
 [script]
 mise-lock:
     # Deliberately not run on shell entry. mise reports success after a
     # rate-limited run that wrote only part of the lockfile, so this belongs at
     # a moment someone is reading the output.
     export SECRETSPEC_REASON="just mise-lock refreshes the mise lockfiles, which needs an authenticated GitHub client"
-    devenv shell -- mise-lock
+    devenv shell -- secretspec run --reason "mise resolves lockfile entries through the GitHub API, which is rate-limited to sixty requests an hour unauthenticated" -- mise-lock
+
+[doc("Checks every mise lockfile against its config. Offline; no token needed.")]
+[script]
+mise-lock-check:
+    export SECRETSPEC_REASON="just mise-lock-check compares the mise lockfiles against their configs; no secret values are read"
+    devenv shell -- mise-lock --check
 
 [doc("Verifies that devenv-managed files and xtask-generated workflows don't differ from committed files.")]
 [script]
