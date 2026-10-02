@@ -37,7 +37,7 @@ jobs:
     permissions:
       contents: read
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
@@ -68,7 +68,7 @@ jobs:
     permissions:
       contents: read
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
@@ -99,7 +99,7 @@ jobs:
     permissions:
       contents: read
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
@@ -192,7 +192,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
@@ -244,7 +244,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
@@ -296,7 +296,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
@@ -366,7 +366,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
@@ -422,7 +422,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:Mic92/nixfmt-rs,github:facebook/ktfmt,npm:oxfmt"
     steps:
       - id: checkout
         name: Checkout
