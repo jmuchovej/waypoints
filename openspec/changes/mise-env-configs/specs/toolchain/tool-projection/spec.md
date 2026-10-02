@@ -8,7 +8,9 @@ Defines how the repository declares the tools that build, test, and format it, a
 
 Every tool the repository provides SHALL be declared once, carrying the nix package that provides it in the devenv shell and the backend-qualified mise spec that provides it elsewhere. The projected mise configuration SHALL take each tool's version from its nix package. No committed file SHALL restate a tool's version independently, and no generated file SHALL be hand-edited to change one.
 
-A tool MAY be declared with a nix package and no mise spec, in which case it exists in the shell only and SHALL be absent from every projected configuration. A tool declared for projection without both halves SHALL be a build-time error, not a silently omitted entry.
+A tool MAY declare that it belongs to no configuration at all, in which case it exists in the shell only and SHALL be absent from every projected configuration. That declaration SHALL be the absence of environment membership rather than a separate flag, so a tool is projected exactly when it says where it belongs and the two cannot disagree. A tool declared for projection without both halves SHALL be a build-time error, not a silently omitted entry.
+
+A shell-only tool MAY still be read by other generation — for a version it is the single source of — so its declaration is not evidence that it is unused.
 
 #### Scenario: Version follows the nix package
 
@@ -26,7 +28,7 @@ The projection SHALL emit a base configuration plus one configuration per declar
 
 A consumer SHALL be able to select more than one environment at once, receiving the union of the base and every selected environment. An environment name that is not declared SHALL be a build-time error where it is written, because selecting an unmaterialised environment degrades silently to base-only rather than failing.
 
-An environment with no members SHALL emit no configuration file.
+Every declared environment SHALL emit a configuration file, including one whose members are all in the base. A consumer's selection is then independent of what a lane currently holds: the same selection stays correct as tools move between the base and that lane, and a lane-specific tool added later lands in a file consumers already select.
 
 #### Scenario: Base is always present
 
@@ -43,18 +45,27 @@ An environment with no members SHALL emit no configuration file.
 - **WHEN** a tool or a consumer names an environment that has not been declared
 - **THEN** generation fails naming the unknown environment, rather than emitting a configuration that loads nothing for it
 
-### Requirement: An environment is closed over tool dependencies
+### Requirement: An environment is asserted closed over tool dependencies
 
-A tool MAY declare that it depends on other declared tools. Each environment's emitted configuration SHALL contain the transitive closure of its members over those dependencies, so no environment contains a tool without the runtime that tool executes on.
+A tool MAY declare that it depends on other projected tools, naming each by the spec that tool itself declares, so a rename cannot leave a dangling reference. No environment SHALL contain a tool without the runtime that tool executes on.
 
-This closure SHALL be computed during generation. The underlying tool manager does not enforce it: a configuration naming an absent dependency resolves the dependent tool and reports success, so an unenforced closure produces a configuration that passes every check and fails only when the tool is invoked.
+Generation SHALL verify this and fail where it does not hold; it SHALL NOT satisfy it by adding the missing dependency. An environment's emitted configuration is then exactly what its members declare, so reading the declarations tells you what the file contains. The failure SHALL name the lane, the dependent tool, and the declaration to edit.
 
-A dependency naming an undeclared tool SHALL be a build-time error.
+Verification is required because the underlying tool manager does not enforce it: a configuration naming an absent dependency resolves the dependent tool and reports success, so an unverified closure produces a configuration that passes every check and fails only when the tool is invoked.
 
-#### Scenario: Dependency is pulled into the environment
+Each lane SHALL be verified against its own members plus the base, since an environment's configuration is loaded on top of the base rather than instead of it.
 
-- **WHEN** an environment declares a tool whose backend requires a runtime, and that runtime is not a member of the environment or the base
-- **THEN** the emitted configuration for that environment also contains the runtime
+A dependency naming no projected tool's spec SHALL be a build-time error.
+
+#### Scenario: Missing runtime is rejected at source
+
+- **WHEN** an environment contains a tool whose declared dependency is a member of neither that environment nor the base
+- **THEN** generation fails, naming the environment, the dependent tool, and the declaration that must gain the environment
+
+#### Scenario: A dependency satisfied by the base is accepted
+
+- **WHEN** an environment contains a runtime-dependent tool whose runtime is declared in the base
+- **THEN** generation succeeds, and the environment's configuration does not restate the runtime
 
 #### Scenario: Closure is load-bearing, not decorative
 
@@ -63,7 +74,7 @@ A dependency naming an undeclared tool SHALL be a build-time error.
 
 #### Scenario: Dangling dependency is rejected at source
 
-- **WHEN** a tool declares a dependency on a name no declared tool carries
+- **WHEN** a tool declares a dependency on a spec no projected tool carries
 - **THEN** generation fails naming the unresolved dependency
 
 ### Requirement: Consumers select environments; they never exclude tools

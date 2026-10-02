@@ -67,17 +67,18 @@ Beyond the proposal's scope, at the design level:
 `waypoints.mise.tools.<name>.envs` is a list of environment names. Empty (the
 default) puts the tool in `.config/mise.toml`, which every environment loads. A
 non-empty list writes the tool into each named environment's file and _not_ into
-the base.
+the base. `null` keeps it out of mise altogether (D4).
 
 **Why not the inverse** (list the environments a tool is excluded from): that is
 the deny-list this change exists to remove, relocated. **Why not a single
 `env` string**: several tools genuinely belong to more than one environment —
-`treefmt` is needed by local formatting and by `check-generated` — and forcing
-those into the base would put the whole formatter set back in every CI job.
+`just` is driven by `devtools`, both build lanes and `website`, and `sops` by
+every lane that handles a secret — and forcing those into the base would put
+them back in every CI job.
 
 The existing `formatter` boolean is deleted rather than kept as sugar for
-`envs = [ "format" ]`. It has no other meaning, and one way to express membership
-is worth more than the shorthand.
+`envs = [ "devtools" ]`. It has no other meaning, and one way to express
+membership is worth more than the shorthand.
 
 ### D2 — Environments name units of work, and compose
 
@@ -87,12 +88,76 @@ a consumer names the jobs it does. That is a better decomposition than "local vs
 automated", because the question a job can actually answer about itself is _what
 it runs_, not _who is running it_.
 
-- `xtask` — the lean set `cargo xtask` needs to generate and check.
+- `xtask` — the release-automation lane: what the `cargo xtask` planner jobs and
+  the draft-the-release job between them need.
 - `test` — the test and audit runners.
-- `format` — treefmt and everything it drives. What `formatter = true` meant.
+- `devtools` — every formatter _and_ every check: treefmt and the formatters it
+  drives, plus the rest of the `hk` suite (`hk`, `zizmor`, `lychee`,
+  `cargo-deny`). A superset of what `formatter = true` meant. Selected by a job
+  that runs a formatting or lint pass.
 - `build-desktop` — the desktop bundling toolchain.
 - `build-mobile` — the mobile toolchain, where `fastlane` and `xcodegen` live.
-- `development` — the union, for a contributor working without nix (D3).
+- `website` — the Cloudflare Worker lane: `wrangler`, `deno`, and the
+  `sops`/`yq` pair `website/justfile` renders `.dev.vars` and pushes Worker
+  secrets with.
+
+There is no `development`; a contributor working without nix names the lanes
+they work in (D3).
+
+`website` was added after the job→tool audit (task 5.1), which found `wrangler`
+with no consumer in any generated job — it is driven from `website/justfile` by
+hand. The alternative was leaving it in the base, which would install a
+Cloudflare client into every test and build job.
+
+**`devtools` rather than `format`.** The formatters never travel alone: `hk`
+runs treefmt, zizmor, lychee and `just deny` in one pass, so a `format`
+environment and a `check` environment would always be selected together. One
+name for both is the honest decomposition, and it is what the audit found —
+every one of those tools is driven from `hk.pkl`, not from a job.
+
+### D11 — The base is the common working set, not the intersection
+
+An earlier draft read "base = what every environment needs" strictly, computed
+the intersection, found it empty, and emitted a base with no `[tools]` at all.
+That is defensible arithmetic and the wrong answer: it made a bare
+`mise install` useless, so a consumer who did not know to set `MISE_ENV` got
+nothing and no hint why — the same contributor D3 had just stopped serving with
+a union environment.
+
+The base instead carries what the repository's own scripts need, since every
+way of launching, compiling or maintaining waypoints goes through a `just`
+recipe and those recipes reach for the same handful of tools:
+
+```
+just  cargo-tauri  node  pnpm  nushell  sops  age  secretspec  yq
+```
+
+(plus `rust`, which arrives from `rust-toolchain.toml` through
+`idiomatic_version_file_enable_tools` rather than `[tools]`.)
+
+An environment then carries only what is genuinely specific to its lane, which
+is a much smaller claim than the first partition made: `devtools` is the
+formatters and checks, `build-mobile` is `fastlane`/`xcodegen`/`ruby`, `website`
+is `wrangler`/`deno`, `test` is `cargo-nextest`, `xtask` is `git-cliff`, and
+`build-desktop` is empty because the base already is the desktop build set.
+
+**This is also why `sops` and `age` are base tools** rather than being listed
+across the lanes that handle secrets: `secretspec run` wraps every build recipe
+and `website/justfile` renders `.dev.vars` with `sops` and `yq` together, so
+they are part of the working set, not a lane's specialism. `age` tracks `sops`
+by referencing its `envs` directly, so the two cannot drift apart.
+
+The cost is that `xtask` and `test` jobs install nine tools where five would
+do. That is the price of a base worth having, and it is paid once per runner
+rather than per lane.
+
+**`git-cliff` goes in `xtask` rather than an environment of its own.** The
+audit's awkward case: `create-release` invokes `git-cliff` and nothing else
+through mise, and no environment named release work. A seventh `release`
+environment for one tool buys a generated file and a lockfile; folding it into
+`xtask` costs the name some precision, which the description above now carries.
+The three jobs in question — `release-plan`, `prepare`, `create-release` — sit
+in the same workflows and are one lane in practice.
 
 **`ci` is deliberately dropped.** It named an actor, and once environments
 compose, an actor is exactly the wrong unit: a CI job that builds the desktop
@@ -111,50 +176,142 @@ platform environments `auto_env` activates on its own (see Context).
 `development` rather than `dev`: the prototype's short name was expedience, and
 these names are read far more often than typed.
 
-An environment whose membership turns out empty emits no file. mise treats a
-missing `mise.<env>.toml` as nothing to add, so `MISE_ENV` pointing at an
-unmaterialised environment degrades to base-only rather than failing.
+**Every declared environment gets a file, member or not.** `build-desktop` is
+the case that forced the decision: once the base carries the common working set
+(D11), a desktop build needs nothing beyond it, so the environment's membership
+is empty. An earlier draft emitted no file for that — mise treats a missing
+`mise.<env>.toml` as nothing to add, so it would have worked — but it makes the
+job wiring conditional on the current contents of a tool set. Emitting
+`[tools]` with nothing in it means every build job carries the same `MISE_ENV`
+shape whatever its lane currently holds, and the day a desktop-specific tool
+appears it lands in a file the jobs already select. Verified: mise loads the
+empty config without complaint, listing it in `mise config` as `(none)`.
 
-### D3 — `development` is generated as a union, not maintained as a superset
+### D3 — There is no union environment; a consumer selects the lanes it works in
 
-Environments compose at _selection_ time but not at _declaration_ time — there
-is no include directive in a mise config. So an environment declaration gains a
-`composes` list, and `development` is declared as composing every other
-environment. Its generated file is the union of their members.
+Rejected after building it. An earlier draft gave each environment a `composes`
+list and declared `development` as composing every other one, so its generated
+file was their union — the argument being that the audience for `development` is
+the contributor who is _not_ in the devenv shell, so nothing is there to export
+`MISE_ENV` for them.
 
-Without this, `development` is a hand-maintained superset that silently falls
-behind every time a tool joins `build-mobile` — the same drift this change is
-removing elsewhere. The alternative considered was emitting no `development`
-file and having the shell export `MISE_ENV=xtask,test,format,...`; rejected
-because the audience for `development` is precisely the contributor who is _not_
-in the devenv shell, so there is nothing to do the exporting.
+That argument does not survive contact with the fact that such a contributor has
+to be told to install mise in the first place. Being told `MISE_ENV` alongside
+it costs one sentence. Against that one sentence, `composes` bought: a submodule
+type, a depth-bounded recursion to expand it, a 31-tool generated config, and a
+lockfile for that config to be regenerated and reviewed with every toolchain
+move. `composes` had exactly one user, and that user had exactly one member.
 
-### D4 — `depends` is declared, and the generator closes over it
+So `environments` is now a plain list of names, and composition happens where
+mise already does it — at selection, from a comma-separated `MISE_ENV`. A
+default is still expressible without a union file if one is ever wanted:
+`.config/miserc.toml` is committed and mise honours an `env = [ ... ]` key
+there, verified in task 1.1.
+
+### D4 — `depends` is declared and _asserted_, never closed over
 
 Tools gain a `depends` list projected into their mise entry: `gem:fastlane` and
-`gem:rufo` depend on `ruby`, `npm:oxfmt` and `npm:wrangler` on `node`.
+`gem:rufo` depend on `ruby`, `npm:oxfmt`, `npm:wrangler` and `aqua:pnpm/pnpm` on
+`node`. Each is written as the dependency's **spec** — read off the other tool's
+own declaration, so a rename cannot leave a dangling string — and projected as
+mise's displayed name (`ruby`, not `core:ruby`), which is what mise matches.
 
-The generator computes the transitive closure of `depends` within each
-environment and pulls any missing dependency into that environment's file. So
-declaring `fastlane` in `build-mobile` brings `ruby` with it, and no environment
-can contain a tool without the runtime it needs.
+**The invariant mise will not enforce**: a config naming a `depends` target that
+is not present resolves the dependent tool normally and exits zero — no error,
+no warning (see Context). An environment split that let this through would
+produce configs that look correct, pass every mise check, and fail at run time
+with an interpreter not found — the same silent-no-op failure as the stale
+`MISE_DISABLE_TOOLS` entry, in a new place.
 
-**This has to be the generator's job, because mise will not do it.** A config
-naming a `depends` target that is not present resolves the dependent tool
-normally and exits zero — no error, no warning (see Context). An environment
-split without closure enforcement would therefore produce configs that look
-correct, pass every mise check, and fail at run time with an interpreter not
-found. That is the same silent-no-op failure as the stale `MISE_DISABLE_TOOLS`
-entry, reintroduced in a new place.
+**So every lane is asserted closed, rather than closed automatically.** An
+earlier draft grew each environment's member set over `depends` until it stopped
+changing, pulling missing runtimes in. That was replaced because:
 
-A `depends` entry naming an undeclared tool is a nix assertion failure. mise
-normalises `core:` away, so the projection emits the displayed name (`ruby`, not
-`core:ruby`) while `envs`/`depends` are written against the module's tool names.
+- It made an environment's contents something other than what it declared.
+  Reading `envs` no longer told you what the file held, and the extra members
+  appeared only in generated output.
+- It became redundant the moment the partition was real. `node` and `ruby` need
+  explicit `envs` anyway — `envs = [ ]` means _base_, so without a list they land
+  in the config every lane loads, and `xtask` and `test` install a node and a
+  ruby neither runs. With those lists written, the closure computed nothing.
+
+The assertion checks each lane — the base and every environment — for every
+member's dependencies, resolving against that lane plus the base, since an
+environment config is loaded on top of the base. A miss names the lane, the
+dependent tool, and the edit:
+
+```
+waypoints.mise.devtools: `npm:oxfmt` depends on `core:node`, which is not a
+member. Add `"devtools"` to that tool's `envs`.
+```
+
+A `depends` entry that is not some projected tool's spec is a separate
+assertion.
+
+#### `envs = null` replaces `include = false`
+
+A tool is projected exactly when it says where it belongs, so the second flag
+was never load-bearing — `include = true` is nowhere written in the tree, and
+could not be, since it is what `envs` already implies. `null` means the tool
+lives in the devenv shell and has no mise entry: the nix-only linters
+(`deadnix`, `statix`, `nixf-diagnose`), plus `swift` and `kotlin` (D10).
+
+### D10 — `kotlin` is nix-only; `swift` is removed
+
+The audit (5.1) found both with no consumer anywhere — and the obvious guess for
+each is wrong in the same way, so it is worth writing down:
+
+- **Neither compiles its platform's target.** `iOS.justfile` prepends Xcode's
+  toolchain to `PATH` precisely _so_ Swift resolves to Apple's and not to the
+  Nix one. Android's Kotlin compiler arrives as a Maven artifact on Gradle's
+  buildscript classpath —
+  `classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}")`
+  in `gen/android/build.gradle.kts` — and runs embedded on the JDK. Gradle
+  never looks for `kotlinc` on `PATH`, so `build-mobile` wants no Kotlin entry.
+- **Neither formats anything either.** `treefmt.toml` does declare a
+  `swift-format` formatter, but `swift-format` only joined the Swift toolchain
+  in 6.0 and `core:swift` pins 5.10, so putting `swift` in `devtools` would
+  install a toolchain that cannot supply the one thing it was wanted for.
+  `ktfmt` is a standalone binary that needs no `kotlinc`.
+
+`kotlin` gets `envs = null` — in the devenv shell, absent from mise. **`swift`
+is deleted outright**, along with `languages.swift.enable`: its tool entry only
+re-stated what that option already put in the shell, so with the entry gone the
+option had no reader either. Measured before removing it: `SDKROOT` and
+`DEVELOPER_DIR` come from `clangStdenv`'s apple-sdk rather than from
+`languages.swift`, so the `env -i` the iOS build uses to clear them is
+unaffected, and `cc` still links. `swift` and `sourcekit-lsp` now fall through
+to whatever the host has. `treefmt`'s `swift-format` entry stays — it is
+forward-looking for a generated iOS project, and `allow-missing-formatter`
+already covers its absence, as it has all along.
+
+**The `kotlin` entry is nonetheless load-bearing**, which `envs = null` hides:
+`nix/devenv/android.nix` reads `tools.kotlin.package.version` into the
+generated `libs.versions.toml`, and that is what pins the Gradle plugin above.
+It is also what puts `kotlinc` in the shell, since `languages.kotlin` exposes no
+`.package`. The entry carries a comment saying so, because "projected into
+nothing" reads like "unused". `swift`'s entry has no such role — the toolchain
+is already in the shell from `languages.swift.enable`, so that entry is
+genuinely dead weight.
+
+(`age` and `deno` were in this group on the first pass. They have homes now —
+`age` tracks `sops` through the secret-handling lanes by referencing its `envs`
+directly, so the two cannot drift; `deno` sits in `website`, where
+`package.json` names it as node's alternative runtime.)
+
+Leaving them at `envs = [ ]` is what the base is _for_ syntactically and wrong
+semantically: the base is what every environment loads, so an unused tool there
+is installed by every CI job. `envs = [ "development" ]` says the true thing —
+a contributor without nix may want the runtime; no automated job does — and
+`allow-missing-formatter = true` already covers the formatters mise cannot
+provide.
 
 ### D5 — Generated files are derived, one `files` entry per environment
 
 `files` becomes a computed attrset: the base entry plus, for each non-empty
 environment, `.config/mise.<env>.toml` and a seeded `.config/mise.<env>.lock`.
+An environment's file holds exactly the tools that named it — nothing is pulled
+in (D4), so the file and the `envs` lists say the same thing.
 Settings (`experimental`, `lockfile`, `idiomatic_version_file_enable_tools`) and
 `min_version` stay in the base only — an environment file carries `[tools]` and
 nothing else, so there is one place where toolchain policy is written.
@@ -277,10 +434,18 @@ wrote the lockfiles.
 
 The job→environment mapping is decided once, per job, reading the existing job
 definitions — not inferred. Desktop bundling names `build-desktop`; the mobile
-lanes name `build-mobile`; test jobs name `test`; workflow generation and the
-generated-file check name `xtask` and `format`, composed as `xtask,format`. No
-job names `development` — that environment exists for a human without nix (D3),
-and a job naming it would be reinstating the all-tools install.
+lanes name `build-mobile`; test jobs name `test`; the planners that run
+`cargo xtask` name `xtask`. No job names `development` — that environment exists
+for a human without nix (D3), and a job naming it would be reinstating the
+all-tools install.
+
+**A job with no mise gets no `MISE_ENV`.** `check-generated` and
+`devenv-update` install devenv through nix and reach their tooling from the
+devenv shell; that is the appropriate shape for them, since what they check is
+precisely devenv's own output. An earlier draft of this decision gave
+`check-generated` `xtask,format`, which had nothing to act on — those jobs run
+no mise-action, so there is no install for an environment to narrow.
+`publish-release` likewise uses only the runner's `gh`.
 
 ## Risks / Trade-offs
 

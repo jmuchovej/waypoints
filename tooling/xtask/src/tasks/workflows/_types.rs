@@ -98,6 +98,47 @@ impl Platform {
     }
 }
 
+/// A mise config environment, as declared in `waypoints.mise.environments` and
+/// materialised into `.config/mise.<name>.toml`.
+///
+/// mise does not validate `MISE_ENV`: a misspelled name loads the base config
+/// and nothing else, so a job gets base-only tooling and fails on a missing
+/// binary far from the typo. Naming environments through this enum is what
+/// makes that unwritable; `every_variant_has_a_generated_config` keeps it
+/// honest against the nix declaration.
+///
+/// The variants are the whole set — there is no union environment to exclude,
+/// because `MISE_ENV` composes at selection and a job names the lanes it works
+/// in. [`MiseEnv::select`] is what builds that list.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, EnumIter)]
+#[display(rename_all = "kebab-case")]
+pub enum MiseEnv {
+    Xtask,
+    Test,
+    /// Every formatter and every check — treefmt and the rest of the `hk`
+    /// suite. Belongs on a job that runs a formatting or lint pass; no
+    /// generated job does one through mise today, since `check-generated`
+    /// reaches its tooling through nix.
+    Devtools,
+    BuildDesktop,
+    BuildMobile,
+    Website,
+}
+
+impl MiseEnv {
+    /// The `MISE_ENV` value selecting all of `envs`. mise reads it as a
+    /// comma-separated list and composes the named configs additively.
+    pub fn select(envs: &[Self]) -> (&'static str, String) {
+        (
+            "MISE_ENV",
+            envs.iter()
+                .map(Self::to_string)
+                .collect::<Vec<_>>()
+                .join(","),
+        )
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Unwrap, Display, EnumIter)]
 #[allow(dead_code, reason = "no job is arch-scoped yet")]
 pub enum Arch {
@@ -396,5 +437,39 @@ impl serde::Serialize for WorkflowSecret {
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+    use strum::IntoEnumIterator as _;
+
+    /// mise will not validate `MISE_ENV`, so nothing but this test connects a
+    /// variant to the config it selects. A renamed or dropped environment in
+    /// `devenv.nix` leaves the variant naming a file that is not there, and a
+    /// job selecting it silently gets base-only tooling.
+    #[test]
+    fn every_variant_has_a_generated_config() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        for env in MiseEnv::iter() {
+            let config = root.join(format!(".config/mise.{env}.toml"));
+            assert!(
+                config.exists(),
+                "MiseEnv::{env:?} selects {}, which does not exist — has an environment been renamed in devenv.nix?",
+                config.display(),
+            );
+        }
+    }
+
+    /// The whole point of the enum: a job names environments, and the value it
+    /// produces is the comma-separated list mise composes.
+    #[test]
+    fn selecting_several_environments_joins_them() {
+        assert_eq!(
+            MiseEnv::select(&[MiseEnv::Xtask, MiseEnv::BuildMobile]),
+            ("MISE_ENV", "xtask,build-mobile".to_owned()),
+        );
     }
 }

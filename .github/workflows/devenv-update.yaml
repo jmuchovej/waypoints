@@ -76,8 +76,20 @@ jobs:
           add-paths: |-
             devenv.lock
             .github/workflows
+            .config/mise.build-desktop.lock
+            .config/mise.build-desktop.toml
+            .config/mise.build-mobile.lock
+            .config/mise.build-mobile.toml
+            .config/mise.devtools.lock
+            .config/mise.devtools.toml
             .config/mise.lock
+            .config/mise.test.lock
+            .config/mise.test.toml
             .config/mise.toml
+            .config/mise.website.lock
+            .config/mise.website.toml
+            .config/mise.xtask.lock
+            .config/mise.xtask.toml
             src-tauri/gen/android/gradle/libs.versions.toml
             src-tauri/gen/android/local.properties
 concurrency:

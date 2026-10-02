@@ -9,10 +9,16 @@
 # wrote only part of the file, so that cannot happen unattended.
 #
 # Every tool is one `waypoints.mise.tools.<name>` entry carrying its nix
-# package, its backend-qualified mise spec, and any OS restriction. A tool with
-# a package but no mise backend (the nix-only formatters) lives in the shell
-# alone: `include = false` keeps it out of the projection. The assertion refuses
-# anything projected without both halves.
+# package, its backend-qualified mise spec, any OS restriction, and the
+# environments it belongs to. `envs = null` is a nix-only tool: it lives in the
+# shell and is never projected. Otherwise `envs = [ ]` means the base config and
+# a non-empty list means those environments' files; an assertion refuses
+# anything projected without both a package and a spec.
+#
+# Nothing is inferred. An environment holds exactly the tools that named it, and
+# a tool whose `depends` is absent from a lane is an evaluation error rather than
+# something quietly pulled in — mise resolves such a config and exits zero, so
+# the generator has to be the one that notices.
 {
   lib,
   config,
@@ -25,31 +31,17 @@ let
     attrValues
     filter
     filterAttrs
-    mapAttrs
-    mapAttrs'
     mkOption
     nameValuePair
     types
     ;
   cfg = config.waypoints.mise;
 
-  environment-names = attrNames cfg.environments;
+  environment-names = cfg.environments;
 
-  environment-type = types.submodule {
-    options.composes = mkOption {
-      type = types.listOf (types.enum environment-names);
-      default = [ ];
-      description = ''
-        Environments whose members this one also contains, transitively. mise
-        composes environments at *selection* time (`MISE_ENV=a,b`) but a config
-        has no include directive, so a union has to be built here.
-      '';
-    };
-  };
-
-  # What mise calls the tool: its spec, minus the `core:` prefix mise strips
-  # when displaying and when matching `depends`.
-  displayed = name: lib.removePrefix "core:" cfg.tools.${name}.spec;
+  # What mise calls a tool: its spec, minus the `core:` prefix mise strips when
+  # displaying and when matching `depends`.
+  displayed = lib.removePrefix "core:";
 
   tool-type = types.submodule {
     options = {
@@ -78,36 +70,33 @@ let
         description = "Operating systems mise installs the tool on (its `os` option); empty means everywhere.";
       };
       envs = mkOption {
-        type = types.listOf (types.enum environment-names);
+        type = types.nullOr (types.listOf (types.enum environment-names));
         default = [ ];
         description = ''
-          Environments this tool belongs to. Empty puts it in the base config,
+          Environments this tool belongs to. `[ ]` puts it in the base config,
           which every environment loads; a non-empty list writes it into each
           named environment's file instead.
+
+          `null` keeps the tool out of mise entirely — a nix-only tool that
+          lives in the shell and has no projected entry. There is no separate
+          `include` flag: a tool is projected exactly when it names where it
+          belongs.
         '';
       };
       depends = mkOption {
         type = types.listOf types.str;
         default = [ ];
         description = ''
-          Other declared tools this one needs at run time — the runtime a
-          `gem:`/`npm:` tool executes on. Named as `waypoints.mise.tools.<name>`
-          and projected as mise's displayed name.
+          Specs of other projected tools this one needs at run time — the
+          runtime a `gem:`/`npm:` tool executes on. Written as the spec
+          (`core:ruby`) and projected as mise's displayed name (`ruby`), which
+          is what mise matches.
 
           mise does not enforce this: a config naming an absent dependency
-          resolves the dependent tool and exits zero, so the closure is computed
-          here instead.
+          resolves the dependent tool and exits zero. So the dependency is not
+          pulled in here either — an environment missing one is an assertion
+          failure, and the fix is to say where the dependency belongs.
         '';
-      };
-      include = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Project the tool into `.config/mise.toml`. `false` keeps a nix-only tool in the shell without a mise entry.";
-      };
-      formatter = mkOption {
-        type = types.bool;
-        default = false;
-        description = "Exists only to format: listed in `WAYPOINTS_FORMATTERS` so release CI can skip it.";
       };
       options = mkOption {
         type = types.attrsOf types.str;
@@ -123,13 +112,7 @@ let
   };
 
   in-shell = filter (tool: tool.package != null) (attrValues cfg.tools);
-  included = filterAttrs (_: tool: tool.include) cfg.tools;
-
-  # Emitted as a `[vars]` entry so release CI can hand the list to
-  # MISE_DISABLE_TOOLS without a second config file.
-  formatter-specs = lib.sort lib.lessThan (
-    map (tool: tool.spec) (attrValues (filterAttrs (_: tool: tool.formatter) included))
-  );
+  included = filterAttrs (_: tool: tool.envs != null) cfg.tools;
 
   # A tool's mise entry: a bare version string unless something forces the
   # table form.
@@ -151,58 +134,45 @@ let
   # Tools with no environment go in the base, which every environment loads.
   base-tools = attrNames (filterAttrs (_: tool: tool.envs == [ ]) included);
 
-  # Environments this one pulls in, itself included. Bounded rather than
-  # iterated to a fixpoint so a cycle in `composes` fails instead of hanging.
-  composed =
-    depth: env:
-    if depth == 0 then
-      [ env ]
-    else
-      lib.unique ([ env ] ++ lib.concatMap (composed (depth - 1)) cfg.environments.${env}.composes);
+  # What an environment's own file contains: exactly the tools that named it.
+  # Nothing is pulled in — a tool is in an environment because it says so.
+  membership = env: attrNames (filterAttrs (_: tool: lib.elem env tool.envs) included);
 
-  # Grow a tool set over `depends` until it stops changing. Terminates even on
-  # a dependency cycle: the set only grows and the tool set is finite.
-  close =
-    names:
-    let
-      next = lib.unique (lib.sort lib.lessThan (names ++ lib.concatMap (n: included.${n}.depends) names));
-    in
-    if next == names then names else close next;
+  # Every lane a tool set is written for, base included, so the dependency
+  # assertion can ask the same question of each.
+  lanes = {
+    base = base-tools;
+  }
+  // lib.genAttrs environment-names membership;
 
-  # What an environment's file contains: everything assigned to it or to any
-  # environment it composes, closed over `depends`. A dependency already in the
-  # base is still written out — generated duplication is free, and relying on
-  # the base would break silently if the tool later moved.
-  membership =
-    env:
-    close (
-      lib.unique (
-        lib.sort lib.lessThan (
-          lib.concatMap (e: attrNames (filterAttrs (_: tool: lib.elem e tool.envs) included)) (composed 8 env)
-        )
-      )
-    );
+  # The mise-displayed names resolvable in a lane: its own tools plus the base,
+  # which every environment loads on top of.
+  resolvable =
+    lane: lib.unique (map (name: displayed included.${name}.spec) (lanes.base ++ lanes.${lane}));
 
-  # Environments that currently have members, and so have files on disk.
-  materialised = filter (env: membership env != [ ]) environment-names;
-
-  # The basenames those environments own. Anything else matching
-  # `mise.<something>.{toml,lock}` under `.config` is a leftover.
+  # The basenames the declared environments own. Anything else matching
+  # `mise.<something>.{toml,lock}` under `.config` is a leftover from an
+  # environment that has been renamed or removed.
   expected-files = lib.concatMap (env: [
     "mise.${env}.toml"
     "mise.${env}.lock"
-  ]) materialised;
+  ]) environment-names;
 in
 {
   options.waypoints.mise = {
     environments = mkOption {
-      type = types.attrsOf environment-type;
-      default = { };
+      type = types.listOf types.str;
+      default = [ ];
       description = ''
         Environments a consumer can select, each naming a unit of work rather
         than an actor. Declaring one here is what makes it nameable in a tool's
         `envs`, so a typo there is an evaluation error instead of a config file
         that silently never loads.
+
+        A consumer needing several names them together — mise reads `MISE_ENV`
+        as a comma-separated list and loads each config additively. There is no
+        union environment: composition happens at selection, so building one
+        here would only duplicate what the caller already says.
       '';
     };
     tools = mkOption {
@@ -230,20 +200,36 @@ in
           tool = cfg.tools.${name};
         in
         {
-          assertion = !tool.include || (tool.package != null && tool.spec != null);
-          message = "waypoints.mise.tools.${name}: set both `package` and `spec`, or `include = false`.";
+          assertion = tool.envs == null || (tool.package != null && tool.spec != null);
+          message = "waypoints.mise.tools.${name}: set both `package` and `spec`, or `envs = null`.";
         }
       ) (attrNames cfg.tools)
-      # A dependency on an undeclared tool would project a `depends` entry mise
+      # A dependency on an unprojected tool would write a `depends` entry mise
       # resolves to nothing and reports success for — the failure this option
       # exists to prevent, reintroduced one level up.
       ++ lib.concatMap (
         name:
         map (dependency: {
-          assertion = cfg.tools ? ${dependency} && cfg.tools.${dependency}.include;
-          message = "waypoints.mise.tools.${name}.depends: no projected tool named `${dependency}`.";
-        }) cfg.tools.${name}.depends
-      ) (attrNames cfg.tools);
+          assertion = lib.elem dependency (map (tool: tool.spec) (attrValues included));
+          message = "waypoints.mise.tools.${name}.depends: `${dependency}` is not a projected tool's spec.";
+        }) included.${name}.depends
+      ) (attrNames included)
+      # mise will not enforce the closure and will not complain: a config whose
+      # `depends` target is absent installs the dependent tool, exits zero, and
+      # fails at run time with no interpreter. So every lane is checked to
+      # already contain what its tools depend on. Deliberately an assertion
+      # rather than a fixup — the generator pulling the dependency in silently
+      # would mean an environment's contents were never quite what it declared.
+      ++ lib.concatMap (
+        lane:
+        lib.concatMap (
+          name:
+          map (dependency: {
+            assertion = lib.elem (displayed dependency) (resolvable lane);
+            message = "waypoints.mise.${lane}: `${included.${name}.spec}` depends on `${dependency}`, which is not a member. Add `\"${lane}\"` to that tool's `envs`.";
+          }) included.${name}.depends
+        ) lanes.${lane}
+      ) (attrNames lanes);
 
     # Every tool with a package, minus what cannot be built on this platform
     # (xcodegen off macOS); those still project their versions into mise.toml.
@@ -269,7 +255,7 @@ in
     files = {
       ".config/mise.lock" = {
         copyMode = "seed";
-        text = "# This should be overwritten on re-entry.";
+        text = "# Placeholder. Run `just mise-lock` to populate; nothing writes this on shell entry.";
       };
 
       ".config/mise.toml" = {
@@ -280,7 +266,6 @@ in
           # package set, and a generated file cannot be linted — treefmt has to
           # exclude it or tombi reformats what devenv writes.
           inherit (cfg) env;
-          vars.WAYPOINTS_FORMATTERS = lib.concatStringsSep "," formatter-specs;
           # The mise devenv provides — the one that writes `.config/mise.lock`.
           # mise reads this itself and refuses an older one, and CI installs
           # exactly it rather than whatever released most recently: a lockfile
@@ -292,27 +277,23 @@ in
         };
       };
     }
-    # One config and one seeded lockfile per environment that has members. An
-    # environment with none emits nothing: mise treats a missing
-    # `mise.<env>.toml` as nothing to add, so selecting it degrades to
-    # base-only rather than failing.
-    // lib.concatMapAttrs (
-      name: _:
-      let
-        members = membership name;
-      in
-      lib.optionalAttrs (members != [ ]) {
-        ".config/mise.${name}.toml" = {
-          copyMode = "copy";
-          # `[tools]` and nothing else — settings, `min_version` and `[env]`
-          # stay in the base, so each is written in exactly one place.
-          toml.tools = tool-table members;
-        };
-        ".config/mise.${name}.lock" = {
-          copyMode = "seed";
-          text = "# This should be overwritten on re-entry.";
-        };
-      }
-    ) cfg.environments;
+    # One config and one seeded lockfile for every declared environment, member
+    # or not. An environment whose tools are all in the base gets a file with an
+    # empty `[tools]` rather than no file at all: a consumer names the same
+    # environment whatever it currently contains, so every workflow job carries
+    # the same `MISE_ENV` shape, and the day a lane-specific tool appears it
+    # lands in a file the jobs already select.
+    // lib.concatMapAttrs (name: members: {
+      ".config/mise.${name}.toml" = {
+        copyMode = "copy";
+        # `[tools]` and nothing else — settings, `min_version` and `[env]`
+        # stay in the base, so each is written in exactly one place.
+        toml.tools = tool-table members;
+      };
+      ".config/mise.${name}.lock" = {
+        copyMode = "seed";
+        text = "# Placeholder. Run `just mise-lock` to populate; nothing writes this on shell entry.";
+      };
+    }) (removeAttrs lanes [ "base" ]);
   };
 }

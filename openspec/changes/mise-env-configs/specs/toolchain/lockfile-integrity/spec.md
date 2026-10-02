@@ -1,6 +1,6 @@
 ## Purpose
 
-Governs the lockfiles that pin the toolchain for consumers outside the devenv shell: what a lockfile must cover to be considered complete, when it may be written, and where an incomplete one is required to fail. Exists because the tool manager reports success on a lockfile it only partly wrote, which turns a transient network failure on one machine into a silent toolchain change everywhere else.
+Governs the lockfiles that pin the toolchain for consumers outside the devenv shell: which configurations must have one, when one may be written, and where an incomplete one is required to fail. Exists because the tool manager reports success on a lockfile it only partly wrote, which turns a transient network failure on one machine into a silent toolchain change everywhere else.
 
 ## ADDED Requirements
 
@@ -12,47 +12,49 @@ An uncovered lockfile is where drift accumulates unobserved, so the covered set 
 
 #### Scenario: Each environment is locked
 
-- **WHEN** an environment is declared and populated
-- **THEN** a lockfile for it is committed alongside its configuration, and the lockstep check covers both
+- **WHEN** an environment is declared
+- **THEN** a lockfile for it is committed alongside its configuration, and the lockstep check covers both — including an environment whose tools all sit in the base configuration, which still emits both files so a consumer's selection does not depend on what the lane currently holds
 
-### Requirement: A lockfile is complete only if it covers every tool on every target platform
+### Requirement: Lockfile completeness is enforced at installation, not by a local check
 
-Lockfile verification SHALL compare each configuration's declared tools against the lockfile's entries across the full set of target platforms, and SHALL fail on any missing pair.
+Completeness SHALL be enforced where an incomplete lockfile actually causes harm: the installing consumer. Installation SHALL be required to install exactly what the lockfile pins, so a tool the lockfile does not cover on the installing platform fails there rather than resolving afresh.
 
-Verification SHALL NOT be satisfied by tool resolution alone. A lockfile missing most of its platform entries still resolves every tool on the platform that wrote it, so a resolution check reports success on a lockfile that is unusable everywhere else.
+A local per-platform coverage check SHALL NOT be required. Such a check can only report, before a push, that a platform the author is not on is short — and it cannot act on that finding, because refreshing a lockfile extends only the platforms it already carries. Widening it is a separate, explicitly targeted operation. Against that narrow benefit it needs an expected-platform set and a per-tool exemption table, neither derivable: the platforms the tool manager can lock are not the platforms this repository targets, and the Rust toolchain file enumerates build targets rather than hosts.
 
-Backends that legitimately produce no per-platform entries SHALL be exempted by explicit, named declaration. An unexplained absence SHALL be a failure, not a skip.
+Drift in a committed lockfile SHALL instead be caught by the generated-file lockstep check, which fails on any lockfile difference.
 
-#### Scenario: Truncated lockfile is rejected
+#### Scenario: A lockfile short on the installing platform fails there
 
-- **WHEN** a lockfile is missing platform entries for a tool that should carry them
-- **THEN** verification fails and names the missing tool and platform pairs
+- **WHEN** a consumer installs on a platform for which the lockfile carries no entry for a declared tool
+- **THEN** installation fails on that platform rather than resolving the version afresh
 
-#### Scenario: Resolution alone does not pass
+#### Scenario: Shell entry does not assess coverage
 
-- **WHEN** a lockfile resolves every declared tool on the current platform but omits entries for other target platforms
-- **THEN** verification fails rather than reporting the toolchain as locked
+- **WHEN** a committed lockfile is missing platform entries for a platform other than the current one
+- **THEN** nothing local fails — the gap surfaces at an install on the affected platform, and no expected-platform set or exemption table is maintained to anticipate it
 
-#### Scenario: Exemptions are declared, not inferred
+#### Scenario: Lockfile drift is caught by the lockstep check
 
-- **WHEN** a tool's backend produces no per-platform entries and is not in the exemption list
-- **THEN** verification fails, rather than silently treating the absence as expected
+- **WHEN** a committed lockfile differs from what regeneration would produce
+- **THEN** the generated-file lockstep check fails
 
-### Requirement: Entering the shell verifies lockfiles; it never regenerates them
+### Requirement: Entering the shell neither writes nor reads lockfiles
 
-Entering the devenv shell SHALL verify the committed lockfiles without network access and without writing to them. Regeneration SHALL be an explicit, separately invoked action.
+Entering the devenv shell SHALL NOT write to a lockfile, and SHALL NOT make a network request on behalf of one. Regeneration SHALL be an explicit, separately invoked action.
 
-Automatic regeneration on shell entry makes a network failure indistinguishable from success: the tool manager writes what it managed to fetch and exits zero, so a throttled run silently replaces a complete lockfile with a partial one. Verification on entry instead fails on the machine that would have caused the damage.
+Automatic regeneration on shell entry makes a network failure indistinguishable from success: the tool manager writes what it managed to fetch and exits zero, so a throttled run silently replaces a complete lockfile with a partial one — unattended, on every entry, with the damage surfacing at a CI install far from the machine that caused it.
+
+Entry SHALL NOT verify lockfiles either. Verification on entry was considered and rejected with the coverage check above: it is the same check, paid on every entry, and its findings are not actionable at that moment.
 
 #### Scenario: Shell entry is read-only
 
 - **WHEN** the devenv shell is entered twice in succession
 - **THEN** no lockfile is modified and no network request is made on either entry
 
-#### Scenario: An incomplete committed lockfile fails at the shell, not in CI
+#### Scenario: No task writes a lockfile
 
-- **WHEN** a lockfile missing entries is committed and a contributor enters the shell
-- **THEN** entry fails with the coverage error, before the lockfile reaches a CI runner
+- **WHEN** the tasks that run on shell entry are enumerated
+- **THEN** none of them writes a lockfile
 
 ### Requirement: Regeneration is authenticated and refuses to degrade
 

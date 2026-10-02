@@ -2,8 +2,8 @@
 //! and wires their `needs:`.
 
 use super::{
-    Channel, GITHUB_TOKEN, Platform, PrepareJob, TestSuite, WorkflowContext, helpers::ANDROID_HOME,
-    runners, steps,
+    Channel, GITHUB_TOKEN, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext,
+    helpers::ANDROID_HOME, runners, steps,
 };
 use gh_workflow::{
     Expression, FluentBuilder, Job, JobOutput, Level, NamedJob, Permissions, StepOutput,
@@ -33,17 +33,18 @@ fn build_code(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
 const BUILD_ONLY_ON_DISPATCH: &str =
     "${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}";
 
-/// Release jobs never format, so mise skips the formatter tool set devenv
-/// projects into `[vars].WAYPOINTS_FORMATTERS` — one config file, and one
-/// fewer install per formatter on every release runner.
-fn without_formatters(job: Job, formatters: &str) -> Job {
-    job.add_env(("MISE_DISABLE_TOOLS", formatters.to_owned()))
+/// Names the mise config environments a job installs. Additive: each one adds
+/// its `[tools]` to the base, so a job declares what it does and gets exactly
+/// that. Replaced a deny-list of tool specs, which named what to skip and so
+/// had to be re-derived every time the tool set moved — and silently no-opped
+/// when a spec it named had been renamed out from under it.
+fn mise_env(job: Job, envs: &[MiseEnv]) -> Job {
+    job.add_env(MiseEnv::select(envs))
 }
 
 /// Resolves the nightly tag: derive it from the workspace version, skip the run
 /// when nothing landed since the last nightly, and create the tag.
 pub fn prepare(context: &WorkflowContext) -> PrepareJob {
-    let formatters = &context.formatters;
     let planner = steps::cargo_xtask("nightly-plan", &[(BUILD_ONLY_ON_DISPATCH, None)])
         .id("nightly-plan")
         .add_env(("GH_TOKEN", GITHUB_TOKEN));
@@ -55,7 +56,8 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
 
     let job = NamedJob::new(
         "prepare",
-        without_formatters(Job::default(), formatters)
+        // The planner is a `cargo xtask` run and nothing more.
+        mise_env(Job::default(), &[MiseEnv::Xtask])
             .name("Plan the nightly")
             // Write: the planner creates the nightly tag ref.
             .permissions(Permissions::default().contents(Level::Write))
@@ -85,18 +87,15 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
 /// Runs the suite on one platform, as two steps: the plan resolves the
 /// filterset, and the run is skipped when it comes back empty.
 pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> NamedJob {
-    let formatters = &context.formatters;
     // The command publishes its own step output, so no shell redirection and
     // nothing spelled differently for PowerShell on Windows.
     let plan = steps::cargo_xtask("test-plan", &[(suite.flag(), None)]).id("test-plan");
     let filterset = StepOutput::new_trusted(&plan, "filterset");
 
-    let job = Job::default()
-        // The changed-suite job is the one formatter-adjacent CI run, so it
-        // keeps the full tool set.
-        .when(matches!(suite, TestSuite::Release), |job| {
-            without_formatters(job, formatters)
-        })
+    // Both suites run the same two commands, so both want the same environment
+    // — unlike the deny-list this replaced, where the changed-suite job was
+    // left with the full tool set because narrowing it meant naming tools.
+    let job = mise_env(Job::default(), &[MiseEnv::Test])
         .name(format!("Test {platform}"))
         .permissions(Permissions::default().contents(Level::Read))
         .runs_on(platform.runner())
@@ -143,7 +142,9 @@ pub fn create_release(
     let tag = prepare.map(|prepare| &prepare.tag);
     let publishing = || Channel::tag_condition(tag);
 
-    let job = Job::default()
+    // `git-cliff` is the only tool this job runs through mise, and it lives in
+    // `xtask` — the lane the release-automation jobs share.
+    let job = mise_env(Job::default(), &[MiseEnv::Xtask])
         .name("Draft the release")
         .permissions(Permissions::default().contents(Level::Write))
         .runs_on(runners::LINUX)
@@ -204,7 +205,15 @@ pub fn build(
     // Absent off nightly, where the tag's own semver suffices.
     let build_code = prepare.and_then(|prepare| build_code(prepare, platform));
 
-    let job = without_formatters(Job::default(), &context.formatters)
+    // The mobile lanes need `fastlane`, `xcodegen` and the nushell the `_build`
+    // recipes are written in; the desktop ones do not.
+    let envs: &[MiseEnv] = if platform.is_mobile() {
+        &[MiseEnv::BuildMobile]
+    } else {
+        &[MiseEnv::BuildDesktop]
+    };
+
+    let job = mise_env(Job::default(), envs)
         .permissions(Permissions::default().contents(Level::Write))
         .name(format!("Build {platform}"))
         .runs_on(platform.runner())
@@ -266,7 +275,7 @@ mod tests {
     /// Swapping these would hand Play a value it cannot parse.
     #[test]
     fn each_platform_draws_its_own_build_code() {
-        let prepare = prepare("aqua:numtide/treefmt");
+        let prepare = prepare(&WorkflowContext::stub());
 
         assert_eq!(
             build_code(&prepare, Platform::Android).map(JobOutput::expr),

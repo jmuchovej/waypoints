@@ -11,90 +11,99 @@
 
   waypoints.mise = {
     # Units of work, not actors: a job names what it does, and `MISE_ENV` takes
-    # a comma-separated list, so a consumer composes the sets it needs.
-    environments = {
-      xtask = { };
-      test = { };
-      format = { };
-      build-desktop = { };
-      build-mobile = { };
-      development = { };
-    };
+    # a comma-separated list, so a consumer composes the sets it needs. A
+    # contributor working without nix names the lanes they work in — there is no
+    # `development` union, because selection already composes.
+    environments = [
+      "xtask"
+      "test"
+      "devtools"
+      "build-desktop"
+      "build-mobile"
+      "website"
+    ];
 
     tools = {
+      # The base is the common working set: `envs = [ ]` puts a tool in
+      # `.config/mise.toml`, which every environment loads on top of. Every
+      # script that launches, compiles or maintains waypoints runs through
+      # `just`, and these are what those recipes reach for — so they are not
+      # something a consumer should have to name a lane to get. An environment
+      # below carries only what is genuinely specific to that lane.
       just = {
         package = pkgs.just;
         spec = "aqua:casey/just";
-        formatter = false;
       };
       nixfmt = {
         package = pkgs.nixfmt-rs;
         spec = "github:Mic92/nixfmt-rs";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       ktfmt = {
         package = pkgs.ktfmt;
         spec = "github:facebook/ktfmt";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       rufo = {
         package = pkgs.rufo;
         spec = "gem:rufo";
-        depends = [ "ruby" ];
-        formatter = true;
+        depends = [ config.waypoints.mise.tools.ruby.spec ];
+        envs = [ "devtools" ];
       };
       typos = {
         package = pkgs.typos;
         spec = "aqua:crate-ci/typos";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       oxfmt = {
         package = pkgs.oxfmt;
         spec = "npm:oxfmt";
-        depends = [ "node" ];
-        formatter = true;
+        depends = [ config.waypoints.mise.tools.node.spec ];
+        envs = [ "devtools" ];
       };
       oxipng = {
         package = pkgs.oxipng;
         spec = "aqua:oxipng/oxipng";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       tombi = {
         package = pkgs.tombi;
         spec = "aqua:tombi-toml/tombi";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       zizmor = {
         package = pkgs.zizmor;
         spec = "aqua:zizmorcore/zizmor";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       hk = {
         package = pkgs.hk;
         spec = "aqua:jdx/hk";
+        envs = [ "devtools" ];
       };
       lychee = {
         package = pkgs.lychee;
         spec = "aqua:lycheeverse/lychee";
+        envs = [ "devtools" ];
       };
       keep-sorted = {
         package = pkgs.keep-sorted;
         spec = "aqua:google/keep-sorted";
-        formatter = true;
+        envs = [ "devtools" ];
       };
-      # nix-only formatters: in the shell, never in mise. treefmt's
+      # nix-only: in the shell, never in mise. treefmt's
       # allow-missing-formatter lets mise users skip them.
       deadnix = {
         package = pkgs.deadnix;
-        include = false;
+        envs = null;
       };
       statix = {
         package = pkgs.statix;
-        include = false;
+        envs = null;
       };
       nixf-diagnose = {
         package = pkgs.nixf-diagnose;
-        include = false;
+        envs = null;
       };
       treefmt = {
         package = pkgs.treefmt;
@@ -103,20 +112,9 @@
           "linux"
           "macos"
         ];
-        formatter = true;
+        envs = [ "devtools" ];
       };
 
-      # `github:` rather than `aqua:` so the SLSA provenance sops publishes is
-      # checked against the workflow that actually signed it. The aqua registry
-      # declares no `signer_identity`/`signer_issuer`, so mise verified any
-      # valid Sigstore signature — including one from an unrelated workflow —
-      # until it began refusing that check outright in 2026.9.16.
-      #
-      # The identity is slsa-github-generator's, not sops': sops calls it as a
-      # reusable workflow, and the certificate records the callee. Read from the
-      # signing certificate rather than inferred. It therefore tracks the
-      # *generator's* version, so a sops release built with a newer generator
-      # fails closed here until this is updated — which is the point.
       sops = {
         package = pkgs.sops;
         spec = "github:getsops/sops";
@@ -128,11 +126,13 @@
       age = {
         package = pkgs.age;
         spec = "aqua:FiloSottile/age";
+        envs = config.waypoints.mise.tools.sops.envs;
       };
       wrangler = {
         package = pkgs.wrangler;
         spec = "npm:wrangler";
-        depends = [ "node" ];
+        depends = [ config.waypoints.mise.tools.node.spec ];
+        envs = [ "website" ];
       };
       yq = {
         package = pkgs.yq-go;
@@ -142,21 +142,22 @@
         package = pkgs.secretspec;
         spec = "aqua:cachix/secretspec";
       };
-      # NOTE: renovate omitted — its dependency tree trips mise's npm trust policy in CI.
 
       fastlane = {
         package = pkgs.fastlane;
         spec = "gem:fastlane";
-        depends = [ "ruby" ];
+        depends = [ config.waypoints.mise.tools.ruby.spec ];
         os = [
           "linux"
           "macos"
         ];
+        envs = [ "build-mobile" ];
       };
       xcodegen = {
         package = pkgs.xcodegen;
         spec = "aqua:yonaskolb/XcodeGen";
         os = [ "macos" ];
+        envs = [ "build-mobile" ];
       };
       cargo-tauri = {
         package = pkgs.cargo-tauri;
@@ -166,6 +167,7 @@
       cargo-nextest = {
         package = pkgs.cargo-nextest;
         spec = "aqua:nextest-rs/nextest/cargo-nextest";
+        envs = [ "test" ];
       };
       nushell = {
         package = pkgs.nushell;
@@ -174,10 +176,12 @@
       cargo-deny = {
         package = pkgs.cargo-deny;
         spec = "aqua:EmbarkStudios/cargo-deny";
+        envs = [ "devtools" ];
       };
       git-cliff = {
         package = pkgs.git-cliff;
         spec = "aqua:orhun/git-cliff";
+        envs = [ "xtask" ];
       };
 
       node = {
@@ -187,22 +191,32 @@
       pnpm = {
         package = config.languages.javascript.pnpm.package;
         spec = "aqua:pnpm/pnpm";
+        depends = [ config.waypoints.mise.tools.node.spec ];
       };
       deno = {
         package = config.languages.deno.package;
         spec = "core:deno";
+        envs = [ "website" ];
       };
+      # Not base: only `rufo` and `fastlane` run on it, so it rides with them.
       ruby = {
         package = config.languages.ruby.package;
         spec = "core:ruby";
+        envs = [
+          "devtools"
+          "build-mobile"
+        ];
       };
-      swift = {
-        package = config.languages.swift.package;
-        spec = "core:swift";
-      };
+      # LOAD-BEARING, despite `envs = null`: nix/devenv/android.nix reads this
+      # package's version into the generated `libs.versions.toml`, which is what
+      # pins the Gradle Kotlin plugin. Gradle resolves `kotlin-compiler-embeddable`
+      # from Maven at that version and runs it on the JDK — it never looks for
+      # `kotlinc` on PATH — so projecting the tool into mise would install a
+      # second compiler nothing calls. The entry is also what puts `kotlinc` in
+      # the shell, since `languages.kotlin` exposes no `.package` option.
       kotlin = {
-        package = pkgs.kotlin; # NOTE: languages.kotlin doesn't specify a `.package` option
-        spec = "github:JetBrains/kotlin";
+        package = pkgs.kotlin;
+        envs = null;
       };
     };
     env = {
@@ -253,7 +267,6 @@
   languages.deno.enable = true;
   languages.ruby.enable = true;
   languages.kotlin.enable = true;
-  languages.swift.enable = true;
   languages.java.enable = true;
   languages.javascript = {
     enable = true;

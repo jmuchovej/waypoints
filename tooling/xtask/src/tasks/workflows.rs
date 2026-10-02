@@ -24,7 +24,9 @@ mod release;
 mod release_plan;
 
 pub(crate) mod _types;
-pub(crate) use _types::{Artifact, Channel, Platform, PrepareJob, TestSuite, WorkflowInput};
+pub(crate) use _types::{
+    Artifact, Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowInput,
+};
 pub(crate) mod _helpers;
 pub(crate) use _helpers as helpers;
 pub(crate) use helpers::GITHUB_TOKEN;
@@ -137,7 +139,6 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         devenv_files: crate::utils::devenv::managed_files()?,
         android_ndk: crate::utils::devenv::android_ndk_version()?,
         android_jdk: crate::utils::devenv::android_jdk_major()?,
-        formatters: crate::utils::mise::formatters()?,
         mise_version: crate::utils::mise::version()?,
     };
 
@@ -278,12 +279,28 @@ pub struct WorkflowContext {
     /// The JDK major version devenv installs. See
     /// [`crate::utils::devenv::android_jdk_major`].
     pub android_jdk: String,
-    /// Every mise tool that exists only to format, for release jobs to skip.
-    /// See [`crate::utils::mise::formatters`].
-    pub formatters: String,
     /// The mise that writes the lockfile, for CI to install the same one.
     /// See [`crate::utils::mise::version`].
     pub mise_version: String,
+}
+
+#[cfg(test)]
+impl WorkflowContext {
+    /// A context with fixed values, for tests that assemble a job to inspect
+    /// its shape. Every field here would otherwise be a `devenv info`
+    /// evaluation, which a unit test has no business running.
+    pub fn stub() -> Self {
+        Self {
+            args: WorkflowArgs {
+                check: false,
+                sha: None,
+            },
+            devenv_files: Vec::new(),
+            android_ndk: "26.1.10909125".to_owned(),
+            android_jdk: "21".to_owned(),
+            mise_version: "2026.8.6".to_owned(),
+        }
+    }
 }
 
 /// Boxed rather than a `fn` pointer so one builder can emit a family of

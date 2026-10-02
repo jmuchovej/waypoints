@@ -25,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      MISE_ENV: xtask
     steps:
       - id: checkout
         name: Checkout
