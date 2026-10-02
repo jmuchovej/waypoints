@@ -17,6 +17,8 @@ excludes                = [
   "*/mise.toml",
   "mise.*.toml",
   "*/mise.*.toml",
+  "libs.versions.toml",
+  "*/libs.versions.toml",
 ]
 on-unmatched            = "info"
 verbose                 = 1
