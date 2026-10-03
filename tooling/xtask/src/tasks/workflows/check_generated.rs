@@ -32,7 +32,11 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .add_step(steps::checkout())
         .add_step(steps::install_nix())
         .add_step(steps::cachix("devenv"))
-        // The recipe shells into devenv, so both exist before the shell does.
+        // `just` as well as `devenv`, because the recipe is invoked as
+        // `devenv shell -- just …` and something has to launch that. The recipe
+        // body also shells into devenv for its `cargo xtask` calls, which is
+        // redundant inside the outer shell but harmless, and keeps the recipe
+        // runnable on its own.
         .add_step(steps::nix_profile_install(&["devenv", "just"]))
         .add_step(steps::just("check-generated").name("Check generated files"));
 

@@ -87,10 +87,18 @@ pub fn nix_profile_install(packages: &[&str]) -> Step<Run> {
         .id("setup-nix-profile")
 }
 
-/// Runs a `just` recipe — the same command that runs locally.
+/// Runs a `just` recipe, the way it runs locally: inside the devenv shell.
+///
+/// The wrapper is not a convenience. `just` resolves every `mod` file at *parse*
+/// time, and `src/justfile` opens with `env("TAURI_APP_PATH")`, so a bare
+/// `just <recipe>` dies before any recipe body executes — however carefully that
+/// body shells into devenv itself. The failure names the module, not the recipe,
+/// which is what hid it: `check-generated` was red from 2026-09-25 on this
+/// alone, so the check that would have caught stale generated files was itself
+/// the stale one.
 pub fn just(recipe: &str) -> Step<Run> {
     Step::new(format!("just {recipe}"))
-        .run(format!("just {recipe}"))
+        .run(format!("devenv shell -- just {recipe}"))
         .shell("bash")
         .id(recipe)
 }

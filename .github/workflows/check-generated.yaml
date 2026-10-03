@@ -83,7 +83,7 @@ jobs:
         shell: bash
       - id: check-generated
         name: Check generated files
-        run: just check-generated
+        run: devenv shell -- just check-generated
         shell: bash
 concurrency:
   group: generated-${{ github.ref }}
