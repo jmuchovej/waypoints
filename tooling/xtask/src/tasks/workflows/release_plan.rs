@@ -10,7 +10,7 @@
 //! Nightlies are minted by [`super::release`]'s `prepare` job instead — their
 //! version is a timestamp, not a claim about content.
 
-use super::{WorkflowContext, WorkflowInput, helpers, runners, steps};
+use super::{MiseEnv, WorkflowContext, WorkflowInput, helpers, runners, steps};
 use gh_workflow::{Event, Job, Level, Permissions, Workflow, WorkflowDispatch};
 
 pub fn workflow(context: &WorkflowContext) -> Workflow {
@@ -22,6 +22,8 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     .description("Which release-cycle transition to perform");
 
     let plan = Job::new("plan the transition")
+        // A `cargo xtask` run and nothing more.
+        .add_env(MiseEnv::select(&[MiseEnv::Xtask]))
         // Write: the planner creates branch and tag refs.
         .permissions(Permissions::default().contents(Level::Write))
         .runs_on(runners::LINUX)

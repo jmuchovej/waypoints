@@ -1,0 +1,83 @@
+#!/usr/bin/env nu
+
+# Refresh every mise lockfile, or with `--check` report whether they already
+# agree with their configs. Hand-invoked — see nix/AGENTS.md for why no devenv
+# task writes a lockfile on shell entry.
+#
+# `mise lock` refreshes the platforms a lockfile already carries and will not
+# add one. Widening takes `mise lock --platform <list>`.
+
+# Discovered from the configs on disk rather than passed in:
+# `mise:prune-environments` has already removed any whose environment no longer
+# has members, so what is there is what is current.
+def environments [root: string]: nothing -> list<string> {
+  ls ($root | path join ".config")
+  | get name
+  | path basename
+  | where {|f| $f | str starts-with "mise." }
+  | where {|f| $f | str ends-with ".toml" }
+  | where {|f| $f != "mise.toml" }
+  | each {|f| $f | str replace --regex '^mise\.' "" | str replace --regex '\.toml$' "" }
+  | sort
+}
+
+def lock-dry-run [target: string] {
+  if ($target | is-empty) {
+    do { mise lock --dry-run --json } | complete
+  } else {
+    with-env {MISE_ENV: $target} { do { mise lock --dry-run --json } | complete }
+  }
+}
+
+def main [
+  --check # report drift instead of refreshing it; no network, writes nothing
+] {
+  let root = $env.PROJECT_ROOT? | default (pwd)
+  let envs = (environments $root)
+
+  if $check {
+    mut problems = []
+
+    for target in ([""] ++ $envs) {
+      let label = (if ($target | is-empty) { "base" } else { $target })
+      let result = (lock-dry-run $target)
+
+      # mise warns and still exits 0, so its output is the signal rather than
+      # its exit code.
+      let drift = ($result.stdout | str trim)
+      if $drift != "[]" and ($drift | is-not-empty) {
+        let names = ($drift | from json | get name | str join ", ")
+        $problems = ($problems | append $"($label): lockfile stale for ($names)")
+      }
+
+      # A backend spec mise cannot resolve surfaces here and nowhere else:
+      # `mise ls --current` lists an unresolvable tool as merely missing.
+      for warning in ($result.stderr | lines | where {|l| $l | str contains "WARN" }) {
+        $problems = ($problems | append $"($label): ($warning | str trim)")
+      }
+    }
+
+    if ($problems | is-empty) { return }
+
+    print -e "mise lockfiles disagree with their configs:"
+    for problem in $problems { print -e $"  ($problem)" }
+    print -e ""
+    print -e "Run `just mise-lock` to refresh them."
+    exit 1
+  }
+
+  # GH_TOKEN arrives from secretspec via `just mise-lock`; mise reads
+  # GITHUB_TOKEN. Unauthenticated, sixty requests an hour does not cover this
+  # tool set and mise reports success after writing a short lockfile.
+  let token = ($env.GITHUB_TOKEN? | default ($env.GH_TOKEN? | default ""))
+
+  with-env {GITHUB_TOKEN: $token} {
+    print "locking base config"
+    mise lock
+
+    for environment in $envs {
+      print $"locking environment: ($environment)"
+      with-env {MISE_ENV: $environment} { mise lock }
+    }
+  }
+}

@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout

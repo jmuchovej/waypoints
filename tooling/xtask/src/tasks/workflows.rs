@@ -24,7 +24,9 @@ mod release;
 mod release_plan;
 
 pub(crate) mod _types;
-pub(crate) use _types::{Artifact, Channel, Platform, PrepareJob, TestSuite, WorkflowInput};
+pub(crate) use _types::{
+    Artifact, Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowInput,
+};
 pub(crate) mod _helpers;
 pub(crate) use _helpers as helpers;
 pub(crate) use helpers::GITHUB_TOKEN;
@@ -137,7 +139,6 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         devenv_files: crate::utils::devenv::managed_files()?,
         android_ndk: crate::utils::devenv::android_ndk_version()?,
         android_jdk: crate::utils::devenv::android_jdk_major()?,
-        formatters: crate::utils::mise::formatters()?,
         mise_version: crate::utils::mise::version()?,
     };
 
@@ -278,9 +279,6 @@ pub struct WorkflowContext {
     /// The JDK major version devenv installs. See
     /// [`crate::utils::devenv::android_jdk_major`].
     pub android_jdk: String,
-    /// Every mise tool that exists only to format, for release jobs to skip.
-    /// See [`crate::utils::mise::formatters`].
-    pub formatters: String,
     /// The mise that writes the lockfile, for CI to install the same one.
     /// See [`crate::utils::mise::version`].
     pub mise_version: String,
@@ -300,7 +298,6 @@ impl WorkflowContext {
             devenv_files: Vec::new(),
             android_ndk: "00.0.00000000".to_owned(),
             android_jdk: "00".to_owned(),
-            formatters: "aqua:numtide/treefmt".to_owned(),
             mise_version: "0.0.0".to_owned(),
         }
     }

@@ -1,0 +1,19 @@
+# mise configuration that should be hand-maintained rather than projected from devenv.
+
+[settings]
+  experimental = true
+
+  idiomatic_version_file_enable_tools = [
+    "rust"                                 # load from `rust-toolchain`
+  ]
+
+  lockfile = true
+
+  locked                   = true
+  locked_verify_provenance = true
+
+  # let a fresh release age before this repo installs it.
+  minimum_release_age          = "7d"
+  minimum_release_age_excludes = []
+
+  # `safe` is absent deliberately: mise refuses it outside a global config.

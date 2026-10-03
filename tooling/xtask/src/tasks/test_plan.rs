@@ -206,6 +206,10 @@ mod tests {
         );
     }
 
+    /// `.config/cargo.toml` rather than `.cargo/config.toml`: the latter is a
+    /// symlink to the former, which git tracks as a symlink blob. Editing the
+    /// cargo config therefore reports the real path as changed and leaves the
+    /// link untouched, so the real path is what a plan has to widen on.
     #[test]
     fn a_toolchain_change_tests_everything() {
         // `.cargo/config.toml` is a symlink to the real file, so an edit lands

@@ -2,7 +2,7 @@ toml-version = "v1.1.0"
 
 [files]
   include              = [ "**/*.toml" ]
-  exclude              = [ "vendor/**/*.toml" ]
+  exclude              = [ "vendor/**/*.toml", ".config/mise*.toml" ]
   respect-ignore-files = true
 
 [format]
@@ -21,3 +21,11 @@ toml-version = "v1.1.0"
     line-width                 = 88
     string-quote-style         = "double"
     trailing-comment-alignment = true
+
+[[schemas]]
+  toml-version = "v1.1.0"
+  path         = "https://mise.jdx.dev/schema/mise.json"
+  # hand-edited configs only. the generated `mise.toml`/`mise.*.toml` are
+  # excluded from treefmt, so a schema bound to them would never run — mise
+  # parsing them (or failing loudly) is the check that applies there.
+  include      = [ ".config/mise/conf.d/*.toml" ]

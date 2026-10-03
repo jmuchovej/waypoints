@@ -1,0 +1,2 @@
+[tools]
+"aqua:nextest-rs/nextest/cargo-nextest" = "0.9.143"

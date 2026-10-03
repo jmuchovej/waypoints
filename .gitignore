@@ -359,3 +359,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,macos,windows,rust,flutter,dart,deno,database,node
+
+# .env holds no secrets — those come from secretspec. It is the shared
+# environment description devenv and mise both read, so it must be committed.
+!.env

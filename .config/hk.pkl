@@ -8,7 +8,7 @@ import "package://github.com/jdx/hk/releases/download/v1.55.0/hk@1.55.0#/Builtin
 //
 // sometimes tools can _legitimately_ be in both (e.g., `typos`)
 
-local nixf_ignores = List(
+local nixf_ignore_flags = List(
   "sema-unused-def-lambda-witharg-formal",
   "sema-unused-def-lambda-noarg-formal",
   "sema-primop-overridden"
@@ -53,9 +53,28 @@ local formatting = new Mapping<String, Step> {
   }
 }
 
+/// generated-config steps whose drift has a mechanical remedy.
+local syncing = new Mapping<String, Step> {
+  // the lockfiles are refreshed over the network, so this must never run on
+  // shell entry — see nix/AGENTS.md. `hk fix` is explicit and `pre-push` runs
+  // `check` only, so the write stays something a person asked for.
+  ["mise-lock"] {
+    glob = List(
+      "devenv.nix",
+      "devenv.yaml",
+      "devenv.lock",
+      ".config/mise.toml",
+      ".config/mise.*.toml"
+    )
+    check = "just mise-lock-check"
+    fix = "just mise-lock"
+  }
+}
+
 local fixable = new Mapping<String, Step> {
   ...lints
   ...formatting
+  ...syncing
 }
 
 local checks = new Mapping<String, Step> {

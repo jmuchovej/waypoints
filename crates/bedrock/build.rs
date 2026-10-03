@@ -8,6 +8,13 @@
 //! (the `turso_version()` SQL function reports a SQLite-style file-header
 //! stamp, not the release).
 
+// A build script talks to cargo over stdout — `cargo:rerun-if-changed` and
+// `cargo:rustc-env` are the protocol, not logging — so the lint's reasoning
+// (stdout is unstructured and swallowed under the runtime) does not apply.
+// Matches `src-tauri/build.rs`, which carries the same allow for the same
+// reason.
+#![allow(clippy::disallowed_macros)]
+
 fn main() {
     // Walk up from the crate to the workspace root's lockfile.
     let lockfile = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

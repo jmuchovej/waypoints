@@ -37,7 +37,7 @@ jobs:
       version_code: ${{ steps.nightly-plan.outputs.version_code }}
       bundle_version: ${{ steps.nightly-plan.outputs.bundle_version }}
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: xtask
     steps:
       - id: checkout
         name: Checkout
@@ -65,7 +65,7 @@ jobs:
     permissions:
       contents: read
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout
@@ -99,7 +99,7 @@ jobs:
     permissions:
       contents: read
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout
@@ -133,7 +133,7 @@ jobs:
     permissions:
       contents: read
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout
@@ -186,6 +186,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      MISE_ENV: xtask
     steps:
       - id: checkout
         name: Checkout
@@ -229,7 +231,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: build-desktop
     steps:
       - id: checkout
         name: Checkout
@@ -282,7 +284,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: build-desktop
     steps:
       - id: checkout
         name: Checkout
@@ -335,7 +337,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: build-desktop
     steps:
       - id: checkout
         name: Checkout
@@ -406,7 +408,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: build-mobile
     steps:
       - id: checkout
         name: Checkout
@@ -464,7 +466,7 @@ jobs:
     permissions:
       contents: write
     env:
-      MISE_DISABLE_TOOLS: "aqua:crate-ci/typos,aqua:google/keep-sorted,aqua:mic92/nixfmt-rs,aqua:numtide/treefmt,aqua:oxipng/oxipng,aqua:tombi-toml/tombi,aqua:zizmorcore/zizmor,gem:rufo,github:facebook/ktfmt,npm:oxfmt"
+      MISE_ENV: build-mobile
     steps:
       - id: checkout
         name: Checkout

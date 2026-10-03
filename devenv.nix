@@ -1,95 +1,109 @@
 {
   pkgs,
+  lib,
   config,
   ...
 }:
-let
-  tauri-app-path = "src-tauri";
-  tauri-frontend-path = "src";
-  tauri-android-path = "${tauri-app-path}/gen/android";
-  tauri-ios-path = "${tauri-app-path}/gen/apple";
-in
 {
-  imports = [
-    ./nix/devenv/mise.nix
-    ./nix/devenv/android.nix
-  ];
-
   stdenv = pkgs.clangStdenv;
 
+  imports = [ ./nix/devenv ];
+
   waypoints.mise = {
+    # Units of work, not actors: a job names what it does, and `MISE_ENV` takes
+    # a comma-separated list, so a consumer composes the sets it needs. A
+    # contributor working without nix names the lanes they work in — there is no
+    # `development` union, because selection already composes.
+    environments = [
+      "xtask"
+      "test"
+      "devtools"
+      "build-desktop"
+      "build-mobile"
+      "website"
+    ];
+
     tools = {
+      # The base is the common working set: `envs = [ ]` puts a tool in
+      # `.config/mise.toml`, which every environment loads on top of. Every
+      # script that launches, compiles or maintains waypoints runs through
+      # `just`, and these are what those recipes reach for — so they are not
+      # something a consumer should have to name a lane to get. An environment
+      # below carries only what is genuinely specific to that lane.
       just = {
         package = pkgs.just;
         spec = "aqua:casey/just";
-        formatter = false;
       };
       nixfmt = {
         package = pkgs.nixfmt-rs;
         spec = "github:Mic92/nixfmt-rs";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       ktfmt = {
         package = pkgs.ktfmt;
         spec = "github:facebook/ktfmt";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       rufo = {
         package = pkgs.rufo;
         spec = "gem:rufo";
-        formatter = true;
+        depends = [ config.waypoints.mise.tools.ruby.spec ];
+        envs = [ "devtools" ];
       };
       typos = {
         package = pkgs.typos;
         spec = "aqua:crate-ci/typos";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       oxfmt = {
         package = pkgs.oxfmt;
         spec = "npm:oxfmt";
-        formatter = true;
+        depends = [ config.waypoints.mise.tools.node.spec ];
+        envs = [ "devtools" ];
       };
       oxipng = {
         package = pkgs.oxipng;
         spec = "aqua:oxipng/oxipng";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       tombi = {
         package = pkgs.tombi;
         spec = "aqua:tombi-toml/tombi";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       zizmor = {
         package = pkgs.zizmor;
         spec = "aqua:zizmorcore/zizmor";
-        formatter = true;
+        envs = [ "devtools" ];
       };
       hk = {
         package = pkgs.hk;
         spec = "aqua:jdx/hk";
+        envs = [ "devtools" ];
       };
       lychee = {
         package = pkgs.lychee;
         spec = "aqua:lycheeverse/lychee";
+        envs = [ "devtools" ];
       };
       keep-sorted = {
         package = pkgs.keep-sorted;
         spec = "aqua:google/keep-sorted";
-        formatter = true;
+        envs = [ "devtools" ];
       };
-      # nix-only formatters: in the shell, never in mise. treefmt's
+      # nix-only: in the shell, never in mise. treefmt's
       # allow-missing-formatter lets mise users skip them.
       deadnix = {
         package = pkgs.deadnix;
-        include = false;
+        envs = null;
       };
       statix = {
         package = pkgs.statix;
-        include = false;
+        envs = null;
       };
       nixf-diagnose = {
         package = pkgs.nixf-diagnose;
-        include = false;
+        envs = null;
       };
       treefmt = {
         package = pkgs.treefmt;
@@ -98,20 +112,9 @@ in
           "linux"
           "macos"
         ];
-        formatter = true;
+        envs = [ "devtools" ];
       };
 
-      # `github:` rather than `aqua:` so the SLSA provenance sops publishes is
-      # checked against the workflow that actually signed it. The aqua registry
-      # declares no `signer_identity`/`signer_issuer`, so mise verified any
-      # valid Sigstore signature — including one from an unrelated workflow —
-      # until it began refusing that check outright in 2026.9.16.
-      #
-      # The identity is slsa-github-generator's, not sops': sops calls it as a
-      # reusable workflow, and the certificate records the callee. Read from the
-      # signing certificate rather than inferred. It therefore tracks the
-      # *generator's* version, so a sops release built with a newer generator
-      # fails closed here until this is updated — which is the point.
       sops = {
         package = pkgs.sops;
         spec = "github:getsops/sops";
@@ -123,10 +126,13 @@ in
       age = {
         package = pkgs.age;
         spec = "aqua:FiloSottile/age";
+        envs = config.waypoints.mise.tools.sops.envs;
       };
       wrangler = {
         package = pkgs.wrangler;
         spec = "npm:wrangler";
+        depends = [ config.waypoints.mise.tools.node.spec ];
+        envs = [ "website" ];
       };
       yq = {
         package = pkgs.yq-go;
@@ -136,20 +142,22 @@ in
         package = pkgs.secretspec;
         spec = "aqua:cachix/secretspec";
       };
-      # NOTE: renovate omitted — its dependency tree trips mise's npm trust policy in CI.
 
       fastlane = {
         package = pkgs.fastlane;
         spec = "gem:fastlane";
+        depends = [ config.waypoints.mise.tools.ruby.spec ];
         os = [
           "linux"
           "macos"
         ];
+        envs = [ "build-mobile" ];
       };
       xcodegen = {
         package = pkgs.xcodegen;
         spec = "aqua:yonaskolb/XcodeGen";
         os = [ "macos" ];
+        envs = [ "build-mobile" ];
       };
       cargo-tauri = {
         package = pkgs.cargo-tauri;
@@ -159,6 +167,7 @@ in
       cargo-nextest = {
         package = pkgs.cargo-nextest;
         spec = "aqua:nextest-rs/nextest/cargo-nextest";
+        envs = [ "test" ];
       };
       nushell = {
         package = pkgs.nushell;
@@ -167,10 +176,12 @@ in
       cargo-deny = {
         package = pkgs.cargo-deny;
         spec = "aqua:EmbarkStudios/cargo-deny";
+        envs = [ "devtools" ];
       };
       git-cliff = {
         package = pkgs.git-cliff;
         spec = "aqua:orhun/git-cliff";
+        envs = [ "xtask" ];
       };
 
       node = {
@@ -180,53 +191,47 @@ in
       pnpm = {
         package = config.languages.javascript.pnpm.package;
         spec = "aqua:pnpm/pnpm";
+        depends = [ config.waypoints.mise.tools.node.spec ];
       };
       deno = {
         package = config.languages.deno.package;
         spec = "core:deno";
+        envs = [ "website" ];
       };
+      # Not base: only `rufo` and `fastlane` run on it, so it rides with them.
       ruby = {
         package = config.languages.ruby.package;
         spec = "core:ruby";
+        envs = [
+          "devtools"
+          "build-mobile"
+        ];
       };
-      swift = {
-        package = config.languages.swift.package;
-        spec = "core:swift";
-      };
+      # LOAD-BEARING, despite `envs = null`: nix/devenv/android.nix reads this
+      # package's version into the generated `libs.versions.toml`, which is what
+      # pins the Gradle Kotlin plugin. Gradle resolves `kotlin-compiler-embeddable`
+      # from Maven at that version and runs it on the JDK — it never looks for
+      # `kotlinc` on PATH — so projecting the tool into mise would install a
+      # second compiler nothing calls. The entry is also what puts `kotlinc` in
+      # the shell, since `languages.kotlin` exposes no `.package` option.
       kotlin = {
-        package = pkgs.kotlin; # NOTE: languages.kotlin doesn't specify a `.package` option
-        spec = "github:JetBrains/kotlin";
+        package = pkgs.kotlin;
+        envs = null;
       };
     };
-    env = [
-      { PROJECT_ROOT = "{{ config_root }}"; }
-      { PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"; }
-      # The treefmt-* wrappers, as enterShell puts them on PATH in the shell.
-      { _.path = [ "tooling/bin" ]; }
-      {
-        CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}";
-        TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/${tauri-app-path}";
-        TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/${tauri-frontend-path}";
-        TAURI_ANDROID_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-android-path}";
-        TAURI_IOS_PROJECT_PATH = "{{ env.PROJECT_ROOT }}/${tauri-ios-path}";
-        TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml";
-        JJ_HOOKS_RUNNER = "hk";
-      }
-    ];
+    env = {
+      PROJECT_ROOT = "{{ config_root }}";
+      _.file = {
+        path = config.dotenv.filename;
+        expand = true;
+      };
+    };
   };
 
-  env = {
-    PROJECT_ROOT = config.devenv.root;
-    PROJECT_CONFIG_PATH = "${config.env.PROJECT_ROOT}/.config";
-    TAURI_FRONTEND_PATH = "${config.env.PROJECT_ROOT}/${tauri-frontend-path}";
-    TAURI_APP_PATH = "${config.env.PROJECT_ROOT}/${tauri-app-path}";
-    TAURI_ANDROID_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-android-path}";
-    TAURI_IOS_PROJECT_PATH = "${config.env.PROJECT_ROOT}/${tauri-ios-path}";
-    TREEFMT_CONFIG = "${config.env.PROJECT_CONFIG_PATH}/treefmt.toml";
-    CLIPPY_CONF_DIR = "${config.env.PROJECT_CONFIG_PATH}";
-    TREEFMT_TREE_ROOT = config.env.PROJECT_ROOT;
-    JJ_HOOKS_RUNNER = "hk";
-  };
+  # `.env` and both of its substituters are owned by nix/devenv/default.nix.
+  env.PROJECT_ROOT = config.devenv.root;
+
+  delta.enable = true;
 
   waypoints.android = {
     agp.version = "8.13.2";
@@ -236,12 +241,11 @@ in
       "30"
     ];
     ndk.version = "30.0.16138531";
-    project-path = tauri-android-path;
+    # devenv writes `files."<project-path>/..."` relative to the root, while
+    # `.env` carries the absolute path both it and mise need. Re-relativize
+    # rather than restating the path in nix.
+    project-path = lib.removePrefix "${config.devenv.root}/" config.env.TAURI_ANDROID_PROJECT_PATH;
   };
-
-  enterShell = ''
-    export PATH="${config.devenv.root}/tooling/bin:$PATH"
-  '';
 
   packages = with pkgs; [
     act
@@ -263,7 +267,6 @@ in
   languages.deno.enable = true;
   languages.ruby.enable = true;
   languages.kotlin.enable = true;
-  languages.swift.enable = true;
   languages.java.enable = true;
   languages.javascript = {
     enable = true;
@@ -283,7 +286,7 @@ in
     after = [ "devenv:enterShell" ];
     execIfModified = [
       "rust-toolchain.toml"
-      ".cargo/deny.toml"
+      ".config/deny.toml"
     ];
     exec = builtins.readFile ./nix/devenv/bin/sync-deny-targets;
   };
