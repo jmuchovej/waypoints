@@ -8,7 +8,7 @@ use super::{
         WP_BOTSWAIN_PRIVATE_KEY,
     },
 };
-use gh_workflow::{FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
+use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
 use indoc::indoc;
 
 /// A `uses:` reference — `{owner}/{repo}@{sha}`. Pinning to the hash rather
@@ -459,12 +459,29 @@ pub(crate) fn cargo_nextest(suite: TestSuite) -> Nextest {
 }
 
 impl Nextest {
-    #[allow(dead_code)]
+    /// Adds the filterset, and the guard that turns an empty one into a skip
+    /// rather than a failure.
+    ///
+    /// `cargo nextest -E ""` exits 94 with `failed to parse filterset`, while an
+    /// empty plan is the *documented* answer for a change touching no Rust crate
+    /// — so the step has to not run, rather than run with nothing. Any push of
+    /// only docs, configs or manifests hits this. Bound here rather than at the
+    /// call site so a filterset cannot be added without its guard.
     pub(crate) fn with_filter_expr(mut self, filter_expr: &str) -> Self {
         if let Some(command) = self.0.value.run.as_mut() {
             command.push_str(r#" -E "${FILTER_EXPR}""#);
         }
-        self.0 = self.0.add_env(("FILTER_EXPR", filter_expr));
+        // `if:` is already an expression context, so the `${{ }}` wrapper the
+        // env value needs is a syntax error there.
+        let unwrapped = filter_expr
+            .trim()
+            .trim_start_matches("${{")
+            .trim_end_matches("}}")
+            .trim();
+        self.0 = self
+            .0
+            .add_env(("FILTER_EXPR", filter_expr))
+            .if_condition(Expression::new(format!("{unwrapped} != ''")));
         self
     }
 }

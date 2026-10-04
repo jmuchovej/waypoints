@@ -61,6 +61,7 @@ jobs:
         shell: bash
       - id: nextest
         name: Run affected tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:

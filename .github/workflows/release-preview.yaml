@@ -56,6 +56,7 @@ jobs:
         shell: bash
       - id: nextest
         name: Run release tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
@@ -87,6 +88,7 @@ jobs:
         shell: bash
       - id: nextest
         name: Run release tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
@@ -135,6 +137,7 @@ jobs:
         shell: bash
       - id: nextest
         name: Run release tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
