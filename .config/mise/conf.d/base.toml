@@ -5,10 +5,10 @@
 
   idiomatic_version_file_enable_tools = [
     "rust"                                 # load from `rust-toolchain`
+    # "pnpm" # expressly omitted because we explicitly pin it in `mise.toml`
   ]
 
-  lockfile = true
-
+  lockfile                 = true
   locked                   = true
   locked_verify_provenance = true
 
@@ -16,4 +16,4 @@
   minimum_release_age          = "7d"
   minimum_release_age_excludes = []
 
-  # `safe` is absent deliberately: mise refuses it outside a global config.
+  # `safe` is only respected by mise in its global config
