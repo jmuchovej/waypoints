@@ -18,6 +18,19 @@ let
   # Map a version (e.g. "35.0.0") to its android-nixpkgs attribute suffix ("35-0-0").
   dash-version = lib.replaceStrings [ "." ] [ "-" ];
 
+  # The NDK ships exactly one prebuilt toolchain, named for the host OS and
+  # tagged x86_64 even on Apple Silicon. Only the host's own is in the store
+  # path, so naming the wrong one yields a directory that does not exist.
+  ndk-host =
+    let
+      inherit (pkgs.stdenv.hostPlatform.parsed.kernel) name;
+      hosts = {
+        darwin = "darwin-x86_64";
+        linux = "linux-x86_64";
+      };
+    in
+    hosts.${name} or (throw "No Android NDK prebuilt toolchain for host ${name}");
+
   # ps16k (16 KB page-size) system images only exist for API >= 35.
   system-images =
     sdk-pkgs:
@@ -87,7 +100,7 @@ in
           pkgs.libGL
         ])
         "${config.env.ANDROID_HOME}/build-tools/${cfg.build-tools.version}/lib64/"
-        "${config.env.ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/lib/"
+        "${config.env.ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${ndk-host}/lib/"
         "$LD_LIBRARY_PATH"
       ];
       # env.PATH merges as one string, so this module owns the whole

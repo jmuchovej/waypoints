@@ -54,8 +54,16 @@ _build flavor *ARGS:
       error make { msg: $"No Android NDK at ($ndk_home). Set `NDK_HOME` or install one." }
     }
 
-    # The NDK ships one prebuilt toolchain per host OS, tagged x86_64 even on Apple Silicon.
-    let host = $"((sys host | get name) | str lowercase)-x86_64"
+    # The NDK ships one prebuilt toolchain per host OS, tagged x86_64 even on
+    # Apple Silicon. Map the platform explicitly: `sys host | get name` is the
+    # distribution, so it answers `Ubuntu` on a GitHub runner and `Darwin` here
+    # — only the latter happens to match a directory the NDK ships.
+    let host = match $nu.os-info.name {
+      "macos" => "darwin-x86_64",
+      "linux" => "linux-x86_64",
+      "windows" => "windows-x86_64",
+      $other => { error make { msg: $"No Android NDK toolchain for host ($other)" } }
+    }
     let ndk_bin = $"($ndk_home)/toolchains/llvm/prebuilt/($host)/bin"
     if not ($ndk_bin | path exists) { error make { msg: $"No NDK toolchain at ($ndk_bin)" } }
 
