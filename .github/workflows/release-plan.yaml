@@ -39,6 +39,10 @@ jobs:
         with:
           version: "2026.8.6"
           cache: "false"
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - id: release-plan
         name: cargo xtask release-plan
         run: cargo xtask release-plan ${{ inputs.transition }}

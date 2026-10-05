@@ -31,6 +31,9 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         // release, and walks commits only from there.
         .add_step(steps::checkout().add_with(("fetch-tags", true)))
         .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        // As with the nightly planner: the cost here is compiling xtask, and
+        // this job publishes nothing.
+        .add_step(steps::rust_cache())
         .add_step(
             steps::cargo_xtask("release-plan", &[("${{ inputs.transition }}", None)])
                 .id("release-plan")

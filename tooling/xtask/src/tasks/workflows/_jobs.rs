@@ -66,6 +66,11 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
             // never walks between them.
             .add_step(steps::checkout().add_with(("fetch-tags", true)))
             .add_step(steps::setup_mise(false.into(), &context.mise_version))
+            // Compiling the planner is the whole job: 5m25s of a 6m10s run,
+            // against 39s to install its tools. Cached because nothing here is
+            // published — see `rust_cache` for why writing only from `main` is
+            // what keeps that safe.
+            .add_step(steps::rust_cache())
             .add_step(planner)
             .outputs([
                 p_tag.clone().as_output(),
@@ -109,16 +114,17 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
         .when(platform.is_linux(), |job| {
             job.add_step(steps::free_disk_space(true))
         })
-        // Release workflows run cold: their caching steps would count against
-        // the artifacts the sibling build jobs publish.
+        // mise's own cache stays off for the release suite, which runs cold
+        // alongside the build jobs that publish.
         .add_step(steps::setup_mise(
             matches!(suite, TestSuite::Changed).into(),
             &context.mise_version,
         ))
-        // After mise: the cache key fingerprints the resolved rustc version.
-        .when(matches!(suite, TestSuite::Changed), |job| {
-            job.add_step(steps::rust_cache())
-        })
+        // The compiled-dependency cache, however, applies to both suites: a
+        // test job publishes nothing, and compiling the workspace is what makes
+        // these runs 20–33 minutes. After mise, because the cache key
+        // fingerprints the resolved rustc version.
+        .add_step(steps::rust_cache())
         // Tauri links WebKitGTK on Linux, so even a library test build needs it.
         .when(platform.is_linux(), |job| {
             job.add_step(steps::install_linux_deps())
