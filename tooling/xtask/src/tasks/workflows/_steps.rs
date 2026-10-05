@@ -314,6 +314,9 @@ pub fn setup_android_sdk() -> Step<Use> {
         "40fd30fb8d7440372e1316f5d1809ec01dcd3699", // v4
     )
     .step("Setup Android SDK")
+    .add_with(("accept-android-sdk-licenses", "true"))
+    .add_with(("log-accepted-android-sdk-licenses", "true"))
+    .add_with(("packages", "platform-tools"))
     .id("setup-android-sdk")
 }
 
