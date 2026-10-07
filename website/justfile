@@ -44,8 +44,8 @@ add +ARGS:
 #                 NUXT_GITHUB_TOKEN (the /api/v1/update/*.json routes are
 #                 prerendered and call the GitHub API). These must be in the
 #                 environment when `nuxi build` runs. Locally that happens via
-#                 the parse-time load of .dev.vars above (run `dev-vars` first);
-#                 in CI, export them from sops before building.
+#                 the parse-time load of .dev.vars above (run `gen-dev-vars`
+#                 first); in CI, `eval "$(just website::secrets-export)"`.
 #
 #   RUNTIME     — everything the Worker reads per request. Uploaded to
 #                 Cloudflare with `secrets-push` and read through
@@ -70,32 +70,37 @@ preview: build
 db +ARGS:
     pnpm exec drizzle-kit {{ ARGS }}
 
-# Render .dev.vars from secrets.sops.yaml (needs SOPS_AGE_KEY in the env).
+# The `website` secretspec profile is where these recipes read from. It
+# defaults to the wp-web 1Password vault (the desktop app authorises a local
+# run); `SECRETSPEC_PROVIDER=sops-web` reads a local, gitignored
+# `secrets.sops.yaml` instead.
+
+# Render .dev.vars from the website profile.
 [script]
 gen-dev-vars:
-    [ -z "${SOPS_AGE_KEY}" ] && echo "\$SOP_AGE_KEY not set."
     umask 077
     tmp="$(mktemp .dev.vars.XXXXXX)"
     trap 'rm -f "$tmp"' EXIT
-    sops -d secrets.sops.yaml \
-      | yq -r 'to_entries | .[] | "\(.key)=\(.value | tostring | @json)"' \
+    secretspec export --profile website --format dotenv \
+      --reason "just website::gen-dev-vars renders .dev.vars for the local dev server" \
       > "$tmp"
     mv "$tmp" .dev.vars
-    echo "wrote .dev.vars ($(grep -c . .dev.vars) vars) from secrets.sops.yaml"
+    echo "wrote .dev.vars ($(grep -c . .dev.vars) vars) from the website profile"
 
-# Push all secrets from secrets.sops.yaml to the Worker in one call.
+# Push every secret in the website profile to the Worker in one call.
 [script]
 secrets-push:
-    sops -d secrets.sops.yaml \
-      | yq -o=json 'to_entries | map(.value |= tostring) | from_entries' \
+    secretspec export --profile website --format json \
+      --reason "just website::secrets-push uploads the website profile to the Worker" \
       | wrangler secret bulk --name {{ worker }}
 
 # Show which secret names are currently set on the Worker.
 secrets-list:
     wrangler secret list --name {{ worker }}
 
-# Export the sops secrets into the current shell, for a build that needs them
-# at BUILD time (CI). Usage: `eval "$(just website::secrets-export)"`
+# Export the website profile into the current shell, for a build that needs
+# the values at BUILD time (CI). Usage: `eval "$(just website::secrets-export)"`
 [private]
 secrets-export:
-    @sops -d secrets.sops.yaml | yq -r 'to_entries | .[] | "export \(.key)=\(.value | @sh)"'
+    @secretspec export --profile website --format shell \
+      --reason "just website::secrets-export exposes the website profile to a build"

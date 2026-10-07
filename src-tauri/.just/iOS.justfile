@@ -68,6 +68,12 @@ _build flavor *ARGS:
       $"USER=($env.USER)"
       $"PATH=/usr/bin:/bin:/usr/sbin:/sbin:($developer_dir)/Toolchains/XcodeDefault.xctoolchain/usr/bin:($env.PATH | str join ':')"
       $"DEVELOPER_DIR=($developer_dir)"
+      # Which store `secretspec run` reads, and the credential for it. Empty
+      # is unset to secretspec, so the profile default applies when the
+      # caller names nothing.
+      $"SECRETSPEC_PROVIDER=($env.SECRETSPEC_PROVIDER? | default '')"
+      $"OP_SERVICE_ACCOUNT_TOKEN=($env.OP_SERVICE_ACCOUNT_TOKEN? | default '')"
+      $"SOPS_AGE_KEY_FILE=($env.SOPS_AGE_KEY_FILE? | default '')"
       $"SOPS_AGE_KEY=($env.SOPS_AGE_KEY? | default '')"
       $"GITHUB_SHA=($env.GITHUB_SHA? | default '')"
       $"GITHUB_REF_NAME=($env.GITHUB_REF_NAME? | default '')"

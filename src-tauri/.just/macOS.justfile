@@ -39,6 +39,9 @@ _build flavor *ARGS:
       HOME="$HOME" \
       USER="$USER" \
       PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH" \
+      SECRETSPEC_PROVIDER="${SECRETSPEC_PROVIDER:-}" \
+      OP_SERVICE_ACCOUNT_TOKEN="${OP_SERVICE_ACCOUNT_TOKEN:-}" \
+      SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-}" \
       SOPS_AGE_KEY="${SOPS_AGE_KEY:-}" \
       GITHUB_SHA="${GITHUB_SHA:-}" \
       GITHUB_REF_NAME="${GITHUB_REF_NAME:-}" \

@@ -117,6 +117,12 @@ _build flavor *ARGS:
         $"HOME=($env.HOME)"
         $"USER=($env.USER)"
         $"PATH=/usr/bin:/bin:/usr/sbin:/sbin:($env.PATH | str join ':')"
+        # Which store `secretspec run` reads, and the credential for it. Empty
+        # is unset to secretspec, so the profile default applies when the
+        # caller names nothing.
+        $"SECRETSPEC_PROVIDER=($env.SECRETSPEC_PROVIDER? | default '')"
+        $"OP_SERVICE_ACCOUNT_TOKEN=($env.OP_SERVICE_ACCOUNT_TOKEN? | default '')"
+        $"SOPS_AGE_KEY_FILE=($env.SOPS_AGE_KEY_FILE? | default '')"
         $"SOPS_AGE_KEY=($env.SOPS_AGE_KEY? | default '')"
         # `build.rs` stamps these into `BuildInfo`, preferring them over
         # shelling out to git. Empty locally, which it treats as absent.
