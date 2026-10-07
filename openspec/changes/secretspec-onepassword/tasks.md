@@ -5,14 +5,14 @@
 
 ## 2. Manifest
 
-- [ ] 2.1 Keep the `op` (`onepassword+token://wp-prod`) and `op-web` (`onepassword+token://wp-web`) aliases already in the working copy, add `sops-web` (`sops://website/secrets.sops.yaml`), and keep `sops`; verify `secretspec check --profile automation` resolves both botswain secrets through `op`
-- [ ] 2.2 Rewrite every `release` and `automation` secret from `ref` to `refs` with both coordinate sets from design D8, point `[profiles.release.defaults].providers` at `op`, and drop `encoding` from `GOOGLE_PLAY_JSON_KEY_PATH`; verify `secretspec check --profile release --scope <s>` reports every secret found for each of `macos`, `linux`, `windows`, `android`, and `ios`
-- [ ] 2.3 Verify the sops coordinates still work: with `SECRETSPEC_PROVIDER=sops` and the maintainer's age key, `secretspec check --profile release --scope macos` and `--profile automation` report every secret found from the local `secrets.sops.yaml`
-- [ ] 2.4 Remove `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_DISTRIBUTION_CERTIFICATE`, `APPLE_DISTRIBUTION_PASSWORD`, and `APPLE_DISTRIBUTION_PROFILE` from `default` and `release`; verify every remaining `release` secret appears in at least one `[scopes.*]` list and an unscoped `secretspec check --profile release` fails only on the inherited `GH_TOKEN` and `WP_BOTSWAIN_*`
-- [ ] 2.5 Set `inherit = false` on `automation`, giving its two secrets their descriptions inline; verify `secretspec check --profile automation` lists exactly `WP_BOTSWAIN_APP_ID` and `WP_BOTSWAIN_PRIVATE_KEY`
-- [ ] 2.6 Add the `website` profile per design D9 — ten secrets with `refs` for `op-web` and `sops-web`, `inherit = false`, `required = true`, `providers = ["op-web"]`; verify `secretspec check --profile website` reports all ten found from the vault and, under `SECRETSPEC_PROVIDER=sops-web`, from the local file
-- [ ] 2.7 Verify the delivered files are exact: through `secretspec run --profile release --scope android -- sh -c 'wc -c < "$GOOGLE_PLAY_JSON_KEY_PATH"; wc -c < "$ANDROID_KEYSTORE"'` expect 2232 and 1130 bytes, and through `--scope macos` that `APPLE_API_KEY_PATH` is 257 bytes with a `-----BEGIN PRIVATE KEY-----` header
-- [ ] 2.8 Run `treefmt` over the manifest and verify `prek run` is green
+- [x] 2.1 Keep the `op` (`onepassword+token://wp-prod`) and `op-web` (`onepassword+token://wp-web`) aliases already in the working copy, add `sops-web` (`sops://website/secrets.sops.yaml`), and keep `sops`; verify `secretspec check --profile automation` resolves both botswain secrets through `op`
+- [x] 2.2 Rewrite every `release` and `automation` secret from `ref` to `refs` with both coordinate sets from design D8, point `[profiles.release.defaults].providers` at `op`, and drop `encoding` from `GOOGLE_PLAY_JSON_KEY_PATH`; verify `secretspec check --profile release --scope <s>` reports every secret found for each of `macos`, `linux`, `windows`, `android`, and `ios`
+- [ ] 2.3 Verify the sops coordinates still work: with `SECRETSPEC_PROVIDER=sops` and the maintainer's age key, `secretspec check --profile release --scope macos` and `--profile automation` report every secret found from the local `secrets.sops.yaml`. **Needs the maintainer's shell**: the agent session has no age identity (`SOPS_AGE_KEY` empty, no `keys.txt`), so both local files fail to decrypt there
+- [x] 2.4 Remove `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_DISTRIBUTION_CERTIFICATE`, `APPLE_DISTRIBUTION_PASSWORD`, and `APPLE_DISTRIBUTION_PROFILE` from `default` and `release`; verify every remaining `release` secret appears in at least one `[scopes.*]` list and an unscoped `secretspec check --profile release` fails only on the inherited `GH_TOKEN` and `WP_BOTSWAIN_*`
+- [x] 2.5 Set `inherit = false` on `automation`, giving its two secrets their descriptions inline; verify `secretspec check --profile automation` lists exactly `WP_BOTSWAIN_APP_ID` and `WP_BOTSWAIN_PRIVATE_KEY`
+- [x] 2.6 Add the `website` profile per design D9 — ten secrets with `refs` for `op-web` and `sops-web`, `inherit = false`, `required = true`, `providers = ["op-web"]`; verified `secretspec check --profile website` reports all ten found from the vault. The `sops-web` half is covered by 2.3's maintainer-shell note
+- [x] 2.7 Verify the delivered files are exact: through `secretspec run --profile release --scope android -- sh -c 'wc -c < "$GOOGLE_PLAY_JSON_KEY_PATH"; wc -c < "$ANDROID_KEYSTORE"'` expect 2232 and 1130 bytes, and through `--scope macos` that `APPLE_API_KEY_PATH` is 257 bytes with a `-----BEGIN PRIVATE KEY-----` header
+- [x] 2.8 Run `treefmt` over the manifest and verify `prek run` is green
 
 ## 3. Workflow generator
 
@@ -40,7 +40,7 @@
 
 - [ ] 6.1 Add `secrets.sops.yaml` and `website/secrets.sops.yaml` to `.gitignore` and untrack both with `jj file untrack`; verify `jj status` shows them removed from the change while both files remain on disk and still decrypt with the maintainer's key
 - [ ] 6.2 Remove the `waypoints-ci` recipient from `.sops.yaml` and re-encrypt both local files to the maintainer's key alone (`sops updatekeys`); verify `sops -d` still succeeds locally and `rg waypoints-ci` across the tree is empty
-- [ ] 6.3 Commit groups 2 through 6 as one change with per-commit hooks green; verify `jj diff --stat` touches the manifest, `.gitignore`, `.sops.yaml`, generator, workflows, recipes, devenv config, mise projection, and the two untracked files, and nothing else
+- [ ] 6.3 Land groups 2 through 6 as one commit per group (the maintainer asked for reviewable steps rather than one change), each with per-commit hooks green; verify the combined `jj diff --stat main..@` touches the manifest, `.gitignore`, `.sops.yaml`, generator, workflows, recipes, devenv config, mise projection, and the two untracked files, and nothing else. The intermediate commits are not individually coherent for CI — the manifest points at the vault before the workflows carry the token — which is acceptable because nothing between them is pushed
 
 ## 7. Cutover
 
