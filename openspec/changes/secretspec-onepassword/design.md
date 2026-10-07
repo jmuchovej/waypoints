@@ -10,7 +10,7 @@ See `proposal.md` — Why. The current-state facts the approach rests on, each v
 - **Binary attachments do not survive the 1Password provider, on either secretspec line.** `op read --out-file` delivers `waypoints.jks` as 1130 bytes of binary. Through secretspec 0.19.1's `as_path` the same attachment arrives as 1718 bytes containing 400 U+FFFD replacement characters: that version holds every value as a UTF-8 string and decodes lossily. 0.21.0 made secret values byte-preserving in general (its release notes: "Keep binary secrets intact"), but its 1Password provider still decodes `op`'s stdout as text and now fails closed — 0.21.1 run against the same item reports `1Password CLI returned non-UTF-8 output: invalid utf-8 sequence`. PEM and JSON are valid UTF-8 and pass through both versions unchanged. So the keystore must be stored as base64 text regardless of which secretspec is pinned.
 - **The SSH Key item returns PKCS#1.** `botswain`'s `private key` field comes back with a `-----BEGIN RSA PRIVATE KEY-----` header, which is the format GitHub issues App keys in and what `actions/create-github-app-token` consumes.
 - **Per-provider `refs` works on 0.19.1.** A scratch manifest with `refs = { op = { item = "Apple Notary", field = "key-id" }, sops = { item = "apple-notary-key-id" } }` resolved from the real vault with `op` as the profile default and from a scratch sops file under `SECRETSPEC_PROVIDER=sops`, returning the sops file's value in the second case. `ref` and `refs` are mutually exclusive on one secret; a provider with no `refs` entry falls through to the `{project}/{profile}/{key}` convention, which is what a keyring uses.
-- **Profile `defaults.providers` selects the store when nothing overrides it**, `SECRETSPEC_PROVIDER` overrides it (devenv injects `env`), and a non-default profile with `required = true` makes every inherited secret required unless `inherit = false`. All three measured; the last one shows in the real `automation` profile today.
+- **Profile `defaults.providers` selects the store when nothing overrides it**, `SECRETSPEC_PROVIDER` overrides it (devenv injected `env` until D12), and a non-default profile with `required = true` makes every inherited secret required unless `inherit = false`. All three measured; the last one shows in the real `automation` profile today.
 - **`release` depends on inheritance** for `encoding`, `as_path`, and descriptions. `automation` and the new `website` profile do not.
 - **The workflow-level stamp is breaking CI today.** `named_workflow` sets `SECRETSPEC_PROVIDER: sops` on every workflow; the weekly `devenv-update` run has failed on every schedule since at least 2026-09-07 because its first step enters `devenv shell`, reads no secret, and dies on `The 'sops' CLI is not installed`.
 - **GitHub has three environments** — `App Release`, `CI`, `Website` — each holding `OP_SERVICE_ACCOUNT_TOKEN`, plus a repo-level copy of the same name. `App Release` and `CI` currently hold the same service account. Generated jobs declare no `environment:` today.
@@ -61,9 +61,9 @@ Rejected: the vault IDs. They also work and survive renames, but a title reads i
 
 Rejected: `credentials = { service_account_token = … }` on the alias. It would commit a credential source into the manifest that every reader shares; the environment route is what the provider documents for CI and what the generator already wires.
 
-### D4 (2026-10-04): Selection and credential are set on the resolving step; `named_workflow` sets neither
+### D4 (2026-10-04, revised 2026-10-07): Selection and credential are set on the resolving step; `named_workflow` sets neither
 
-`named_workflow` drops `SECRETSPEC_PROVIDER`. The `SecretSpec` step and the platform `build` step each set `SECRETSPEC_PROVIDER=op` and `OP_SERVICE_ACCOUNT_TOKEN`. Setting the provider on the step is strictly necessary only inside `devenv shell` (devenv injects `env`); under mise the profile default would already select `op`. It is set unconditionally so the generated YAML reads the same for every resolving step.
+`named_workflow` drops `SECRETSPEC_PROVIDER`. The `SecretSpec` step and the platform `build` step each set `SECRETSPEC_PROVIDER=op` and `OP_SERVICE_ACCOUNT_TOKEN`. With D12 in place the profile default already selects `op` everywhere, so the step-level provider is redundant in effect; it stays so the generated YAML states, per step, which store is read, and so a step cannot carry the credential without naming what it is for (the generator test holds that pairing).
 
 Jobs gain `environment:` through the existing job constructors in `_jobs.rs`: a job's environment is derived from which profile its steps resolve (`release` → `App Release`, `automation` → `CI`), so a step cannot end up in a job that declares the wrong one.
 
@@ -148,6 +148,14 @@ Rejected: keeping them as optional. A declaration nothing resolves and no store 
 4. Outside the repo: remove the repo-level `OP_SERVICE_ACCOUNT_TOKEN` and `SOPS_AGE_KEY`; retire the `waypoints-ci` age identity.
 
 Rollback from a failed step 3 is reverting commit A. The sops files are still on disk and still decrypt with the maintainer's key, so the old CI path is one revert away until step 4.
+
+### D12 (2026-10-07): devenv sets no provider; the manifest's `default` profile names `env`
+
+Found while verifying the website recipes: `devenv.yaml`'s `secretspec.provider: env` is exported as `SECRETSPEC_PROVIDER` for the whole shell, and that overrides every profile's own `defaults.providers`. Inside the shell, `secretspec check --profile website` reported all ten secrets missing while the same command under `env -i` found them — every local resolution of `release`, `automation`, or `website` would have silently hit `env://`. The `provider` line is removed from `devenv.yaml`, and `[profiles.default.defaults]` gains `providers = ["env"]` so shell entry still resolves the day-to-day values from the environment. Measured afterwards: the shell exports no `SECRETSPEC_PROVIDER`, the default profile resolves from `env`, and `website` resolves from the vault with no override.
+
+The `GH_TOKEN` declaration had carried `provider = ["env"]` (singular), which secretspec ignores; it is dropped in favour of the profile default rather than corrected, since the default now says the same thing for every secret in the profile.
+
+Rejected: having each recipe pass `--provider` explicitly. It works for the website recipes but not for the `secretspec run` inside the platform build justfiles, and it would make the manifest's `defaults.providers` decorative.
 
 ## Risks / Trade-offs
 
