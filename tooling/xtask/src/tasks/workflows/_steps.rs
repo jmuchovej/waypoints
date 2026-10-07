@@ -3,10 +3,7 @@
 
 use super::{
     Artifact, Channel, Platform, TestSuite,
-    helpers::{
-        GITHUB_TOKEN, SECRETSPEC_PROVIDER, SOPS_AGE_KEY_ENV, WP_BOTSWAIN_APP_ID,
-        WP_BOTSWAIN_PRIVATE_KEY,
-    },
+    helpers::{self, GITHUB_TOKEN, Profile, WP_BOTSWAIN_APP_ID, WP_BOTSWAIN_PRIVATE_KEY},
 };
 use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
 use indoc::indoc;
@@ -330,17 +327,19 @@ pub fn install_ndk(version: &str) -> Step<Run> {
 ///
 /// That recipe wraps the build in `secretspec run`, so signing material reaches
 /// only the build process and never `$GITHUB_ENV`, which later steps inherit.
-/// CI supplies just the key that unlocks the store.
+/// CI supplies just the credential that unlocks the vault, through the
+/// environment — the only channel that reaches a `secretspec` call inside a
+/// justfile.
 pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
-    Step::new(format!("Build {platform}"))
+    let step = Step::new(format!("Build {platform}"))
         .run(format!(
             "just tauri::{slug}::{recipe}",
             slug = platform.slug(),
             recipe = channel.build_recipe(),
         ))
         .shell("bash")
-        .add_env(SOPS_AGE_KEY_ENV)
-        .id("build-recipe")
+        .id("build-recipe");
+    helpers::resolving(step)
 }
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
@@ -350,7 +349,7 @@ pub fn fastlane(platform: Platform, channel: Channel) -> Step<Run> {
         lane = platform.slug(),
         flavor = channel.flavor()
     ))
-    .with_profile("release")
+    .with_profile(Profile::Release)
     .with_scope(platform.slug());
 
     Into::<Step<Run>>::into(spec)
@@ -514,10 +513,11 @@ enum Delivery {
 
 #[derive(Clone)]
 pub(crate) struct SecretSpec {
-    profile: Option<String>,
+    profile: Option<Profile>,
     scope: Option<String>,
     reason: Option<String>,
     delivery: Delivery,
+    inside_devenv: bool,
 }
 
 impl SecretSpec {
@@ -539,11 +539,20 @@ impl SecretSpec {
             scope: None,
             reason: None,
             delivery,
+            inside_devenv: false,
         }
     }
 
-    pub(crate) fn with_profile(mut self, profile: impl ToString) -> Self {
-        self.profile = Some(profile.to_string());
+    pub(crate) fn with_profile(mut self, profile: Profile) -> Self {
+        self.profile = Some(profile);
+        self
+    }
+
+    /// Runs through `devenv shell`, for a job whose `secretspec` and `op` come
+    /// from the shell rather than from mise. The shell preserves the provider
+    /// and credential set on the step.
+    pub(crate) fn inside_devenv(mut self) -> Self {
+        self.inside_devenv = true;
         self
     }
 
@@ -573,8 +582,8 @@ impl From<SecretSpec> for Step<Run> {
             Delivery::Wrap(_) => "secretspec run",
             Delivery::Export => "secretspec export",
         });
-        if let Some(profile) = &spec.profile {
-            command.push_str(&format!(" --profile {profile}"));
+        if let Some(profile) = spec.profile {
+            command.push_str(&format!(" --profile {}", profile.name()));
         }
         if let Some(scope) = &spec.scope {
             command.push_str(&format!(" --scope {scope}"));
@@ -585,21 +594,24 @@ impl From<SecretSpec> for Step<Run> {
             Delivery::Export => command.push_str(" --format gha"),
         }
 
+        if spec.inside_devenv {
+            command = format!("devenv shell -- {command}");
+        }
+
         let name = match spec.delivery {
             Delivery::Wrap(_) => "secretspec".to_owned(),
             Delivery::Export => format!(
                 "Resolve the {profile} secrets",
-                profile = spec.profile.as_deref().unwrap_or("default"),
+                profile = spec.profile.map(Profile::name).unwrap_or("default"),
             ),
         };
 
-        Step::new(name)
+        let step = Step::new(name)
             .run(command)
             .shell("bash")
-            .add_env(SECRETSPEC_PROVIDER)
-            .add_env(SOPS_AGE_KEY_ENV)
             .when_some(spec.reason, |step, reason| {
                 step.add_env(("SECRETSPEC_REASON", reason))
-            })
+            });
+        helpers::resolving(step)
     }
 }

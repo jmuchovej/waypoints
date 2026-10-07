@@ -60,8 +60,13 @@ Every generated job that resolves secrets SHALL declare the CI environment whose
 
 #### Scenario: Automation job declares the automation environment
 
-- **WHEN** a generated job authenticates as the automation identity or plans a release
+- **WHEN** a generated job authenticates as the automation identity
 - **THEN** it declares the automation environment, and its credential reference resolves against that environment's secrets
+
+#### Scenario: Publishing job restores no cache
+
+- **WHEN** a generated job declares an environment
+- **THEN** none of its steps restores a cache that a run outside that environment could have written
 
 #### Scenario: No repository-scoped credential
 

@@ -4,7 +4,7 @@
 //! Renovate covers the language ecosystems on the same Monday cadence but has
 //! no manager for `devenv.lock`, so nothing else moves these inputs.
 
-use super::{WorkflowContext, helpers, helpers::AUTOMATION_PROFILE, runners, steps};
+use super::{WorkflowContext, helpers, helpers::Profile, runners, steps};
 use gh_workflow::{
     Event, Job, Level, Permissions, Schedule, StepOutput, Workflow, WorkflowDispatch,
 };
@@ -52,16 +52,22 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let app_token = steps::app_token(TOKEN_SCOPES);
     let token = StepOutput::new_trusted(&app_token, "token");
 
+    // Through the shell, like the step before it: `secretspec` and `op` are
+    // both devenv's here, and nothing installs them any other way.
     let export = steps::SecretSpec::export()
-        .with_profile(AUTOMATION_PROFILE)
+        .with_profile(Profile::Automation)
+        .inside_devenv()
         .with_reason(format!(
-            "CI resolves the {AUTOMATION_PROFILE} profile to authenticate as the app it names"
+            "CI resolves the {} profile to authenticate as the app it names",
+            Profile::Automation.name()
         ));
 
     let update = Job::new("refresh devenv.lock and everything generated from it")
         // Only what `checkout` needs. The branch and the pull request are
         // pushed with the App token, which carries its own write scopes.
         .permissions(Permissions::default().contents(Level::Read))
+        // The vault credential for the automation profile lives here.
+        .environment(Profile::Automation.environment())
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
         .add_step(steps::install_nix())

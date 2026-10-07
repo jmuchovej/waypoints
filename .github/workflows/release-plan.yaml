@@ -5,7 +5,6 @@
 name: mint the refs for a release-cycle transition
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  SECRETSPEC_PROVIDER: sops
 on:
   workflow_dispatch:
     inputs:

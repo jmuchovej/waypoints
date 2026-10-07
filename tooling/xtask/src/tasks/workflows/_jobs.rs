@@ -3,7 +3,8 @@
 
 use super::{
     Channel, GITHUB_TOKEN, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext,
-    helpers::ANDROID_HOME, runners, steps,
+    helpers::{ANDROID_HOME, Profile},
+    runners, steps,
 };
 use gh_workflow::{
     Expression, FluentBuilder, Job, JobOutput, Level, NamedJob, Permissions, StepOutput,
@@ -222,6 +223,9 @@ pub fn build(
     let job = mise_env(Job::default(), envs)
         .permissions(Permissions::default().contents(Level::Write))
         .name(format!("Build {platform}"))
+        // The build and, on mobile, the publish resolve the release profile,
+        // so the vault credential comes from the release environment.
+        .environment(Profile::Release.environment())
         .runs_on(platform.runner())
         .cond(channel.guard(platform, prepare.map(|prepare| &prepare.should_build)))
         .add_step(steps::checkout())

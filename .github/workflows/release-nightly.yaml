@@ -5,7 +5,6 @@
 name: Nightly
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  SECRETSPEC_PROVIDER: sops
 on:
   schedule:
     - cron: "0 7 * * *"
@@ -249,6 +248,8 @@ jobs:
     runs-on: macos-15
     permissions:
       contents: write
+    environment:
+      name: App Release
     env:
       MISE_ENV: build-desktop
     steps:
@@ -271,7 +272,8 @@ jobs:
         run: "just tauri::macos::build-nightly"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -302,6 +304,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    environment:
+      name: App Release
     env:
       MISE_ENV: build-desktop
     steps:
@@ -324,7 +328,8 @@ jobs:
         run: "just tauri::windows::build-nightly"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -355,6 +360,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+    environment:
+      name: App Release
     env:
       MISE_ENV: build-desktop
     steps:
@@ -394,7 +401,8 @@ jobs:
         run: "just tauri::linux::build-nightly"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -426,6 +434,8 @@ jobs:
     runs-on: macos-15
     permissions:
       contents: write
+    environment:
+      name: App Release
     env:
       MISE_ENV: build-mobile
     steps:
@@ -448,7 +458,8 @@ jobs:
         run: "just tauri::ios::build-nightly"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.bundle_version }}
       - id: upload-artifacts
         name: Upload artifacts
@@ -470,8 +481,8 @@ jobs:
         run: secretspec run --profile release --scope ios -- fastlane ios nightly
         shell: bash
         env:
-          SECRETSPEC_PROVIDER: sops
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
   build-android:
     needs:
       - prepare
@@ -484,6 +495,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+    environment:
+      name: App Release
     env:
       MISE_ENV: build-mobile
     steps:
@@ -533,7 +546,8 @@ jobs:
         run: "just tauri::android::build-nightly"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.version_code }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/30.0.16138531
       - id: upload-artifacts
@@ -558,8 +572,8 @@ jobs:
         run: secretspec run --profile release --scope android -- fastlane android nightly
         shell: bash
         env:
-          SECRETSPEC_PROVIDER: sops
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
   publish-release:
     needs:
       - prepare
