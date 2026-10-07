@@ -54,15 +54,20 @@ _build flavor *ARGS:
       error make { msg: $"No Android NDK at ($ndk_home). Set `NDK_HOME` or install one." }
     }
 
-    # The NDK ships one prebuilt toolchain per host OS, tagged x86_64 even on
-    # Apple Silicon. Map the platform explicitly: `sys host | get name` is the
-    # distribution, so it answers `Ubuntu` on a GitHub runner and `Darwin` here
-    # — only the latter happens to match a directory the NDK ships.
-    let host = match $nu.os-info.name {
-      "macos" => "darwin-x86_64",
-      "linux" => "linux-x86_64",
-      "windows" => "windows-x86_64",
-      $other => { error make { msg: $"No Android NDK toolchain for host ($other)" } }
+    # The NDK names its cross-compilers' directory after the build host; the
+    # same table lives in nix/devenv/android.nix.
+    let hosts = {
+      # NOTE: Android doesn't support building from arm64-linux
+      "x86_64-linux": "linux-x86_64"
+      # NOTE: Android ships arm64-macos-compatible tools under x86_64-darwin
+      "aarch64-macos": "darwin-x86_64"
+      "x86_64-macos": "darwin-x86_64"
+    }
+    # NOTE: `$nu.os-info.name` gives the OS; `sys host`'s gives the distribution
+    let platform = $"($nu.os-info.arch)-($nu.os-info.name)"
+    let host = $hosts | get -o $platform
+    if $host == null {
+      error make { msg: $"No Android NDK host toolchain for ($platform); supported: ($hosts | columns | str join ', ')" }
     }
     let ndk_bin = $"($ndk_home)/toolchains/llvm/prebuilt/($host)/bin"
     if not ($ndk_bin | path exists) { error make { msg: $"No NDK toolchain at ($ndk_bin)" } }

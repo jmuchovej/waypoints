@@ -18,18 +18,22 @@ let
   # Map a version (e.g. "35.0.0") to its android-nixpkgs attribute suffix ("35-0-0").
   dash-version = lib.replaceStrings [ "." ] [ "-" ];
 
-  # The NDK ships exactly one prebuilt toolchain, named for the host OS and
-  # tagged x86_64 even on Apple Silicon. Only the host's own is in the store
-  # path, so naming the wrong one yields a directory that does not exist.
+  # The NDK prebuilt host toolchain directory each supported system builds from.
+  ndk-hosts = {
+    # NOTE: Android ships arm64-darwin-compatible tools under x86_64-darwin
+    aarch64-darwin = "darwin-x86_64";
+    x86_64-darwin = "darwin-x86_64";
+    # NOTE: Android doesn't support building from arm64-linux
+    x86_64-linux = "linux-x86_64";
+  };
+
+  host-system = pkgs.stdenv.hostPlatform.system;
+
   ndk-host =
-    let
-      inherit (pkgs.stdenv.hostPlatform.parsed.kernel) name;
-      hosts = {
-        darwin = "darwin-x86_64";
-        linux = "linux-x86_64";
-      };
-    in
-    hosts.${name} or (throw "No Android NDK prebuilt toolchain for host ${name}");
+    ndk-hosts.${host-system} or (throw (
+      "No Android NDK host toolchain for ${host-system}; supported: "
+      + lib.concatStringsSep ", " (lib.attrNames ndk-hosts)
+    ));
 
   # ps16k (16 KB page-size) system images only exist for API >= 35.
   system-images =
@@ -46,7 +50,7 @@ let
       v: map (s: sdk-pkgs."system-images-android-${dash-version v}-${s}-arm64-v8a") (variants v)
     ) cfg.platforms.versions;
 
-  android-sdk = inputs.android-nixpkgs.sdk.${pkgs.stdenv.hostPlatform.system} (
+  android-sdk = inputs.android-nixpkgs.sdk.${host-system} (
     sdk-pkgs:
     (
       [
