@@ -115,18 +115,22 @@
         envs = [ "devtools" ];
       };
 
+      # Shell-only: the local development store for secrets. No CI lane
+      # decrypts a sops file — CI reads 1Password through `op` — so neither is
+      # projected.
       sops = {
         package = pkgs.sops;
-        spec = "github:getsops/sops";
-        options = {
-          slsa_signer_identity = "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@refs/tags/v2.1.0";
-          slsa_signer_issuer = "https://token.actions.githubusercontent.com";
-        };
+        envs = null;
       };
       age = {
         package = pkgs.age;
-        spec = "aqua:FiloSottile/age";
-        envs = config.waypoints.mise.tools.sops.envs;
+        envs = null;
+      };
+      # What secretspec's 1Password provider shells out to. In the base with
+      # `secretspec` itself: every lane that resolves a secret needs both.
+      op = {
+        package = pkgs._1password-cli;
+        spec = "aqua:1password/cli";
       };
       wrangler = {
         package = pkgs.wrangler;
