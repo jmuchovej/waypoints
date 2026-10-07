@@ -363,3 +363,9 @@ $RECYCLE.BIN/
 # .env holds no secrets — those come from secretspec. It is the shared
 # environment description devenv and mise both read, so it must be committed.
 !.env
+
+# Local development stores for secretspec's `sops` and `sops-web` providers,
+# encrypted to your own age key. CI reads 1Password; nothing committed holds a
+# secret.
+secrets.sops.yaml
+website/secrets.sops.yaml
