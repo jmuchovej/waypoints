@@ -549,8 +549,8 @@ impl SecretSpec {
     }
 
     /// Runs through `devenv shell`, for a job whose `secretspec` and `op` come
-    /// from the shell rather than from mise. The shell preserves the provider
-    /// and credential set on the step.
+    /// from the shell rather than from mise. The shell sets no provider of its
+    /// own, so the step's selection and credential reach the command intact.
     pub(crate) fn inside_devenv(mut self) -> Self {
         self.inside_devenv = true;
         self

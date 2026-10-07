@@ -57,10 +57,10 @@ impl Profile {
     }
 }
 
-/// The manifest alias for the production vault. Set on the resolving step and
-/// nowhere wider: devenv's shell injects `SECRETSPEC_PROVIDER=env`, which would
-/// otherwise win inside any step that enters it, and a workflow-level value is
-/// what used to force every shell entry — secret or not — onto a store the
+/// The manifest alias for the production vault. The profile defaults to it
+/// already; it is set on the resolving step anyway so the generated YAML says
+/// where that step reads from, and nowhere wider — a workflow-level value is
+/// what used to force every shell entry, secret or not, onto a store the
 /// runner could not read.
 const PROVIDER: (&str, &str) = ("SECRETSPEC_PROVIDER", "op");
 

@@ -14,7 +14,10 @@ inputs:
         follows: nixpkgs
 nixpkgs:
   allow_unfree: true
+# No `provider`: devenv would export it as SECRETSPEC_PROVIDER for the whole
+# shell, overriding every profile's own default. The manifest says where each
+# profile resolves from — `default` from the environment, the CI-facing ones
+# from 1Password — and a caller overrides per invocation.
 secretspec:
   enable: true
   profile: default
-  provider: env
