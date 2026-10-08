@@ -24,7 +24,7 @@ build-nightly *ARGS: (_build "nightly" ARGS)
 _dev flavor $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
     export TAURI_ANDROID_PROJECT_PATH={{ ANDROID_ROOT }}
     export WAYPOINTS_FLAVOR={{ flavor }}
-    tauri android dev \
+    cargo tauri android dev \
       --features {{ flavor }} \
       --config {{ PLATFORM_CONFIG }} \
       --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
@@ -137,7 +137,7 @@ _build flavor *ARGS:
         "WAYPOINTS_FLAVOR={{ flavor }}"
         "WAYPOINTS_BUILD=1"
         "secretspec" "run" "--profile" "release" "--scope" "android" "--"
-        "tauri" "android" "build"
+        "cargo" "tauri" "android" "build"
         "--features" "{{ flavor }}"
         "--config" "{{ PLATFORM_CONFIG }}"
         "--config" $"{{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml"

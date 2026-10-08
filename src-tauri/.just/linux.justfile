@@ -20,7 +20,7 @@ build-nightly *ARGS: (_build "nightly" ARGS)
 [script]
 _dev flavor $RUST_LOG="debug" $RUST_BACKTRACE="1" *ARGS:
     export WAYPOINTS_FLAVOR={{ flavor }}
-    tauri dev \
+    cargo tauri dev \
       --features {{ flavor }} \
       --config {{ TAURI_CONFIGS_ROOT }}/platforms/linux.toml \
       --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
@@ -32,7 +32,7 @@ _build flavor *ARGS:
     export WAYPOINTS_FLAVOR={{ flavor }}
     export WAYPOINTS_BUILD=1
     secretspec run --profile release --scope linux -- \
-      tauri build \
+      cargo tauri build \
         --features {{ flavor }} \
         --config {{ TAURI_CONFIGS_ROOT }}/platforms/linux.toml \
         --config {{ TAURI_CONFIGS_ROOT }}/flavors/{{ flavor }}.toml \
