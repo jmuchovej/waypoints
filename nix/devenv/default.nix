@@ -36,14 +36,11 @@ let
     PROJECT_ROOT = config.devenv.root;
   };
 
-  # `PATH` is deliberately not taken from `.env`. Its value there ends in
-  # `${PATH}`, a *runtime* self-reference that eval-time expansion would freeze
-  # to whatever the evaluator happened to have. devenv assembles the shell's
-  # PATH itself; `enterShell` prepends the same two entries mise reads from the
-  # file, so both agree without either resolving `${PATH}` early.
-  runtime-owned = [ "PATH" ];
-
-  literals = removeAttrs config.dotenv.resolved runtime-owned;
+  # `.env` carries no `PATH`: mise ignores a `PATH=` line from a dotenv file
+  # (it tracks path additions separately, via `_.path`), so the entries live in
+  # `.config/mise/conf.d/base.toml` for mise and are restated below for the
+  # devenv shell, from values nix knows without expanding anything early.
+  literals = config.dotenv.resolved;
 
   # Replace every `${NAME}` for which `known` has a value. Names it does not
   # cover are left alone for a later pass.
@@ -81,12 +78,13 @@ let
   # surface as a baffling file-not-found much later.
   unresolved = filter (name: lib.hasInfix "\${" resolved.${name}) (attrNames resolved);
 
-  # `.env`'s PATH, with every name but PATH itself expanded and the trailing
-  # `${PATH}` handed to the shell to expand at entry. Derived from the same line
-  # mise reads, so the two cannot disagree about what is prepended.
-  path-line = lib.replaceStrings [ "\${PATH}" ] [ "$PATH" ] (
-    substitute (anchors // resolved) config.dotenv.resolved.PATH
-  );
+  # The same two directories `.config/mise/conf.d/base.toml` adds through
+  # `_.path`: the repo-local commands (`xtauri`, `mise-lock`, …) and the debug
+  # build output, so a freshly built `xtask` is callable by name.
+  path-prefix = [
+    "${config.devenv.root}/tooling/bin"
+    "${resolved.CARGO_TARGET_DIR}/debug"
+  ];
 in
 {
   imports = [
@@ -105,7 +103,7 @@ in
   env = resolved;
 
   enterShell = ''
-    export PATH="${path-line}"
+    export PATH="${concatStringsSep ":" path-prefix}:$PATH"
   '';
 
   assertions = [

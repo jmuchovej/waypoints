@@ -185,9 +185,11 @@ in
       default = { };
       description = ''
         The `[env]` table of the projected `.config/mise.toml`, `_` directives
-        included. `_.file` points mise at `.env` — the environment description
-        devenv reads too, so the two cannot disagree; see nix/devenv/default.nix
-        for why each side resolves `PROJECT_ROOT` its own way.
+        included. Normally empty: the environment mise needs — `PROJECT_ROOT`,
+        the `.env` pointer, the PATH additions — is policy rather than something
+        derived from the tool set, so it is hand-maintained in
+        `.config/mise/conf.d/base.toml`; see nix/devenv/default.nix for why
+        each side resolves `PROJECT_ROOT` its own way.
       '';
     };
   };

@@ -1,11 +1,6 @@
 min_version = "2026.8.6"
 
 [env]
-PROJECT_ROOT = "{{ config_root }}"
-
-[env._.file]
-expand = true
-path = ".env"
 
 [tools]
 "aqua:1password/cli" = "2.39.0"

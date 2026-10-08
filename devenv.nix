@@ -223,13 +223,6 @@
         envs = null;
       };
     };
-    env = {
-      PROJECT_ROOT = "{{ config_root }}";
-      _.file = {
-        path = config.dotenv.filename;
-        expand = true;
-      };
-    };
   };
 
   # `.env` and both of its substituters are owned by nix/devenv/default.nix.

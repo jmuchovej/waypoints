@@ -1,4 +1,10 @@
+#:tombi toml-version = "v1.1.0"
 # mise configuration that should be hand-maintained rather than projected from devenv.
+
+[env]
+  PROJECT_ROOT = "{{ config_root }}"
+  _.file       = { expand = true, path = ".env" }
+  _.path       = [ "{{ config_root }}/tooling/bin", "{{ env.CARGO_TARGET_DIR }}/debug" ]
 
 [settings]
   experimental = true
