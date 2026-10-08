@@ -24,10 +24,15 @@
 const TARGETS = [macos linux windows ios android]
 const SCRUBBED = [macos ios android]
 
-# Ahead of everything else inside the clean room, so /usr/bin/clang wins over
-# Nix's wrapper. The ambient PATH is kept whole after it: every tool the build
-# shells out to (yq, deno, pnpm, …) stays reachable without maintaining a list.
+# Ahead of everything else inside the clean room on the Apple targets, so
+# /usr/bin/clang wins over Nix's wrapper. Android gets its compilers by name
+# (the CC_*/CARGO_TARGET_*_LINKER table), so it keeps the ambient order —
+# putting /usr/bin first there would let a runner image's preinstalled gradle
+# shadow the one mise pins. The ambient PATH is kept whole either way: every
+# tool the build shells out to (yq, deno, pnpm, …) stays reachable without
+# maintaining a list.
 const SYSTEM_PATH = ["/usr/bin" "/bin" "/usr/sbin" "/sbin"]
+const SYSTEM_FIRST = [macos ios]
 
 # Carried into the build when set. The tool manager's own state crosses the
 # scrub: under mise, `cargo` is a shim that refuses an untrusted config, and the
@@ -117,7 +122,8 @@ def run-build [
   ]
 
   if $target in $SCRUBBED {
-    let path = [...$SYSTEM_PATH ...$path_prefix ...$env.PATH] | str join (char esep)
+    let system = if $target in $SYSTEM_FIRST { $SYSTEM_PATH } else { [] }
+    let path = [...$system ...$path_prefix ...$env.PATH] | str join (char esep)
     let pairs = $vars
       | merge { HOME: $env.HOME, USER: $env.USER, PATH: $path }
       | items { |key, value| $"($key)=($value)" }
