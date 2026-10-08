@@ -2,7 +2,7 @@ name: Waypoints
 options:
   bundleIdPrefix: so.waypoints
   deploymentTarget:
-    iOS: 14.0
+    iOS: 17.0
 fileGroups: [../../src]
 configs:
   debug: debug
@@ -89,7 +89,7 @@ targets:
     preBuildScripts:
       - script: |
           set -e
-          tauri ios xcode-script -v \
+          cargo tauri ios xcode-script -v \
             --platform "${PLATFORM_DISPLAY_NAME:?}" \
             --sdk-root "${SDKROOT:?}" \
             --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" \
