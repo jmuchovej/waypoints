@@ -228,7 +228,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build macOS
-        run: "just tauri::macos::build"
+        run: "just tauri::build macos stable"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -283,7 +283,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Windows
-        run: "just tauri::windows::build"
+        run: "just tauri::build windows stable"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -355,7 +355,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Linux
-        run: "just tauri::linux::build"
+        run: "just tauri::build linux stable"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -411,7 +411,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build iOS
-        run: "just tauri::ios::build"
+        run: "just tauri::build ios stable"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -497,7 +497,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Android
-        run: "just tauri::android::build"
+        run: "just tauri::build android stable"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op

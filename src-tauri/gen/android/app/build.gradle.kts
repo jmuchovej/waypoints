@@ -82,7 +82,7 @@ android {
       val keystorePath =
           requireNotNull(System.getenv("ANDROID_KEYSTORE_PATH")) {
             "ANDROID_KEYSTORE_PATH is unset — run the build through " +
-                "`just tauri::android::build*`, which wraps it in `secretspec run`."
+                "`just tauri::build android`, which wraps it in `secretspec run`."
           }
       val keystorePropertiesFile = File(keystorePath)
       require(keystorePropertiesFile.exists()) {

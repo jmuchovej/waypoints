@@ -1,5 +1,4 @@
 icons/
 gen/
 justfile
-.just/
 .gitignore

@@ -163,14 +163,6 @@ impl Channel {
         self.to_string()
     }
 
-    /// The `just` recipe that builds this channel.
-    pub fn build_recipe(self) -> String {
-        match self {
-            Channel::Stable => "build".to_owned(),
-            _ => format!("build-{self}"),
-        }
-    }
-
     pub fn prerelease(self) -> bool {
         self != Channel::Stable
     }

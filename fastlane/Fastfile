@@ -7,7 +7,7 @@ def android_aab
 
   case matches.length
   when 1 then matches.first
-  when 0 then UI.user_error!("No AAB found at #{pattern} — was `just tauri::android::build*` run?")
+  when 0 then UI.user_error!("No AAB found at #{pattern} — was `just tauri::build android` run?")
   else UI.user_error!("Ambiguous AAB: #{matches.join(', ')}")
   end
 end

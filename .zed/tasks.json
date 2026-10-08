@@ -1,0 +1,46 @@
+[
+  {
+    "label": "Development (Desktop)",
+    "command": "devenv shell -q -- xtauri dev desktop --flavor development"
+  },
+  {
+    "label": "Development (macOS)",
+    "command": "devenv shell -q -- xtauri dev macos --flavor development"
+  },
+  {
+    "label": "Development (Linux)",
+    "command": "devenv shell -q -- xtauri dev linux --flavor development"
+  },
+  {
+    "label": "Development (Android)",
+    "command": "devenv shell -q -- xtauri dev android --flavor development"
+  },
+  {
+    "label": "Development (iOS)",
+    "command": "devenv shell -q -- xtauri dev ios --flavor development"
+  },
+  {
+    "label": "Development (Desktop, mise)",
+    "command": "xtauri dev desktop --flavor development"
+  },
+  {
+    "label": "Development (macOS, mise)",
+    "command": "xtauri dev macos --flavor development"
+  },
+  {
+    "label": "Development (Linux, mise)",
+    "command": "xtauri dev linux --flavor development"
+  },
+  {
+    "label": "Development (Android, mise)",
+    "command": "xtauri dev android --flavor development"
+  },
+  {
+    "label": "Development (iOS, mise)",
+    "command": "xtauri dev ios --flavor development"
+  },
+  {
+    "label": "Development (Windows, mise)",
+    "command": "xtauri dev windows --flavor development"
+  }
+]

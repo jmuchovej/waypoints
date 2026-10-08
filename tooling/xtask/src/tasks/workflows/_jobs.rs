@@ -308,7 +308,7 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         for consumer in [
             "src-tauri/gen/android/app/build.gradle.kts",
-            "src-tauri/.just/iOS.justfile",
+            "tooling/bin/xtauri",
         ] {
             let source = fs::read_to_string(root.join(consumer))
                 .unwrap_or_else(|error| panic!("{consumer}: {error}"));

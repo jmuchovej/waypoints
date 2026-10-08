@@ -269,7 +269,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build macOS
-        run: "just tauri::macos::build-nightly"
+        run: "just tauri::build macos nightly"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -325,7 +325,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Windows
-        run: "just tauri::windows::build-nightly"
+        run: "just tauri::build windows nightly"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -398,7 +398,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Linux
-        run: "just tauri::linux::build-nightly"
+        run: "just tauri::build linux nightly"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -455,7 +455,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build iOS
-        run: "just tauri::ios::build-nightly"
+        run: "just tauri::build ios nightly"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -543,7 +543,7 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Android
-        run: "just tauri::android::build-nightly"
+        run: "just tauri::build android nightly"
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op

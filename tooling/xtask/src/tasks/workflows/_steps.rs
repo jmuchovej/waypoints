@@ -333,9 +333,9 @@ pub fn install_ndk(version: &str) -> Step<Run> {
 pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
     let step = Step::new(format!("Build {platform}"))
         .run(format!(
-            "just tauri::{slug}::{recipe}",
+            "just tauri::build {slug} {flavor}",
             slug = platform.slug(),
-            recipe = channel.build_recipe(),
+            flavor = channel.flavor(),
         ))
         .shell("bash")
         .id("build-recipe");
