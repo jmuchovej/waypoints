@@ -163,6 +163,15 @@
         os = [ "macos" ];
         envs = [ "build-mobile" ];
       };
+      # The Android project ships no gradlew (the wrapper jar is gitignored),
+      # so Tauri runs whichever `gradle` is on PATH. Projected so CI gets the
+      # same major as the shell: the runner image's own Gradle is a release
+      # ahead of what the pinned Android Gradle Plugin supports.
+      gradle = {
+        package = pkgs.gradle;
+        spec = "aqua:gradle/gradle";
+        envs = [ "build-mobile" ];
+      };
       cargo-tauri = {
         package = pkgs.cargo-tauri;
         spec = "aqua:tauri-apps/tauri/cargo-tauri";

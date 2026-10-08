@@ -28,6 +28,7 @@ on:
       - .config/mise.xtask.lock
       - .config/mise.xtask.toml
       - src-tauri/gen/android/gradle/libs.versions.toml
+      - src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
       - src-tauri/gen/android/local.properties
   push:
     branches:
@@ -53,6 +54,7 @@ on:
       - .config/mise.xtask.lock
       - .config/mise.xtask.toml
       - src-tauri/gen/android/gradle/libs.versions.toml
+      - src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
       - src-tauri/gen/android/local.properties
   workflow_dispatch: {}
 permissions: {}

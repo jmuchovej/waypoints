@@ -92,6 +92,7 @@ jobs:
             .config/mise.xtask.lock
             .config/mise.xtask.toml
             src-tauri/gen/android/gradle/libs.versions.toml
+            src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
             src-tauri/gen/android/local.properties
 concurrency:
   group: devenv-update

@@ -138,6 +138,20 @@ in
           };
         };
       };
+      # The wrapper itself is gitignored, so Tauri runs the `gradle` on PATH —
+      # the one devenv provides and mise projects. The properties file is
+      # generated from that same package so it cannot pin a different version
+      # than the one actually running, and so a Gradle bump is one move.
+      "${cfg.project-path}/gradle/wrapper/gradle-wrapper.properties" = {
+        copyMode = "copy";
+        text = ''
+          distributionBase=GRADLE_USER_HOME
+          distributionUrl=https\://services.gradle.org/distributions/gradle-${config.waypoints.mise.tools.gradle.package.version}-bin.zip
+          distributionPath=wrapper/dists
+          zipStorePath=wrapper/dists
+          zipStoreBase=GRADLE_USER_HOME
+        '';
+      };
     };
   };
 }
