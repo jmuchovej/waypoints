@@ -123,6 +123,18 @@ android {
       signingConfig = signingConfigs.getByName("release")
     }
   }
+  sourceSets {
+    // The launcher icon is per flavor — `src/<flavor>/res` holds its adaptive
+    // icon and layers — and the Waypoints flavor is not a Gradle product
+    // flavor (those are Tauri's ABI ones), so nothing would include that
+    // directory unless it is named here. It rides on the build types rather
+    // than `main`: the flavor directories also carry copies of `main`'s
+    // values, and a build type's resources override `main`'s while a second
+    // directory on `main` itself would collide with them.
+    for (type in listOf("debug", "release")) {
+      getByName(type) { res.srcDir("src/$waypointsFlavor/res") }
+    }
+  }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
