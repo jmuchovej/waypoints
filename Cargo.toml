@@ -20,7 +20,6 @@
 
   [workspace.package]
     edition       = "2024"
-    rust-version  = "1.91"
     description   = "Oh the places we'll go on this non-linear thought journey!"
     documentation = "https://docs.waypoints.so"
     readme        = ".github/README.md"

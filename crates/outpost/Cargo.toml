@@ -1,17 +1,16 @@
 [package]
-  name                   = "outpost"
-  version                = "0.1.0"
-  edition.workspace      = true
-  rust-version.workspace = true
-  description            = """
+  name               = "outpost"
+  version            = "0.1.0"
+  edition.workspace  = true
+  description        = """
 Outpost — the sync layer for Waypoints.
 """
-  documentation          = "https://docs.waypoints.so/outpost"
-  readme.workspace       = true
-  homepage.workspace     = true
-  repository             = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost"
-  license.workspace      = true
-  publish.workspace      = true
+  documentation      = "https://docs.waypoints.so/outpost"
+  readme.workspace   = true
+  homepage.workspace = true
+  repository         = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost"
+  license.workspace  = true
+  publish.workspace  = true
 
 [[bin]]
   name              = "outpost"

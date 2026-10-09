@@ -1,17 +1,16 @@
 [package]
-  name                   = "bedrock"
-  version                = "0.1.0"
-  edition.workspace      = true
-  rust-version.workspace = true
-  description            = """
+  name               = "bedrock"
+  version            = "0.1.0"
+  edition.workspace  = true
+  description        = """
 Bedrock — the database engine for Waypoints, built on Turso.
 """
-  documentation          = "https://docs.waypoints.so/bedrock"
-  readme                 = "README.md"
-  homepage.workspace     = true
-  repository             = "https://dev.waypoints.so/bedrock"
-  license.workspace      = true
-  publish.workspace      = true
+  documentation      = "https://docs.waypoints.so/bedrock"
+  readme             = "README.md"
+  homepage.workspace = true
+  repository         = "https://dev.waypoints.so/bedrock"
+  license.workspace  = true
+  publish.workspace  = true
 
 # The crash-recovery tests' victim: spawned via `CARGO_BIN_EXE_crash-victim`
 # and SIGKILLed mid-write. Dev-only in spirit — the package is publish = false,

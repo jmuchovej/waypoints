@@ -2,16 +2,15 @@
 #:tombi toml-version = "v1.0.0"
 
 [package]
-  name                   = "Waypoints"
-  version                = "0.1.0"
-  edition.workspace      = true
-  rust-version.workspace = true
-  description.workspace  = true
-  readme.workspace       = true
-  homepage.workspace     = true
-  repository             = "https://dev.waypoints.so/lib"
-  license.workspace      = true
-  default-run            = "waypoints"
+  name                  = "Waypoints"
+  version               = "0.1.0"
+  edition.workspace     = true
+  description.workspace = true
+  readme.workspace      = true
+  homepage.workspace    = true
+  repository            = "https://dev.waypoints.so/lib"
+  license.workspace     = true
+  default-run           = "waypoints"
 
 [lib]
   crate-type = [ "cdylib", "rlib", "staticlib" ]

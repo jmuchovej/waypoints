@@ -1,17 +1,16 @@
 [package]
-  name                   = "outpost-fabric"
-  version                = "0.1.0"
-  edition.workspace      = true
-  rust-version.workspace = true
-  description            = """
+  name               = "outpost-fabric"
+  version            = "0.1.0"
+  edition.workspace  = true
+  description        = """
 Outpost Fabric — the network layer for Outpost.
 """
-  documentation          = "https://docs.waypoints.so/outpost/fabric"
-  readme.workspace       = true
-  homepage.workspace     = true
-  repository             = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost-fabric"
-  license.workspace      = true
-  publish.workspace      = true
+  documentation      = "https://docs.waypoints.so/outpost/fabric"
+  readme.workspace   = true
+  homepage.workspace = true
+  repository         = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost-fabric"
+  license.workspace  = true
+  publish.workspace  = true
 
 [dependencies]
   outpost-protocol.workspace = true
