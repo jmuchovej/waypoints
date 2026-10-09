@@ -170,9 +170,8 @@
     tauri-specta                 = { version = "2.0.0-rc.25", features = [
       "typescript"
     ] }
-    wry                          = { version = "0.55.1", features = [
+    wry                          = { version = "0.57.0", features = [
       "os-webview",
-      "protocol",
       "serde",
       "tracing"
     ] }
