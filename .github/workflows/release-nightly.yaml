@@ -64,7 +64,7 @@ jobs:
       - prepare
     if: needs.prepare.outputs.should_build == 'true'
     name: Test macOS
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: read
     env:
@@ -245,7 +245,7 @@ jobs:
       - create-release
     if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Desktop","macOS"]'), inputs.platforms))
     name: Build macOS
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: write
     environment:
@@ -431,7 +431,7 @@ jobs:
       - create-release
     if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Mobile","iOS"]'), inputs.platforms))
     name: Build iOS
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: write
     environment:
