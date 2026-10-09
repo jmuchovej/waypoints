@@ -191,7 +191,7 @@ jobs:
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: |-
           gh release view "${TAG}" >/dev/null 2>&1 \
-          || gh release create "${TAG}" --draft --verify-tag --notes-files "${RUNNER_TEMP}/notes.md" --prerelease
+          || gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md" --prerelease
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

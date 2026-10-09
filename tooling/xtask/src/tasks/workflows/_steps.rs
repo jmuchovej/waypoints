@@ -395,7 +395,8 @@ pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
 /// draft it left behind; `gh` resolves drafts by tag name.
 pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
     let view = r#"gh release view "${TAG}" >/dev/null 2>&1"#;
-    let create = r#"gh release create "${TAG}" --draft --verify-tag --notes-files "${RUNNER_TEMP}/notes.md""#;
+    let create =
+        r#"gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md""#;
     let create = format!(
         "{view} \\\n|| {create}{prerelease}",
         prerelease = if channel.prerelease() {

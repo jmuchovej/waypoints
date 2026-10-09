@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/zizmorcore/zizmor/main/docs/schemas/config.json
+# $schema=https://github.com/zizmorcore/zizmor/raw/refs/heads/main/support/zizmor.schema.json
 rules:
   cache-poisoning:
     # Once a job declares an `environment:`, zizmor treats the whole workflow as
