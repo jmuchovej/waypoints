@@ -433,6 +433,7 @@ jobs:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: publish-mobile-app
         name: Upload to the App Store
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: secretspec run --profile release --scope ios -- fastlane ios stable
         shell: bash
         env:
@@ -522,6 +523,7 @@ jobs:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: publish-mobile-app
         name: Upload to the Play Store
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: secretspec run --profile release --scope android -- fastlane android stable
         shell: bash
         env:

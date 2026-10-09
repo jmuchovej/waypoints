@@ -343,7 +343,12 @@ pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
 }
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
-pub fn fastlane(platform: Platform, channel: Channel) -> Step<Run> {
+///
+/// Gated on the tag like [`upload_to_release`]: a build-only run has none,
+/// and its artifacts must stop at the workflow — the store build number is
+/// the date, so a dispatch that reached the store would take the day's slot
+/// from the scheduled run.
+pub fn fastlane(platform: Platform, channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
     let spec = SecretSpec::run(format!(
         "fastlane {lane} {flavor}",
         lane = platform.slug(),
@@ -359,6 +364,7 @@ pub fn fastlane(platform: Platform, channel: Channel) -> Step<Run> {
         .when(platform.is_ios(), |step| {
             step.name("Upload to the App Store")
         })
+        .if_condition(Channel::tag_condition(tag))
         .id("publish-mobile-app")
 }
 

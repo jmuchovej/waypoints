@@ -40,12 +40,25 @@ const SYSTEM_FIRST = [macos ios]
 # variables pick the store and carry its credential; empty is unset to
 # secretspec, so the profile default applies when the caller names nothing.
 # `build.rs` and the Android project stamp the GitHub and build-code values
-# into the binary, treating absence as "not a CI build".
+# into the binary, treating absence as "not a CI build"; the version is what
+# the mobile builds hand Tauri as its config `version`.
 const FORWARDED = [
   CARGO_HOME CARGO_TARGET_DIR RUSTUP_HOME RUSTUP_TOOLCHAIN
   SECRETSPEC_PROVIDER OP_SERVICE_ACCOUNT_TOKEN SOPS_AGE_KEY_FILE SOPS_AGE_KEY
-  GITHUB_SHA GITHUB_REF_NAME WAYPOINTS_BUILD_CODE
+  GITHUB_SHA GITHUB_REF_NAME WAYPOINTS_BUILD_CODE WAYPOINTS_VERSION
 ]
+
+# The app version for a mobile build, as a `--config` fragment. Tauri writes
+# Android's versionName and iOS's CFBundleShortVersionString from its config
+# `version`, which the manifest leaves unset; Tauri itself strips the
+# prerelease for iOS, where only dotted integers are allowed. Empty when the
+# caller sets no version, so a local build keeps Tauri's defaults.
+def version-config []: nothing -> list<string> {
+  let version = $env.WAYPOINTS_VERSION? | default ""
+  if ($version | is-empty) { [] } else {
+    ["--config" ({ version: $version } | to json --raw)]
+  }
+}
 const FORWARDED_PREFIXES = ["MISE_"]
 
 def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "configs" }
@@ -196,7 +209,7 @@ def build-ios [flavor: string, rest: list<string>] {
     # Xcode's toolchain ahead of the ambient PATH, so `swift-build` and friends
     # resolve to Apple's rather than the Nix wrapper, which does not provide them.
     ($developer_dir | path join Toolchains XcodeDefault.xctoolchain usr bin)
-  ] [...$executable_config ...$version_config ...$rest] --derived { IOS_MOBILE_PROVISION: $profile_source }
+  ] [...(version-config) ...$executable_config ...$version_config ...$rest] --derived { IOS_MOBILE_PROVISION: $profile_source }
 }
 
 def build-android [flavor: string, rest: list<string>] {
@@ -281,6 +294,7 @@ def build-android [flavor: string, rest: list<string>] {
     JAVA_HOME: $java_home
     TAURI_ANDROID_PROJECT_PATH: $env.TAURI_ANDROID_PROJECT_PATH
   } | merge $compilers) [] [
+    ...(version-config)
     # After the flavor, because `--config` merges in order and this must win.
     --config $base_identifier
     ...$target_flags

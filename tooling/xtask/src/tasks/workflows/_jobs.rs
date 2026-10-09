@@ -14,6 +14,13 @@ use gh_workflow::{
 /// name; [`build_code`] decides which value fills it.
 pub const BUILD_CODE_ENV: &str = "WAYPOINTS_BUILD_CODE";
 
+/// The environment variable a mobile build reads the app version from. Tauri
+/// takes it as its config `version`, which the manifest leaves unset, so
+/// without this the stores see Gradle's and Xcode's fallbacks (`1.0`,
+/// `1.0.0`). iOS shows the release and the date as `0.1.0 (2026.10.10)`;
+/// the Gradle project renders Android's `versionName` the same way.
+pub const VERSION_ENV: &str = "WAYPOINTS_VERSION";
+
 /// The planner output carrying `platform`'s build number, or `None` where the
 /// platform's store has no such concept. Android's `versionCode` is a single
 /// integer; iOS's `CFBundleVersion` is dotted.
@@ -25,12 +32,20 @@ fn build_code(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
     }
 }
 
+/// The planner output carrying the app version, for the platforms that stamp
+/// it: the mobile ones, whose stores reject Tauri's fallbacks. The desktop
+/// bundles take their version from the crate.
+fn app_version(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
+    platform.is_mobile().then_some(&prepare.version)
+}
+
 /// Passed to the planner only on a manual dispatch, which builds without
 /// publishing.
 ///
 /// A nightly's store build number is its date, so a second publish on one day
 /// could not produce a distinct one. A dispatch exercises the pipeline and
-/// leaves publishing to the next scheduled run.
+/// leaves publishing to the next scheduled run; its artifacts still carry the
+/// numbers that run would mint, so they can be uploaded by hand.
 const BUILD_ONLY_ON_DISPATCH: &str =
     "${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}";
 
@@ -52,6 +67,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
 
     let p_tag = StepOutput::new_trusted(&planner, "tag");
     let p_build = StepOutput::new_trusted(&planner, "should_build");
+    let p_app_version = StepOutput::new_trusted(&planner, "version");
     let p_version = StepOutput::new_trusted(&planner, "version_code");
     let p_bundle = StepOutput::new_trusted(&planner, "bundle_version");
 
@@ -76,6 +92,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
             .outputs([
                 p_tag.clone().as_output(),
                 p_build.clone().as_output(),
+                p_app_version.clone().as_output(),
                 p_version.clone().as_output(),
                 p_bundle.clone().as_output(),
             ]),
@@ -84,6 +101,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
     PrepareJob::new(
         p_tag.as_job_output(&job),
         p_build.as_job_output(&job),
+        p_app_version.as_job_output(&job),
         p_version.as_job_output(&job),
         p_bundle.as_job_output(&job),
         job,
@@ -211,6 +229,8 @@ pub fn build(
 ) -> NamedJob {
     // Absent off nightly, where the tag's own semver suffices.
     let build_code = prepare.and_then(|prepare| build_code(prepare, platform));
+    let version = prepare.and_then(|prepare| app_version(prepare, platform));
+    let tag = prepare.map(|prepare| &prepare.tag);
 
     // The mobile lanes need `fastlane`, `xcodegen` and the nushell the `_build`
     // recipes are written in; the desktop ones do not.
@@ -254,6 +274,9 @@ pub fn build(
                 .when_some(build_code, |step, code| {
                     step.add_env((BUILD_CODE_ENV, code.to_string()))
                 })
+                .when_some(version, |step, version| {
+                    step.add_env((VERSION_ENV, version.to_string()))
+                })
                 .when(platform.is_android(), |step| {
                     step.add_env((
                         "NDK_HOME",
@@ -262,12 +285,9 @@ pub fn build(
                 }),
         )
         .add_step(steps::upload_artifact(channel, platform))
-        .add_step(steps::upload_to_release(
-            platform,
-            prepare.map(|prepare| &prepare.tag),
-        ))
+        .add_step(steps::upload_to_release(platform, tag))
         .when(platform.is_mobile(), |job| {
-            job.add_step(steps::fastlane(platform, channel))
+            job.add_step(steps::fastlane(platform, channel, tag))
         })
         // Reads the planner's outputs, so it waits on the planner.
         .when_some(prepare, |job, prepare| {
@@ -301,18 +321,40 @@ mod tests {
         }
     }
 
-    /// The name injected here has to be the name the build scripts read; both
-    /// consumers fall back silently when the variable is absent.
+    /// The names injected here have to be the names the build scripts read;
+    /// every consumer falls back silently when a variable is absent.
     #[test]
-    fn the_build_scripts_read_the_variable_we_inject() {
+    fn the_build_scripts_read_the_variables_we_inject() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read = |consumer: &str| {
+            fs::read_to_string(root.join(consumer))
+                .unwrap_or_else(|error| panic!("{consumer}: {error}"))
+        };
         for consumer in [
             "src-tauri/gen/android/app/build.gradle.kts",
             "tooling/bin/xtauri",
         ] {
-            let source = fs::read_to_string(root.join(consumer))
-                .unwrap_or_else(|error| panic!("{consumer}: {error}"));
+            let source = read(consumer);
             assert!(source.contains(BUILD_CODE_ENV), "{consumer}");
+            assert!(source.contains(VERSION_ENV), "{consumer}");
+        }
+    }
+
+    /// Only mobile builds stamp the version: the desktop bundles take theirs
+    /// from the crate, and the stores are what reject the fallbacks.
+    #[test]
+    fn only_mobile_builds_receive_the_version() {
+        let prepare = prepare(&WorkflowContext::fixture());
+
+        for platform in [Platform::Android, Platform::iOS] {
+            assert_eq!(
+                app_version(&prepare, platform).map(JobOutput::expr),
+                Some(prepare.version.expr()),
+                "{platform}"
+            );
+        }
+        for platform in [Platform::macOS, Platform::Linux, Platform::Windows] {
+            assert!(app_version(&prepare, platform).is_none(), "{platform}");
         }
     }
 }

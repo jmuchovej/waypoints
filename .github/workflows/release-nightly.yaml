@@ -33,6 +33,7 @@ jobs:
     outputs:
       tag: ${{ steps.nightly-plan.outputs.tag }}
       should_build: ${{ steps.nightly-plan.outputs.should_build }}
+      version: ${{ steps.nightly-plan.outputs.version }}
       version_code: ${{ steps.nightly-plan.outputs.version_code }}
       bundle_version: ${{ steps.nightly-plan.outputs.bundle_version }}
     env:
@@ -461,6 +462,7 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.bundle_version }}
+          WAYPOINTS_VERSION: ${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -478,6 +480,7 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
       - id: publish-mobile-app
         name: Upload to the App Store
+        if: needs.prepare.outputs.tag != ''
         run: secretspec run --profile release --scope ios -- fastlane ios nightly
         shell: bash
         env:
@@ -549,6 +552,7 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.version_code }}
+          WAYPOINTS_VERSION: ${{ needs.prepare.outputs.version }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/30.0.16138531
       - id: upload-artifacts
         name: Upload artifacts
@@ -569,6 +573,7 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
       - id: publish-mobile-app
         name: Upload to the Play Store
+        if: needs.prepare.outputs.tag != ''
         run: secretspec run --profile release --scope android -- fastlane android nightly
         shell: bash
         env:

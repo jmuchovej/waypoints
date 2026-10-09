@@ -259,6 +259,7 @@ pub struct PrepareJob {
     job: NamedJob,
     pub tag: JobOutput,
     pub should_build: JobOutput,
+    pub version: JobOutput,
     pub version_code: JobOutput,
     pub bundle_version: JobOutput,
 }
@@ -269,6 +270,7 @@ impl PrepareJob {
     pub fn new(
         tag: JobOutput,
         should_build: JobOutput,
+        version: JobOutput,
         version_code: JobOutput,
         bundle_version: JobOutput,
         job: NamedJob,
@@ -277,6 +279,7 @@ impl PrepareJob {
             job,
             tag,
             should_build,
+            version,
             version_code,
             bundle_version,
         }

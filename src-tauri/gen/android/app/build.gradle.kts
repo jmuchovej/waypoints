@@ -53,7 +53,17 @@ android {
         (System.getenv("WAYPOINTS_BUILD_CODE")?.takeIf { it.isNotBlank() }
                 ?: tauriProperties.getProperty("tauri.android.versionCode", "1"))
             .toInt()
-    versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    // Rendered the way TestFlight renders iOS's pair of fields — `0.1.0
+    // (2026.10.10)` — so the two stores show the same thing. The prerelease
+    // is dropped: the flavor already says which channel this is.
+    versionName =
+        System.getenv("WAYPOINTS_VERSION")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { version ->
+              val release = version.substringBefore('-').substringBefore('+')
+              val build = version.substringAfter('+', "")
+              if (build.isEmpty()) release else "$release ($build)"
+            } ?: tauriProperties.getProperty("tauri.android.versionName", "1.0")
 
     resValue(
         "string",

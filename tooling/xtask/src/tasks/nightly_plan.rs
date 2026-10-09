@@ -14,7 +14,10 @@
 //!
 //! The date being the store build number is also the rate limit: two runs on
 //! one day would produce the same `versionCode`, so a nightly ships at most
-//! once a day. A manual dispatch therefore builds without publishing.
+//! once a day. A manual dispatch therefore builds without publishing — but it
+//! still resolves the version and build numbers the scheduled run would use,
+//! so its artifacts are stamped like real nightlies and can be uploaded by
+//! hand for testing.
 //!
 //! Tags are read from the checkout with `git` and created through the `gh` API,
 //! so the job needs neither deep history nor a committer identity.
@@ -35,7 +38,9 @@ pub struct NightlyPlanArgs {
     ///
     /// The date doubles as the store build number, so a second publish on one
     /// day could not produce a distinct one. A dispatch exercises the pipeline
-    /// instead, and the next scheduled run publishes.
+    /// instead, and the next scheduled run publishes. The artifacts still carry
+    /// the version and build numbers that run would mint, so they can be
+    /// uploaded by hand.
     #[arg(long)]
     build_only: bool,
 }
@@ -49,35 +54,41 @@ struct Plan {
     /// Empty on a build-only run.
     tag: String,
     should_build: bool,
-    /// Android `versionCode`. Empty when `tag` is.
+    /// The full nightly version, `{target}-nightly.{N}+{date}`, which the
+    /// builds stamp into the app. Empty only when nothing builds.
+    version: String,
+    /// Android `versionCode`. Empty when `version` is.
     version_code: String,
-    /// iOS `CFBundleVersion`. Empty when `tag` is.
+    /// iOS `CFBundleVersion`. Empty when `version` is.
     bundle_version: String,
 }
 
 impl Plan {
     /// Derives the build numbers from the version, so the two cannot disagree.
     fn publish(version: &Version) -> Result<Self> {
-        let (version_code, bundle_version) = build_numbers(version)?;
         Ok(Self {
             tag: format!("v{version}"),
+            ..Self::build_only(version)?
+        })
+    }
+
+    /// Builds `version` without minting its tag — a manual dispatch. The
+    /// artifacts are stamped exactly as the scheduled run would stamp them.
+    fn build_only(version: &Version) -> Result<Self> {
+        let (version_code, bundle_version) = build_numbers(version)?;
+        Ok(Self {
+            tag: String::new(),
             should_build: true,
+            version: version.to_string(),
             version_code,
             bundle_version,
         })
     }
 
-    /// Builds without minting a tag — a manual dispatch.
-    const BUILD_ONLY: Self = Self {
-        tag: String::new(),
-        should_build: true,
-        version_code: String::new(),
-        bundle_version: String::new(),
-    };
-
     const SKIP: Self = Self {
         tag: String::new(),
         should_build: false,
+        version: String::new(),
         version_code: String::new(),
         bundle_version: String::new(),
     };
@@ -151,7 +162,7 @@ fn next_nightly(
     target: &Version,
     stamp: &str,
 ) -> Result<Option<Version>> {
-    let mut next = match latest {
+    let next = match latest {
         None => first_nightly(target)?,
         Some(latest) => {
             let bumped = VersionUpdater::new().increment(latest, commits);
@@ -162,10 +173,35 @@ fn next_nightly(
         }
     };
 
-    // Whatever metadata came through is the previous run's date.
-    next.build = BuildMetadata::new(stamp)
+    Ok(Some(stamped(next, stamp)?))
+}
+
+/// `version` carrying `stamp` as its build metadata. Whatever metadata came
+/// through is the previous run's date.
+fn stamped(mut version: Version, stamp: &str) -> Result<Version> {
+    version.build = BuildMetadata::new(stamp)
         .with_context(|| format!("\"{stamp}\" is not valid build metadata"))?;
-    Ok(Some(next))
+    Ok(version)
+}
+
+/// What a build-only run stamps its artifacts with: the next nightly when
+/// something landed, else the latest one restamped with today's date — a
+/// rebuild of the nightly that is current, not a new one.
+fn build_only_version(
+    latest: Option<&Version>,
+    commits: &[String],
+    target: &Version,
+    stamp: &str,
+) -> Result<Version> {
+    match next_nightly(latest, commits, target, stamp)? {
+        Some(next) => Ok(next),
+        None => stamped(
+            latest
+                .cloned()
+                .expect("next_nightly only declines a bump when a latest nightly exists"),
+            stamp,
+        ),
+    }
 }
 
 fn nightly_tags() -> Result<Vec<String>> {
@@ -210,17 +246,19 @@ fn env(key: &str) -> Result<String> {
 }
 
 pub fn run(args: NightlyPlanArgs) -> Result<()> {
-    if args.build_only {
-        println!("Manual dispatch: building without publishing.");
-        return crate::utils::github::set_outputs(&Plan::BUILD_ONLY);
-    }
-
     let target = target(&crate::workspace::version()?);
     let tags = nightly_tags()?;
     let latest = latest_nightly(&target, &tags);
     let commits = commits_since(latest.as_ref())?;
+    let stamp = date_stamp(Utc::now());
 
-    let plan = match next_nightly(latest.as_ref(), &commits, &target, &date_stamp(Utc::now()))? {
+    if args.build_only {
+        let version = build_only_version(latest.as_ref(), &commits, &target, &stamp)?;
+        println!("Manual dispatch: building {version} without publishing.");
+        return crate::utils::github::set_outputs(&Plan::build_only(&version)?);
+    }
+
+    let plan = match next_nightly(latest.as_ref(), &commits, &target, &stamp)? {
         None => {
             println!("Nothing landed since the last nightly; nothing new to publish.");
             Plan::SKIP
@@ -277,6 +315,37 @@ mod tests {
     #[test]
     fn a_nightly_without_a_date_is_rejected() {
         assert!(build_numbers(&v("0.2.0-nightly.1")).is_err());
+    }
+
+    /// A dispatch mints no tag but stamps its artifacts like the real run.
+    #[test]
+    fn a_build_only_plan_carries_the_numbers_without_a_tag() {
+        let plan = Plan::build_only(&v("0.2.0-nightly.7+2026.08.29")).unwrap();
+        assert_eq!(plan.tag, "");
+        assert!(plan.should_build);
+        assert_eq!(plan.version, "0.2.0-nightly.7+2026.08.29");
+        assert_eq!(plan.version_code, "20260829");
+        assert_eq!(plan.bundle_version, "2026.08.29");
+
+        let published = Plan::publish(&v("0.2.0-nightly.7+2026.08.29")).unwrap();
+        assert_eq!(published.tag, "v0.2.0-nightly.7+2026.08.29");
+        assert_eq!(published.version_code, plan.version_code);
+    }
+
+    /// Nothing landed: a dispatch rebuilds the current nightly under today's
+    /// date rather than inventing a counter the scheduled run would not.
+    #[test]
+    fn an_idle_dispatch_rebuilds_the_latest_nightly_under_todays_date() {
+        let latest = v("0.2.0-nightly.3+2026.08.29");
+        let version = build_only_version(Some(&latest), &[], &v("0.2.0"), "2026.08.30").unwrap();
+        assert_eq!(version.to_string(), "0.2.0-nightly.3+2026.08.30");
+
+        let version =
+            build_only_version(Some(&latest), &commit(), &v("0.2.0"), "2026.08.30").unwrap();
+        assert_eq!(version.to_string(), "0.2.0-nightly.4+2026.08.30");
+
+        let version = build_only_version(None, &[], &v("0.3.0"), "2026.08.30").unwrap();
+        assert_eq!(version.to_string(), "0.3.0-nightly.1+2026.08.30");
     }
 
     #[test]
@@ -369,11 +438,10 @@ mod tests {
     #[test]
     fn the_three_outcomes_differ_in_the_right_way() {
         let outcome = |plan: &Plan| (plan.should_build, plan.tag.is_empty());
-        assert_eq!(outcome(&Plan::BUILD_ONLY), (true, true));
+        let version = v("0.2.0-nightly.1+2026.08.29");
+        assert_eq!(outcome(&Plan::build_only(&version).unwrap()), (true, true));
         assert_eq!(outcome(&Plan::SKIP), (false, true));
-
-        let published = Plan::publish(&v("0.2.0-nightly.1+2026.08.29")).unwrap();
-        assert_eq!(outcome(&published), (true, false));
+        assert_eq!(outcome(&Plan::publish(&version).unwrap()), (true, false));
     }
 
     /// `Plan` is serialized field-for-field into `$GITHUB_OUTPUT`, and the
