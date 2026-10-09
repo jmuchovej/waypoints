@@ -103,23 +103,37 @@ def forwarded []: nothing -> record {
 # Runs `cargo tauri … build` for `target` with the release scope's secrets.
 # `extra` is environment the platform needs beyond the common set, `path_prefix`
 # goes between the system directories and the ambient PATH, and `args` follow
-# the flavor config so they can override it.
+# the flavor config so they can override it. `derived` names variables to set
+# from secrets once they are resolved — `{ NAME: SOURCE }` exports NAME from
+# the resolved SOURCE — for the few the manifest keeps per flavor but the
+# build reads under one name.
 def run-build [
   target: string,
   flavor: string,
   extra: record,
   path_prefix: list<string>,
   args: list<string>,
+  --derived: record = {},
 ] {
   let vars = (forwarded) | merge $extra | merge { WAYPOINTS_FLAVOR: $flavor, WAYPOINTS_BUILD: "1" }
-  let command = [
-    secretspec run --profile release --scope $target --
+  let build = [
     cargo tauri ...(tauri-subcommand $target) build
     --features $flavor
     --config (platform-config $target)
     --config (flavor-config $flavor)
     ...$args
   ]
+  # Secrets exist only inside the `secretspec run` child, so a derived
+  # variable is exported by a shell there, which then execs the build.
+  let wrapped = if ($derived | is-empty) {
+    $build
+  } else {
+    let exports = $derived
+      | items { |name, source| "export " + $name + "=\"$" + $source + "\"" }
+      | str join "; "
+    [sh -c ($exports + "; exec \"$@\"") sh ...$build]
+  }
+  let command = [secretspec run --profile release --scope $target -- ...$wrapped]
 
   if $target in $SCRUBBED {
     let system = if $target in $SYSTEM_FIRST { $SYSTEM_PATH } else { [] }
@@ -160,6 +174,10 @@ def build-ios [flavor: string, rest: list<string>] {
     ["--config" ({ bundle: { iOS: { bundleVersion: $build_number } } } | to json --raw)]
   }
 
+  # App Store profiles are per bundle identifier, so the manifest keeps one per
+  # flavor; Tauri reads whichever one lands in IOS_MOBILE_PROVISION.
+  let profile_source = "IOS_MOBILE_PROVISION_" + ($flavor | str upcase)
+
   run-build ios $flavor {
     DEVELOPER_DIR: $developer_dir
     CC_aarch64_apple_ios: /usr/bin/clang
@@ -170,7 +188,7 @@ def build-ios [flavor: string, rest: list<string>] {
     # Xcode's toolchain ahead of the ambient PATH, so `swift-build` and friends
     # resolve to Apple's rather than the Nix wrapper, which does not provide them.
     ($developer_dir | path join Toolchains XcodeDefault.xctoolchain usr bin)
-  ] [...$version_config ...$rest]
+  ] [...$version_config ...$rest] --derived { IOS_MOBILE_PROVISION: $profile_source }
 }
 
 def build-android [flavor: string, rest: list<string>] {
