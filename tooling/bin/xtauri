@@ -176,7 +176,15 @@ def build-ios [flavor: string, rest: list<string>] {
 
   # App Store profiles are per bundle identifier, so the manifest keeps one per
   # flavor; Tauri reads whichever one lands in IOS_MOBILE_PROVISION.
-  let profile_source = "IOS_MOBILE_PROVISION_" + ($flavor | str upcase)
+  let profile_source = "IOS_MOBILE_PROVISION_" + ($flavor | str uppercase)
+
+  # The flavor's productName — "Waypoints (Nightly)" — is what names the
+  # desktop bundles, but on iOS Tauri also makes it the executable name, and
+  # App Store Connect rejects executables containing parentheses. The base
+  # name takes over here; the flavor label reaches the home screen through
+  # CFBundleDisplayName, merged in from the flavor's `bundle.iOS.infoPlist`.
+  let base_name = open ($env.TAURI_APP_PATH | path join Tauri.toml) | get productName
+  let executable_config = ["--config" ({ productName: $base_name } | to json --raw)]
 
   run-build ios $flavor {
     DEVELOPER_DIR: $developer_dir
@@ -188,7 +196,7 @@ def build-ios [flavor: string, rest: list<string>] {
     # Xcode's toolchain ahead of the ambient PATH, so `swift-build` and friends
     # resolve to Apple's rather than the Nix wrapper, which does not provide them.
     ($developer_dir | path join Toolchains XcodeDefault.xctoolchain usr bin)
-  ] [...$version_config ...$rest] --derived { IOS_MOBILE_PROVISION: $profile_source }
+  ] [...$executable_config ...$version_config ...$rest] --derived { IOS_MOBILE_PROVISION: $profile_source }
 }
 
 def build-android [flavor: string, rest: list<string>] {

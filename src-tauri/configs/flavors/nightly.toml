@@ -15,3 +15,9 @@ identifier  = "so.waypoints.nightly"
     "icons/nightly/icon.icns",
     "icons/nightly/icon.ico",
   ]
+
+  # iOS carries the flavor label as the display name instead of in productName:
+  # Tauri makes productName the executable name there, and App Store Connect
+  # rejects executables containing parentheses (`xtauri build ios` overrides it).
+  [bundle.iOS]
+    infoPlist = "configs/flavors/ios/nightly.plist"

@@ -15,3 +15,7 @@ identifier  = "so.waypoints"
     "icons/stable/icon.icns",
     "icons/stable/icon.ico",
   ]
+
+  # See nightly.toml: the flavor label reaches iOS through the display name.
+  [bundle.iOS]
+    infoPlist = "configs/flavors/ios/stable.plist"

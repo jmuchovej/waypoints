@@ -11,3 +11,7 @@ identifier  = "so.waypoints.dev"
     "icons/development/icon.icns",
     "icons/development/icon.ico",
   ]
+
+  # See nightly.toml: the flavor label reaches iOS through the display name.
+  [bundle.iOS]
+    infoPlist = "configs/flavors/ios/development.plist"
