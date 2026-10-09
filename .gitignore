@@ -369,3 +369,8 @@ $RECYCLE.BIN/
 # secret.
 secrets.sops.yaml
 website/secrets.sops.yaml
+
+# Apple signing material that may be downloaded into the tree on its way to
+# 1Password (`sync-mobileprovision` renames profiles in place).
+*.mobileprovision
+*.p12
