@@ -177,10 +177,13 @@
         spec = "aqua:tauri-apps/tauri/cargo-tauri";
       };
 
+      # DELIBERATELY BROKEN — DO NOT MERGE. Task 7.3 asks whether a lane that
+      # omits a tool it invokes fails on the missing binary rather than quietly
+      # falling back. `envs = null` drops cargo-nextest out of mise entirely, so
+      # the `test` lane installs the base and nothing else.
       cargo-nextest = {
         package = pkgs.cargo-nextest;
-        spec = "aqua:nextest-rs/nextest/cargo-nextest";
-        envs = [ "test" ];
+        envs = null;
       };
       nushell = {
         package = pkgs.nushell;

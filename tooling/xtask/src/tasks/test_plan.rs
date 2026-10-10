@@ -14,6 +14,10 @@
 //!
 //! [nextest filterset]: https://nexte.st/docs/filtersets/
 
+// DELIBERATELY TOUCHED — DO NOT MERGE. Task 7.3 needs a non-empty filterset:
+// the nextest step is skipped when no Rust crate is affected, so a branch
+// changing only `devenv.nix` would go green and prove nothing.
+
 use anyhow::Result;
 use clap::Parser;
 use std::collections::BTreeSet;
