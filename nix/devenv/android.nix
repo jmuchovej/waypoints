@@ -3,6 +3,11 @@
 # PATH environment, and the gradle-facing generated files (`local.properties`,
 # `libs.versions.toml`). Versions are data under `waypoints.android.*`; AGP,
 # build-tools, and kotlin stay in lockstep through the generated catalog.
+#
+# The emulator and its system images are opt-in (`waypoints.android.emulator`,
+# switched on by the `emulator` devenv profile): they run an AVD and nothing
+# else, and at roughly 20 GB they are what a CI runner cannot hold. Building
+# the app needs only the platforms, build-tools and NDK.
 {
   lib,
   config,
@@ -56,12 +61,11 @@ let
       [
         sdk-pkgs.cmdline-tools-22-0
         sdk-pkgs.platform-tools
-        sdk-pkgs.emulator
         sdk-pkgs."build-tools-${dash-version cfg.build-tools.version}"
         sdk-pkgs."ndk-${dash-version cfg.ndk.version}"
       ]
       ++ map (v: sdk-pkgs."platforms-android-${dash-version v}") cfg.platforms.versions
-      ++ (system-images sdk-pkgs)
+      ++ lib.optionals cfg.emulator.enable ([ sdk-pkgs.emulator ] ++ system-images sdk-pkgs)
     )
   );
   android-home = "${android-sdk}/share/android-sdk";
@@ -79,7 +83,12 @@ in
     platforms.versions = mkOption {
       type = types.listOf types.str;
       default = [ ];
-      description = "Android platform (API level) versions to install, with matching system images.";
+      description = "Android platform (API level) versions to install, with matching system images when the emulator is enabled.";
+    };
+    emulator.enable = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Install the emulator and a system image per platform version and variant. Only an AVD needs these; builds do not.";
     };
     ndk.version = mkOption {
       type = types.str;

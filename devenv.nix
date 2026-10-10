@@ -253,6 +253,11 @@
     project-path = lib.removePrefix "${config.devenv.root}/" config.env.TAURI_ANDROID_PROJECT_PATH;
   };
 
+  # `devenv shell -P emulator` for an AVD. Off by default: the emulator and its
+  # system images are ~20 GB that neither a build nor CI needs, and nothing
+  # generated into the tree depends on them.
+  profiles.emulator.module.waypoints.android.emulator.enable = true;
+
   packages = with pkgs; [
     act
     cargo-binstall
