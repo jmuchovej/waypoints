@@ -9,11 +9,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791504725,
-        "narHash": "sha256-c3oa0TaqsbI1/6TOrkrvZK5142aScS4tAv8KQVqRVJI=",
+        "lastModified": 1791589896,
+        "narHash": "sha256-OFmJxVuYzZAFfTNhkZY8b5/OgLLWtluUH22Y9K/6u7Q=",
         "owner": "tadfisher",
         "repo": "android-nixpkgs",
-        "rev": "e1cd276b67170cc9b7e8cdbb9f312d411d1b74f9",
+        "rev": "ca8ac25d856ea200c164ef63f74259223cc1d55c",
         "type": "github"
       },
       "original": {
@@ -25,11 +25,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1791471428,
-        "narHash": "sha256-Iva5vlTiCPCHx3k3X7VFMn/TRJxcThJAUuOGjOAsHhQ=",
+        "lastModified": 1791549372,
+        "narHash": "sha256-5Vu2oKeImB5wQWLFSEcWXsF0Oajm4/5MV7UlnOdelmg=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "c69190c2702bad99474200b6b7a80be86146ae71",
+        "rev": "a73c5b84c9527760f009232988466763068f9f61",
         "type": "github"
       },
       "original": {
@@ -129,11 +129,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791535654,
-        "narHash": "sha256-QFgGi6Wgh7AgqPFdAXEmkTgnR0B5M0omheIHvo/02dU=",
+        "lastModified": 1791620365,
+        "narHash": "sha256-CVZXIDNw7HEwyD8X6q9Ln370Sc0ZqRlTzDRwOZ1hJMY=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "4ca2963243427cb86bd6b4d9ca6010db0162a619",
+        "rev": "e90fafa71b440fabcd52dd7fb017ab2da81c781a",
         "type": "github"
       },
       "original": {
