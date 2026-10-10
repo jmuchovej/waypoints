@@ -227,6 +227,8 @@ jobs:
         if: needs.prepare.outputs.tag != ''
         run: git-cliff --latest --output "${RUNNER_TEMP}/notes.md"
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: draft-release
         name: Create the draft
         if: needs.prepare.outputs.tag != ''

@@ -186,6 +186,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: git-cliff --latest --output "${RUNNER_TEMP}/notes.md"
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: draft-release
         name: Create the draft
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''

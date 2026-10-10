@@ -385,11 +385,16 @@ pub fn upload_artifact(channel: Channel, platform: Platform) -> Step<Use> {
 
 /// Renders the notes for `tag` with git-cliff: everything since the previous
 /// tag, grouped straight from the Conventional Commit history.
+///
+/// The token is for the template's first-time-contributor section, which
+/// asks the GitHub API who opened each pull request; without it git-cliff
+/// gets a 404 from the private repository and renders nothing.
 pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
     Step::new("Generate release notes")
         .run(r#"git-cliff --latest --output "${RUNNER_TEMP}/notes.md""#)
         .shell("bash")
         .if_condition(Channel::tag_condition(tag))
+        .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
         .id("gen-release-notes")
 }
 
