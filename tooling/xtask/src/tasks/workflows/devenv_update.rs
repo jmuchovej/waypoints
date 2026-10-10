@@ -70,6 +70,11 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .environment(Profile::Automation.environment())
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
+        // `devenv update` evaluates and realises the whole environment,
+        // Android SDK and all, which a stock image cannot hold: the first run
+        // died with the runner's own diagnostics unable to write. Nothing here
+        // uses the image's Android SDK, so it goes too.
+        .add_step(steps::free_disk_space(true))
         .add_step(steps::install_nix())
         .add_step(steps::cachix("devenv"))
         // devenv provides us with secretspec already.
