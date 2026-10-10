@@ -469,7 +469,12 @@ mod tests {
                 .flatten()
                 .flat_map(|(_, job)| job["steps"].as_array().cloned().unwrap_or_default());
             for step in steps {
-                let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some();
+                // Under `devenv shell` the provider rides on the command, so
+                // devenv's own pre-shell resolution does not pick it up.
+                let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some()
+                    || step["run"]
+                        .as_str()
+                        .is_some_and(|run| run.contains("--provider op"));
                 let credential = step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some();
                 assert_eq!(provider, credential, "{name}: {}", step["name"]);
             }

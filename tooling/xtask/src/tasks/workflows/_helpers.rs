@@ -74,6 +74,20 @@ pub fn resolving(step: Step<Run>) -> Step<Run> {
     step.add_env(PROVIDER).add_env(TOKEN)
 }
 
+/// The vault provider, for a command that names it with `--provider` rather
+/// than reading it from the step environment.
+pub const PROVIDER_NAME: &str = PROVIDER.1;
+
+/// The credential alone, for a step whose command carries [`PROVIDER_NAME`]
+/// itself. Needed under `devenv shell`: devenv resolves the shell's own
+/// profile before the shell exists and honours `SECRETSPEC_PROVIDER` while
+/// doing so, which would send it looking for `op` on a runner that only has
+/// it inside the shell. The credential is inert to that resolution — the
+/// shell's profile reads the environment — so it can stay on the step.
+pub fn credentialed(step: Step<Run>) -> Step<Run> {
+    step.add_env(TOKEN)
+}
+
 /// Pins JavaScript actions to Node 24; the runner otherwise falls back to its
 /// own default, which they fail to start under.
 pub const FORCE_NODE24: (&str, &str) = ("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24", "true");

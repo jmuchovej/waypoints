@@ -556,8 +556,10 @@ impl SecretSpec {
     }
 
     /// Runs through `devenv shell`, for a job whose `secretspec` and `op` come
-    /// from the shell rather than from mise. The shell sets no provider of its
-    /// own, so the step's selection and credential reach the command intact.
+    /// from the shell rather than from mise. The provider then travels on the
+    /// command line rather than in the step environment: devenv resolves the
+    /// shell's own profile before entering the shell and would otherwise pick
+    /// the override up and look for `op` on the bare runner.
     pub(crate) fn inside_devenv(mut self) -> Self {
         self.inside_devenv = true;
         self
@@ -592,6 +594,9 @@ impl From<SecretSpec> for Step<Run> {
         if let Some(profile) = spec.profile {
             command.push_str(&format!(" --profile {}", profile.name()));
         }
+        if spec.inside_devenv {
+            command.push_str(&format!(" --provider {}", helpers::PROVIDER_NAME));
+        }
         if let Some(scope) = &spec.scope {
             command.push_str(&format!(" --scope {scope}"));
         }
@@ -619,6 +624,10 @@ impl From<SecretSpec> for Step<Run> {
             .when_some(spec.reason, |step, reason| {
                 step.add_env(("SECRETSPEC_REASON", reason))
             });
-        helpers::resolving(step)
+        if spec.inside_devenv {
+            helpers::credentialed(step)
+        } else {
+            helpers::resolving(step)
+        }
     }
 }
