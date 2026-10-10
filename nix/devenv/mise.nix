@@ -98,16 +98,6 @@ let
           failure, and the fix is to say where the dependency belongs.
         '';
       };
-      options = mkOption {
-        type = types.attrsOf types.str;
-        default = { };
-        description = ''
-          Extra backend options for the tool's mise entry, e.g. the
-          `slsa_signer_identity`/`slsa_signer_issuer` a `github:` tool needs to
-          verify SLSA provenance against the workflow that actually signed it.
-          Forces the table form.
-        '';
-      };
     };
   };
 
@@ -118,15 +108,14 @@ let
   # table form.
   entry =
     tool:
-    if tool.os == [ ] && tool.options == { } && tool.depends == [ ] then
+    if tool.os == [ ] && tool.depends == [ ] then
       toString tool.package.version
     else
       {
         version = toString tool.package.version;
       }
       // lib.optionalAttrs (tool.os != [ ]) { inherit (tool) os; }
-      // lib.optionalAttrs (tool.depends != [ ]) { depends = map displayed tool.depends; }
-      // tool.options;
+      // lib.optionalAttrs (tool.depends != [ ]) { depends = map displayed tool.depends; };
 
   tool-table =
     names: lib.listToAttrs (map (n: nameValuePair included.${n}.spec (entry included.${n})) names);

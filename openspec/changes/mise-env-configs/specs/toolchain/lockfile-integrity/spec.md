@@ -76,14 +76,16 @@ Where credentials are absent, regeneration SHALL fail with a message naming what
 
 Consumers installing from a projected configuration SHALL be required to install exactly what the lockfile pins, and SHALL verify the provenance of artifacts whose backends publish it.
 
-A tool whose backend declares a signing identity SHALL be verified against the workflow that actually signed it, not merely against the presence of a valid signature. A registry entry that declares no signer identity accepts any valid signature, including one from an unrelated workflow, and so provides no provenance guarantee.
+Verification SHALL be enforced rather than advisory: an artifact whose attestation is absent or does not verify SHALL NOT be installed.
+
+Pinning a tool to a _named signer_ is a stronger guarantee than attestation, and is deliberately not required here. It was carried by the one tool whose registry entry declared no signer — so any valid signature satisfied it, including one from an unrelated workflow — and that tool left the projection with `secretspec-onepassword`. Should a tool need it again, the mechanism is a per-tool backend option, and this requirement is where the obligation to name the signer belongs.
 
 #### Scenario: Unlocked install is refused
 
 - **WHEN** a consumer installs a tool that the active configuration declares but the lockfile does not pin
 - **THEN** installation fails rather than resolving the version afresh
 
-#### Scenario: Wrong signer is rejected
+#### Scenario: Attestations are verified, not assumed
 
-- **WHEN** an artifact carries a valid signature from a workflow other than the one the tool's declaration names
-- **THEN** verification fails and the tool is not installed
+- **WHEN** a consumer installs a tool from a backend that publishes artifact attestations
+- **THEN** the attestation is verified before the tool is installed, and a failure to verify prevents installation
