@@ -18,40 +18,11 @@
 
   const latest = computed(() => releases.value?.[0] ?? null);
 
-  const downloadUrl = (target: string) => `/api/v1/releases/${channel.value}/${target}`;
+  const downloadUrl = (platform: Platform, arch: Arch) =>
+    (latest.value ? downloadPathFor(channel.value, latest.value.tag, platform, arch) : undefined) ??
+    undefined;
 
-  const platforms = [
-    {
-      icon: "i-simple-icons-apple",
-      title: "macOS",
-      description: "Apple Silicon",
-      target: "macos-arm64",
-    },
-    {
-      icon: "i-simple-icons-apple",
-      title: "macOS",
-      description: "Intel",
-      target: "macos-amd64",
-    },
-    {
-      icon: "i-simple-icons-linux",
-      title: "Linux",
-      description: "AppImage (x86_64)",
-      target: "linux-amd64",
-    },
-    {
-      icon: "i-simple-icons-linux",
-      title: "Linux",
-      description: "AppImage (ARM64)",
-      target: "linux-arm64",
-    },
-    {
-      icon: "i-simple-icons-windows",
-      title: "Windows",
-      description: "64-bit installer",
-      target: "windows-amd64",
-    },
-  ];
+  const stores = computed(() => STORE_LINKS[channel.value] ?? []);
 </script>
 
 <template>
@@ -87,14 +58,30 @@
       <UPageBody>
         <UPageGrid class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <UPageCard
-            v-for="platform in platforms"
-            :key="platform.target"
-            :icon="platform.icon"
-            :title="platform.title"
-            :description="platform.description"
-            :to="downloadUrl(platform.target)"
-            target="_blank" />
+            v-for="target in DESKTOP_TARGETS"
+            :key="`${target.platform}-${target.arch}`"
+            :icon="target.icon"
+            :title="target.title"
+            :description="target.description"
+            :to="downloadUrl(target.platform, target.arch)"
+            external />
         </UPageGrid>
+
+        <template v-if="stores.length">
+          <USeparator label="On your phone" class="my-10" />
+
+          <UPageGrid class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <UPageCard
+              v-for="store in stores"
+              :key="store.to"
+              :icon="store.icon"
+              :title="store.title"
+              :description="store.description"
+              :to="store.to"
+              target="_blank"
+              rel="noopener" />
+          </UPageGrid>
+        </template>
       </UPageBody>
     </UPage>
   </UContainer>

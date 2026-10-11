@@ -183,7 +183,6 @@ export default defineNuxtConfig({
     "/download/**": { prerender: true },
     "/releases": { redirect: "/releases/stable" },
     "/releases/**": { prerender: true, experimentalNoScripts: false },
-    "/api/v1/update/**": { prerender: true },
   },
 
   css: ["~/assets/css/main.css"],
@@ -216,6 +215,10 @@ export default defineNuxtConfig({
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
+      wrangler: {
+        // A binding, not the S3 API, so no key pair lives in runtimeConfig.
+        r2_buckets: [{ binding: "RELEASES", bucket_name: "releases" }],
+      },
     },
     prerender: {
       autoSubfolderIndex: true,

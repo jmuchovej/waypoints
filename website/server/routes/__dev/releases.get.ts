@@ -89,7 +89,7 @@ export default defineEventHandler(() => {
       },
       {
         id: 5,
-        tag: "v0.2.0-nightly.20260531",
+        tag: "v0.2.0-nightly.3+2026.05.31",
         author: "john",
         name: "v0.2.0 (31 May 2026)",
         draft: false,

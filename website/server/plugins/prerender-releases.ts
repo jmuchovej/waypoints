@@ -27,8 +27,7 @@ export default defineNitroPlugin((nitroApp) => {
       console.warn("[prerender-releases] Failed to fetch releases:", err);
     }
 
-    routes.add("/api/v1/update/stable.json");
-    routes.add("/api/v1/update/preview.json");
-    routes.add("/api/v1/update/nightly.json");
+    // Updater manifests are not prerendered: the R2 binding they read does not exist at build
+    // time, and baking them would freeze a version until the next deploy.
   });
 });
