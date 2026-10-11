@@ -32,6 +32,9 @@ mod website "website/justfile"
 # Icon generation for every app flavor
 mod icons "tooling/icongen/justfile"
 
+# Station deployment: manifest validation and a kind cluster
+mod deploy "deploy/justfile"
+
 # Generate TypeScript types from Rust models
 typegen:
     cargo xtask typegen

@@ -1,0 +1,29 @@
+# The base on a kind cluster, for exercising it from the host: `kubectl
+# port-forward` does not carry UDP, so the Service becomes a NodePort and
+# kind-config.yaml maps that port to the host's 6782 over UDP. The Station
+# then advertises the host socket. A reproducible check, not a deployment
+# target.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../base
+
+patches:
+  - target:
+      kind: Service
+      name: outpost
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: NodePort
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30782
+  - target:
+      kind: ConfigMap
+      name: outpost
+    patch: |-
+      - op: replace
+        path: /data/OUTPOST_ADVERTISE
+        value: 127.0.0.1:6782

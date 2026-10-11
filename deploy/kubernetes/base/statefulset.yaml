@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: outpost
+spec:
+  serviceName: outpost
+  # One Station. More than one needs Station-to-Station replication, which
+  # is a later change; until then a second replica would be a second Fleet.
+  replicas: 1
+  selector: {}
+  template:
+    spec:
+      # The Station closes its endpoint within 10 s of SIGTERM; the rest is
+      # slack for parked subscriptions to observe the close.
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        # Makes the block volume at /data writable by the Station.
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: station
+          # `nix build .#outpost-image` produces this name and tag; retag
+          # and push to your registry, or load it into kind (`just
+          # deploy::kind-load`).
+          image: outpost:0.1.0
+          # Replaces the image's default command (`station`), keeping its
+          # entrypoint. Keys are mounted from Secrets; the Station never
+          # generates one at a path it was handed.
+          args:
+            - station
+            - --port=6782
+            - --key-file=/keys/station/station.key
+            - --fleet-key-file=/keys/fleet/fleet.key
+            - --log-format=json
+          env:
+            - name: OUTPOST_ADVERTISE
+              valueFrom:
+                configMapKeyRef:
+                  name: outpost
+                  key: OUTPOST_ADVERTISE
+          # One port, two protocols (see kustomization.yaml).
+          ports:
+            - name: quic
+              containerPort: 6782
+              protocol: UDP
+            - name: probes
+              containerPort: 6782
+              protocol: TCP
+          # /readyz answers 503 while stored Territories load; the startup
+          # probe gives that up to five minutes before the pod is restarted.
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: probes
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: probes
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: probes
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: station-key
+              mountPath: /keys/station
+              readOnly: true
+            - name: fleet-key
+              mountPath: /keys/fleet
+              readOnly: true
+      volumes:
+        - name: station-key
+          secret:
+            secretName: outpost-station-key
+            defaultMode: 256 # 0400
+        - name: fleet-key
+          secret:
+            secretName: outpost-fleet-key
+            defaultMode: 256 # 0400
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        # Single writer on block storage — never a shared filesystem.
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,0 +1,36 @@
+# A one-Station Fleet: one Station holding the storage and orderer roles,
+# on a block volume, with its keys from Secrets. Reference material for
+# self-hosters and the hosted tier alike — validated with `just deploy::lint`
+# and exercised on kind (`../kind`).
+#
+# Bringing it up:
+#
+#   1. Create the two key Secrets from files `outpost keygen` wrote; see
+#      secrets.example.yaml for the exact commands and names.
+#   2. Apply this base once, then read the Service's external address:
+#        kubectl get svc outpost -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+#   3. Put "<that address>:6782" into the ConfigMap's OUTPOST_ADVERTISE and
+#      apply again. The Station publishes the address Vessels dial in its
+#      log (the "station running" line); that is what gets pasted into the
+#      app. Until step 3 the Station serves, but publishes only addresses
+#      reachable from inside the cluster.
+#
+#   With MetalLB, an address-pool annotation on the Service makes the
+#   address a static choice, and step 3 a one-time edit.
+#
+# Port 6782 carries two protocols. QUIC rides UDP — that is the one the
+# Service exposes — and the probe routes (/healthz, /readyz) ride TCP, which
+# kubelet reaches on the pod IP. A NetworkPolicy for this workload must
+# allow both. See the deployable-station design (D5, D12).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/name: outpost
+
+resources:
+  - configmap.yaml
+  - service.yaml
+  - statefulset.yaml

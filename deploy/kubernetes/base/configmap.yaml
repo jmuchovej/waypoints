@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: outpost
+data:
+  # The socket Vessels dial, "<external address>:6782", set once the Service
+  # has one (see kustomization.yaml). Empty advertises nothing: the Station
+  # then publishes only the sockets it bound.
+  OUTPOST_ADVERTISE: ""
