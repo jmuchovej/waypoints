@@ -9,6 +9,8 @@
 
 #![allow(dead_code, reason = "each integration test uses a different subset")]
 
+pub mod process;
+
 use ed25519_dalek::{Signer, SigningKey};
 use outpost::protocol::{
     ACLPayload, ACLRecord, ACLState, EpochID, InviteKey, KEMSecret, MemberID, Permissions, ReadKey,
