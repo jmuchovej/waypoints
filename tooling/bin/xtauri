@@ -41,11 +41,16 @@ const SYSTEM_FIRST = [macos ios]
 # secretspec, so the profile default applies when the caller names nothing.
 # `build.rs` and the Android project stamp the GitHub and build-code values
 # into the binary, treating absence as "not a CI build"; the version is what
-# the mobile builds hand Tauri as its config `version`.
+# the mobile builds hand Tauri as its config `version`. RUSTC_WRAPPER names the
+# compiler cache; its client talks to an already-running server over a local
+# port and carries no store configuration or credential, so nothing else of
+# sccache's crosses — the one other SCCACHE_ name here is client behaviour
+# (compile directly if the server goes away), not where the cache lives.
 const FORWARDED = [
   CARGO_HOME CARGO_TARGET_DIR RUSTUP_HOME RUSTUP_TOOLCHAIN
   SECRETSPEC_PROVIDER OP_SERVICE_ACCOUNT_TOKEN SOPS_AGE_KEY_FILE SOPS_AGE_KEY
   GITHUB_SHA GITHUB_REF_NAME WAYPOINTS_BUILD_CODE WAYPOINTS_VERSION
+  RUSTC_WRAPPER SCCACHE_IGNORE_SERVER_IO_ERROR
 ]
 
 # The app version for a mobile build, as a `--config` fragment. Tauri writes
@@ -119,6 +124,31 @@ def forwarded []: nothing -> record {
     | reduce --fold {} { |it, acc| $acc | merge { $"($it.key)": $it.value } }
 }
 
+# When a compiler wrapper is in effect, the C and C++ compilers go through it
+# too — the workspace compiles C on every platform (ring, zstd, mimalloc,
+# blake3), and sccache caches those as readily as rustc. cc-rs recognises a
+# leading `sccache` token in CC/CXX and splits it off, so the compilers a
+# platform names explicitly (iOS, Android) are prefixed in place, and the
+# desktop targets that lean on the system `cc` get CC/CXX set so there is
+# something to prefix. Windows is left alone: cc-rs finds MSVC's cl.exe itself
+# only while CC is unset. The linker is never wrapped — sccache does not cache
+# links, and cargo wants a bare path there.
+def wrap-c-compilers [target: string, vars: record]: nothing -> record {
+  let wrapper = $vars | get -o RUSTC_WRAPPER | default ""
+  if ($wrapper | is-empty) { return $vars }
+  let wrapped = $vars
+    | items { |key, value|
+        let value = if ($key =~ '^(CC|CXX)(_|$)') { $"($wrapper) ($value)" } else { $value }
+        { key: $key, value: $value }
+      }
+    | reduce --fold {} { |it, acc| $acc | merge { $"($it.key)": $it.value } }
+  if ($target in [macos linux]) and ("CC" not-in ($wrapped | columns)) {
+    $wrapped | merge { CC: $"($wrapper) cc", CXX: $"($wrapper) c++" }
+  } else {
+    $wrapped
+  }
+}
+
 # Runs `cargo tauri … build` for `target` with the release scope's secrets.
 # `extra` is environment the platform needs beyond the common set, `path_prefix`
 # goes between the system directories and the ambient PATH, and `args` follow
@@ -134,7 +164,9 @@ def run-build [
   args: list<string>,
   --derived: record = {},
 ] {
-  let vars = (forwarded) | merge $extra | merge { WAYPOINTS_FLAVOR: $flavor, WAYPOINTS_BUILD: "1" }
+  let vars = wrap-c-compilers $target (
+    (forwarded) | merge $extra | merge { WAYPOINTS_FLAVOR: $flavor, WAYPOINTS_BUILD: "1" }
+  )
   let build = [
     cargo tauri ...(tauri-subcommand $target) build
     --features $flavor
