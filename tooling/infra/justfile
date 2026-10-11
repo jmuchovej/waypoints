@@ -1,0 +1,25 @@
+set script-interpreter := ["bash", "-euo", "pipefail"]
+
+just := just_executable() + " --justfile " + justfile()
+
+_default:
+    @just --list
+
+[private]
+[script]
+via-tofu reason cmd *ARGS:
+    export SECRETSPEC_REASON="{{ reason }}"
+    export PGSSLMODE="require"
+    secretspec run --scope tofu-backend tofu {{ cmd }} {{ ARGS }}
+
+apply *ARGS:
+    @{{ just }} via-tofu "applying tofu deployment" apply {{ ARGS }}
+
+plan *ARGS:
+    @{{ just }} via-tofu "planning tofu deployment" plan {{ ARGS }}
+
+state *ARGS:
+    @{{ just }} via-tofu "interacting with tofu state" state {{ ARGS }}
+
+init *ARGS:
+    @{{ just }} via-tofu "initializing tofu" init {{ ARGS }}
