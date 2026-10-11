@@ -1,6 +1,6 @@
 use cartograph::{
-    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncResult, SyncStatus,
-    WaypointsRuntime,
+    IdentityCreated, PairingCode, SetupCode, StationStatus, SyncDevice, SyncResult, SyncState,
+    SyncStatus, WaypointsRuntime,
 };
 use std::sync::Arc;
 use tauri::State;
@@ -8,6 +8,11 @@ use tauri::State;
 #[tauri::command]
 pub async fn sync_status(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<SyncStatus> {
     rt.sync().status().await
+}
+
+#[tauri::command]
+pub async fn sync_state(rt: State<'_, Arc<WaypointsRuntime>>) -> SyncResult<SyncState> {
+    rt.sync().sync_state().await
 }
 
 #[tauri::command]

@@ -1,0 +1,346 @@
+#!/usr/bin/env nu
+# Launches Tauri dev servers and release builds for every platform from one
+# place, so the environment a build sees is decided once rather than per
+# justfile.
+#
+#   xtauri dev   <target> [--flavor development] [tauri args…]
+#   xtauri build <target> [--flavor stable]      [tauri args…]
+#
+# `target` is macos, linux, windows, ios, android, or desktop (the host OS).
+# `flavor` accepts the aliases people actually type: dev, alpha, beta, pre,
+# prod, release, … — see `normalize-flavor`.
+#
+# A dev server runs under `secretspec run --profile development`, so whatever
+# optional values the caller has set reach it the same way a build's do. A
+# build runs under `secretspec run --profile release --scope <target>`, so
+# signing material reaches only the build process. On macOS, iOS, and Android
+# it also runs in a clean room (`env -i`): the ambient environment is what
+# contaminates a shipped binary — Nix's SDKROOT/NIX_LDFLAGS make it link
+# against store paths instead of /usr/lib — so only what is listed below
+# crosses. Linux and Windows are not scrubbed (the Linux build needs the
+# pkg-config environment Nix provides), but their additions are the same list,
+# made explicit the same way.
+
+const TARGETS = [macos linux windows ios android]
+const SCRUBBED = [macos ios android]
+
+# Ahead of everything else inside the clean room on the Apple targets, so
+# /usr/bin/clang wins over Nix's wrapper. Android gets its compilers by name
+# (the CC_*/CARGO_TARGET_*_LINKER table), so it keeps the ambient order —
+# putting /usr/bin first there would let a runner image's preinstalled gradle
+# shadow the one mise pins. The ambient PATH is kept whole either way: every
+# tool the build shells out to (yq, deno, pnpm, …) stays reachable without
+# maintaining a list.
+const SYSTEM_PATH = ["/usr/bin" "/bin" "/usr/sbin" "/sbin"]
+const SYSTEM_FIRST = [macos ios]
+
+# Carried into the build when set. The tool manager's own state crosses the
+# scrub: under mise, `cargo` is a shim that refuses an untrusted config, and the
+# trust mise-action granted travels as MISE_TRUSTED_CONFIG_PATHS. The secretspec
+# variables pick the store and carry its credential; empty is unset to
+# secretspec, so the profile default applies when the caller names nothing.
+# `build.rs` and the Android project stamp the GitHub and build-code values
+# into the binary, treating absence as "not a CI build"; the version is what
+# the mobile builds hand Tauri as its config `version`.
+const FORWARDED = [
+  CARGO_HOME CARGO_TARGET_DIR RUSTUP_HOME RUSTUP_TOOLCHAIN
+  SECRETSPEC_PROVIDER OP_SERVICE_ACCOUNT_TOKEN SOPS_AGE_KEY_FILE SOPS_AGE_KEY
+  GITHUB_SHA GITHUB_REF_NAME WAYPOINTS_BUILD_CODE WAYPOINTS_VERSION
+]
+
+# The app version for a mobile build, as a `--config` fragment. Tauri writes
+# Android's versionName and iOS's CFBundleShortVersionString from its config
+# `version`, which the manifest leaves unset. Empty when the caller sets no
+# version, so a local build keeps Tauri's defaults.
+#
+# iOS gets the bare release: CFBundleShortVersionString allows three dotted
+# integers, and Tauri's own handling of anything richer fails — it cannot
+# re-parse a version it has stripped the prerelease from, and would otherwise
+# append the build metadata as further components. The date reaches
+# CFBundleVersion separately. Android takes the full version; Gradle renders
+# the name from the same variable.
+def version-config [target: string]: nothing -> list<string> {
+  let version = $env.WAYPOINTS_VERSION? | default ""
+  if ($version | is-empty) { return [] }
+  let version = if $target == ios { $version | str replace -r "[-+].*$" "" } else { $version }
+  ["--config" ({ version: $version } | to json --raw)]
+}
+const FORWARDED_PREFIXES = ["MISE_"]
+
+def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "configs" }
+def platform-config [target: string]: nothing -> path { configs-root | path join "platforms" $"($target).toml" }
+def flavor-config [flavor: string]: nothing -> path { configs-root | path join "flavors" $"($flavor).toml" }
+
+# `cargo tauri android build`, `cargo tauri ios dev`, plain `cargo tauri build`.
+def tauri-subcommand [target: string]: nothing -> list<string> {
+  match $target {
+    ios => [ios]
+    android => [android]
+    _ => []
+  }
+}
+
+# `desktop` is whichever desktop this is; anything else must be a real target.
+def resolve-target [target: string]: nothing -> string {
+  let resolved = if $target == desktop {
+    match $nu.os-info.name {
+      macos => "macos"
+      linux => "linux"
+      windows => "windows"
+      $other => { error make { msg: $"No desktop target for ($other)" } }
+    }
+  } else {
+    $target
+  }
+  if $resolved not-in $TARGETS {
+    error make { msg: $"Unknown target ($target); expected desktop or one of ($TARGETS | str join ', ')" }
+  }
+  $resolved
+}
+
+# The flavor configs are named development/nightly/preview/stable; these are
+# the spellings accepted on the command line.
+def normalize-flavor [flavor: string]: nothing -> string {
+  match $flavor {
+    dev | development => "development"
+    alpha | nightly => "nightly"
+    beta | pre | preview => "preview"
+    release | prod | production | stable => "stable"
+    $other => { error make { msg: $"Unknown flavor ($other); expected development, nightly, preview, or stable \(or an alias: dev, alpha, beta, pre, prod, release)" } }
+  }
+}
+
+def forwarded []: nothing -> record {
+  $env
+    | items { |key, value| { key: $key, value: $value } }
+    | where (
+        ($it.key in $FORWARDED) or ($FORWARDED_PREFIXES | any { |prefix| $it.key | str starts-with $prefix })
+      ) and (($it.value | describe) == string) and ($it.value | is-not-empty)
+    | reduce --fold {} { |it, acc| $acc | merge { $"($it.key)": $it.value } }
+}
+
+# Runs `cargo tauri … build` for `target` with the release scope's secrets.
+# `extra` is environment the platform needs beyond the common set, `path_prefix`
+# goes between the system directories and the ambient PATH, and `args` follow
+# the flavor config so they can override it. `derived` names variables to set
+# from secrets once they are resolved — `{ NAME: SOURCE }` exports NAME from
+# the resolved SOURCE — for the few the manifest keeps per flavor but the
+# build reads under one name.
+def run-build [
+  target: string,
+  flavor: string,
+  extra: record,
+  path_prefix: list<string>,
+  args: list<string>,
+  --derived: record = {},
+] {
+  let vars = (forwarded) | merge $extra | merge { WAYPOINTS_FLAVOR: $flavor, WAYPOINTS_BUILD: "1" }
+  let build = [
+    cargo tauri ...(tauri-subcommand $target) build
+    --features $flavor
+    --config (platform-config $target)
+    --config (flavor-config $flavor)
+    ...$args
+  ]
+  # Secrets exist only inside the `secretspec run` child, so a derived
+  # variable is exported by a shell there, which then execs the build.
+  let wrapped = if ($derived | is-empty) {
+    $build
+  } else {
+    let exports = $derived
+      | items { |name, source| "export " + $name + "=\"$" + $source + "\"" }
+      | str join "; "
+    [sh -c ($exports + "; exec \"$@\"") sh ...$build]
+  }
+  let command = [secretspec run --profile release --scope $target -- ...$wrapped]
+
+  if $target in $SCRUBBED {
+    let system = if $target in $SYSTEM_FIRST { $SYSTEM_PATH } else { [] }
+    let path = [...$system ...$path_prefix ...$env.PATH] | str join (char esep)
+    let pairs = $vars
+      | merge { HOME: $env.HOME, USER: $env.USER, PATH: $path }
+      | items { |key, value| $"($key)=($value)" }
+    ^env -i ...$pairs ...$command
+  } else {
+    with-env $vars { run-external ...$command }
+  }
+}
+
+def build-ios [flavor: string, rest: list<string>] {
+  # Inside a devenv both SDKROOT and DEVELOPER_DIR point to a Nix apple-sdk,
+  # which cc-rs rejects for iOS targets. The probe runs clean so xcode-select
+  # answers with the system-wide setting.
+  let probe = ^env -i PATH=/usr/bin:/bin xcode-select -p | complete
+  let developer_dir = if $probe.exit_code == 0 { $probe.stdout | str trim } else { "" }
+  if ($developer_dir | is-empty) {
+    error make { msg: "No Xcode found. Install it, then: `sudo xcode-select --switch /Applications/Xcode.app`" }
+  }
+  if ($developer_dir | str starts-with "/nix/store/") {
+    error make { msg: $"xcode-select resolves to the Nix store \(($developer_dir)); iOS needs a real Xcode." }
+  }
+  if not ($developer_dir | path exists) {
+    error make { msg: $"No Xcode at ($developer_dir)" }
+  }
+
+  let ios_root = $env.TAURI_IOS_PROJECT_PATH
+  do { cd $ios_root; ^xcodegen generate }
+  rm -rpf ($ios_root | path join build)
+
+  # Built as a record and serialized rather than written as a JSON literal:
+  # `to json --raw` is what keeps the quoting out of the string.
+  let build_number = $env.WAYPOINTS_BUILD_CODE? | default ""
+  let version_config = if ($build_number | is-empty) { [] } else {
+    ["--config" ({ bundle: { iOS: { bundleVersion: $build_number } } } | to json --raw)]
+  }
+
+  # App Store profiles are per bundle identifier, so the manifest keeps one per
+  # flavor; Tauri reads whichever one lands in IOS_MOBILE_PROVISION.
+  let profile_source = "IOS_MOBILE_PROVISION_" + ($flavor | str uppercase)
+
+  # The flavor's productName — "Waypoints (Nightly)" — is what names the
+  # desktop bundles, but on iOS Tauri also makes it the executable name, and
+  # App Store Connect rejects executables containing parentheses. The base
+  # name takes over here; the flavor label reaches the home screen through
+  # CFBundleDisplayName, merged in from the flavor's `bundle.iOS.infoPlist`.
+  let base_name = open ($env.TAURI_APP_PATH | path join Tauri.toml) | get productName
+  let executable_config = ["--config" ({ productName: $base_name } | to json --raw)]
+
+  run-build ios $flavor {
+    DEVELOPER_DIR: $developer_dir
+    CC_aarch64_apple_ios: /usr/bin/clang
+    CXX_aarch64_apple_ios: /usr/bin/clang++
+    CARGO_TARGET_AARCH64_APPLE_IOS_LINKER: /usr/bin/clang
+    TAURI_IOS_PROJECT_PATH: $ios_root
+  } [
+    # Xcode's toolchain ahead of the ambient PATH, so `swift-build` and friends
+    # resolve to Apple's rather than the Nix wrapper, which does not provide them.
+    ($developer_dir | path join Toolchains XcodeDefault.xctoolchain usr bin)
+  ] [...(version-config ios) ...$executable_config ...$version_config ...$rest] --derived { IOS_MOBILE_PROVISION: $profile_source }
+}
+
+def build-android [flavor: string, rest: list<string>] {
+  # Fail loudly rather than half-configure: locally these come from the
+  # android devenv profile, in CI from setup-android/setup-java.
+  let android_home = $env.ANDROID_HOME? | default ""
+  if ($android_home | is-empty) {
+    error make { msg: "ANDROID_HOME unset — enter the android devenv profile, or run under setup-android in CI" }
+  }
+  let java_home = $env.JAVA_HOME? | default ""
+  if ($java_home | is-empty) { error make { msg: "JAVA_HOME unset — Gradle needs a JDK" } }
+
+  mut ndk_home = $env.NDK_HOME? | default ($env.ANDROID_NDK_HOME? | default "")
+  if ($ndk_home | is-empty) {
+    let installed = $android_home | path join ndk
+    if not ($installed | path exists) {
+      error make { msg: $"No Android NDK found: ($installed) does not exist. Set NDK_HOME or install one." }
+    }
+    $ndk_home = (ls $installed | where type == dir | get name | sort --natural | last)
+  }
+  if not ($ndk_home | path exists) {
+    error make { msg: $"No Android NDK at ($ndk_home). Set `NDK_HOME` or install one." }
+  }
+
+  # The NDK names its cross-compilers' directory after the build host; the
+  # same table lives in nix/devenv/android.nix.
+  let hosts = {
+    # NOTE: Android doesn't support building from arm64-linux
+    "x86_64-linux": "linux-x86_64"
+    # NOTE: Android ships arm64-macos-compatible tools under x86_64-darwin
+    "aarch64-macos": "darwin-x86_64"
+    "x86_64-macos": "darwin-x86_64"
+  }
+  # NOTE: `$nu.os-info.name` gives the OS; `sys host`'s gives the distribution
+  let platform = $"($nu.os-info.arch)-($nu.os-info.name)"
+  let host = $hosts | get -o $platform
+  if $host == null {
+    error make { msg: $"No Android NDK host toolchain for ($platform); supported: ($hosts | columns | str join ', ')" }
+  }
+  let ndk_bin = $ndk_home | path join toolchains llvm prebuilt $host bin
+  if not ($ndk_bin | path exists) { error make { msg: $"No NDK toolchain at ($ndk_bin)" } }
+
+  let platform_config = platform-config android
+  let api = open $platform_config | get -o bundle.android.minSdkVersion
+  if $api == null {
+    error make { msg: $"minSdkVersion is not declared in ($platform_config)" }
+  }
+
+  # Align targets handed to `tauri` with targets supported by `rust-toolchain.toml`.
+  let rust_toolchain = $env.PROJECT_ROOT | path join rust-toolchain.toml
+  let triples = open $rust_toolchain | get toolchain.targets | where $it =~ '-linux-android'
+  if ($triples | is-empty) {
+    error make { msg: $"No Android targets declared in ($rust_toolchain)" }
+  }
+
+  # `--target` only needs the leading component of the platform triple.
+  let target_flags = $triples
+    | each { |t| ["--target", ($t | str replace --regex '-linux-android.*' '')] }
+    | flatten
+
+  # cc-rs keys off the snake-cased triple, cargo off the upper-cased one. The NDK
+  # names armv7's driver `armv7a-...`. Derived so that it matches `rust-toolchain.toml`
+  let compilers = $triples | each { |triple|
+      let clang = $"($ndk_bin)/($triple | str replace 'armv7-' 'armv7a-')($api)-clang"
+      let snake = $triple | str replace --all '-' '_'
+      {
+        $"CC_($snake)": $clang
+        $"CXX_($snake)": $"($clang)++"
+        $"AR_($snake)": $"($ndk_bin)/llvm-ar"
+        $"CARGO_TARGET_($snake | str uppercase)_LINKER": $clang
+      }
+    }
+    | reduce --fold {} { |it, acc| $acc | merge $it }
+
+  let base_identifier = { identifier: (open ($env.TAURI_APP_PATH | path join Tauri.toml) | get identifier) }
+    | to json --raw
+
+  run-build android $flavor ({
+    ANDROID_HOME: $android_home
+    ANDROID_NDK_HOME: $ndk_home
+    NDK_HOME: $ndk_home
+    JAVA_HOME: $java_home
+    TAURI_ANDROID_PROJECT_PATH: $env.TAURI_ANDROID_PROJECT_PATH
+  } | merge $compilers) [] [
+    ...(version-config android)
+    # After the flavor, because `--config` merges in order and this must win.
+    --config $base_identifier
+    ...$target_flags
+    ...$rest
+  ]
+}
+
+# Dev server for `target`, with the development profile's values; no scrub.
+def "main dev" [
+  target: string,
+  --flavor (-f): string = "development",
+  ...rest: string,
+]: nothing -> nothing {
+  let target = resolve-target $target
+  let flavor = normalize-flavor $flavor
+  with-env { WAYPOINTS_FLAVOR: $flavor } {
+    (^secretspec run --profile development --scope $target --
+      cargo tauri ...(tauri-subcommand $target) dev
+      --features $flavor
+      --config (platform-config $target)
+      --config (flavor-config $flavor)
+      ...$rest)
+  }
+}
+
+# Release build for `target`, signed with the release scope's secrets.
+def "main build" [
+  target: string,
+  --flavor (-f): string = "stable",
+  ...rest: string,
+]: nothing -> nothing {
+  let target = resolve-target $target
+  let flavor = normalize-flavor $flavor
+  match $target {
+    ios => (build-ios $flavor $rest)
+    android => (build-android $flavor $rest)
+    _ => (run-build $target $flavor {} [] $rest)
+  }
+}
+
+def main []: nothing -> nothing {
+  help main
+}

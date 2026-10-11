@@ -1,6 +1,7 @@
 //! How a database is opened: read-pool size, per-connection pragmas, and the
 //! enforced schema version.
 
+use crate::SyncMode;
 use std::collections::BTreeMap;
 
 /// Options for [`Database::open_with`](crate::Database::open_with).
@@ -28,6 +29,14 @@ pub struct Config {
     /// WAL lets pooled readers run concurrently with the writer. Ignored for
     /// `:memory:`, which has no on-disk journal.
     pub wal: bool,
+
+    /// `PRAGMA synchronous` applied to every connection — the crash-safety
+    /// knob. Defaults to [`SyncMode::Full`], set explicitly rather than
+    /// inherited from the engine default (a pre-v1 upstream deviation from
+    /// SQLite that an engine bump could silently reverse). Verified at open
+    /// alongside the WAL pragma; see
+    /// [`Database::durability_fault`](crate::Database::durability_fault).
+    pub synchronous: SyncMode,
 }
 
 impl Default for Config {
@@ -37,6 +46,7 @@ impl Default for Config {
             pragma: BTreeMap::new(),
             version: 0,
             wal: true,
+            synchronous: SyncMode::Full,
         }
     }
 }
@@ -62,6 +72,13 @@ impl Config {
     /// Set the enforced `PRAGMA user_version`.
     pub fn version(mut self, version: i64) -> Self {
         self.version = version;
+        self
+    }
+
+    /// Set the synchronous level — the explicit way to weaken (or restate)
+    /// the crash-safety default. The level set here is what open verifies.
+    pub fn synchronous(mut self, level: SyncMode) -> Self {
+        self.synchronous = level;
         self
     }
 }

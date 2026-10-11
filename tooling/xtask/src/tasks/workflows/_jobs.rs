@@ -2,7 +2,8 @@
 //! and wires their `needs:`.
 
 use super::{
-    Channel, GITHUB_TOKEN, Platform, PrepareJob, TestSuite, WorkflowContext, helpers::ANDROID_HOME,
+    Channel, GITHUB_TOKEN, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext,
+    helpers::{ANDROID_HOME, Profile},
     runners, steps,
 };
 use gh_workflow::{
@@ -12,6 +13,13 @@ use gh_workflow::{
 /// The environment variable a build reads its store build number from. One
 /// name; [`build_code`] decides which value fills it.
 pub const BUILD_CODE_ENV: &str = "WAYPOINTS_BUILD_CODE";
+
+/// The environment variable a mobile build reads the app version from. Tauri
+/// takes it as its config `version`, which the manifest leaves unset, so
+/// without this the stores see Gradle's and Xcode's fallbacks (`1.0`,
+/// `1.0.0`). iOS shows the release and the date as `0.1.0 (2026.10.10)`;
+/// the Gradle project renders Android's `versionName` the same way.
+pub const VERSION_ENV: &str = "WAYPOINTS_VERSION";
 
 /// The planner output carrying `platform`'s build number, or `None` where the
 /// platform's store has no such concept. Android's `versionCode` is a single
@@ -24,21 +32,49 @@ fn build_code(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
     }
 }
 
+/// The planner output carrying the app version, for the platforms that stamp
+/// it: the mobile ones, whose stores reject Tauri's fallbacks. The desktop
+/// bundles take their version from the crate.
+fn app_version(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
+    platform.is_mobile().then_some(&prepare.version)
+}
+
+/// Passed to the planner only on a manual dispatch, which builds without
+/// publishing.
+///
+/// A nightly's store build number is its date, so a second publish on one day
+/// could not produce a distinct one. A dispatch exercises the pipeline and
+/// leaves publishing to the next scheduled run; its artifacts still carry the
+/// numbers that run would mint, so they can be uploaded by hand.
+const BUILD_ONLY_ON_DISPATCH: &str =
+    "${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}";
+
+/// Names the mise config environments a job installs. Additive: each one adds
+/// its `[tools]` to the base, so a job declares what it does and gets exactly
+/// that. Replaced a deny-list of tool specs, which named what to skip and so
+/// had to be re-derived every time the tool set moved — and silently no-opped
+/// when a spec it named had been renamed out from under it.
+fn mise_env(job: Job, envs: &[MiseEnv]) -> Job {
+    job.add_env(MiseEnv::select(envs))
+}
+
 /// Resolves the nightly tag: derive it from the workspace version, skip the run
 /// when nothing landed since the last nightly, and create the tag.
-pub fn prepare() -> PrepareJob {
-    let planner = steps::cargo_xtask("nightly-plan", &[])
+pub fn prepare(context: &WorkflowContext) -> PrepareJob {
+    let planner = steps::cargo_xtask("nightly-plan", &[(BUILD_ONLY_ON_DISPATCH, None)])
         .id("nightly-plan")
         .add_env(("GH_TOKEN", GITHUB_TOKEN));
 
     let p_tag = StepOutput::new_trusted(&planner, "tag");
     let p_build = StepOutput::new_trusted(&planner, "should_build");
+    let p_app_version = StepOutput::new_trusted(&planner, "version");
     let p_version = StepOutput::new_trusted(&planner, "version_code");
     let p_bundle = StepOutput::new_trusted(&planner, "bundle_version");
 
     let job = NamedJob::new(
         "prepare",
-        Job::default()
+        // The planner is a `cargo xtask` run and nothing more.
+        mise_env(Job::default(), &[MiseEnv::Xtask])
             .name("Plan the nightly")
             // Write: the planner creates the nightly tag ref.
             .permissions(Permissions::default().contents(Level::Write))
@@ -46,11 +82,17 @@ pub fn prepare() -> PrepareJob {
             // Tags without history: the planner resolves them to commits but
             // never walks between them.
             .add_step(steps::checkout().add_with(("fetch-tags", true)))
-            .add_step(steps::setup_mise(false.into()))
+            .add_step(steps::setup_mise(false.into(), &context.mise_version))
+            // Compiling the planner is the whole job: 5m25s of a 6m10s run,
+            // against 39s to install its tools. Cached because nothing here is
+            // published — see `rust_cache` for why writing only from `main` is
+            // what keeps that safe.
+            .add_step(steps::rust_cache())
             .add_step(planner)
             .outputs([
                 p_tag.clone().as_output(),
                 p_build.clone().as_output(),
+                p_app_version.clone().as_output(),
                 p_version.clone().as_output(),
                 p_bundle.clone().as_output(),
             ]),
@@ -59,6 +101,7 @@ pub fn prepare() -> PrepareJob {
     PrepareJob::new(
         p_tag.as_job_output(&job),
         p_build.as_job_output(&job),
+        p_app_version.as_job_output(&job),
         p_version.as_job_output(&job),
         p_bundle.as_job_output(&job),
         job,
@@ -67,28 +110,40 @@ pub fn prepare() -> PrepareJob {
 
 /// Runs the suite on one platform, as two steps: the plan resolves the
 /// filterset, and the run is skipped when it comes back empty.
-pub fn test(suite: TestSuite, platform: Platform) -> NamedJob {
+pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> NamedJob {
     // The command publishes its own step output, so no shell redirection and
     // nothing spelled differently for PowerShell on Windows.
     let plan = steps::cargo_xtask("test-plan", &[(suite.flag(), None)]).id("test-plan");
     let filterset = StepOutput::new_trusted(&plan, "filterset");
 
-    let job = Job::default()
+    // Both suites run the same two commands, so both want the same environment
+    // — unlike the deny-list this replaced, where the changed-suite job was
+    // left with the full tool set because narrowing it meant naming tools.
+    let job = mise_env(Job::default(), &[MiseEnv::Test])
         .name(format!("Test {platform}"))
         .permissions(Permissions::default().contents(Level::Read))
         .runs_on(platform.runner())
         // The change-scoped plan diffs against the merge base, which a shallow
         // clone does not contain.
         .add_step(steps::checkout().add_with(("fetch-depth", 0)))
-        // Release workflows run cold: their caching steps would count against
-        // the artifacts the sibling build jobs publish.
+        // Before mise and before the build: the workspace's debug test build
+        // exhausts a stock Linux image on its own, and reclaiming afterwards
+        // would be too late. Safe to drop the SDK here — this job tests, it
+        // never builds for Android.
+        .when(platform.is_linux(), |job| {
+            job.add_step(steps::free_disk_space(true))
+        })
+        // mise's own cache stays off for the release suite, which runs cold
+        // alongside the build jobs that publish.
         .add_step(steps::setup_mise(
             matches!(suite, TestSuite::Changed).into(),
+            &context.mise_version,
         ))
-        // After mise: the cache key fingerprints the resolved rustc version.
-        .when(matches!(suite, TestSuite::Changed), |job| {
-            job.add_step(steps::rust_cache())
-        })
+        // The compiled-dependency cache, however, applies to both suites: a
+        // test job publishes nothing, and compiling the workspace is what makes
+        // these runs 20–33 minutes. After mise, because the cache key
+        // fingerprints the resolved rustc version.
+        .add_step(steps::rust_cache())
         // Tauri links WebKitGTK on Linux, so even a library test build needs it.
         .when(platform.is_linux(), |job| {
             job.add_step(steps::install_linux_deps())
@@ -104,11 +159,17 @@ pub fn test(suite: TestSuite, platform: Platform) -> NamedJob {
 /// The tag guards sit on the steps, not the job: the builds `need` this job,
 /// and a skipped job would drag them down with it — on a build-only run the
 /// job runs and every step no-ops.
-pub fn create_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
+pub fn create_release(
+    channel: Channel,
+    prepare: Option<&PrepareJob>,
+    context: &WorkflowContext,
+) -> NamedJob {
     let tag = prepare.map(|prepare| &prepare.tag);
     let publishing = || Channel::tag_condition(tag);
 
-    let job = Job::default()
+    // `git-cliff` is the only tool this job runs through mise, and it lives in
+    // `xtask` — the lane the release-automation jobs share.
+    let job = mise_env(Job::default(), &[MiseEnv::Xtask])
         .name("Draft the release")
         .permissions(Permissions::default().contents(Level::Write))
         .runs_on(runners::LINUX)
@@ -126,7 +187,7 @@ pub fn create_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJo
                 .add_with(("fetch-tags", true))
                 .if_condition(publishing()),
         )
-        .add_step(steps::setup_mise(false.into()).if_condition(publishing()))
+        .add_step(steps::setup_mise(false.into(), &context.mise_version).if_condition(publishing()))
         .add_step(steps::release_notes(tag))
         .add_step(steps::create_release(channel, tag));
 
@@ -168,13 +229,33 @@ pub fn build(
 ) -> NamedJob {
     // Absent off nightly, where the tag's own semver suffices.
     let build_code = prepare.and_then(|prepare| build_code(prepare, platform));
+    let version = prepare.and_then(|prepare| app_version(prepare, platform));
+    let tag = prepare.map(|prepare| &prepare.tag);
 
-    let job = Job::default()
+    // The mobile lanes need `fastlane`, `xcodegen` and the nushell the `_build`
+    // recipes are written in; the desktop ones do not.
+    let envs: &[MiseEnv] = if platform.is_mobile() {
+        &[MiseEnv::BuildMobile]
+    } else {
+        &[MiseEnv::BuildDesktop]
+    };
+
+    let job = mise_env(Job::default(), envs)
         .permissions(Permissions::default().contents(Level::Write))
         .name(format!("Build {platform}"))
+        // The build and, on mobile, the publish resolve the release profile,
+        // so the vault credential comes from the release environment.
+        .environment(Profile::Release.environment())
         .runs_on(platform.runner())
         .cond(channel.guard(platform, prepare.map(|prepare| &prepare.should_build)))
         .add_step(steps::checkout())
+        // Both of these build on an Ubuntu runner, and both are large enough to
+        // be worth the reclaim. It runs before `setup-android` so nothing is
+        // removed after being installed — and Android keeps its runtime, since
+        // `setup-android` configures the image's SDK rather than fetching one.
+        .when(platform.is_linux() || platform.is_android(), |job| {
+            job.add_step(steps::free_disk_space(!platform.is_android()))
+        })
         .when(platform.is_android(), |job| {
             // `setup-android` installs the SDK but not an NDK; the version devenv
             // pins has to be requested explicitly.
@@ -182,20 +263,19 @@ pub fn build(
                 .add_step(steps::setup_android_sdk())
                 .add_step(steps::install_ndk(&context.android_ndk))
         })
-        .when(platform.is_ios(), |job| {
-            // Adds `xcodegen` toolset
-            job.add_env(("MISE_ENV", "ios"))
-        })
         .when(platform.is_linux(), |job| {
             // Tauri's Linux backend is WebKitGTK, absent from the runner image.
             job.add_step(steps::install_linux_deps())
         })
-        .add_step(steps::setup_mise(false.into()))
+        .add_step(steps::setup_mise(false.into(), &context.mise_version))
         .add_step(steps::pnpm_install())
         .add_step(
             steps::build(channel, platform)
                 .when_some(build_code, |step, code| {
                     step.add_env((BUILD_CODE_ENV, code.to_string()))
+                })
+                .when_some(version, |step, version| {
+                    step.add_env((VERSION_ENV, version.to_string()))
                 })
                 .when(platform.is_android(), |step| {
                     step.add_env((
@@ -205,12 +285,9 @@ pub fn build(
                 }),
         )
         .add_step(steps::upload_artifact(channel, platform))
-        .add_step(steps::upload_to_release(
-            platform,
-            prepare.map(|prepare| &prepare.tag),
-        ))
+        .add_step(steps::upload_to_release(platform, tag))
         .when(platform.is_mobile(), |job| {
-            job.add_step(steps::fastlane(platform, channel))
+            job.add_step(steps::fastlane(platform, channel, tag))
         })
         // Reads the planner's outputs, so it waits on the planner.
         .when_some(prepare, |job, prepare| {
@@ -228,7 +305,7 @@ mod tests {
     /// Swapping these would hand Play a value it cannot parse.
     #[test]
     fn each_platform_draws_its_own_build_code() {
-        let prepare = prepare();
+        let prepare = prepare(&WorkflowContext::fixture());
 
         assert_eq!(
             build_code(&prepare, Platform::Android).map(JobOutput::expr),
@@ -244,18 +321,40 @@ mod tests {
         }
     }
 
-    /// The name injected here has to be the name the build scripts read; both
-    /// consumers fall back silently when the variable is absent.
+    /// The names injected here have to be the names the build scripts read;
+    /// every consumer falls back silently when a variable is absent.
     #[test]
-    fn the_build_scripts_read_the_variable_we_inject() {
+    fn the_build_scripts_read_the_variables_we_inject() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read = |consumer: &str| {
+            fs::read_to_string(root.join(consumer))
+                .unwrap_or_else(|error| panic!("{consumer}: {error}"))
+        };
         for consumer in [
             "src-tauri/gen/android/app/build.gradle.kts",
-            "src-tauri/.just/iOS.justfile",
+            "tooling/bin/xtauri",
         ] {
-            let source = fs::read_to_string(root.join(consumer))
-                .unwrap_or_else(|error| panic!("{consumer}: {error}"));
+            let source = read(consumer);
             assert!(source.contains(BUILD_CODE_ENV), "{consumer}");
+            assert!(source.contains(VERSION_ENV), "{consumer}");
+        }
+    }
+
+    /// Only mobile builds stamp the version: the desktop bundles take theirs
+    /// from the crate, and the stores are what reject the fallbacks.
+    #[test]
+    fn only_mobile_builds_receive_the_version() {
+        let prepare = prepare(&WorkflowContext::fixture());
+
+        for platform in [Platform::Android, Platform::iOS] {
+            assert_eq!(
+                app_version(&prepare, platform).map(JobOutput::expr),
+                Some(prepare.version.expr()),
+                "{platform}"
+            );
+        }
+        for platform in [Platform::macOS, Platform::Linux, Platform::Windows] {
+            assert!(app_version(&prepare, platform).is_none(), "{platform}");
         }
     }
 }

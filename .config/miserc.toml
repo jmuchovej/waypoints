@@ -1,0 +1,10 @@
+# config *discovery* only — mise reads this before `mise*.toml` files (e.g.,
+# `auto_env`, `env`, etc.). all other settings go in `.config/mise/conf.d/base.toml`.
+#
+# `mise settings get` cannot test a key here — it reads a different subsystem
+# and reports "not set" for `auto_env` even while `auto_env` is working. probe
+# by behavior instead: set `env = [ "x" ]`, confirm `mise.x.toml` loads, remove
+# this file, confirm it stops.
+
+auto_env   = true
+env_conf_d = true

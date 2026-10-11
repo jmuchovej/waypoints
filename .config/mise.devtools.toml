@@ -1,0 +1,24 @@
+[tools]
+"aqua:EmbarkStudios/cargo-deny" = "0.20.2"
+"aqua:crate-ci/typos" = "1.50.1"
+"aqua:google/keep-sorted" = "0.10.0"
+"aqua:jdx/hk" = "1.57.0"
+"aqua:lycheeverse/lychee" = "0.24.2"
+"aqua:oxipng/oxipng" = "10.2.1"
+"aqua:tombi-toml/tombi" = "1.5.2"
+"aqua:zizmorcore/zizmor" = "1.30.1"
+"core:ruby" = "3.4.9"
+"github:Mic92/nixfmt-rs" = "0.5.3"
+"github:facebook/ktfmt" = "0.63"
+
+[tools."aqua:numtide/treefmt"]
+os = ["linux", "macos"]
+version = "2.6.0"
+
+[tools."gem:rufo"]
+depends = ["ruby"]
+version = "0.18.1"
+
+[tools."npm:oxfmt"]
+depends = ["node"]
+version = "0.61.0"

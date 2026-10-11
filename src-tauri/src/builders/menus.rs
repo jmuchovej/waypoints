@@ -270,6 +270,7 @@ async fn check_for_updates(handle: AppHandle) {
     };
 
     match updater.check().await {
+        #[cfg(feature = "self-update")]
         Ok(Some(update)) => {
             tracing::info!("update available: v{}", update.version);
 
@@ -290,6 +291,24 @@ async fn check_for_updates(handle: AppHandle) {
 
             tracing::info!("update installed, restarting");
             handle.restart();
+        }
+        // Store-installed builds (e.g. Nix) cannot rewrite their own install
+        // path: surface the new version, never download or install.
+        #[cfg(not(feature = "self-update"))]
+        Ok(Some(update)) => {
+            use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+
+            tracing::info!("update available: v{} (notify-only build)", update.version);
+
+            handle
+                .dialog()
+                .message(format!(
+                    "Waypoints v{} is available (you have v{}).\n\nThis build updates through your package manager, not in-place.",
+                    update.version, update.current_version,
+                ))
+                .title("Update available")
+                .kind(MessageDialogKind::Info)
+                .show(|_| {});
         }
         Ok(None) => {
             tracing::info!("no update available");

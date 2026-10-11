@@ -58,6 +58,21 @@ setup:
     @just app::setup
     @just tauri::setup
 
+[doc("Refreshes every mise lockfile.")]
+[script]
+mise-lock:
+    # Deliberately not run on shell entry. mise reports success after a
+    # rate-limited run that wrote only part of the lockfile, so this belongs at
+    # a moment someone is reading the output.
+    export SECRETSPEC_REASON="just mise-lock refreshes the mise lockfiles, which needs an authenticated GitHub client"
+    devenv shell -- secretspec run --reason "mise resolves lockfile entries through the GitHub API, which is rate-limited to sixty requests an hour unauthenticated" -- mise-lock
+
+[doc("Checks every mise lockfile against its config. Offline; no token needed.")]
+[script]
+mise-lock-check:
+    export SECRETSPEC_REASON="just mise-lock-check compares the mise lockfiles against their configs; no secret values are read"
+    devenv shell -- mise-lock --check
+
 [doc("Verifies that devenv-managed files and xtask-generated workflows don't differ from committed files.")]
 [script]
 check-generated:
@@ -77,7 +92,18 @@ check-generated:
     fi
 
     rc=0
-    git --no-pager diff HEAD --exit-code -- $files || rc=1
+    # Colocated checkouts have a .git where HEAD is jj's @-; added jj
+    # workspaces have no .git, but `jj diff -r @` asks the same question
+    # against the same baseline (the working-copy commit's parent).
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+      git --no-pager diff HEAD --exit-code -- $files || rc=1
+    else
+      stale="$(jj diff -r @ --name-only -- $files)"
+      if [ -n "$stale" ]; then
+        jj diff -r @ --git -- $files
+        rc=1
+      fi
+    fi
     devenv shell cargo xtask workflows --check || rc=1
 
     if [ "$rc" -ne 0 ]; then
@@ -117,3 +143,26 @@ renovate-plan mode="full":
 
     sed -n '/"managers": {/,/"total"/p' "$log"
     echo "Full output: $log"
+
+[doc("Runs the cargo-deny supply-chain checks, verifying its target list first.")]
+deny: deny-targets
+    cargo-deny check
+
+[doc("Fails if .cargo/deny.toml graph.targets drifted from rust-toolchain.toml's targets.")]
+[script("nu")]
+deny-targets:
+    let toolchain = (open rust-toolchain.toml | get toolchain.targets | sort)
+    let deny = (open .cargo/deny.toml | get graph.targets | sort)
+    let missing = ($toolchain | where {|t| $t not-in $deny})
+    let extra = ($deny | where {|t| $t not-in $toolchain})
+    if ($missing | is-empty) and ($extra | is-empty) {
+        print $"deny.toml graph.targets in sync with rust-toolchain.toml \(($deny | length) targets)"
+    } else {
+        if ($missing | is-not-empty) {
+            print $"missing from deny.toml graph.targets: ($missing | str join ', ')"
+        }
+        if ($extra | is-not-empty) {
+            print $"in deny.toml but not rust-toolchain.toml: ($extra | str join ', ')"
+        }
+        error make {msg: "deny.toml graph.targets drifted from rust-toolchain.toml"}
+    }

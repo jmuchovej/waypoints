@@ -2,6 +2,9 @@
 default:
     @just --list
 
+test *ARGS:
+    cargo test -p cartograph {{ ARGS }}
+
 typegen:
     cargo run --bin typegen --features development
     treefmt typescript/types.g.ts

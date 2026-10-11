@@ -2,8 +2,8 @@
 
 use cartograph::{
     BuildInfo, CreateResult, CursorState, IdentityCreated, MutationResult, PairingCode, RenderNode,
-    SetupCode, SplitResult, StationStatus, SyncDevice, SyncStatus, Territory, TerritoryKind,
-    UndoRedoResult,
+    SetupCode, SplitResult, StationStatus, SyncDevice, SyncState, SyncStatus, Territory,
+    TerritoryKind, UndoRedoResult,
 };
 use specta::Types;
 use specta_typescript::Typescript;
@@ -20,6 +20,7 @@ fn main() {
 
     // sync
     collection.register_mut::<SyncStatus>();
+    collection.register_mut::<SyncState>();
     collection.register_mut::<IdentityCreated>();
     collection.register_mut::<StationStatus>();
     collection.register_mut::<SyncDevice>();

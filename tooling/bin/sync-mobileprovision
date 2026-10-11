@@ -1,0 +1,141 @@
+#!/usr/bin/env nu
+# Stores a freshly downloaded App Store provisioning profile on the 1Password
+# item the release profile reads, so a regenerated profile reaches CI without a
+# commit.
+#
+#   sync-mobileprovision <stable|preview|nightly> [--path Waypoints_ASC_Nightly.mobileprovision]
+#
+# The profile is checked against the flavor before anything is written: its
+# application-identifier must end in the flavor's bundle identifier, so the
+# nightly field cannot receive the stable profile. The value stored is the
+# unwrapped base64 of the file (what Tauri reads from IOS_MOBILE_PROVISION), set
+# through a JSON template on stdin rather than an argument, so the value is
+# never visible in the process list and the section's dotted name is never
+# parsed as an assignment. Afterwards the file is renamed to
+# `<name>.mobileprovision` next to where it was, so a directory of downloads
+# ends up holding one clearly named profile per flavor. `.mobileprovision`
+# files are gitignored.
+
+const ITEM = "iOS Distribution Profiles"
+const VAULT = "wp-prod"
+
+# Flavor → the bundle identifier its App Store profile is issued for, which is
+# also the item section holding its field.
+const BUNDLES = {
+  stable: "so.waypoints"
+  preview: "so.waypoints.preview"
+  nightly: "so.waypoints.nightly"
+}
+
+# The decoded profile's plist, via Security.framework's CMS tooling. Kept as
+# XML: the profile carries <data> and <date> values that plutil's JSON
+# conversion refuses, so keys are read one at a time instead.
+def profile-plist [path: path]: nothing -> string {
+  let xml = ^security cms -D -i $path | complete
+  if $xml.exit_code != 0 {
+    error make { msg: $"($path) is not a provisioning profile: ($xml.stderr | str trim)" }
+  }
+  $xml.stdout
+}
+
+# One key of the profile, or null when the profile has no such key.
+def profile-key [plist: string, key: string]: nothing -> any {
+  let out = $plist | ^plutil -extract $key raw -o - - | complete
+  if $out.exit_code == 0 { $out.stdout | str trim } else { null }
+}
+
+# plutil reads key paths jq-style, so the dots inside an entitlement name are
+# escaped to keep it one key under `Entitlements`.
+def entitlement-path [key: string]: nothing -> string {
+  "Entitlements." + ($key | str replace --all "." "\\.")
+}
+
+# The entitlements the archive will carry, which the profile has to grant: the
+# keys committed in the Xcode target's entitlements file, plus the one the
+# deep-link plugin's build script inserts at build time for every
+# `[[plugins.deep-link.mobile]]` entry with a host (universal links). The
+# committed file is the pre-build state, so reading it alone would miss that.
+def required-entitlements []: nothing -> list<string> {
+  let committed = open --raw ($env.TAURI_IOS_PROJECT_PATH | path join Waypoints_iOS Waypoints_iOS.entitlements)
+    | ^plutil -convert json -o - -
+    | from json
+    | columns
+  let app_links = open ($env.TAURI_APP_PATH | path join Tauri.toml)
+    | get -o plugins.deep-link.mobile
+    | default []
+    | where { |d| ($d | get -o host | default "") | is-not-empty }
+  let injected = if ($app_links | is-empty) { [] } else { ["com.apple.developer.associated-domains"] }
+  $committed | append $injected | uniq
+}
+
+def main [
+  name: string,
+  --path (-p): string,
+  --check (-c),  # validate the profile against the flavor and the app's entitlements; write nothing
+]: nothing -> nothing {
+  if $name not-in ($BUNDLES | columns) {
+    error make { msg: $"Unknown flavor ($name); expected one of ($BUNDLES | columns | str join ', ')" }
+  }
+  let bundle = $BUNDLES | get $name
+  let path = $path | default $"($name).mobileprovision" | path expand
+  if not ($path | path exists) {
+    error make { msg: $"No profile at ($path)" }
+  }
+
+  # Refuse a profile for the wrong app before touching the vault.
+  let plist = profile-plist $path
+  let app_id = profile-key $plist "Entitlements.application-identifier" | default ""
+  if not ($app_id | str ends-with $".($bundle)") {
+    error make { msg: $"($path) is for ($app_id), not ($bundle) — wrong profile for ($name)" }
+  }
+  let profile_name = profile-key $plist "Name" | default "(unnamed)"
+  # A profile that grants less than the archive asks for fails the export
+  # twenty minutes into a CI run, so it is refused here instead. The App ID's
+  # capabilities decide what a profile grants; a profile generated before a
+  # capability was enabled keeps the old set.
+  let required = required-entitlements
+  let missing = $required | where { |key| profile-key $plist (entitlement-path $key) | is-empty }
+  if ($missing | is-not-empty) {
+    error make { msg: $"($profile_name) does not grant: ($missing | str join ', ') — enable the matching capabilities on ($bundle), regenerate the profile, and sync that one" }
+  }
+  print $"($profile_name): ($app_id), expires (profile-key $plist "ExpirationDate"); grants every entitlement the app asks for \(($required | length))"
+  if $check {
+    return
+  }
+
+  # Unwrapped, like `base64 -w0`: one line is what the manifest expects.
+  let encoded = open --raw $path | encode base64
+
+  # Edit through a template: fetch the item, replace the one field, send it
+  # back on stdin. Matching on section as well as label keeps the three
+  # same-shaped fields apart.
+  let item = ^op item get $ITEM --vault $VAULT --format json | from json
+  let matched = $item.fields | where { |f| $f.label == $name and ($f.section?.label? | default "") == $bundle }
+  if ($matched | length) != 1 {
+    error make { msg: $"Expected exactly one field ($name) in section ($bundle) on ($ITEM); found ($matched | length)" }
+  }
+  let updated = $item | update fields {
+    each { |f| if $f.id == ($matched | first | get id) { $f | update value $encoded } else { $f } }
+  }
+  $updated | to json | ^op item edit $ITEM --vault $VAULT | ignore
+
+  # Read back and compare by digest, so the confirmation proves the stored
+  # value without printing it.
+  let stored = ^op item get $ITEM --vault $VAULT --format json
+    | from json
+    | get fields
+    | where { |f| $f.id == ($matched | first | get id) }
+    | first
+    | get value
+  if ($stored | hash sha256) != ($encoded | hash sha256) {
+    error make { msg: $"($ITEM)/($bundle)/($name) does not match ($path) after the edit" }
+  }
+  print $"synced ($ITEM) › ($bundle) › ($name) from ($path | path basename)"
+
+  # One clearly named profile per flavor, next to wherever it was downloaded.
+  let target = $path | path dirname | path join $"($name).mobileprovision"
+  if $path != $target {
+    mv --force $path $target
+    print $"renamed to ($target | path basename)"
+  }
+}

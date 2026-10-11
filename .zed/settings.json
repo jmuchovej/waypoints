@@ -1,6 +1,13 @@
 {
+  "format_on_save": "on",
+  "formatter": {
+    "external": {
+      "command": "treefmt",
+      "arguments": ["--no-cache", "--stdin", "{buffer_path}"]
+    }
+  },
   "lsp": {
-    "vue": {
+    "vue-language-server": {
       "settings": {
         // Display inlay hints for the `$event` parameter in inline event handlers.
         "vue.inlayHints.inlineHandlerLeading": true,

@@ -2,9 +2,9 @@
 
 use domain::{
     AccountID, Base36ID, Chart, ChartID, Color, Content, DateGranularity, DeviceID, Feature,
-    FeatureID, FeatureKind, GlyphID, HLC, Icon, IconNamespace, InlineMark, Landmark, Mark,
-    MarkData, MarkID, MathEngine, OpID, Reading, RealmID, ReferenceDisplayMode, RichReference,
-    RichText, SelectGroup, SelectOption, Size, Terrain, TerrainKind, TextMarkKind, TextSegment,
+    FeatureID, FeatureKind, GlyphID, Icon, IconNamespace, InlineMark, Landmark, Mark, MarkData,
+    MarkID, MathEngine, OpID, Reading, RealmID, ReferenceDisplayMode, RichReference, RichText,
+    SelectGroup, SelectOption, Size, Terrain, TerrainKind, TextMarkKind, TextSegment,
 };
 use specta::Types;
 use specta_typescript::Typescript;
@@ -54,7 +54,6 @@ fn main() {
     collection.register_mut::<RealmID>();
     collection.register_mut::<DeviceID>();
     collection.register_mut::<OpID>();
-    collection.register_mut::<HLC>();
 
     let out = format!("{}/typescript/types.g.ts", env!("CARGO_MANIFEST_DIR"));
     Typescript::default()

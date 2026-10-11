@@ -33,7 +33,13 @@ pub enum ReferenceDisplayMode {
 }
 
 /// A reference that includes display mode information.
-/// Used for top-level Thing fields like children, created_by, updated_by.
+///
+/// `RichReference` is the typed payload for [`InlineMark`][I] references
+/// within [`MarkData::Content`][C] (e.g., mentions, inline cards, embeds).
+/// Currently, it's unused but remains because it's early, not dead.
+///
+/// [I]: super::InlineMark
+/// [C]: super::MarkData::Content
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct RichReference {
     /// The referenced block ID

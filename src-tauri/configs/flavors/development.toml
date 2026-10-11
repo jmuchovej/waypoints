@@ -1,14 +1,17 @@
 #:schema https://schema.tauri.app/config/2
 
 productName = "Waypoints (Development)"
-version = "0.1.0"
-identifier = "so.waypoints.dev"
+identifier  = "so.waypoints.dev"
 
 [bundle]
-icon = [
-  "icons/development/32x32.png",
-  "icons/development/128x128.png",
-  "icons/development/128x128@2x.png",
-  "icons/development/icon.icns",
-  "icons/development/icon.ico",
-]
+  icon = [
+    "icons/development/32x32.png",
+    "icons/development/128x128.png",
+    "icons/development/128x128@2x.png",
+    "icons/development/icon.icns",
+    "icons/development/icon.ico",
+  ]
+
+  # See nightly.toml: the flavor label reaches iOS through the display name.
+  [bundle.iOS]
+    infoPlist = "configs/flavors/ios/development.plist"

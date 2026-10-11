@@ -25,7 +25,19 @@ fn touch(mut mark: Mark, _op: bedrock::WriteOp) -> Mark {
 
 /// Unique identifier for a [`Mark`].
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type, bedrock::Scalar,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    Display,
+    Type,
+    bedrock::Scalar,
 )]
 #[display("{}", self.inner().to_string().to_lowercase())]
 #[debug("MarkID({})", self.inner().to_string().to_lowercase())]

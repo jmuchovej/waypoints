@@ -4,7 +4,7 @@
 //! Renovate covers the language ecosystems on the same Monday cadence but has
 //! no manager for `devenv.lock`, so nothing else moves these inputs.
 
-use super::{WorkflowContext, helpers, helpers::AUTOMATION_PROFILE, runners, steps};
+use super::{WorkflowContext, helpers, helpers::Profile, runners, steps};
 use gh_workflow::{
     Event, Job, Level, Permissions, Schedule, StepOutput, Workflow, WorkflowDispatch,
 };
@@ -21,8 +21,8 @@ const TITLE: &str = "chore(devenv): update locked inputs";
 
 const BODY: &str = concat!(
     "Ran `devenv update`, then regenerated everything that derives from the ",
-    "lockfile — devenv's `files.\"...\"` outputs, `mise.lock`, and the workflows ",
-    "under `.github/workflows`.\n\n",
+    "lockfile — devenv's `files.\"...\"` outputs, the mise configs and their ",
+    "lockfiles, and the workflows under `.github/workflows`.\n\n",
     "Opened by the weekly schedule in `xtask::workflows::devenv_update`. ",
     "Review the toolchain moves before merging; `check-generated` proves only ",
     "that the tree is self-consistent, not that the new versions work.",
@@ -52,23 +52,33 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let app_token = steps::app_token(TOKEN_SCOPES);
     let token = StepOutput::new_trusted(&app_token, "token");
 
+    // Through the shell, like the step before it: `secretspec` and `op` are
+    // both devenv's here, and nothing installs them any other way.
     let export = steps::SecretSpec::export()
-        .with_profile(AUTOMATION_PROFILE)
+        .with_profile(Profile::Automation)
+        .inside_devenv()
         .with_reason(format!(
-            "CI resolves the {AUTOMATION_PROFILE} profile to authenticate as the app it names"
+            "CI resolves the {} profile to authenticate as the app it names",
+            Profile::Automation.name()
         ));
 
     let update = Job::new("refresh devenv.lock and everything generated from it")
         // Only what `checkout` needs. The branch and the pull request are
         // pushed with the App token, which carries its own write scopes.
         .permissions(Permissions::default().contents(Level::Read))
+        // The vault credential for the automation profile lives here.
+        .environment(Profile::Automation.environment())
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
+        // `devenv update` evaluates and realises the whole environment,
+        // Android SDK and all, which a stock image cannot hold: the first run
+        // died with the runner's own diagnostics unable to write. Nothing here
+        // uses the image's Android SDK, so it goes too.
+        .add_step(steps::free_disk_space(true))
         .add_step(steps::install_nix())
         .add_step(steps::cachix("devenv"))
-        // Both run before any devenv shell exists, so they come from the
-        // ambient profile.
-        .add_step(steps::nix_profile_install(&["devenv", "secretspec"]))
+        // devenv provides us with secretspec already.
+        .add_step(steps::nix_profile_install(&["devenv"]))
         .add_step(steps::devenv_update())
         .add_step(export)
         .add_step(app_token)

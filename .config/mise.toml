@@ -1,48 +1,16 @@
-[[env]]
-PROJECT_ROOT = "{{ config_root }}"
+min_version = "2026.8.6"
 
-[[env]]
-PROJECT_CONFIG_PATH = "{{ env.PROJECT_ROOT }}/.config"
-
-[[env]]
-CLIPPY_CONF_DIR = "{{ env.PROJECT_CONFIG_PATH }}"
-TAURI_APP_PATH = "{{ env.PROJECT_ROOT }}/waypoints/src-tauri"
-TAURI_FRONTEND_PATH = "{{ env.PROJECT_ROOT }}/waypoints"
-TREEFMT_CONFIG = "{{ env.PROJECT_CONFIG_PATH }}/treefmt.toml"
-
-[[env]]
-TAURI_ANDROID_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/android"
-TAURI_IOS_PROJECT_PATH = "{{ env.TAURI_APP_PATH }}/gen/apple"
-
-[settings]
-experimental = true
-idiomatic_version_file_enable_tools = ["rust", "pnpm"]
-lockfile = true
+[env]
 
 [tools]
-"aqua:EmbarkStudios/cargo-deny" = "0.20.2"
-"aqua:FiloSottile/age" = "1.3.1"
-"aqua:cachix/secretspec" = "0.19.0"
+"aqua:1password/cli" = "2.39.0"
+"aqua:cachix/secretspec" = "0.20.0"
 "aqua:casey/just" = "1.58.0"
-"aqua:crate-ci/typos" = "1.49.0"
-"aqua:getsops/sops" = "3.13.3"
 "aqua:mikefarah/yq" = "4.53.3"
-"aqua:nextest-rs/nextest/cargo-nextest" = "0.9.143"
-"aqua:numtide/treefmt" = "2.5.0"
-"aqua:nushell/nushell" = "0.114.1"
-"aqua:orhun/git-cliff" = "2.13.1"
-"aqua:oxipng/oxipng" = "10.1.1"
-"aqua:rhysd/actionlint" = "1.7.12"
+"aqua:nushell/nushell" = "0.115.1"
 "aqua:tauri-apps/tauri/cargo-tauri" = "2.11.4"
-"aqua:tombi-toml/tombi" = "1.2.7"
-"aqua:zizmorcore/zizmor" = "1.29.0"
-"core:deno" = "2.9.4"
-"core:node" = "24.19.0"
-"core:ruby" = "3.4.9"
-"core:swift" = "5.10.1"
-"gem:fastlane" = "2.232.2"
-"gem:rufo" = "0.18.1"
-"github:JetBrains/kotlin" = "2.4.10"
-"github:facebook/ktfmt" = "0.63"
-"npm:oxfmt" = "0.61.0"
-"npm:wrangler" = "4.93.0"
+"core:node" = "24.20.0"
+
+[tools."aqua:pnpm/pnpm"]
+depends = ["node"]
+version = "11.25.0"

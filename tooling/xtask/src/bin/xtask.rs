@@ -13,8 +13,10 @@ struct Args {
 enum Command {
     /// Prints the nextest filterset a CI run should use.
     TestPlan(tasks::TestPlanArgs),
-    /// Resolves the release tag for a Nightly workflow run.
+    /// Mints the release tag for a Nightly workflow run.
     NightlyPlan(tasks::NightlyPlanArgs),
+    /// Plans a release-cycle transition: cut, advance, promote, or patch.
+    ReleasePlan(tasks::ReleasePlanArgs),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::DevenvFilesArgs),
     /// Regenerates every checked-in GitHub Actions workflow.
@@ -30,6 +32,7 @@ fn main() -> Result<()> {
     match args.command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
+        Command::ReleasePlan(args) => tasks::release_plan::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
         Command::DevServer(args) => tasks::dev_server::run(args),

@@ -20,11 +20,10 @@ The Rust backend is organized into domain-focused crates:
 - **`importer`** — Markdown parsing and import (Waypoints format, GitHub Flavored Markdown with GFM alert → callout mapping).
 - **`bedrock-core`, `bedrock-derive`, `bedrock`** — Typed document storage over turso. Collections, derive macros, queries (including JSON-path filters), pooling, and durability. `domain` depends only on the `bedrock` façade.
 - **`outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost`** — The E2EE local-first sync engine. `outpost-protocol` is pure (no tokio/iroh/bedrock). See §11.
-- **`server`** — Dev-only HTTP transport. Not a product surface.
 
 Layering note: **Waypoints uses outpost, never the reverse.**
 
-Type bindings are **specta-generated** TypeScript in `crates/domain/typescript/` (`types.g.ts`, `schema.g.ts`). The frontend consumes these via the `@waypoints/domain` package. Tauri commands are defined in `waypoints/src-tauri/src/commands/` and invoked through a typed IPC layer (`waypoints/app/ipc/`); commands are thin wrappers — test the crates, not the Tauri harness.
+Type bindings are **specta-generated** TypeScript in `crates/domain/typescript/` (`types.g.ts`, `schema.g.ts`). The frontend consumes these via the `@waypoints/domain` package. Tauri commands are defined in `src-tauri/src/commands/` and invoked through a typed IPC layer (`src/app/utils/ipc/`); commands are thin wrappers — test the crates, not the Tauri harness. For browser-based development without Tauri, `cargo xtask dev-server` (in `tooling/xtask`) exposes the same commands over HTTP at `/ipc/<command>` — dev-only, not a product surface.
 
 ---
 
@@ -42,7 +41,7 @@ Mark {
 
 ### MarkID
 
-UUIDv4. Generated on creation, never changes. All references to a Mark (from Terrain edges, from Landmark children, from RichReference fields) use the MarkID. This means renames, content changes, and type changes do not break references.
+UUIDv4. Generated on creation, never changes. All references to a Mark (from Terrain edges, from RichReference fields) use the MarkID. This means renames, content changes, and type changes do not break references.
 
 ### MarkData
 
@@ -159,41 +158,36 @@ Landmark {
     chart:    ChartID,                        // which Chart this conforms to
     title:    RichText,                       // always present
     icon:     Icon | null,                    // typed icon
-    children: Vec<RichReference>,             // ordered child references
     readings: IndexMap<FeatureID, Reading>,   // user-defined field values
 }
 ```
 
 ### Guaranteed Fields
 
-Every Landmark, regardless of Chart, has `title`, `icon`, and `children`. These come from the base Page Chart that all Charts conceptually extend. You never need to define these in a Chart — they exist automatically.
+Every Landmark, regardless of Chart, has `title` and `icon`. These come from the base Page Chart that all Charts conceptually extend. You never need to define these in a Chart — they exist automatically.
 
-### Children
+### Content
 
-`children` is a `Vec<RichReference>`, where each `RichReference` is:
+**Terrain `Child` edges are the only expression of containment and ordering.**
+A Landmark's content — the blocks constituting a page's body, a meeting's
+notes, etc. — is carried entirely by Terrain `Child` edges, ordered by their
+`order` fractional index. `projection::project_landmark` walks
+`terrain::get_child_edges`; no field of the Landmark contributes.
 
-```
-RichReference {
-    id:           MarkID,              // the referenced Mark
-    display_mode: ReferenceDisplayMode // how to render it
-}
-```
+> **Historical note:** Landmark data used to carry a
+> `children: Vec<RichReference>` field — a leftover from an earlier design
+> that was never written or read by production code. It was **removed** so
+> containment is structurally single-authority (a field one device populates
+> and another ignores is a silent-divergence hazard under sync). Rows
+> persisted before the removal may still carry a `"children"` key in stored
+> JSON; it is ignored on read and disappears the next time the row is
+> written. Do not re-add such a field.
 
-Display modes: `Avatar`, `Mention`, `Inline`, `Embed`, `CardXS`, `CardSM`, `CardMD`, `CardLG`, `CardXL`
-
-> **`children` is vestigial — do not treat it as authoritative.** Containment
-> and ordering are carried **entirely by Terrain `Child` edges**, ordered by
-> their `order` fractional index. `projection::project_landmark` walks
-> `terrain::get_child_edges` and never reads this field. Nothing in
-> `cartograph` or `store` writes it; the only writers are the builder mutators
-> `add_child`/`with_children` in `crates/domain/src/mark/mark_data.rs`, which
-> production code does not call.
->
-> Consequence: there is **no dual-source-of-truth problem** here, and nothing
-> for a sync merge law to reconcile — a "child" mutation is a Terrain edge
-> mutation, full stop. The field is dead weight the schema still carries.
-
-Children conceptually represent the ordered content "inside" a Landmark — the blocks constituting a page's body, a meeting's notes, etc. That role is discharged by Terrain `Child` edges; the `Vec<RichReference>` field is a leftover from an earlier design.
+`RichReference` itself survives (`id: MarkID` + `display_mode:
+ReferenceDisplayMode`, modes: `Avatar`, `Mention`, `Inline`, `Embed`,
+`CardXS`–`CardXL`). It is the typed payload intended for inline Mark
+references inside `Content` marks, which today travel untyped on
+`InlineMark.data`; `ReferenceDisplayMode` is live via `FeatureKind::Reference`.
 
 ### Readings
 
@@ -317,7 +311,7 @@ Terrain {
 
 Four variants:
 
-- **`Child`** — parent-child hierarchy. The source contains the destination. This is distinct from Landmark `children` (an ordered list within the Landmark's data). Child Terrain edges represent structural containment in the graph.
+- **`Child`** — parent-child hierarchy. The source contains the destination. Child Terrain edges are the sole expression of structural containment in the graph; Landmark data carries no child list.
 - **`Reference`** — a `[[wiki-style]]` link. The source references the destination. The primary mechanism for the graph's non-hierarchical connections.
 - **`Custom`** — application- or user-defined relationships. The `extra` field carries any distinguishing metadata.
 - **`Reading(ChartID, FeatureID)`** — a `Reference`-kind Reading materialized as a graph edge. The `ChartID`/`FeatureID` identify _which_ Reference feature on _which_ Chart the edge represents, enabling attributed queries ("all backlinks into this landmark via the `attendees` feature of a `Meeting`") without scanning every landmark's readings JSON.
@@ -332,7 +326,7 @@ This means multiple edges of different kinds — or even the same kind — may e
 
 **Edge ordering exists but is kind-specific.** Terrain carries an `order: Option<String>` fractional index, used for ordered kinds (notably `Child`). It is not meaningful for every kind, and edges of unordered kinds have no intrinsic order.
 
-**Terrain `Child` edges are the sole authority for containment.** `Landmark.children` looks like a competing source of truth but is vestigial and never written — see §5. Child ordering lives in the edge's `order` fractional index, not on the Landmark.
+**Terrain `Child` edges are the sole authority for containment.** The former `Landmark.children` field that looked like a competing source of truth has been removed — see §5. Child ordering lives in the edge's `order` fractional index, not on the Landmark.
 
 **Custom edges have no schema validation.** `Custom` relies entirely on the unindexed `extra` JSON field for semantics, so "all edges of custom type X" requires a scan with JSON parsing. Note that `Reading(ChartID, FeatureID)` exists precisely to avoid this for the reference-reading case.
 

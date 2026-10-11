@@ -139,10 +139,8 @@ pub(crate) mod terrain {
 pub use terrain::{Terrain, TerrainBuilder, TerrainID, TerrainKind};
 
 pub(crate) mod sync {
-    pub(crate) mod hlc;
     pub(crate) mod identity;
 
-    pub use hlc::{Clock, HLC, SystemClock};
     pub use identity::{AccountID, DeviceID, OpID, RealmID};
 }
-pub use sync::{AccountID, Clock, DeviceID, HLC, OpID, RealmID, SystemClock};
+pub use sync::{AccountID, DeviceID, OpID, RealmID};

@@ -1,51 +1,51 @@
 [package]
-name = "xtask"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-description.workspace = true
-documentation.workspace = true
-readme.workspace = true
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-publish.workspace = true
-default-run = "xtask"
+  name                    = "xtask"
+  edition.workspace       = true
+  description.workspace   = true
+  documentation.workspace = true
+  readme.workspace        = true
+  homepage.workspace      = true
+  repository.workspace    = true
+  license.workspace       = true
+  publish.workspace       = true
+  default-run             = "xtask"
 
 [[bin]]
-name = "xtask"
+  name = "xtask"
 
 [dependencies]
-cartograph = { workspace = true, features = ["development"] }
-domain.workspace = true
+  cartograph       = { workspace = true, features = [ "development" ] }
+  domain.workspace = true
+  next_version     = "0.2"
 
-anyhow.workspace = true
-async-trait.workspace = true
-axum.workspace = true
-cargo_metadata.workspace = true
-chrono = { workspace = true, features = ["clock", "std"] }
-clap.workspace = true
-derive_more = {
-  workspace = true,
-  features = ["as_ref", "display", "into", "is_variant", "unwrap"]
-}
-directories.workspace = true
-gh-workflow.workspace = true
-heck.workspace = true
-indexmap.workspace = true
-indoc.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-strum.workspace = true
-tokio = {
-  workspace = true,
-  features = ["fs", "macros", "net", "rt-multi-thread"]
-}
-toml.workspace = true
-tower-http.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-uuid.workspace = true
+  anyhow.workspace             = true
+  async-trait.workspace        = true
+  axum.workspace               = true
+  base64.workspace             = true
+  cargo_metadata.workspace     = true
+  chrono                       = { workspace = true, features = [ "clock", "std" ] }
+  clap.workspace               = true
+  derive_more                  = {
+    workspace = true,
+    features  = [ "as_ref", "display", "into", "is_variant", "unwrap" ]
+  }
+  directories.workspace        = true
+  gh-workflow.workspace        = true
+  heck.workspace               = true
+  indexmap.workspace           = true
+  indoc.workspace              = true
+  serde.workspace              = true
+  serde_json.workspace         = true
+  strum.workspace              = true
+  tokio                        = {
+    workspace = true,
+    features  = [ "fs", "macros", "net", "rt-multi-thread" ]
+  }
+  toml.workspace               = true
+  tower-http.workspace         = true
+  tracing.workspace            = true
+  tracing-subscriber.workspace = true
+  uuid.workspace               = true
 
 [lints]
-workspace = true
+  workspace = true

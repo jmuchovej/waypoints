@@ -3,5 +3,5 @@
 
 # https://tauri.app/distribute/google-play/
 [bundle.android]
-minSdkVersion = 28
-debugApplicationIdSuffix = ".debug"
+  minSdkVersion            = 28
+  debugApplicationIdSuffix = ".debug"

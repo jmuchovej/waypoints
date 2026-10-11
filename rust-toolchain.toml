@@ -1,22 +1,27 @@
+#:tombi toml-version = "v1.1.0"
+
 [toolchain]
-channel = "stable"
-targets = [
-  "aarch64-apple-darwin",
-  "aarch64-apple-ios",
-  "aarch64-apple-ios-sim",
+  channel = "1.98.1"
+  targets = [
+    # macOS
+    "aarch64-apple-darwin",
 
-  "x86_64-unknown-linux-gnu",
-  "x86_64-unknown-linux-musl",
-  "aarch64-unknown-linux-gnu",
-  "aarch64-unknown-linux-musl",
+    # Linux (desktop app is glibc-only b/c of webkitgtk)
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    # Linux (`musl` is just for `waypoints-cli` builds)
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-musl",
 
-  "aarch64-linux-android",
-  "x86_64-linux-android",
+    # Windows
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
 
-  "x86_64-pc-windows-msvc",
-  "x86_64-pc-windows-gnu",
-  "x86_64-pc-windows-gnullvm",
-  "aarch64-pc-windows-msvc",
-  "aarch64-pc-windows-gnu",
-  "aarch64-pc-windows-gnullvm",
-]
+    # iOS
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+
+    # Android (x86_64 only serves the emulator on non-ARM hosts)
+    "aarch64-linux-android",
+    "x86_64-linux-android",
+  ]

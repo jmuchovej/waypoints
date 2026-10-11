@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+temp=$(mktemp)
+trap 'rm -f "$temp"' EXIT
+
+for file in "$@"; do
+  if ! xmllint --format "$file" --output "$temp"; then
+    echo "treefmt-xml: $file is not well-formed; left unchanged" >&2
+    exit 1
+  fi
+  if ! cmp -s "$file" "$temp"; then
+    cp "$temp" "$file"
+  fi
+done

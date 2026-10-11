@@ -1,9 +1,9 @@
 #:schema ../gen/schemas/mobile-schema.json
 
-identifier = "mobile"
+identifier  = "mobile"
 description = "Mobile-only capabilities (native barcode scanning)"
-platforms = ["iOS", "android"]
-windows = ["*"]
+platforms   = [ "iOS", "android" ]
+windows     = [ "*" ]
 permissions = [
   "barcode-scanner:allow-scan",
   "barcode-scanner:allow-cancel",

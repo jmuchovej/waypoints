@@ -1,4 +1,5 @@
 use crate::Json;
+use derive_more::IsVariant;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -83,7 +84,7 @@ pub struct InlineMark {
 }
 
 /// Types of text formatting.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type, IsVariant)]
 #[serde(rename_all = "kebab-case")]
 pub enum TextMarkKind {
     Bold,

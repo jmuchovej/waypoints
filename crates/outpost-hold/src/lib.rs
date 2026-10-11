@@ -28,5 +28,5 @@ pub(crate) use outpost_protocol as protocol;
 pub use acl_index::ACLIndex;
 pub use error::HoldError;
 pub use hold::{NoticeIndex, StoredNotice, TerritoryHold};
-pub use models::{ACLs, Backlog, NoticeKey, Notices, RecordKey};
+pub use models::{ACLs, Backlog, Meta, NoticeKey, Notices, RecordKey};
 pub use station_hold::{RegistrationRow, SightingRow, StationHold};

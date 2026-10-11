@@ -62,16 +62,19 @@ const REASON: &str = "xtask reads devenv's managed-file list and Android toolcha
                       versions to generate CI workflows; no secret values are read";
 
 /// The Android NDK version devenv installs, so CI can provision the same one.
+///
+/// Reads `waypoints.android`, this repo's own module. Bare `android.ndk.version`
+/// resolves instead to devenv's built-in integration — unused here since the
+/// move to `android-nixpkgs` — whose default silently answered a stale version
+/// that CI then provisioned.
 pub fn android_ndk_version() -> Result<String> {
-    let attribute = "android.ndk.version";
-    let versions = shell::devenv(attribute)?;
+    let attribute = "waypoints.android.ndk.version";
+    let version = shell::devenv(attribute)?;
 
-    // The option is a list; CI builds against one NDK.
-    versions
-        .get(0)
-        .and_then(serde_json::Value::as_str)
+    version
+        .as_str()
         .map(str::to_owned)
-        .with_context(|| format!("{attribute} was not a non-empty list: {versions}"))
+        .with_context(|| format!("{attribute} was not a version string: {version}"))
 }
 
 /// The JDK major version devenv installs, for `setup-java`. Only the major —

@@ -109,6 +109,13 @@ pub struct Station {
     buses: Mutex<BTreeMap<TerritoryID, broadcast::Sender<BusEvent>>>,
     /// Monotonic session ids — the echo-suppression key on [`BusEvent`].
     next_session: AtomicU64,
+    /// Operator-configured sockets to advertise to Vessels
+    /// ([`with_advertised`](Self::with_advertised)). Empty ⇒
+    /// [`advertised_addr`](Self::advertised_addr) falls back to the bound
+    /// sockets — the same-host posture.
+    advertise: Vec<std::net::SocketAddr>,
+    /// Keepalive/idle-timeout timings for parked live sessions.
+    liveness: crate::fabric::Liveness,
 }
 
 /// One batch of freshly-accepted records on a Territory's bus, tagged with
@@ -184,7 +191,15 @@ impl Station {
     /// accepts no new registrations. For tests and single-Territory embeds;
     /// a self-host Station uses [`hosting`](Self::hosting).
     pub async fn new(secret: &SigningKey, replica: Replica) -> StationResult<Self> {
-        Self::build(secret, None, None, vec![replica]).await
+        Self::build(secret, None, None, vec![replica], false).await
+    }
+
+    /// [`new`](Self::new) on a routable bind — reachable from other hosts.
+    /// Pair with [`with_advertised`](Self::with_advertised) so
+    /// [`advertised_addr`](Self::advertised_addr) hands Vessels an address
+    /// that routes to this host.
+    pub async fn new_routable(secret: &SigningKey, replica: Replica) -> StationResult<Self> {
+        Self::build(secret, None, None, vec![replica], true).await
     }
 
     /// [`new`](Self::new) that also runs the per-Fleet **orderer**,
@@ -194,7 +209,7 @@ impl Station {
         fleet_key: SigningKey,
         replica: Replica,
     ) -> StationResult<Self> {
-        Self::build(secret, Some(fleet_key), None, vec![replica]).await
+        Self::build(secret, Some(fleet_key), None, vec![replica], false).await
     }
 
     /// Bind a Station that homes many Territories under `storage` (a
@@ -203,7 +218,14 @@ impl Station {
     ///
     /// [`Register`]: crate::protocol::SyncMessage::Register
     pub async fn hosting(secret: &SigningKey, storage: &Path) -> StationResult<Self> {
-        Self::build(secret, None, Some(storage.to_owned()), Vec::new()).await
+        Self::build(secret, None, Some(storage.to_owned()), Vec::new(), false).await
+    }
+
+    /// [`hosting`](Self::hosting) on a routable bind — the self-host
+    /// posture: reachable from other hosts at an operator-advertised
+    /// address ([`with_advertised`](Self::with_advertised)).
+    pub async fn hosting_routable(secret: &SigningKey, storage: &Path) -> StationResult<Self> {
+        Self::build(secret, None, Some(storage.to_owned()), Vec::new(), true).await
     }
 
     /// [`hosting`](Self::hosting) that also runs the per-Fleet **orderer**.
@@ -217,6 +239,7 @@ impl Station {
             Some(fleet_key),
             Some(storage.to_owned()),
             Vec::new(),
+            false,
         )
         .await
     }
@@ -226,8 +249,13 @@ impl Station {
         fleet_key: Option<SigningKey>,
         storage: Option<PathBuf>,
         seed: Vec<Replica>,
+        routable: bool,
     ) -> StationResult<Self> {
-        let endpoint = Endpoint::bind_identity(secret).await?;
+        let endpoint = if routable {
+            Endpoint::bind_routable_identity(secret).await?
+        } else {
+            Endpoint::bind_identity(secret).await?
+        };
         let mut territories = BTreeMap::new();
         let mut hold = None;
         let mut sightings: BTreeMap<TerritoryID, Sightings> = BTreeMap::new();
@@ -268,7 +296,35 @@ impl Station {
             sync_policy: SyncPolicy::default(),
             buses: Mutex::new(BTreeMap::new()),
             next_session: AtomicU64::new(1),
+            advertise: Vec::new(),
+            liveness: crate::fabric::Liveness::default(),
         })
+    }
+
+    /// Override the live-session liveness timings (tests inject short ones).
+    pub fn with_liveness(mut self, liveness: crate::fabric::Liveness) -> Self {
+        self.liveness = liveness;
+        self
+    }
+
+    /// Configure the sockets this Station advertises to Vessels — the
+    /// operator's public `host:port`(s). Without it,
+    /// [`advertised_addr`](Self::advertised_addr) falls back to the bound
+    /// sockets, which only works same-host.
+    pub fn with_advertised(mut self, addrs: Vec<std::net::SocketAddr>) -> Self {
+        self.advertise = addrs;
+        self
+    }
+
+    /// The address Vessels should dial: the configured advertised sockets
+    /// when set, else the actual bound sockets (same-host fallback).
+    pub fn advertised_addr(&self) -> crate::fabric::EndpointAddr {
+        if self.advertise.is_empty() {
+            self.endpoint.direct_addr()
+        } else {
+            self.endpoint
+                .advertised_addr(self.advertise.iter().copied())
+        }
     }
 
     /// Override the [`RegisterPolicy`] (default: [`RegisterPolicy::Owner`]).
@@ -757,14 +813,28 @@ impl Station {
             return;
         }
 
-        // Live phase: vessel pushes in, bus events out (minus our own).
+        // Live phase: vessel pushes in, bus events out (minus our own). A
+        // heartbeat keeps the session warm; a subscriber that produces no
+        // frame within the idle threshold is reaped (the loop breaks, its
+        // bus subscription drops, and its sighting goes disconnected).
         let mut rx = bus.subscribe();
+        let mut heartbeat = tokio::time::interval(self.liveness.heartbeat);
+        heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // A single deadline reset only by inbound frames — kept out of the
+        // read future so the heartbeat tick (which restarts `select!`) does
+        // not keep cancelling and restarting the idle countdown.
+        let idle = tokio::time::sleep(self.liveness.idle_timeout);
+        tokio::pin!(idle);
         loop {
             tokio::select! {
-                frame = read_frame::<SyncMessage>(&mut session.recv) => match frame {
+                frame = read_frame::<SyncMessage>(&mut session.recv) => {
+                    idle
+                        .as_mut()
+                        .reset(tokio::time::Instant::now() + self.liveness.idle_timeout);
+                    match frame {
                     Ok(SyncMessage::NoticePush { notices }) => {
                         if notices.is_empty() {
-                            continue;
+                            continue; // keepalive: liveness only
                         }
                         if let Err(e) = replica.ingest(notices.clone()).await {
                             tracing::warn!("live notice ingest failed: {e}");
@@ -790,6 +860,7 @@ impl Station {
                     }
                     Ok(_) => {} // unknown live frame: ignore
                     Err(_) => break, // vessel closed / transport gone
+                    }
                 },
                 event = rx.recv() => match event {
                     Ok(event) => {
@@ -809,8 +880,25 @@ impl Station {
                     Err(broadcast::error::RecvError::Lagged(_)) => break,
                     Err(broadcast::error::RecvError::Closed) => break,
                 },
+                _ = heartbeat.tick() => {
+                    // Keep the session warm so the Vessel's own idle timer
+                    // does not reap a quiet-but-live Station.
+                    if write_frame(&mut session.send, &crate::fabric::keepalive())
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+                // No inbound frame — keepalive included — within the idle
+                // threshold: the Vessel is gone. Reap.
+                _ = &mut idle => break,
             }
         }
+        // The live phase is over — reaped, closed, or lagged. Close our side
+        // so the caller's `drain` does not block on a vanished Vessel that
+        // will never close, and its sighting flips to disconnected promptly.
+        session.close();
     }
 
     /// This Territory's live-push bus, created on first use.

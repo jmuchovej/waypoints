@@ -42,7 +42,10 @@ impl Database {
             .await?;
         let pool = Pool::open(path, engine, config, is_new).await?;
         {
-            let conn = pool.write().await?;
+            // Unchecked: this idempotent bookkeeping DDL is what makes the
+            // handle usable at all, and a durability-faulted open must still
+            // succeed (read-only). User-data writes stay refused.
+            let conn = pool.write_unchecked().await?;
             conn.execute(ddl::create_meta_table(), ()).await?;
             conn.execute(ddl::create_views_table(), ()).await?;
         }
@@ -51,8 +54,56 @@ impl Database {
 
     /// Close the pool, dropping every connection. Subsequent operations fail
     /// with [`BedrockError::Closed`].
+    ///
+    /// Closing does **not** checkpoint or truncate the write-ahead log: the
+    /// `turso` facade exposes no `Connection::close` (the engine's shutdown
+    /// checkpoint lives there, and its `Drop` deliberately skips it), so
+    /// dropping connections is all this can do. That costs reopen time and log
+    /// size, not durability — committed frames are already synced and are
+    /// replayed on reopen. A caller that wants a compact log at close calls
+    /// [`flush`](Self::flush) first.
     pub async fn close(&self) {
         self.pool.close().await;
+    }
+
+    /// The effective durability state — journal mode and synchronous level —
+    /// read back live from the write connection, through the same path the
+    /// open-time verification uses.
+    pub async fn durability(&self) -> Result<crate::DurabilityState, BedrockError> {
+        // Unchecked: reporting durability must work on the faulted (read-only)
+        // handle — that is precisely when it gets asked.
+        let conn = self.pool.write_unchecked().await?;
+        durability::read_state(&conn).await
+    }
+
+    /// The durability fault recorded at open, if any.
+    ///
+    /// `Some` means a durability pragma did not take effect and the database
+    /// is read-only: reads succeed, writes are refused with
+    /// [`BedrockError::DurabilityMismatch`]. The fault carries what an app
+    /// layer needs to present the degradation, offer remediation, and
+    /// pre-fill a bug report ([`DurabilityFault::report`](crate::DurabilityFault::report)).
+    pub fn durability_fault(&self) -> Option<&crate::DurabilityFault> {
+        self.pool.fault()
+    }
+
+    /// Run the engine's integrity check (`PRAGMA integrity_check`) and return
+    /// its findings verbatim. A sound database yields exactly `["ok"]`.
+    ///
+    /// For use after reopening a territory left behind by a killed process —
+    /// a caller with that history has a real reason to ask whether the file
+    /// is sound.
+    pub async fn integrity_check(&self) -> Result<Vec<String>, BedrockError> {
+        let conn = self.pool.read().await?;
+        let mut rows = conn.query("PRAGMA integrity_check", ()).await?;
+        let mut findings = Vec::new();
+        while let Some(row) = rows.next().await? {
+            match row.get_value(0)? {
+                turso::Value::Text(finding) => findings.push(finding),
+                other => findings.push(format!("{other:?}")),
+            }
+        }
+        Ok(findings)
     }
 
     /// Begin an explicit read-only transaction (`BEGIN`) on a pooled read

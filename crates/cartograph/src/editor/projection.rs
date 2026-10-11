@@ -1,5 +1,5 @@
 use crate::{EditorError, EditorResult, RenderNode};
-use domain::{Content, Mark, MarkData, MarkID, RichText, TextMarkKind};
+use domain::{Content, InlineMark, Mark, MarkData, MarkID, RichText, TextMarkKind};
 use std::collections::{HashMap, HashSet};
 use store::{
     Store,
@@ -82,10 +82,15 @@ async fn walk_children(
     Ok(())
 }
 
-/// Extract the UUID from a mention's `data` field (a JSON string containing a UUID).
-fn mention_id(data: &Option<domain::Json>) -> Option<uuid::Uuid> {
-    let s = data.as_ref()?.as_str()?;
-    uuid::Uuid::parse_str(s).ok()
+/// Extract the UUID from an [`TextMarkKind::Mention`] (a JSON string containing a UUID).
+fn mention_id(mark: &InlineMark) -> Option<uuid::Uuid> {
+    match mark.kind {
+        TextMarkKind::Mention => {
+            let s = mark.data.as_ref()?.as_str()?;
+            uuid::Uuid::parse_str(s).ok()
+        }
+        _ => None,
+    }
 }
 
 /// Collect all RichText references (immutable) from a RenderNode's data.
@@ -129,9 +134,7 @@ async fn hydrate_mentions(db: &Store, nodes: &mut [RenderNode]) -> EditorResult<
         for rt in collect_rich_texts(&node.data) {
             for seg in rt.segments() {
                 for m in &seg.marks {
-                    if m.kind == TextMarkKind::Mention
-                        && let Some(uuid) = mention_id(&m.data)
-                    {
+                    if let Some(uuid) = mention_id(m) {
                         ids.insert(uuid);
                     }
                 }
@@ -153,16 +156,13 @@ async fn hydrate_mentions(db: &Store, nodes: &mut [RenderNode]) -> EditorResult<
     for node in nodes.iter_mut() {
         for rt in collect_rich_texts_mut(&mut node.data) {
             for seg in rt.segments_mut() {
-                let has_mention = seg.marks.iter().any(|m| m.kind == TextMarkKind::Mention);
+                let has_mention = seg.marks.iter().any(|m| m.kind.is_mention());
                 if !has_mention {
                     continue;
                 }
 
                 for m in &mut seg.marks {
-                    if m.kind != TextMarkKind::Mention {
-                        continue;
-                    }
-                    let Some(uuid) = mention_id(&m.data) else {
+                    let Some(uuid) = mention_id(m) else {
                         continue;
                     };
 

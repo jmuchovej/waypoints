@@ -108,19 +108,35 @@ impl EditorService {
         mutation::move_marks(&db, h, parent_id, child_ids, after_id, landmark_id).await
     }
 
-    pub async fn update_mark_title(&self, id: MarkID, title: RichText) -> EditorResult<()> {
+    pub async fn update_mark_title(&mut self, id: MarkID, title: RichText) -> EditorResult<()> {
+        tracing::info!(%id, "mark_update_title");
         let db = self.db().await?;
-        mutation::update_mark_title(&db, id, title).await
+        // A title edit's history bucket is the landmark's own ID — the page
+        // whose history the user expects Cmd+Z to walk while editing it.
+        let h = history_entry(&mut self.histories, id);
+        mutation::update_mark_title(&db, h, id, title).await
     }
 
     pub async fn update_mark_reading(
-        &self,
+        &mut self,
         id: MarkID,
         feature_id: domain::FeatureID,
         reading: domain::Reading,
     ) -> EditorResult<Mark> {
         let db = self.db().await?;
-        mutation::update_mark_reading(&db, id, feature_id, reading).await
+        // A reading edit's history bucket is the landmark's own ID, same as
+        // title edits.
+        let h = history_entry(&mut self.histories, id);
+        mutation::update_mark_reading(&db, h, id, feature_id, reading).await
+    }
+
+    pub async fn create_landmark(&mut self, chart_id: domain::ChartID) -> EditorResult<Mark> {
+        let db = self.db().await?;
+        // The mutation mints the new MarkID and keys its history bucket with
+        // it, so it takes the whole histories map rather than one bucket.
+        let created = mutation::create_landmark(&db, &mut self.histories, chart_id).await?;
+        tracing::info!(id = %created.id, type_name = created.type_name(), "landmark_create: done");
+        Ok(created)
     }
 
     pub async fn create_mark_after(
@@ -216,8 +232,11 @@ impl EditorService {
         let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
         match h.undo(&db).await? {
-            Some((cursor, _ops)) => {
-                let blocks = projection::project_landmark(&db, landmark_id, None).await?;
+            Some((cursor, ops)) => {
+                // An undo mutates the graph like any command: its inverse
+                // ops publish like one.
+                mutation::enqueue_for_publish(&db, &ops, landmark_id).await?;
+                let blocks = project_after_history_walk(&db, landmark_id).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,
                     cursor: Some(cursor),
@@ -231,8 +250,9 @@ impl EditorService {
         let db = self.db().await?;
         let h = history_entry(&mut self.histories, landmark_id);
         match h.redo(&db).await? {
-            Some((cursor, _ops)) => {
-                let blocks = projection::project_landmark(&db, landmark_id, None).await?;
+            Some((cursor, ops)) => {
+                mutation::enqueue_for_publish(&db, &ops, landmark_id).await?;
+                let blocks = project_after_history_walk(&db, landmark_id).await?;
                 Ok(Some(UndoRedoResult {
                     blocks,
                     cursor: Some(cursor),
@@ -240,5 +260,19 @@ impl EditorService {
             }
             None => Ok(None),
         }
+    }
+}
+
+/// Project a landmark after an undo/redo step. The step itself may remove the
+/// landmark — undoing its own `CreateMark` soft-deletes it — in which case
+/// there is nothing left to project and the walk still succeeded.
+async fn project_after_history_walk(
+    db: &Store,
+    landmark_id: MarkID,
+) -> EditorResult<Vec<RenderNode>> {
+    match projection::project_landmark(db, landmark_id, None).await {
+        Ok(blocks) => Ok(blocks),
+        Err(EditorError::NotFound(_)) => Ok(Vec::new()),
+        Err(e) => Err(e),
     }
 }

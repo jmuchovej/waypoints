@@ -1,59 +1,59 @@
+#:tombi toml-version = "v1.1.0"
 #:schema https://schema.tauri.app/config/2
 
 productName = "Waypoints"
-version = "0.1.0"
-identifier = "so.waypoints"
+identifier  = "so.waypoints"
 
 [build]
-beforeBuildCommand = "just generate"
-beforeDevCommand = "just dev"
-devUrl = "http://localhost:9297"
-frontendDist = "../src/.output"
+  beforeBuildCommand = "just generate"
+  beforeDevCommand   = "just dev"
+  devUrl             = "http://localhost:9297"
+  frontendDist       = "../src/.output"
 
 [bundle]
-homepage = "https://waypoints.so"
-active = true
-targets = ["app", "dmg", "nsis", "appimage", "deb"]
-createUpdaterArtifacts = true
-icon = [
-  "icons/stable/32x32.png",
-  "icons/stable/128x128.png",
-  "icons/stable/128x128@2x.png",
-  "icons/stable/icon.icns",
-  "icons/stable/icon.ico",
-]
-resources = []
-externalBin = []
-copyright = ""
-category = "DeveloperTool"
-shortDescription = ""
-longDescription = ""
+  homepage               = "https://waypoints.so"
+  active                 = true
+  targets                = [ "app", "dmg", "nsis", "appimage", "deb" ]
+  createUpdaterArtifacts = true
+  icon                   = [
+    "icons/stable/32x32.png",
+    "icons/stable/128x128.png",
+    "icons/stable/128x128@2x.png",
+    "icons/stable/icon.icns",
+    "icons/stable/icon.ico",
+  ]
+  resources              = []
+  externalBin            = []
+  copyright              = ""
+  category               = "DeveloperTool"
+  shortDescription       = ""
+  longDescription        = ""
 
 # Pairing links: the waypoints:// scheme opens the app everywhere it is
 # installed; the waypoints.so association upgrades https://waypoints.so/pair
 # links on iOS/Android (requires the .well-known files the website serves).
 [plugins.deep-link.desktop]
-schemes = ["waypoints"]
+  schemes = [ "waypoints" ]
 
 [[plugins.deep-link.mobile]]
-host = "waypoints.so"
-pathPrefix = ["/pair"]
+  host       = "waypoints.so"
+  pathPrefix = [ "/pair" ]
 
 [plugins.updater]
-endpoints = [
-  "https://api.waypoints.so/releases/{{target}}/{{arch}}/{{current_version}}"
-]
-pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
+  endpoints = [
+    "https://api.waypoints.so/releases/{{target}}/{{arch}}/{{current_version}}"
+  ]
+  pubkey    = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
 
 [[app.windows]]
-title = "Waypoints"
-width = 1366
-height = 768
-minWidth = 375
-minHeight = 812
-resizable = true
-fullscreen = false
-# title-bar-style = "overlay"
-# hidden-title = true
+  title      = "Waypoints"
+  width      = 1366
+  height     = 768
+  minWidth   = 375
+  minHeight  = 812
+  resizable  = true
+  fullscreen = false
+  # title-bar-style = "overlay"
+  # hidden-title = true
 
 [app.security]

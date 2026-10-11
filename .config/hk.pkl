@@ -1,0 +1,184 @@
+// tracks `pkgs.hk`; bump when `nixpkgs` moves
+amends "package://github.com/jdx/hk/releases/download/v1.55.0/hk@1.55.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.55.0/hk@1.55.0#/Builtins.pkl"
+
+// split with `.config/treefmt.toml` by *when* a tool runs.
+// `treefmt` runs on save and across the mutable stack via `jj fix`.
+// `hk` runs where failures should block pushes, loudly.
+//
+// sometimes tools can _legitimately_ be in both (e.g., `typos`)
+
+local nixf_ignore_flags = List(
+  "sema-unused-def-lambda-witharg-formal",
+  "sema-unused-def-lambda-noarg-formal",
+  "sema-primop-overridden"
+).map((id) -> "-i \(id)").join(" ")
+
+/// the default 500KB trips `pnpm-lock.yaml` and `demo-qr.svg`.
+local maxkb = "5120" // 5MiB
+
+local lints = new Mapping<String, Step> {
+  ["deadnix"] {
+    glob = List("**/*.nix")
+    check = "deadnix --fail {{files}}"
+    fix = "deadnix --quiet --edit {{files}}"
+  }
+
+  ["statix"] {
+    glob = List("**/*.nix")
+    check = #"""
+      for f in {{files}}; do
+        statix check --config .config/statix.toml -- "$f" || exit 1
+      done
+      """#
+    fix = #"""
+      for f in {{files}}; do
+        statix fix --config .config/statix.toml -- "$f" || exit 1
+      done
+      """#
+  }
+
+  ["nixf-diagnose"] {
+    glob = List("**/*.nix")
+    check = "nixf-diagnose \(nixf_ignore_flags) {{files}}"
+    fix = "nixf-diagnose \(nixf_ignore_flags) --auto-fix {{files}}"
+  }
+}
+
+local formatting = new Mapping<String, Step> {
+  ["treefmt"] {
+    glob = List("**/*")
+    check = "treefmt --no-cache --fail-on-change {{files}}"
+    fix = "treefmt --no-cache {{files}}"
+  }
+}
+
+/// generated-config steps whose drift has a mechanical remedy.
+local syncing = new Mapping<String, Step> {
+  // the lockfiles are refreshed over the network, so this must never run on
+  // shell entry — see nix/AGENTS.md. `hk fix` is explicit and `pre-push` runs
+  // `check` only, so the write stays something a person asked for.
+  ["mise-lock"] {
+    glob = List(
+      "devenv.nix",
+      "devenv.yaml",
+      "devenv.lock",
+      ".config/mise.toml",
+      ".config/mise.*.toml"
+    )
+    check = "just mise-lock-check"
+    fix = "just mise-lock"
+  }
+}
+
+local fixable = new Mapping<String, Step> {
+  ...lints
+  ...formatting
+  ...syncing
+}
+
+local checks = new Mapping<String, Step> {
+  ...fixable
+
+  ["zizmor"] {
+    glob = List(
+      ".github/workflows/*.yml",
+      ".github/workflows/*.yaml",
+      ".github/actions/**/*.yml",
+      ".github/actions/**/*.yaml"
+    )
+    check = "zizmor {{files}}"
+  }
+
+  ["clippy"] {
+    glob = List(
+      "**/*.rs",
+      "**/Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      ".config/cargo.toml"
+    )
+    check = "cargo clippy --workspace --all-targets"
+  }
+
+  ["nextest"] {
+    // scoped to `**/*` deliberately: `test-plan` needs the whole changed set to
+    // properly compute since narrowing it would hide paths and we can't use
+    // `git`/`jj` to resolve the target fileset.
+    glob = List("**/*")
+    // cargo holds a lock on `target/` via `clippy`; it needs to finish first
+    depends = "clippy"
+    check = #"""
+      filterset="$(cargo xtask test-plan --files {{files}})"
+      if [ -z "$filterset" ]; then
+        echo "no Rust crate affected by this range; skipping tests"
+        exit 0
+      fi
+      echo "testing: $filterset"
+      exec cargo nextest run --workspace --no-fail-fast -E "$filterset"
+      """#
+  }
+
+  ["nextest-release"] {
+    profiles = List("slow")
+    depends = "clippy"
+    check = #"""
+      filterset="$(cargo xtask test-plan --release)"
+      exec cargo nextest run --workspace --no-fail-fast -E "$filterset"
+      """#
+  }
+
+  // `.config/deny.toml`, not `.cargo/deny.toml` — the latter is a symlink, so
+  // it only changes when retargeted, never when the policy does.
+  ["deny"] {
+    glob = List(
+      "**/Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      ".config/deny.toml"
+    )
+    check = "just deny"
+  }
+
+  ["check-generated"] {
+    // no globs since `check-generated` already tracks these via `devenv`
+    check = "just check-generated"
+  }
+
+  ["typecheck"] {
+    glob = List("**/*.ts", "**/*.tsx", "**/*.vue", "**/tsconfig*.json", "**/package.json")
+    check = "just typecheck"
+  }
+
+  ["lychee"]  = (Builtins.lychee) {
+    glob = List("**/*.md", "**/*.mdx", "**/*.html")
+    check = "lychee --no-progress --config .config/lychee.toml {{files}}"
+  }
+
+  ["check-large-files"] = (Builtins.check_added_large_files) {
+    check = "hk util check-added-large-files --maxkb \(maxkb) {{files}}"
+  }
+
+  ["check-symlinks"] = Builtins.check_symlinks
+  ["check-execs-have-shebangs"] = Builtins.check_executables_have_shebangs
+
+  ["typos"] {
+    glob = List("**/*")
+    check = "typos --force-exclude -c .config/typos.toml {{files}}"
+  }
+}
+
+hooks {
+  ["pre-push"] {
+    steps = checks
+  }
+
+  ["check"] {
+    steps = checks
+  }
+
+  ["fix"] {
+    fix = true
+    steps = fixable
+  }
+}

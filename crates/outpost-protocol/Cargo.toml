@@ -1,38 +1,40 @@
 [package]
-name = "outpost-protocol"
-version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-description = """
+  name               = "outpost-protocol"
+  version            = "0.1.0"
+  edition.workspace  = true
+  description        = """
 Outpost Protocol — the sync protocol for Outpost.
 """
-documentation = "https://docs.waypoints.so/outpost/protocol"
-readme.workspace = true
-homepage.workspace = true
-repository = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost-protocol"
-license.workspace = true
-publish.workspace = true
+  documentation      = "https://docs.waypoints.so/outpost/protocol"
+  readme.workspace   = true
+  homepage.workspace = true
+  repository         = "https://github.com/waypoints-hq/waypoints/tree/main/crates/outpost-protocol"
+  license.workspace  = true
+  publish.workspace  = true
 
 [dependencies]
-bip39.workspace = true
-blake3.workspace = true
-bytes.workspace = true
-chacha20poly1305.workspace = true
-derive_more = { workspace = true, features = ["display", "from", "into"] }
-ed25519-dalek.workspace = true
-hmac.workspace = true
-postcard.workspace = true
-rand_core.workspace = true
-serde.workspace = true
-sha2.workspace = true
-thiserror.workspace = true
-x-wing.workspace = true
-zeroize.workspace = true
+  bip39.workspace            = true
+  blake3.workspace           = true
+  bytes.workspace            = true
+  chacha20poly1305.workspace = true
+  derive_more                = {
+    workspace = true,
+    features  = [ "debug", "display", "from", "into" ]
+  }
+  ed25519-dalek.workspace    = true
+  hmac.workspace             = true
+  postcard.workspace         = true
+  rand_core.workspace        = true
+  serde.workspace            = true
+  sha2.workspace             = true
+  thiserror.workspace        = true
+  x-wing.workspace           = true
+  zeroize.workspace          = true
 
 [dev-dependencies]
-hex.workspace = true
-pretty_assertions.workspace = true
-rand.workspace = true
+  hex.workspace               = true
+  pretty_assertions.workspace = true
+  rand.workspace              = true
 
 [lints]
-workspace = true
+  workspace = true

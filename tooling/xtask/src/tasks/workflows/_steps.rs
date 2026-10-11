@@ -3,12 +3,9 @@
 
 use super::{
     Artifact, Channel, Platform, TestSuite,
-    helpers::{
-        GITHUB_TOKEN, SECRETSPEC_PROVIDER, SOPS_AGE_KEY_ENV, WP_BOTSWAIN_APP_ID,
-        WP_BOTSWAIN_PRIVATE_KEY,
-    },
+    helpers::{self, GITHUB_TOKEN, Profile, WP_BOTSWAIN_APP_ID, WP_BOTSWAIN_PRIVATE_KEY},
 };
-use gh_workflow::{FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
+use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
 use indoc::indoc;
 
 /// A `uses:` reference — `{owner}/{repo}@{sha}`. Pinning to the hash rather
@@ -87,10 +84,18 @@ pub fn nix_profile_install(packages: &[&str]) -> Step<Run> {
         .id("setup-nix-profile")
 }
 
-/// Runs a `just` recipe — the same command that runs locally.
+/// Runs a `just` recipe, the way it runs locally: inside the devenv shell.
+///
+/// The wrapper is not a convenience. `just` resolves every `mod` file at *parse*
+/// time, and `src/justfile` opens with `env("TAURI_APP_PATH")`, so a bare
+/// `just <recipe>` dies before any recipe body executes — however carefully that
+/// body shells into devenv itself. The failure names the module, not the recipe,
+/// which is what hid it: `check-generated` was red from 2026-09-25 on this
+/// alone, so the check that would have caught stale generated files was itself
+/// the stale one.
 pub fn just(recipe: &str) -> Step<Run> {
     Step::new(format!("just {recipe}"))
-        .run(format!("just {recipe}"))
+        .run(format!("devenv shell -- just {recipe}"))
         .shell("bash")
         .id(recipe)
 }
@@ -197,13 +202,19 @@ pub fn create_pull_request(
 
 /// Installs the whole toolchain — node, pnpm, just, sops, age, yq, nu, and
 /// rust with every cross-compilation target, read from `rust-toolchain.toml`.
-pub fn setup_mise(with_cache: Option<bool>) -> Step<Use> {
+///
+/// Pinned to the mise devenv provides — the one that writes
+/// `.config/mise.lock`. Unpinned, the action installs whatever released most
+/// recently, so a committed lockfile is only as reproducible as an upstream
+/// release schedule.
+pub fn setup_mise(with_cache: Option<bool>, version: &str) -> Step<Use> {
     Action::new(
         "jdx",
         "mise-action",
-        "c37c93293d6b742fc901e1406b8f764f6fb19dac", // v2
+        "c2a87611a18de5b3828c5652fe268e992400cb5c", // v4.3.0
     )
     .step("Setup mise")
+    .add_with(("version", version.to_owned()))
     .add_with(("cache", with_cache.unwrap_or(true)))
 }
 
@@ -226,6 +237,45 @@ pub fn pnpm_install() -> Step<Run> {
         .run("pnpm install --frozen-lockfile")
         .shell("bash")
         .id("pnpm-install")
+}
+
+/// Reclaims preinstalled toolchains the Ubuntu runner image ships and this
+/// workspace never uses. A debug test build of the whole workspace is large
+/// enough to exhaust a stock image part-way through linking, which surfaces as
+/// `No space left on device` from whichever crate happened to be writing.
+///
+/// `drop_android` is a parameter rather than an assumption: the Android build
+/// job also runs on Linux, and the runtime this removes is exactly what it
+/// needs. Callers that build for Android pass `false`.
+///
+/// Every input is set explicitly rather than left to the action's defaults, so
+/// bumping the pin cannot change what gets deleted without the diff saying so.
+/// The two that are off:
+///
+/// - `preinstalled-runtimes` removes Node, Go, Python and Ruby, which would
+///   strand any `setup-*` action on a re-download and possibly a version that
+///   is no longer published.
+/// - `swap-storage` removes the swapfile; upstream warns that jobs needing swap
+///   are then killed under memory pressure with no error naming the cause,
+///   which is a poor trade against Rust link steps.
+///
+/// `large-packages` costs a couple of minutes of apt removals. Worth it while
+/// the alternative is a job that cannot finish.
+pub fn free_disk_space(drop_android: bool) -> Step<Use> {
+    Action::new(
+        "jlumbroso",
+        "free-disk-space",
+        "ceedf095f4ec1a097402bc6bd80831f2e1a6fde6", // v2.0.0
+    )
+    .step("Free runner disk space")
+    .add_with(("android", drop_android.to_string()))
+    .add_with(("dotnet", "true"))
+    .add_with(("haskell", "true"))
+    .add_with(("large-packages", "true"))
+    .add_with(("docker-images", "true"))
+    .add_with(("preinstalled-runtimes", "false"))
+    .add_with(("swap-storage", "false"))
+    .id("free-disk")
 }
 
 /// Tauri's Linux backend is WebKitGTK, which the runner image does not carry.
@@ -261,6 +311,9 @@ pub fn setup_android_sdk() -> Step<Use> {
         "40fd30fb8d7440372e1316f5d1809ec01dcd3699", // v4
     )
     .step("Setup Android SDK")
+    .add_with(("accept-android-sdk-licenses", "true"))
+    .add_with(("log-accepted-android-sdk-licenses", "true"))
+    .add_with(("packages", "platform-tools"))
     .id("setup-android-sdk")
 }
 
@@ -274,27 +327,34 @@ pub fn install_ndk(version: &str) -> Step<Run> {
 ///
 /// That recipe wraps the build in `secretspec run`, so signing material reaches
 /// only the build process and never `$GITHUB_ENV`, which later steps inherit.
-/// CI supplies just the key that unlocks the store.
+/// CI supplies just the credential that unlocks the vault, through the
+/// environment — the only channel that reaches a `secretspec` call inside a
+/// justfile.
 pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
-    Step::new(format!("Build {platform}"))
+    let step = Step::new(format!("Build {platform}"))
         .run(format!(
-            "just tauri::{slug}::{recipe}",
+            "just tauri::build {slug} {flavor}",
             slug = platform.slug(),
-            recipe = channel.build_recipe(),
+            flavor = channel.flavor(),
         ))
         .shell("bash")
-        .add_env(SOPS_AGE_KEY_ENV)
-        .id("build-recipe")
+        .id("build-recipe");
+    helpers::resolving(step)
 }
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
-pub fn fastlane(platform: Platform, channel: Channel) -> Step<Run> {
+///
+/// Gated on the tag like [`upload_to_release`]: a build-only run has none,
+/// and its artifacts must stop at the workflow — the store build number is
+/// the date, so a dispatch that reached the store would take the day's slot
+/// from the scheduled run.
+pub fn fastlane(platform: Platform, channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
     let spec = SecretSpec::run(format!(
         "fastlane {lane} {flavor}",
         lane = platform.slug(),
         flavor = channel.flavor()
     ))
-    .with_profile("release")
+    .with_profile(Profile::Release)
     .with_scope(platform.slug());
 
     Into::<Step<Run>>::into(spec)
@@ -304,6 +364,7 @@ pub fn fastlane(platform: Platform, channel: Channel) -> Step<Run> {
         .when(platform.is_ios(), |step| {
             step.name("Upload to the App Store")
         })
+        .if_condition(Channel::tag_condition(tag))
         .id("publish-mobile-app")
 }
 
@@ -324,11 +385,16 @@ pub fn upload_artifact(channel: Channel, platform: Platform) -> Step<Use> {
 
 /// Renders the notes for `tag` with git-cliff: everything since the previous
 /// tag, grouped straight from the Conventional Commit history.
+///
+/// The token is for the template's first-time-contributor section, which
+/// asks the GitHub API who opened each pull request; without it git-cliff
+/// gets a 404 from the private repository and renders nothing.
 pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
     Step::new("Generate release notes")
         .run(r#"git-cliff --latest --output "${RUNNER_TEMP}/notes.md""#)
         .shell("bash")
         .if_condition(Channel::tag_condition(tag))
+        .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
         .id("gen-release-notes")
 }
 
@@ -340,7 +406,8 @@ pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
 /// draft it left behind; `gh` resolves drafts by tag name.
 pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
     let view = r#"gh release view "${TAG}" >/dev/null 2>&1"#;
-    let create = r#"gh release create "${TAG}" --draft --verify-tag --notes-files "${RUNNER_TEMP}/notes.md""#;
+    let create =
+        r#"gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md""#;
     let create = format!(
         "{view} \\\n|| {create}{prerelease}",
         prerelease = if channel.prerelease() {
@@ -396,17 +463,39 @@ pub(crate) fn cargo_nextest(suite: TestSuite) -> Nextest {
     let step = Step::new(format!("Run {} tests", suite.describe()))
         .run("cargo nextest run --workspace --no-fail-fast")
         .shell("bash")
+        // The release suite compiles the whole workspace cold, and the hosted
+        // Linux runner has run out of disk doing it. Debuginfo and incremental
+        // artifacts are most of `target/`, and neither is worth anything here.
+        .add_env(("CARGO_INCREMENTAL", "0"))
+        .add_env(("CARGO_PROFILE_DEV_DEBUG", "0"))
         .id("nextest");
     Nextest(step)
 }
 
 impl Nextest {
-    #[allow(dead_code)]
+    /// Adds the filterset, and the guard that turns an empty one into a skip
+    /// rather than a failure.
+    ///
+    /// `cargo nextest -E ""` exits 94 with `failed to parse filterset`, while an
+    /// empty plan is the *documented* answer for a change touching no Rust crate
+    /// — so the step has to not run, rather than run with nothing. Any push of
+    /// only docs, configs or manifests hits this. Bound here rather than at the
+    /// call site so a filterset cannot be added without its guard.
     pub(crate) fn with_filter_expr(mut self, filter_expr: &str) -> Self {
         if let Some(command) = self.0.value.run.as_mut() {
             command.push_str(r#" -E "${FILTER_EXPR}""#);
         }
-        self.0 = self.0.add_env(("FILTER_EXPR", filter_expr));
+        // `if:` is already an expression context, so the `${{ }}` wrapper the
+        // env value needs is a syntax error there.
+        let unwrapped = filter_expr
+            .trim()
+            .trim_start_matches("${{")
+            .trim_end_matches("}}")
+            .trim();
+        self.0 = self
+            .0
+            .add_env(("FILTER_EXPR", filter_expr))
+            .if_condition(Expression::new(format!("{unwrapped} != ''")));
         self
     }
 }
@@ -436,10 +525,11 @@ enum Delivery {
 
 #[derive(Clone)]
 pub(crate) struct SecretSpec {
-    profile: Option<String>,
+    profile: Option<Profile>,
     scope: Option<String>,
     reason: Option<String>,
     delivery: Delivery,
+    inside_devenv: bool,
 }
 
 impl SecretSpec {
@@ -461,11 +551,22 @@ impl SecretSpec {
             scope: None,
             reason: None,
             delivery,
+            inside_devenv: false,
         }
     }
 
-    pub(crate) fn with_profile(mut self, profile: impl ToString) -> Self {
-        self.profile = Some(profile.to_string());
+    pub(crate) fn with_profile(mut self, profile: Profile) -> Self {
+        self.profile = Some(profile);
+        self
+    }
+
+    /// Runs through `devenv shell`, for a job whose `secretspec` and `op` come
+    /// from the shell rather than from mise. The provider then travels on the
+    /// command line rather than in the step environment: devenv resolves the
+    /// shell's own profile before entering the shell and would otherwise pick
+    /// the override up and look for `op` on the bare runner.
+    pub(crate) fn inside_devenv(mut self) -> Self {
+        self.inside_devenv = true;
         self
     }
 
@@ -495,8 +596,11 @@ impl From<SecretSpec> for Step<Run> {
             Delivery::Wrap(_) => "secretspec run",
             Delivery::Export => "secretspec export",
         });
-        if let Some(profile) = &spec.profile {
-            command.push_str(&format!(" --profile {profile}"));
+        if let Some(profile) = spec.profile {
+            command.push_str(&format!(" --profile {}", profile.name()));
+        }
+        if spec.inside_devenv {
+            command.push_str(&format!(" --provider {}", helpers::PROVIDER_NAME));
         }
         if let Some(scope) = &spec.scope {
             command.push_str(&format!(" --scope {scope}"));
@@ -507,21 +611,28 @@ impl From<SecretSpec> for Step<Run> {
             Delivery::Export => command.push_str(" --format gha"),
         }
 
+        if spec.inside_devenv {
+            command = format!("devenv shell -- {command}");
+        }
+
         let name = match spec.delivery {
             Delivery::Wrap(_) => "secretspec".to_owned(),
             Delivery::Export => format!(
                 "Resolve the {profile} secrets",
-                profile = spec.profile.as_deref().unwrap_or("default"),
+                profile = spec.profile.map(Profile::name).unwrap_or("default"),
             ),
         };
 
-        Step::new(name)
+        let step = Step::new(name)
             .run(command)
             .shell("bash")
-            .add_env(SECRETSPEC_PROVIDER)
-            .add_env(SOPS_AGE_KEY_ENV)
             .when_some(spec.reason, |step, reason| {
                 step.add_env(("SECRETSPEC_REASON", reason))
-            })
+            });
+        if spec.inside_devenv {
+            helpers::credentialed(step)
+        } else {
+            helpers::resolving(step)
+        }
     }
 }

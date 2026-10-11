@@ -53,7 +53,17 @@ android {
         (System.getenv("WAYPOINTS_BUILD_CODE")?.takeIf { it.isNotBlank() }
                 ?: tauriProperties.getProperty("tauri.android.versionCode", "1"))
             .toInt()
-    versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    // Rendered the way TestFlight renders iOS's pair of fields — `0.1.0
+    // (2026.10.10)` — so the two stores show the same thing. The prerelease
+    // is dropped: the flavor already says which channel this is.
+    versionName =
+        System.getenv("WAYPOINTS_VERSION")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { version ->
+              val release = version.substringBefore('-').substringBefore('+')
+              val build = version.substringAfter('+', "")
+              if (build.isEmpty()) release else "$release ($build)"
+            } ?: tauriProperties.getProperty("tauri.android.versionName", "1.0")
 
     resValue(
         "string",
@@ -82,7 +92,7 @@ android {
       val keystorePath =
           requireNotNull(System.getenv("ANDROID_KEYSTORE_PATH")) {
             "ANDROID_KEYSTORE_PATH is unset — run the build through " +
-                "`just tauri::android::build*`, which wraps it in `secretspec run`."
+                "`just tauri::build android`, which wraps it in `secretspec run`."
           }
       val keystorePropertiesFile = File(keystorePath)
       require(keystorePropertiesFile.exists()) {
@@ -121,6 +131,18 @@ android {
               .toTypedArray()
       )
       signingConfig = signingConfigs.getByName("release")
+    }
+  }
+  sourceSets {
+    // The launcher icon is per flavor — `src/<flavor>/res` holds its adaptive
+    // icon and layers — and the Waypoints flavor is not a Gradle product
+    // flavor (those are Tauri's ABI ones), so nothing would include that
+    // directory unless it is named here. It rides on the build types rather
+    // than `main`: the flavor directories also carry copies of `main`'s
+    // values, and a build type's resources override `main`'s while a second
+    // directory on `main` itself would collide with them.
+    for (type in listOf("debug", "release")) {
+      getByName(type) { res.srcDir("src/$waypointsFlavor/res") }
     }
   }
   compileOptions {

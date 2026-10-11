@@ -5,7 +5,6 @@
 name: assert generated files remain in lockstep
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  SECRETSPEC_PROVIDER: sops
 on:
   pull_request:
     paths:
@@ -14,10 +13,23 @@ on:
       - devenv.lock
       - tooling/xtask/**
       - .github/workflows/**
+      - .config/mise.build-desktop.lock
+      - .config/mise.build-desktop.toml
+      - .config/mise.build-mobile.lock
+      - .config/mise.build-mobile.toml
+      - .config/mise.devtools.lock
+      - .config/mise.devtools.toml
       - .config/mise.lock
+      - .config/mise.test.lock
+      - .config/mise.test.toml
       - .config/mise.toml
-      - .config/treefmt.toml
-      - .pre-commit-config.yaml
+      - .config/mise.website.lock
+      - .config/mise.website.toml
+      - .config/mise.xtask.lock
+      - .config/mise.xtask.toml
+      - src-tauri/gen/android/gradle/libs.versions.toml
+      - src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
+      - src-tauri/gen/android/local.properties
   push:
     branches:
       - main
@@ -27,10 +39,23 @@ on:
       - devenv.lock
       - tooling/xtask/**
       - .github/workflows/**
+      - .config/mise.build-desktop.lock
+      - .config/mise.build-desktop.toml
+      - .config/mise.build-mobile.lock
+      - .config/mise.build-mobile.toml
+      - .config/mise.devtools.lock
+      - .config/mise.devtools.toml
       - .config/mise.lock
+      - .config/mise.test.lock
+      - .config/mise.test.toml
       - .config/mise.toml
-      - .config/treefmt.toml
-      - .pre-commit-config.yaml
+      - .config/mise.website.lock
+      - .config/mise.website.toml
+      - .config/mise.xtask.lock
+      - .config/mise.xtask.toml
+      - src-tauri/gen/android/gradle/libs.versions.toml
+      - src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
+      - src-tauri/gen/android/local.properties
   workflow_dispatch: {}
 permissions: {}
 jobs:
@@ -45,6 +70,17 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
+      - id: free-disk
+        name: Free runner disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
       - id: setup-nix
         name: Install Nix
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
@@ -59,7 +95,7 @@ jobs:
         shell: bash
       - id: check-generated
         name: Check generated files
-        run: just check-generated
+        run: devenv shell -- just check-generated
         shell: bash
 concurrency:
   group: generated-${{ github.ref }}

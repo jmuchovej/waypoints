@@ -1,5 +1,5 @@
-use cartograph::{MarkResult, WaypointsRuntime};
-use domain::{ChartID, Content, Mark, RichText};
+use cartograph::{EditorResult, MarkResult, WaypointsRuntime};
+use domain::{ChartID, Content, Mark, MarkID, RichText};
 use std::sync::Arc;
 use tauri::State;
 use uuid::Uuid;
@@ -58,6 +58,6 @@ pub async fn mark_update_title(
     rt: State<'_, Arc<WaypointsRuntime>>,
     id: Uuid,
     title: RichText,
-) -> MarkResult<()> {
-    rt.marks().update_title(id, title).await
+) -> EditorResult<()> {
+    rt.editor().update_mark_title(MarkID::from(id), title).await
 }

@@ -1,7 +1,6 @@
 [
   {
     "label": "Axum Server (Desktop)",
-    "description": "Launches the Axum-based dev server to support pure web-dev.",
     "command": "direnv exec . just xtask::dev-server"
   }
 ]

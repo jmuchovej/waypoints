@@ -21,6 +21,9 @@ pub(crate) fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         if let Err(e) = rt.resume().await {
             tracing::warn!("failed to resume territory: {e}");
         }
+        // Maintain the live sync subscription (fold on doorbells, reconnect
+        // on dead sessions) for the app's lifetime.
+        rt.sync_service().start_live();
     });
 
     app.manage(Arc::new(rt));

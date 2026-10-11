@@ -5,7 +5,6 @@
 name: Tests
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  SECRETSPEC_PROVIDER: sops
 on:
   pull_request:
     branches:
@@ -20,6 +19,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout
@@ -27,9 +28,21 @@ jobs:
         with:
           persist-credentials: "false"
           fetch-depth: "0"
-      - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+      - id: free-disk
+        name: Free runner disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
+      - name: Setup mise
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        with:
+          version: "2026.8.6"
           cache: "true"
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
@@ -47,9 +60,12 @@ jobs:
         shell: bash
       - id: nextest
         name: Run affected tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
 concurrency:
   group: tests-${{ github.ref }}

@@ -32,19 +32,17 @@ mod tests {
     use super::*;
     use std::{fs, path::Path};
 
-    /// [`version`] reads the resolved package, which matches the workspace
-    /// declaration only while the app inherits it.
+    /// [`version`] reads the app package, which now carries its own version:
+    /// the app's is a channel decision, while the library crates move at their
+    /// own cadence, so the two cannot share one field.
     #[test]
-    fn the_app_version_matches_the_workspace_declaration() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let manifest: toml::Table = fs::read_to_string(root.join("Cargo.toml"))
-            .unwrap()
-            .parse()
-            .unwrap();
+    fn the_app_declares_its_own_version() {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src-tauri/Cargo.toml");
+        let manifest: toml::Table = fs::read_to_string(manifest).unwrap().parse().unwrap();
 
-        let declared = manifest["workspace"]["package"]["version"]
+        let declared = manifest["package"]["version"]
             .as_str()
-            .unwrap();
+            .expect("the app must declare an explicit version, not inherit one");
 
         assert_eq!(version().unwrap().to_string(), declared);
     }

@@ -1,5 +1,5 @@
 use crate::{Database, MarkError, MarkResult};
-use domain::{ChartID, Content, Mark, MarkData, MarkID, RichText, TerrainKind, fractional_index};
+use domain::{ChartID, Content, Mark, MarkData, MarkID, TerrainKind, fractional_index};
 use uuid::Uuid;
 
 pub struct MarkHandle<'a> {
@@ -142,30 +142,6 @@ impl MarkHandle<'_> {
             .await?;
 
         tracing::info!(%parent_id, %child_id, "mark_move: done");
-        Ok(())
-    }
-
-    pub async fn update_title(&self, id: Uuid, title: RichText) -> MarkResult<()> {
-        tracing::info!(%id, "mark_update_title");
-
-        let db = self.db().await?;
-        let mark_id = MarkID::from(id);
-
-        let mark = store::query::mark::get(&db, mark_id)
-            .await?
-            .ok_or(MarkError::NotFound(id))?;
-
-        let mut data = mark.data;
-        match &mut data {
-            MarkData::Landmark(landmark) => {
-                landmark.title = title;
-            }
-            _ => return Err(MarkError::NotLandmark(id)),
-        }
-
-        store::query::mark::update_data(&db, mark_id, &data).await?;
-
-        tracing::info!(%id, "mark_update_title: done");
         Ok(())
     }
 }

@@ -82,6 +82,10 @@ impl EditorHandle<'_> {
             .await
     }
 
+    pub async fn create_landmark(&self, chart_id: domain::ChartID) -> EditorResult<Mark> {
+        self.editor.lock().await.create_landmark(chart_id).await
+    }
+
     pub async fn create_mark_after(
         &self,
         after_id: MarkID,

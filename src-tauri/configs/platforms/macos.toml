@@ -3,8 +3,8 @@
 
 # https://tauri.app/distribute/macos-application-bundle/
 [bundle.macOS]
-# entitlements = "./platforms/macos/Entitlements.plist"
-# frameworks = []
+  # entitlements = "./platforms/macos/Entitlements.plist"
+  # frameworks = []
 
-# [bundle.resources]
-# "infoplist/" = "./platforms/macos/"
+  # [bundle.resources]
+  # "infoplist/" = "./platforms/macos/"

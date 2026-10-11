@@ -1,5 +1,0 @@
-#!/usr/bin/env bash -eu
-
-for f in "$@"; do
-  just --fmt --unstable --justfile "$f"
-done

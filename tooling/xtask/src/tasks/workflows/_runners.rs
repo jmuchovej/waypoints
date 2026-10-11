@@ -19,7 +19,9 @@ pub const LINUX: Runner = Runner("ubuntu-latest");
 /// Pinned one LTS back: the AppImage we produce links against the runner's
 /// glibc, so building on a newer Ubuntu would raise our minimum.
 pub const LINUX_BUILD: Runner = Runner("ubuntu-22.04");
-pub const MACOS: Runner = Runner("macos-15");
+/// App Store Connect only accepts iOS uploads built against the iOS 26 SDK,
+/// and this is the first image whose default Xcode ships it.
+pub const MACOS: Runner = Runner("macos-26");
 pub const WINDOWS: Runner = Runner("windows-latest");
 
 impl Platform {

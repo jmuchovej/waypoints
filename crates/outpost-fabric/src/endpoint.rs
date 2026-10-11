@@ -133,6 +133,18 @@ impl Endpoint {
         Self::bind(SecretKey::from_bytes(&key.to_bytes())).await
     }
 
+    /// [`bind_routable`](Self::bind_routable) from an Ed25519 identity key —
+    /// the off-host counterpart of [`bind_identity`](Self::bind_identity).
+    /// A Station uses it to accept from other hosts; a Vessel uses it so its
+    /// outbound packets can leave the host at all (a loopback-bound source
+    /// socket cannot dial a remote Station). Neither role gains inbound
+    /// *requirements* from this: Vessels stay dial-only.
+    pub async fn bind_routable_identity(
+        key: &ed25519_dalek::SigningKey,
+    ) -> Result<Self, TransportError> {
+        Self::bind_routable(SecretKey::from_bytes(&key.to_bytes())).await
+    }
+
     /// This endpoint's dialable address (id + discovered socket hints).
     /// For relay-assisted presets this may take a moment to populate; on a
     /// LAN/loopback Fleet prefer [`direct_addr`](Self::direct_addr).
@@ -157,6 +169,14 @@ impl Endpoint {
             .into_iter()
             .map(|s| TransportAddr::Ip(to_dialable(s)));
         EndpointAddr::from_parts(self.inner.id(), addrs)
+    }
+
+    /// A dialable address advertising `public` — operator-configured
+    /// sockets (a public IP or DNS-resolved host:port) — instead of the
+    /// bound sockets. What a routable Station hands to Vessels on other
+    /// hosts, where the wildcard-bound sockets are meaningless.
+    pub fn advertised_addr(&self, public: impl IntoIterator<Item = SocketAddr>) -> EndpointAddr {
+        EndpointAddr::from_parts(self.inner.id(), public.into_iter().map(TransportAddr::Ip))
     }
 
     /// Dial a peer and open the session's bidirectional stream.

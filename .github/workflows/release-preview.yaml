@@ -5,7 +5,6 @@
 name: Preview
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  SECRETSPEC_PROVIDER: sops
 on:
   push:
     tags:
@@ -33,9 +32,11 @@ permissions: {}
 jobs:
   test-macos:
     name: Test macOS
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: read
+    env:
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout
@@ -44,24 +45,34 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - id: test-plan
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
         shell: bash
       - id: nextest
         name: Run release tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-windows:
     name: Test Windows
     runs-on: windows-latest
     permissions:
       contents: read
+    env:
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout
@@ -70,24 +81,34 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - id: test-plan
         name: cargo xtask test-plan
         run: cargo xtask test-plan  --release
         shell: bash
       - id: nextest
         name: Run release tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-linux:
     name: Test Linux
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    env:
+      MISE_ENV: test
     steps:
       - id: checkout
         name: Checkout
@@ -95,10 +116,26 @@ jobs:
         with:
           persist-credentials: "false"
           fetch-depth: "0"
-      - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+      - id: free-disk
+        name: Free runner disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
+      - name: Setup mise
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        with:
+          version: "2026.8.6"
           cache: "false"
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - id: linux-deps
         name: Install system deps (Linux)
         run: |-
@@ -111,9 +148,12 @@ jobs:
         shell: bash
       - id: nextest
         name: Run release tests
+        if: steps.test-plan.outputs.filterset != ''
         run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
         shell: bash
         env:
+          CARGO_INCREMENTAL: "0"
+          CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   create-release:
     needs:
@@ -124,6 +164,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      MISE_ENV: xtask
     steps:
       - id: checkout
         name: Checkout
@@ -135,20 +177,23 @@ jobs:
           fetch-tags: "true"
       - name: Setup mise
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: gen-release-notes
         name: Generate release notes
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: git-cliff --latest --output "${RUNNER_TEMP}/notes.md"
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: draft-release
         name: Create the draft
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: |-
           gh release view "${TAG}" >/dev/null 2>&1 \
-          || gh release create "${TAG}" --draft --verify-tag --notes-files "${RUNNER_TEMP}/notes.md" --prerelease
+          || gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md" --prerelease
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -161,9 +206,13 @@ jobs:
       - create-release
     if: github.event_name == 'push' || contains(fromJson('["All","Desktop","macOS"]'), inputs.platforms)
     name: Build macOS
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: write
+    environment:
+      name: App Release
+    env:
+      MISE_ENV: build-desktop
     steps:
       - id: checkout
         name: Checkout
@@ -171,8 +220,9 @@ jobs:
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -180,10 +230,11 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build macOS
-        run: "just tauri::macos::build-preview"
+        run: "just tauri::build macos preview"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -213,6 +264,10 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    environment:
+      name: App Release
+    env:
+      MISE_ENV: build-desktop
     steps:
       - id: checkout
         name: Checkout
@@ -220,8 +275,9 @@ jobs:
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -229,10 +285,11 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Windows
-        run: "just tauri::windows::build-preview"
+        run: "just tauri::build windows preview"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -262,12 +319,27 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+    environment:
+      name: App Release
+    env:
+      MISE_ENV: build-desktop
     steps:
       - id: checkout
         name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
+      - id: free-disk
+        name: Free runner disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
       - id: linux-deps
         name: Install system deps (Linux)
         run: |-
@@ -275,8 +347,9 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         shell: bash
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -284,10 +357,11 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Linux
-        run: "just tauri::linux::build-preview"
+        run: "just tauri::build linux preview"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -315,11 +389,13 @@ jobs:
       - create-release
     if: github.event_name == 'push' || contains(fromJson('["All","Mobile","iOS"]'), inputs.platforms)
     name: Build iOS
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: write
+    environment:
+      name: App Release
     env:
-      MISE_ENV: ios
+      MISE_ENV: build-mobile
     steps:
       - id: checkout
         name: Checkout
@@ -327,8 +403,9 @@ jobs:
         with:
           persist-credentials: "false"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -336,32 +413,34 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build iOS
-        run: "just tauri::ios::build-preview"
+        run: "just tauri::build ios preview"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-ios-preview
-          path: waypoints/src-tauri/gen/apple/build/**/*.ipa
+          path: src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: gh release upload "${TAG}" waypoints/src-tauri/gen/apple/build/**/*.ipa --clobber
+        run: gh release upload "${TAG}" src-tauri/gen/apple/build/**/*.ipa --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: publish-mobile-app
         name: Upload to the App Store
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: secretspec run --profile release --scope ios -- fastlane ios preview
         shell: bash
         env:
-          SECRETSPEC_PROVIDER: sops
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
   build-android:
     needs:
       - test-macos
@@ -373,12 +452,27 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+    environment:
+      name: App Release
+    env:
+      MISE_ENV: build-mobile
     steps:
       - id: checkout
         name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
+      - id: free-disk
+        name: Free runner disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          android: "false"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
       - id: setup-java
         name: Setup Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
@@ -388,12 +482,17 @@ jobs:
       - id: setup-android-sdk
         name: Setup Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          accept-android-sdk-licenses: "true"
+          log-accepted-android-sdk-licenses: "true"
+          packages: platform-tools
       - id: setup-android-ndk
         name: Install Android NDK
-        run: sdkmanager "ndk;26.1.10909125"
+        run: sdkmanager "ndk;30.0.16138531"
       - name: Setup mise
-        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
+          version: "2026.8.6"
           cache: "false"
       - id: pnpm-install
         name: Install JS deps
@@ -401,35 +500,37 @@ jobs:
         shell: bash
       - id: build-recipe
         name: Build Android
-        run: "just tauri::android::build-preview"
+        run: "just tauri::build android preview"
         shell: bash
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/30.0.16138531
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-android-preview
           path: |-
-            waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
-            waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
+            src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+            src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: gh release upload "${TAG}" waypoints/src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk waypoints/src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
+        run: gh release upload "${TAG}" src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: publish-mobile-app
         name: Upload to the Play Store
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         run: secretspec run --profile release --scope android -- fastlane android preview
         shell: bash
         env:
-          SECRETSPEC_PROVIDER: sops
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
   publish-release:
     needs:
       - build-macos

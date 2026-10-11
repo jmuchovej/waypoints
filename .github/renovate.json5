@@ -23,9 +23,7 @@
     "**/test/**",
     "**/tests/**",
     "**/__fixtures__/**",
-    // Tauri regenerates gen/android and gen/apple from scratch; the Gradle,
-    // Gradle-wrapper and CocoaPods manifests in there are build artifacts.
-    "waypoints/src-tauri/gen/**",
+    "src-tauri/gen/**",
   ],
   customManagers: [
     {
@@ -88,7 +86,7 @@
       groupSlug: "website-minor-patch",
     },
     {
-      description: "Covers waypoints/, crates/domain and tooling/icongen, which all draw from the app catalog.",
+      description: "Covers src/, crates/domain and tooling/icongen, which all draw from the app catalog.",
       matchUpdateTypes: ["minor", "patch"],
       matchDepTypes: ["pnpm.catalog.app"],
       groupName: "app non-major",
@@ -116,9 +114,9 @@
       groupName: "iroh + curve25519",
     },
     {
-      description: "bedrock's generated SQL is tested against this exact engine build; keep it out of the cargo group and gate it on the dashboard.",
+      description: "bedrock's durability posture and generated SQL are tested against this exact engine build; keep it out of the cargo group and gate it on the dashboard. `turso` is only the facade and `turso_core` is the engine it clamps — they are exact-pinned in the workspace manifest and must bump in lockstep, and accepting a bump requires re-running bedrock's durability suites (see the pin comment in Cargo.toml).",
       matchManagers: ["cargo"],
-      matchPackageNames: ["turso"],
+      matchPackageNames: ["turso", "turso_core"],
       groupName: "turso",
       dependencyDashboardApproval: true,
     },

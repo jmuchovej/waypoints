@@ -1,70 +1,75 @@
+# Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
+#:tombi toml-version = "v1.0.0"
+
 [package]
-name = "Waypoints"
-version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-description.workspace = true
-readme.workspace = true
-homepage.workspace = true
-repository = "https://dev.waypoints.so/lib"
-license.workspace = true
-default-run = "waypoints"
+  name                  = "Waypoints"
+  version               = "0.1.0"
+  edition.workspace     = true
+  description.workspace = true
+  readme.workspace      = true
+  homepage.workspace    = true
+  repository            = "https://dev.waypoints.so/lib"
+  license.workspace     = true
+  default-run           = "waypoints"
 
 [lib]
-crate-type = ["cdylib", "rlib", "staticlib"]
-name = "waypoints"
+  crate-type = [ "cdylib", "rlib", "staticlib" ]
+  name       = "waypoints"
 
 [[bin]]
-name = "waypoints"
+  name = "waypoints"
 
 [dependencies]
-cartograph.workspace = true
-domain.workspace = true
-store.workspace = true
+  cartograph.workspace = true
+  domain.workspace     = true
+  store.workspace      = true
 
-async-trait.workspace = true
-chrono.workspace = true
-resvg.workspace = true
-rustls = { workspace = true, default-features = false, features = ["ring"] }
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-uuid.workspace = true
+  async-trait.workspace        = true
+  chrono.workspace             = true
+  resvg.workspace              = true
+  rustls                       = { workspace = true, default-features = false, features = [
+    "ring"
+  ] }
+  serde.workspace              = true
+  serde_json.workspace         = true
+  thiserror.workspace          = true
+  tokio.workspace              = true
+  tracing.workspace            = true
+  tracing-subscriber.workspace = true
+  uuid.workspace               = true
 
-tauri = { workspace = true, features = ["image-png"] }
-tauri-plugin-deep-link.workspace = true
-tauri-plugin-dialog.workspace = true
-tauri-plugin-fs.workspace = true
-tauri-plugin-notification.workspace = true
-tauri-plugin-os.workspace = true
-tauri-plugin-shell.workspace = true
-tauri-plugin-store.workspace = true
-tauri-plugin-updater.workspace = true
-wry.workspace = true
+  tauri                               = { workspace = true, features = [ "image-png" ] }
+  tauri-plugin-deep-link.workspace    = true
+  tauri-plugin-dialog.workspace       = true
+  tauri-plugin-fs.workspace           = true
+  tauri-plugin-notification.workspace = true
+  tauri-plugin-os.workspace           = true
+  tauri-plugin-shell.workspace        = true
+  tauri-plugin-store.workspace        = true
+  tauri-plugin-updater.workspace      = true
+  wry.workspace                       = true
 
 [build-dependencies]
-chrono = { workspace = true, features = ["alloc"] }
-tauri-build.workspace = true
+  chrono                = { workspace = true, features = [ "alloc" ] }
+  tauri-build.workspace = true
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
-tauri-plugin-barcode-scanner.workspace = true
+  tauri-plugin-barcode-scanner.workspace = true
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-single-instance.workspace = true
+  tauri-plugin-single-instance.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2-app-kit.workspace = true
+  objc2-app-kit.workspace = true
 
 [features]
-default = ["desktop"]
-desktop = ["tauri/tray-icon"]
-development = ["store/development"]
-nightly = ["store/nightly"]
-preview = ["store/preview"]
-stable = ["store/stable"]
+  default     = [ "desktop", "self-update" ]
+  desktop     = [ "tauri/tray-icon" ]
+  development = [ "store/development" ]
+  nightly     = [ "store/nightly" ]
+  preview     = [ "store/preview" ]
+  self-update = []
+  stable      = [ "store/stable" ]
 
 [lints]
-workspace = true
+  workspace = true

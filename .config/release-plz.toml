@@ -1,0 +1,15 @@
+#:schema https://github.com/MarcoIeni/release-plz/raw/main/.schema/latest.json
+
+[workspace]
+  git_release_enable = true
+  git_tag_enable     = false
+  semver_check       = true
+  allow_dirty        = false
+  changelog_update   = true
+  changelog_config   = ".config/cliff.toml"
+
+[[package]]
+  name               = "Waypoints"
+  git_tag_name       = "v{{ version.major }}.{{ version.minor }}.x"
+  git_tag_enable     = true
+  git_release_enable = true

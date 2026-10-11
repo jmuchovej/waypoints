@@ -10,7 +10,7 @@
 //! judgment it makes; authority is the validator's job.
 
 use crate::{
-    ACLIndex, ACLs, Backlog, HoldError, NoticeKey, Notices, RecordKey,
+    ACLIndex, ACLs, Backlog, HoldError, Meta, NoticeKey, Notices, RecordKey,
     protocol::{
         ACLRecord, NoticeID, NoticeStore, OrderProof, OrderedRecord, RecordID, SignedNotice,
         TrackID,
@@ -56,7 +56,34 @@ impl TerritoryHold {
         db.ensure_collection::<Notices>().await?;
         db.ensure_collection::<ACLs>().await?;
         db.ensure_collection::<Backlog>().await?;
+        db.ensure_collection::<Meta>().await?;
         Ok(Self { db })
+    }
+
+    // ---- clock ---------------------------------------------------------
+
+    /// The persisted hybrid logical clock (packed HLC), 0 if never set.
+    pub async fn clock(&self) -> Result<i64, HoldError> {
+        Ok(self
+            .db
+            .get::<Meta>(&0)
+            .await?
+            .map(|row| row.clock)
+            .unwrap_or(0))
+    }
+
+    /// Persist the hybrid logical clock (packed HLC).
+    pub async fn set_clock(&self, clock: i64) -> Result<(), HoldError> {
+        match self.db.get::<Meta>(&0).await? {
+            Some(mut row) => {
+                row.clock = clock;
+                self.db.update(row).await?;
+            }
+            None => {
+                self.db.insert(Meta { id: 0, clock }).await?;
+            }
+        }
+        Ok(())
     }
 
     // ---- ACL log -------------------------------------------------------

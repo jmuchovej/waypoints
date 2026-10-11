@@ -1,50 +1,51 @@
 [package]
-name = "store"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-description.workspace = true
-documentation.workspace = true
-readme.workspace = true
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-publish.workspace = true
+  name                    = "store"
+  version                 = "0.1.0"
+  edition.workspace       = true
+  description.workspace   = true
+  documentation.workspace = true
+  readme.workspace        = true
+  homepage.workspace      = true
+  repository.workspace    = true
+  license.workspace       = true
+  publish.workspace       = true
 
 [dependencies]
-bedrock.workspace = true
-domain.workspace = true
-importer = { workspace = true, optional = true }
+  bedrock.workspace          = true
+  domain.workspace           = true
+  importer                   = { workspace = true, optional = true }
+  # Scoped to the sync-owned tables in `query::sync` — see that module's doc.
+  outpost-protocol.workspace = true
 
-chrono.workspace = true
-derive_more = {
-  workspace = true,
-  features = ["debug", "display", "error", "from"]
-}
-indexmap = { workspace = true, optional = true }
-serde.workspace = true
-serde_json.workspace = true
-tempfile = { workspace = true, optional = true }
-thiserror.workspace = true
-tokio.workspace = true
-tracing.workspace = true
-turso.workspace = true
-uuid.workspace = true
+  chrono.workspace     = true
+  derive_more          = {
+    workspace = true,
+    features  = [ "debug", "display", "error", "from" ]
+  }
+  indexmap             = { workspace = true, optional = true }
+  serde.workspace      = true
+  serde_json.workspace = true
+  tempfile             = { workspace = true, optional = true }
+  thiserror.workspace  = true
+  tokio.workspace      = true
+  tracing.workspace    = true
+  turso.workspace      = true
+  uuid.workspace       = true
 
 [dev-dependencies]
-rstest.workspace = true
-store = { workspace = true, features = ["development"] }
-tempfile.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+  rstest.workspace   = true
+  store              = { workspace = true, features = [ "development", "test-utils" ] }
+  tempfile.workspace = true
+  tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
 
 [features]
-default = []
-development = ["mock"]
-mock = ["dep:importer", "dep:indexmap"]
-nightly = []
-preview = []
-stable = []
-test-utils = ["dep:tempfile"]
+  default     = []
+  development = [ "mock" ]
+  mock        = [ "dep:importer", "dep:indexmap" ]
+  nightly     = []
+  preview     = []
+  stable      = []
+  test-utils  = [ "dep:tempfile" ]
 
 [lints]
-workspace = true
+  workspace = true

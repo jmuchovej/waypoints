@@ -24,6 +24,14 @@ pub async fn get(store: &Store, id: MarkID) -> StoreResult<Option<Mark>> {
     Ok(mark.filter(|m| m.deleted_at.is_none()))
 }
 
+/// Whether a mark row exists at all — tombstoned or live. The sync fold's
+/// "has this Mark's creation folded" check: a soft-deleted mark still
+/// accepts ops (restore, LWW overwrites), so `get`'s live filter is wrong
+/// for it.
+pub async fn exists(store: &Store, id: MarkID) -> StoreResult<bool> {
+    Ok(store.db().get::<Mark>(&id).await?.is_some())
+}
+
 /// List non-deleted marks, optionally filtered by type prefix and/or chart IDs.
 ///
 /// When `prefix` is `None`, returns all non-deleted marks.

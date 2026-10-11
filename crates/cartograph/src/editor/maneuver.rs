@@ -1,6 +1,6 @@
 use crate::{EditorError, EditorResult};
 use chrono::NaiveDateTime;
-use domain::{Json, MarkData, MarkID, RichText, TerrainID, TerrainKind};
+use domain::{FeatureID, Json, MarkData, MarkID, Reading, RichText, TerrainID, TerrainKind};
 use serde::{Deserialize, Serialize};
 use store::{
     Store,
@@ -18,6 +18,11 @@ pub enum TextPayload {
 
 fn empty_rich_text() -> RichText {
     RichText::new(Vec::new())
+}
+
+/// `Reading` has no `Default`; `Null` is the encoding for "no reading".
+fn reading_null() -> Reading {
+    Reading::Null
 }
 
 /// An atomic, invertible operation on a single mark or terrain edge.
@@ -40,6 +45,21 @@ pub enum Maneuver {
         #[serde(skip)]
         old: Box<MarkData>,
         new: Box<MarkData>,
+    },
+    UpdateLandmarkTitle {
+        mark_id: MarkID,
+        /// Local-only, for CommandHistory undo.
+        #[serde(skip, default = "empty_rich_text")]
+        old: RichText,
+        new: RichText,
+    },
+    UpdateReading {
+        mark_id: MarkID,
+        feature_id: FeatureID,
+        /// Local-only, for CommandHistory undo.
+        #[serde(skip, default = "reading_null")]
+        old: Reading,
+        new: Reading,
     },
     UpdateRichText {
         mark_id: MarkID,
@@ -91,13 +111,49 @@ pub enum Maneuver {
 /// resolution consults. This mapping is part of the wire protocol's
 /// semantics, not resolver policy: every device must derive the same
 /// target from the same op, or their resolutions diverge.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ManeuverTarget {
     Mark(MarkID),
+    Title(MarkID),
+    Reading(MarkID, FeatureID),
     Terrain(TerrainID),
 }
 
 impl Maneuver {
+    pub fn create_mark(mark_id: MarkID, data: MarkData) -> Self {
+        Maneuver::CreateMark {
+            mark_id,
+            data: Box::new(data),
+        }
+    }
+
+    pub fn update_landmark_title(mark_id: MarkID, old: RichText, new: RichText) -> Self {
+        Maneuver::UpdateLandmarkTitle { mark_id, old, new }
+    }
+
+    pub fn update_reading(
+        mark_id: MarkID,
+        feature_id: FeatureID,
+        old: Reading,
+        new: Reading,
+    ) -> Self {
+        Maneuver::UpdateReading {
+            mark_id,
+            feature_id,
+            old,
+            new,
+        }
+    }
+
+    /// A full-snapshot text replacement (the only [`TextPayload`] kind today).
+    pub fn update_rich_text(mark_id: MarkID, old: RichText, new: RichText) -> Self {
+        Maneuver::UpdateRichText {
+            mark_id,
+            old,
+            new: TextPayload::Snapshot { rich_text: new },
+        }
+    }
+
     pub fn target(&self) -> ManeuverTarget {
         use Maneuver::*;
         match self {
@@ -106,6 +162,13 @@ impl Maneuver {
             | UpdateRichText { mark_id, .. }
             | SoftDeleteMark { mark_id, .. }
             | RestoreMark { mark_id, .. } => ManeuverTarget::Mark(*mark_id),
+
+            UpdateLandmarkTitle { mark_id, .. } => ManeuverTarget::Title(*mark_id),
+            UpdateReading {
+                mark_id,
+                feature_id,
+                ..
+            } => ManeuverTarget::Reading(*mark_id, feature_id.clone()),
 
             CreateTerrain { edge_id, .. }
             | UpdateTerrain { edge_id, .. }
@@ -123,6 +186,22 @@ impl Maneuver {
             },
             UpdateMarkData { mark_id, old, new } => UpdateMarkData {
                 mark_id: *mark_id,
+                old: new.clone(),
+                new: old.clone(),
+            },
+            UpdateLandmarkTitle { mark_id, old, new } => UpdateLandmarkTitle {
+                mark_id: *mark_id,
+                old: new.clone(),
+                new: old.clone(),
+            },
+            UpdateReading {
+                mark_id,
+                feature_id,
+                old,
+                new,
+            } => UpdateReading {
+                mark_id: *mark_id,
+                feature_id: feature_id.clone(),
                 old: new.clone(),
                 new: old.clone(),
             },
@@ -194,6 +273,15 @@ impl Maneuver {
             Maneuver::UpdateMarkData { mark_id, new, .. } => {
                 apply_mark_data_update(db, *mark_id, new).await
             }
+            Maneuver::UpdateLandmarkTitle { mark_id, new, .. } => {
+                apply_landmark_title_update(db, *mark_id, new).await
+            }
+            Maneuver::UpdateReading {
+                mark_id,
+                feature_id,
+                new,
+                ..
+            } => apply_reading_update(db, *mark_id, feature_id, new).await,
             Maneuver::UpdateRichText { mark_id, new, .. } => {
                 let TextPayload::Snapshot { rich_text } = new;
                 apply_rich_text_update(db, *mark_id, rich_text).await
@@ -274,6 +362,62 @@ async fn apply_mark_data_update(
         .ok_or(EditorError::NotFound(mark_id.inner()))?;
 
     mark::update_data(db, mark_id, new_data).await?;
+    Ok(())
+}
+
+/// Set a landmark's title. Mechanical writer — no validation beyond "the mark
+/// exists and is a landmark". `apply` also runs on the undo/redo path, so an
+/// op that was legal when recorded must stay applicable; anything stricter
+/// belongs in the mutation layer, before the op is constructed.
+async fn apply_landmark_title_update(
+    db: &Store,
+    mark_id: MarkID,
+    new_title: &RichText,
+) -> EditorResult<()> {
+    let m = mark::get(db, mark_id)
+        .await?
+        .ok_or(EditorError::NotFound(mark_id.inner()))?;
+
+    let mut mark_data = m.data;
+    match &mut mark_data {
+        MarkData::Landmark(landmark) => {
+            landmark.title = new_title.clone();
+        }
+        _ => return Err(EditorError::NotLandmark(mark_id.inner())),
+    }
+
+    mark::update_data(db, mark_id, &mark_data).await?;
+    Ok(())
+}
+
+/// Set or remove a reading on a landmark. `Reading::Null` removes the entry.
+/// Mechanical writer — no schema validation: if it revalidated, undoing to a
+/// previously-valid reading could fail after an intervening Chart edit
+/// narrowed the feature's constraints, leaving the group half-reverted.
+/// Validation runs once in the mutation layer, before the op exists.
+async fn apply_reading_update(
+    db: &Store,
+    mark_id: MarkID,
+    feature_id: &FeatureID,
+    new: &Reading,
+) -> EditorResult<()> {
+    let m = mark::get(db, mark_id)
+        .await?
+        .ok_or(EditorError::NotFound(mark_id.inner()))?;
+
+    let mut mark_data = m.data;
+    match &mut mark_data {
+        MarkData::Landmark(landmark) => {
+            if matches!(new, Reading::Null) {
+                landmark.readings.shift_remove(feature_id);
+            } else {
+                landmark.readings.insert(feature_id.clone(), new.clone());
+            }
+        }
+        _ => return Err(EditorError::NotLandmark(mark_id.inner())),
+    }
+
+    mark::update_data(db, mark_id, &mark_data).await?;
     Ok(())
 }
 

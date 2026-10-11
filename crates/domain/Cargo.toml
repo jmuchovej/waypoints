@@ -1,54 +1,53 @@
 [package]
-name = "domain"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-description = "Core data structures for block-based thought tools"
-documentation.workspace = true
-readme.workspace = true
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-publish.workspace = true
+  name                    = "domain"
+  version                 = "0.1.0"
+  edition.workspace       = true
+  description             = "Core data structures for block-based thought tools"
+  documentation.workspace = true
+  readme.workspace        = true
+  homepage.workspace      = true
+  repository.workspace    = true
+  license.workspace       = true
+  publish.workspace       = true
 
 [[bin]]
-name = "typegen"
-path = "bin/typegen.rs"
-required-features = ["development"]
+  name              = "typegen"
+  path              = "bin/typegen.rs"
+  required-features = [ "development" ]
 
 [dependencies]
-bedrock.workspace = true
+  bedrock.workspace = true
 
-chrono.workspace = true
-derive_more = {
-  workspace = true,
-  features = [
-    "as_ref",
-    "debug",
-    "display",
-    "from_str",
-    "is_variant",
-    "try_unwrap",
-    "unwrap",
-  ]
-}
-indexmap.workspace = true
-rand.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-specta.workspace = true
-specta-serde.workspace = true
-specta-typescript.workspace = true
-thiserror.workspace = true
-typed-builder.workspace = true
-uuid.workspace = true
-validator.workspace = true
+  chrono.workspace            = true
+  derive_more                 = {
+    workspace = true,
+    features  = [
+      "as_ref",
+      "debug",
+      "display",
+      "from_str",
+      "is_variant",
+      "try_unwrap",
+      "unwrap",
+    ]
+  }
+  indexmap.workspace          = true
+  rand.workspace              = true
+  serde.workspace             = true
+  serde_json.workspace        = true
+  specta.workspace            = true
+  specta-serde.workspace      = true
+  specta-typescript.workspace = true
+  thiserror.workspace         = true
+  typed-builder.workspace     = true
+  uuid.workspace              = true
+  validator.workspace         = true
 
 [features]
-default = []
-development = []
-preview = []
-stable = []
+  default     = []
+  development = []
+  preview     = []
+  stable      = []
 
 [lints]
-workspace = true
+  workspace = true

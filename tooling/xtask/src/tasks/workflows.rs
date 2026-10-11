@@ -21,9 +21,12 @@ mod check_generated;
 mod devenv_update;
 mod pull_request;
 mod release;
+mod release_plan;
 
 pub(crate) mod _types;
-pub(crate) use _types::{Artifact, Channel, Platform, PrepareJob, TestSuite, WorkflowInput};
+pub(crate) use _types::{
+    Artifact, Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowInput,
+};
 pub(crate) mod _helpers;
 pub(crate) use _helpers as helpers;
 pub(crate) use helpers::GITHUB_TOKEN;
@@ -124,6 +127,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
+        WorkflowFile::waypoints("release_plan", release_plan::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
         release_file(Channel::Stable),
@@ -135,6 +139,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         devenv_files: crate::utils::devenv::managed_files()?,
         android_ndk: crate::utils::devenv::android_ndk_version()?,
         android_jdk: crate::utils::devenv::android_jdk_major()?,
+        mise_version: crate::utils::mise::version()?,
     };
 
     let rendered = workflows
@@ -274,6 +279,28 @@ pub struct WorkflowContext {
     /// The JDK major version devenv installs. See
     /// [`crate::utils::devenv::android_jdk_major`].
     pub android_jdk: String,
+    /// The mise that writes the lockfile, for CI to install the same one.
+    /// See [`crate::utils::mise::version`].
+    pub mise_version: String,
+}
+
+#[cfg(test)]
+impl WorkflowContext {
+    /// Stands in for the devenv and mise lookups [`run`] performs, which shell
+    /// out and so cannot run under test. Job-wiring tests assert over step and
+    /// output structure, never over these values — treat them as opaque.
+    pub fn fixture() -> Self {
+        Self {
+            args: WorkflowArgs {
+                check: false,
+                sha: None,
+            },
+            devenv_files: Vec::new(),
+            android_ndk: "00.0.00000000".to_owned(),
+            android_jdk: "00".to_owned(),
+            mise_version: "0.0.0".to_owned(),
+        }
+    }
 }
 
 /// Boxed rather than a `fn` pointer so one builder can emit a family of
@@ -347,4 +374,110 @@ impl WorkflowFile {
 struct RenderedWorkflow {
     path: PathBuf,
     content: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    /// Every workflow [`run`] emits, built against the fixture context.
+    fn every_workflow(context: &WorkflowContext) -> Vec<(String, Workflow)> {
+        let mut workflows = vec![
+            (
+                "check_generated".to_owned(),
+                check_generated::workflow(context),
+            ),
+            ("devenv_update".to_owned(), devenv_update::workflow(context)),
+            ("pull_request".to_owned(), pull_request::workflow(context)),
+            ("release_plan".to_owned(), release_plan::workflow(context)),
+        ];
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            workflows.push((
+                format!("release-{}", channel.flavor()),
+                release::workflow(channel, context),
+            ));
+        }
+        workflows
+    }
+
+    /// The vault credential reaches a job only through the environment it
+    /// declares, and a job that resolves nothing declares none. A job that
+    /// forgot its environment would otherwise resolve through a repository
+    /// secret of the same name — the leak environments exist to close — and
+    /// a job declaring one for no reason would gate on protection rules it
+    /// has no business waiting on.
+    #[test]
+    fn environments_follow_the_vault_credential() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            assert!(
+                value["env"].get("SECRETSPEC_PROVIDER").is_none(),
+                "{name}: provider selection belongs on the resolving step, not the workflow"
+            );
+
+            let jobs = value["jobs"]
+                .as_object()
+                .unwrap_or_else(|| panic!("{name}: no jobs"));
+            for (job_name, job) in jobs {
+                let holds_credential = job["steps"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .any(|step| step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+                let declares_environment = job.get("environment").is_some();
+                assert_eq!(
+                    holds_credential, declares_environment,
+                    "{name}/{job_name}: credential and environment must come together"
+                );
+                // A job that publishes must not restore a cache anything else
+                // could have written. `.github/zizmor.yml` silences the audit
+                // for the release workflows on the strength of this check.
+                if declares_environment {
+                    let caches = job["steps"].as_array().into_iter().flatten().any(|step| {
+                        step["uses"]
+                            .as_str()
+                            .is_some_and(|uses| uses.contains("cache"))
+                            || step["with"]["cache"].as_bool() == Some(true)
+                    });
+                    assert!(
+                        !caches,
+                        "{name}/{job_name}: a publishing job restores a cache"
+                    );
+                }
+                assert!(
+                    job["env"].get("SECRETSPEC_PROVIDER").is_none()
+                        && job["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_none(),
+                    "{name}/{job_name}: provider and credential belong on the step"
+                );
+            }
+        }
+    }
+
+    /// Both halves travel together: a step with the provider but no credential
+    /// would resolve nothing, one with the credential but no provider would
+    /// resolve against `env://` under devenv.
+    #[test]
+    fn provider_and_credential_are_set_together() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            let steps = value["jobs"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .flat_map(|(_, job)| job["steps"].as_array().cloned().unwrap_or_default());
+            for step in steps {
+                // Under `devenv shell` the provider rides on the command, so
+                // devenv's own pre-shell resolution does not pick it up.
+                let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some()
+                    || step["run"]
+                        .as_str()
+                        .is_some_and(|run| run.contains("--provider op"));
+                let credential = step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some();
+                assert_eq!(provider, credential, "{name}: {}", step["name"]);
+            }
+        }
+    }
 }
