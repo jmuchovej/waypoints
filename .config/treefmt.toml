@@ -75,7 +75,7 @@ verbose                 = 1
 [formatter.rufo]
   command  = "rufo"
   options  = [ "-x" ]
-  includes = [ "*.rb", "**/Podfile", "*.podspec" ]
+  includes = [ "*.rb", "**/Appfile", "**/Fastfile", "**/Podfile", "*.podspec" ]
 
 [formatter.rustfmt]
   command  = "rustfmt"

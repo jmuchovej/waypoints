@@ -8,7 +8,7 @@ def android_aab
   case matches.length
   when 1 then matches.first
   when 0 then UI.user_error!("No AAB found at #{pattern} — was `just tauri::build android` run?")
-  else UI.user_error!("Ambiguous AAB: #{matches.join(', ')}")
+  else UI.user_error!("Ambiguous AAB: #{matches.join(", ")}")
   end
 end
 
@@ -22,7 +22,7 @@ def ios_ipa
   case matches.length
   when 1 then matches.first
   when 0 then UI.user_error!("No ipa found at #{pattern} — was `just tauri::build ios` run?")
-  else UI.user_error!("Ambiguous ipa: #{matches.join(', ')}")
+  else UI.user_error!("Ambiguous ipa: #{matches.join(", ")}")
   end
 end
 
