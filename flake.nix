@@ -23,7 +23,7 @@
       flake.overlays.default = import ./nix/overlay.nix { };
 
       perSystem =
-        { pkgs, ... }:
+        { pkgs, lib, ... }:
         let
           overlaid = pkgs.extend (import ./nix/overlay.nix { });
           # Stamp build metadata from the flake source when available; build.rs
@@ -38,6 +38,11 @@
             default = stamp overlaid.waypoints;
             # No stamp: the Station carries no build-metadata stamp to feed.
             inherit (overlaid) outpost;
+          }
+          # The container image is a Linux artifact and a flake output only —
+          # the overlay stays a package set.
+          // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+            outpost-image = overlaid.callPackage ./nix/packages/outpost/_image.nix { };
           };
         };
     };
