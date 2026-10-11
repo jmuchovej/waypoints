@@ -171,7 +171,11 @@ pub fn create_release(
     // `xtask` — the lane the release-automation jobs share.
     let job = mise_env(Job::default(), &[MiseEnv::Xtask])
         .name("Draft the release")
-        .permissions(Permissions::default().contents(Level::Write))
+        .permissions(
+            Permissions::default()
+                .contents(Level::Write)
+                .pull_requests(Level::Read),
+        )
         .runs_on(runners::LINUX)
         // A nightly that builds nothing drafts nothing; the builds skip on
         // the same verdict.
