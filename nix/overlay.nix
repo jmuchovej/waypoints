@@ -25,4 +25,6 @@ in
   waypoints = waypoints-flavor "stable";
   waypoints-preview = waypoints-flavor "preview";
   waypoints-nightly = waypoints-flavor "nightly";
+  # The sync server's operator binary — headless, no flavor.
+  outpost = final.callPackage ./packages/outpost/package.nix { inherit root rustToolchain; };
 }

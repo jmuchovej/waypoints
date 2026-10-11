@@ -1,9 +1,9 @@
 # Packaging-only flake (see openspec distribution/nix-overlay): exposes the
-# desktop app through nix/overlay.nix. The dev shell stays on devenv.yaml —
-# `nix develop` is not a supported entry point, and this flake's inputs are
-# deliberately independent of devenv's lock.
+# desktop app and the outpost Station through nix/overlay.nix. The dev shell
+# stays on devenv.yaml — `nix develop` is not a supported entry point, and
+# this flake's inputs are deliberately independent of devenv's lock.
 {
-  description = "Waypoints — flake overlay for the desktop app";
+  description = "Waypoints — flake overlay for the desktop app and the outpost Station";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -36,6 +36,8 @@
             waypoints-preview = stamp overlaid.waypoints-preview;
             waypoints-nightly = stamp overlaid.waypoints-nightly;
             default = stamp overlaid.waypoints;
+            # No stamp: the Station carries no build-metadata stamp to feed.
+            inherit (overlaid) outpost;
           };
         };
     };
