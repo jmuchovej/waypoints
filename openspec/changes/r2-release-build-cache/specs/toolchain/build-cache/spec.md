@@ -66,10 +66,10 @@ A directory SHALL be eligible for caching only when the manifest its key is deri
 - **WHEN** the Android build resolves a dependency or plugin artifact
 - **THEN** its checksum is compared against the committed verification metadata, and a mismatch fails the build
 
-#### Scenario: Gradle wrapper distribution is verified
+#### Scenario: Gradle distribution comes from the tool projection
 
-- **WHEN** the Gradle wrapper downloads its distribution
-- **THEN** the distribution's checksum is compared against the committed pin, and a mismatch fails the build
+- **WHEN** the Android build runs Gradle in CI
+- **THEN** it runs the distribution the tool projection installs and its lockfile pins by checksum; no wrapper download takes place
 
 #### Scenario: Verification metadata is regenerated on demand
 
@@ -135,7 +135,7 @@ A build recipe that scrubs its environment SHALL forward the compiler wrapper se
 
 ### Requirement: An unreachable store degrades to a cold build
 
-A release build SHALL NOT fail because the cache store is unreachable or rejects a request. A compiler-cache server that cannot reach the store SHALL still start and compile without the remote store; a directory-cache restore failure SHALL be treated as a miss; a directory-cache save failure SHALL be reported and SHALL NOT fail the job. The build SHALL still produce its artifacts, and the job's cache report SHALL show which store, if any, was in use.
+A release build SHALL NOT fail because the cache store is unreachable or rejects a request. If the compiler-cache server cannot be started against the store, the job SHALL continue and the build SHALL compile without the remote store; a compiler-cache client that loses its server mid-build SHALL compile directly rather than fail; a directory-cache restore failure SHALL be treated as a miss; a directory-cache save failure SHALL be reported and SHALL NOT fail the job. The build SHALL still produce its artifacts, and the job's cache report SHALL show which store, if any, was in use.
 
 #### Scenario: Store outage during a release
 
