@@ -4,9 +4,3 @@ default:
 
 test *ARGS:
     cargo test -p cartograph {{ ARGS }}
-
-typegen:
-    cargo run --bin typegen --features development
-    treefmt typescript/types.g.ts
-    node bin/patch-types.ts
-    treefmt typescript/types.g.ts

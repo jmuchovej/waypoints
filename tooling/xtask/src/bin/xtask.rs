@@ -22,6 +22,8 @@ enum Command {
     /// Regenerates every checked-in GitHub Actions workflow.
     #[command(alias = "gen-workflows")]
     Workflows(tasks::WorkflowArgs),
+    /// Regenerates the TypeScript bindings from the Rust data model.
+    Typegen(tasks::TypegenArgs),
     /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
     DevServer(tasks::DevServerArgs),
 }
@@ -35,6 +37,7 @@ fn main() -> Result<()> {
         Command::ReleasePlan(args) => tasks::release_plan::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
+        Command::Typegen(args) => tasks::typegen::run(args),
         Command::DevServer(args) => tasks::dev_server::run(args),
     }
 }

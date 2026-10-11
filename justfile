@@ -34,8 +34,7 @@ mod icons "tooling/icongen/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
-    @just domain::typegen
-    @just cartograph::typegen
+    cargo xtask typegen
 
 # Validate TypeScript types on the app & website
 typecheck:
@@ -73,12 +72,12 @@ mise-lock-check:
     export SECRETSPEC_REASON="just mise-lock-check compares the mise lockfiles against their configs; no secret values are read"
     devenv shell -- mise-lock --check
 
-[doc("Verifies that devenv-managed files and xtask-generated workflows don't differ from committed files.")]
+[doc("Verifies that devenv-managed files, the TypeScript bindings, and xtask-generated workflows don't differ from committed files.")]
 [script]
 check-generated:
     # devenv's secretspec integration gates evaluation behind a stated reason.
-    # This recipe reads generated file lists and regenerates workflows; it never
-    # reads a secret value.
+    # This recipe reads generated file lists and regenerates bindings and
+    # workflows; it never reads a secret value.
     export SECRETSPEC_REASON="just check-generated compares devenv- and xtask-generated files against the committed tree; no secret values are read"
 
     # Entering the devenv shell is what regenerates devenv's outputs, so the
@@ -90,6 +89,12 @@ check-generated:
       echo "devenv reported no copied files." >&2
       exit 1
     fi
+
+    # The TypeScript bindings are regenerated in place the same way, and
+    # diffed against the same baseline.
+    bindings="crates/domain/typescript/types.g.ts crates/domain/typescript/schema.g.ts crates/cartograph/typescript/types.g.ts"
+    devenv shell cargo xtask typegen
+    files="$files $bindings"
 
     rc=0
     # Colocated checkouts have a .git where HEAD is jj's @-; added jj
@@ -107,8 +112,8 @@ check-generated:
     devenv shell cargo xtask workflows --check || rc=1
 
     if [ "$rc" -ne 0 ]; then
-      echo "Generated files are stale. Any devenv output diffed above has already" >&2
-      echo "been regenerated; for workflows, run \`cargo xtask workflows\`." >&2
+      echo "Generated files are stale. Any devenv output or binding diffed above has" >&2
+      echo "already been regenerated; for workflows, run \`cargo xtask workflows\`." >&2
       echo "Review and commit the result." >&2
       exit 1
     fi

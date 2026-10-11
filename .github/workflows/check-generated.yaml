@@ -12,7 +12,11 @@ on:
       - devenv.yaml
       - devenv.lock
       - tooling/xtask/**
+      - crates/domain/**
+      - crates/cartograph/**
       - .github/workflows/**
+      - crates/domain/typescript/**
+      - crates/cartograph/typescript/**
       - .config/mise.build-desktop.lock
       - .config/mise.build-desktop.toml
       - .config/mise.build-mobile.lock
@@ -38,7 +42,11 @@ on:
       - devenv.yaml
       - devenv.lock
       - tooling/xtask/**
+      - crates/domain/**
+      - crates/cartograph/**
       - .github/workflows/**
+      - crates/domain/typescript/**
+      - crates/cartograph/typescript/**
       - .config/mise.build-desktop.lock
       - .config/mise.build-desktop.toml
       - .config/mise.build-mobile.lock
