@@ -7,6 +7,7 @@ result-*
 local.properties
 .mcp.json
 .android/
+.ruby-lsp/
 
 _research/
 .scratch/
@@ -363,6 +364,7 @@ $RECYCLE.BIN/
 # .env holds no secrets — those come from secretspec. It is the shared
 # environment description devenv and mise both read, so it must be committed.
 !.env
+!.envrc
 
 # Local development stores for secretspec's `sops` and `sops-web` providers,
 # encrypted to your own age key. CI reads 1Password; nothing committed holds a

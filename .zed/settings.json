@@ -1,4 +1,5 @@
 {
+  "load_direnv": "direct",
   "format_on_save": "on",
   "formatter": {
     "external": {
@@ -42,6 +43,14 @@
           ]
         }
       }
+    },
+    "ruby-lsp": {
+      "settings": {
+        "use_bundler": false
+      },
+      "initialization_options": {
+        "linters": ["rubocop"]
+      }
     }
   },
   "languages": {
@@ -56,6 +65,13 @@
     },
     "CSS": {
       "language_servers": ["tailwindcss-intellisense-css", "!vscode-css-language-server", "!biome"]
+    },
+    "Ruby": {
+      "language_servers": ["ruby-lsp", "!solargraph"]
     }
-  }
+  },
+  "file_types": {
+    "Ruby": ["Fastfile", "Appfile", "Podfile"],
+    "XML": ["*.plist", "*.storyboard", "*.entitlements"]
+  },
 }
