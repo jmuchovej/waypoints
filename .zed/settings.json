@@ -74,4 +74,19 @@
     "Ruby": ["Fastfile", "Appfile", "Podfile"],
     "XML": ["*.plist", "*.storyboard", "*.entitlements"]
   },
+  "read_only_files": [
+    "**/.rustup/**",
+    "**/.cargo/registry/**",
+    "**/.cargo/git/**",
+    "target/**/*.rs",
+    "**/*.lock",
+    "**/pnpm-lock.yaml",
+    "**/.nuxt/**",
+    "vendor/",
+    ".config/mise.toml",
+    ".config/mise.*.toml",
+    "src-tauri/gen/android/local.properties",
+    "src-tauri/gen/android/gradle/lib.versions.toml",
+    "src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties"
+  ]
 }
