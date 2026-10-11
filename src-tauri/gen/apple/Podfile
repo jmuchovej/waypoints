@@ -1,11 +1,11 @@
 # Uncomment the next line to define a global platform for your project
 
-target "iOS" do
+target "Waypoints_iOS" do
   platform :ios, "14.0"
   # Pods for waypoints_iOS
 end
 
-target "macOS" do
+target "Waypoints_macOS" do
   platform :osx, "11.0"
   # Pods for waypoints_macOS
 end
