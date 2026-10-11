@@ -122,3 +122,42 @@ async fn session_runs_over_real_quic_loopback() {
     station.close().await;
     vessel.close().await;
 }
+
+/// A port the kernel considers free right now. Racy by nature (another
+/// process may grab it before the endpoint does), which is the accepted
+/// cost of testing a *fixed* bind.
+fn free_udp_port() -> u16 {
+    std::net::UdpSocket::bind("127.0.0.1:0")
+        .expect("probe socket")
+        .local_addr()
+        .expect("probe addr")
+        .port()
+}
+
+/// A deployed Station lands on the port it was given, on every family it
+/// binds, and a second Station asking for the same port is refused rather
+/// than quietly moved elsewhere — a Service and a firewall rule name one
+/// number, so "a nearby port" is a Station nobody can reach.
+#[tokio::test]
+async fn routable_bind_lands_on_the_configured_port_and_never_moves() {
+    let port = free_udp_port();
+
+    let station = Endpoint::bind_routable_at(SecretKey::from_bytes(&[0x5B; 32]), port)
+        .await
+        .expect("bind at the chosen port");
+    let bound: Vec<_> = station.direct_addr().ip_addrs().copied().collect();
+    assert!(!bound.is_empty(), "the endpoint bound at least one socket");
+    for socket in &bound {
+        assert_eq!(socket.port(), port, "every bound family sits on {port}");
+    }
+
+    // Same port, different identity: the second bind must fail, not pick
+    // another port.
+    let second = Endpoint::bind_routable_at(SecretKey::from_bytes(&[0x5C; 32]), port).await;
+    assert!(
+        second.is_err(),
+        "a second routable bind on {port} must be refused while the first holds it"
+    );
+
+    station.close().await;
+}
