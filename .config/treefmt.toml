@@ -4,6 +4,7 @@
 allow-missing-formatter = true
 excludes                = [
   "*.lock",
+  "pnpm-lock.yaml",
   "*.patch",
   ".git{attributes,ignore,modules}",
   "LICENSE",
