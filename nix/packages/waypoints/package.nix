@@ -49,9 +49,16 @@ let
 
   platform = if stdenv.hostPlatform.isDarwin then "macos" else "linux";
 
+  # Hashes nix cannot derive from the tree: the pnpm dependency closure and the
+  # git-sourced cargo crates. They live in data rather than in these
+  # expressions so `nix-pins` refreshes one by writing a JSON key — see the
+  # header of `tooling/bin/nix-pins`.
+  pins = lib.importJSON ./hashes.json;
+
   frontend = callPackage ./_frontend.nix {
     inherit flavor root;
     version = app-version;
+    pnpmDepsHash = pins.pnpmDeps;
   };
 
   # Neutralize the dev-pipeline hooks: the frontend is prebuilt (no
@@ -106,9 +113,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   cargoLock = {
     lockFile = root + "/Cargo.lock";
-    outputHashes = {
-      "gh-workflow-0.9.0" = "sha256-CMzElgOmzseY3JOw7g2Q9uDGrS3usCzzdQt/nVNcn+E=";
-    };
+    outputHashes = pins.cargoOutputHashes;
   };
 
   buildAndTestSubdir = "src-tauri";
@@ -160,6 +165,11 @@ rust-platform.buildRustPackage (_finalAttrs: {
   preBuild = ''
     cp -r ${frontend} src-tauri/frontend-dist
   '';
+
+  # Exposed so the pnpm dependency closure is addressable on its own
+  # (`waypoints.frontend.pnpmDeps`). `nix-pins` builds that attribute rather
+  # than the whole app, so refreshing its hash costs one fetch.
+  passthru = { inherit frontend; };
 
   # `WAYPOINTS_FLAVOR` is what build.rs reads for the channel it stamps, and
   # `src-tauri/justfile` exports the same — without it every package reports

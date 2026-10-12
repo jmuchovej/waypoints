@@ -1,0 +1,152 @@
+#!/usr/bin/env nu
+
+# Refresh the hashes nix cannot derive from the tree, or with `--dry-run`
+# report what they would become. Hand-invoked after a lockfile change.
+#
+# Every such hash lives in `nix/packages/waypoints/hashes.json` and is read
+# from there by `package.nix`, so refreshing one is a write to a JSON key
+# rather than a rewrite of nix source.
+#
+# A hash is learned the only way nix offers — build against a placeholder and
+# read the real value out of the mismatch it reports — but the placeholder is
+# injected with `overrideAttrs`, never written to the pins file. The file is
+# touched once, after the answer is known, so an interrupted run cannot leave
+# a placeholder behind to be committed.
+#
+# Builds go through `nix/overlay.nix` with `root` set to this tree rather than
+# `nix build .#`, because an added jj workspace has no `.git` and nix would
+# copy the whole directory — `target/` included — into the store. The overlay
+# takes `root` for exactly this reason; see its header.
+
+const PINS_FILE = "nix/packages/waypoints/hashes.json"
+
+# `key` is the field in the pins file. `attr` is the narrowest attribute that
+# still carries the hash, so a refresh costs one fetch rather than a whole app
+# build. `drv` names the derivation whose mismatch holds the answer, so a
+# mismatch elsewhere in the build is never mistaken for this pin's.
+#
+# `cargoOutputHashes` is deliberately absent. Its entries are per-git-crate,
+# `buildRustPackage` exposes no attribute to build one on its own, they move
+# only when a dependency's revision does, and cargo's mismatch error already
+# names the exact key to change.
+const PINNED = [
+  {
+    name: "pnpm-deps"
+    key: "pnpmDeps"
+    attr: "waypoints.frontend.pnpmDeps"
+    drv: "waypoints-frontend-pnpm-deps"
+  }
+]
+
+# The nixpkgs the flake pins. Resolving against anything else can yield a hash
+# that disagrees with CI's, since the fetcher's own version is part of what
+# produces it.
+def nixpkgs-rev [root: string]: nothing -> string {
+  open --raw ($root | path join "flake.lock")
+  | from json
+  | get nodes.nixpkgs.locked.rev
+}
+
+# Builds `attr` with its hash forced to `lib.fakeHash`, which must fail. The
+# tree is read through the overlay's `root`, so uncommitted edits count.
+def build-against-placeholder [root: string, attr: string]: nothing -> record {
+  let expr = $"
+    let
+      pkgs = import \(builtins.getFlake \"github:NixOS/nixpkgs/(nixpkgs-rev $root)\") {
+        system = builtins.currentSystem;
+        overlays = [ \(import ($root)/nix/overlay.nix { root = ($root); }) ];
+      };
+    in \(pkgs.($attr)).overrideAttrs \(_: { outputHash = pkgs.lib.fakeHash; })
+  "
+
+  do { ^nix build --impure --no-link --expr $expr } | complete
+}
+
+# The hash nix computed, taken from the mismatch block naming `drv`. Empty
+# when the build failed for any other reason.
+def reported-hash [output: string, drv: string]: nothing -> string {
+  let lines = ($output | lines)
+
+  let mismatch = (
+    $lines
+    | enumerate
+    | where {|row| ($row.item | str contains "hash mismatch") and ($row.item | str contains $drv) }
+  )
+  if ($mismatch | is-empty) { return "" }
+
+  let reported = (
+    $lines
+    | skip ($mismatch | first | get index)
+    | where {|line| $line =~ 'got:\s+sha256-' }
+  )
+  if ($reported | is-empty) { return "" }
+
+  let parsed = ($reported | first | parse --regex 'got:\s+(?<hash>sha256-[A-Za-z0-9+/=]+)')
+  if ($parsed | is-empty) { return "" }
+
+  $parsed | first | get hash
+}
+
+def pins-path [root: string]: nothing -> string {
+  $root | path join $PINS_FILE
+}
+
+def refresh [root: string, pin: record, dry_run: bool] {
+  let pins = (open --raw (pins-path $root) | from json)
+  let current = ($pins | get $pin.key)
+
+  print $"($pin.name): building ($pin.attr) against a placeholder…"
+  let result = (build-against-placeholder $root $pin.attr)
+
+  if $result.exit_code == 0 {
+    # A placeholder cannot be the right hash, so a green build means the
+    # attribute is no longer hashed the way this pin assumes.
+    print -e $"($pin.name): build succeeded against the placeholder — does ($pin.attr) still carry a fixed-output hash?"
+    exit 1
+  }
+
+  let found = (reported-hash ($result.stderr + $result.stdout) $pin.drv)
+  if ($found | is-empty) {
+    print -e $"($pin.name): no hash mismatch for ($pin.drv) in the build output. Last lines:"
+    print -e ($result.stderr | lines | last 20 | str join "\n")
+    exit 1
+  }
+
+  if $found == $current {
+    print $"($pin.name): unchanged \(($current))"
+    return
+  }
+
+  if $dry_run {
+    print $"($pin.name): ($current) -> ($found) \(not written)"
+    return
+  }
+
+  # Trailing newline to match what treefmt leaves, so a refresh never also
+  # shows up as a whitespace change.
+  $"($pins | update $pin.key $found | to json --indent 2)\n"
+  | save --force (pins-path $root)
+  print $"($pin.name): ($current) -> ($found)"
+}
+
+def main [
+  name?: string # refresh only this pin; default is every one
+  --dry-run # report what each hash would become, writing nothing
+] {
+  let root = $env.PROJECT_ROOT? | default (pwd)
+
+  let selected = if ($name | is-empty) {
+    $PINNED
+  } else {
+    let matched = ($PINNED | where name == $name)
+    if ($matched | is-empty) {
+      print -e $"no pin named ($name). Known: ($PINNED | get name | str join ', ')"
+      exit 1
+    }
+    $matched
+  }
+
+  for pin in $selected {
+    refresh $root $pin $dry_run
+  }
+}

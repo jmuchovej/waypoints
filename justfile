@@ -66,6 +66,14 @@ mise-lock:
     export SECRETSPEC_REASON="just mise-lock refreshes the mise lockfiles, which needs an authenticated GitHub client"
     devenv shell -- secretspec run --reason "mise resolves lockfile entries through the GitHub API, which is rate-limited to sixty requests an hour unauthenticated" -- mise-lock
 
+[doc("Refreshes the hashes nix cannot derive from the tree, after a lockfile change.")]
+nix-pins pin="":
+    nix-pins {{ pin }}
+
+[doc("Reports what those hashes would become, writing nothing.")]
+nix-pins-check pin="":
+    nix-pins {{ pin }} --dry-run
+
 [doc("Checks every mise lockfile against its config. Offline; no token needed.")]
 [script]
 mise-lock-check:

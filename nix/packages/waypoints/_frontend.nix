@@ -4,8 +4,9 @@
 # `package.nix` as `frontendDist`, never exposed as a package.
 #
 # The pnpm dependency FOD's `src` is manifests-only: all flavors share one
-# fetch, and app-code edits never invalidate it. To refresh the hash after a
-# `pnpm-lock.yaml` change, see the comment at `hash` below.
+# fetch, and app-code edits never invalidate it. Its hash comes from
+# `hashes.json` by way of package.nix; refresh it with `just nix-pins` after a
+# `pnpm-lock.yaml` change.
 {
   root,
   lib,
@@ -20,6 +21,9 @@
   # single place the version is tracked. Not re-read here: one parse, one
   # source. See design.md D9.
   version,
+  # Likewise from package.nix, which reads it from `hashes.json`. Refresh it
+  # with `just nix-pins` after any `pnpm-lock.yaml` change; never by hand.
+  pnpmDepsHash,
 }:
 let
   inherit ((fromTOML (builtins.readFile "${root}/src-tauri/configs/flavors/${flavor}.toml")))
@@ -83,10 +87,7 @@ stdenv.mkDerivation (finalAttrs: {
     pnpm = pnpm_11;
     fetcherVersion = 4;
     nativeBuildInputs = [ deno ];
-    # Refresh after any pnpm-lock.yaml change:
-    #   set to lib.fakeHash, run `nix build .#waypoints`, copy the
-    #   "got:" hash from the mismatch error back here.
-    hash = "sha256-acxEWvA5g0EHokeMDjUD2xZzvyOpFgGZRZZNfBMQr+s=";
+    hash = pnpmDepsHash;
   };
 
   env = {
