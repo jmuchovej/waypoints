@@ -1,9 +1,3 @@
-# All migration-related tasks!
 [private]
 default:
     @just --list
-
-typegen:
-    cargo run --bin typegen --features development
-    node bin/schemagen.ts
-    treefmt typescript/*.g.ts

@@ -1,6 +1,7 @@
 //! Asserts that everything we generate is in lockstep with the source it is
-//! generated from — devenv's `files."..."`/`tasks."mise:lock"` outputs, and the
-//! workflows emitted by this very crate.
+//! generated from — devenv's `files."..."`/`tasks."mise:lock"` outputs, the
+//! TypeScript bindings `cargo xtask typegen` exports from `domain` and
+//! `cartograph`, and the workflows emitted by this very crate.
 
 use super::{WorkflowContext, helpers, runners, steps};
 use gh_workflow::{Event, Job, Level, Permissions, PullRequest, Push, Workflow, WorkflowDispatch};
@@ -12,11 +13,17 @@ const SOURCES: &[&str] = &[
     "devenv.yaml",
     "devenv.lock",
     "tooling/xtask/**",
+    "crates/domain/**",
+    "crates/cartograph/**",
 ];
 
 /// Generated outputs, listed so that hand-editing one is caught. devenv's own
 /// come from the context at generation time.
-const OUTPUTS: &[&str] = &[".github/workflows/**"];
+const OUTPUTS: &[&str] = &[
+    ".github/workflows/**",
+    "crates/domain/typescript/**",
+    "crates/cartograph/typescript/**",
+];
 
 pub fn workflow(context: &WorkflowContext) -> Workflow {
     let paths: Vec<String> = SOURCES

@@ -86,7 +86,7 @@ stdenv.mkDerivation (finalAttrs: {
     # Refresh after any pnpm-lock.yaml change:
     #   set to lib.fakeHash, run `nix build .#waypoints`, copy the
     #   "got:" hash from the mismatch error back here.
-    hash = "sha256-zFz9iUIhZQ66U5lSjCQ+RKiAXfUC7HcWuEAMd2CKgcU=";
+    hash = "sha256-acxEWvA5g0EHokeMDjUD2xZzvyOpFgGZRZZNfBMQr+s=";
   };
 
   env = {
