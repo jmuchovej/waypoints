@@ -6,9 +6,9 @@
 
 ## 2. Index files and their reader
 
-- [ ] 2.1 Commit `nix/releases/{stable,preview,nightly}.json` as `{}`; verify all three parse
-- [ ] 2.2 Write `nix/releases/default.nix` as the only reader — requires `tag`, `rev`, and `hash`, derives the version as the tag minus its `v`, and raises the D7 eval failure on an absent or empty entry; verify the error message names the channel and points at the index file
-- [ ] 2.3 Verify each of the three channels fails evaluation with that message while its entry is empty, and that no channel's failure affects another's
+- [x] 2.1 Commit `nix/releases/{stable,preview,nightly}.json` as `{}`; verify all three parse
+- [x] 2.2 Write `nix/releases/default.nix` as the only reader — requires `tag`, `rev`, and `hash`, derives the version as the tag minus its `v`, and raises the D7 eval failure on an absent or empty entry; verify the error message names the channel and points at the index file
+- [x] 2.3 Verify each of the three channels fails evaluation with that message while its entry is empty, and that no channel's failure affects another's
 
 ## 3. The version names the channel
 
