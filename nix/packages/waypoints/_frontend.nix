@@ -8,6 +8,7 @@
 # `hashes.json` by way of package.nix; refresh it with `just nix-pins` after a
 # `pnpm-lock.yaml` change.
 {
+  # The tree being built: package.nix's `workingTree`.
   root,
   lib,
   stdenv,
@@ -17,16 +18,17 @@
   nodejs,
   deno,
   flavor,
-  # Passed down from package.nix, which reads it from the app manifest — the
-  # single place the version is tracked. Not re-read here: one parse, one
-  # source. See design.md D9.
+  # Passed down from package.nix, which resolves it once — the app manifest's,
+  # or the published version a tag carries. Not re-read here: one parse, one
+  # source. See the nix-flake-overlay design, D9.
   version,
   # Likewise from package.nix, which reads it from `hashes.json`. Refresh it
   # with `just nix-pins` after any `pnpm-lock.yaml` change; never by hand.
   pnpmDepsHash,
 }:
 let
-  inherit ((fromTOML (builtins.readFile "${root}/src-tauri/configs/flavors/${flavor}.toml")))
+  # Path arithmetic, not interpolation — see the note in package.nix.
+  inherit ((fromTOML (builtins.readFile (root + "/src-tauri/configs/flavors/${flavor}.toml"))))
     identifier
     ;
 

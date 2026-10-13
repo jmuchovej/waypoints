@@ -18,10 +18,10 @@
 
 ## 4. Overlay and package
 
-- [ ] 4.1 Keep `nix/packages/waypoints/package.nix` on the `workingTree` recipe and give it an optional `version` override that must extend the manifest's version; verify an in-tree evaluation keeps the manifest version and a nightly override is injected through the third `--config` layer
-- [ ] 4.2 Rewrite `nix/overlay.nix` to read the tree's channel from its manifest version (one shared reading in `nix/channel.nix`) and expose `waypoints = recurseIntoAttrs { stable; preview; nightly; }`: index mode fetches a channel's recorded tag with `fetchTree` and evaluates that tree's `package.nix`; self-build mode applies the overlay's own recipe to its own tree for the version's channel; the other attributes throw naming the ref's channel and series and where to pin; verify by evaluating a tree under each version shape
-- [ ] 4.3 Update `flake.nix` to `packages.{stable,preview,nightly,default}` with `default` following the version's channel, keep the development-flavor in-tree build as `checks.waypoints-in-tree`, and update `nix-pins` to call the recipe directly; verify the flake lists exactly those outputs
-- [ ] 4.4 Hand-write an index entry for an existing tag and evaluate that channel through the overlay; verify the recipe evaluated is the fetched tree's own (a tag predating the `workingTree` interface fails inside its own `package.nix`, not in the overlay), and that evaluation never copies a working tree into the store
+- [x] 4.1 Keep `nix/packages/waypoints/package.nix` on the `workingTree` recipe and give it an optional `version` override that must extend the manifest's version; verify an in-tree evaluation keeps the manifest version and a nightly override is injected through the third `--config` layer
+- [x] 4.2 Rewrite `nix/overlay.nix` to read the tree's channel from its manifest version (one shared reading in `nix/channel.nix`) and expose `waypoints = recurseIntoAttrs { stable; preview; nightly; }`: index mode fetches a channel's recorded tag with `fetchTree` and evaluates that tree's `package.nix`; self-build mode applies the overlay's own recipe to its own tree for the version's channel; the other attributes throw naming the ref's channel and series and where to pin; verify by evaluating a tree under each version shape
+- [x] 4.3 Update `flake.nix` to `packages.{stable,preview,nightly,default}` with `default` following the version's channel, keep the development-flavor in-tree build as `checks.waypoints-in-tree`, and update `nix-pins` to call the recipe directly; verify the flake lists exactly those outputs
+- [x] 4.4 Hand-write an index entry for an existing tag and evaluate that channel through the overlay; verify the recipe evaluated is the fetched tree's own (a tag predating the `workingTree` interface fails inside its own `package.nix`, not in the overlay), and that evaluation never copies a working tree into the store
 
 ## 5. Release-index workflow and writer
 
