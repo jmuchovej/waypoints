@@ -12,9 +12,9 @@
 
 ## 3. The version names the channel
 
-- [ ] 3.1 Move `main`'s app manifest to `0.1.0-nightly`; verify the workspace still resolves its version and the nightly planner still derives the bare target from it
-- [ ] 3.2 Make `release_plan.rs`'s post-cut bump of `main` carry the `-nightly` suffix; verify with unit tests that a cut plans `X.(Y+1).0-nightly` for `main` and that advance, promote, and patch are unchanged
-- [ ] 3.3 Add the three-way classifier (nightly prerelease → nightly, other prerelease → preview, none → stable) and a cross-check that refuses a tag whose version and tagged manifest classify differently; verify with unit tests covering all three channels and a mismatch
+- [x] 3.1 Move `main`'s app manifest to `0.1.0-nightly`; verify the workspace still resolves its version and the nightly planner still derives the bare target from it
+- [x] 3.2 Make `release_plan.rs`'s post-cut bump of `main` carry the `-nightly` suffix; verify with unit tests that a cut plans `X.(Y+1).0-nightly` for `main` and that advance, promote, and patch are unchanged
+- [x] 3.3 Add the three-way classifier (nightly prerelease → nightly, other prerelease → preview, none → stable) and a cross-check that refuses a tag whose version and tagged manifest classify differently; verify with unit tests covering all three channels and a mismatch
 
 ## 4. Overlay and package
 

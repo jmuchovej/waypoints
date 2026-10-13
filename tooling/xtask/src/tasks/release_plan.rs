@@ -3,8 +3,11 @@
 //! One branch exists per minor version, `v{major}.{minor}.x`. It is cut from
 //! `main` as a preview, advances through `-pre.N` while it stabilises, is
 //! promoted in place to stable, and then takes patches until the next minor
-//! supersedes it. Its role is read from its version, not from a marker file:
-//! a prerelease suffix means preview, its absence means stable.
+//! supersedes it. Its role is read from its version: a `pre` suffix means
+//! preview, its absence means stable. `main` carries a `nightly` suffix for
+//! the same reason — so that any tree says which channel it ships as from
+//! its manifest alone, without consulting the tags that point at it, and the
+//! Nix overlay can tell `main` from a stable branch.
 //!
 //! Only `cut` consults commit history, because `main` is the only ref whose
 //! history describes the work honestly. A release branch carries cherry-picks
@@ -14,6 +17,7 @@
 //! Nightlies are not planned here: their version is a timestamp rather than a
 //! claim about content. See [`super::nightly_plan`].
 
+use super::workflows::Channel;
 use crate::shell;
 use anyhow::{Context as _, Result, bail};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
@@ -25,9 +29,13 @@ use strum::{EnumIter, IntoEnumIterator as _};
 /// The prerelease identifier every preview carries.
 const PRE: &str = "pre";
 
-/// The manifest whose `version` is the app's. Tauri reads it from here when
-/// `Tauri.toml` leaves `version` unset.
-const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
+/// The prerelease identifier every nightly carries; see [`super::nightly_plan`].
+const NIGHTLY: &str = "nightly";
+
+/// The manifest whose `version` is the app's — and, by its suffix, the
+/// channel the tree ships as. Tauri reads the version from here when
+/// `Tauri.toml` leaves it unset.
+pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
 
 #[derive(Parser)]
 pub struct ReleasePlanArgs {
@@ -84,7 +92,7 @@ impl Plan {
         Self {
             tag: format!("v{version}"),
             branch: release_branch(&version),
-            channel: channel_for(&version).to_owned(),
+            channel: channel_of(&version).to_string(),
             next_main_version: next_main.map(|v| v.to_string()).unwrap_or_default(),
             version: version.to_string(),
         }
@@ -97,13 +105,16 @@ fn release_branch(version: &Version) -> String {
     format!("v{}.{}.x", version.major, version.minor)
 }
 
-/// A version names its own channel: a prerelease is a preview, anything else
-/// is stable. Deriving it means a build cannot disagree with its version.
-fn channel_for(version: &Version) -> &'static str {
-    if version.pre.is_empty() {
-        "stable"
-    } else {
-        "preview"
+/// A version names its own channel: a `nightly` prerelease is nightly, any
+/// other prerelease a preview, none stable. Deriving it means a build cannot
+/// disagree with its version — and, applied to a manifest rather than a tag,
+/// it is how a tree says which channel it ships as. `nix/channel.nix` is the
+/// same reading for the overlay.
+pub fn channel_of(version: &Version) -> Channel {
+    match version.pre.as_str().split('.').next().unwrap_or_default() {
+        "" => Channel::Stable,
+        NIGHTLY => Channel::Nightly,
+        _ => Channel::Preview,
     }
 }
 
@@ -125,14 +136,19 @@ fn cut_target(last_release: &Version, commits: &[String]) -> Version {
 }
 
 /// Where `main` goes after a cut: provisionally the next minor, corrected by
-/// the next cut's commit history if the cycle turns out smaller.
-fn provisional_next_main(target: &Version) -> Version {
-    Version::new(target.major, target.minor + 1, 0)
+/// the next cut's commit history if the cycle turns out smaller. It carries
+/// the `nightly` suffix, which is how `main` names its channel; the nightly
+/// planner strips it to find the target.
+fn provisional_next_main(target: &Version) -> Result<Version> {
+    let mut next = Version::new(target.major, target.minor + 1, 0);
+    next.pre = Prerelease::new(NIGHTLY)
+        .with_context(|| format!("`{NIGHTLY}` is not a valid prerelease"))?;
+    Ok(next)
 }
 
 fn plan_cut(last_release: &Version, commits: &[String]) -> Result<Plan> {
     let target = cut_target(last_release, commits);
-    let next_main = provisional_next_main(&target);
+    let next_main = provisional_next_main(&target)?;
     Ok(Plan::new(first_preview(target)?, Some(next_main)))
 }
 
@@ -273,8 +289,14 @@ fn blob_sha(path: &str, branch: &str) -> Result<String> {
 ///
 /// The Contents API writes a file and commits it in one call, authored by the
 /// token's identity — so this needs no `user.name`, no `user.email`, and no
-/// push credentials on the checkout.
-fn commit_file(path: &str, branch: &str, content: &str, message: &str) -> Result<String> {
+/// push credentials on the checkout. The release index is written the same
+/// way, from [`super::release_index`].
+pub(super) fn commit_file(
+    path: &str,
+    branch: &str,
+    content: &str,
+    message: &str,
+) -> Result<String> {
     let repository = env("GITHUB_REPOSITORY")?;
     let sha = blob_sha(path, branch)?;
 
@@ -424,9 +446,27 @@ mod tests {
 
     #[test]
     fn a_version_names_its_own_channel() {
-        assert_eq!(channel_for(&v("0.2.0")), "stable");
-        assert_eq!(channel_for(&v("0.2.1")), "stable");
-        assert_eq!(channel_for(&v("0.2.0-pre.1")), "preview");
+        assert_eq!(channel_of(&v("0.2.0")), Channel::Stable);
+        assert_eq!(channel_of(&v("0.2.1")), Channel::Stable);
+        assert_eq!(channel_of(&v("0.2.0-pre.1")), Channel::Preview);
+        assert_eq!(channel_of(&v("0.2.0-pre")), Channel::Preview);
+        assert_eq!(
+            channel_of(&v("0.2.0-nightly.7+2026.08.29")),
+            Channel::Nightly
+        );
+    }
+
+    /// `main` names its channel the way every branch does — in its version.
+    /// The suffix must sort below everything the line publishes and below
+    /// the series it cuts, or the staircase breaks.
+    #[test]
+    fn main_targets_the_next_minor_as_nightly() {
+        let next = provisional_next_main(&v("0.2.0")).unwrap();
+        assert_eq!(next.to_string(), "0.3.0-nightly");
+        assert_eq!(channel_of(&next), Channel::Nightly);
+        assert!(next < v("0.3.0-nightly.1+2026.08.29"));
+        assert!(v("0.3.0-nightly.1+2026.08.29") < v("0.3.0-pre.1"));
+        assert!(v("0.3.0-pre.1") < v("0.3.0"));
     }
 
     #[test]
@@ -468,7 +508,7 @@ mod tests {
         assert_eq!(plan.tag, "v0.2.0-pre.1");
         assert_eq!(plan.branch, "v0.2.x");
         assert_eq!(plan.channel, "preview");
-        assert_eq!(plan.next_main_version, "0.3.0");
+        assert_eq!(plan.next_main_version, "0.3.0-nightly");
     }
 
     #[test]
