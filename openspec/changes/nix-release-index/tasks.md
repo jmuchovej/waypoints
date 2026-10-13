@@ -27,7 +27,7 @@
 
 - [x] 5.1 Write `cargo xtask release-index --tag` — classify, cross-check the manifest at the tag, `nix flake prefetch` the source hash, render the three-field entry, and commit it to `main` via `commit_file`; verify the rendered bytes match what treefmt leaves and that `--dry-run` prints the entry without committing
 - [x] 5.2 Write `tooling/xtask/src/tasks/workflows/release_index.rs` — `v*` tag push plus a dispatch with `tag` and `dry_run`, the devenv-shell job shape (install nix with an access token, cachix, `devenv shell -- cargo xtask release-index`) — and register it; verify `cargo xtask workflows --check` is clean, `.github/workflows/release-index.yaml` appears, and zizmor reports nothing
-- [ ] 5.3 Mint refs in the nightly `prepare` job and the `release-plan` job with the `wp-botswain` App token scoped to `contents: write`, dropping their `GITHUB_TOKEN` grant to read; verify the workflow tests' environment/credential pairing holds and the no-cache rule applies only to the release environment
+- [x] 5.3 Mint refs in the nightly `prepare` job and the `release-plan` job with the `wp-botswain` App token scoped to `contents: write`, dropping their `GITHUB_TOKEN` grant to read and their GitHub cache action, as every environment-declaring job must, and compiling through the CI cache (registry snapshot plus sccache) like the build jobs — the index job too, inside its devenv shell; verify the workflow tests' environment/credential pairing holds and the xtask mise lane carries `sccache` and `rclone`
 - [ ] 5.4 Run the workflow by dispatch with `dry_run` against an existing tag; verify the hash is computed and printed and nothing is committed
 - [ ] 5.5 Run it for real and verify the committed file matches the dry-run output byte for byte
 

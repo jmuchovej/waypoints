@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    environment:
+      name: CI
     steps:
       - id: checkout
         name: Checkout
@@ -58,6 +60,25 @@ jobs:
         name: Install devenv
         run: "nix profile install nixpkgs#devenv"
         shell: bash
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: devenv shell -- xcache restore "${CACHE_KEY}" "${HOME}/.cargo/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "devenv shell -- secretspec run --profile ci --provider op --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
       - id: release-index
         name: cargo xtask release-index
         run: devenv shell -- cargo xtask release-index --tag "$TAG" ${{ inputs.dry_run == true && '--dry-run' || '' }}
@@ -66,6 +87,23 @@ jobs:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SECRETSPEC_REASON: release-index records a published tag in nix/releases; no secret values are read
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          devenv shell -- sccache --show-stats
+          devenv shell -- sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: devenv shell -- xcache save "${CACHE_KEY}" "${HOME}/.cargo/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
 concurrency:
   group: release-index
   cancel-in-progress: false

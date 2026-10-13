@@ -3,17 +3,24 @@
 //! Runs on a tag's push, or by hand for a tag that already exists, so an
 //! entry can never precede the tag it names: the ordering lives in the
 //! trigger rather than in our control flow. The task classifies the channel
-//! from the version, checks the tagged tree declares the same, prefetches
-//! the tree's hash, and commits the channel's file to `main` through the
-//! Contents API, which needs only `GITHUB_TOKEN`.
+//! from the version, checks the tagged tree's manifest names the same,
+//! prefetches the tree's hash, and commits the channel's file to `main`
+//! through the Contents API, which needs only `GITHUB_TOKEN`. The vault
+//! credential the job does hold is for the CI cache its compile goes through.
 //!
-//! A tag minted with `GITHUB_TOKEN` raises no `push` event — GitHub's rule
-//! against workflows triggering each other — and today both planners mint
-//! theirs that way. Until they mint with the App token, those tags are
-//! recorded through the dispatch.
+//! The push trigger relies on the planners minting their tags with the
+//! wp-botswain App token: a ref created with `GITHUB_TOKEN` raises no `push`
+//! event, by GitHub's rule against workflows triggering each other. The
+//! dispatch is for a tag that predates this, or a run that failed.
 
-use super::{Channel, WorkflowContext, WorkflowInput, helpers, runners, steps};
-use gh_workflow::{Event, Job, Level, Permissions, Push, Step, Workflow, WorkflowDispatch};
+use super::{
+    Channel, WorkflowContext, WorkflowInput, helpers, helpers::Environment, runners, steps,
+    steps::Tools,
+};
+use gh_workflow::{
+    Environment as GhEnvironment, Event, Job, Level, Permissions, Push, Step, Workflow,
+    WorkflowDispatch,
+};
 
 /// Every release tag; the task tells the channels apart from the version.
 const TAG_PATTERN: &str = "v*";
@@ -49,9 +56,16 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
             "release-index records a published tag in nix/releases; no secret values are read",
         ));
 
+    // The devenv shell leaves `CARGO_HOME` unset, so cargo keeps its registry
+    // at its default; the snapshot has to land there.
+    let registry = steps::cargo_registry("${HOME}/.cargo");
+
     let job = Job::new("record the release in the index")
         // Write: the entry is committed to `main`.
         .permissions(Permissions::default().contents(Level::Write))
+        // Compiles through the CI cache, so the vault credential comes from
+        // the automation environment.
+        .environment(GhEnvironment::from(Environment::Ci))
         .runs_on(runners::LINUX)
         // The tag resolves to its commit here; nothing walks history.
         .add_step(steps::checkout().add_with(("fetch-tags", true)))
@@ -63,7 +77,13 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
         // could have written into it, so no poisoning surface.
         .add_step(steps::cachix("devenv"))
         .add_step(steps::nix_profile_install(&["devenv"]))
-        .add_step(record);
+        // The task is a `cargo xtask` compile before it is anything else; the
+        // build jobs' registry snapshot and compiler cache pay for most of it.
+        .add_step(steps::cache_restore(&registry, Tools::Devenv))
+        .add_step(steps::sccache_start(Tools::Devenv))
+        .add_step(steps::with_sccache(record))
+        .add_step(steps::sccache_stats(Tools::Devenv))
+        .add_step(steps::cache_save(&registry, Tools::Devenv));
 
     helpers::named_workflow("record a published release in the index")
         .on(Event::default()
