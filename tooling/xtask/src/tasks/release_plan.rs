@@ -249,13 +249,11 @@ fn log_range(since: Option<&Version>) -> String {
 }
 
 /// Conventional-commit subjects for one cycle, oldest first.
+///
+/// Index commits are left out: they land on `main` between releases, and
+/// reading them as work would nudge the target a cut is heading toward.
 fn commits_since(since: Option<&Version>) -> Result<Vec<String>> {
-    Ok(
-        shell::git(&["log", "--format=%s", "--reverse", &log_range(since)])?
-            .lines()
-            .map(str::to_owned)
-            .collect(),
-    )
+    super::release_index::product_commits(&log_range(since))
 }
 
 /// One file's blob sha on `branch`, needed to replace it.
@@ -436,6 +434,31 @@ mod tests {
         for version in ["0.2.0-pre.1", "0.2.0", "0.2.7"] {
             assert_eq!(release_branch(&v(version)), "v0.2.x");
         }
+    }
+
+    /// The index commits land on `main` between releases, and the cut reads
+    /// that history — so the target has to come out the same with them there
+    /// or not, even though each is worded as a feature.
+    #[test]
+    fn index_commits_do_not_move_a_cut_target() {
+        use super::super::release_index::fixture::Repo;
+
+        let repo = Repo::new();
+        repo.product("feat: charts");
+        repo.tag("v0.1.0");
+        repo.product("fix: a bug");
+        let without = repo.product_commits("v0.1.0..HEAD");
+
+        repo.index("stable", "v0.1.0");
+        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        let with = repo.product_commits("v0.1.0..HEAD");
+
+        assert_eq!(with, without);
+        assert_eq!(cut_target(&v("0.1.0"), &with), v("0.1.1"));
+        assert_eq!(
+            cut_target(&v("0.1.0"), &with),
+            cut_target(&v("0.1.0"), &without)
+        );
     }
 
     #[test]

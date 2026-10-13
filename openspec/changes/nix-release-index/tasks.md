@@ -1,8 +1,8 @@
 ## 1. Planner pathspec (independently landable)
 
-- [ ] 1.1 Route `nightly_plan.rs::commits_since` through one shared `git log` helper that appends `-- . ':(exclude)nix/releases/'`; verify against a temp git repository that an index-only history yields an empty commit list and `next_nightly` therefore returns `None`
-- [ ] 1.2 Route `release_plan.rs::commits_since` through the same helper; verify `cut_target` is unchanged whether or not index commits sit in the history
-- [ ] 1.3 Verify both planners' existing test suites still pass with clippy, nextest, and treefmt green
+- [x] 1.1 Route `nightly_plan.rs::commits_since` through one shared `git log` helper that appends `-- . ':(exclude)nix/releases/'`; verify against a temp git repository that an index-only history yields an empty commit list and `next_nightly` therefore returns `None`
+- [x] 1.2 Route `release_plan.rs::commits_since` through the same helper; verify `cut_target` is unchanged whether or not index commits sit in the history
+- [x] 1.3 Verify both planners' existing test suites still pass with clippy, nextest, and treefmt green
 
 ## 2. Index files and their reader
 

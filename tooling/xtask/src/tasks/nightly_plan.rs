@@ -212,15 +212,15 @@ fn nightly_tags() -> Result<Vec<String>> {
 }
 
 /// Commit subjects since `tag`, or the whole history before the first nightly.
+///
+/// Index commits are left out: the entry recording a nightly lands right after
+/// its tag, and counting it would justify the next nightly every day.
 fn commits_since(tag: Option<&Version>) -> Result<Vec<String>> {
     let range = match tag {
         Some(version) => format!("v{version}..HEAD"),
         None => "HEAD".to_owned(),
     };
-    Ok(shell::git(&["log", "--format=%s", "--reverse", &range])?
-        .lines()
-        .map(str::to_owned)
-        .collect())
+    super::release_index::product_commits(&range)
 }
 
 /// Creates the tag ref through the API, which needs only `GH_TOKEN`.
@@ -371,6 +371,35 @@ mod tests {
         let latest = v("0.2.0-nightly.1+2026.08.29");
         let next = next_nightly(Some(&latest), &[], &v("0.2.0"), "2026.08.30").unwrap();
         assert_eq!(next, None);
+    }
+
+    /// The entry recording a nightly lands right after its tag. Were it to
+    /// count as work, every quiet day would publish a nightly.
+    #[test]
+    fn an_index_commit_does_not_wake_a_quiet_repository() {
+        use super::super::release_index::fixture::Repo;
+
+        let latest = v("0.2.0-nightly.1+2026.08.29");
+        let range = "v0.2.0-nightly.1+2026.08.29..HEAD";
+
+        let repo = Repo::new();
+        repo.product("feat: the nightly's work");
+        repo.tag("v0.2.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+
+        let commits = repo.product_commits(range);
+        assert!(commits.is_empty(), "{commits:?}");
+        let next = next_nightly(Some(&latest), &commits, &v("0.2.0"), "2026.08.30").unwrap();
+        assert_eq!(next, None);
+
+        // ...while real work alongside it still publishes.
+        repo.product("fix: something landed");
+        let commits = repo.product_commits(range);
+        assert_eq!(commits, ["fix: something landed"]);
+        let next = next_nightly(Some(&latest), &commits, &v("0.2.0"), "2026.08.30")
+            .unwrap()
+            .unwrap();
+        assert_eq!(next.to_string(), "0.2.0-nightly.2+2026.08.30");
     }
 
     /// A preserved date would be the previous run's.

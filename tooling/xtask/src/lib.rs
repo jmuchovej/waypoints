@@ -13,6 +13,7 @@ pub mod tasks {
     pub mod dev_server;
     pub mod devenv_files;
     pub mod nightly_plan;
+    pub mod release_index;
     pub mod release_plan;
     pub mod test_plan;
     pub mod typegen;
