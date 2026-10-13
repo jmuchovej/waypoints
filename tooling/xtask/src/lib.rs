@@ -22,6 +22,7 @@ pub mod tasks {
     pub use dev_server::DevServerArgs;
     pub use devenv_files::DevenvFilesArgs;
     pub use nightly_plan::NightlyPlanArgs;
+    pub use release_index::ReleaseIndexArgs;
     pub use release_plan::ReleasePlanArgs;
     pub use test_plan::TestPlanArgs;
     pub use typegen::TypegenArgs;

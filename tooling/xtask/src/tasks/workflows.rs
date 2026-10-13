@@ -21,6 +21,7 @@ mod check_generated;
 mod devenv_update;
 mod pull_request;
 mod release;
+mod release_index;
 mod release_plan;
 
 pub(crate) mod _types;
@@ -127,6 +128,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
+        WorkflowFile::waypoints("release_index", release_index::workflow),
         WorkflowFile::waypoints("release_plan", release_plan::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
@@ -390,6 +392,7 @@ mod tests {
             ),
             ("devenv_update".to_owned(), devenv_update::workflow(context)),
             ("pull_request".to_owned(), pull_request::workflow(context)),
+            ("release_index".to_owned(), release_index::workflow(context)),
             ("release_plan".to_owned(), release_plan::workflow(context)),
         ];
         for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
