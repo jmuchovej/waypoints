@@ -477,7 +477,13 @@ mod tests {
                         );
                     }
 
-                    if step["env"].get("RUSTC_WRAPPER").is_some() {
+                    // Cargo reads the wrapper under either name; the generator
+                    // emits the `CARGO_` one (see `steps::with_sccache`), but a
+                    // step reaching for the other must meet the same rule.
+                    let wraps_compiler = ["CARGO_BUILD_RUSTC_WRAPPER", "RUSTC_WRAPPER"]
+                        .iter()
+                        .any(|name| step["env"].get(name).is_some());
+                    if wraps_compiler {
                         assert!(
                             declares_environment,
                             "{label}: wraps the compiler outside an environment"
@@ -528,7 +534,7 @@ mod tests {
                     "name": "Build",
                     "run": "just tauri::build linux stable",
                     "env": {
-                        "RUSTC_WRAPPER": "sccache",
+                        "CARGO_BUILD_RUSTC_WRAPPER": "sccache",
                         "SECRETSPEC_PROVIDER": "op",
                         "OP_SERVICE_ACCOUNT_TOKEN": "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}"
                     }

@@ -228,22 +228,22 @@ jobs:
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: |-
+          path="${RUNNER_TEMP}/pnpm-store"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -257,13 +257,14 @@ jobs:
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${RUNNER_TEMP}/pnpm-store"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -273,29 +274,28 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: |-
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -318,8 +318,7 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          RUSTC_WRAPPER: sccache
-          SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
         name: Report the compiler cache
         if: always()
@@ -331,13 +330,14 @@ jobs:
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -347,7 +347,6 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -398,22 +397,22 @@ jobs:
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: |-
+          path="${RUNNER_TEMP}/pnpm-store"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -427,13 +426,14 @@ jobs:
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${RUNNER_TEMP}/pnpm-store"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -443,29 +443,28 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: |-
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -488,8 +487,7 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          RUSTC_WRAPPER: sccache
-          SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
         name: Report the compiler cache
         if: always()
@@ -501,13 +499,14 @@ jobs:
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -517,7 +516,6 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -585,22 +583,22 @@ jobs:
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: |-
+          path="${RUNNER_TEMP}/pnpm-store"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -614,13 +612,14 @@ jobs:
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${RUNNER_TEMP}/pnpm-store"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -630,29 +629,28 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: |-
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -675,8 +673,7 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          RUSTC_WRAPPER: sccache
-          SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
         name: Report the compiler cache
         if: always()
@@ -688,13 +685,14 @@ jobs:
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -704,7 +702,6 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -756,22 +753,22 @@ jobs:
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: |-
+          path="${RUNNER_TEMP}/pnpm-store"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -785,13 +782,14 @@ jobs:
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${RUNNER_TEMP}/pnpm-store"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -801,29 +799,28 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: |-
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -846,8 +843,7 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          RUSTC_WRAPPER: sccache
-          SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
         name: Report the compiler cache
         if: always()
@@ -859,13 +855,14 @@ jobs:
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -875,7 +872,6 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -955,44 +951,44 @@ jobs:
       - id: cache-restore-gradle
         name: Restore gradle
         run: |-
+          path="${HOME}/.gradle/caches/modules-2"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/gen/android/gradle/verification-metadata.xml', 'src-tauri/gen/android/gradle/libs.versions.toml', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'src-tauri/gen/android/settings.gradle', 'src-tauri/gen/android/build.gradle.kts', 'src-tauri/gen/android/app/build.gradle.kts') }}
-          CACHE_PATH: ${HOME}/.gradle/caches/modules-2
           SECRETSPEC_REASON: restoring the gradle snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-android-ndk
         name: Restore android-ndk
         run: |-
+          path="${ANDROID_HOME}/ndk/30.0.16138531"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: android-ndk-${{ runner.os }}-${{ runner.arch }}-30.0.16138531
-          CACHE_PATH: ${ANDROID_HOME}/ndk/30.0.16138531
           SECRETSPEC_REASON: restoring the android-ndk snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -1002,22 +998,22 @@ jobs:
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: |-
+          path="${RUNNER_TEMP}/pnpm-store"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -1031,13 +1027,14 @@ jobs:
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${RUNNER_TEMP}/pnpm-store"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -1047,29 +1044,28 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
-          CACHE_PATH: ${RUNNER_TEMP}/pnpm-store
           SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: |-
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${CACHE_PATH}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+            && mkdir -p "$(dirname "${path}")" \
+            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+            echo "restored ${CACHE_KEY} into ${path}"
           else
             echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
           fi
           rm -f "${archive}"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -1092,8 +1088,7 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          RUSTC_WRAPPER: sccache
-          SCCACHE_IGNORE_SERVER_IO_ERROR: "1"
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/30.0.16138531
       - id: sccache-stats
         name: Report the compiler cache
@@ -1106,13 +1101,14 @@ jobs:
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${CARGO_HOME:-$HOME/.cargo}/registry"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -1122,7 +1118,6 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-          CACHE_PATH: "${CARGO_HOME:-$HOME/.cargo}/registry"
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -1130,13 +1125,14 @@ jobs:
         name: Save gradle
         if: "!cancelled() && steps.cache-restore-gradle.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${HOME}/.gradle/caches/modules-2"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -1146,7 +1142,6 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/gen/android/gradle/verification-metadata.xml', 'src-tauri/gen/android/gradle/libs.versions.toml', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'src-tauri/gen/android/settings.gradle', 'src-tauri/gen/android/build.gradle.kts', 'src-tauri/gen/android/app/build.gradle.kts') }}
-          CACHE_PATH: ${HOME}/.gradle/caches/modules-2
           SECRETSPEC_REASON: saving the gradle snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
@@ -1154,13 +1149,14 @@ jobs:
         name: Save android-ndk
         if: "!cancelled() && steps.cache-restore-android-ndk.outputs.hit != 'true'"
         run: |-
-          if [ ! -d "${CACHE_PATH}" ]; then
-            echo "nothing at ${CACHE_PATH} to save"
+          path="${ANDROID_HOME}/ndk/30.0.16138531"
+          if [ ! -d "${path}" ]; then
+            echo "nothing at ${path} to save"
             exit 0
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -1170,7 +1166,6 @@ jobs:
         shell: bash
         env:
           CACHE_KEY: android-ndk-${{ runner.os }}-${{ runner.arch }}-30.0.16138531
-          CACHE_PATH: ${ANDROID_HOME}/ndk/30.0.16138531
           SECRETSPEC_REASON: saving the android-ndk snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}

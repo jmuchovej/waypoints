@@ -348,7 +348,7 @@ pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
 /// Starts the sccache server for the job, holding the store credential.
 ///
 /// The server is what reads and writes the bucket; the client cargo invokes as
-/// `RUSTC_WRAPPER` only talks to it over a local port. Starting it here, under
+/// its rustc wrapper only talks to it over a local port. Starting it here, under
 /// a `secretspec run` of the cache scope, is what lets the build itself run
 /// with no credential at all — see [`with_sccache`]. The store coordinates are
 /// configuration and sit on the step where a reader can see them; the endpoint
@@ -388,14 +388,16 @@ pub(crate) fn sccache_start() -> Step<Run> {
 /// left running. The only place the wrapper is enabled, so a job cannot wrap
 /// the compiler without the server start the guard looks for.
 ///
-/// `RUSTC_WRAPPER` is all the client needs: it carries no store configuration.
-/// `SCCACHE_IGNORE_SERVER_IO_ERROR` is client-side too — a client that cannot
-/// read a response from the server compiles directly rather than failing, so
-/// a server that dies mid-build costs the rest of the compilations their cache
-/// and not the build its success. Both cross `xtauri`'s clean room by name.
+/// The wrapper name is all the client needs: it carries no store configuration.
+/// Cargo reads it as `RUSTC_WRAPPER` or `CARGO_BUILD_RUSTC_WRAPPER`; the
+/// `CARGO_` spelling is the one the Tauri CLI forwards into the cargo Xcode
+/// runs for iOS, which inherits nothing else of this step's environment. The
+/// client's other setting — compile directly if the server goes away, rather
+/// than fail — is `SCCACHE_IGNORE_SERVER_IO_ERROR` in `.config/cargo.toml`'s
+/// `[env]`, which reaches every rustc and build-script process on that path
+/// too.
 pub(crate) fn with_sccache(step: Step<Run>) -> Step<Run> {
-    step.add_env(("RUSTC_WRAPPER", "sccache"))
-        .add_env(("SCCACHE_IGNORE_SERVER_IO_ERROR", "1"))
+    step.add_env(("CARGO_BUILD_RUSTC_WRAPPER", "sccache"))
 }
 
 /// Prints what the compiler cache did — hits, misses, errors, and the store it
@@ -525,22 +527,28 @@ const RCLONE_COPY: &str = concat!(
 /// Restores `dir` from the store, publishing `hit` for the save step. A miss or
 /// a store failure logs and exits 0 — the consumer then fetches as it would
 /// without a cache.
+///
+/// The path is spliced into the script rather than carried on the step `env`:
+/// it is a shell expression (`${RUNNER_TEMP}`, `${CARGO_HOME:-$HOME/.cargo}`),
+/// and an `env` value reaches the shell as a literal, never expanded.
 pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
     let script = indoc! {r#"
+        path="{dir}"
         archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
         remote=":s3,provider=Cloudflare,env_auth=true:{bucket}/dirs/${CACHE_KEY}.tar.gz"
         if {rclone} "${remote}" "${archive}" \
-          && mkdir -p "$(dirname "${CACHE_PATH}")" \
-          && tar -xzf "${archive}" -C "$(dirname "${CACHE_PATH}")"; then
+          && mkdir -p "$(dirname "${path}")" \
+          && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
           echo "hit=true" >> "${GITHUB_OUTPUT}"
-          echo "restored ${CACHE_KEY} into ${CACHE_PATH}"
+          echo "restored ${CACHE_KEY} into ${path}"
         else
           echo "hit=false" >> "${GITHUB_OUTPUT}"
-          echo "no entry for ${CACHE_KEY}; ${CACHE_PATH} will be fetched"
+          echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
         fi
         rm -f "${archive}"
     "#}
     .trim_end()
+    .replace("{dir}", &dir.path)
     .replace("{bucket}", CI_CACHE_BUCKET)
     .replace("{rclone}", RCLONE_COPY);
 
@@ -548,7 +556,6 @@ pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
         .run(script)
         .shell("bash")
         .add_env(("CACHE_KEY", dir.key()))
-        .add_env(("CACHE_PATH", dir.path.clone()))
         .add_env((
             "SECRETSPEC_REASON",
             format!(
@@ -567,13 +574,14 @@ pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
 /// manifest pins — but never on a cancelled job, and never fails the job.
 pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
     let script = indoc! {r#"
-        if [ ! -d "${CACHE_PATH}" ]; then
-          echo "nothing at ${CACHE_PATH} to save"
+        path="{dir}"
+        if [ ! -d "${path}" ]; then
+          echo "nothing at ${path} to save"
           exit 0
         fi
         archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
         remote=":s3,provider=Cloudflare,env_auth=true:{bucket}/dirs/${CACHE_KEY}.tar.gz"
-        if tar -czf "${archive}" -C "$(dirname "${CACHE_PATH}")" "$(basename "${CACHE_PATH}")" \
+        if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
           && {rclone} --ignore-existing "${archive}" "${remote}"; then
           echo "saved ${CACHE_KEY}"
         else
@@ -582,6 +590,7 @@ pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
         rm -f "${archive}"
     "#}
     .trim_end()
+    .replace("{dir}", &dir.path)
     .replace("{bucket}", CI_CACHE_BUCKET)
     .replace("{rclone}", RCLONE_COPY);
 
@@ -593,7 +602,6 @@ pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
             restore = dir.restore_id()
         )))
         .add_env(("CACHE_KEY", dir.key()))
-        .add_env(("CACHE_PATH", dir.path.clone()))
         .add_env((
             "SECRETSPEC_REASON",
             format!(
@@ -972,15 +980,14 @@ mod tests {
         assert_eq!(step["id"], "sccache-start");
     }
 
-    /// The client needs the wrapper name and its own failure mode, and nothing
-    /// of the store.
+    /// The client needs the wrapper name and nothing of the store; its
+    /// failure mode travels through cargo's config, not the step.
     #[test]
     fn the_wrapper_adds_exactly_the_client_variables() {
         let step = rendered(with_sccache(Step::new("x").run("true").shell("bash")));
         let env = step["env"].as_object().expect("env");
-        assert_eq!(env.len(), 2, "{env:?}");
-        assert_eq!(env["RUSTC_WRAPPER"], "sccache");
-        assert_eq!(env["SCCACHE_IGNORE_SERVER_IO_ERROR"], "1");
+        assert_eq!(env.len(), 1, "{env:?}");
+        assert_eq!(env["CARGO_BUILD_RUSTC_WRAPPER"], "sccache");
     }
 
     /// One constructor enables the wrapper, so the guard in `workflows.rs`
@@ -988,7 +995,8 @@ mod tests {
     #[test]
     fn only_the_wrapper_constructor_names_rustc_wrapper() {
         let source = include_str!("_steps.rs");
-        assert_eq!(source.matches("(\"RUSTC_WRAPPER\"").count(), 1);
+        assert_eq!(source.matches("(\"CARGO_BUILD_RUSTC_WRAPPER\"").count(), 1);
+        assert_eq!(source.matches("(\"RUSTC_WRAPPER\"").count(), 0);
     }
 
     #[test]
@@ -1046,7 +1054,12 @@ mod tests {
                     );
                 }
                 assert_eq!(step["env"]["CACHE_KEY"], dir.key());
-                assert_eq!(step["env"]["CACHE_PATH"], dir.path);
+                assert!(
+                    run.contains(&format!("path=\"{}\"", dir.path)),
+                    "{kind} {}: the path is a shell expression and must be expanded by the script, not carried as an env literal: {run}",
+                    dir.name
+                );
+                assert!(step["env"].get("CACHE_PATH").is_none());
                 assert!(step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
                 assert_eq!(step["env"]["SECRETSPEC_PROVIDER"], "op");
                 for secret in STORE_CREDENTIAL {

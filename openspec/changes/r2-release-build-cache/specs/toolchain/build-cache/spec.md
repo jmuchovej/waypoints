@@ -6,7 +6,7 @@ Governs how release builds reuse what earlier builds compiled and fetched: one r
 
 ### Requirement: Release builds share one remote compiler cache
 
-Every generated job that builds a release artifact SHALL route its Rust compilation, and the C and C++ compilation cargo drives on every platform where the C compiler is selected by the build recipe, through a compiler cache whose store is remote and shared across runs, channels, and workflows. The cache SHALL be keyed on the compiler, its flags, and its inputs, so that a cache entry is reused only by a compilation that would have produced identical output.
+Every generated job that builds a release artifact SHALL route its Rust compilation, and the C and C++ compilation cargo drives on every platform where the build recipe's C compiler selection reaches cargo's build scripts, through a compiler cache whose store is remote and shared across runs, channels, and workflows. The cache SHALL be keyed on the compiler, its flags, and its inputs, so that a cache entry is reused only by a compilation that would have produced identical output.
 
 #### Scenario: A second run reuses the first run's compilation
 
@@ -15,7 +15,7 @@ Every generated job that builds a release artifact SHALL route its Rust compilat
 
 #### Scenario: C sources compiled by cargo are cached
 
-- **WHEN** a release build compiles a crate's bundled C or C++ sources through cargo's build script on a platform whose recipe selects the C compiler
+- **WHEN** a release build compiles a crate's bundled C or C++ sources through cargo's build script on a platform where the recipe's C compiler selection reaches that build script
 - **THEN** those compilations are served from, or added to, the same store as the Rust compilations
 
 #### Scenario: Channels share the store
@@ -125,8 +125,8 @@ A build recipe that scrubs its environment SHALL forward the compiler wrapper se
 
 #### Scenario: Recipe-selected C compilers are wrapped
 
-- **WHEN** a release build runs on a platform whose recipe names the C and C++ compilers, and a compiler wrapper is in effect
-- **THEN** cargo's build scripts invoke those compilers through the wrapper, and the linker is invoked directly
+- **WHEN** a release build runs on a platform whose recipe names the C and C++ compilers and hands them to cargo's build scripts, and a compiler wrapper is in effect
+- **THEN** those build scripts invoke the compilers through the wrapper, and the linker is invoked directly
 
 #### Scenario: An unscrubbed target compiles through the cache
 
