@@ -225,6 +225,19 @@ jobs:
         with:
           version: "2026.8.6"
           cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
@@ -236,7 +249,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
+        run: pnpm install --frozen-lockfile
         shell: bash
       - id: cache-save-pnpm-store
         name: Save pnpm-store
@@ -338,6 +351,19 @@ jobs:
         with:
           version: "2026.8.6"
           cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
@@ -349,7 +375,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
+        run: pnpm install --frozen-lockfile
         shell: bash
       - id: cache-save-pnpm-store
         name: Save pnpm-store
@@ -468,6 +494,19 @@ jobs:
         with:
           version: "2026.8.6"
           cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
@@ -479,7 +518,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
+        run: pnpm install --frozen-lockfile
         shell: bash
       - id: cache-save-pnpm-store
         name: Save pnpm-store
@@ -582,6 +621,19 @@ jobs:
         with:
           version: "2026.8.6"
           cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
@@ -593,7 +645,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
+        run: pnpm install --frozen-lockfile
         shell: bash
       - id: cache-save-pnpm-store
         name: Save pnpm-store
@@ -745,6 +797,19 @@ jobs:
       - id: setup-android-ndk
         name: Install Android NDK
         run: sdkmanager "ndk;30.0.16138531"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
         run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
@@ -756,7 +821,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
+        run: pnpm install --frozen-lockfile
         shell: bash
       - id: cache-save-pnpm-store
         name: Save pnpm-store

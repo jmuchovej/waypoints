@@ -294,10 +294,11 @@ pub fn build(
                 .add_step(steps::cache_restore(cache("android-ndk")))
                 .add_step(steps::install_ndk(&context.android_ndk))
         })
+        // Every pnpm in the job, the build's own included, must agree on the
+        // store before its snapshot is restored — see `steps::pin_pnpm_store`.
+        .add_step(steps::pin_pnpm_store())
         .add_step(steps::cache_restore(cache("pnpm-store")))
-        // The store pinned to the snapshot's own path, by flag — see
-        // `steps::pnpm_install_into_store`.
-        .add_step(steps::pnpm_install_into_store())
+        .add_step(steps::pnpm_install())
         .add_step(steps::cache_save(cache("pnpm-store")))
         .add_step(steps::cache_restore(cache("cargo-registry")))
         // The server holds the store credential for the job; the build that

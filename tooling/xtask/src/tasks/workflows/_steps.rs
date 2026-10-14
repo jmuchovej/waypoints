@@ -236,28 +236,45 @@ pub(crate) fn rust_cache() -> Step<Use> {
 }
 
 pub fn pnpm_install() -> Step<Run> {
-    pnpm_install_with("pnpm install --frozen-lockfile")
+    Step::new("Install JS deps")
+        .run("pnpm install --frozen-lockfile")
+        .shell("bash")
+        .id("pnpm-install")
 }
 
 /// Where a build job keeps the pnpm store: one expression on every platform,
 /// so the snapshot restores to the place it was saved from.
 pub(crate) const PNPM_STORE: &str = "${RUNNER_TEMP}/pnpm-store";
 
-/// [`pnpm_install`] with the store pinned to [`PNPM_STORE`]. The flag, not
-/// `npm_config_store_dir`: pnpm 11 ignores that variable and keeps its
-/// platform default (`~/Library/pnpm/store/v11` on macOS), which the rollout
-/// found when every pnpm snapshot had nothing to save.
-pub(crate) fn pnpm_install_into_store() -> Step<Run> {
-    pnpm_install_with(format!(
-        "pnpm install --frozen-lockfile --store-dir \"{PNPM_STORE}\""
-    ))
-}
+/// Pins the pnpm store for every pnpm invocation in the job — the install
+/// step's and the ones the build spawns (`nuxi generate` runs one) — by
+/// writing `storeDir` into pnpm's global `config.yaml` at its per-OS path.
+/// That file is the one place pnpm 11 reads machine-level settings from:
+/// `.npmrc` carries auth and registry only, `pnpm-workspace.yaml` refuses
+/// `storeDir`, `npm_config_*` is not read, and `pnpm config set --global`
+/// refuses to run until `pnpm setup` has put its bin directory on `PATH`.
+/// Pinned by flag on the install step alone, the build's own install saw a
+/// different store, asked to purge `node_modules`, and in the clean room —
+/// where `CI` does not cross — had no TTY to ask on (third rollout run).
+pub(crate) fn pin_pnpm_store() -> Step<Run> {
+    let script = indoc! {r#"
+        case "${RUNNER_OS}" in
+          macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+          Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+          Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+          *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+        esac
+        mkdir -p "${dir}"
+        printf 'storeDir: %s\n' "{store}" >> "${dir}/config.yaml"
+        echo "pnpm store pinned to {store} in ${dir}/config.yaml"
+    "#}
+    .trim_end()
+    .replace("{store}", PNPM_STORE);
 
-fn pnpm_install_with(command: impl ToString) -> Step<Run> {
-    Step::new("Install JS deps")
-        .run(command)
+    Step::new("Pin the pnpm store")
+        .run(script)
         .shell("bash")
-        .id("pnpm-install")
+        .id("pnpm-store-dir")
 }
 
 /// Reclaims preinstalled toolchains the Ubuntu runner image ships and this
@@ -1039,6 +1056,28 @@ mod tests {
                 )
             );
         }
+    }
+
+    /// The store is pinned where pnpm 11 actually reads it from, on every OS
+    /// the build jobs run on, to the same path the snapshot names.
+    #[test]
+    fn the_pnpm_store_is_pinned_in_the_global_config_on_every_os() {
+        let step = rendered(pin_pnpm_store());
+        let run = step["run"].as_str().expect("run");
+        for os in ["macOS", "Linux", "Windows"] {
+            assert!(run.contains(&format!("{os}) dir=")), "{os}: {run}");
+        }
+        assert!(run.contains("config.yaml"));
+        assert!(
+            run.contains(&format!("'storeDir: %s\\n' \"{PNPM_STORE}\"")),
+            "{run}"
+        );
+        assert_eq!(
+            cached_dirs(Platform::Linux, "30.0.1")[0].path,
+            PNPM_STORE,
+            "the snapshot and the pin must name one path"
+        );
+        assert!(step.get("env").is_none(), "needs no credential: {step}");
     }
 
     /// What the generated steps delegate to `tooling/bin/xcache` is held here,
