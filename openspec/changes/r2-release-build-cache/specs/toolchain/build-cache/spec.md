@@ -6,7 +6,7 @@ Governs how release builds reuse what earlier builds compiled and fetched: one r
 
 ### Requirement: Release builds share one remote compiler cache
 
-Every generated job that builds a release artifact SHALL route its Rust compilation, and the C and C++ compilation cargo drives on every platform where the build recipe's C compiler selection reaches cargo's build scripts, through a compiler cache whose store is remote and shared across runs, channels, and workflows. The cache SHALL be keyed on the compiler, its flags, and its inputs, so that a cache entry is reused only by a compilation that would have produced identical output.
+Every generated job that builds a release artifact SHALL route its Rust compilation, and the C and C++ compilation cargo's build scripts drive wherever the platform's C compiler can be wrapped, through a compiler cache whose store is remote and shared across runs, channels, and workflows. The cache SHALL be keyed on the compiler, its flags, and its inputs, so that a cache entry is reused only by a compilation that would have produced identical output.
 
 #### Scenario: A second run reuses the first run's compilation
 
@@ -15,7 +15,7 @@ Every generated job that builds a release artifact SHALL route its Rust compilat
 
 #### Scenario: C sources compiled by cargo are cached
 
-- **WHEN** a release build compiles a crate's bundled C or C++ sources through cargo's build script on a platform where the recipe's C compiler selection reaches that build script
+- **WHEN** a release build compiles a crate's bundled C or C++ sources through cargo's build script on a platform whose C compiler can be wrapped
 - **THEN** those compilations are served from, or added to, the same store as the Rust compilations
 
 #### Scenario: Channels share the store

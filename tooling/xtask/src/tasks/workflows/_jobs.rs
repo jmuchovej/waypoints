@@ -295,13 +295,9 @@ pub fn build(
                 .add_step(steps::install_ndk(&context.android_ndk))
         })
         .add_step(steps::cache_restore(cache("pnpm-store")))
-        // One location for the pnpm store on every platform, so its snapshot
-        // restores to the same expression it was saved from. On the step, not
-        // the job: GitHub rejects the `runner` context in a job-level `env`.
-        .add_step(
-            steps::pnpm_install()
-                .add_env(("npm_config_store_dir", "${{ runner.temp }}/pnpm-store")),
-        )
+        // The store pinned to the snapshot's own path, by flag — see
+        // `steps::pnpm_install_into_store`.
+        .add_step(steps::pnpm_install_into_store())
         .add_step(steps::cache_save(cache("pnpm-store")))
         .add_step(steps::cache_restore(cache("cargo-registry")))
         // The server holds the store credential for the job; the build that

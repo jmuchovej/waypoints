@@ -236,8 +236,26 @@ pub(crate) fn rust_cache() -> Step<Use> {
 }
 
 pub fn pnpm_install() -> Step<Run> {
+    pnpm_install_with("pnpm install --frozen-lockfile")
+}
+
+/// Where a build job keeps the pnpm store: one expression on every platform,
+/// so the snapshot restores to the place it was saved from.
+pub(crate) const PNPM_STORE: &str = "${RUNNER_TEMP}/pnpm-store";
+
+/// [`pnpm_install`] with the store pinned to [`PNPM_STORE`]. The flag, not
+/// `npm_config_store_dir`: pnpm 11 ignores that variable and keeps its
+/// platform default (`~/Library/pnpm/store/v11` on macOS), which the rollout
+/// found when every pnpm snapshot had nothing to save.
+pub(crate) fn pnpm_install_into_store() -> Step<Run> {
+    pnpm_install_with(format!(
+        "pnpm install --frozen-lockfile --store-dir \"{PNPM_STORE}\""
+    ))
+}
+
+fn pnpm_install_with(command: impl ToString) -> Step<Run> {
     Step::new("Install JS deps")
-        .run("pnpm install --frozen-lockfile")
+        .run(command)
         .shell("bash")
         .id("pnpm-install")
 }
@@ -477,7 +495,7 @@ pub(crate) fn cached_dirs(platform: Platform, ndk_version: &str) -> Vec<CachedDi
     let mut dirs = vec![
         CachedDir {
             name: "pnpm-store",
-            path: "${RUNNER_TEMP}/pnpm-store".to_owned(),
+            path: PNPM_STORE.to_owned(),
             key: CacheKey::Files(&["pnpm-lock.yaml"]),
         },
         CachedDir {
@@ -531,6 +549,10 @@ const RCLONE_COPY: &str = concat!(
 /// The path is spliced into the script rather than carried on the step `env`:
 /// it is a shell expression (`${RUNNER_TEMP}`, `${CARGO_HOME:-$HOME/.cargo}`),
 /// and an `env` value reaches the shell as a literal, never expanded.
+///
+/// The archive goes through a redirection and tar is run inside the target
+/// directory, so tar never sees a path: on Windows the runner's temp is
+/// `D:\a\_temp`, which GNU tar reads as a remote host (`Cannot connect to D:`).
 pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
     let script = indoc! {r#"
         path="{dir}"
@@ -538,7 +560,7 @@ pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
         remote=":s3,provider=Cloudflare,env_auth=true:{bucket}/dirs/${CACHE_KEY}.tar.gz"
         if {rclone} "${remote}" "${archive}" \
           && mkdir -p "$(dirname "${path}")" \
-          && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+          && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
           echo "hit=true" >> "${GITHUB_OUTPUT}"
           echo "restored ${CACHE_KEY} into ${path}"
         else
@@ -581,7 +603,7 @@ pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
         fi
         archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
         remote=":s3,provider=Cloudflare,env_auth=true:{bucket}/dirs/${CACHE_KEY}.tar.gz"
-        if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+        if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
           && {rclone} --ignore-existing "${archive}" "${remote}"; then
           echo "saved ${CACHE_KEY}"
         else
@@ -1060,6 +1082,20 @@ mod tests {
                     dir.name
                 );
                 assert!(step["env"].get("CACHE_PATH").is_none());
+                // GNU tar on Windows reads `D:\a\_temp\…` as a remote host, so
+                // the archive must reach tar through a redirection, never as
+                // an argument.
+                assert!(
+                    run.contains("tar -czf - ") || run.contains("tar -xzf -)"),
+                    "{kind} {}: tar must read or write the archive on stdio: {run}",
+                    dir.name
+                );
+                assert!(
+                    !run.contains("tar -czf \"${archive}\"")
+                        && !run.contains("tar -xzf \"${archive}\""),
+                    "{kind} {}: tar given the archive path: {run}",
+                    dir.name
+                );
                 assert!(step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
                 assert_eq!(step["env"]["SECRETSPEC_PROVIDER"], "op");
                 for secret in STORE_CREDENTIAL {

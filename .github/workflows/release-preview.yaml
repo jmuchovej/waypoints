@@ -233,7 +233,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -249,10 +249,8 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
         shell: bash
-        env:
-          npm_config_store_dir: ${{ runner.temp }}/pnpm-store
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
@@ -264,7 +262,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -285,7 +283,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -337,7 +335,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -402,7 +400,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -418,10 +416,8 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
         shell: bash
-        env:
-          npm_config_store_dir: ${{ runner.temp }}/pnpm-store
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
@@ -433,7 +429,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -454,7 +450,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -506,7 +502,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -588,7 +584,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -604,10 +600,8 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
         shell: bash
-        env:
-          npm_config_store_dir: ${{ runner.temp }}/pnpm-store
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
@@ -619,7 +613,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -640,7 +634,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -692,7 +686,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -758,7 +752,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -774,10 +768,8 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
         shell: bash
-        env:
-          npm_config_store_dir: ${{ runner.temp }}/pnpm-store
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
@@ -789,7 +781,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -810,7 +802,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -862,7 +854,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -956,7 +948,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -978,7 +970,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -1003,7 +995,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -1019,10 +1011,8 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --store-dir "${RUNNER_TEMP}/pnpm-store"
         shell: bash
-        env:
-          npm_config_store_dir: ${{ runner.temp }}/pnpm-store
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
@@ -1034,7 +1024,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -1055,7 +1045,7 @@ jobs:
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
           if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
             && mkdir -p "$(dirname "${path}")" \
-            && tar -xzf "${archive}" -C "$(dirname "${path}")"; then
+            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
             echo "hit=true" >> "${GITHUB_OUTPUT}"
             echo "restored ${CACHE_KEY} into ${path}"
           else
@@ -1108,7 +1098,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -1132,7 +1122,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else
@@ -1156,7 +1146,7 @@ jobs:
           fi
           archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
           remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if tar -czf "${archive}" -C "$(dirname "${path}")" "$(basename "${path}")" \
+          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
             && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
             echo "saved ${CACHE_KEY}"
           else

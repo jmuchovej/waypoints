@@ -135,7 +135,9 @@ def forwarded []: nothing -> record {
 # only while CC is unset. The linker is never wrapped — sccache does not cache
 # links, and cargo wants a bare path there. iOS's compilers are prefixed like
 # the rest but never reach the compile: the cargo Xcode runs sees only what the
-# Tauri CLI forwards, which excludes CC_* — so iOS C compiles are not cached.
+# Tauri CLI forwards, which excludes CC_*. Its C compiles are cached anyway —
+# with no CC set, cc-rs wraps the compiler itself from the rustc wrapper cargo
+# hands every build script.
 def wrap-c-compilers [target: string, vars: record]: nothing -> record {
   let wrapper = $vars | get -o CARGO_BUILD_RUSTC_WRAPPER | default ""
   if ($wrapper | is-empty) { return $vars }
