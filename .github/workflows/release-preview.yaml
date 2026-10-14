@@ -227,20 +227,7 @@ jobs:
           cache: "true"
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -254,21 +241,7 @@ jobs:
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -277,20 +250,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -327,21 +287,7 @@ jobs:
       - id: cache-save-cargo-registry
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -394,20 +340,7 @@ jobs:
           cache: "true"
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -421,21 +354,7 @@ jobs:
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -444,20 +363,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -494,21 +400,7 @@ jobs:
       - id: cache-save-cargo-registry
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -578,20 +470,7 @@ jobs:
           cache: "true"
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -605,21 +484,7 @@ jobs:
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -628,20 +493,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -678,21 +530,7 @@ jobs:
       - id: cache-save-cargo-registry
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -746,20 +584,7 @@ jobs:
           cache: "true"
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -773,21 +598,7 @@ jobs:
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -796,20 +607,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -846,21 +644,7 @@ jobs:
       - id: cache-save-cargo-registry
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -942,20 +726,7 @@ jobs:
           cache: "true"
       - id: cache-restore-gradle
         name: Restore gradle
-        run: |-
-          path="${HOME}/.gradle/caches/modules-2"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${HOME}/.gradle/caches/modules-2"
         shell: bash
         env:
           CACHE_KEY: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/gen/android/gradle/verification-metadata.xml', 'src-tauri/gen/android/gradle/libs.versions.toml', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'src-tauri/gen/android/settings.gradle', 'src-tauri/gen/android/build.gradle.kts', 'src-tauri/gen/android/app/build.gradle.kts') }}
@@ -964,20 +735,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-android-ndk
         name: Restore android-ndk
-        run: |-
-          path="${ANDROID_HOME}/ndk/30.0.16138531"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${ANDROID_HOME}/ndk/30.0.16138531"
         shell: bash
         env:
           CACHE_KEY: android-ndk-${{ runner.os }}-${{ runner.arch }}-30.0.16138531
@@ -989,20 +747,7 @@ jobs:
         run: sdkmanager "ndk;30.0.16138531"
       - id: cache-restore-pnpm-store
         name: Restore pnpm-store
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -1016,21 +761,7 @@ jobs:
       - id: cache-save-pnpm-store
         name: Save pnpm-store
         if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
-        run: |-
-          path="${RUNNER_TEMP}/pnpm-store"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
         shell: bash
         env:
           CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -1039,20 +770,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone "${remote}" "${archive}" \
-            && mkdir -p "$(dirname "${path}")" \
-            && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-            echo "hit=true" >> "${GITHUB_OUTPUT}"
-            echo "restored ${CACHE_KEY} into ${path}"
-          else
-            echo "hit=false" >> "${GITHUB_OUTPUT}"
-            echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-          fi
-          rm -f "${archive}"
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -1090,21 +808,7 @@ jobs:
       - id: cache-save-cargo-registry
         name: Save cargo-registry
         if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
-        run: |-
-          path="${CARGO_HOME:-$HOME/.cargo}/registry"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
         shell: bash
         env:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
@@ -1114,21 +818,7 @@ jobs:
       - id: cache-save-gradle
         name: Save gradle
         if: "!cancelled() && steps.cache-restore-gradle.outputs.hit != 'true'"
-        run: |-
-          path="${HOME}/.gradle/caches/modules-2"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${HOME}/.gradle/caches/modules-2"
         shell: bash
         env:
           CACHE_KEY: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/gen/android/gradle/verification-metadata.xml', 'src-tauri/gen/android/gradle/libs.versions.toml', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'src-tauri/gen/android/settings.gradle', 'src-tauri/gen/android/build.gradle.kts', 'src-tauri/gen/android/app/build.gradle.kts') }}
@@ -1138,21 +828,7 @@ jobs:
       - id: cache-save-android-ndk
         name: Save android-ndk
         if: "!cancelled() && steps.cache-restore-android-ndk.outputs.hit != 'true'"
-        run: |-
-          path="${ANDROID_HOME}/ndk/30.0.16138531"
-          if [ ! -d "${path}" ]; then
-            echo "nothing at ${path} to save"
-            exit 0
-          fi
-          archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-          remote=":s3,provider=Cloudflare,env_auth=true:ci-cache/dirs/${CACHE_KEY}.tar.gz"
-          if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-            && secretspec run --profile ci --scope cache -- bash -c 'RCLONE_S3_ENDPOINT="$SCCACHE_ENDPOINT" exec rclone copyto --s3-no-check-bucket "$@"' rclone --ignore-existing "${archive}" "${remote}"; then
-            echo "saved ${CACHE_KEY}"
-          else
-            echo "::warning::could not save ${CACHE_KEY}"
-          fi
-          rm -f "${archive}"
+        run: xcache save "${CACHE_KEY}" "${ANDROID_HOME}/ndk/30.0.16138531"
         shell: bash
         env:
           CACHE_KEY: android-ndk-${{ runner.os }}-${{ runner.arch }}-30.0.16138531

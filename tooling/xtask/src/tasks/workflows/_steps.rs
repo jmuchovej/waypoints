@@ -498,9 +498,13 @@ pub(crate) fn cached_dirs(platform: Platform, ndk_version: &str) -> Vec<CachedDi
             path: PNPM_STORE.to_owned(),
             key: CacheKey::Files(&["pnpm-lock.yaml"]),
         },
+        // `CARGO_HOME` is on every build job's `env`, so no `:-` default: a
+        // `:` in the command makes the YAML serializer quote the scalar, and
+        // the formatter then rewrites its escapes, leaving the generated file
+        // never in sync.
         CachedDir {
             name: "cargo-registry",
-            path: "${CARGO_HOME:-$HOME/.cargo}/registry".to_owned(),
+            path: "${CARGO_HOME}/registry".to_owned(),
             key: CacheKey::Files(&["Cargo.lock"]),
         },
     ];
@@ -526,56 +530,24 @@ pub(crate) fn cached_dirs(platform: Platform, ndk_version: &str) -> Vec<CachedDi
     dirs
 }
 
-/// The one line in each cache script that contacts the store, under a
-/// `secretspec run` of the cache scope so the key pair exists only for the
-/// `rclone` process. The endpoint travels as `RCLONE_S3_ENDPOINT` inside that
-/// shell — an unquoted URL inside the connection string would be cut at the
-/// `:` of `https://`. Takes the source and destination as positional
-/// arguments so nothing is re-quoted through two shells.
-///
-/// `--s3-no-check-bucket`: the token is scoped to the one bucket and cannot
-/// list buckets, which is what rclone's pre-upload existence check does; it
-/// then falls through to `CreateBucket`, which the token refuses too. Skipping
-/// the check is what lets a bucket-scoped token write at all.
-const RCLONE_COPY: &str = concat!(
-    "secretspec run --profile ci --scope cache -- ",
-    "bash -c 'RCLONE_S3_ENDPOINT=\"$SCCACHE_ENDPOINT\" exec rclone copyto --s3-no-check-bucket \"$@\"' rclone",
-);
+/// The command every snapshot step runs: `tooling/bin/xcache`, on `PATH`
+/// through mise's config, holds the store protocol — the one wrapped `rclone`
+/// call, the archive streamed through a pipeline so tar never sees a Windows
+/// path, the miss-is-not-a-failure exit codes. The step supplies the key, the
+/// path, and the resolver's provider and credential. The path is spliced into
+/// the command rather than carried on the step `env`: it is a shell expression
+/// (`${RUNNER_TEMP}/pnpm-store`, `${CARGO_HOME}/registry`), and an `env` value
+/// reaches the shell as a literal, never expanded.
+fn xcache(verb: &str, dir: &CachedDir) -> String {
+    format!("xcache {verb} \"${{CACHE_KEY}}\" \"{}\"", dir.path)
+}
 
-/// Restores `dir` from the store, publishing `hit` for the save step. A miss or
-/// a store failure logs and exits 0 — the consumer then fetches as it would
-/// without a cache.
-///
-/// The path is spliced into the script rather than carried on the step `env`:
-/// it is a shell expression (`${RUNNER_TEMP}`, `${CARGO_HOME:-$HOME/.cargo}`),
-/// and an `env` value reaches the shell as a literal, never expanded.
-///
-/// The archive goes through a redirection and tar is run inside the target
-/// directory, so tar never sees a path: on Windows the runner's temp is
-/// `D:\a\_temp`, which GNU tar reads as a remote host (`Cannot connect to D:`).
+/// Restores `dir` from the store. `xcache restore` publishes `hit` for the
+/// save step and treats a miss or a store failure as a miss, exit 0 — the
+/// consumer then fetches as it would without a cache.
 pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
-    let script = indoc! {r#"
-        path="{dir}"
-        archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-        remote=":s3,provider=Cloudflare,env_auth=true:{bucket}/dirs/${CACHE_KEY}.tar.gz"
-        if {rclone} "${remote}" "${archive}" \
-          && mkdir -p "$(dirname "${path}")" \
-          && (cd "$(dirname "${path}")" && tar -xzf -) < "${archive}"; then
-          echo "hit=true" >> "${GITHUB_OUTPUT}"
-          echo "restored ${CACHE_KEY} into ${path}"
-        else
-          echo "hit=false" >> "${GITHUB_OUTPUT}"
-          echo "no entry for ${CACHE_KEY}; ${path} will be fetched"
-        fi
-        rm -f "${archive}"
-    "#}
-    .trim_end()
-    .replace("{dir}", &dir.path)
-    .replace("{bucket}", CI_CACHE_BUCKET)
-    .replace("{rclone}", RCLONE_COPY);
-
     let step = Step::new(format!("Restore {}", dir.name))
-        .run(script)
+        .run(xcache("restore", dir))
         .shell("bash")
         .add_env(("CACHE_KEY", dir.key()))
         .add_env((
@@ -595,29 +567,8 @@ pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
 /// consumer even if the build failed — what was fetched is still what the
 /// manifest pins — but never on a cancelled job, and never fails the job.
 pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
-    let script = indoc! {r#"
-        path="{dir}"
-        if [ ! -d "${path}" ]; then
-          echo "nothing at ${path} to save"
-          exit 0
-        fi
-        archive="${RUNNER_TEMP}/${CACHE_KEY}.tar.gz"
-        remote=":s3,provider=Cloudflare,env_auth=true:{bucket}/dirs/${CACHE_KEY}.tar.gz"
-        if (cd "$(dirname "${path}")" && tar -czf - "$(basename "${path}")") > "${archive}" \
-          && {rclone} --ignore-existing "${archive}" "${remote}"; then
-          echo "saved ${CACHE_KEY}"
-        else
-          echo "::warning::could not save ${CACHE_KEY}"
-        fi
-        rm -f "${archive}"
-    "#}
-    .trim_end()
-    .replace("{dir}", &dir.path)
-    .replace("{bucket}", CI_CACHE_BUCKET)
-    .replace("{rclone}", RCLONE_COPY);
-
     let step = Step::new(format!("Save {}", dir.name))
-        .run(script)
+        .run(xcache("save", dir))
         .shell("bash")
         .if_condition(Expression::new(format!(
             "!cancelled() && steps.{restore}.outputs.hit != 'true'",
@@ -1053,55 +1004,27 @@ mod tests {
         assert!(android[2].key().contains("verification-metadata.xml"));
 
         for dir in &android {
-            for (step, kind) in [(cache_restore(dir), "restore"), (cache_save(dir), "save")] {
+            for (step, verb) in [(cache_restore(dir), "restore"), (cache_save(dir), "save")] {
                 let step = rendered(step);
                 let run = step["run"].as_str().expect("run");
-                let store_calls: Vec<&str> =
-                    run.lines().filter(|line| line.contains("rclone")).collect();
-                assert!(
-                    !store_calls.is_empty(),
-                    "{kind} {}: no store call",
+                // The whole step: the script does the rest. The path is a
+                // shell expression and must be expanded by bash on the
+                // command line, never carried as an env literal.
+                assert_eq!(
+                    run,
+                    format!("xcache {verb} \"${{CACHE_KEY}}\" \"{}\"", dir.path),
+                    "{verb} {}",
                     dir.name
                 );
-                for line in store_calls {
-                    assert!(
-                        line.contains("secretspec run --profile ci --scope cache -- "),
-                        "{kind} {}: unwrapped store call: {line}",
-                        dir.name
-                    );
-                    assert!(
-                        line.contains("--s3-no-check-bucket"),
-                        "{kind} {}: a bucket-scoped token cannot pass rclone's bucket check: {line}",
-                        dir.name
-                    );
-                }
                 assert_eq!(step["env"]["CACHE_KEY"], dir.key());
-                assert!(
-                    run.contains(&format!("path=\"{}\"", dir.path)),
-                    "{kind} {}: the path is a shell expression and must be expanded by the script, not carried as an env literal: {run}",
-                    dir.name
-                );
                 assert!(step["env"].get("CACHE_PATH").is_none());
-                // GNU tar on Windows reads `D:\a\_temp\…` as a remote host, so
-                // the archive must reach tar through a redirection, never as
-                // an argument.
-                assert!(
-                    run.contains("tar -czf - ") || run.contains("tar -xzf -)"),
-                    "{kind} {}: tar must read or write the archive on stdio: {run}",
-                    dir.name
-                );
-                assert!(
-                    !run.contains("tar -czf \"${archive}\"")
-                        && !run.contains("tar -xzf \"${archive}\""),
-                    "{kind} {}: tar given the archive path: {run}",
-                    dir.name
-                );
                 assert!(step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
                 assert_eq!(step["env"]["SECRETSPEC_PROVIDER"], "op");
+                assert!(step["env"].get("SECRETSPEC_REASON").is_some());
                 for secret in STORE_CREDENTIAL {
                     assert!(
                         step["env"].get(secret).is_none(),
-                        "{kind} {}: {secret}",
+                        "{verb} {}: {secret}",
                         dir.name
                     );
                 }
@@ -1115,12 +1038,35 @@ mod tests {
                     dir.name
                 )
             );
-            assert!(
-                save["run"]
-                    .as_str()
-                    .expect("run")
-                    .contains("--ignore-existing")
-            );
         }
+    }
+
+    /// What the generated steps delegate to `tooling/bin/xcache` is held here,
+    /// on the script's source: one `rclone` invocation, under a resolution of
+    /// the cache scope, past rclone's bucket check, writing only when absent,
+    /// and never handing tar the archive path (GNU tar on Windows reads
+    /// `D:\a\_temp\…` as a remote host).
+    #[test]
+    fn xcache_wraps_its_one_store_call_and_streams_the_archive() {
+        let source = include_str!("../../../../bin/xcache");
+        // Comments and log lines may name rclone; a store call runs it.
+        let store_calls: Vec<&str> = source
+            .lines()
+            .map(str::trim_start)
+            .filter(|line| {
+                line.contains("rclone") && !line.starts_with('#') && !line.starts_with("print")
+            })
+            .collect();
+        assert_eq!(store_calls.len(), 1, "{store_calls:?}");
+        let call = store_calls[0];
+        assert!(
+            call.contains(
+                "^secretspec run --profile ci --scope cache -- rclone copyto --s3-no-check-bucket"
+            ),
+            "{call}"
+        );
+        assert!(source.contains("\"--ignore-existing\""));
+        assert!(source.contains("^tar -czf - ") && source.contains("^tar -xzf -"));
+        assert!(!source.contains("tar -czf $") && !source.contains("tar -xzf $"));
     }
 }

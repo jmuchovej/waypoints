@@ -415,9 +415,11 @@ mod tests {
     /// contents `mise.lock` pins. The R2-backed caches are steps this generator
     /// emits, so their shape is asserted instead: the compiler is wrapped only
     /// after a server start that resolved the cache scope, every directory
-    /// snapshot step resolves that scope itself, and the store credential is
-    /// never configuration on any step. `.github/zizmor.yml` silences zizmor's
-    /// audit for the release workflows on the strength of these checks.
+    /// snapshot step is a bare `tooling/bin/xcache` call carrying the
+    /// credential that script resolves the scope with, and the store
+    /// credential is never configuration on any step. `.github/zizmor.yml`
+    /// silences zizmor's audit for the release workflows on the strength of
+    /// these checks.
     #[test]
     fn environments_follow_the_vault_credential() {
         let context = WorkflowContext::fixture();
@@ -429,10 +431,11 @@ mod tests {
 
     fn assert_environments_follow_the_vault_credential(name: &str, value: &Value) {
         const CACHE_SCOPE: &str = "--profile ci --scope cache";
-        const STORE_CREDENTIAL: [&str; 3] = [
+        const STORE_CREDENTIAL: [&str; 4] = [
             "AWS_ACCESS_KEY_ID",
             "AWS_SECRET_ACCESS_KEY",
             "SCCACHE_ENDPOINT",
+            "RCLONE_S3_ENDPOINT",
         ];
         let text = |step: &Value, key: &str| step[key].as_str().unwrap_or("").to_owned();
 
@@ -498,15 +501,23 @@ mod tests {
                         );
                     }
 
+                    // The snapshot steps go through `tooling/bin/xcache`, which
+                    // resolves the cache scope around its one `rclone` call — a
+                    // test in `_steps.rs` holds the script to that. Here: the
+                    // step runs nothing else, and brings the credential that
+                    // resolution needs.
                     if id.starts_with("cache-restore-") || id.starts_with("cache-save-") {
                         assert!(
                             declares_environment,
                             "{label}: contacts the store outside an environment"
                         );
                         assert!(
-                            step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some()
-                                && run.contains(CACHE_SCOPE),
-                            "{label}: contacts the store without resolving the cache scope"
+                            run.starts_with("xcache restore ") || run.starts_with("xcache save "),
+                            "{label}: contacts the store other than through xcache: {run}"
+                        );
+                        assert!(
+                            step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some(),
+                            "{label}: runs xcache without the credential it resolves the cache scope with"
                         );
                     }
 
