@@ -1,55 +1,81 @@
 ## ADDED Requirements
 
-### Requirement: A Station reports its operations as structured events
+### Requirement: A Station keeps an events table
 
-A Station SHALL emit an event for each of the occurrences below, at the stated level, carrying at least the stated fields, in every log format it offers. Event names and field names SHALL be stable: changing one is a breaking change to the Station's operator contract. Events SHALL carry only metadata the Station already holds — Territory ids, member ids, device public keys, counts, durations, reasons — and SHALL NOT carry Notice payloads, envelopes, read keys, or any key material.
+A Station with its own database SHALL keep an events table in it. Each event SHALL have a sequence number that increases by one per event and never repeats across restarts, a timestamp, a kind from the closed set below, and the fields its kind requires. The Station SHALL append an event only after the decision it records has taken effect, and SHALL append one for every occurrence below. Events SHALL carry only metadata the Station already holds — Territory ids, member ids, device public keys, counts, durations, reasons — and SHALL NOT carry Notice payloads, envelopes, read keys, or any key material. Ids and keys SHALL be rendered as lowercase hex. Kinds and reasons SHALL be drawn from the closed set in the table; a new kind or reason is an addition to this table, and renaming one is a breaking change to the Station's contract with its commodore. A Station without its own database (a seeded, storage-less Station) SHALL record no events.
 
-| Event                     | Level | Fields                                                                                                                          |
-| ------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `territory registered`    | info  | `territory`, `registrant`                                                                                                       |
-| `territory re-registered` | debug | `territory`, `registrant`                                                                                                       |
-| `registration refused`    | warn  | `territory`, `reason` (`policy`, `invalid log`, `mismatched id`, `no storage`), `registrant` when authenticated                 |
-| `session refused`         | warn  | `reason` (`bad hello`, `not served`, `not a member`, `unexpected frame`), `territory` when known, `identity` when authenticated |
-| `subscription parked`     | debug | `territory`, `member`, `device`                                                                                                 |
-| `subscription reaped`     | info  | `territory`, `member`, `device`, `reason` (`idle`, `lagged`, `closed`)                                                          |
-| `order granted`           | debug | `territory`, `author`, `position`                                                                                               |
-| `order refused`           | info  | `territory`, `author`, `reason` (`not served`, `no fleet key`, `does not chain`)                                                |
-| `holds loaded`            | info  | `count`, `duration_ms`                                                                                                          |
-| `station running`         | info  | `port`, `address`, `data`, `orderer`                                                                                            |
-| `shutting down`           | info  | `open_sessions`                                                                                                                 |
-| `station stopped`         | info  | `close_ms`, `timed_out`                                                                                                         |
+| Kind                   | Level | Fields                                                                                                                          |
+| ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `territory registered` | info  | `territory`, `registrant`                                                                                                       |
+| `registration refused` | warn  | `territory`, `reason` (`policy`, `invalid log`, `mismatched id`, `no storage`), `registrant` when authenticated                 |
+| `session refused`      | warn  | `reason` (`bad hello`, `not served`, `not a member`, `unexpected frame`), `territory` when known, `identity` when authenticated |
+| `subscription reaped`  | info  | `territory`, `member`, `device`, `reason` (`idle`, `lagged`, `closed`)                                                          |
+| `order refused`        | info  | `territory`, `author`, `reason` (`not served`, `no fleet key`, `does not chain`)                                                |
+| `holds loaded`         | info  | `count`, `duration_ms`                                                                                                          |
+| `station running`      | info  | `port`, `address`, `data`, `orderer`                                                                                            |
+| `shutting down`        | info  | `open_sessions`                                                                                                                 |
+| `station stopped`      | info  | `close_ms`, `timed_out`                                                                                                         |
 
-Ids and keys SHALL be rendered as lowercase hex. Reasons SHALL be drawn from the closed set above; a new reason is an addition to this table.
+Events SHALL be retained for a duration the commodore configures, ninety days by default and never less than one day. The Station SHALL remove events older than the retention period at start-up and whenever it appends one, and SHALL always keep the most recent event whatever its age, so the sequence is recoverable after any idle stretch.
 
-#### Scenario: A homed Territory is announced
+#### Scenario: A homed Territory is recorded
 
 - **WHEN** an Owner registers a Territory the Station did not hold
-- **THEN** the Station emits `territory registered` at info with that Territory's id and the registrant's member id, exactly once
-
-#### Scenario: A repeat registration is quiet
-
-- **WHEN** a Territory the Station already serves is registered again
-- **THEN** the Station emits `territory re-registered` at debug and nothing at info or above
+- **THEN** the table gains exactly one `territory registered` event carrying that Territory's id and the registrant's member id, appended after the hold exists on disk
 
 #### Scenario: A refusal says why
 
 - **WHEN** a registrant without Owner permission registers a Territory under the default policy
-- **THEN** the Station emits `registration refused` at warn with the Territory id, the reason `policy`, and the registrant's member id
+- **THEN** the table gains a `registration refused` event with the Territory id, the reason `policy`, and the registrant's member id
 
-#### Scenario: The scan is accounted for
+#### Scenario: The sequence survives a restart
 
-- **WHEN** a Station starts with stored Territories
-- **THEN** it emits `holds loaded` with the number of holds opened and the milliseconds the scan took, before `station running`
+- **WHEN** a Station whose newest event has sequence N is restarted and then records an event
+- **THEN** that event has sequence N+1, including when every older event has been pruned
 
-#### Scenario: Payloads never reach the log
+#### Scenario: Payloads never reach the table
 
-- **WHEN** a Vessel syncs a Notice whose plaintext contains a known sentinel through a Station logging at the most verbose level
-- **THEN** no line of the Station's log contains the sentinel, the ciphertext, or the envelope bytes
+- **WHEN** a Vessel syncs a Notice whose plaintext contains a known sentinel
+- **THEN** no event's fields contain the sentinel, the ciphertext, or the envelope bytes
+
+#### Scenario: Old events are pruned
+
+- **WHEN** the table holds events older than the retention period and the Station starts, or appends an event
+- **THEN** those events are removed, and the most recent event remains whatever its age
+
+#### Scenario: Retention below a day is refused
+
+- **WHEN** a Station is started with a retention of zero days
+- **THEN** it exits with a non-zero status and an error naming the option
+
+#### Scenario: A storage-less Station records nothing
+
+- **WHEN** a Station seeded with a fixed replica and no storage directory serves a session
+- **THEN** no events table exists and no event is reported
+
+### Requirement: Events are reported through the log as a read-only stream
+
+Each event the Station appends SHALL be reported as one log record, at the kind's level, whose message is the kind and whose fields are the event's fields plus `seq`, the event's sequence number, produced from the row after it is written. An event that could not be written SHALL NOT be reported as an event; the failed write SHALL be reported as a diagnostic. Diagnostics — failures, and per-session detail such as a repeat registration, a subscription parked, or an order granted — are not events: they SHALL NOT be written to the table, and their names and fields are not part of this contract. In the structured format each event record SHALL be one JSON object whose `fields.message` is the kind, with ids as hex strings and counts as numbers.
+
+#### Scenario: A line traces to a row
+
+- **WHEN** a `territory registered` record with sequence S appears in the log
+- **THEN** the table holds event S with the same kind and fields
+
+#### Scenario: A failed write is not announced
+
+- **WHEN** the Station's database refuses writes and an Owner registers a Territory
+- **THEN** the registration succeeds, the log carries a diagnostic warning about the events table, and no `territory registered` record
+
+#### Scenario: Diagnostics stay out of the table
+
+- **WHEN** a Territory the Station already serves is registered again
+- **THEN** the table gains no event, and a diagnostic is reported at a level below the default floor
 
 #### Scenario: Events are machine-readable in the structured format
 
 - **WHEN** the Station runs with the structured log format
-- **THEN** each event is one JSON object whose `fields.message` is the event name and whose other `fields` are the fields above, with ids as hex strings and counts as numbers
+- **THEN** each event record parses as one JSON object with `fields.message` equal to the kind, `fields.seq` a number, and the kind's fields present with ids as hex strings
 
 ## MODIFIED Requirements
 
@@ -57,7 +83,7 @@ Ids and keys SHALL be rendered as lowercase hex. Reasons SHALL be drawn from the
 
 A Station SHALL offer a structured log format in which every log line is a single JSON object carrying at least a timestamp, a level, and a message, selectable at start-up. The default remains the human-readable format.
 
-The Station SHALL emit every event at or above a minimum level and nothing below it. The minimum SHALL be set at start-up through the `RUST_LOG` environment variable, in that variable's usual syntax, and SHALL default to informational for the Station's own crates. The levels in the event table are assigned so that the default floor is the complete operational record: refusals at warn, decisions an operator acts on at info, per-session detail at debug. Narrowing what is shown below the floor is the log consumer's concern; the Station offers no finer control.
+The log stream SHALL carry every record at or above a minimum level and nothing below it. The minimum SHALL be set at start-up through the `RUST_LOG` environment variable, in that variable's usual syntax, and SHALL default to informational for the Station's own crates. Every event kind is at or above that default, so the default stream is the complete operational record; diagnostics sit below it. The floor SHALL NOT affect what the events table records. Narrowing what is shown below the floor is the log consumer's concern; the Station offers no finer control.
 
 #### Scenario: Structured output
 
@@ -72,9 +98,14 @@ The Station SHALL emit every event at or above a minimum level and nothing below
 #### Scenario: The default floor is the operational record
 
 - **WHEN** a Station runs at the default floor through a registration, a refused registration, a reaped subscription, and a stop
-- **THEN** every info and warn event in the table for those occurrences appears, and no debug event does
+- **THEN** each event in the table for those occurrences appears in the log exactly once, and no diagnostic does
 
-#### Scenario: Lowering the floor reveals detail
+#### Scenario: Lowering the floor reveals diagnostics
 
-- **WHEN** a Station is started with `RUST_LOG=outpost=debug`
-- **THEN** `subscription parked` and `territory re-registered` appear in the log, and other crates' debug output does not
+- **WHEN** a Station is started with `RUST_LOG=outpost=debug` and a Territory is registered twice
+- **THEN** the repeat registration's diagnostic appears in the log, and other crates' debug output does not
+
+#### Scenario: The floor does not reach the table
+
+- **WHEN** a Station is started with `RUST_LOG=outpost=warn` and an Owner registers a Territory
+- **THEN** no `territory registered` record appears in the log, and the table gains the event

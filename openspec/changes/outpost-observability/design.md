@@ -1,67 +1,81 @@
 ## Context
 
-See proposal.md — Why. What the tree holds on 2026-10-14:
+See proposal.md — Why. What the tree holds on 2026-10-16:
 
-- **Logging today.** `crates/outpost` and `crates/outpost-fabric` contain 21 `tracing` calls: 16 `warn!`, 3 `info!`, 1 `debug!`, 1 `error!`. All are formatted strings (`"station: registration failed: {e}"`), none carry fields. The Station's successful paths — `register` bootstrapping a hold, `dispatch` admitting a session, `subscribe_session` parking and reaping, the orderer countersigning — log nothing. The binary logs `station running` (with fields), the termination signal, and the close timeout.
-- **What the Station knows at each point.** `register` has the `TerritoryID`, the folded ACL, the `Caller` (identity and device cert) when authenticated, and the policy outcome as a `bool`. `dispatch` has the request kind, the caller, and the replica lookup. `subscribe_session` ends its live loop on one of three breaks — idle, lagged, closed by the peer — currently indistinguishable. `Replica::order` returns `Option<OrderProof>`, folding "does not chain" and "no replica" into `None` at the call site.
-- **Ids.** `TerritoryID::as_bytes()` and `hex::encode` are how holds are named on disk; `MemberID` and device keys are 32 bytes; the audit harness and the hold file names already use lowercase hex, so the operator can correlate.
-- **The filter.** `main.rs` builds the subscriber from `EnvFilter::try_from_default_env()` falling back to `outpost=info`, before the runtime starts; there is no flag.
-- **Tests that read the log.** `tests/common/process.rs` already spawns the binary with `--log-format json` and parses each line as JSON to find `station running`; the event tests extend that reader.
-- **Content-blindness.** The Station's module docs state it holds no read keys and contains no decryption code. Events must not weaken that in a new direction: the log is a side channel that a collector retains.
+- **The Station's database.** `crates/outpost-hold/src/station_hold.rs`: `station.db`, a bedrock database beside the Territory holds, with two collections declared through the `Collection` derive — `SightingRow` (a 32-byte synthetic id, an indexed `territory`, cert bytes, `first_seen`/`last_seen` as `i64`) and `RegistrationRow` (the Territory id as key, `registered_by`, `registered_at`). `StationHold::open` runs `ensure_collection` for each, which creates or additively migrates. `Station::register` writes a registration row on a first authenticated registration and warns, rather than fails, when the write does not go through.
+- **bedrock's surface for a log-shaped table.** `Database::{insert, get, query, all, count, delete, update_where}`; `Query` takes a `Filter` tree (`eq/ne/gt/gte/lt/lte`, `in`, `exists`, JSON-path compare), sort keys, and a limit; integer scalars are `i64` columns and can be ids and indexes. There is no delete-by-filter: `update_where` exists, its delete sibling does not. Documents are `jsonb`; a free-form JSON field is either a `String` column or a document type the derive accepts, which the first task settles.
+- **Logging today.** 21 `tracing` calls across `outpost` and `outpost-fabric`, 16 of them `warn!`, all formatted strings without fields. The Station's successful paths log nothing. `main.rs` installs an `EnvFilter` from `RUST_LOG` with `outpost=info` as the fallback, before the runtime starts; `--log-format` already selects the JSON renderer. `tests/common/process.rs` spawns the binary and parses its JSON log line by line.
+- **What the Station knows at each decision.** `register` has the `TerritoryID`, the folded ACL, the `Caller` when authenticated, and four distinct reasons to say no that all become `Ok(false)`. `dispatch` has the request kind and the replica lookup. `subscribe_session`'s live loop ends on idle, lagged, or closed, indistinguishable today. `Replica::order` returns `Option<OrderProof>`, folding "does not chain" with the arm-level "no replica" and "no fleet key".
+- **Ids.** Holds are named by `hex::encode(territory.as_bytes())`; `MemberID` and device keys are 32 bytes; the audit harness already correlates by lowercase hex.
+- **The term.** The published specs say "operator" for the person who runs a Fleet. Kubernetes uses the same word for a controller pattern, and the Territory ACL has an `Admin` permission, so neither "operator" nor "administrator" is free. The person is the Fleet's commodore from here on; the definition lands in `sync-protocol`'s Purpose, which is still the archive placeholder.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Every operational outcome a Station decides is visible as an event with the fields an operator needs to act, and the set of events is a contract.
+- Every decision a Station makes is a durable row before it is a log line, and a log line is provably a row.
+- The set of events is a contract; diagnostics are free to change.
+- The table cannot fill the volume: retention is a duration, and pruning is automatic.
 - The log can be proven payload-free by a test, not by review.
 
 **Non-Goals:**
 
-- Beyond the proposal's: no new log sink, no sampling or rate limiting (the noisiest event, `subscription parked`, is at debug), no event for every frame.
+- Beyond the proposal's: no reader, no sampling, no event for every frame, no replication of the table.
 
 ## Decisions
 
-### D1 — Events are `tracing` calls at the decision site, named by the message
+### D1 — An event is a row first; the line is produced from the row
 
-**Chosen** (2026-10-14). Each event is a `tracing::info!`/`warn!`/`debug!` with the event name as the message and the fields as structured fields (`territory = %hex, registrant = %hex`), placed where the decision is made: in `register` for the registration events, in `dispatch` for session refusals, in `subscribe_session` for park and reap, at the `OrderRequest` arm for ordering. A refusal's reason is a `&'static str` from the closed set; a small private enum with `as_str()` keeps the set closed at compile time.
+**Chosen** (2026-10-16). `StationHold` gains `EventRow { id: EventSeq(i64), at: i64, kind: String, fields: String }` — `at` indexed, `fields` a JSON object as text (a document column if the derive takes a free-form value; same contract either way). `append_event` inserts with the next sequence, which the hold reads as the highest id at open and then increments in process. The Station's `record` path builds the field map, appends, and only then emits the `tracing` record with the same fields plus `seq`. A failed append emits `events table write failed` as a diagnostic warning and no event.
 
-**Why not a logging layer or an event type.** The decisions are already localised in the Station; an `Event` enum emitted from a central place would mean threading outcomes back up for the sake of one call. `tracing` is the framework the crate and the app use; its JSON renderer gives the format the spec requires without a serializer of our own.
+The row and the line cannot drift because one private macro produces both from a single field list: `event!(self, INFO, "territory registered", territory = hex, registrant = hex)` expands to the JSON map for the row and the `tracing::info!` call for the line. `tracing` cannot take a dynamic field set, so the field list has to be static at the call site anyway; making the macro the only way to emit an event is what turns "produced from the row" into a property rather than a discipline.
 
-**Rejected.** _An `events` module with constructor functions per event_ — keeps the names in one file, but every call site then imports a function that wraps one macro call; the spec table is the single list, and the test in D4 enforces it.
+**Why a table and not just the log.** A log stream has no delivery guarantee and no identity; a row has both, and the sequence number gives the stream one by reference. The Station already keeps durable per-Station facts (sightings, registrations) in exactly this database.
 
-### D2 — Reasons are made explicit where they are currently folded
+**Rejected.** _Writing the line first and the row after_ — the line could then claim what never committed. _A generic emitter that serializes the map into one `fields` string_ — loses the per-field filtering a collector wants from JSON logs.
 
-`register` returns `Ok(false)` for four distinct reasons; it gains a private `Refusal` enum and returns `Result<Registered, Refusal>`, with the public `bool` ack derived at the call site. `subscribe_session`'s three `break`s set a `reason` before breaking. The `OrderRequest` arm distinguishes "no replica" and "no fleet key" (both known at the arm) from `Replica::order` returning `None` ("does not chain"). No wire message changes: the Vessel still sees `Ack { ok: false }` and `OrderResponse { proof: None }`, because telling a stranger why they were refused is not this change.
+### D2 — Events are decisions; everything else is a diagnostic
 
-### D3 — The scan and shutdown events live in the binary
+An event records something the Station decided or completed: homed, refused, reaped, ordered-and-refused, loaded, running, stopping, stopped. A diagnostic records a failure or a per-session detail. The split decides what goes in the table and what the contract covers: the table in the spec lists events and their levels; diagnostics keep today's `warn!`/`debug!` calls, gaining fields. Three things that were events in the first draft moved to diagnostics for a reason each: a repeat registration decides nothing new; a parked subscription is per-session and would be the noisiest row; an order granted is already recorded durably and authoritatively in the Territory's ACL log at that position, so a second record would be weaker than the first.
 
-`holds loaded` is emitted by `commands/station.rs` around the `Station::hosting_*` call, with the count read from the Station after construction and the duration measured there; the library's `scan_holds` stays silent so embedders (tests, the app) are not told about a scan they did not ask about. `shutting down` carries the number of live sessions, which the Station exposes through a new `live_sessions()` count maintained by the serve loop (increment on accept, decrement on handle return). `station stopped` carries the close duration and whether the 10 s bound was hit — the existing timeout branch, with fields.
+### D3 — Reasons are made explicit where they are folded
 
-### D4 — The spec table is the test's table
+`register` gains a private `Refusal` enum (`Policy`, `InvalidLog`, `MismatchedId`, `NoStorage`) and returns `Result<Registered { new: bool }, Refusal>`, with the wire `Ack { ok }` derived at the call site. `subscribe_session`'s three loop exits set a `Reap` reason before breaking. The `OrderRequest` arm separates "no replica" and "no fleet key" (known at the arm) from `Replica::order` returning `None` ("does not chain"). No wire message changes: a stranger still sees `Ack { ok: false }` and `OrderResponse { proof: None }`; telling callers why they were refused is not this change.
 
-`tests/events.rs` holds the event table as data (name, level, required fields) and drives the binary through each path that can be reached from outside — register, re-register, refused register, sync as a non-member, subscribe and idle out with a short liveness, order, SIGTERM — asserting each expected event appears with its fields and level in the JSON log. A separate case authors a Notice with a sentinel plaintext, syncs it with the floor at `RUST_LOG=outpost=trace`, and asserts the sentinel, the ciphertext, and the envelope bytes appear nowhere in the log. Events reachable only through library embedding (`subscription parked` under a long liveness) are covered by the same table against an in-process Station with a `tracing` test subscriber.
+### D4 — Retention is a duration, pruned on the write path, and the newest row is immortal
+
+`--events-retain-days` (`OUTPOST_EVENTS_RETAIN_DAYS`), default 90, parsed as `u32` with 0 refused at start-up. The hold prunes `at < now - retention` at open and after every append, with `delete_where::<EventRow>`, a new bedrock façade method mirroring `update_where` (a `DELETE … WHERE` from the same filter rendering; a few lines plus a test against the real engine). The prune excludes the highest id, so the newest event is kept whatever its age: that row is what makes the sequence recoverable after an idle stretch longer than the retention, without a separate counter table.
+
+**Why on append rather than a timer.** Events arrive at the rate of decisions, which is low, and an indexed delete of nothing is cheap; a timer is a second task with its own shutdown ordering for no benefit. **Why days.** It is the granularity a commodore thinks in; a duration parser would be a dependency for a knob that will be set once.
 
 ### D5 — One floor from `RUST_LOG`; levels are assigned so the floor means something
 
-**Chosen** (2026-10-14, after review). The `EnvFilter` built from `RUST_LOG` with the `outpost=info` fallback stays the single control, documented in `outpost station`'s long help and as a commented `env` entry in the StatefulSet. A `--log-filter` option was drafted and dropped: it added no capability over `RUST_LOG`, it needed a precedence rule, and the operator's model is a floor the Station emits at, with any narrowing done downstream by the collector, a UI, or `grep`.
+The `EnvFilter` from `RUST_LOG` with the `outpost=info` fallback stays the single control, named in `outpost station`'s long help and as a commented `env` entry in the StatefulSet. A `--log-filter` option was drafted and dropped: it added nothing over `RUST_LOG`, needed a precedence rule, and the commodore's model is a floor the Station emits at, with any narrowing done downstream by the collector, a UI, or `grep`. The table is not subject to the floor at all; D1's append happens before the filter is consulted.
 
-The consequence lands on the table, not on the binary: a level is a promise about volume and importance. `info` must stay low-volume — once per registration, per start, per reap, per stop — because the default floor is meant to be kept on in production and read whole. `debug` holds per-session chatter (`subscription parked`, `territory re-registered`, `order granted`). An event that could fire per frame belongs at `trace`, and none in the table does. Adding an event means choosing its level against that rule.
+The consequence lands on the table of kinds: every event is info or warn, so the default stream carries all of them, and `info` stays low-volume by construction — once per registration, refusal, reap, start, stop. Diagnostics live at debug (per-session detail) or warn (failures). Anything that could fire per frame would be `trace`, and nothing does.
+
+### D6 — The read path is a hold method, and nothing reads it yet
+
+`StationHold::events_since(seq, limit) -> Vec<EventRow>`: `Query` filtered on `id > seq`, sorted ascending, limited. It is the foundation for a reader — a CLI, an endpoint on the probe listener, a UI — and this change ships none, because none is on the path to a real deployment. It is cheap to add now (one query) and it keeps the first reader from reaching into the table's shape.
+
+### D7 — The scan and shutdown events live in the binary
+
+`holds loaded` is recorded by `commands/station.rs` after `Station::hosting_*` returns, with the count read from the Station and the duration measured around the constructor; the library's `scan_holds` stays silent so embedders are not told about a scan they did not ask about. `shutting down` carries `live_sessions()`, a count the serve loop maintains. `station stopped` carries the close duration and whether the 10 s bound was hit — the existing timeout branch, as an event. All three go through the same record path; the hold is open by then.
 
 ## Risks / Trade-offs
 
-- [Events name members and devices by public key, and a collector retains them] → Stated in the spec and the proposal; the hosted tier's retention policy is the control. Nothing here is new information to the Station, but it is new information to whoever holds its logs.
-- [`info` events on every registration could be noisy on a Fleet with many first-time registrations] → Registrations are rare relative to sessions; the per-session events are at debug or are refusals. If a hosted Fleet proves otherwise, raising the floor to warn is the knob, and the event's level is the thing to revisit.
-- [Threading reasons through `register` changes a private signature used by tests] → Private; the tests call over the wire.
-- [The field-name contract is enforced by a test, not by types] → A renamed field fails the table test; a new event not in the table does not fail anything, which is acceptable: the contract is that named events keep their shape, not that no others exist.
+- [A refused session is one row, and refused sessions are attacker-paced] → Bounded by what a connection already costs the Station, and by retention. If a hosted Fleet sees abuse, the fix is admission (rate-limiting strangers), not hiding the record.
+- [Every event is a write on the single serialized writer] → Events happen at decision rate; the hold's existing write-through for sightings is on the same path at a higher rate.
+- [Events name members and devices by public key, now durably on the volume as well as in the stream] → Stated in the spec and proposal; the hosted tier's retention policy covers both the table (by the retention setting) and the collector (by its own).
+- [A storage-less Station records nothing, so in-process tests that use `Station::new` see no events] → The event tests use `hosting` and the binary; `new` is for single-Territory embeds.
+- [The `fields` column's shape is settled in the first task] → Either outcome keeps the same contract: a JSON object per row.
+- [`delete_where` is a bedrock change inside an outpost change] → A façade addition with no spec-level behavior; tested against the real engine, kept to the shape of `update_where`.
 
 ## Migration Plan
 
-1. Land the library events and the reason enums with the in-process coverage.
-2. Land the binary events, the documented floor, and the process-level table test.
-3. Update the architecture reference.
-4. Rollback is per step; no wire or on-disk format changes.
-
-## Open Questions
-
-- Whether `territory registered` should also be written to the Station's own database as an operator-queryable registration log. The row already exists (`record_registration` stores who and when); the question is only whether a CLI reads it, and that is a tooling question for the roster change.
+1. Land `delete_where` and the hold's events table with engine tests.
+2. Land the Station's record path, the reason enums, and the diagnostics with fields.
+3. Land the binary: retention option, scan and shutdown events, the floor in the help.
+4. Land the event, sentinel, retention, and floor tests.
+5. Update the architecture reference and the manifests' comments.
+6. Rollback per step: an older binary ignores an events table it never reads, and the collection is additive.
