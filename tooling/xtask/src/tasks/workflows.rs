@@ -379,7 +379,7 @@ struct RenderedWorkflow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::Value;
+    use serde_json::{Value, json};
 
     /// Every workflow [`run`] emits, built against the fixture context.
     fn every_workflow(context: &WorkflowContext) -> Vec<(String, Workflow)> {
@@ -407,11 +407,39 @@ mod tests {
     /// secret of the same name — the leak environments exist to close — and
     /// a job declaring one for no reason would gate on protection rules it
     /// has no business waiting on.
+    ///
+    /// A job that declares an environment publishes, and may restore only
+    /// what a run it trusts could have written. On GitHub's cache that means
+    /// no cache action at all, with one exception: mise's own install cache,
+    /// which GitHub's default rules let only trusted triggers write and whose
+    /// contents `mise.lock` pins. The R2-backed caches are steps this generator
+    /// emits, so their shape is asserted instead: the compiler is wrapped only
+    /// after a server start that resolved the cache scope, every directory
+    /// snapshot step is a bare `tooling/bin/xcache` call carrying the
+    /// credential that script resolves the scope with, and the store
+    /// credential is never configuration on any step. `.github/zizmor.yml`
+    /// silences zizmor's audit for the release workflows on the strength of
+    /// these checks.
     #[test]
     fn environments_follow_the_vault_credential() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
             let value = serde_json::to_value(&workflow).expect(&name);
+            assert_environments_follow_the_vault_credential(&name, &value);
+        }
+    }
+
+    fn assert_environments_follow_the_vault_credential(name: &str, value: &Value) {
+        const CACHE_SCOPE: &str = "--profile ci --scope cache";
+        const STORE_CREDENTIAL: [&str; 4] = [
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "SCCACHE_ENDPOINT",
+            "RCLONE_S3_ENDPOINT",
+        ];
+        let text = |step: &Value, key: &str| step[key].as_str().unwrap_or("").to_owned();
+
+        {
             assert!(
                 value["env"].get("SECRETSPEC_PROVIDER").is_none(),
                 "{name}: provider selection belongs on the resolving step, not the workflow"
@@ -421,36 +449,193 @@ mod tests {
                 .as_object()
                 .unwrap_or_else(|| panic!("{name}: no jobs"));
             for (job_name, job) in jobs {
-                let holds_credential = job["steps"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
+                let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
+                let holds_credential = steps
+                    .iter()
                     .any(|step| step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
                 let declares_environment = job.get("environment").is_some();
                 assert_eq!(
                     holds_credential, declares_environment,
                     "{name}/{job_name}: credential and environment must come together"
                 );
-                // A job that publishes must not restore a cache anything else
-                // could have written. `.github/zizmor.yml` silences the audit
-                // for the release workflows on the strength of this check.
-                if declares_environment {
-                    let caches = job["steps"].as_array().into_iter().flatten().any(|step| {
-                        step["uses"]
-                            .as_str()
-                            .is_some_and(|uses| uses.contains("cache"))
-                            || step["with"]["cache"].as_bool() == Some(true)
-                    });
-                    assert!(
-                        !caches,
-                        "{name}/{job_name}: a publishing job restores a cache"
-                    );
-                }
                 assert!(
                     job["env"].get("SECRETSPEC_PROVIDER").is_none()
                         && job["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_none(),
                     "{name}/{job_name}: provider and credential belong on the step"
                 );
+
+                for (index, step) in steps.iter().enumerate() {
+                    let label = format!("{name}/{job_name}: {}", step["name"]);
+                    let uses = text(step, "uses");
+                    let run = text(step, "run");
+                    let id = text(step, "id");
+
+                    if declares_environment {
+                        let mise = uses.starts_with("jdx/mise-action");
+                        let cache_input = step["with"]["cache"].as_bool() == Some(true)
+                            || step["with"]["cache"].as_str() == Some("true");
+                        assert!(
+                            !uses.contains("cache") && (mise || !cache_input),
+                            "{label}: a publishing job restores a GitHub cache"
+                        );
+                    }
+
+                    // Cargo reads the wrapper under either name; the generator
+                    // emits the `CARGO_` one (see `steps::with_sccache`), but a
+                    // step reaching for the other must meet the same rule.
+                    let wraps_compiler = ["CARGO_BUILD_RUSTC_WRAPPER", "RUSTC_WRAPPER"]
+                        .iter()
+                        .any(|name| step["env"].get(name).is_some());
+                    if wraps_compiler {
+                        assert!(
+                            declares_environment,
+                            "{label}: wraps the compiler outside an environment"
+                        );
+                        let started = steps[..index].iter().any(|earlier| {
+                            let run = text(earlier, "run");
+                            run.contains("sccache --start-server") && run.contains(CACHE_SCOPE)
+                        });
+                        assert!(
+                            started,
+                            "{label}: wraps the compiler before a server start resolved the cache scope"
+                        );
+                    }
+
+                    // The snapshot steps go through `tooling/bin/xcache`, which
+                    // resolves the cache scope around its one `rclone` call — a
+                    // test in `_steps.rs` holds the script to that. Here: the
+                    // step runs nothing else, and brings the credential that
+                    // resolution needs.
+                    if id.starts_with("cache-restore-") || id.starts_with("cache-save-") {
+                        assert!(
+                            declares_environment,
+                            "{label}: contacts the store outside an environment"
+                        );
+                        assert!(
+                            run.starts_with("xcache restore ") || run.starts_with("xcache save "),
+                            "{label}: contacts the store other than through xcache: {run}"
+                        );
+                        assert!(
+                            step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some(),
+                            "{label}: runs xcache without the credential it resolves the cache scope with"
+                        );
+                    }
+
+                    for secret in STORE_CREDENTIAL {
+                        assert!(
+                            step["env"].get(secret).is_none(),
+                            "{label}: carries {secret} as configuration"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// A job whose steps declare the environment and the credential together
+    /// but wrap the compiler with no server start before it.
+    #[test]
+    #[should_panic(expected = "wraps the compiler before a server start")]
+    fn a_wrapper_without_a_server_start_is_refused() {
+        assert_environments_follow_the_vault_credential(
+            "synthetic",
+            &json!({ "jobs": { "build": {
+                "environment": { "name": "App Release" },
+                "steps": [{
+                    "name": "Build",
+                    "run": "just tauri::build linux stable",
+                    "env": {
+                        "CARGO_BUILD_RUSTC_WRAPPER": "sccache",
+                        "SECRETSPEC_PROVIDER": "op",
+                        "OP_SERVICE_ACCOUNT_TOKEN": "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}"
+                    }
+                }]
+            }}}),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "restores a GitHub cache")]
+    fn a_cache_action_in_a_publishing_job_is_refused() {
+        assert_environments_follow_the_vault_credential(
+            "synthetic",
+            &json!({ "jobs": { "build": {
+                "environment": { "name": "App Release" },
+                "steps": [
+                    { "name": "Cache", "uses": "actions/cache@0000" },
+                    {
+                        "name": "Build",
+                        "run": "just tauri::build linux stable",
+                        "env": {
+                            "SECRETSPEC_PROVIDER": "op",
+                            "OP_SERVICE_ACCOUNT_TOKEN": "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}"
+                        }
+                    }
+                ]
+            }}}),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "contacts the store outside an environment")]
+    fn a_cache_step_outside_an_environment_is_refused() {
+        assert_environments_follow_the_vault_credential(
+            "synthetic",
+            &json!({ "jobs": { "test": {
+                "steps": [{
+                    "id": "cache-restore-cargo-registry",
+                    "name": "Restore cargo-registry",
+                    "run": "secretspec run --profile ci --scope cache -- rclone copyto a b"
+                }]
+            }}}),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "carries AWS_SECRET_ACCESS_KEY as configuration")]
+    fn a_store_credential_on_a_step_is_refused() {
+        assert_environments_follow_the_vault_credential(
+            "synthetic",
+            &json!({ "jobs": { "build": {
+                "environment": { "name": "App Release" },
+                "steps": [{
+                    "name": "Build",
+                    "run": "just tauri::build linux stable",
+                    "env": {
+                        "AWS_SECRET_ACCESS_KEY": "${{ secrets.LEAK }}",
+                        "SECRETSPEC_PROVIDER": "op",
+                        "OP_SERVICE_ACCOUNT_TOKEN": "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}"
+                    }
+                }]
+            }}}),
+        );
+    }
+
+    /// The ci profile holds every non-signing credential CI uses; resolving it
+    /// without a scope would hand a job all of them. The generator cannot
+    /// express that (see `helpers::Resolution`), and this keeps the rendered
+    /// YAML honest about it.
+    #[test]
+    fn the_ci_profile_is_never_resolved_unscoped() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            let steps = value["jobs"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .flat_map(|(_, job)| job["steps"].as_array().cloned().unwrap_or_default());
+            for step in steps {
+                let run = step["run"].as_str().unwrap_or("");
+                for invocation in run.split("secretspec ").skip(1) {
+                    if invocation.contains("--profile ci") {
+                        assert!(
+                            invocation.contains("--scope "),
+                            "{name}: {} resolves the ci profile unscoped",
+                            step["name"]
+                        );
+                    }
+                }
             }
         }
     }

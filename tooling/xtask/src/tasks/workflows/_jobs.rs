@@ -3,11 +3,12 @@
 
 use super::{
     Channel, GITHUB_TOKEN, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext,
-    helpers::{ANDROID_HOME, Profile},
+    helpers::{ANDROID_HOME, Environment},
     runners, steps,
 };
 use gh_workflow::{
-    Expression, FluentBuilder, Job, JobOutput, Level, NamedJob, Permissions, StepOutput,
+    Environment as GhEnvironment, Expression, FluentBuilder, Job, JobOutput, Level, NamedJob,
+    Permissions, StepOutput,
 };
 
 /// The environment variable a build reads its store build number from. One
@@ -244,12 +245,23 @@ pub fn build(
         &[MiseEnv::BuildDesktop]
     };
 
+    // Everything the build would otherwise fetch: restored before its consumer,
+    // saved after it, keyed by the manifest that pins it.
+    let caches = steps::cached_dirs(platform, &context.android_ndk);
+    let cache = |name: &str| {
+        caches
+            .iter()
+            .find(|dir| dir.name == name)
+            .unwrap_or_else(|| panic!("no cached directory named {name} for {platform}"))
+    };
+
     let job = mise_env(Job::default(), envs)
         .permissions(Permissions::default().contents(Level::Write))
         .name(format!("Build {platform}"))
-        // The build and, on mobile, the publish resolve the release profile,
-        // so the vault credential comes from the release environment.
-        .environment(Profile::Release.environment())
+        // Builds, signs, and publishes, so the vault credential comes from the
+        // release environment — for the signing scope the build resolves and
+        // the cache scope the store steps resolve alike.
+        .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(platform.runner())
         .cond(channel.guard(platform, prepare.map(|prepare| &prepare.should_build)))
         .add_step(steps::checkout())
@@ -261,20 +273,39 @@ pub fn build(
             job.add_step(steps::free_disk_space(!platform.is_android()))
         })
         .when(platform.is_android(), |job| {
-            // `setup-android` installs the SDK but not an NDK; the version devenv
-            // pins has to be requested explicitly.
             job.add_step(steps::setup_java(&context.android_jdk))
                 .add_step(steps::setup_android_sdk())
-                .add_step(steps::install_ndk(&context.android_ndk))
         })
         .when(platform.is_linux(), |job| {
             // Tauri's Linux backend is WebKitGTK, absent from the runner image.
             job.add_step(steps::install_linux_deps())
         })
-        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        // mise's own install cache is the one third-party cache in this job:
+        // the credential resolver is itself a mise tool, so nothing from the
+        // bucket can be restored before mise has run. GitHub's default write
+        // rules keep low-trust triggers out of it, and `mise.lock` pins what
+        // it holds, so it is sound on the same terms as the snapshots below.
+        .add_step(steps::setup_mise(true.into(), &context.mise_version))
+        .when(platform.is_android(), |job| {
+            // `setup-android` installs the SDK but not an NDK. The snapshot
+            // restores the version devenv pins; `sdkmanager` then finds it in
+            // place and downloads nothing.
+            job.add_step(steps::cache_restore(cache("gradle")))
+                .add_step(steps::cache_restore(cache("android-ndk")))
+                .add_step(steps::install_ndk(&context.android_ndk))
+        })
+        // Every pnpm in the job, the build's own included, must agree on the
+        // store before its snapshot is restored — see `steps::pin_pnpm_store`.
+        .add_step(steps::pin_pnpm_store())
+        .add_step(steps::cache_restore(cache("pnpm-store")))
         .add_step(steps::pnpm_install())
+        .add_step(steps::cache_save(cache("pnpm-store")))
+        .add_step(steps::cache_restore(cache("cargo-registry")))
+        // The server holds the store credential for the job; the build that
+        // follows runs with none and reaches the store only through it.
+        .add_step(steps::sccache_start())
         .add_step(
-            steps::build(channel, platform)
+            steps::with_sccache(steps::build(channel, platform))
                 .when_some(build_code, |step, code| {
                     step.add_env((BUILD_CODE_ENV, code.to_string()))
                 })
@@ -288,6 +319,12 @@ pub fn build(
                     ))
                 }),
         )
+        .add_step(steps::sccache_stats())
+        .add_step(steps::cache_save(cache("cargo-registry")))
+        .when(platform.is_android(), |job| {
+            job.add_step(steps::cache_save(cache("gradle")))
+                .add_step(steps::cache_save(cache("android-ndk")))
+        })
         .add_step(steps::upload_artifact(channel, platform))
         .add_step(steps::upload_to_release(platform, tag))
         .when(platform.is_mobile(), |job| {

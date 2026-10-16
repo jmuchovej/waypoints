@@ -3,7 +3,10 @@
 
 use super::{
     Artifact, Channel, Platform, TestSuite,
-    helpers::{self, GITHUB_TOKEN, Profile, WP_BOTSWAIN_APP_ID, WP_BOTSWAIN_PRIVATE_KEY},
+    helpers::{
+        self, CI_CACHE_BUCKET, CiScope, GITHUB_TOKEN, Resolution, WP_BOTSWAIN_APP_ID,
+        WP_BOTSWAIN_PRIVATE_KEY,
+    },
 };
 use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
 use indoc::indoc;
@@ -239,6 +242,41 @@ pub fn pnpm_install() -> Step<Run> {
         .id("pnpm-install")
 }
 
+/// Where a build job keeps the pnpm store: one expression on every platform,
+/// so the snapshot restores to the place it was saved from.
+pub(crate) const PNPM_STORE: &str = "${RUNNER_TEMP}/pnpm-store";
+
+/// Pins the pnpm store for every pnpm invocation in the job — the install
+/// step's and the ones the build spawns (`nuxi generate` runs one) — by
+/// writing `storeDir` into pnpm's global `config.yaml` at its per-OS path.
+/// That file is the one place pnpm 11 reads machine-level settings from:
+/// `.npmrc` carries auth and registry only, `pnpm-workspace.yaml` refuses
+/// `storeDir`, `npm_config_*` is not read, and `pnpm config set --global`
+/// refuses to run until `pnpm setup` has put its bin directory on `PATH`.
+/// Pinned by flag on the install step alone, the build's own install saw a
+/// different store, asked to purge `node_modules`, and in the clean room —
+/// where `CI` does not cross — had no TTY to ask on (third rollout run).
+pub(crate) fn pin_pnpm_store() -> Step<Run> {
+    let script = indoc! {r#"
+        case "${RUNNER_OS}" in
+          macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+          Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+          Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+          *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+        esac
+        mkdir -p "${dir}"
+        printf 'storeDir: %s\n' "{store}" >> "${dir}/config.yaml"
+        echo "pnpm store pinned to {store} in ${dir}/config.yaml"
+    "#}
+    .trim_end()
+    .replace("{store}", PNPM_STORE);
+
+    Step::new("Pin the pnpm store")
+        .run(script)
+        .shell("bash")
+        .id("pnpm-store-dir")
+}
+
 /// Reclaims preinstalled toolchains the Ubuntu runner image ships and this
 /// workspace never uses. A debug test build of the whole workspace is large
 /// enough to exhaust a stock image part-way through linking, which surfaces as
@@ -342,6 +380,229 @@ pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
     helpers::resolving(step)
 }
 
+/// Starts the sccache server for the job, holding the store credential.
+///
+/// The server is what reads and writes the bucket; the client cargo invokes as
+/// its rustc wrapper only talks to it over a local port. Starting it here, under
+/// a `secretspec run` of the cache scope, is what lets the build itself run
+/// with no credential at all — see [`with_sccache`]. The store coordinates are
+/// configuration and sit on the step where a reader can see them; the endpoint
+/// and key pair arrive through the wrap and are visible to nothing else.
+///
+/// A failed start is tolerated: sccache 0.17 refuses to start when its storage
+/// check fails, and a cache outage must cost time, not the release. With no
+/// server listening, the first `rustc` auto-starts one from the build's
+/// credential-free environment, which caches to local disk — the stats step
+/// shows `Cache location  Local disk` instead of the bucket, which is how a
+/// degraded run is told from a healthy one. `SCCACHE_IDLE_TIMEOUT=0` keeps the
+/// server alive through the steps between here and the first compile; the
+/// stats step stops it.
+pub(crate) fn sccache_start() -> Step<Run> {
+    // Single quotes: an escaped double quote inside a YAML scalar is rewritten
+    // by the formatter, which would leave the generated file never in sync.
+    let spec = SecretSpec::run(concat!(
+        "sccache --start-server || echo ",
+        "'::warning::sccache server failed to start; this build compiles without the remote cache'",
+    ))
+    .resolving(Resolution::Ci(CiScope::Cache))
+    .with_reason(concat!(
+        "the compiler cache server reads and writes the ci-cache bucket for the length ",
+        "of the job; it alone holds the credential",
+    ));
+
+    Into::<Step<Run>>::into(spec)
+        .name("Start the compiler cache")
+        .id("sccache-start")
+        .add_env(("SCCACHE_BUCKET", CI_CACHE_BUCKET))
+        .add_env(("SCCACHE_S3_KEY_PREFIX", "sccache/"))
+        .add_env(("SCCACHE_REGION", "auto"))
+        .add_env(("SCCACHE_IDLE_TIMEOUT", "0"))
+}
+
+/// Routes the build's compilation through the sccache server [`sccache_start`]
+/// left running. The only place the wrapper is enabled, so a job cannot wrap
+/// the compiler without the server start the guard looks for.
+///
+/// The wrapper name is all the client needs: it carries no store configuration.
+/// Cargo reads it as `RUSTC_WRAPPER` or `CARGO_BUILD_RUSTC_WRAPPER`; the
+/// `CARGO_` spelling is the one the Tauri CLI forwards into the cargo Xcode
+/// runs for iOS, which inherits nothing else of this step's environment. The
+/// client's other setting — compile directly if the server goes away, rather
+/// than fail — is `SCCACHE_IGNORE_SERVER_IO_ERROR` in `.config/cargo.toml`'s
+/// `[env]`, which reaches every rustc and build-script process on that path
+/// too.
+pub(crate) fn with_sccache(step: Step<Run>) -> Step<Run> {
+    step.add_env(("CARGO_BUILD_RUSTC_WRAPPER", "sccache"))
+}
+
+/// Prints what the compiler cache did — hits, misses, errors, and the store it
+/// used — then stops the server so the credential it held is gone before the
+/// upload steps run. Unconditional: a build that failed because of the store is
+/// exactly the one whose report is wanted. Needs no credential; both commands
+/// talk to the local port.
+pub(crate) fn sccache_stats() -> Step<Run> {
+    Step::new("Report the compiler cache")
+        .run(
+            indoc! {"
+            sccache --show-stats
+            sccache --stop-server
+        "}
+            .trim_end(),
+        )
+        .shell("bash")
+        .if_condition(Expression::new("always()"))
+        .id("sccache-stats")
+}
+
+/// What a directory snapshot's key hashes.
+pub(crate) enum CacheKey {
+    /// Committed files that pin the directory's contents, hashed by the runner
+    /// with `hashFiles()` so the key is computed identically on every platform
+    /// and never baked into the YAML.
+    Files(&'static [&'static str]),
+    /// A version string, for a directory pinned by a declared version rather
+    /// than a manifest.
+    Literal(String),
+}
+
+/// A directory the build would otherwise fetch, snapshotted into the store as
+/// `dirs/<key>.tar.gz` under a key derived from what pins its contents. An
+/// entry is written once and never overwritten, so a key names one immutable
+/// snapshot — a faithful stand-in for the fetch only because every manifest
+/// here carries content hashes (pnpm's integrity fields, `Cargo.lock`'s
+/// checksums, Gradle's verification metadata, `sdkmanager`'s package digests).
+pub(crate) struct CachedDir {
+    /// Names the step ids (`cache-restore-<name>`, `cache-save-<name>`) and
+    /// leads the key.
+    pub name: &'static str,
+    /// Where the directory lives on the runner, as a bash expression.
+    pub path: String,
+    pub key: CacheKey,
+}
+
+impl CachedDir {
+    /// `<name>-<os>-<arch>-<hash or version>`: an object name in the bucket.
+    fn key(&self) -> String {
+        let pin = match &self.key {
+            CacheKey::Files(files) => {
+                let quoted = files
+                    .iter()
+                    .map(|file| format!("'{file}'"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("${{{{ hashFiles({quoted}) }}}}")
+            }
+            CacheKey::Literal(version) => version.clone(),
+        };
+        format!(
+            "{name}-${{{{ runner.os }}}}-${{{{ runner.arch }}}}-{pin}",
+            name = self.name
+        )
+    }
+
+    fn restore_id(&self) -> String {
+        format!("cache-restore-{}", self.name)
+    }
+}
+
+/// The directories a `platform` build caches, keyed by the manifests that pin
+/// them. The pnpm store is pinned to `$RUNNER_TEMP` by the install step (see
+/// `jobs::build`) so its location is one expression on every platform.
+pub(crate) fn cached_dirs(platform: Platform, ndk_version: &str) -> Vec<CachedDir> {
+    let mut dirs = vec![
+        CachedDir {
+            name: "pnpm-store",
+            path: PNPM_STORE.to_owned(),
+            key: CacheKey::Files(&["pnpm-lock.yaml"]),
+        },
+        // `CARGO_HOME` is on every build job's `env`, so no `:-` default: a
+        // `:` in the command makes the YAML serializer quote the scalar, and
+        // the formatter then rewrites its escapes, leaving the generated file
+        // never in sync.
+        CachedDir {
+            name: "cargo-registry",
+            path: "${CARGO_HOME}/registry".to_owned(),
+            key: CacheKey::Files(&["Cargo.lock"]),
+        },
+    ];
+    if platform.is_android() {
+        dirs.push(CachedDir {
+            name: "gradle",
+            path: "${HOME}/.gradle/caches/modules-2".to_owned(),
+            key: CacheKey::Files(&[
+                "src-tauri/gen/android/gradle/verification-metadata.xml",
+                "src-tauri/gen/android/gradle/libs.versions.toml",
+                "src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties",
+                "src-tauri/gen/android/settings.gradle",
+                "src-tauri/gen/android/build.gradle.kts",
+                "src-tauri/gen/android/app/build.gradle.kts",
+            ]),
+        });
+        dirs.push(CachedDir {
+            name: "android-ndk",
+            path: format!("${{ANDROID_HOME}}/ndk/{ndk_version}"),
+            key: CacheKey::Literal(ndk_version.to_owned()),
+        });
+    }
+    dirs
+}
+
+/// The command every snapshot step runs: `tooling/bin/xcache`, on `PATH`
+/// through mise's config, holds the store protocol — the one wrapped `rclone`
+/// call, the archive streamed through a pipeline so tar never sees a Windows
+/// path, the miss-is-not-a-failure exit codes. The step supplies the key, the
+/// path, and the resolver's provider and credential. The path is spliced into
+/// the command rather than carried on the step `env`: it is a shell expression
+/// (`${RUNNER_TEMP}/pnpm-store`, `${CARGO_HOME}/registry`), and an `env` value
+/// reaches the shell as a literal, never expanded.
+fn xcache(verb: &str, dir: &CachedDir) -> String {
+    format!("xcache {verb} \"${{CACHE_KEY}}\" \"{}\"", dir.path)
+}
+
+/// Restores `dir` from the store. `xcache restore` publishes `hit` for the
+/// save step and treats a miss or a store failure as a miss, exit 0 — the
+/// consumer then fetches as it would without a cache.
+pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
+    let step = Step::new(format!("Restore {}", dir.name))
+        .run(xcache("restore", dir))
+        .shell("bash")
+        .add_env(("CACHE_KEY", dir.key()))
+        .add_env((
+            "SECRETSPEC_REASON",
+            format!(
+                "restoring the {} snapshot from the ci-cache bucket; the store client alone holds the credential",
+                dir.name
+            ),
+        ))
+        .id(dir.restore_id());
+    helpers::resolving(step)
+}
+
+/// Saves `dir` to the store under its key when the restore missed. Write-once:
+/// `--ignore-existing` leaves an entry that appeared in the meantime alone, so
+/// a key always names the first snapshot written under it. Runs after the
+/// consumer even if the build failed — what was fetched is still what the
+/// manifest pins — but never on a cancelled job, and never fails the job.
+pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
+    let step = Step::new(format!("Save {}", dir.name))
+        .run(xcache("save", dir))
+        .shell("bash")
+        .if_condition(Expression::new(format!(
+            "!cancelled() && steps.{restore}.outputs.hit != 'true'",
+            restore = dir.restore_id()
+        )))
+        .add_env(("CACHE_KEY", dir.key()))
+        .add_env((
+            "SECRETSPEC_REASON",
+            format!(
+                "saving the {} snapshot to the ci-cache bucket; the store client alone holds the credential",
+                dir.name
+            ),
+        ))
+        .id(format!("cache-save-{}", dir.name));
+    helpers::resolving(step)
+}
+
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
 ///
 /// Gated on the tag like [`upload_to_release`]: a build-only run has none,
@@ -354,8 +615,7 @@ pub fn fastlane(platform: Platform, channel: Channel, tag: Option<&JobOutput>) -
         lane = platform.slug(),
         flavor = channel.flavor()
     ))
-    .with_profile(Profile::Release)
-    .with_scope(platform.slug());
+    .resolving(Resolution::Release(platform));
 
     Into::<Step<Run>>::into(spec)
         .when(platform.is_android(), |step| {
@@ -525,8 +785,7 @@ enum Delivery {
 
 #[derive(Clone)]
 pub(crate) struct SecretSpec {
-    profile: Option<Profile>,
-    scope: Option<String>,
+    resolution: Option<Resolution>,
     reason: Option<String>,
     delivery: Delivery,
     inside_devenv: bool,
@@ -540,23 +799,25 @@ impl SecretSpec {
         Self::deliver(Delivery::Wrap(cmd.to_string()))
     }
 
-    /// Publishes the profile into the job environment.
+    /// Publishes the resolved secrets into the job environment.
     pub(crate) fn export() -> Self {
         Self::deliver(Delivery::Export)
     }
 
     fn deliver(delivery: Delivery) -> Self {
         Self {
-            profile: None,
-            scope: None,
+            resolution: None,
             reason: None,
             delivery,
             inside_devenv: false,
         }
     }
 
-    pub(crate) fn with_profile(mut self, profile: Profile) -> Self {
-        self.profile = Some(profile);
+    /// What to resolve: a profile and the scope within it, as one value. A
+    /// CI-facing profile is never resolved whole, and this is the only way to
+    /// name one, so the generator cannot emit `--profile` without `--scope`.
+    pub(crate) fn resolving(mut self, resolution: Resolution) -> Self {
+        self.resolution = Some(resolution);
         self
     }
 
@@ -567,12 +828,6 @@ impl SecretSpec {
     /// the override up and look for `op` on the bare runner.
     pub(crate) fn inside_devenv(mut self) -> Self {
         self.inside_devenv = true;
-        self
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn with_scope(mut self, scope: impl ToString) -> Self {
-        self.scope = Some(scope.to_string());
         self
     }
 
@@ -596,14 +851,14 @@ impl From<SecretSpec> for Step<Run> {
             Delivery::Wrap(_) => "secretspec run",
             Delivery::Export => "secretspec export",
         });
-        if let Some(profile) = spec.profile {
-            command.push_str(&format!(" --profile {}", profile.name()));
+        if let Some(resolution) = spec.resolution {
+            command.push_str(&format!(" --profile {}", resolution.profile().name()));
         }
         if spec.inside_devenv {
             command.push_str(&format!(" --provider {}", helpers::PROVIDER_NAME));
         }
-        if let Some(scope) = &spec.scope {
-            command.push_str(&format!(" --scope {scope}"));
+        if let Some(resolution) = spec.resolution {
+            command.push_str(&format!(" --scope {}", resolution.scope()));
         }
         // Last, so `--` stays at the end of the line where it belongs.
         match &spec.delivery {
@@ -618,8 +873,11 @@ impl From<SecretSpec> for Step<Run> {
         let name = match spec.delivery {
             Delivery::Wrap(_) => "secretspec".to_owned(),
             Delivery::Export => format!(
-                "Resolve the {profile} secrets",
-                profile = spec.profile.map(Profile::name).unwrap_or("default"),
+                "Resolve the {scope} secrets",
+                scope = spec
+                    .resolution
+                    .map(Resolution::scope)
+                    .unwrap_or_else(|| "default".to_owned()),
             ),
         };
 
@@ -634,5 +892,220 @@ impl From<SecretSpec> for Step<Run> {
         } else {
             helpers::resolving(step)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    fn rendered(step: impl Into<Step<Run>>) -> Value {
+        serde_json::to_value(step.into()).expect("step serializes")
+    }
+
+    const STORE_CREDENTIAL: [&str; 3] = [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "SCCACHE_ENDPOINT",
+    ];
+
+    /// Profile and scope travel as one value, so every rendering carries both.
+    #[test]
+    fn a_resolution_renders_its_profile_and_scope_together() {
+        let wrapped = rendered(SecretSpec::run("true").resolving(Resolution::Ci(CiScope::Cache)));
+        assert_eq!(
+            wrapped["run"],
+            "secretspec run --profile ci --scope cache -- true"
+        );
+
+        let exported = rendered(
+            SecretSpec::export()
+                .resolving(Resolution::Ci(CiScope::Botswain))
+                .inside_devenv(),
+        );
+        assert_eq!(
+            exported["run"],
+            "devenv shell -- secretspec export --profile ci --provider op --scope botswain --format gha"
+        );
+        assert_eq!(exported["name"], "Resolve the botswain secrets");
+
+        let release =
+            rendered(SecretSpec::run("fastlane").resolving(Resolution::Release(Platform::iOS)));
+        assert_eq!(
+            release["run"],
+            "secretspec run --profile release --scope ios -- fastlane"
+        );
+    }
+
+    /// The server step is where the store is configured and where the
+    /// credential arrives; a failed start must not fail the job.
+    #[test]
+    fn the_server_start_carries_the_store_configuration_and_tolerates_failure() {
+        let step = rendered(sccache_start());
+        let run = step["run"].as_str().expect("run");
+        assert!(
+            run.starts_with(
+                "secretspec run --profile ci --scope cache -- sccache --start-server || echo "
+            ),
+            "{run}"
+        );
+        for (key, value) in [
+            ("SCCACHE_BUCKET", "ci-cache"),
+            ("SCCACHE_S3_KEY_PREFIX", "sccache/"),
+            ("SCCACHE_REGION", "auto"),
+            ("SCCACHE_IDLE_TIMEOUT", "0"),
+            ("SECRETSPEC_PROVIDER", "op"),
+        ] {
+            assert_eq!(step["env"][key], value, "{key}");
+        }
+        assert!(step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+        assert!(step["env"].get("SECRETSPEC_REASON").is_some());
+        for secret in STORE_CREDENTIAL {
+            assert!(
+                step["env"].get(secret).is_none(),
+                "{secret} is configuration"
+            );
+        }
+        assert_eq!(step["id"], "sccache-start");
+    }
+
+    /// The client needs the wrapper name and nothing of the store; its
+    /// failure mode travels through cargo's config, not the step.
+    #[test]
+    fn the_wrapper_adds_exactly_the_client_variables() {
+        let step = rendered(with_sccache(Step::new("x").run("true").shell("bash")));
+        let env = step["env"].as_object().expect("env");
+        assert_eq!(env.len(), 1, "{env:?}");
+        assert_eq!(env["CARGO_BUILD_RUSTC_WRAPPER"], "sccache");
+    }
+
+    /// One constructor enables the wrapper, so the guard in `workflows.rs`
+    /// that looks for a preceding server start cannot be sidestepped.
+    #[test]
+    fn only_the_wrapper_constructor_names_rustc_wrapper() {
+        let source = include_str!("_steps.rs");
+        assert_eq!(source.matches("(\"CARGO_BUILD_RUSTC_WRAPPER\"").count(), 1);
+        assert_eq!(source.matches("(\"RUSTC_WRAPPER\"").count(), 0);
+    }
+
+    #[test]
+    fn the_stats_step_always_runs_and_stops_the_server() {
+        let step = rendered(sccache_stats());
+        assert_eq!(step["if"], "always()");
+        let run = step["run"].as_str().expect("run");
+        assert!(run.contains("sccache --show-stats") && run.contains("sccache --stop-server"));
+        assert!(step.get("env").is_none(), "needs no credential: {step}");
+    }
+
+    /// Each snapshot is keyed by what pins it, every store call is wrapped, the
+    /// save waits on its own restore, and the credential is never on the step.
+    #[test]
+    fn cache_steps_key_on_the_manifest_and_wrap_every_store_call() {
+        let android = cached_dirs(Platform::Android, "30.0.1");
+        let names: Vec<_> = android.iter().map(|dir| dir.name).collect();
+        assert_eq!(
+            names,
+            ["pnpm-store", "cargo-registry", "gradle", "android-ndk"]
+        );
+        assert_eq!(cached_dirs(Platform::macOS, "30.0.1").len(), 2);
+
+        assert_eq!(
+            android[0].key(),
+            "pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}"
+        );
+        assert_eq!(
+            android[3].key(),
+            "android-ndk-${{ runner.os }}-${{ runner.arch }}-30.0.1"
+        );
+        assert!(android[2].key().contains("verification-metadata.xml"));
+
+        for dir in &android {
+            for (step, verb) in [(cache_restore(dir), "restore"), (cache_save(dir), "save")] {
+                let step = rendered(step);
+                let run = step["run"].as_str().expect("run");
+                // The whole step: the script does the rest. The path is a
+                // shell expression and must be expanded by bash on the
+                // command line, never carried as an env literal.
+                assert_eq!(
+                    run,
+                    format!("xcache {verb} \"${{CACHE_KEY}}\" \"{}\"", dir.path),
+                    "{verb} {}",
+                    dir.name
+                );
+                assert_eq!(step["env"]["CACHE_KEY"], dir.key());
+                assert!(step["env"].get("CACHE_PATH").is_none());
+                assert!(step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+                assert_eq!(step["env"]["SECRETSPEC_PROVIDER"], "op");
+                assert!(step["env"].get("SECRETSPEC_REASON").is_some());
+                for secret in STORE_CREDENTIAL {
+                    assert!(
+                        step["env"].get(secret).is_none(),
+                        "{verb} {}: {secret}",
+                        dir.name
+                    );
+                }
+            }
+
+            let save = rendered(cache_save(dir));
+            assert_eq!(
+                save["if"],
+                format!(
+                    "!cancelled() && steps.cache-restore-{}.outputs.hit != 'true'",
+                    dir.name
+                )
+            );
+        }
+    }
+
+    /// The store is pinned where pnpm 11 actually reads it from, on every OS
+    /// the build jobs run on, to the same path the snapshot names.
+    #[test]
+    fn the_pnpm_store_is_pinned_in_the_global_config_on_every_os() {
+        let step = rendered(pin_pnpm_store());
+        let run = step["run"].as_str().expect("run");
+        for os in ["macOS", "Linux", "Windows"] {
+            assert!(run.contains(&format!("{os}) dir=")), "{os}: {run}");
+        }
+        assert!(run.contains("config.yaml"));
+        assert!(
+            run.contains(&format!("'storeDir: %s\\n' \"{PNPM_STORE}\"")),
+            "{run}"
+        );
+        assert_eq!(
+            cached_dirs(Platform::Linux, "30.0.1")[0].path,
+            PNPM_STORE,
+            "the snapshot and the pin must name one path"
+        );
+        assert!(step.get("env").is_none(), "needs no credential: {step}");
+    }
+
+    /// What the generated steps delegate to `tooling/bin/xcache` is held here,
+    /// on the script's source: one `rclone` invocation, under a resolution of
+    /// the cache scope, past rclone's bucket check, writing only when absent,
+    /// and never handing tar the archive path (GNU tar on Windows reads
+    /// `D:\a\_temp\…` as a remote host).
+    #[test]
+    fn xcache_wraps_its_one_store_call_and_streams_the_archive() {
+        let source = include_str!("../../../../bin/xcache");
+        // Comments and log lines may name rclone; a store call runs it.
+        let store_calls: Vec<&str> = source
+            .lines()
+            .map(str::trim_start)
+            .filter(|line| {
+                line.contains("rclone") && !line.starts_with('#') && !line.starts_with("print")
+            })
+            .collect();
+        assert_eq!(store_calls.len(), 1, "{store_calls:?}");
+        let call = store_calls[0];
+        assert!(
+            call.contains(
+                "^secretspec run --profile ci --scope cache -- rclone copyto --s3-no-check-bucket"
+            ),
+            "{call}"
+        );
+        assert!(source.contains("\"--ignore-existing\""));
+        assert!(source.contains("^tar -czf - ") && source.contains("^tar -xzf -"));
+        assert!(!source.contains("tar -czf $") && !source.contains("tar -xzf $"));
     }
 }

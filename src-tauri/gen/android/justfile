@@ -1,0 +1,68 @@
+# Gradle-side maintenance for the Android project. Builds go through
+# `just tauri::build android`, which runs `cargo tauri`; this module holds what
+# Gradle itself needs that Tauri does not do for us.
+
+set script-interpreter := ["bash", "-euo", "pipefail"]
+
+[private]
+default:
+    @just --list
+
+# Regenerate gradle/verification-metadata.xml — the sha256 of every artifact the
+# release build resolves. Run after a Gradle, Kotlin, AGP, or dependency bump;
+# until then the Android build fails naming the unverified artifacts.
+#
+# Resolves exactly what CI resolves by running the release build itself, with a
+# `gradle` shim on PATH that adds the metadata flag — Tauri runs whichever gradle
+# it finds, since the wrapper is gitignored. The build is the honest route:
+# Gradle only resolves many artifacts while executing tasks, and the Tauri
+# project includes (`tauri.settings.gradle`, `app/tauri.build.gradle.kts`) are
+# written by the app's build script during an Android-target compile, so a
+# shortcut that skipped the Rust build would miss both. One Android release
+# build is the price; it is paid rarely. Signing wants a keystore at Gradle's
+# configuration time, so a scratch one is minted here — nothing this builds
+# ships. Secrets are not involved: this never runs under `secretspec`.
+[script]
+verification-metadata:
+    : "${ANDROID_HOME:?ANDROID_HOME unset — enter the devenv shell, which provides the SDK}"
+    : "${JAVA_HOME:?JAVA_HOME unset — Gradle needs a JDK}"
+    : "${TAURI_APP_PATH:?TAURI_APP_PATH unset — enter the devenv shell}"
+    export NDK_HOME="${NDK_HOME:-${ANDROID_NDK_ROOT:-${ANDROID_NDK_HOME:-}}}"
+    if [[ -z "$NDK_HOME" ]]; then
+        NDK_HOME="$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)"
+        export NDK_HOME
+    fi
+
+    scratch="$(mktemp -d)"
+    trap 'rm -rf "$scratch"' EXIT
+
+    mkdir -p "$scratch/bin"
+    printf '#!/usr/bin/env bash\nexec %q --write-verification-metadata sha256 "$@"\n' "$(command -v gradle)" > "$scratch/bin/gradle"
+    chmod +x "$scratch/bin/gradle"
+    export PATH="$scratch/bin:$PATH"
+
+    keytool -genkeypair -keystore "$scratch/scratch.jks" -alias scratch \
+        -storepass scratch-only -keypass scratch-only -keyalg RSA -keysize 2048 \
+        -validity 1 -dname CN=scratch -noprompt >/dev/null 2>&1
+    printf 'storeFile=%s\nkeyAlias=scratch\npassword=scratch-only\n' "$scratch/scratch.jks" > "$scratch/keystore.properties"
+    export ANDROID_KEYSTORE_PATH="$scratch/keystore.properties"
+
+    # The targets `xtauri` would hand Tauri: every Android triple in
+    # rust-toolchain.toml, by its leading component.
+    targets=()
+    while IFS= read -r triple; do
+        targets+=(--target "${triple%%-*}")
+    done < <(yq -p toml -oy '.toolchain.targets[]' "$TAURI_APP_PATH/../rust-toolchain.toml" | grep -- '-linux-android')
+
+    cd "$TAURI_APP_PATH"
+    WAYPOINTS_FLAVOR=stable WAYPOINTS_BUILD=1 \
+    cargo tauri android build \
+        --features stable \
+        --config configs/platforms/android.toml \
+        --config configs/flavors/stable.toml \
+        "${targets[@]}"
+
+    cd gen/android
+    grep -q '<verify-metadata>true</verify-metadata>' gradle/verification-metadata.xml
+    grep -q '<verify-signatures>false</verify-signatures>' gradle/verification-metadata.xml
+    echo "wrote gradle/verification-metadata.xml: $(grep -c '<sha256 ' gradle/verification-metadata.xml) checksums"
