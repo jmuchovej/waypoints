@@ -35,7 +35,7 @@ None.
 - **Relay-assisted reachability.** Per-Station public sockets are the no-relay path; the relay spike is its own change, `fleet-relay`, and it changes only how an entry's address is written.
 - **Live Station-to-Station push.** Replication converges on an interval and on registration; a Notice is on every Station within one interval. Subscriptions between Stations can shorten that later without changing the admission or the messages.
 - **Capacity sharding.** Every Station holds everything; storage per Station equals the Fleet's total. Sharding is a different design.
-- **Helm, an operator, HPA, PodDisruptionBudgets.** The kustomize base grows a replica count and per-ordinal resources; a chart arrives when there are values to vary.
+- **Helm, a Kubernetes commodore, HPA, PodDisruptionBudgets.** The kustomize base grows a replica count and per-ordinal resources; a chart arrives when there are values to vary.
 - **Blob role.** Still absent from every roster.
 
 ## Impact

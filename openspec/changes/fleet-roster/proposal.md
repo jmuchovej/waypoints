@@ -2,7 +2,7 @@
 
 A Fleet's trust basis exists in code and nowhere else. `outpost-fabric` defines the signed, revision-numbered roster (`FleetConfig`), the Vessel can verify a Station against one (`register_with_fleet`, `sync_with_fleet`), and the roster-peer admission arm is promised in a doc comment — but nothing produces a roster, no Station holds one, no Vessel is ever handed one, and the app pins a single Station address with no notion of which Fleet it belongs to. `deployable-station` deliberately left this out: a roster nothing reads would have been a file for its own sake.
 
-Everything beyond one Station needs it. Station-to-Station replication admits peers by roster; a Vessel that fails over needs a roster to fail over within; the hosted tier's operators need a way to mint a Fleet and sign its membership. This change makes the roster real end to end: produced by a tool, held and served by Stations, verified by Vessels, with the Fleet identity travelling in the pairing payload so a device joining a Territory knows which Fleet to trust before it trusts any Station.
+Everything beyond one Station needs it. Station-to-Station replication admits peers by roster; a Vessel that fails over needs a roster to fail over within; the hosted tier's commodores need a way to mint a Fleet and sign its membership. This change makes the roster real end to end: produced by a tool, held and served by Stations, verified by Vessels, with the Fleet identity travelling in the pairing payload so a device joining a Territory knows which Fleet to trust before it trusts any Station.
 
 ## What Changes
 
@@ -23,7 +23,7 @@ None.
 
 ### Modified Capabilities
 
-- `sync-protocol`: new requirements _A Fleet roster is a signed file operators produce_, _A Station holds and serves its roster_, and _A Station with a roster homes Territories fleeted_.
+- `sync-protocol`: new requirements _A Fleet roster is a signed file commodores produce_, _A Station holds and serves its roster_, and _A Station with a roster homes Territories fleeted_.
 - `sync`: new requirements _A Vessel homed to a Fleet trusts only rostered Stations_ and _Pairing names the Fleet_.
 
 ## Non-goals

@@ -1,8 +1,8 @@
 ## ADDED Requirements
 
-### Requirement: A Fleet roster is a signed file operators produce
+### Requirement: A Fleet roster is a signed file commodores produce
 
-A Fleet roster SHALL be a file holding the Fleet identity, a monotonic revision, and one entry per Station — the Station's peer identity, the sockets at which it is dialable, and its roles — together with the fleet key's signature over the roster body. The file SHALL render identities as lowercase hex and sockets as `ip:port` strings; the signature SHALL cover the canonical encoding of the body, so that a roster reconstructed from the file verifies identically to one received over the wire. Operator tooling SHALL derive a Fleet identity from a fleet key, a peer identity from a Station key, compose and sign a roster from entries and a revision, and verify and display an existing roster. The tooling SHALL refuse to sign a roster whose revision is not greater than the revision of an existing roster it is given to supersede.
+A Fleet roster SHALL be a file holding the Fleet identity, a monotonic revision, and one entry per Station — the Station's peer identity, the sockets at which it is dialable, and its roles — together with the fleet key's signature over the roster body. The file SHALL render identities as lowercase hex and sockets as `ip:port` strings; the signature SHALL cover the canonical encoding of the body, so that a roster reconstructed from the file verifies identically to one received over the wire. Commodore tooling SHALL derive a Fleet identity from a fleet key, a peer identity from a Station key, compose and sign a roster from entries and a revision, and verify and display an existing roster. The tooling SHALL refuse to sign a roster whose revision is not greater than the revision of an existing roster it is given to supersede.
 
 #### Scenario: A roster round-trips through its file
 
@@ -16,12 +16,12 @@ A Fleet roster SHALL be a file holding the Fleet identity, a monotonic revision,
 
 #### Scenario: Revisions only go up
 
-- **WHEN** an operator signs a new roster with a revision no greater than the one it supersedes
+- **WHEN** a commodore signs a new roster with a revision no greater than the one it supersedes
 - **THEN** the tooling refuses and names both revisions
 
 #### Scenario: Identities are derivable from keys
 
-- **WHEN** an operator derives the peer identity from a Station's key file
+- **WHEN** a commodore derives the peer identity from a Station's key file
 - **THEN** it equals the endpoint identity that Station publishes in its address when started on that key
 
 ### Requirement: A Station holds and serves its roster

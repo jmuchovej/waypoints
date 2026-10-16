@@ -43,7 +43,7 @@ The repository SHALL carry reference Kubernetes manifests for a Fleet under `dep
 
 ### Requirement: Each Station has its own advertised socket
 
-Every Station in the reference Fleet SHALL be reachable at an address of its own, routed to that pod alone, because a Vessel verifies the identity it dials against the identity it expected and a shared address would land it on the wrong Station. The manifests SHALL route each Station's UDP port through a per-Station Service, and each pod SHALL advertise the socket the operator assigns to its ordinal. The roster's entry for each Station SHALL name that socket.
+Every Station in the reference Fleet SHALL be reachable at an address of its own, routed to that pod alone, because a Vessel verifies the identity it dials against the identity it expected and a shared address would land it on the wrong Station. The manifests SHALL route each Station's UDP port through a per-Station Service, and each pod SHALL advertise the socket the commodore assigns to its ordinal. The roster's entry for each Station SHALL name that socket.
 
 #### Scenario: Dialing an entry reaches that Station
 
