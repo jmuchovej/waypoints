@@ -4,19 +4,21 @@
 
 A Station with its own database SHALL keep an events table in it. Each event SHALL have a sequence number that increases by one per event and never repeats across restarts, a timestamp, a kind from the closed set below, and the fields its kind requires. The Station SHALL append an event only after the decision it records has taken effect, and SHALL append one for every occurrence below. Events SHALL carry only metadata the Station already holds — Territory ids, member ids, device public keys, counts, durations, reasons — and SHALL NOT carry Notice payloads, envelopes, read keys, or any key material. Ids and keys SHALL be rendered as lowercase hex. Kinds and reasons SHALL be drawn from the closed set in the table; a new kind or reason is an addition to this table, and renaming one is a breaking change to the Station's contract with its commodore. A Station without its own database (a seeded, storage-less Station) SHALL record no events.
 
-| Kind                   | Level | Fields                                                                                                                          |
-| ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `territory registered` | info  | `territory`, `registrant`                                                                                                       |
-| `registration refused` | warn  | `territory`, `reason` (`policy`, `invalid log`, `mismatched id`, `no storage`), `registrant` when authenticated                 |
-| `session refused`      | warn  | `reason` (`bad hello`, `not served`, `not a member`, `unexpected frame`), `territory` when known, `identity` when authenticated |
-| `subscription reaped`  | info  | `territory`, `member`, `device`, `reason` (`idle`, `lagged`, `closed`)                                                          |
-| `order refused`        | info  | `territory`, `author`, `reason` (`not served`, `no fleet key`, `does not chain`)                                                |
-| `holds loaded`         | info  | `count`, `duration_ms`                                                                                                          |
-| `station running`      | info  | `port`, `address`, `data`, `orderer`                                                                                            |
-| `shutting down`        | info  | `open_sessions`                                                                                                                 |
-| `station stopped`      | info  | `close_ms`, `timed_out`                                                                                                         |
+| Kind                   | Level | Fields                                                                                                                                                           |
+| ---------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `territory registered` | info  | `territory`, `registrant`                                                                                                                                        |
+| `registration refused` | warn  | `territory`, `reason` (`policy`, `invalid log`, `mismatched id`, `no storage`), `registrant` when authenticated, `count`, `since` when coalesced                 |
+| `session refused`      | warn  | `reason` (`bad hello`, `not served`, `not a member`, `unexpected frame`), `territory` when known, `identity` when authenticated, `count`, `since` when coalesced |
+| `subscription reaped`  | info  | `territory`, `member`, `device`, `reason` (`idle`, `lagged`, `closed`)                                                                                           |
+| `order refused`        | info  | `territory`, `author`, `reason` (`not served`, `no fleet key`, `does not chain`)                                                                                 |
+| `holds loaded`         | info  | `count`, `duration_ms`                                                                                                                                           |
+| `station running`      | info  | `port`, `address`, `data`, `orderer`                                                                                                                             |
+| `shutting down`        | info  | `open_sessions`                                                                                                                                                  |
+| `station stopped`      | info  | `close_ms`, `timed_out`                                                                                                                                          |
 
 Events SHALL be retained for a duration the commodore configures, ninety days by default and never less than one day. The Station SHALL remove events older than the retention period at start-up and whenever it appends one, and SHALL always keep the most recent event whatever its age, so the sequence is recoverable after any idle stretch.
+
+Refusals SHALL be coalesced per source. The first refusal of a given reason from a connection's remote address SHALL be recorded at once with `count` 1; further refusals of that reason from that address within the following minute SHALL be counted rather than recorded, and once the minute has passed — at the latest at the next event the Station records, or at shutdown — one event SHALL be appended carrying the `count` of refusals it stands for and `since`, the time of the first of them. The address is the coalescing key only and SHALL NOT be written to the event. Coalescing bounds the record under a flood; it does not bound the flood.
 
 #### Scenario: A homed Territory is recorded
 
@@ -27,6 +29,11 @@ Events SHALL be retained for a duration the commodore configures, ninety days by
 
 - **WHEN** a registrant without Owner permission registers a Territory under the default policy
 - **THEN** the table gains a `registration refused` event with the Territory id, the reason `policy`, and the registrant's member id
+
+#### Scenario: A flood of refusals is a handful of rows
+
+- **WHEN** a caller at one address is refused the same way five hundred times within one minute
+- **THEN** the table gains a `session refused` event with `count` 1 at the first refusal, one more with `count` 499 and `since` the first refusal's time once the minute has passed, and no others
 
 #### Scenario: The sequence survives a restart
 
