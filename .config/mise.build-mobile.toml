@@ -1,5 +1,7 @@
 [tools]
 "aqua:gradle/gradle" = "8.14.4"
+"aqua:mozilla/sccache" = "0.17.0"
+"aqua:rclone/rclone" = "1.75.1"
 "core:ruby" = "3.4.9"
 
 [tools."aqua:yonaskolb/XcodeGen"]

@@ -2,11 +2,11 @@
 
 Governs how release builds reuse what earlier builds compiled and fetched: one remote store shared by every release build job, reachable only under a credential CI holds and handed only to the processes that contact the store, configured through the repository's declared-secret resolver, serving compilation per unit and fetched directories as immutable snapshots keyed by the manifests that pin them, and never able to turn a store outage into a failed release.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Release builds share one remote compiler cache
 
-Every generated job that builds a release artifact SHALL route its Rust compilation, and the C and C++ compilation cargo drives on every platform where the C compiler is selected by the build recipe, through a compiler cache whose store is remote and shared across runs, channels, and workflows. The cache SHALL be keyed on the compiler, its flags, and its inputs, so that a cache entry is reused only by a compilation that would have produced identical output.
+Every generated job that builds a release artifact SHALL route its Rust compilation, and the C and C++ compilation cargo's build scripts drive wherever the platform's C compiler can be wrapped, through a compiler cache whose store is remote and shared across runs, channels, and workflows. The cache SHALL be keyed on the compiler, its flags, and its inputs, so that a cache entry is reused only by a compilation that would have produced identical output.
 
 #### Scenario: A second run reuses the first run's compilation
 
@@ -15,7 +15,7 @@ Every generated job that builds a release artifact SHALL route its Rust compilat
 
 #### Scenario: C sources compiled by cargo are cached
 
-- **WHEN** a release build compiles a crate's bundled C or C++ sources through cargo's build script on a platform whose recipe selects the C compiler
+- **WHEN** a release build compiles a crate's bundled C or C++ sources through cargo's build script on a platform whose C compiler can be wrapped
 - **THEN** those compilations are served from, or added to, the same store as the Rust compilations
 
 #### Scenario: Channels share the store
@@ -66,10 +66,10 @@ A directory SHALL be eligible for caching only when the manifest its key is deri
 - **WHEN** the Android build resolves a dependency or plugin artifact
 - **THEN** its checksum is compared against the committed verification metadata, and a mismatch fails the build
 
-#### Scenario: Gradle wrapper distribution is verified
+#### Scenario: Gradle distribution comes from the tool projection
 
-- **WHEN** the Gradle wrapper downloads its distribution
-- **THEN** the distribution's checksum is compared against the committed pin, and a mismatch fails the build
+- **WHEN** the Android build runs Gradle in CI
+- **THEN** it runs the distribution the tool projection installs and its lockfile pins by checksum; no wrapper download takes place
 
 #### Scenario: Verification metadata is regenerated on demand
 
@@ -125,8 +125,8 @@ A build recipe that scrubs its environment SHALL forward the compiler wrapper se
 
 #### Scenario: Recipe-selected C compilers are wrapped
 
-- **WHEN** a release build runs on a platform whose recipe names the C and C++ compilers, and a compiler wrapper is in effect
-- **THEN** cargo's build scripts invoke those compilers through the wrapper, and the linker is invoked directly
+- **WHEN** a release build runs on a platform whose recipe names the C and C++ compilers and hands them to cargo's build scripts, and a compiler wrapper is in effect
+- **THEN** those build scripts invoke the compilers through the wrapper, and the linker is invoked directly
 
 #### Scenario: An unscrubbed target compiles through the cache
 
@@ -135,7 +135,7 @@ A build recipe that scrubs its environment SHALL forward the compiler wrapper se
 
 ### Requirement: An unreachable store degrades to a cold build
 
-A release build SHALL NOT fail because the cache store is unreachable or rejects a request. A compiler-cache server that cannot reach the store SHALL still start and compile without the remote store; a directory-cache restore failure SHALL be treated as a miss; a directory-cache save failure SHALL be reported and SHALL NOT fail the job. The build SHALL still produce its artifacts, and the job's cache report SHALL show which store, if any, was in use.
+A release build SHALL NOT fail because the cache store is unreachable or rejects a request. If the compiler-cache server cannot be started against the store, the job SHALL continue and the build SHALL compile without the remote store; a compiler-cache client that loses its server mid-build SHALL compile directly rather than fail; a directory-cache restore failure SHALL be treated as a miss; a directory-cache save failure SHALL be reported and SHALL NOT fail the job. The build SHALL still produce its artifacts, and the job's cache report SHALL show which store, if any, was in use.
 
 #### Scenario: Store outage during a release
 
