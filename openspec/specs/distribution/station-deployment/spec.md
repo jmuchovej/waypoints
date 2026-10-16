@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the deployable form of a Station: the container image Nix builds from the `outpost` package, the guarantees that image makes to whoever runs it, and the reference Kubernetes manifests for a one-Station Fleet that self-hosters and the hosted tier both start from.
+Defines the deployable form of a Station: the container image Nix builds from the `outpost` package, the guarantees that image makes to its commodore (the person who runs a Fleet; see `sync-protocol`), and the reference Kubernetes manifests for a one-Station Fleet that self-hosters and the hosted tier both start from.
 
 ## Requirements
 
@@ -68,13 +68,13 @@ The repository SHALL carry reference Kubernetes manifests for a one-Station Flee
 - **WHEN** the pod is terminated by the orchestrator while a Vessel holds a live subscription
 - **THEN** the Vessel observes an orderly session close, and the container exits within the grace period without being killed
 
-### Requirement: The advertised address is the operator's to supply
+### Requirement: The advertised address is the commodore's to supply
 
-The manifests SHALL NOT invent the address Vessels dial. The Station is configured to advertise an operator-supplied address, set after the Service has been assigned one, and the manifests SHALL document that step at the point of configuration. This is the no-relay reachability posture: each Station has a stable public UDP endpoint of its own.
+The manifests SHALL NOT invent the address Vessels dial. The Station is configured to advertise a commodore-supplied address, set after the Service has been assigned one, and the manifests SHALL document that step at the point of configuration. This is the no-relay reachability posture: each Station has a stable public UDP endpoint of its own.
 
-#### Scenario: Operator completes the address
+#### Scenario: Commodore completes the address
 
-- **WHEN** the Service has an external address and the operator sets it as the Station's advertised address
+- **WHEN** the Service has an external address and the commodore sets it as the Station's advertised address
 - **THEN** the Station's published address names that external socket, and a Vessel given the published address syncs with the pod
 
 #### Scenario: Address absent

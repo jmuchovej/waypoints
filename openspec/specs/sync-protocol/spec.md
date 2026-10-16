@@ -2,7 +2,9 @@
 
 ## Purpose
 
-TBD - created by archiving change sync-mark-graph. Update Purpose after archive.
+Defines the contract between Vessels and Stations: the wire-level invariants of the sync protocol, and the Station's operational contract — how it is reached, how it is identified, how it admits callers, how it starts and stops, and what it records and reports about itself.
+
+Throughout the specs, the **commodore** is the person who deploys and runs a Fleet, of any size: a self-hoster at a terminal, or whoever is on call for the hosted tier. The word is chosen so that _operator_ keeps its Kubernetes meaning and _Admin_ stays the Territory ACL's permission; neither is used for a person.
 
 ## Requirements
 
@@ -36,9 +38,9 @@ The clock SHALL remain advisory at the protocol layer: Notice validation SHALL N
 
 A Station SHALL bind a routable socket and SHALL advertise an address at which Vessels can reach it. A Station SHALL accept incoming sessions only; it SHALL NOT initiate outbound connections to Vessels.
 
-A Station SHALL bind its UDP port on every address family it serves and SHALL refuse to start if the port cannot be bound; it SHALL NOT fall back to a different port. The port is 6782 unless the operator configures another. A configured port of 0 requests an ephemeral port, the posture for same-host development and tests.
+A Station SHALL bind its UDP port on every address family it serves and SHALL refuse to start if the port cannot be bound; it SHALL NOT fall back to a different port. The port is 6782 unless the commodore configures another. A configured port of 0 requests an ephemeral port, the posture for same-host development and tests.
 
-At startup the Station SHALL publish the address it advertises where an operator can read it without shell access to the data directory: in its log output as well as in the address file.
+At startup the Station SHALL publish the address it advertises where a commodore can read it without shell access to the data directory: in its log output as well as in the address file.
 
 #### Scenario: A Vessel connects to a self-hosted Station
 
@@ -73,7 +75,7 @@ At startup the Station SHALL publish the address it advertises where an operator
 - **THEN** the Station exits with a non-zero status and an error naming the port
 - **AND** it does not serve on any other port
 
-#### Scenario: The advertised address is visible to the operator
+#### Scenario: The advertised address is visible to the commodore
 
 - **WHEN** a Station starts
 - **THEN** its log output contains the complete advertised address a Vessel can be given, identical to the address file's content
@@ -128,7 +130,7 @@ A Vessel SHALL detect that a session has stopped delivering and SHALL re-establi
 
 ### Requirement: A Station's identity key is provisioned from a file
 
-A Station's identity is an Ed25519 key loaded from a key file. When the operator names the key file explicitly, the file MUST exist: the Station SHALL load it and SHALL NOT create a key there, refusing to start with an error naming the path if it is absent or malformed. When no key file is named, the Station SHALL load the key at the default location inside its data directory, generating and persisting one there if none exists. A Station's authenticated endpoint identity SHALL be the same across restarts on the same key file.
+A Station's identity is an Ed25519 key loaded from a key file. When the commodore names the key file explicitly, the file MUST exist: the Station SHALL load it and SHALL NOT create a key there, refusing to start with an error naming the path if it is absent or malformed. When no key file is named, the Station SHALL load the key at the default location inside its data directory, generating and persisting one there if none exists. A Station's authenticated endpoint identity SHALL be the same across restarts on the same key file.
 
 #### Scenario: An explicitly named key file is missing
 
