@@ -12,6 +12,7 @@
 - [ ] 2.5 At the `OrderRequest` arm, record `order refused` with `reason` (`not served`, `no fleet key`, `does not chain`), distinguishing the arm-level refusals from `Replica::order` returning `None`, and emit `order granted` as a debug diagnostic; verify the ordering tests pass and a submission to a storage-only Station yields `no fleet key`
 - [ ] 2.6 Convert the remaining string warnings in `station.rs` and the three in `vessel.rs`'s subscription worker to diagnostics with `territory` (and `error`) fields; verify `rg "warn!\(\"" crates/outpost/src` finds no field-less warning that names a Territory in its text
 - [ ] 2.7 Add `Station::live_sessions()` maintained by `serve_loop`; verify a test that two parked subscriptions report 2 and then 0 after both close
+- [ ] 2.8 Coalesce `session refused` and `registration refused` per design.md D8: an in-memory map keyed by (remote address, reason) with a 60 s window, the first refusal recorded at once with `count` 1, later ones counted, expired entries flushed as one event with `count` and `since` whenever any event is recorded and at `shutting down`; verify an in-process test over a hosting Station where one caller is refused 500 times within the window yields exactly two rows (`count` 1, then `count` 499 with `since` at the first), that two callers from different addresses yield separate rows, and that `tests/signals.rs`'s parked case shows the tail flushed before `station stopped`
 
 ## 3. The binary
 
