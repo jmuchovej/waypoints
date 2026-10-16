@@ -74,7 +74,7 @@ So degradation is arranged in two places. The `sccache-start` step tolerates its
 
 ### D4 — sccache and rclone are projected mise tools in `build-desktop` and `build-mobile`
 
-`devenv.nix` gains `sccache = { package = pkgs.sccache; spec = "aqua:mozilla/sccache"; envs = [ "build-desktop" "build-mobile" ]; }` and `rclone = { package = pkgs.rclone; spec = "aqua:rclone/rclone"; envs = [ "build-desktop" "build-mobile" ]; }`. The projection regenerates both lanes' `toml` and `lock`; `check-generated` covers them. `RUSTC_WRAPPER=sccache` then resolves through the mise shim on `PATH`, which crosses the clean room because `MISE_*` is already forwarded.
+`devenv.nix` gains `sccache = { package = pkgs.sccache; spec = "aqua:mozilla/sccache"; envs = [ "build-desktop" "build-mobile" ]; }` and `rclone = { package = pkgs.rclone; spec = "aqua:rclone/rclone"; envs = [ "build-desktop" "build-mobile" ]; }`. The projection regenerates both lanes' `toml` and `lock`; `check-generated` covers them. The wrapper is set by bare name, `sccache`, and resolves on `PATH` to the binary in mise's install directory — `mise-action` places the install directories ahead of the shims directory — which crosses the clean room because `xtauri` keeps the ambient `PATH` whole (Risks, below).
 
 _Alternative rejected:_ `mozilla-actions/sccache-action`. Two real objections: it installs a version the repo does not declare, against "a tool's version has a single source", and it duplicates what the projection already does.
 
@@ -219,7 +219,7 @@ The existing tests (`environments_follow_the_vault_credential`, `provider_and_cr
 
 ## Risks / Trade-offs
 
-- [A mise shim as the rustc wrapper adds a process hop per `rustc` invocation] → Measured, not assumed: compare wall-clock against a run with the wrapper set to the resolved path (`mise which sccache`) during rollout; switch the helper to resolve the path in a preceding step if the shim costs more than a few percent.
+- [A mise shim as the rustc wrapper adds a process hop per `rustc` invocation] → Closed by inspection during rollout (2026-10-16): there is no shim on the path cargo resolves. `mise-action` puts each tool's install directory on `PATH` ahead of the shims directory — the Windows setup step prints that ordering, and the iOS build's PATH, printed by Xcode's script from inside the clean room, lists the sccache install directory several entries before `mise/shims` — so the bare name resolves to the binary itself and the shim is a fallback that never fires. The one per-compile cost is the store lookup, which the stats report as an average read hit of 0.16–0.32 s. No absolute-path dispatch was run.
 - [The server started outside the clean room must be reachable from inside it] → It listens on a local port; the client needs no environment to find it. Verified by the stats step showing non-zero counts and an `s3` cache location on an iOS build during rollout.
 - [The server exits before the build reaches it] → `SCCACHE_IDLE_TIMEOUT=0` on the start step; the stats step stops it explicitly. If it does die, the client auto-starts a credential-free server and the stats step shows a local-disk location (D3), which the rollout treats as a failure to fix, not a pass.
 - [Several `secretspec run` invocations per job, each a vault round-trip] → A second or two each, five to seven per job, against builds measured in tens of minutes. Accepted as the price of never exporting.
