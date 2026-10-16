@@ -4,9 +4,9 @@
 
 A Station SHALL bind a routable socket and SHALL advertise an address at which Vessels can reach it. A Station SHALL accept sessions from Vessels and SHALL NOT initiate connections to Vessels. The only connections a Station initiates are to Stations listed in its roster, for replication; a Station without a roster initiates none.
 
-A Station SHALL bind its UDP port on every address family it serves and SHALL refuse to start if the port cannot be bound; it SHALL NOT fall back to a different port. The port is 6782 unless the operator configures another. A configured port of 0 requests an ephemeral port, the posture for same-host development and tests.
+A Station SHALL bind its UDP port on every address family it serves and SHALL refuse to start if the port cannot be bound; it SHALL NOT fall back to a different port. The port is 6782 unless the commodore configures another. A configured port of 0 requests an ephemeral port, the posture for same-host development and tests.
 
-At startup the Station SHALL publish the address it advertises where an operator can read it without shell access to the data directory: in its log output as well as in the address file.
+At startup the Station SHALL publish the address it advertises where a commodore can read it without shell access to the data directory: in its log output as well as in the address file.
 
 #### Scenario: A Vessel connects to a self-hosted Station
 
@@ -46,7 +46,7 @@ At startup the Station SHALL publish the address it advertises where an operator
 - **THEN** the Station exits with a non-zero status and an error naming the port
 - **AND** it does not serve on any other port
 
-#### Scenario: The advertised address is visible to the operator
+#### Scenario: The advertised address is visible to the commodore
 
 - **WHEN** a Station starts
 - **THEN** its log output contains the complete advertised address a Vessel can be given, identical to the address file's content
