@@ -159,14 +159,14 @@ The credential that writes to the artifact store SHALL be treated as governing i
 
 ### Requirement: An uploading job holds only a derived, expiring, scoped credential
 
-The long-lived credential that authorises writes SHALL be resolved only to derive a short-lived one, and SHALL NOT itself be handed to any step that contacts the store. Every job that uploads a release artifact SHALL receive a credential that expires, that is confined to the key prefix of the channel the job is publishing, and that permits writing objects without conferring administrative access to the bucket.
+The long-lived credential that authorises writes SHALL be resolved only to derive a short-lived one, SHALL NOT be held by any client that contacts the store, and SHALL be dropped once the derivation is complete. Every client that uploads a release artifact SHALL be built from a credential that expires, that is confined to the key prefix of the channel the job is publishing, and that permits writing objects without conferring administrative access to the bucket.
 
 The lifetime SHALL be bounded and configurable, so it can follow build durations without a change to the publishing contract. Deriving a credential SHALL NOT depend on reaching a network service, so that no external dependency sits between a completed build and its upload.
 
-#### Scenario: The long-lived credential stays in the minting step
+#### Scenario: The long-lived credential never reaches a client
 
 - **WHEN** an uploading job prepares to contact the store
-- **THEN** the long-lived credential is resolved only to derive a short-lived one, and no step that contacts the store receives it
+- **THEN** the long-lived credential is resolved only to derive a short-lived one, is dropped before any store client exists, and no client is built from it
 
 #### Scenario: A job's credential expires
 

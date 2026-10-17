@@ -71,9 +71,9 @@ CI writes with the existing bucket-scoped token over the S3 API, because a runne
 
 ### Upload credentials are minted locally, per job, by xtask (2026-10-12)
 
-Every release job that uploads an artifact gets its own short-lived credential, derived in-process by `xtask` rather than resolved from the vault. The vault holds one long-lived parent; `xtask` resolves it through secretspec's Rust API, signs a scoped JWT with it, and hands the job a credential that expires. Nothing that contacts the store ever sees the parent.
+Every release job that uploads an artifact gets its own short-lived credential, derived in-process by `xtask` rather than resolved from the vault. The vault holds one long-lived parent; `xtask` resolves it through secretspec's Rust API, signs a scoped JWT with it, builds the store client from the derived credential, and drops the parent once the derivation is done. No client ever holds the parent (see the client decision below).
 
-R2 offers two routes to a session credential. The API route (`POST /accounts/{account_id}/r2/temp-access-credentials`, taking `bucket`, `parentAccessKeyId`, `permission`, `ttlSeconds` up to 604800, and optional `prefixes`/`objects`) returns `accessKeyId`, `secretAccessKey` and `sessionToken`. The local route produces the same shape with no network call: sign a JWT naming the bucket and scope with HS256 under the parent's secret access key, take the SHA-256 hex digest of the signed JWT as the temporary secret, and encode the session token as `base64("jwt/" + <signed-jwt>)`. Either is consumed as ordinary S3 session credentials — `AWS_SESSION_TOKEN`, which `rclone` and the AWS CLI read natively.
+R2 offers two routes to a session credential. The API route (`POST /accounts/{account_id}/r2/temp-access-credentials`, taking `bucket`, `parentAccessKeyId`, `permission`, `ttlSeconds` up to 604800, and optional `prefixes`/`objects`) returns `accessKeyId`, `secretAccessKey` and `sessionToken`. The local route produces the same shape with no network call: sign a JWT naming the bucket and scope with HS256 under the parent's secret access key, take the SHA-256 hex digest of the signed JWT as the temporary secret, and encode the session token as `base64("jwt/" + <signed-jwt>)`. Either is an ordinary S3 session triple — access key, secret, session token — which any S3 client consumes.
 
 Local signing is the one chosen, for a reliability reason rather than a security one: it puts no service between a finished build and its upload. A release that has already spent an hour compiling should not fail because a credential endpoint is unreachable, and the API route would add exactly that dependency at the worst moment.
 
@@ -82,6 +82,22 @@ Scope is the channel's prefix, which is what the channel-led key layout buys: a 
 Lifetime defaults to **3 hours** and is configurable through `xtask`. Three hours is comfortably longer than any current build and far short of the 7-day ceiling; configurable because a new dependency or a cold cache can lengthen a compile without warning, and a credential expiring mid-upload is a failed release for no good reason.
 
 This applies to every release job that uploads through the bundler pipeline, on all three channels — not only nightly. Nix-built packages are outside it: they publish nothing to this store.
+
+### The store is reached through `opendal` in-process, from one client constructor (2026-10-19)
+
+The upload, manifest-write, and withdraw steps are `xtask` subcommands over an `opendal` `Operator` for the S3 service. One shared constructor — `create_r2_client(channel)` or similar — does the whole credential path: it resolves the parent through secretspec's Rust API, derives the channel-scoped session triple by local JWT signing, drops the parent, and returns an `Operator` built from the derived triple alone. No caller sees a credential; each generated `run:` step is one line dispatching to `xtask`, and no transfer tool joins the build lanes.
+
+The upload is `write_with(key, bytes).if_not_exists(true)`, which the S3 service sends as `If-None-Match: *` and R2 honours, so "an upload never overwrites" is enforced by the store atomically rather than by a check-then-act in the client. The withdraw is `delete_iter` over the keys the run recorded.
+
+The rule this follows: `xtask` shells out only where no Rust API exists. `devenv` exposes no queryable output, `gh` holds auth the REST surface would re-implement, `treefmt` is a formatter. R2 is plain S3 with mature Rust clients, so it fails that test, and a vendor-neutral client is preferred since nothing here needs a vendor-specific API.
+
+Why `opendal` over `object_store`: both expose the conditional create, both are 0.x with two or three breaking releases a year, and both bring reqwest 0.13 beside the workspace's 0.12. `opendal` documents R2 specifically (region `auto`, exact-size multipart parts, the 700-key delete cap), carries a retry layer that handles 429 as of 0.59.5, and since 0.59 is modular enough that `services-s3` pulls only the core and the S3 service crate. `object_store`'s one edge is a builder that reads nothing ambient by construction; `opendal` loads `AWS_*` and EC2 metadata unless told not to, so the constructor sets `disable_config_load` and `disable_ec2_metadata`, and a unit test pins both.
+
+Pinned configuration. Default features off; `services-s3`, `layers-retry`, and `http-transport-reqwest-rustls-no-provider` with ring's provider installed at startup, so `aws-lc-rs` stays out of a tree that is on `ring`. Builder: endpoint, bucket, region `auto`, `enable_exact_buf_write`, the two disable flags, and the derived access key, secret, and session token. Task 2.3's live verification is re-run after any `opendal` bump, since the S3 service's `if_not_exists` was reverted once in 0.57 before being restored.
+
+Why the build cache is different: `xcache` runs before the registry snapshot and the sccache server exist in a job, so it cannot be `xtask`. It remains a projected `rclone` driven by a script, by bootstrap order rather than preference.
+
+Rejected: `rclone` for publishing, since `--ignore-existing` is check-then-act and it puts a shell between the workflow and the transfer on three operating systems. `aws-sdk-s3`, a vendor client for a vendor-neutral protocol whose default request checksums are a known R2 friction point. `object_store`, for the reasons above; a close second.
 
 ### Nothing published is ever deleted; cold releases change storage class (2026-10-12)
 
