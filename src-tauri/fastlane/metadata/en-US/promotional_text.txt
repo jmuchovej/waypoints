@@ -1,0 +1,1 @@
+Blocks that keep their own identity, links that point both ways, and a database that never leaves your device.
