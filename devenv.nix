@@ -331,6 +331,24 @@
     enable = true;
     lsp.enable = true;
   };
+  # `.env` ignores system and embedded fonts, so every family a
+  # `docs/marketing` asset names must come from `TYPST_FONT_PATHS`.
+  languages.typst = {
+    enable = true;
+    lsp.enable = true;
+    fontPaths = [
+      "${pkgs.google-fonts.override { fonts = [ "Albert Sans" ]; }}/share/fonts/truetype"
+      # Static instances only: the joined `pkgs.monaspace` also carries the
+      # frozen and variable builds, so typst would see each family thrice.
+      "${pkgs.monaspace.static}/share/fonts/opentype"
+      # Two emoji faces, both of which typst renders in colour: Twemoji is
+      # SVG-in-OpenType and sits on the text baseline at the surrounding size,
+      # Noto is CBDT bitmap and draws oversized and high. Marketing asks for
+      # Twemoji by name; Noto is here for anything that wants Android's own set.
+      "${pkgs.twemoji-color-font}/share/fonts/truetype"
+      "${pkgs.noto-fonts-color-emoji}/share/fonts/noto"
+    ];
+  };
 
   tasks."waypoints:sync-deny-targets" = {
     description = "Sync .cargo/deny.toml graph.targets from rust-toolchain.toml";
