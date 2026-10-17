@@ -7,7 +7,8 @@
 # "infoplist/**" = "./platforms/ios/"
 
 [bundle.iOS]
-  developmentTeam = "D6NBHNJ93R"
+  developmentTeam      = "D6NBHNJ93R"
+  minimumSystemVersion = "18.0"
 
   # Rust builds a staticlib, so its `#[link]` directives never reach the final
   # link — Xcode performs that, and only links what this list names. Two crates
