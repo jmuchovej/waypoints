@@ -283,10 +283,9 @@
   waypoints.android = {
     agp.version = "8.13.2";
     build-tools.version = "35.0.0";
-    platforms.versions = [
-      "36"
-      "30"
-    ];
+    sdk.target.version = "36";
+    sdk.compile.version = "36";
+    platforms.extra = [ "30" ];
     ndk.version = "30.0.16138531";
     # devenv writes `files."<project-path>/..."` relative to the root, while
     # `.env` carries the absolute path both it and mise need. Re-relativize
