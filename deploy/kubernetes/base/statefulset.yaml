@@ -37,11 +37,11 @@ spec:
             - --fleet-key-file=/keys/fleet/fleet.key
             - --log-format=json
           env:
-            - name: OUTPOST_ADVERTISE
+            - name: OUTPOST_STATION_ADVERTISE
               valueFrom:
                 configMapKeyRef:
                   name: outpost
-                  key: OUTPOST_ADVERTISE
+                  key: OUTPOST_STATION_ADVERTISE
           # One port, two protocols (see kustomization.yaml).
           ports:
             - name: quic

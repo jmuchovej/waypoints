@@ -25,5 +25,5 @@ patches:
       name: outpost
     patch: |-
       - op: replace
-        path: /data/OUTPOST_ADVERTISE
+        path: /data/OUTPOST_STATION_ADVERTISE
         value: 127.0.0.1:6782

@@ -21,34 +21,34 @@ const EPHEMERAL_ATTEMPTS: u8 = 8;
 
 /// Run a Station over QUIC. It homes whatever Territories Vessels register
 /// to it, persisting them under `<data>/territories/` and reloading them
-/// on restart. Every option also reads from the `OUTPOST_*` variable named
+/// on restart. Every option also reads from the `OUTPOST_STATION_*` variable named
 /// beside it; a flag wins over the environment.
 #[derive(Parser)]
 pub struct StationArgs {
     /// Data directory: the address file, the Territory holds, and — when
     /// `--key-file` is not given — the identity key.
-    #[arg(long, env = "OUTPOST_DATA", default_value = ".outpost-station")]
+    #[arg(long, env = "OUTPOST_STATION_DATA", default_value = ".outpost-station")]
     data: PathBuf,
     /// Identity key file: 32 raw bytes, an Ed25519 seed (`outpost keygen`).
     /// Must exist — a Secret mount is read-only, and a key is never invented
     /// at a path the operator named. Without it, `<data>/station.key` is
     /// loaded, or generated on first start.
-    #[arg(long, env = "OUTPOST_KEY_FILE")]
+    #[arg(long, env = "OUTPOST_STATION_KEY_FILE")]
     key_file: Option<PathBuf>,
     /// Fleet signing key file, same format. Supplying it turns the orderer
     /// role on; the key is never generated here.
-    #[arg(long, env = "OUTPOST_FLEET_KEY_FILE")]
+    #[arg(long, env = "OUTPOST_STATION_FLEET_KEY_FILE")]
     fleet_key_file: Option<PathBuf>,
     /// The Station's port: QUIC over UDP and the probe routes (`/healthz`,
     /// `/readyz`) over TCP share it. 0 lets the kernel choose a number that
     /// is free for both.
-    #[arg(long, env = "OUTPOST_PORT", default_value_t = 6782)]
+    #[arg(long, env = "OUTPOST_STATION_PORT", default_value_t = 6782)]
     port: u16,
     /// Socket address(es) to advertise to Vessels (e.g. `203.0.113.7:6782`)
     /// — the operator's public host:port, published instead of the bound
-    /// sockets. Repeatable, or comma-separated in `OUTPOST_ADVERTISE`; an
+    /// sockets. Repeatable, or comma-separated in `OUTPOST_STATION_ADVERTISE`; an
     /// empty value advertises nothing.
-    #[arg(long, env = "OUTPOST_ADVERTISE", value_delimiter = ',')]
+    #[arg(long, env = "OUTPOST_STATION_ADVERTISE", value_delimiter = ',')]
     advertise: Vec<String>,
 }
 
@@ -194,7 +194,7 @@ async fn shutdown_signal() {
 }
 
 /// `--advertise` values, each a `host:port` socket. Empty entries are
-/// dropped, so an empty `OUTPOST_ADVERTISE` (the manifests' default) means
+/// dropped, so an empty `OUTPOST_STATION_ADVERTISE` (the manifests' default) means
 /// "advertise nothing"; a non-empty entry that is not a socket address is
 /// an error naming it.
 fn parse_advertise(values: &[String]) -> Result<Vec<SocketAddr>> {

@@ -26,7 +26,7 @@ dockerTools.buildLayeredImage {
     # `args: [station, …]` replaces `station` instead of repeating it.
     Entrypoint = [ "${outpost}/bin/outpost" ];
     Cmd = [ "station" ];
-    Env = [ "OUTPOST_DATA=/data" ];
+    Env = [ "OUTPOST_STATION_DATA=/data" ];
     User = "65534:65534";
     Volumes."/data" = { };
     ExposedPorts = {

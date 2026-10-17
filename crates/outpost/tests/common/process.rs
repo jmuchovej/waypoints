@@ -23,11 +23,11 @@ pub fn outpost() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_outpost"));
     for var in [
         "RUST_LOG",
-        "OUTPOST_DATA",
-        "OUTPOST_KEY_FILE",
-        "OUTPOST_FLEET_KEY_FILE",
-        "OUTPOST_PORT",
-        "OUTPOST_ADVERTISE",
+        "OUTPOST_STATION_DATA",
+        "OUTPOST_STATION_KEY_FILE",
+        "OUTPOST_STATION_FLEET_KEY_FILE",
+        "OUTPOST_STATION_PORT",
+        "OUTPOST_STATION_ADVERTISE",
         "OUTPOST_LOG_FORMAT",
     ] {
         command.env_remove(var);

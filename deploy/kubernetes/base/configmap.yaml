@@ -6,4 +6,4 @@ data:
   # The socket Vessels dial, "<external address>:6782", set once the Service
   # has one (see kustomization.yaml). Empty advertises nothing: the Station
   # then publishes only the sockets it bound.
-  OUTPOST_ADVERTISE: ""
+  OUTPOST_STATION_ADVERTISE: ""

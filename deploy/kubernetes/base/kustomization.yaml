@@ -9,7 +9,7 @@
 #      secrets.example.yaml for the exact commands and names.
 #   2. Apply this base once, then read the Service's external address:
 #        kubectl get svc outpost -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-#   3. Put "<that address>:6782" into the ConfigMap's OUTPOST_ADVERTISE and
+#   3. Put "<that address>:6782" into the ConfigMap's OUTPOST_STATION_ADVERTISE and
 #      apply again. The Station publishes the address Vessels dial in its
 #      log (the "station running" line); that is what gets pasted into the
 #      app. Until step 3 the Station serves, but publishes only addresses
