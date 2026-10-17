@@ -69,9 +69,9 @@ android {
         "string",
         "app_name",
         when (waypointsFlavor) {
-          "development" -> "Waypoints (Dev)"
-          "preview" -> "Waypoints (Preview)"
-          "nightly" -> "Waypoints (Nightly)"
+          "development" -> "Waypoints Development Edition"
+          "preview" -> "Waypoints Preview"
+          "nightly" -> "Waypoints Nightly"
           else -> "Waypoints"
         },
     )
@@ -79,9 +79,9 @@ android {
         "string",
         "main_activity_title",
         when (waypointsFlavor) {
-          "development" -> "Waypoints (Dev)"
-          "preview" -> "Waypoints (Preview)"
-          "nightly" -> "Waypoints (Nightly)"
+          "development" -> "Waypoints Development Edition"
+          "preview" -> "Waypoints Preview"
+          "nightly" -> "Waypoints Nightly"
           else -> "Waypoints"
         },
     )
