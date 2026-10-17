@@ -1,0 +1,159 @@
+#!/usr/bin/env nu
+# Renders the store assets, writes the listing copy fastlane reads, and runs
+# the lanes — so a publish is one command rather than three that have to be
+# sequenced correctly.
+#
+#   xfastlane build    [locale]
+#   xfastlane watch    [locale]
+#   xfastlane metadata [flavor] [locale]
+#   xfastlane clean
+#   xfastlane publish  <platform> [flavor] [locale]
+#
+# `publish` is what CI calls. It renders and writes before invoking the lane,
+# and runs fastlane from the app directory: fastlane finds its Fastfile by
+# looking for `./fastlane` in the working directory, and supply and deliver
+# resolve `metadata/` and `screenshots/` from the same place.
+
+# Play truncates "What's new" at 500 characters; the App Store and TestFlight
+# allow 4000. 500 is what the text has to survive.
+const PLAY_NOTES_LIMIT = 500
+const APPLE_NOTES_LIMIT = 4000
+
+def fastlane-root []: nothing -> path { $env.TAURI_APP_PATH | path join "fastlane" }
+
+def flavor-config [flavor: string]: nothing -> path {
+  $env.TAURI_APP_PATH | path join "configs" "flavors" $"($flavor).toml"
+}
+
+# Cuts on a line boundary, so a bullet is never severed mid-word.
+def fit [text: string, limit: int]: nothing -> string {
+  if ($text | str length) <= $limit { return $text }
+  mut kept = []
+  for line in ($text | lines) {
+    let candidate = ($kept | append $line | str join "\n")
+    if ($candidate | str length) > ($limit - 1) { break }
+    $kept = ($kept | append $line)
+  }
+  ($kept | str join "\n" | str trim) + "…"
+}
+
+def "main build" [locale: string = "en-US"]: nothing -> nothing {
+  cd (fastlane-root)
+
+  # The trailing `.` is the bundle's output root: each `#document(..)` path is
+  # a full path under it, so PNGs land straight in the directories supply and
+  # deliver read. 72 ppi makes a `pt` in the source a pixel on disk; the
+  # default 144 would double every dimension.
+  with-env { TYPST_ROOT: $env.TAURI_APP_PATH } {
+    ^typst compile --format bundle --ppi 72 $"($locale).typ" .
+  }
+
+  # Both stores reject alpha on screenshots and the feature graphic, and both
+  # require it on the icon.
+  let pngs = (
+    [metadata screenshots]
+    | each {|dir| glob $"($dir)/**/*.png" }
+    | flatten
+    | where {|p| ($p | path basename) != "icon.png" }
+  )
+  for png in $pngs { ^magick $png -alpha off $"PNG24:($png)" }
+  print $"rendered ($pngs | length) flattened assets for ($locale)"
+}
+
+def "main watch" [locale: string = "en-US"]: nothing -> nothing {
+  cd (fastlane-root)
+  with-env { TYPST_ROOT: $env.TAURI_APP_PATH } {
+    ^typst watch --format bundle --ppi 72 $"($locale).typ" .
+  }
+}
+
+def "main clean" []: nothing -> nothing {
+  cd (fastlane-root)
+  rm -rf metadata screenshots index.html
+}
+
+# FLAVOR only picks the listing name — preview and nightly ship under their own
+# `productName`, which is why it is not in the copy file.
+def "main metadata" [flavor: string = "stable", locale: string = "en-US"]: nothing -> nothing {
+  cd (fastlane-root)
+
+  let copy = (open $"($locale).toml")
+  let name = (open (flavor-config $flavor) | get productName)
+  let play = ($copy | get "google-play")
+  let apple = ($copy | get "app-store")
+  # TOML keeps the newline before the closing `'''`; the stores would show it.
+  let description = ($copy.description | str trim)
+
+  let android = $"metadata/android/($locale)"
+  let ios = $"metadata/($locale)"
+
+  let fields = [
+    [path, value, limit];
+    [$"($android)/title.txt", $name, 30]
+    [$"($android)/short_description.txt", $play.short, 80]
+    [$"($android)/full_description.txt", $description, 4000]
+    [$"($ios)/name.txt", $name, 30]
+    [$"($ios)/subtitle.txt", $apple.subtitle, 30]
+    [$"($ios)/promotional_text.txt", $apple.promotional, 170]
+    [$"($ios)/keywords.txt", ($apple.keywords | str join ","), 100]
+    [$"($ios)/description.txt", $description, 4000]
+  ]
+
+  # A store rejects an over-long field on upload, by which point a release is
+  # already in flight. Naming the field here is cheaper.
+  let over = ($fields | where {|f| ($f.value | str length) > $f.limit })
+  if ($over | is-not-empty) {
+    for f in $over {
+      print $"($f.path): ($f.value | str length) chars, limit ($f.limit)"
+    }
+    error make { msg: "listing copy exceeds a store limit" }
+  }
+
+  for f in $fields {
+    mkdir ($f.path | path dirname)
+    $f.value | save --force $f.path
+  }
+  print $"wrote ($fields | length) files for ($locale) as ($name)"
+
+  # Per-release notes, internal testing included — a build whose notes say
+  # nothing teaches its testers nothing. The plain-text template is used rather
+  # than the markdown one the GitHub release gets: both stores strip markup.
+  let cliff = (do {
+    ^git-cliff --latest --strip all --body-file "changelog.tera"
+  } | complete)
+  let notes = (if $cliff.exit_code == 0 { $cliff.stdout | str trim } else { "" })
+
+  if ($notes | is-empty) {
+    # Never write an empty file: supply would upload blank notes, whereas
+    # `default.txt`'s absence is what makes a store keep the previous ones.
+    print "no changelog-worthy commits in the latest tag — release notes left alone"
+    return
+  }
+
+  # supply reads `changelogs/<versionCode>.txt`, falling back to `default.txt`,
+  # which spares us knowing the version code here.
+  let play_notes = $"($android)/changelogs/default.txt"
+  let ios_notes = $"($ios)/release_notes.txt"
+  mkdir ($play_notes | path dirname)
+  fit $notes $PLAY_NOTES_LIMIT | save --force $play_notes
+  fit $notes $APPLE_NOTES_LIMIT | save --force $ios_notes
+  print $"wrote release notes \(($notes | lines | length) lines\)"
+}
+
+def "main publish" [
+  platform: string,
+  flavor: string = "stable",
+  locale: string = "en-US",
+]: nothing -> nothing {
+  main build $locale
+  main metadata $flavor $locale
+
+  # From the app directory, so `./fastlane` is the Fastfile's directory and the
+  # metadata written above sits where supply and deliver look for it.
+  cd $env.TAURI_APP_PATH
+  ^fastlane $platform $flavor
+}
+
+def main []: nothing -> nothing {
+  help main
+}

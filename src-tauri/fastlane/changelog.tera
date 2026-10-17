@@ -1,0 +1,15 @@
+{#-
+  Store release notes. Play caps "What's new" at 500 characters and strips
+  markup, so this carries no links, no commit hashes and no headings — just
+  grouped one-liners. `.config/cliff.toml` still supplies the commit parsers;
+  only the body template is swapped, via `git-cliff --body-file`.
+-#}
+{% for group, commits in commits
+| filter(attribute="merge_commit", value=false)
+| unique(attribute="message")
+| group_by(attribute="group") -%}
+{{ group | striptags | trim | upper_first }}
+{% for commit in commits -%}
+- {{ commit.message | upper_first }}
+{% endfor %}
+{% endfor -%}
