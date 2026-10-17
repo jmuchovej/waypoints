@@ -28,12 +28,12 @@
 - [x] 5.1 Write `cargo xtask release-index --tag` — classify, cross-check the manifest at the tag, `nix flake prefetch` the source hash, render the three-field entry, and commit it to `main` via `commit_file`; verify the rendered bytes match what treefmt leaves and that `--dry-run` prints the entry without committing
 - [x] 5.2 Write `tooling/xtask/src/tasks/workflows/release_index.rs` — `v*` tag push plus a dispatch with `tag` and `dry_run`, the devenv-shell job shape (install nix with an access token, cachix, `devenv shell -- cargo xtask release-index`) — and register it; verify `cargo xtask workflows --check` is clean, `.github/workflows/release-index.yaml` appears, and zizmor reports nothing
 - [x] 5.3 Mint refs in the nightly `prepare` job and the `release-plan` job with the `wp-botswain` App token scoped to `contents: write`, dropping their `GITHUB_TOKEN` grant to read and their GitHub cache action, as every environment-declaring job must, and compiling through the CI cache (registry snapshot plus sccache) like the build jobs — the index job too, inside its devenv shell; verify the workflow tests' environment/credential pairing holds and the xtask mise lane carries `sccache` and `rclone`
-- [ ] 5.4 Run the workflow by dispatch with `dry_run` against an existing tag; verify the hash is computed and printed and nothing is committed
-- [ ] 5.5 Run it for real and verify the committed file matches the dry-run output byte for byte
+- [x] 5.4 Run the workflow by dispatch with `dry_run` against an existing tag; verify the hash is computed and printed and nothing is committed
+- [x] 5.5 Run it for real and verify the committed file matches the dry-run output byte for byte
 
 ## 6. Validation against the specs
 
-- [ ] 6.1 Verify the first real nightly publish fills `nightly.json` and that rebuilding `nightly` from `main` on a later date reports the published date stamp, not the build date
+- [x] 6.1 Verify the first real nightly publish fills `nightly.json` and that rebuilding `nightly` from `main` on a later date reports the published date stamp, not the build date
 - [ ] 6.2 Verify pinning a ref of `main` and building `stable` produces the published stable release, not a stable-branded build of `main`'s tree
 - [ ] 6.3 Verify advancing the pinned ref across a commit that changed only one channel's entry rebuilds that channel and leaves the other two byte-identical
 - [ ] 6.4 Verify a simulated failed index write (tag created, write aborted) leaves the channel resolving its previous entry and the workflow re-runnable to completion from the dispatch
