@@ -679,4 +679,43 @@ mod tests {
             }
         }
     }
+
+    /// Both planners decide from the commits between the last release tag and
+    /// HEAD, excluding the index directory by path. That needs the history
+    /// between the two: in a shallow clone the tip is a root commit diffed
+    /// against the empty tree, so every path looks changed and the exclusion
+    /// cannot bite — nightly.5 was minted from an index-only commit that way.
+    #[test]
+    fn planners_check_out_the_history_they_walk() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+                let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
+                let plans = steps.iter().any(|step| {
+                    step["run"].as_str().is_some_and(|run| {
+                        run.contains("cargo xtask nightly-plan")
+                            || run.contains("cargo xtask release-plan")
+                    })
+                });
+                if !plans {
+                    continue;
+                }
+                let checkout = steps
+                    .iter()
+                    .find(|step| step["id"] == "checkout")
+                    .unwrap_or_else(|| panic!("{name}/{job_name}: no checkout step"));
+                let depth = &checkout["with"]["fetch-depth"];
+                assert!(
+                    *depth == 0 || *depth == "0",
+                    "{name}/{job_name}: a planner walks history, so its checkout cannot be shallow: {depth}"
+                );
+                let tags = &checkout["with"]["fetch-tags"];
+                assert!(
+                    *tags == true || *tags == "true",
+                    "{name}/{job_name}: {tags}"
+                );
+            }
+        }
+    }
 }

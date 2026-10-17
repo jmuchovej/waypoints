@@ -45,9 +45,15 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         // vault credential comes from the automation environment.
         .environment(GhEnvironment::from(Environment::Ci))
         .runs_on(runners::LINUX)
-        // Tags without history: the planner reads them to find the last
-        // release, and walks commits only from there.
-        .add_step(steps::checkout().add_with(("fetch-tags", true)))
+        // Tags and the history between them: a cut walks from the last stable
+        // release to HEAD with a pathspec that drops the index directory, and
+        // in a shallow clone the tip is a root commit that appears to touch
+        // every path — see the nightly planner.
+        .add_step(
+            steps::checkout()
+                .add_with(("fetch-depth", 0))
+                .add_with(("fetch-tags", true)),
+        )
         .add_step(steps::setup_mise(false.into(), &context.mise_version))
         // As with the nightly planner: the cost here is compiling xtask, and
         // the build jobs' registry snapshot and compiler cache answer most of
