@@ -2,21 +2,23 @@
 
 ### Requirement: A Station keeps an events table
 
-A Station with its own database SHALL keep an events table in it. Each event SHALL have a sequence number that increases by one per event and never repeats across restarts, a timestamp, a kind from the closed set below, and the fields its kind requires. The Station SHALL append an event only after the decision it records has taken effect, and SHALL append one for every occurrence below. Events SHALL carry only metadata the Station already holds — Territory ids, member ids, device public keys, counts, durations, reasons — and SHALL NOT carry Notice payloads, envelopes, read keys, or any key material. Ids and keys SHALL be rendered as lowercase hex. Kinds and reasons SHALL be drawn from the closed set in the table; a new kind or reason is an addition to this table, and renaming one is a breaking change to the Station's contract with its commodore. A Station without its own database (a seeded, storage-less Station) SHALL record no events.
+A Station with its own database SHALL keep an events table in it. Each event SHALL have a sequence number that increases by one per event and never repeats across restarts, a timestamp, a kind from the closed set below, and the fields its kind requires. Every field in the table below SHALL be a typed column of the table, one column per field name, nullable where a kind does not use it; the table SHALL hold no free-form document. The Station SHALL append an event only after the decision it records has taken effect, and SHALL append one for every occurrence below. Events SHALL carry only metadata the Station already holds — Territory ids, member ids, device public keys, counts, durations, reasons — and SHALL NOT carry Notice payloads, envelopes, read keys, or any key material. Ids and keys SHALL be rendered as lowercase hex wherever they are shown. Kinds and reasons SHALL be drawn from the closed set in the table; a new kind or reason is an addition to this table, and renaming one is a breaking change to the Station's contract with its commodore. A Station without its own database (a seeded, storage-less Station) SHALL record no events.
 
-| Kind                   | Level | Fields                                                                                                                                                           |
-| ---------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `territory registered` | info  | `territory`, `registrant`                                                                                                                                        |
-| `registration refused` | warn  | `territory`, `reason` (`policy`, `invalid log`, `mismatched id`, `no storage`), `registrant` when authenticated, `count`, `since` when coalesced                 |
-| `session refused`      | warn  | `reason` (`bad hello`, `not served`, `not a member`, `unexpected frame`), `territory` when known, `identity` when authenticated, `count`, `since` when coalesced |
-| `subscription reaped`  | info  | `territory`, `member`, `device`, `reason` (`idle`, `lagged`, `closed`)                                                                                           |
-| `order refused`        | info  | `territory`, `author`, `reason` (`not served`, `no fleet key`, `does not chain`)                                                                                 |
-| `holds loaded`         | info  | `count`, `duration_ms`                                                                                                                                           |
-| `station running`      | info  | `port`, `address`, `data`, `orderer`                                                                                                                             |
-| `shutting down`        | info  | `open_sessions`                                                                                                                                                  |
-| `station stopped`      | info  | `close_ms`, `timed_out`                                                                                                                                          |
+`member` names whoever the event is about — the registrant, the authenticated caller, the subscriber, or the record's author — since the kind already says which role they played.
 
-Events SHALL be retained for a duration the commodore configures, ninety days by default and never less than one day. The Station SHALL remove events older than the retention period at start-up and whenever it appends one, and SHALL always keep the most recent event whatever its age, so the sequence is recoverable after any idle stretch.
+| Kind                   | Level | Fields                                                                                                                                                            |
+| ---------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `territory registered` | info  | `territory`, `member`                                                                                                                                             |
+| `registration refused` | warn  | `territory`, `reason` (`policy`, `invalid log`, `mismatched id`, `no storage`), `member` when authenticated, `count` and `since` when coalesced                   |
+| `session refused`      | warn  | `reason` (`bad hello`, `not served`, `not a member`, `unexpected frame`), `territory` when known, `member` when authenticated, `count` and `since` when coalesced |
+| `subscription reaped`  | info  | `territory`, `member`, `device`, `reason` (`idle`, `lagged`, `closed`)                                                                                            |
+| `order refused`        | info  | `territory`, `member`, `reason` (`not served`, `no fleet key`, `does not chain`)                                                                                  |
+| `holds loaded`         | info  | `count`, `duration_ms`                                                                                                                                            |
+| `station running`      | info  | `port`, `address`, `data`, `orderer`                                                                                                                              |
+| `shutting down`        | info  | `open_sessions`                                                                                                                                                   |
+| `station stopped`      | info  | `close_ms`, `timed_out`                                                                                                                                           |
+
+Events SHALL be retained for a period the commodore configures as a duration written the way a person writes one (`3mo`, `6wk`, `90d`), three months by default and never less than one day. The Station SHALL remove events older than the retention period at start-up and on a schedule thereafter, no less often than hourly, and SHALL always keep the most recent event whatever its age, so the sequence is recoverable after any idle stretch.
 
 Refusals SHALL be coalesced per source. The first refusal of a given reason from a connection's remote address SHALL be recorded at once with `count` 1; further refusals of that reason from that address within the following minute SHALL be counted rather than recorded, and once the minute has passed — at the latest at the next event the Station records, or at shutdown — one event SHALL be appended carrying the `count` of refusals it stands for and `since`, the time of the first of them. The address is the coalescing key only and SHALL NOT be written to the event. Coalescing bounds the record under a flood; it does not bound the flood.
 
@@ -30,10 +32,10 @@ Refusals SHALL be coalesced per source. The first refusal of a given reason from
 - **WHEN** a registrant without Owner permission registers a Territory under the default policy
 - **THEN** the table gains a `registration refused` event with the Territory id, the reason `policy`, and the registrant's member id
 
-#### Scenario: A flood of refusals is a handful of rows
+#### Scenario: The fields are columns
 
-- **WHEN** a caller at one address is refused the same way five hundred times within one minute
-- **THEN** the table gains a `session refused` event with `count` 1 at the first refusal, one more with `count` 499 and `since` the first refusal's time once the minute has passed, and no others
+- **WHEN** the events table's schema is inspected
+- **THEN** every field named in the table above is a column of its own with a scalar type, and no column holds a document
 
 #### Scenario: The sequence survives a restart
 
@@ -45,15 +47,25 @@ Refusals SHALL be coalesced per source. The first refusal of a given reason from
 - **WHEN** a Vessel syncs a Notice whose plaintext contains a known sentinel
 - **THEN** no event's fields contain the sentinel, the ciphertext, or the envelope bytes
 
-#### Scenario: Old events are pruned
+#### Scenario: Old events are pruned on schedule
 
-- **WHEN** the table holds events older than the retention period and the Station starts, or appends an event
+- **WHEN** the table holds events older than the retention period and the Station starts, or an hour passes while it runs
 - **THEN** those events are removed, and the most recent event remains whatever its age
+
+#### Scenario: The period is written as a duration
+
+- **WHEN** a Station is started with a retention period of `6wk`
+- **THEN** it starts, and an event dated seven weeks ago is pruned while one dated five weeks ago is kept
 
 #### Scenario: Retention below a day is refused
 
-- **WHEN** a Station is started with a retention of zero days
+- **WHEN** a Station is started with a retention period of `12h`
 - **THEN** it exits with a non-zero status and an error naming the option
+
+#### Scenario: A flood of refusals is a handful of rows
+
+- **WHEN** a caller at one address is refused the same way five hundred times within one minute
+- **THEN** the table gains a `session refused` event with `count` 1 at the first refusal, one more with `count` 499 and `since` the first refusal's time once the minute has passed, and no others
 
 #### Scenario: A storage-less Station records nothing
 
