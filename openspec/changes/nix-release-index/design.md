@@ -78,6 +78,7 @@ A generated workflow (`tooling/xtask/src/tasks/workflows/release_index.rs`, outp
 - **Why a pathspec rather than a message filter**: whether a commit is bookkeeping is a question about paths, and a path answer cannot be defeated by a future message-format change.
 - **Why `-- . ':(exclude)…'` rather than bare `':(exclude)…'`**: a pathspec of only exclusions matches nothing in git; the positive `.` is required.
 - **Gate**: proven against a real git repository in a temp dir, not by asserting argument strings.
+- **The planners check out full history** (2026-10-17). A pathspec needs each commit's diff, and in a shallow clone the tip is a root commit diffed against the empty tree — every path looks changed, and an index-only commit reads as product work. The first scheduled nightly after the index landed minted `nightly.5` from exactly such a commit; the planners' checkouts moved to `fetch-depth: 0`, and a workflow test holds every planner job to that.
 
 ### D6 (2026-09-27, revised 2026-10-13): The tag's version overrides the manifest only where the manifest cannot know it
 

@@ -94,9 +94,17 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
             // the vault credential comes from the automation environment.
             .environment(GhEnvironment::from(Environment::Ci))
             .runs_on(runners::LINUX)
-            // Tags without history: the planner resolves them to commits but
-            // never walks between them.
-            .add_step(steps::checkout().add_with(("fetch-tags", true)))
+            // Tags and the history between them: the planner walks from the
+            // last nightly to HEAD with a pathspec that drops the index
+            // directory. In a shallow clone the tip is a root commit diffed
+            // against the empty tree, so every path looks changed and the
+            // exclusion cannot bite — nightly.5 was minted from an index-only
+            // commit exactly so.
+            .add_step(
+                steps::checkout()
+                    .add_with(("fetch-depth", 0))
+                    .add_with(("fetch-tags", true)),
+            )
             .add_step(steps::setup_mise(false.into(), &context.mise_version))
             // Compiling the planner is the whole job: 5m25s of a 6m10s run,
             // against 39s to install its tools. The registry snapshot and the
