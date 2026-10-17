@@ -21,6 +21,7 @@ mod check_generated;
 mod devenv_update;
 mod pull_request;
 mod release;
+mod release_index;
 mod release_plan;
 
 pub(crate) mod _types;
@@ -127,6 +128,7 @@ pub fn run(args: WorkflowArgs) -> Result<()> {
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
+        WorkflowFile::waypoints("release_index", release_index::workflow),
         WorkflowFile::waypoints("release_plan", release_plan::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
@@ -390,6 +392,7 @@ mod tests {
             ),
             ("devenv_update".to_owned(), devenv_update::workflow(context)),
             ("pull_request".to_owned(), pull_request::workflow(context)),
+            ("release_index".to_owned(), release_index::workflow(context)),
             ("release_plan".to_owned(), release_plan::workflow(context)),
         ];
         for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
@@ -491,9 +494,13 @@ mod tests {
                             declares_environment,
                             "{label}: wraps the compiler outside an environment"
                         );
+                        // The scope's two flags, not one string: a start run
+                        // inside the devenv shell carries `--provider op`
+                        // between them.
                         let started = steps[..index].iter().any(|earlier| {
                             let run = text(earlier, "run");
-                            run.contains("sccache --start-server") && run.contains(CACHE_SCOPE)
+                            run.contains("sccache --start-server")
+                                && CACHE_SCOPE.split(" --").all(|flag| run.contains(flag))
                         });
                         assert!(
                             started,
@@ -504,15 +511,18 @@ mod tests {
                     // The snapshot steps go through `tooling/bin/xcache`, which
                     // resolves the cache scope around its one `rclone` call — a
                     // test in `_steps.rs` holds the script to that. Here: the
-                    // step runs nothing else, and brings the credential that
-                    // resolution needs.
+                    // step runs nothing else (bare, or entered through the
+                    // devenv shell), and brings the credential that resolution
+                    // needs.
                     if id.starts_with("cache-restore-") || id.starts_with("cache-save-") {
                         assert!(
                             declares_environment,
                             "{label}: contacts the store outside an environment"
                         );
+                        let command = run.strip_prefix("devenv shell -- ").unwrap_or(&run);
                         assert!(
-                            run.starts_with("xcache restore ") || run.starts_with("xcache save "),
+                            command.starts_with("xcache restore ")
+                                || command.starts_with("xcache save "),
                             "{label}: contacts the store other than through xcache: {run}"
                         );
                         assert!(
@@ -655,11 +665,15 @@ mod tests {
                 .flat_map(|(_, job)| job["steps"].as_array().cloned().unwrap_or_default());
             for step in steps {
                 // Under `devenv shell` the provider rides on the command, so
-                // devenv's own pre-shell resolution does not pick it up.
+                // devenv's own pre-shell resolution does not pick it up. An
+                // `xcache` entered that way names its profile inside the
+                // script, and the `ci` profile's own default provider is the
+                // vault — so the step carries neither spelling, and needs
+                // neither.
+                let run = step["run"].as_str().unwrap_or("");
                 let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some()
-                    || step["run"]
-                        .as_str()
-                        .is_some_and(|run| run.contains("--provider op"));
+                    || run.contains("--provider op")
+                    || run.starts_with("devenv shell -- xcache ");
                 let credential = step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some();
                 assert_eq!(provider, credential, "{name}: {}", step["name"]);
             }

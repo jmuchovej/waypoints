@@ -25,17 +25,27 @@
       perSystem =
         { pkgs, ... }:
         let
-          overlaid = pkgs.extend (import ./nix/overlay.nix { });
-          # Stamp build metadata from the flake source when available; build.rs
-          # falls back to "unknown" on dirty/unknown trees.
-          stamp = drv: drv.override { rev = inputs.self.rev or inputs.self.dirtyRev or null; };
+          # build.rs falls back to "unknown" on dirty/unknown trees.
+          rev = inputs.self.rev or inputs.self.dirtyRev or null;
+          overlaid = pkgs.extend (import ./nix/overlay.nix { inherit rev; });
+          # `default` is the channel this tree's version names; on main, where
+          # every channel is a recorded release, it is stable.
+          inherit (import ./nix/channel.nix ./.) channel;
+          default = if channel == "nightly" then "stable" else channel;
         in
         {
           packages = {
-            waypoints = stamp overlaid.waypoints;
-            waypoints-preview = stamp overlaid.waypoints-preview;
-            waypoints-nightly = stamp overlaid.waypoints-nightly;
-            default = stamp overlaid.waypoints;
+            inherit (overlaid.waypoints) stable preview nightly;
+            default = overlaid.waypoints.${default};
+          };
+
+          # The recipe applied to this very tree under the development flavor,
+          # which no channel ships: exercised on every ref, presented as no
+          # release.
+          checks.waypoints-in-tree = pkgs.callPackage ./nix/packages/waypoints/package.nix {
+            inherit rev;
+            workingTree = ./.;
+            flavor = "development";
           };
         };
     };

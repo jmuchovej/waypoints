@@ -148,7 +148,7 @@ pub enum Arch {
     arm64,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Display, IsVariant)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, IsVariant)]
 #[display(rename_all = "lowercase")]
 pub enum Channel {
     Stable,

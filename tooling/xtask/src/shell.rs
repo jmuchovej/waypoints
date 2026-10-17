@@ -76,6 +76,26 @@ pub fn gh(args: &[&str]) -> Result<String> {
         .to_owned())
 }
 
+pub fn nix(args: &[&str]) -> Result<String> {
+    let output = Command::new("nix")
+        .args(args)
+        .output()
+        .context("Failed to run `nix`")?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "`nix {}` failed:\n{}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+
+    Ok(String::from_utf8(output.stdout)
+        .context("`nix` emitted invalid UTF-8")?
+        .trim()
+        .to_owned())
+}
+
 pub fn env(name: &str) -> Result<String> {
     std::env::var(name).with_context(|| format!("${name} is not set"))
 }
