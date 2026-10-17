@@ -1,6 +1,6 @@
 ## Purpose
 
-Governs how the repository's CI definitions are produced and checked: the generator's library is part of the repository with its upstream provenance recorded, lint suppressions are declared on the step they concern and emitted with it, and generated workflows pass the workflow linter in CI with no configuration-file ignores.
+Governs how the repository's CI definitions are produced and checked: the generator's library is part of the repository with its upstream provenance recorded and its dependencies the repository's to advance, lint suppressions are declared on the step they concern and emitted with it, and generated workflows pass the workflow linter in CI with no configuration-file ignores.
 
 ## ADDED Requirements
 
@@ -27,6 +27,44 @@ The library the workflow generator is built on SHALL be source in this repositor
 
 - **WHEN** the repository's lint, test, and format hooks run
 - **THEN** the vendored library is covered by them
+
+### Requirement: The generator's dependencies are the repository's to advance
+
+No supply-chain advisory SHALL be carried as an accepted exception on the generator's behalf when the fix is a dependency change within this repository's manifests. The generator's serialization backend SHALL be a maintained crate. Where a chosen backend's versioning scheme makes every release a breaking change, that SHALL be recorded beside the source and its upgrades SHALL be review-gated rather than accepted automatically.
+
+#### Scenario: No advisory is carried for the generator
+
+- **WHEN** the supply-chain audit runs over the workspace
+- **THEN** it passes with no ignored advisory whose subject is a dependency reached only through the workflow generator
+
+#### Scenario: An unreachable pin is not an excuse
+
+- **WHEN** a dependency of the generator's library carries an advisory whose fix is a version its own dependent pins away from
+- **THEN** the dependent is a manifest in this repository, so the pin is changed rather than the advisory ignored
+
+#### Scenario: A breaking-by-default dependency is flagged for review
+
+- **WHEN** the generator depends on a crate whose release series makes every bump semver-breaking
+- **THEN** that hazard is recorded beside the source and the dependency-update configuration treats its bumps as requiring review
+
+### Requirement: A serializer change is proven not to change workflow meaning
+
+Replacing or upgrading the generator's serialization backend MAY restyle the generated YAML — quoting, scalar style, or whitespace — and such a restyle SHALL be verified to leave every parsed value unchanged, by normalising the committed and regenerated workflows through a strict parser and comparing the results, rather than by byte comparison. A restyle SHALL be committed on its own, without a behavioural change in the same commit, after which byte comparison SHALL again be the standing check.
+
+#### Scenario: A restyle is accepted on proof of equivalence
+
+- **WHEN** the serialization backend changes and regeneration produces a textual diff in the committed workflows
+- **THEN** each affected workflow's committed and regenerated forms normalise to identical parsed documents, and the diff is confined to serialization style
+
+#### Scenario: A meaning change is caught
+
+- **WHEN** a backend change alters a value's type or content — a quoted scalar becoming a number, boolean, or null
+- **THEN** the normalised comparison differs and the change is rejected
+
+#### Scenario: Byte equality is the standing check
+
+- **WHEN** no serialization backend change is in flight
+- **THEN** regeneration of the committed workflows is byte-identical
 
 ### Requirement: Lint suppressions are declared on the step they concern
 
