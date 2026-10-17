@@ -818,7 +818,7 @@ jobs:
       - id: publish-mobile-app
         name: Upload to the App Store
         if: needs.prepare.outputs.tag != ''
-        run: secretspec run --profile release --scope ios -- fastlane ios nightly
+        run: secretspec run --profile release --scope ios -- xfastlane publish ios nightly
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -1020,7 +1020,7 @@ jobs:
       - id: publish-mobile-app
         name: Upload to the Play Store
         if: needs.prepare.outputs.tag != ''
-        run: secretspec run --profile release --scope android -- fastlane android nightly
+        run: secretspec run --profile release --scope android -- xfastlane publish android nightly
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
