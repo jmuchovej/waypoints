@@ -1,20 +1,33 @@
-# The `outpost` operator binary: a Station over QUIC — storage, and the
+# The `outpost` command-line binary: a Station over QUIC — storage, and the
 # fleet orderer when handed a fleet key — built from the tree with the `cli`
 # feature. Headless: none of the desktop app's GUI toolkit, JavaScript
 # runtime, or frontend enters its closure. The version is the crate
 # manifest's, which is kept parseable by `builtins.fromTOML` (strict TOML
 # 1.0; see the nix-flake-overlay design, D10).
+#
+# Unlike the app, this has no channels: outpost publishes no release of its
+# own yet, so the overlay always applies this recipe to its own tree. When
+# outpost gains a release record, it joins the fetch-by-rev path the app
+# uses and this argument list is what a newer overlay would call on an older
+# tag — so add arguments with defaults, never rename or remove one.
 {
-  root,
   lib,
   rustPlatform,
   makeRustPlatform,
+  # The tree to build. A real Nix path, not a string: `lib.fileset` rejects
+  # string-encoded paths outright. (Not `root`: nixpkgs has a package by that
+  # name, and `callPackage` would fill it in.)
+  workingTree,
   # Escape hatch (see nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
   # e.g. from rust-overlay. Default: the consumer nixpkgs' rustPlatform.
   rustToolchain ? null,
 }:
 let
-  manifest = fromTOML (builtins.readFile (root + "/crates/outpost/Cargo.toml"));
+  # Files read at evaluation are reached by path arithmetic, never by
+  # interpolating `workingTree` into a string: that coerces the path to a
+  # store path, which copies the whole tree — a working copy's `target/`
+  # included — before a single byte is read.
+  manifest = fromTOML (builtins.readFile (workingTree + "/crates/outpost/Cargo.toml"));
 
   # The git-sourced cargo crates' hashes belong to the workspace lockfile, not
   # to a package, so they are read from the one pins file `nix-pins` keeps
@@ -40,21 +53,21 @@ rust-platform.buildRustPackage (_finalAttrs: {
   src =
     with lib.fileset;
     toSource {
-      inherit root;
+      root = workingTree;
       fileset = unions [
-        (root + "/Cargo.toml")
-        (root + "/Cargo.lock")
-        (root + "/crates")
-        (root + "/tooling")
-        (root + "/vendor")
-        (root + "/src-tauri/Cargo.toml")
-        (root + "/src-tauri/build.rs")
-        (root + "/src-tauri/src")
+        (workingTree + "/Cargo.toml")
+        (workingTree + "/Cargo.lock")
+        (workingTree + "/crates")
+        (workingTree + "/tooling")
+        (workingTree + "/vendor")
+        (workingTree + "/src-tauri/Cargo.toml")
+        (workingTree + "/src-tauri/build.rs")
+        (workingTree + "/src-tauri/src")
       ];
     };
 
   cargoLock = {
-    lockFile = root + "/Cargo.lock";
+    lockFile = workingTree + "/Cargo.lock";
     outputHashes = pins.cargoOutputHashes;
   };
 
@@ -70,7 +83,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
   doCheck = false;
 
   meta = {
-    description = "Waypoints sync Station — the outpost operator CLI";
+    description = "Waypoints sync Station — the outpost command-line binary";
     homepage = "https://waypoints.so";
     platforms = [
       "aarch64-darwin"

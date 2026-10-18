@@ -14,6 +14,9 @@ mod app "src/justfile"
 # App (back-end) scoped recipes
 mod tauri "src-tauri/justfile"
 
+# Gradle-side maintenance for the Android project
+mod android "src-tauri/gen/android/justfile"
+
 # Recipes for `cartograph`
 mod cartograph "crates/cartograph/justfile"
 

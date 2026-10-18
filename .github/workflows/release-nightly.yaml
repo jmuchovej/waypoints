@@ -29,7 +29,9 @@ jobs:
     name: Plan the nightly
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+    environment:
+      name: CI
     outputs:
       tag: ${{ steps.nightly-plan.outputs.tag }}
       should_build: ${{ steps.nightly-plan.outputs.should_build }}
@@ -44,22 +46,72 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
+          fetch-depth: "0"
           fetch-tags: "true"
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: "2026.8.6"
           cache: "false"
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
+      - name: Resolve the botswain secrets
+        run: secretspec export --profile ci --scope botswain --format gha
+        shell: bash
+        env:
+          SECRETSPEC_REASON: CI resolves the ci profile's botswain scope to authenticate as the App it names
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: app-token
+        name: Mint a wp-botswain token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
+          private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
+          permission-contents: write
       - id: nightly-plan
         name: cargo xtask nightly-plan
         run: cargo xtask nightly-plan ${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
   test-macos:
     needs:
       - prepare
@@ -266,16 +318,87 @@ jobs:
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: "2026.8.6"
-          cache: "false"
+          cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
+      - id: cache-restore-pnpm-store
+        name: Restore pnpm-store
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
         run: pnpm install --frozen-lockfile
         shell: bash
+      - id: cache-save-pnpm-store
+        name: Save pnpm-store
+        if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build macOS
         run: "just tauri::build macos nightly"
         shell: bash
         env:
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
@@ -322,16 +445,87 @@ jobs:
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: "2026.8.6"
-          cache: "false"
+          cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
+      - id: cache-restore-pnpm-store
+        name: Restore pnpm-store
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
         run: pnpm install --frozen-lockfile
         shell: bash
+      - id: cache-save-pnpm-store
+        name: Save pnpm-store
+        if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Windows
         run: "just tauri::build windows nightly"
         shell: bash
         env:
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
@@ -341,13 +535,12 @@ jobs:
           name: waypoints-windows-nightly
           path: |-
             target/release/bundle/nsis/*.exe
-            target/release/bundle/nsis/*.nsis.zip
-            target/release/bundle/nsis/*.nsis.zip.sig
+            target/release/bundle/nsis/*.exe.sig
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" target/release/bundle/nsis/*.exe target/release/bundle/nsis/*.nsis.zip target/release/bundle/nsis/*.nsis.zip.sig --clobber
+        run: gh release upload "${TAG}" target/release/bundle/nsis/*.exe target/release/bundle/nsis/*.exe.sig --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -395,16 +588,87 @@ jobs:
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: "2026.8.6"
-          cache: "false"
+          cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
+      - id: cache-restore-pnpm-store
+        name: Restore pnpm-store
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
         run: pnpm install --frozen-lockfile
         shell: bash
+      - id: cache-save-pnpm-store
+        name: Save pnpm-store
+        if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Linux
         run: "just tauri::build linux nightly"
         shell: bash
         env:
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
@@ -414,14 +678,13 @@ jobs:
           name: waypoints-linux-nightly
           path: |-
             target/release/bundle/appimage/*.AppImage
-            target/release/bundle/appimage/*.AppImage.tar.gz
-            target/release/bundle/appimage/*.AppImage.tar.gz.sig
+            target/release/bundle/appimage/*.AppImage.sig
             target/release/bundle/deb/*.deb
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" target/release/bundle/appimage/*.AppImage target/release/bundle/appimage/*.AppImage.tar.gz target/release/bundle/appimage/*.AppImage.tar.gz.sig target/release/bundle/deb/*.deb --clobber
+        run: gh release upload "${TAG}" target/release/bundle/appimage/*.AppImage target/release/bundle/appimage/*.AppImage.sig target/release/bundle/deb/*.deb --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -452,11 +715,64 @@ jobs:
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: "2026.8.6"
-          cache: "false"
+          cache: "true"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
+      - id: cache-restore-pnpm-store
+        name: Restore pnpm-store
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
         run: pnpm install --frozen-lockfile
         shell: bash
+      - id: cache-save-pnpm-store
+        name: Save pnpm-store
+        if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build iOS
         run: "just tauri::build ios nightly"
@@ -464,8 +780,26 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
           WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.bundle_version }}
           WAYPOINTS_VERSION: ${{ needs.prepare.outputs.version }}
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -535,18 +869,89 @@ jobs:
           accept-android-sdk-licenses: "true"
           log-accepted-android-sdk-licenses: "true"
           packages: platform-tools
-      - id: setup-android-ndk
-        name: Install Android NDK
-        run: sdkmanager "ndk;30.0.16138531"
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: "2026.8.6"
-          cache: "false"
+          cache: "true"
+      - id: cache-restore-gradle
+        name: Restore gradle
+        run: xcache restore "${CACHE_KEY}" "${HOME}/.gradle/caches/modules-2"
+        shell: bash
+        env:
+          CACHE_KEY: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/gen/android/gradle/verification-metadata.xml', 'src-tauri/gen/android/gradle/libs.versions.toml', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'src-tauri/gen/android/settings.gradle', 'src-tauri/gen/android/build.gradle.kts', 'src-tauri/gen/android/app/build.gradle.kts') }}
+          SECRETSPEC_REASON: restoring the gradle snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-restore-android-ndk
+        name: Restore android-ndk
+        run: xcache restore "${CACHE_KEY}" "${ANDROID_HOME}/ndk/30.0.16138531"
+        shell: bash
+        env:
+          CACHE_KEY: android-ndk-${{ runner.os }}-${{ runner.arch }}-30.0.16138531
+          SECRETSPEC_REASON: restoring the android-ndk snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: setup-android-ndk
+        name: Install Android NDK
+        run: sdkmanager "ndk;30.0.16138531"
+      - id: pnpm-store-dir
+        name: Pin the pnpm store
+        run: |-
+          case "${RUNNER_OS}" in
+            macOS) dir="${HOME}/Library/Preferences/pnpm" ;;
+            Linux) dir="${XDG_CONFIG_HOME:-${HOME}/.config}/pnpm" ;;
+            Windows) dir="${LOCALAPPDATA}/pnpm/config" ;;
+            *) echo "::error::no pnpm config path for ${RUNNER_OS}"; exit 1 ;;
+          esac
+          mkdir -p "${dir}"
+          printf 'storeDir: %s\n' "${RUNNER_TEMP}/pnpm-store" >> "${dir}/config.yaml"
+          echo "pnpm store pinned to ${RUNNER_TEMP}/pnpm-store in ${dir}/config.yaml"
+        shell: bash
+      - id: cache-restore-pnpm-store
+        name: Restore pnpm-store
+        run: xcache restore "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: restoring the pnpm-store snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: pnpm-install
         name: Install JS deps
         run: pnpm install --frozen-lockfile
         shell: bash
+      - id: cache-save-pnpm-store
+        name: Save pnpm-store
+        if: "!cancelled() && steps.cache-restore-pnpm-store.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${RUNNER_TEMP}/pnpm-store"
+        shell: bash
+        env:
+          CACHE_KEY: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          SECRETSPEC_REASON: saving the pnpm-store snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Android
         run: "just tauri::build android nightly"
@@ -554,22 +959,60 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
           WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.version_code }}
           WAYPOINTS_VERSION: ${{ needs.prepare.outputs.version }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/30.0.16138531
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-save-gradle
+        name: Save gradle
+        if: "!cancelled() && steps.cache-restore-gradle.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${HOME}/.gradle/caches/modules-2"
+        shell: bash
+        env:
+          CACHE_KEY: gradle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src-tauri/gen/android/gradle/verification-metadata.xml', 'src-tauri/gen/android/gradle/libs.versions.toml', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties', 'src-tauri/gen/android/settings.gradle', 'src-tauri/gen/android/build.gradle.kts', 'src-tauri/gen/android/app/build.gradle.kts') }}
+          SECRETSPEC_REASON: saving the gradle snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: cache-save-android-ndk
+        name: Save android-ndk
+        if: "!cancelled() && steps.cache-restore-android-ndk.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${ANDROID_HOME}/ndk/30.0.16138531"
+        shell: bash
+        env:
+          CACHE_KEY: android-ndk-${{ runner.os }}-${{ runner.arch }}-30.0.16138531
+          SECRETSPEC_REASON: saving the android-ndk snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-android-nightly
           path: |-
-            src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+            src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
             src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
           if-no-files-found: error
       - id: upload-release
         name: Upload to GitHub Release
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
+        run: gh release upload "${TAG}" src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -603,6 +1046,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.prepare.outputs.tag }}
 concurrency:
   group: nightly

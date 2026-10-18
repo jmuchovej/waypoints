@@ -9,9 +9,19 @@
 //!
 //! Nightlies are minted by [`super::release`]'s `prepare` job instead — their
 //! version is a timestamp, not a claim about content.
+//!
+//! Refs are minted with the wp-botswain App token rather than `GITHUB_TOKEN`:
+//! a tag pushed with the latter raises no `push` event, so neither the
+//! channel's release workflow nor the release index would run on it.
 
-use super::{MiseEnv, WorkflowContext, WorkflowInput, helpers, runners, steps};
-use gh_workflow::{Event, Job, Level, Permissions, Workflow, WorkflowDispatch};
+use super::{
+    MiseEnv, WorkflowContext, WorkflowInput, helpers, helpers::Environment, runners, steps,
+    steps::Tools,
+};
+use gh_workflow::{
+    Environment as GhEnvironment, Event, Job, Level, Permissions, StepOutput, Workflow,
+    WorkflowDispatch,
+};
 
 pub fn workflow(context: &WorkflowContext) -> Workflow {
     let transition = WorkflowInput::choices(
@@ -21,24 +31,44 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     )
     .description("Which release-cycle transition to perform");
 
+    let app_token = steps::app_token(&[("contents", "write")]);
+    let token = StepOutput::new_trusted(&app_token, "token");
+    let registry = steps::cargo_registry(steps::CARGO_HOME);
+
     let plan = Job::new("plan the transition")
         // A `cargo xtask` run and nothing more.
         .add_env(MiseEnv::select(&[MiseEnv::Xtask]))
-        // Write: the planner creates branch and tag refs.
-        .permissions(Permissions::default().contents(Level::Write))
+        // Only what `checkout` needs: the branch, the version commit, and the
+        // tag are created with the App token, which carries its own scope.
+        .permissions(Permissions::default().contents(Level::Read))
+        // Authenticates as the App and compiles through the CI cache, so the
+        // vault credential comes from the automation environment.
+        .environment(GhEnvironment::from(Environment::Ci))
         .runs_on(runners::LINUX)
-        // Tags without history: the planner reads them to find the last
-        // release, and walks commits only from there.
-        .add_step(steps::checkout().add_with(("fetch-tags", true)))
+        // Tags and the history between them: a cut walks from the last stable
+        // release to HEAD with a pathspec that drops the index directory, and
+        // in a shallow clone the tip is a root commit that appears to touch
+        // every path — see the nightly planner.
+        .add_step(
+            steps::checkout()
+                .add_with(("fetch-depth", 0))
+                .add_with(("fetch-tags", true)),
+        )
         .add_step(steps::setup_mise(false.into(), &context.mise_version))
         // As with the nightly planner: the cost here is compiling xtask, and
-        // this job publishes nothing.
-        .add_step(steps::rust_cache())
-        .add_step(
+        // the build jobs' registry snapshot and compiler cache answer most of
+        // it.
+        .add_step(steps::cache_restore(&registry, Tools::Mise))
+        .add_step(steps::sccache_start(Tools::Mise))
+        .add_step(steps::botswain_credentials())
+        .add_step(app_token)
+        .add_step(steps::with_sccache(
             steps::cargo_xtask("release-plan", &[("${{ inputs.transition }}", None)])
                 .id("release-plan")
-                .add_env(("GH_TOKEN", helpers::GITHUB_TOKEN)),
-        );
+                .add_env(("GH_TOKEN", token.to_string())),
+        ))
+        .add_step(steps::sccache_stats(Tools::Mise))
+        .add_step(steps::cache_save(&registry, Tools::Mise));
 
     helpers::named_workflow("mint the refs for a release-cycle transition")
         .on(Event::default().workflow_dispatch(

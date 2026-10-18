@@ -4,9 +4,14 @@
 //! Renovate covers the language ecosystems on the same Monday cadence but has
 //! no manager for `devenv.lock`, so nothing else moves these inputs.
 
-use super::{WorkflowContext, helpers, helpers::Profile, runners, steps};
+use super::{
+    WorkflowContext, helpers,
+    helpers::{CiScope, Environment, Resolution},
+    runners, steps,
+};
 use gh_workflow::{
-    Event, Job, Level, Permissions, Schedule, StepOutput, Workflow, WorkflowDispatch,
+    Environment as GhEnvironment, Event, Job, Level, Permissions, Schedule, StepOutput, Workflow,
+    WorkflowDispatch,
 };
 
 /// 04:00 UTC on Mondays. `schedule` only fires on the default branch, which is
@@ -25,7 +30,10 @@ const BODY: &str = concat!(
     "lockfiles, and the workflows under `.github/workflows`.\n\n",
     "Opened by the weekly schedule in `xtask::workflows::devenv_update`. ",
     "Review the toolchain moves before merging; `check-generated` proves only ",
-    "that the tree is self-consistent, not that the new versions work.",
+    "that the tree is self-consistent, not that the new versions work.\n\n",
+    "If Gradle, Kotlin, or the Android Gradle Plugin moved, the Android build ",
+    "fails dependency verification until `just android::verification-metadata` ",
+    "has been run and its output committed on this branch.",
 );
 
 /// Sources and outputs the update is allowed to touch. Anything else the run
@@ -55,19 +63,19 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     // Through the shell, like the step before it: `secretspec` and `op` are
     // both devenv's here, and nothing installs them any other way.
     let export = steps::SecretSpec::export()
-        .with_profile(Profile::Automation)
+        .resolving(Resolution::Ci(CiScope::Botswain))
         .inside_devenv()
-        .with_reason(format!(
-            "CI resolves the {} profile to authenticate as the app it names",
-            Profile::Automation.name()
-        ));
+        .with_reason(
+            "CI resolves the ci profile's botswain scope to authenticate as the App it names",
+        );
 
     let update = Job::new("refresh devenv.lock and everything generated from it")
         // Only what `checkout` needs. The branch and the pull request are
         // pushed with the App token, which carries its own write scopes.
         .permissions(Permissions::default().contents(Level::Read))
-        // The vault credential for the automation profile lives here.
-        .environment(Profile::Automation.environment())
+        // Authenticates as the App, so the vault credential comes from the
+        // automation environment.
+        .environment(GhEnvironment::from(Environment::Ci))
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
         // `devenv update` evaluates and realises the whole environment,

@@ -13,10 +13,11 @@
 # touched once, after the answer is known, so an interrupted run cannot leave
 # a placeholder behind to be committed.
 #
-# Builds go through `nix/overlay.nix` with `root` set to this tree rather than
-# `nix build .#`, because an added jj workspace has no `.git` and nix would
-# copy the whole directory — `target/` included — into the store. The overlay
-# takes `root` for exactly this reason; see its header.
+# Builds call `nix/packages/waypoints/package.nix` with `workingTree` set to
+# this tree rather than `nix build .#`, because an added jj workspace has no `.git`
+# and nix would copy the whole directory — `target/` included — into the
+# store. Not through the overlay: its packages build the releases the index
+# records, and these pins describe the working tree.
 
 const PINS_FILE = "nix/packages/waypoints/hashes.json"
 
@@ -33,7 +34,7 @@ const PINNED = [
   {
     name: "pnpm-deps"
     key: "pnpmDeps"
-    attr: "waypoints.frontend.pnpmDeps"
+    attr: "frontend.pnpmDeps"
     drv: "waypoints-frontend-pnpm-deps"
   }
 ]
@@ -47,16 +48,21 @@ def nixpkgs-rev [root: string]: nothing -> string {
   | get nodes.nixpkgs.locked.rev
 }
 
-# Builds `attr` with its hash forced to `lib.fakeHash`, which must fail. The
-# tree is read through the overlay's `root`, so uncommitted edits count.
+# Builds `attr` of the in-tree package with its hash forced to `lib.fakeHash`,
+# which must fail. The tree is read through `root`, so uncommitted edits
+# count. The flavor is immaterial to every pin — the hashes describe the
+# dependency set — and development is the one that is no channel.
 def build-against-placeholder [root: string, attr: string]: nothing -> record {
   let expr = $"
     let
       pkgs = import \(builtins.getFlake \"github:NixOS/nixpkgs/(nixpkgs-rev $root)\") {
         system = builtins.currentSystem;
-        overlays = [ \(import ($root)/nix/overlay.nix { root = ($root); }) ];
       };
-    in \(pkgs.($attr)).overrideAttrs \(_: { outputHash = pkgs.lib.fakeHash; })
+      waypoints = pkgs.callPackage ($root)/nix/packages/waypoints/package.nix {
+        workingTree = ($root);
+        flavor = \"development\";
+      };
+    in \(waypoints.($attr)).overrideAttrs \(_: { outputHash = pkgs.lib.fakeHash; })
   "
 
   do { ^nix build --impure --no-link --expr $expr } | complete
