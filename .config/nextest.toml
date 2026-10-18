@@ -6,3 +6,9 @@
   [[profile.default.overrides]]
     filter       = "test(=compile_fail)"
     slow-timeout = { period = "300s", terminate-after = 2 }
+
+  # since outpost::readiness seeds hundreds of holds through real registration
+  # before watching the binary scan them – give some grace to CI runners.
+  [[profile.default.overrides]]
+    filter       = "binary(readiness)"
+    slow-timeout = { period = "60s", terminate-after = 5 }
