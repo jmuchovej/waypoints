@@ -146,6 +146,33 @@ fn provisional_next_main(target: &Version) -> Result<Version> {
     Ok(next)
 }
 
+/// What every commit the planner writes is prefixed with. Release bookkeeping
+/// is a conventional `chore`, which `.config/cliff.toml` both accepts and
+/// keeps out of the notes.
+///
+/// Not cosmetic: the release's own `git-cliff` step runs under
+/// `require_conventional`, and it runs *after* the tag exists. An
+/// unconventional message there mints the tag and then fails the draft, which
+/// skips every build — as `v0.1.x preview 0.1.0-pre.1` did.
+const RELEASE_PREFIX: &str = "chore(release): ";
+
+impl Plan {
+    /// The message for the version commit this plan's tag points at.
+    fn commit_message(&self) -> String {
+        format!(
+            "{RELEASE_PREFIX}{branch} {channel} {version}",
+            branch = self.branch,
+            channel = self.channel,
+            version = self.version,
+        )
+    }
+}
+
+/// The message for `main`'s post-cut bump.
+fn next_main_message(next: &Version) -> String {
+    format!("{RELEASE_PREFIX}main now targets {next}")
+}
+
 fn plan_cut(last_release: &Version, commits: &[String]) -> Result<Plan> {
     let target = cut_target(last_release, commits);
     let next_main = provisional_next_main(&target)?;
@@ -410,15 +437,7 @@ pub fn run(args: ReleasePlanArgs) -> Result<()> {
     // instead would point the tag at the commit before the bump, leaving the
     // tag and the manifest it names disagreeing.
     let version = Version::parse(&plan.version)?;
-    let commit = write_version(
-        &plan.branch,
-        &version,
-        &format!(
-            "{branch} {channel} {version}",
-            branch = plan.branch,
-            channel = plan.channel
-        ),
-    )?;
+    let commit = write_version(&plan.branch, &version, &plan.commit_message())?;
     create_ref("tags", &plan.tag, &commit)?;
     println!("  tagged {tag} at {commit}", tag = plan.tag);
 
@@ -426,7 +445,7 @@ pub fn run(args: ReleasePlanArgs) -> Result<()> {
     // able to commit through a PR — adjust accordingly.
     if !plan.next_main_version.is_empty() {
         let next = Version::parse(&plan.next_main_version)?;
-        let bumped = write_version("main", &next, &format!("main now targets {next}"))?;
+        let bumped = write_version("main", &next, &next_main_message(&next))?;
         println!("  main bumped to {next} at {bumped}");
     }
 
@@ -474,6 +493,44 @@ mod tests {
         for version in ["0.2.0-pre.1", "0.2.0", "0.2.7"] {
             assert_eq!(release_branch(&v(version)), "v0.2.x");
         }
+    }
+
+    /// `git-cliff` runs under `require_conventional`, and it runs after the
+    /// tag is minted — so an unconventional message here fails a release that
+    /// is already tagged, and skips every build behind the draft. Every
+    /// message the planner writes must parse as `type(scope): description`,
+    /// and cliff must keep it out of the notes.
+    #[test]
+    fn every_message_the_planner_writes_is_conventional_and_skipped() {
+        let messages = [
+            plan_cut(&v("0.1.0"), &msgs(&["feat: charts"]))
+                .unwrap()
+                .commit_message(),
+            plan_advance(&v("0.2.0-pre.1")).unwrap().commit_message(),
+            plan_promote(&v("0.2.0-pre.7")).unwrap().commit_message(),
+            plan_patch(&v("0.2.0")).unwrap().commit_message(),
+            next_main_message(&v("0.3.0-nightly")),
+        ];
+
+        for message in &messages {
+            assert!(message.starts_with(RELEASE_PREFIX), "{message}");
+            let (header, description) = message.split_once(": ").expect(message);
+            assert!(!header.contains(' '), "{message}");
+            assert!(!description.is_empty(), "{message}");
+        }
+
+        // The prefix is only usable because cliff's parsers skip it: a
+        // release whose notes listed its own version bump would be noise.
+        let cliff = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.config/cliff.toml"),
+        )
+        .expect("cliff.toml");
+        assert!(
+            cliff
+                .lines()
+                .any(|line| line.contains(r"^chore\\(release\\):") && line.contains("skip = true")),
+            "cliff.toml no longer skips the planner's commits"
+        );
     }
 
     /// The index commits land on `main` between releases, and the cut reads
