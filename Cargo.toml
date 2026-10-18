@@ -58,7 +58,7 @@
     chrono-tz          = { version = "0.10.4", default-features = false, features = [
       "serde"
     ] }
-    clap               = { version = "4.6.1", features = [ "derive" ] }
+    clap               = { version = "4.6.1", features = [ "derive", "env" ] }
     derive_more        = "2.1.1"
     directories        = "6.0.0"
     eyre               = "0.6.12"
@@ -74,6 +74,7 @@
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
+    libc               = "0.2"
     objc2-app-kit      = { version = "0.3", default-features = false, features = [
       "NSScrollView",
       "NSView"

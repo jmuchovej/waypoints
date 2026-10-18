@@ -386,11 +386,9 @@ This section enumerates known gaps and missing capabilities. An agent should ref
 
 7. **The `extra` field on Marks and Terrain is unindexed and unvalidated.** Any feature that relies on querying or filtering by `extra` contents will be slow (full-table scan with JSON parsing) unless auxiliary indexing is added.
 
-8. **WAL is configured; crash recovery is unverified.** `PRAGMA journal_mode = WAL` is set on file-backed databases by default (`crates/bedrock/src/pool.rs`, `crates/bedrock/src/config.rs`), and a `crates/bedrock/src/durability.rs` exists. What is still missing is **verification** — crash-recovery testing has not been performed against the current storage layer, and the migration off SeaORM invalidated whatever prior verification existed.
+8. **No backup/export of territory databases.** No mechanism to export, import, or back up a territory's database. The engine's durability posture itself is specified and verified — WAL, `synchronous = FULL`, and committed writes surviving a SIGKILLed process (`openspec/specs/storage/spec.md`, _Committed writes survive abrupt process termination_; `crates/bedrock/tests/crash_recovery.rs`, `crates/bedrock/tests/durability.rs`) — so what is missing is tooling, not confidence in the files.
 
-9. **No backup/export of territory databases.** No mechanism to export, import, or back up a territory's database.
-
-10. **Note content does not sync.** The sync engine works, but nothing serializes the Mark/Terrain graph onto it. See §11.
+9. **Note content does not sync.** The sync engine works, but nothing serializes the Mark/Terrain graph onto it. See §11.
 
 ---
 

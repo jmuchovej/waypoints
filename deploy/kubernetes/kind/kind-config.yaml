@@ -1,0 +1,11 @@
+# `kind create cluster --config kind-config.yaml` (or `just deploy::kind-up`):
+# the Station's NodePort reaches the host as UDP 6782, the number the
+# kustomization advertises.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30782
+        hostPort: 6782
+        protocol: UDP

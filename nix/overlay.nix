@@ -99,4 +99,12 @@ in
     preview = package "preview";
     nightly = package "nightly";
   };
+
+  # The sync server's command-line binary — headless, and channel-less: it
+  # publishes no release of its own yet, so every ref builds it from its own
+  # tree rather than from a recorded entry.
+  outpost = final.callPackage ./packages/outpost/package.nix {
+    inherit rustToolchain;
+    workingTree = tree;
+  };
 }

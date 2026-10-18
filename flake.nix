@@ -1,9 +1,9 @@
 # Packaging-only flake (see openspec distribution/nix-overlay): exposes the
-# desktop app through nix/overlay.nix. The dev shell stays on devenv.yaml —
-# `nix develop` is not a supported entry point, and this flake's inputs are
-# deliberately independent of devenv's lock.
+# desktop app and the outpost Station through nix/overlay.nix. The dev shell
+# stays on devenv.yaml — `nix develop` is not a supported entry point, and
+# this flake's inputs are deliberately independent of devenv's lock.
 {
-  description = "Waypoints — flake overlay for the desktop app";
+  description = "Waypoints — flake overlay for the desktop app and the outpost Station";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -23,7 +23,7 @@
       flake.overlays.default = import ./nix/overlay.nix { };
 
       perSystem =
-        { pkgs, ... }:
+        { pkgs, lib, ... }:
         let
           # build.rs falls back to "unknown" on dirty/unknown trees.
           rev = inputs.self.rev or inputs.self.dirtyRev or null;
@@ -37,6 +37,15 @@
           packages = {
             inherit (overlaid.waypoints) stable preview nightly;
             default = overlaid.waypoints.${default};
+            # Channel-less and unstamped: outpost publishes no release yet, so
+            # the overlay builds it from this tree, and the Station carries no
+            # build metadata to stamp.
+            inherit (overlaid) outpost;
+          }
+          # The container image is a Linux artifact and a flake output only —
+          # the overlay stays a package set.
+          // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+            outpost-image = overlaid.callPackage ./nix/packages/outpost/_image.nix { };
           };
 
           # The recipe applied to this very tree under the development flavor,

@@ -21,6 +21,7 @@
       "build-desktop"
       "build-mobile"
       "website"
+      "deploy"
     ];
 
     tools = {
@@ -113,6 +114,24 @@
           "macos"
         ];
         envs = [ "devtools" ];
+      };
+
+      # The deploy lane: validating the Station manifests under deploy/ and
+      # standing them up on kind (`just deploy::…`).
+      kubeconform = {
+        package = pkgs.kubeconform;
+        spec = "aqua:yannh/kubeconform";
+        envs = [ "deploy" ];
+      };
+      kubectl = {
+        package = pkgs.kubectl;
+        spec = "aqua:kubernetes/kubernetes/kubectl";
+        envs = [ "deploy" ];
+      };
+      kind = {
+        package = pkgs.kind;
+        spec = "aqua:kubernetes-sigs/kind";
+        envs = [ "deploy" ];
       };
 
       # Shell-only: the local development store for secrets. No CI lane
