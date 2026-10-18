@@ -650,6 +650,35 @@ mod tests {
         }
     }
 
+    /// `gh` reads the repository from the checkout's git remote unless
+    /// `GH_REPO` says otherwise, so a job that calls it without checking out
+    /// dies on `not a git repository`. The publish job did exactly that, and
+    /// the gap survived until the first release where every build succeeded
+    /// and the job therefore ran at all.
+    #[test]
+    fn every_gh_call_knows_its_repository() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+                let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
+                let checks_out = steps.iter().any(|step| step["id"] == "checkout");
+                for step in &steps {
+                    let calls_gh = step["run"]
+                        .as_str()
+                        .unwrap_or("")
+                        .split_whitespace()
+                        .any(|word| word == "gh");
+                    assert!(
+                        !calls_gh || checks_out || step["env"].get("GH_REPO").is_some(),
+                        "{name}/{job_name}: {} calls gh with neither a checkout nor GH_REPO",
+                        step["name"]
+                    );
+                }
+            }
+        }
+    }
+
     /// Both halves travel together: a step with the provider but no credential
     /// would resolve nothing, one with the credential but no provider would
     /// resolve against `env://` under devenv.

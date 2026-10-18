@@ -766,11 +766,17 @@ pub fn upload_to_release(platform: Platform, tag: Option<&JobOutput>) -> Step<Ru
 }
 
 /// Flips the draft public. When this runs is the publish job's decision.
+///
+/// `GH_REPO` because this is the one `gh` call in a job that checks nothing
+/// out, and `gh` otherwise reads the repository from the checkout's git
+/// remote. The job only runs when every build succeeded, so the gap survived
+/// until the first release where that happened.
 pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
     Step::new("Publish the release")
         .run(r#"gh release edit "${TAG}" --draft=false"#)
         .shell("bash")
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
+        .add_env(("GH_REPO", "${{ github.repository }}"))
         .add_env(("TAG", Channel::tag(tag)))
         .id("publish-release")
 }
