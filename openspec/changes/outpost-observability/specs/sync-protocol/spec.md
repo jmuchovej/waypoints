@@ -20,6 +20,8 @@ A Station with its own database SHALL keep an events table in it. Each event SHA
 
 Events SHALL be retained for a period the commodore configures as a duration written the way a person writes one (`3mo`, `6wk`, `90d`), three months by default and never less than one day. The Station SHALL remove events older than the retention period at start-up and on a schedule thereafter, no less often than hourly, and SHALL always keep the most recent event whatever its age, so the sequence is recoverable after any idle stretch.
 
+Calendar units in the period SHALL be calendar-accurate rather than averaged: a period in months retains back to the same day of the month, clamped where that month is shorter, so a three-month window is between 89 and 92 days depending on the day the prune runs. A period written in days is exact, and is how a commodore asks for a window of fixed length.
+
 Refusals SHALL be coalesced per source. The first refusal of a given reason from a connection's remote address SHALL be recorded at once with `count` 1; further refusals of that reason from that address within the following minute SHALL be counted rather than recorded, and once the minute has passed — at the latest at the next event the Station records, or at shutdown — one event SHALL be appended carrying the `count` of refusals it stands for and `since`, the time of the first of them. The address is the coalescing key only and SHALL NOT be written to the event. Coalescing bounds the record under a flood; it does not bound the flood.
 
 #### Scenario: A homed Territory is recorded
@@ -56,6 +58,11 @@ Refusals SHALL be coalesced per source. The first refusal of a given reason from
 
 - **WHEN** a Station is started with a retention period of `6wk`
 - **THEN** it starts, and an event dated seven weeks ago is pruned while one dated five weeks ago is kept
+
+#### Scenario: A months period counts calendar months
+
+- **WHEN** a Station with the default retention prunes on 31 May 2027
+- **THEN** events dated before 28 February 2027 are removed and one dated 1 March 2027 is kept — the window is the calendar three months, clamped into the shorter month, rather than a fixed count of days
 
 #### Scenario: Retention below a day is refused
 
