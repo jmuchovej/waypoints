@@ -12,8 +12,8 @@ pub struct SyncArgs {
     /// Data directory the app created (holds the mnemonic + Territory).
     #[arg(long, default_value = ".outpost")]
     data: PathBuf,
-    /// The Station's address file (`station.addr` written by
-    /// `station-run`).
+    /// The Station's address file (`station.addr`, written by
+    /// `outpost station`).
     #[arg(long)]
     station: PathBuf,
 }

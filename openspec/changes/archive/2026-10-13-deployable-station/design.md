@@ -64,6 +64,8 @@ Bind order is TCP first. The binary binds a `TcpListener` on the wildcard addres
 
 **Why TCP first.** The TCP bind is the only one of the two whose port can be read back before the Station's constructor runs its storage scan; binding UDP first would put the probe listener up only after the scan, and ephemeral mode would behave differently from a fixed port. One order, one number, one code path.
 
+**Amendment (2026-10-13, found by the audit).** Bound is not served. The first implementation bound the listener before the scan but spawned the server on it only after the Station was built, so during a long scan a probe's connection sat in the backlog and timed out — never a 503. It surfaced only once the kind pod homed 300 Territories (`tests/audit.rs::register_many`) and the replacement was sampled through its five-second scan; a startup delay would not have shown it, because a sleep behaves the same whichever side of the `spawn` it sits on. The server is now spawned on the listener before the Station is constructed, and aborted (dropping the listener) on the ephemeral-port retry. `tests/readiness.rs` homes 300 Territories through an in-process Station and asserts the 503 phase against the real binary. Measured: about 16 ms per hold on the kind pod (arm64 release build) and 8 ms on the Mac debug build, two file descriptors per hold.
+
 **Why one port number.** TCP and UDP port spaces are independent, so 6782/udp for QUIC and 6782/tcp for probes coexist. An operator reads one number off a Service, a firewall rule, or an `--advertise` value, and the probe is at that number too. The manifests declare both protocols on `containerPort: 6782`, the Service stays UDP-only, and any NetworkPolicy must allow both.
 
 **Why always on, unscoped.** Probes are how a supervisor tells a live Station from a stuck one; a Station without them is not a deployable one, and nothing is gained by letting a dev run omit them. Scoping the bind address or gating the routes is access control — defence in depth behind the encrypted envelopes that are the actual protection — and it is deferred until there is a threat to answer. The routes leak nothing (see the spec's _The listener reveals nothing_), so an open listener is a status page, not a surface.
@@ -95,6 +97,8 @@ Bind order is TCP first. The binary binds a `TcpListener` on the wildcard addres
 **Why `buildLayeredImage` over `streamLayeredImage`.** `kind load image-archive ./result` wants an archive on disk, which is the one consumer this change has. **Why not nix2container.** A flake input for incremental-layer benefits an 8 MB binary does not need.
 
 **Practical note.** The image is a Linux derivation; on the maintainer's darwin hosts it builds through a Linux remote builder (`nix.linux-builder` on nix-darwin) or on a Linux machine. The tasks say which was used.
+
+**Amendment (2026-10-10, at implementation).** `Entrypoint = [ "outpost" ]` with `Cmd = [ "station" ]`, not a single two-word `Entrypoint`: Kubernetes `args` replaces `Cmd` and appends to `Entrypoint`, so the manifests' `args: [station, --port=6782, …]` would otherwise run `outpost station station …`. `WorkingDir` is dropped — `OUTPOST_DATA=/data` is absolute, and a working directory that does not exist until a volume is mounted is a runtime-dependent edge the image need not carry.
 
 ### D10 — Manifests: a kustomize base plus a `kind` overlay
 
@@ -149,7 +153,7 @@ StatefulSet: `replicas: 1`, `volumeClaimTemplates` RWO at `/data`, two Secret vo
 - [`axum` in the `cli` feature pulls `hyper`/`tower` into the server binary] → Server binary, already-compiled workspace dependency; no effect on the app or the role features.
 - [`readOnlyRootFilesystem` with a binary that wants to write somewhere unexpected] → The only writes are under `--data`; the kind run with the manifests' security context is the test.
 - [`clap`'s `env` feature at the workspace table changes nothing for other binaries but is a shared-table edit] → Additive feature; `cargo metadata` diff is the check.
-- [`scan_holds` opening every hold eagerly may exceed the pod's file-descriptor limit on a large Fleet] → Not this change's problem at one Station with a developer's Territories; the startup probe's budget is the knob until a lazy scan exists.
+- [`scan_holds` opening every hold eagerly may exceed the pod's file-descriptor limit on a large Fleet] → Not this change's problem at one Station with a developer's Territories; the startup probe's budget is the knob until a lazy scan exists. Measured on kind: 300 holds take about five seconds and 600 descriptors, so the five-minute startup budget covers on the order of fifteen thousand holds and the descriptor limit (2³¹ on containerd) is not the binding constraint.
 - [Removing `--orderer` breaks anyone's dev invocation] → Nothing in the tree invokes it (checked: no justfile, task, or doc runs `outpost station --orderer`); `main.rs`'s docs are rewritten with it.
 
 ## Migration Plan

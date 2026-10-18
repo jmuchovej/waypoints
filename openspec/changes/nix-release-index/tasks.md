@@ -38,4 +38,4 @@
 - [x] 6.3 Verify advancing the pinned ref across a commit that changed only one channel's entry rebuilds that channel and leaves the other two byte-identical
 - [ ] 6.4 Verify a simulated failed index write (tag created, write aborted) leaves the channel resolving its previous entry and the workflow re-runnable to completion from the dispatch
 - [x] 6.5 Cut the first series and verify its branch ref builds `preview` as itself, fails `stable` and `nightly` with the documented messages, and after promotion builds `stable` as itself and fails `preview`
-- [ ] 6.6 Verify co-installability, closure hygiene, and notify-only update behavior are unchanged from `nix-flake-overlay`'s spec now that sources come from tags
+- [x] 6.6 Verify co-installability, closure hygiene, and notify-only update behavior are unchanged from `nix-flake-overlay`'s spec now that sources come from tags
