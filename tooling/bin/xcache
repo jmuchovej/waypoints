@@ -1,0 +1,109 @@
+#!/usr/bin/env nu
+# Restores and saves directory snapshots in the ci-cache bucket, so each
+# generated workflow step is one line and the store protocol lives here.
+#
+#   xcache restore <key> <path>
+#   xcache save    <key> <path>
+#
+# A snapshot is `dirs/<key>.tar.gz` in the bucket, holding the directory by
+# its basename, archived from its parent, so a restore lands it where it was
+# saved from. Keys are the caller's business: the generated steps derive them
+# from the manifests that pin each directory.
+#
+# Only rclone holds the store credential. It runs under `secretspec run
+# --profile ci --scope cache`, so the caller supplies the provider, the vault
+# token, and a SECRETSPEC_REASON in the environment, as the generated steps
+# do; nothing here reads a secret. tar never sees the archive path: GNU tar on
+# the Windows runner reads `D:\a\_temp\…` as a remote host, so the archive
+# goes through nu's pipeline and tar sees only the member name.
+#
+# A miss, and a store or archive failure, is reported and exits 0: a release
+# must not fail because its cache is unreachable. `restore` publishes `hit`
+# as a step output when GITHUB_OUTPUT is set, which the save step's `if:`
+# reads.
+
+const BUCKET = "ci-cache"
+
+def remote [key: string]: nothing -> string {
+  $":s3,provider=Cloudflare,env_auth=true:($BUCKET)/dirs/($key).tar.gz"
+}
+
+# The archive between tar and rclone, in the runner's temp directory.
+def archive [key: string]: nothing -> path {
+  ($env.RUNNER_TEMP? | default ($env.TMPDIR? | default "/tmp")) | path join $"($key).tar.gz"
+}
+
+# The one call that contacts the store. `--s3-no-check-bucket`: the token is
+# scoped to the bucket and cannot list buckets, which rclone's pre-upload
+# check needs — without the flag it falls through to CreateBucket and a 403.
+def copyto [args: list<string>]: nothing -> record {
+  ^secretspec run --profile ci --scope cache -- rclone copyto --s3-no-check-bucket ...$args | complete
+}
+
+def report [result: record, what: string] {
+  if $result.exit_code != 0 {
+    print $"($what): rclone exited ($result.exit_code)"
+    print ($result.stderr | str trim)
+  }
+}
+
+def publish [name: string, value: string] {
+  let file = $env.GITHUB_OUTPUT? | default ""
+  if ($file | is-not-empty) { $"($name)=($value)\n" | save --append $file }
+}
+
+# Restore the snapshot under `key` to `path`.
+def "main restore" [key: string, path: string] {
+  let archive = archive $key
+  let parent = $path | path dirname
+  let copied = copyto [(remote $key) $archive]
+  report $copied "restore"
+  let hit = if $copied.exit_code == 0 and ($archive | path exists) {
+    try {
+      mkdir $parent
+      do { cd $parent; open --raw $archive | ^tar -xzf - }
+      true
+    } catch { |err| print $err.msg; false }
+  } else {
+    false
+  }
+  rm --force $archive
+  publish hit ($hit | into string)
+  if $hit {
+    print $"restored ($key) into ($path)"
+  } else {
+    print $"no entry for ($key); ($path) will be fetched"
+  }
+}
+
+# Save `path` to the store under `key`, unless an entry already exists there.
+# Write-once: `--ignore-existing` leaves an entry that appeared in the
+# meantime alone, so a key always names the first snapshot written under it.
+def "main save" [key: string, path: string] {
+  if ($path | path type) != "dir" {
+    print $"nothing at ($path) to save"
+    return
+  }
+  let archive = archive $key
+  let archived = try {
+    do { cd ($path | path dirname); ^tar -czf - ($path | path basename) } | save --raw --force $archive
+    true
+  } catch { |err| print $err.msg; false }
+  let saved = if $archived {
+    let copied = copyto ["--ignore-existing" $archive (remote $key)]
+    report $copied "save"
+    $copied.exit_code == 0
+  } else {
+    false
+  }
+  rm --force $archive
+  if $saved {
+    print $"saved ($key)"
+  } else {
+    print $"::warning::could not save ($key)"
+  }
+}
+
+def main [] {
+  help main
+}

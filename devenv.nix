@@ -191,6 +191,28 @@
         spec = "aqua:gradle/gradle";
         envs = [ "build-mobile" ];
       };
+      # The CI build cache: sccache fronts rustc and the C compilers, and
+      # rclone moves directory snapshots to and from the same R2 bucket. The
+      # build lanes, and the xtask lane whose planners compile the toolchain
+      # on every run — every lane that compiles under an environment.
+      sccache = {
+        package = pkgs.sccache;
+        spec = "aqua:mozilla/sccache";
+        envs = [
+          "build-desktop"
+          "build-mobile"
+          "xtask"
+        ];
+      };
+      rclone = {
+        package = pkgs.rclone;
+        spec = "aqua:rclone/rclone";
+        envs = [
+          "build-desktop"
+          "build-mobile"
+          "xtask"
+        ];
+      };
       cargo-tauri = {
         package = pkgs.cargo-tauri;
         spec = "aqua:tauri-apps/tauri/cargo-tauri";
