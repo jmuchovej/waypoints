@@ -179,6 +179,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
                     ) -> ::bedrock::ViewScope {
                         ::bedrock::ViewScope {
                             document: ::std::string::String::from(#field_name),
+                            ns: ::core::option::Option::None,
                             path: #tag_expr,
                             equals: ::core::convert::Into::into(value),
                         }
@@ -192,6 +193,7 @@ pub(crate) fn expand(input: DeriveInput) -> syn::Result<TokenStream> {
                     ) -> ::bedrock::ViewScope {
                         ::bedrock::ViewScope {
                             document: ::std::string::String::from(#field_name),
+                            ns: ::core::option::Option::None,
                             path: ::core::convert::Into::into(path),
                             equals: ::core::convert::Into::into(value),
                         }

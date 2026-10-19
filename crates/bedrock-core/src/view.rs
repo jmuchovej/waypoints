@@ -37,6 +37,10 @@ pub trait Discriminant {
 pub struct ViewScope {
     /// The document column to look inside.
     pub document: String,
+    /// An optional top-level key the path is relative to, taken whole — see
+    /// [`ViewColumn::ns`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ns: Option<String>,
     /// A dotted path within it, e.g. `"chart"`.
     pub path: String,
     /// The value the path must equal (compared as text).
@@ -50,6 +54,10 @@ pub struct ViewColumn {
     pub name: String,
     /// The document column to extract from.
     pub document: String,
+    /// An optional top-level key the path is relative to, taken whole. Paths
+    /// split on dots, so a dotted key (e.g. a reverse-DNS namespace) needs this.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ns: Option<String>,
     /// A dotted path within it, e.g. `"readings.abc"`.
     pub path: String,
     /// The logical type of the projected value, used when reading it back.
