@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+
 import {
   channelOf,
   compareVersionsDescending,
   DOWNLOADABLE_TARGETS,
+  latestUrl,
   objectKey,
   seriesOf,
+  versionedUrl,
   versionFromKey,
 } from "./releases";
 
@@ -58,6 +61,25 @@ describe("versionFromKey", () => {
 
   it("reports null for a key this scheme did not produce", () => {
     expect(versionFromKey("stable/v0.1.x/macos/arm64/not-ours.dmg")).toBeNull();
+  });
+});
+
+describe("latestUrl and versionedUrl", () => {
+  it("names no version in the alias, and exactly the resolved one in the versioned URL", () => {
+    expect(latestUrl("stable", "macos", "arm64", "dmg")).toBe(
+      "/api/v1/releases/stable/latest/macos/arm64/waypoints-latest.dmg",
+    );
+    expect(versionedUrl("stable", "v0.1.1", "macos", "arm64", "dmg")).toBe(
+      "/api/v1/releases/stable/v0.1.x/macos/arm64/waypoints-v0.1.1.dmg",
+    );
+  });
+
+  it("names a different file than the alias it was resolved from — a download taken through the alias saves under the version, not `latest`", () => {
+    const alias = latestUrl("stable", "macos", "arm64", "dmg");
+    const resolved = versionedUrl("stable", "v0.1.1", "macos", "arm64", "dmg");
+    expect(resolved).not.toBe(alias);
+    expect(resolved.endsWith("waypoints-v0.1.1.dmg")).toBe(true);
+    expect(alias.endsWith("waypoints-latest.dmg")).toBe(true);
   });
 });
 

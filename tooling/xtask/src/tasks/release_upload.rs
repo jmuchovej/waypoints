@@ -199,20 +199,28 @@ mod tests {
     }
 
     /// `run`'s upload loop chains the installer and the updater sets; this
-    /// pins how many files each platform actually contributes to it.
+    /// pins how many files each platform actually contributes to it —
+    /// installer count, then updater count, so the split stays legible.
     #[test]
     fn every_platform_uploads_its_installer_and_its_updater_artifacts() {
         let counts = [
-            (Platform::macOS, 1 + 2),
-            (Platform::Linux, 1 + 1),
-            (Platform::Windows, 1 + 1),
-            (Platform::Android, 2 + 0),
-            (Platform::iOS, 1 + 0),
+            (Platform::macOS, 1, 2),
+            (Platform::Linux, 1, 1),
+            (Platform::Windows, 1, 1),
+            (Platform::Android, 2, 0),
+            (Platform::iOS, 1, 0),
         ];
-        for (platform, expected) in counts {
-            let total =
-                platform.published_target().extensions.len() + platform.updater_extensions().len();
-            assert_eq!(total, expected, "{platform}");
+        for (platform, installers, updater_files) in counts {
+            assert_eq!(
+                platform.published_target().extensions.len(),
+                installers,
+                "{platform} installer count"
+            );
+            assert_eq!(
+                platform.updater_extensions().len(),
+                updater_files,
+                "{platform} updater file count"
+            );
         }
     }
 

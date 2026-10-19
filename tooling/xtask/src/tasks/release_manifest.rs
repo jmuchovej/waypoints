@@ -136,7 +136,9 @@ mod tests {
         assert_eq!(value["version"], "v0.2.0-nightly.3+2026.10.19");
         assert_eq!(value["series"], "v0.2.x");
         assert!(value["targets"].as_array().unwrap().iter().any(|target| {
-            target["os"] == "macos" && target["arch"] == "arm64" && target["extensions"] == serde_json::json!(["dmg"])
+            target["os"] == "macos"
+                && target["arch"] == "arm64"
+                && target["extensions"] == serde_json::json!(["dmg"])
         }));
     }
 }

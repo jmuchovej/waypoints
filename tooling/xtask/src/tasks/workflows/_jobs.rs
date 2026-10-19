@@ -236,7 +236,7 @@ fn build_job_name(platform: Platform) -> String {
     format!("build-{}", platform.slug())
 }
 
-/// The `needs.<job>.outputs.target == '<slug>'` clauses, ANDed together,
+/// The `needs.<job>.outputs.target == '<slug>'` clauses, ANDead together,
 /// that assert every required target has recorded in. Shared between the
 /// publish gate and the withdraw gate, which assert the fact and its
 /// negation respectively.
@@ -755,9 +755,7 @@ mod tests {
                 "{channel}: no discard-release step"
             );
             assert!(
-                steps
-                    .iter()
-                    .any(|step| step["id"] == "withdraw-from-store"),
+                steps.iter().any(|step| step["id"] == "withdraw-from-store"),
                 "{channel}: no withdraw-from-store step"
             );
         }

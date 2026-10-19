@@ -1,6 +1,7 @@
 import { isChannel, compareVersionsDescending } from "#shared/utils/releases";
-import { listVersions } from "../../../../../utils/store";
+
 import { fetchReleaseNotes } from "../../../../../utils/notes";
+import { listVersions } from "../../../../../utils/store";
 
 export interface Release {
   tag: string;

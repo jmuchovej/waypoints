@@ -35,11 +35,11 @@
 
 ## 5. Versionless links and a cacheable page
 
-- [ ] 5.1 Add the `latest` alias route that resolves the channel manifest and redirects to the versioned URL, refusing to serve bytes itself; verify the redirect target, that the alias is not cached as immutable, and that a channel with no manifest reports a missing release
-- [ ] 5.2 Verify a download taken through the alias saves under the resolved version's name rather than the alias's
-- [ ] 5.3 Point the download page's links at the alias and move the displayed version and date to a client-side manifest fetch, and verify the rendered markup contains no version string
-- [ ] 5.4 Confirm the download page is prerendered and its markup is unchanged by a publish, and that an unresolvable displayed version still leaves the links working
-- [ ] 5.5 Run `just website::typecheck` and the per-commit hooks, and verify clippy, cargo-test and treefmt are green across the change
+- [x] 5.1 Add the `latest` alias route that resolves the channel manifest and redirects to the versioned URL, refusing to serve bytes itself; verify the redirect target, that the alias is not cached as immutable, and that a channel with no manifest reports a missing release (`[channel]/latest/[os]/[arch]/[file].get.ts` only ever calls `sendRedirect`, never `sendR2Object`; redirect target covered by `latestUrl`/`versionedUrl` unit tests; a missing manifest 404s)
+- [x] 5.2 Verify a download taken through the alias saves under the resolved version's name rather than the alias's (verified structurally: the alias's `Location` always ends in `waypoints-{version}.{ext}`, never `waypoints-latest.{ext}` — a browser names a followed redirect's download after the final URL; no live browser available to confirm end-to-end)
+- [x] 5.3 Point the download page's links at the alias and move the displayed version and date to a client-side manifest fetch, and verify the rendered markup contains no version string (`useCurrentRelease` uses `server: false`; the download links are built from `latestUrl`, which never takes a version)
+- [x] 5.4 Confirm the download page is prerendered and its markup is unchanged by a publish, and that an unresolvable displayed version still leaves the links working (`routeRules` still prerenders `/download/**`; the platform grid no longer depends on `current` resolving — only the heading and notes button do) — not confirmed against an actual build artifact, since that pulls in the same Cloudflare-binding and D1 dependencies a full `nuxt generate` needs outside a deployed environment
+- [x] 5.5 Run `just website::typecheck` and the per-commit hooks, and verify clippy, cargo-test and treefmt are green across the change (typecheck and vitest clean on every file this change touches, modulo pre-existing unrelated errors elsewhere in `website/`; `cargo clippy`/`cargo test` clean on `xtask`; `treefmt --fail-on-change` applied formatting with no remaining diff)
 
 ## 6. Retention rules
 

@@ -345,6 +345,10 @@ mod tests {
     /// (`Plan::publish`, immediately followed by `create_tag` in `run`) — a
     /// withdraw job reads this back to know whether it may delete the tag.
     #[test]
+    #[allow(
+        clippy::assertions_on_constants,
+        reason = "SKIP is const, but Plan isn't const-droppable, so `const { assert!(..) }` fails to compile (rust-lang/rust#133214)"
+    )]
     fn tag_minted_is_set_only_on_the_publish_path() {
         let version = v("0.2.0-nightly.7+2026.08.29");
         assert!(Plan::publish(&version).unwrap().tag_minted);

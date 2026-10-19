@@ -1,6 +1,12 @@
-import type { H3Event } from "h3";
 import type { R2Bucket, R2ObjectBody } from "@cloudflare/workers-types";
-import { manifestKey, versionFromKey, type Channel, type ReleaseManifest } from "#shared/utils/releases";
+import type { H3Event } from "h3";
+
+import {
+  manifestKey,
+  versionFromKey,
+  type Channel,
+  type ReleaseManifest,
+} from "#shared/utils/releases";
 
 /**
  * The `releases` bucket's Worker binding — read-only by convention, never by
@@ -15,8 +21,8 @@ import { manifestKey, versionFromKey, type Channel, type ReleaseManifest } from 
  * genuinely missing release.
  */
 function releaseBucket(event: H3Event): R2Bucket {
-  const bucket = (event.context as { cloudflare?: { env?: Record<string, unknown> } }).cloudflare?.env
-    ?.RELEASES as R2Bucket | undefined;
+  const bucket = (event.context as { cloudflare?: { env?: Record<string, unknown> } }).cloudflare
+    ?.env?.RELEASES as R2Bucket | undefined;
   if (!bucket) {
     throw createError({
       statusCode: 503,
@@ -32,7 +38,10 @@ function hasBody(object: R2ObjectBody | { text?: never } | null): object is R2Ob
   return object != null && typeof (object as R2ObjectBody).text === "function";
 }
 
-export async function readManifest(event: H3Event, channel: Channel): Promise<ReleaseManifest | null> {
+export async function readManifest(
+  event: H3Event,
+  channel: Channel,
+): Promise<ReleaseManifest | null> {
   const object = await releaseBucket(event).get(manifestKey(channel));
   if (!hasBody(object)) return null;
   return object.json<ReleaseManifest>();
@@ -71,12 +80,21 @@ export async function listVersions(event: H3Event, channel: Channel): Promise<st
   return [...versions];
 }
 
-/** Streams an R2 object's body straight through as the response. */
-export function sendR2Object(event: H3Event, object: R2ObjectBody) {
+/**
+ * Streams an R2 object's body straight through as the response.
+ *
+ * `immutable` is for the fully-versioned route only: a version's bytes
+ * never change once published, so that response can be cached for a year
+ * at the edge — see the design's "`latest` is a redirect to the versioned
+ * URL" decision. The `latest` alias itself must never set this; it isn't
+ * even a candidate, since it never streams bytes of its own.
+ */
+export function sendR2Object(event: H3Event, object: R2ObjectBody, immutable = false) {
   setResponseHeaders(event, {
     "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
     "Content-Length": object.size.toString(),
     ETag: object.httpEtag,
+    ...(immutable && { "Cache-Control": "public, max-age=31536000, immutable" }),
   });
   return object.body;
 }

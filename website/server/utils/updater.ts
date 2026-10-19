@@ -1,4 +1,5 @@
 import type { H3Event } from "h3";
+
 import {
   TAURI_UPDATER_TARGETS,
   UPDATER_PAYLOAD_EXT,
@@ -6,8 +7,9 @@ import {
   objectKey,
   type Channel,
 } from "#shared/utils/releases";
-import { readManifest, readText } from "./store";
+
 import { fetchReleaseNotes } from "./notes";
+import { readManifest, readText } from "./store";
 
 interface TauriPlatformEntry {
   url: string;
@@ -29,7 +31,10 @@ export type TauriUpdateManifest = {
  * the design's "Published formats are the bundler's installers" decision
  * and the proposal's note on dropping GitHub release assets).
  */
-export async function buildUpdateManifest(event: H3Event, channel: Channel): Promise<TauriUpdateManifest> {
+export async function buildUpdateManifest(
+  event: H3Event,
+  channel: Channel,
+): Promise<TauriUpdateManifest> {
   const manifest = await readManifest(event, channel);
   if (!manifest) return null;
 

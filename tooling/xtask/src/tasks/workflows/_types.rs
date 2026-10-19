@@ -655,7 +655,10 @@ mod tests {
                 "{platform}"
             );
         }
-        assert_eq!(Platform::macOS.updater_extensions(), &["app.tar.gz", "app.tar.gz.sig"]);
+        assert_eq!(
+            Platform::macOS.updater_extensions(),
+            &["app.tar.gz", "app.tar.gz.sig"]
+        );
         assert_eq!(Platform::Linux.updater_extensions(), &["AppImage.sig"]);
         assert_eq!(Platform::Windows.updater_extensions(), &["exe.sig"]);
         for platform in [Platform::Android, Platform::iOS] {

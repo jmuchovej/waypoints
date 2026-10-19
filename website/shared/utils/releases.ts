@@ -147,6 +147,36 @@ export interface ReleaseManifest {
   targets: ReleaseTarget[];
 }
 
+/** The channel's current version and its display metadata — the light read
+ * the download page's heading needs, distinct from a full enumeration. */
+export interface CurrentRelease {
+  tag: string;
+  title: string;
+  date: string | null;
+}
+
+/**
+ * The versionless alias URL a download link points at: a mutable pointer
+ * in front of the immutable, fully-versioned URL. See the design's `latest`
+ * decision — the saved filename never names the alias, only the resolved
+ * version it redirects to.
+ */
+export function latestUrl(channel: Channel, os: string, arch: string, extension: string): string {
+  return `/api/v1/releases/${channel}/latest/${os}/${arch}/waypoints-latest.${extension}`;
+}
+
+/** The fully-versioned URL a `latest` alias redirects to — the store key
+ * itself, mounted under the download route's prefix. */
+export function versionedUrl(
+  channel: Channel,
+  version: string,
+  os: string,
+  arch: string,
+  extension: string,
+): string {
+  return `/api/v1/releases/${objectKey(channel, version, os, arch, extension)}`;
+}
+
 /**
  * Orders versions newest-first. Semver precedence in full is more than
  * this needs: numeric major/minor/patch decide almost every real
