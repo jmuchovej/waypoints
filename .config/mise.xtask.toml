@@ -1,4 +1,4 @@
 [tools]
-"aqua:mozilla/sccache" = "0.17.0"
-"aqua:orhun/git-cliff" = "2.14.1"
+"aqua:mozilla/sccache" = "0.18.0"
+"aqua:orhun/git-cliff" = "2.14.2"
 "aqua:rclone/rclone" = "1.75.1"
