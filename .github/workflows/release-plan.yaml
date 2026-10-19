@@ -23,7 +23,9 @@ jobs:
     name: plan the transition
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+    environment:
+      name: CI
     env:
       MISE_ENV: xtask
     steps:
@@ -32,22 +34,72 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
+          fetch-depth: "0"
           fetch-tags: "true"
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: "2026.8.6"
           cache: "false"
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
+      - name: Resolve the botswain secrets
+        run: secretspec export --profile ci --scope botswain --format gha
+        shell: bash
+        env:
+          SECRETSPEC_REASON: CI resolves the ci profile's botswain scope to authenticate as the App it names
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: app-token
+        name: Mint a wp-botswain token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
+          private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
+          permission-contents: write
       - id: release-plan
         name: cargo xtask release-plan
         run: cargo xtask release-plan ${{ inputs.transition }}
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
 concurrency:
   group: release-plan
   cancel-in-progress: false

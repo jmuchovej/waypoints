@@ -172,6 +172,20 @@ pub fn app_token(permissions: &[(&str, &str)]) -> Step<Use> {
     )
 }
 
+/// Publishes the wp-botswain App credentials into the job environment, for
+/// [`app_token`] to read. Resolves the `ci` profile's `botswain` scope and
+/// nothing else. For jobs whose `secretspec` and `op` come from mise; one
+/// entered through devenv runs the same export `inside_devenv`, as
+/// `devenv_update` does.
+pub fn botswain_credentials() -> Step<Run> {
+    SecretSpec::export()
+        .resolving(Resolution::Ci(CiScope::Botswain))
+        .with_reason(
+            "CI resolves the ci profile's botswain scope to authenticate as the App it names",
+        )
+        .into()
+}
+
 /// Opens a pull request from whatever the preceding steps left in the tree,
 /// restricted to `paths`.
 ///
@@ -380,6 +394,37 @@ pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
     helpers::resolving(step)
 }
 
+/// Where a job's tools come from — `sccache`, `rclone`, `xcache`, and the
+/// `secretspec` and `op` that wrap them. The build and planner jobs install
+/// theirs through mise and run commands bare; a job entered through the devenv
+/// shell (the release index, like `check-generated`) runs every command as
+/// `devenv shell -- …`, and its provider travels on the command line rather
+/// than the step environment — see [`helpers::credentialed`] for why.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Tools {
+    Mise,
+    Devenv,
+}
+
+impl Tools {
+    /// `command`, run where the tools are.
+    fn command(self, command: &str) -> String {
+        match self {
+            Tools::Mise => command.to_owned(),
+            Tools::Devenv => format!("devenv shell -- {command}"),
+        }
+    }
+
+    /// The provider and credential a resolving step carries, as the toolchain
+    /// allows: both on the step under mise, the credential alone under devenv.
+    fn resolving(self, step: Step<Run>) -> Step<Run> {
+        match self {
+            Tools::Mise => helpers::resolving(step),
+            Tools::Devenv => helpers::credentialed(step),
+        }
+    }
+}
+
 /// Starts the sccache server for the job, holding the store credential.
 ///
 /// The server is what reads and writes the bucket; the client cargo invokes as
@@ -396,8 +441,9 @@ pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
 /// shows `Cache location  Local disk` instead of the bucket, which is how a
 /// degraded run is told from a healthy one. `SCCACHE_IDLE_TIMEOUT=0` keeps the
 /// server alive through the steps between here and the first compile; the
-/// stats step stops it.
-pub(crate) fn sccache_start() -> Step<Run> {
+/// stats step stops it. The server detaches from the shell that started it,
+/// so one started inside `devenv shell` outlives that shell's exit.
+pub(crate) fn sccache_start(tools: Tools) -> Step<Run> {
     // Single quotes: an escaped double quote inside a YAML scalar is rewritten
     // by the formatter, which would leave the generated file never in sync.
     let spec = SecretSpec::run(concat!(
@@ -409,6 +455,10 @@ pub(crate) fn sccache_start() -> Step<Run> {
         "the compiler cache server reads and writes the ci-cache bucket for the length ",
         "of the job; it alone holds the credential",
     ));
+    let spec = match tools {
+        Tools::Mise => spec,
+        Tools::Devenv => spec.inside_devenv(),
+    };
 
     Into::<Step<Run>>::into(spec)
         .name("Start the compiler cache")
@@ -440,15 +490,13 @@ pub(crate) fn with_sccache(step: Step<Run>) -> Step<Run> {
 /// upload steps run. Unconditional: a build that failed because of the store is
 /// exactly the one whose report is wanted. Needs no credential; both commands
 /// talk to the local port.
-pub(crate) fn sccache_stats() -> Step<Run> {
+pub(crate) fn sccache_stats(tools: Tools) -> Step<Run> {
+    let commands = ["sccache --show-stats", "sccache --stop-server"]
+        .map(|command| tools.command(command))
+        .join("\n");
+
     Step::new("Report the compiler cache")
-        .run(
-            indoc! {"
-            sccache --show-stats
-            sccache --stop-server
-        "}
-            .trim_end(),
-        )
+        .run(commands)
         .shell("bash")
         .if_condition(Expression::new("always()"))
         .id("sccache-stats")
@@ -505,6 +553,24 @@ impl CachedDir {
     }
 }
 
+/// Where cargo keeps its home on a mise job, as a bash expression. Set in
+/// every such job's environment, so no `:-` default: a `:` in the command
+/// makes the YAML serializer quote the scalar, and the formatter then rewrites
+/// its escapes, leaving the generated file never in sync. A job entered through
+/// the devenv shell has it unset and cargo on its default, `${HOME}/.cargo`.
+pub(crate) const CARGO_HOME: &str = "${CARGO_HOME}";
+
+/// The crate registry under `cargo_home` — index and downloaded sources — keyed
+/// by the lockfile, so every job compiling the workspace at one `Cargo.lock`
+/// shares one snapshot whatever it compiles.
+pub(crate) fn cargo_registry(cargo_home: &str) -> CachedDir {
+    CachedDir {
+        name: "cargo-registry",
+        path: format!("{cargo_home}/registry"),
+        key: CacheKey::Files(&["Cargo.lock"]),
+    }
+}
+
 /// The directories a `platform` build caches, keyed by the manifests that pin
 /// them. The pnpm store is pinned to `$RUNNER_TEMP` by the install step (see
 /// `jobs::build`) so its location is one expression on every platform.
@@ -515,15 +581,7 @@ pub(crate) fn cached_dirs(platform: Platform, ndk_version: &str) -> Vec<CachedDi
             path: PNPM_STORE.to_owned(),
             key: CacheKey::Files(&["pnpm-lock.yaml"]),
         },
-        // `CARGO_HOME` is on every build job's `env`, so no `:-` default: a
-        // `:` in the command makes the YAML serializer quote the scalar, and
-        // the formatter then rewrites its escapes, leaving the generated file
-        // never in sync.
-        CachedDir {
-            name: "cargo-registry",
-            path: "${CARGO_HOME}/registry".to_owned(),
-            key: CacheKey::Files(&["Cargo.lock"]),
-        },
+        cargo_registry(CARGO_HOME),
     ];
     if platform.is_android() {
         dirs.push(CachedDir {
@@ -562,9 +620,9 @@ fn xcache(verb: &str, dir: &CachedDir) -> String {
 /// Restores `dir` from the store. `xcache restore` publishes `hit` for the
 /// save step and treats a miss or a store failure as a miss, exit 0 — the
 /// consumer then fetches as it would without a cache.
-pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
+pub(crate) fn cache_restore(dir: &CachedDir, tools: Tools) -> Step<Run> {
     let step = Step::new(format!("Restore {}", dir.name))
-        .run(xcache("restore", dir))
+        .run(tools.command(&xcache("restore", dir)))
         .shell("bash")
         .add_env(("CACHE_KEY", dir.key()))
         .add_env((
@@ -575,7 +633,7 @@ pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
             ),
         ))
         .id(dir.restore_id());
-    helpers::resolving(step)
+    tools.resolving(step)
 }
 
 /// Saves `dir` to the store under its key when the restore missed. Write-once:
@@ -583,9 +641,9 @@ pub(crate) fn cache_restore(dir: &CachedDir) -> Step<Run> {
 /// a key always names the first snapshot written under it. Runs after the
 /// consumer even if the build failed — what was fetched is still what the
 /// manifest pins — but never on a cancelled job, and never fails the job.
-pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
+pub(crate) fn cache_save(dir: &CachedDir, tools: Tools) -> Step<Run> {
     let step = Step::new(format!("Save {}", dir.name))
-        .run(xcache("save", dir))
+        .run(tools.command(&xcache("save", dir)))
         .shell("bash")
         .if_condition(Expression::new(format!(
             "!cancelled() && steps.{restore}.outputs.hit != 'true'",
@@ -600,7 +658,7 @@ pub(crate) fn cache_save(dir: &CachedDir) -> Step<Run> {
             ),
         ))
         .id(format!("cache-save-{}", dir.name));
-    helpers::resolving(step)
+    tools.resolving(step)
 }
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
@@ -708,11 +766,17 @@ pub fn upload_to_release(platform: Platform, tag: Option<&JobOutput>) -> Step<Ru
 }
 
 /// Flips the draft public. When this runs is the publish job's decision.
+///
+/// `GH_REPO` because this is the one `gh` call in a job that checks nothing
+/// out, and `gh` otherwise reads the repository from the checkout's git
+/// remote. The job only runs when every build succeeded, so the gap survived
+/// until the first release where that happened.
 pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
     Step::new("Publish the release")
         .run(r#"gh release edit "${TAG}" --draft=false"#)
         .shell("bash")
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
+        .add_env(("GH_REPO", "${{ github.repository }}"))
         .add_env(("TAG", Channel::tag(tag)))
         .id("publish-release")
 }
@@ -942,7 +1006,7 @@ mod tests {
     /// credential arrives; a failed start must not fail the job.
     #[test]
     fn the_server_start_carries_the_store_configuration_and_tolerates_failure() {
-        let step = rendered(sccache_start());
+        let step = rendered(sccache_start(Tools::Mise));
         let run = step["run"].as_str().expect("run");
         assert!(
             run.starts_with(
@@ -991,11 +1055,49 @@ mod tests {
 
     #[test]
     fn the_stats_step_always_runs_and_stops_the_server() {
-        let step = rendered(sccache_stats());
+        let step = rendered(sccache_stats(Tools::Mise));
         assert_eq!(step["if"], "always()");
         let run = step["run"].as_str().expect("run");
         assert!(run.contains("sccache --show-stats") && run.contains("sccache --stop-server"));
         assert!(step.get("env").is_none(), "needs no credential: {step}");
+    }
+
+    /// A job entered through the devenv shell runs the same commands inside
+    /// it, with the provider on the command line rather than the step — devenv
+    /// resolves its own profile before the shell exists and would otherwise
+    /// look for `op` on the bare runner. The snapshot key does not change with
+    /// where the registry sits, so such a job shares the build jobs' entry.
+    #[test]
+    fn the_devenv_variant_enters_the_shell_for_every_store_call() {
+        let start = rendered(sccache_start(Tools::Devenv));
+        let run = start["run"].as_str().expect("run");
+        assert!(
+            run.starts_with(
+                "devenv shell -- secretspec run --profile ci --provider op --scope cache -- sccache --start-server"
+            ),
+            "{run}"
+        );
+        assert!(start["env"].get("SECRETSPEC_PROVIDER").is_none());
+        assert!(start["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+
+        let stats = rendered(sccache_stats(Tools::Devenv));
+        assert_eq!(
+            stats["run"],
+            "devenv shell -- sccache --show-stats\ndevenv shell -- sccache --stop-server"
+        );
+
+        let registry = cargo_registry("${HOME}/.cargo");
+        let restore = rendered(cache_restore(&registry, Tools::Devenv));
+        assert_eq!(
+            restore["run"],
+            "devenv shell -- xcache restore \"${CACHE_KEY}\" \"${HOME}/.cargo/registry\""
+        );
+        assert!(restore["env"].get("SECRETSPEC_PROVIDER").is_none());
+        assert!(restore["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+        assert_eq!(
+            restore["env"]["CACHE_KEY"],
+            cargo_registry(CARGO_HOME).key()
+        );
     }
 
     /// Each snapshot is keyed by what pins it, every store call is wrapped, the
@@ -1021,7 +1123,10 @@ mod tests {
         assert!(android[2].key().contains("verification-metadata.xml"));
 
         for dir in &android {
-            for (step, verb) in [(cache_restore(dir), "restore"), (cache_save(dir), "save")] {
+            for (step, verb) in [
+                (cache_restore(dir, Tools::Mise), "restore"),
+                (cache_save(dir, Tools::Mise), "save"),
+            ] {
                 let step = rendered(step);
                 let run = step["run"].as_str().expect("run");
                 // The whole step: the script does the rest. The path is a
@@ -1047,7 +1152,7 @@ mod tests {
                 }
             }
 
-            let save = rendered(cache_save(dir));
+            let save = rendered(cache_save(dir, Tools::Mise));
             assert_eq!(
                 save["if"],
                 format!(

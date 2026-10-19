@@ -21,6 +21,7 @@
       "build-desktop"
       "build-mobile"
       "website"
+      "deploy"
     ];
 
     tools = {
@@ -115,6 +116,24 @@
         envs = [ "devtools" ];
       };
 
+      # The deploy lane: validating the Station manifests under deploy/ and
+      # standing them up on kind (`just deploy::…`).
+      kubeconform = {
+        package = pkgs.kubeconform;
+        spec = "aqua:yannh/kubeconform";
+        envs = [ "deploy" ];
+      };
+      kubectl = {
+        package = pkgs.kubectl;
+        spec = "aqua:kubernetes/kubernetes/kubectl";
+        envs = [ "deploy" ];
+      };
+      kind = {
+        package = pkgs.kind;
+        spec = "aqua:kubernetes-sigs/kind";
+        envs = [ "deploy" ];
+      };
+
       # Shell-only: the local development store for secrets. No CI lane
       # decrypts a sops file — CI reads 1Password through `op` — so neither is
       # projected.
@@ -172,15 +191,17 @@
         spec = "aqua:gradle/gradle";
         envs = [ "build-mobile" ];
       };
-      # The release build cache: sccache fronts rustc and the C compilers, and
-      # rclone moves directory snapshots to and from the same R2 bucket. Build
-      # lanes only — nothing else compiles for release or may touch the bucket.
+      # The CI build cache: sccache fronts rustc and the C compilers, and
+      # rclone moves directory snapshots to and from the same R2 bucket. The
+      # build lanes, and the xtask lane whose planners compile the toolchain
+      # on every run — every lane that compiles under an environment.
       sccache = {
         package = pkgs.sccache;
         spec = "aqua:mozilla/sccache";
         envs = [
           "build-desktop"
           "build-mobile"
+          "xtask"
         ];
       };
       rclone = {
@@ -189,6 +210,7 @@
         envs = [
           "build-desktop"
           "build-mobile"
+          "xtask"
         ];
       };
       cargo-tauri = {

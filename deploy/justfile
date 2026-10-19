@@ -1,0 +1,47 @@
+# Deployment recipes: validate the reference manifests, and stand a
+# one-Station Fleet up on kind. Tools come from the `deploy` mise lane.
+
+set script-interpreter := ["bash", "-euo", "pipefail"]
+
+cluster := "outpost"
+# Throwaway keys for the kind cluster live outside the tree.
+keys := "/tmp/outpost-kind-keys"
+
+[private]
+default:
+    @just --list
+
+[doc("Renders the base and the kind overlay and validates both against the Kubernetes API schema.")]
+lint:
+    kubectl kustomize kubernetes/base | kubeconform -strict -summary
+    kubectl kustomize kubernetes/kind | kubeconform -strict -summary
+
+[doc("Builds the Station's container image for a Linux architecture (x86_64 or aarch64). From a Mac this dispatches to a remote Linux builder; the image is a Linux-only flake output, so the system is named explicitly.")]
+image arch="x86_64":
+    nix build ..#packages.{{ arch }}-linux.outpost-image --out-link result-outpost-image
+
+[doc("Creates the kind cluster, with UDP 6782 mapped from the host to the Station's NodePort.")]
+kind-up:
+    kind create cluster --name {{ cluster }} --config kubernetes/kind/kind-config.yaml
+
+[doc("Loads a built image archive (the `image` recipe's result) into the kind cluster.")]
+kind-load archive="result-outpost-image":
+    kind load image-archive --name {{ cluster }} {{ archive }}
+
+[doc("Generates both keys if absent, creates their Secrets, and applies the kind overlay. Pins the kind context: the current one may belong to another cluster.")]
+[script]
+kind-apply:
+    mkdir -p {{ keys }}
+    for key in station fleet; do
+      if [ ! -f "{{ keys }}/$key.key" ]; then
+        cargo run -q -p outpost --features cli -- keygen --out "{{ keys }}/$key.key"
+      fi
+      kubectl --context kind-{{ cluster }} create secret generic "outpost-$key-key" \
+        --from-file="$key.key={{ keys }}/$key.key" \
+        --dry-run=client -o yaml | kubectl --context kind-{{ cluster }} apply -f -
+    done
+    kubectl --context kind-{{ cluster }} apply -k kubernetes/kind
+
+[doc("Deletes the kind cluster. The keys under the scratch directory are left for the next one.")]
+kind-down:
+    kind delete cluster --name {{ cluster }}

@@ -1,6 +1,6 @@
 ## Purpose
 
-Defines where a build's version comes from, how versions move across the release branches, and the invariants the release and nightly planners must hold when deciding whether and what to publish — so that the bookkeeping a release produces cannot itself be mistaken for the product work that justifies the next release.
+Defines where a build's version comes from and how it names the channel, how versions move across the release branches, what a series branch may contain, and the invariants the release and nightly planners must hold when deciding whether and what to publish — so that the bookkeeping a release produces cannot itself be mistaken for the product work that justifies the next release, and so that any tagged tree builds the release its tag names.
 
 ## ADDED Requirements
 
@@ -22,35 +22,84 @@ A publish MAY append prerelease and build-metadata suffixes that exist only at p
 - **WHEN** a nightly is published from a commit whose manifest declares `X`
 - **THEN** its version is `X` plus the planner's prerelease counter and date stamp, and stripping that suffix yields exactly `X`
 
+### Requirement: The manifest version names the channel
+
+Every tree's channel SHALL be readable from its app manifest's version alone: a version whose prerelease begins with `nightly` is the nightly line, a version with any other prerelease is a preview, and a version with no prerelease is stable. `main` SHALL declare `X.Y.Z-nightly`. A series branch SHALL declare `X.Y.Z-pre.N` from the commit that cuts it and a bare `X.Y.Z` from the commit that promotes it. No other file SHALL declare a channel.
+
+Because a tag is minted from the manifest it points at, a tag's version and its tree's manifest version SHALL classify as the same channel.
+
+#### Scenario: Main is the nightly line
+
+- **WHEN** `main` is inspected at any commit
+- **THEN** its manifest version carries the `nightly` prerelease
+
+#### Scenario: A cut declares preview
+
+- **WHEN** the planner cuts `v0.2.x` from `main`
+- **THEN** the branch's manifest declares `0.2.0-pre.1`, the tag `v0.2.0-pre.1` points at that tree, and `main` moves on to `0.3.0-nightly`
+
+#### Scenario: A promotion declares stable
+
+- **WHEN** the planner promotes `v0.2.x`
+- **THEN** the branch's manifest declares `0.2.0` and the tag `v0.2.0` points at that tree
+
+#### Scenario: A tag and its tree cannot disagree
+
+- **WHEN** a tag's version classifies as one channel and the tagged tree's manifest version classifies as another
+- **THEN** the release index refuses to record it
+
 ### Requirement: Version tracks the branch a commit sits on
 
-Each release line carries its own version in its own branch's manifest, and the lines advance independently except where they are deliberately coupled:
+Each release line carries its own version in its own branch's manifest, and the lines advance independently except where they are deliberately coupled. A version's _base_ is its `major.minor.patch`, without prerelease or build metadata:
 
-- `main` and the current preview branch (`v{minor}.x`) SHALL always declare the same version. A change that advances one SHALL advance the other.
+- `main` and the current preview branch (`v{minor}.x`) SHALL always declare the same base version. A change that advances one SHALL advance the other.
 - The stable branch (`v{minor}.x` for the released minor) SHALL advance independently of the preview line.
-- A nightly's base version SHALL equal `main`'s manifest version, so a nightly's base advances only when the preview line cuts a new version.
+- A nightly's base SHALL equal `main`'s manifest base, so a nightly's base advances only when the preview line cuts a new version.
 
 Until `v1`, divergence between the stable and preview lines is confined to the patch component; from `v1` it extends to minor and patch.
 
 #### Scenario: Patch to preview only
 
 - **WHEN** a patch lands in the preview line while stable is at `0.1.0` and preview at `0.2.0`
-- **THEN** `main` and the preview branch both declare `0.2.1`, and the stable branch still declares `0.1.0`
+- **THEN** `main` and the preview branch both declare base `0.2.1`, and the stable branch still declares `0.1.0`
 
 #### Scenario: Patch to stable only
 
 - **WHEN** a patch lands in the stable line and does not belong in preview
-- **THEN** the stable branch declares `0.1.1`, while `main` and the preview branch are unchanged at `0.2.0`
+- **THEN** the stable branch declares `0.1.1`, while `main` and the preview branch are unchanged at base `0.2.0`
 
 #### Scenario: Patch to both lines
 
 - **WHEN** a patch lands in stable and is also carried into preview
-- **THEN** the stable branch declares `0.1.1` and `main` and the preview branch both declare `0.2.1`
+- **THEN** the stable branch declares `0.1.1` and `main` and the preview branch both declare base `0.2.1`
 
 #### Scenario: Nightly base follows the preview line
 
 - **WHEN** the preview line advances from `0.2.0` to `0.2.1`
 - **THEN** subsequently published nightlies carry base `0.2.1`, and no nightly changes its base without such a cut
+
+### Requirement: A series branch carries only cherry-picks of `main`
+
+A series branch SHALL be cut from `main` and SHALL thereafter receive only the planner's version commits and cherry-picks of commits already on `main`, in the order those commits landed on `main`. No change SHALL land on a series branch first. A series branch's tree therefore always carries a recipe, lockfiles, and pins that some commit of `main` was built with, which is what lets a tagged tree build itself.
+
+#### Scenario: A fix reaches a series
+
+- **WHEN** a fix merged on `main` is needed on `v0.2.x`
+- **THEN** it reaches the branch as a cherry-pick of the `main` commit, after any earlier `main` commits it depends on have been cherry-picked
+
+#### Scenario: A tagged tree is self-sufficient
+
+- **WHEN** any `v*` tag is checked out and built under the channel its manifest version names
+- **THEN** the build succeeds using only that tree's recipe, lockfiles, and pins
+
+### Requirement: Release refs are minted so their pushes are observable
+
+Every tag and branch the planners create SHALL raise the repository's `push` event, so that workflows triggered by a tag push run for planner-minted tags exactly as for tags pushed by a person.
+
+#### Scenario: A planner-minted tag triggers its workflows
+
+- **WHEN** the nightly planner or the release planner creates a `v*` tag
+- **THEN** every workflow triggered by a `v*` tag push runs for it
 
 ### Requirement: A nightly publishes only when product work landed
 

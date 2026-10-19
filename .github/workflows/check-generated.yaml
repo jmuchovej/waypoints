@@ -21,6 +21,8 @@ on:
       - .config/mise.build-desktop.toml
       - .config/mise.build-mobile.lock
       - .config/mise.build-mobile.toml
+      - .config/mise.deploy.lock
+      - .config/mise.deploy.toml
       - .config/mise.devtools.lock
       - .config/mise.devtools.toml
       - .config/mise.lock
@@ -51,6 +53,8 @@ on:
       - .config/mise.build-desktop.toml
       - .config/mise.build-mobile.lock
       - .config/mise.build-mobile.toml
+      - .config/mise.deploy.lock
+      - .config/mise.deploy.toml
       - .config/mise.devtools.lock
       - .config/mise.devtools.toml
       - .config/mise.lock

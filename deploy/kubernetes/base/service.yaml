@@ -1,0 +1,13 @@
+# The QUIC side of 6782 only. The probe side (TCP) is for kubelet, which
+# reaches the pod directly; nothing outside the cluster needs it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: outpost
+spec:
+  type: LoadBalancer
+  ports:
+    - name: quic
+      protocol: UDP
+      port: 6782
+      targetPort: quic

@@ -3,8 +3,11 @@
 //! One branch exists per minor version, `v{major}.{minor}.x`. It is cut from
 //! `main` as a preview, advances through `-pre.N` while it stabilises, is
 //! promoted in place to stable, and then takes patches until the next minor
-//! supersedes it. Its role is read from its version, not from a marker file:
-//! a prerelease suffix means preview, its absence means stable.
+//! supersedes it. Its role is read from its version: a `pre` suffix means
+//! preview, its absence means stable. `main` carries a `nightly` suffix for
+//! the same reason — so that any tree says which channel it ships as from
+//! its manifest alone, without consulting the tags that point at it, and the
+//! Nix overlay can tell `main` from a stable branch.
 //!
 //! Only `cut` consults commit history, because `main` is the only ref whose
 //! history describes the work honestly. A release branch carries cherry-picks
@@ -14,6 +17,7 @@
 //! Nightlies are not planned here: their version is a timestamp rather than a
 //! claim about content. See [`super::nightly_plan`].
 
+use super::workflows::Channel;
 use crate::shell;
 use anyhow::{Context as _, Result, bail};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
@@ -25,9 +29,13 @@ use strum::{EnumIter, IntoEnumIterator as _};
 /// The prerelease identifier every preview carries.
 const PRE: &str = "pre";
 
-/// The manifest whose `version` is the app's. Tauri reads it from here when
-/// `Tauri.toml` leaves `version` unset.
-const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
+/// The prerelease identifier every nightly carries; see [`super::nightly_plan`].
+const NIGHTLY: &str = "nightly";
+
+/// The manifest whose `version` is the app's — and, by its suffix, the
+/// channel the tree ships as. Tauri reads the version from here when
+/// `Tauri.toml` leaves it unset.
+pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
 
 #[derive(Parser)]
 pub struct ReleasePlanArgs {
@@ -84,7 +92,7 @@ impl Plan {
         Self {
             tag: format!("v{version}"),
             branch: release_branch(&version),
-            channel: channel_for(&version).to_owned(),
+            channel: channel_of(&version).to_string(),
             next_main_version: next_main.map(|v| v.to_string()).unwrap_or_default(),
             version: version.to_string(),
         }
@@ -97,13 +105,16 @@ fn release_branch(version: &Version) -> String {
     format!("v{}.{}.x", version.major, version.minor)
 }
 
-/// A version names its own channel: a prerelease is a preview, anything else
-/// is stable. Deriving it means a build cannot disagree with its version.
-fn channel_for(version: &Version) -> &'static str {
-    if version.pre.is_empty() {
-        "stable"
-    } else {
-        "preview"
+/// A version names its own channel: a `nightly` prerelease is nightly, any
+/// other prerelease a preview, none stable. Deriving it means a build cannot
+/// disagree with its version — and, applied to a manifest rather than a tag,
+/// it is how a tree says which channel it ships as. `nix/channel.nix` is the
+/// same reading for the overlay.
+pub fn channel_of(version: &Version) -> Channel {
+    match version.pre.as_str().split('.').next().unwrap_or_default() {
+        "" => Channel::Stable,
+        NIGHTLY => Channel::Nightly,
+        _ => Channel::Preview,
     }
 }
 
@@ -125,14 +136,46 @@ fn cut_target(last_release: &Version, commits: &[String]) -> Version {
 }
 
 /// Where `main` goes after a cut: provisionally the next minor, corrected by
-/// the next cut's commit history if the cycle turns out smaller.
-fn provisional_next_main(target: &Version) -> Version {
-    Version::new(target.major, target.minor + 1, 0)
+/// the next cut's commit history if the cycle turns out smaller. It carries
+/// the `nightly` suffix, which is how `main` names its channel; the nightly
+/// planner strips it to find the target.
+fn provisional_next_main(target: &Version) -> Result<Version> {
+    let mut next = Version::new(target.major, target.minor + 1, 0);
+    next.pre = Prerelease::new(NIGHTLY)
+        .with_context(|| format!("`{NIGHTLY}` is not a valid prerelease"))?;
+    Ok(next)
+}
+
+/// What every commit the planner writes is prefixed with. Release bookkeeping
+/// is a conventional `chore`, which `.config/cliff.toml` both accepts and
+/// keeps out of the notes.
+///
+/// Not cosmetic: the release's own `git-cliff` step runs under
+/// `require_conventional`, and it runs *after* the tag exists. An
+/// unconventional message there mints the tag and then fails the draft, which
+/// skips every build — as `v0.1.x preview 0.1.0-pre.1` did.
+const RELEASE_PREFIX: &str = "chore(release): ";
+
+impl Plan {
+    /// The message for the version commit this plan's tag points at.
+    fn commit_message(&self) -> String {
+        format!(
+            "{RELEASE_PREFIX}{branch} {channel} {version}",
+            branch = self.branch,
+            channel = self.channel,
+            version = self.version,
+        )
+    }
+}
+
+/// The message for `main`'s post-cut bump.
+fn next_main_message(next: &Version) -> String {
+    format!("{RELEASE_PREFIX}main now targets {next}")
 }
 
 fn plan_cut(last_release: &Version, commits: &[String]) -> Result<Plan> {
     let target = cut_target(last_release, commits);
-    let next_main = provisional_next_main(&target);
+    let next_main = provisional_next_main(&target)?;
     Ok(Plan::new(first_preview(target)?, Some(next_main)))
 }
 
@@ -249,13 +292,11 @@ fn log_range(since: Option<&Version>) -> String {
 }
 
 /// Conventional-commit subjects for one cycle, oldest first.
+///
+/// Index commits are left out: they land on `main` between releases, and
+/// reading them as work would nudge the target a cut is heading toward.
 fn commits_since(since: Option<&Version>) -> Result<Vec<String>> {
-    Ok(
-        shell::git(&["log", "--format=%s", "--reverse", &log_range(since)])?
-            .lines()
-            .map(str::to_owned)
-            .collect(),
-    )
+    super::release_index::product_commits(&log_range(since))
 }
 
 /// One file's blob sha on `branch`, needed to replace it.
@@ -275,8 +316,14 @@ fn blob_sha(path: &str, branch: &str) -> Result<String> {
 ///
 /// The Contents API writes a file and commits it in one call, authored by the
 /// token's identity — so this needs no `user.name`, no `user.email`, and no
-/// push credentials on the checkout.
-fn commit_file(path: &str, branch: &str, content: &str, message: &str) -> Result<String> {
+/// push credentials on the checkout. The release index is written the same
+/// way, from [`super::release_index`].
+pub(super) fn commit_file(
+    path: &str,
+    branch: &str,
+    content: &str,
+    message: &str,
+) -> Result<String> {
     let repository = env("GITHUB_REPOSITORY")?;
     let sha = blob_sha(path, branch)?;
 
@@ -390,15 +437,7 @@ pub fn run(args: ReleasePlanArgs) -> Result<()> {
     // instead would point the tag at the commit before the bump, leaving the
     // tag and the manifest it names disagreeing.
     let version = Version::parse(&plan.version)?;
-    let commit = write_version(
-        &plan.branch,
-        &version,
-        &format!(
-            "{branch} {channel} {version}",
-            branch = plan.branch,
-            channel = plan.channel
-        ),
-    )?;
+    let commit = write_version(&plan.branch, &version, &plan.commit_message())?;
     create_ref("tags", &plan.tag, &commit)?;
     println!("  tagged {tag} at {commit}", tag = plan.tag);
 
@@ -406,7 +445,7 @@ pub fn run(args: ReleasePlanArgs) -> Result<()> {
     // able to commit through a PR — adjust accordingly.
     if !plan.next_main_version.is_empty() {
         let next = Version::parse(&plan.next_main_version)?;
-        let bumped = write_version("main", &next, &format!("main now targets {next}"))?;
+        let bumped = write_version("main", &next, &next_main_message(&next))?;
         println!("  main bumped to {next} at {bumped}");
     }
 
@@ -426,9 +465,27 @@ mod tests {
 
     #[test]
     fn a_version_names_its_own_channel() {
-        assert_eq!(channel_for(&v("0.2.0")), "stable");
-        assert_eq!(channel_for(&v("0.2.1")), "stable");
-        assert_eq!(channel_for(&v("0.2.0-pre.1")), "preview");
+        assert_eq!(channel_of(&v("0.2.0")), Channel::Stable);
+        assert_eq!(channel_of(&v("0.2.1")), Channel::Stable);
+        assert_eq!(channel_of(&v("0.2.0-pre.1")), Channel::Preview);
+        assert_eq!(channel_of(&v("0.2.0-pre")), Channel::Preview);
+        assert_eq!(
+            channel_of(&v("0.2.0-nightly.7+2026.08.29")),
+            Channel::Nightly
+        );
+    }
+
+    /// `main` names its channel the way every branch does — in its version.
+    /// The suffix must sort below everything the line publishes and below
+    /// the series it cuts, or the staircase breaks.
+    #[test]
+    fn main_targets_the_next_minor_as_nightly() {
+        let next = provisional_next_main(&v("0.2.0")).unwrap();
+        assert_eq!(next.to_string(), "0.3.0-nightly");
+        assert_eq!(channel_of(&next), Channel::Nightly);
+        assert!(next < v("0.3.0-nightly.1+2026.08.29"));
+        assert!(v("0.3.0-nightly.1+2026.08.29") < v("0.3.0-pre.1"));
+        assert!(v("0.3.0-pre.1") < v("0.3.0"));
     }
 
     #[test]
@@ -438,6 +495,69 @@ mod tests {
         }
     }
 
+    /// `git-cliff` runs under `require_conventional`, and it runs after the
+    /// tag is minted — so an unconventional message here fails a release that
+    /// is already tagged, and skips every build behind the draft. Every
+    /// message the planner writes must parse as `type(scope): description`,
+    /// and cliff must keep it out of the notes.
+    #[test]
+    fn every_message_the_planner_writes_is_conventional_and_skipped() {
+        let messages = [
+            plan_cut(&v("0.1.0"), &msgs(&["feat: charts"]))
+                .unwrap()
+                .commit_message(),
+            plan_advance(&v("0.2.0-pre.1")).unwrap().commit_message(),
+            plan_promote(&v("0.2.0-pre.7")).unwrap().commit_message(),
+            plan_patch(&v("0.2.0")).unwrap().commit_message(),
+            next_main_message(&v("0.3.0-nightly")),
+        ];
+
+        for message in &messages {
+            assert!(message.starts_with(RELEASE_PREFIX), "{message}");
+            let (header, description) = message.split_once(": ").expect(message);
+            assert!(!header.contains(' '), "{message}");
+            assert!(!description.is_empty(), "{message}");
+        }
+
+        // The prefix is only usable because cliff's parsers skip it: a
+        // release whose notes listed its own version bump would be noise.
+        let cliff = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.config/cliff.toml"),
+        )
+        .expect("cliff.toml");
+        assert!(
+            cliff
+                .lines()
+                .any(|line| line.contains(r"^chore\\(release\\):") && line.contains("skip = true")),
+            "cliff.toml no longer skips the planner's commits"
+        );
+    }
+
+    /// The index commits land on `main` between releases, and the cut reads
+    /// that history — so the target has to come out the same with them there
+    /// or not, even though each is worded as a feature.
+    #[test]
+    fn index_commits_do_not_move_a_cut_target() {
+        use super::super::release_index::fixture::Repo;
+
+        let repo = Repo::new();
+        repo.product("feat: charts");
+        repo.tag("v0.1.0");
+        repo.product("fix: a bug");
+        let without = repo.product_commits("v0.1.0..HEAD");
+
+        repo.index("stable", "v0.1.0");
+        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        let with = repo.product_commits("v0.1.0..HEAD");
+
+        assert_eq!(with, without);
+        assert_eq!(cut_target(&v("0.1.0"), &with), v("0.1.1"));
+        assert_eq!(
+            cut_target(&v("0.1.0"), &with),
+            cut_target(&v("0.1.0"), &without)
+        );
+    }
+
     #[test]
     fn a_feature_cycle_cuts_the_next_minor() {
         let plan = plan_cut(&v("0.1.0"), &msgs(&["feat: charts", "fix: typo"])).unwrap();
@@ -445,7 +565,7 @@ mod tests {
         assert_eq!(plan.tag, "v0.2.0-pre.1");
         assert_eq!(plan.branch, "v0.2.x");
         assert_eq!(plan.channel, "preview");
-        assert_eq!(plan.next_main_version, "0.3.0");
+        assert_eq!(plan.next_main_version, "0.3.0-nightly");
     }
 
     #[test]

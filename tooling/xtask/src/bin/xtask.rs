@@ -17,6 +17,8 @@ enum Command {
     NightlyPlan(tasks::NightlyPlanArgs),
     /// Plans a release-cycle transition: cut, advance, promote, or patch.
     ReleasePlan(tasks::ReleasePlanArgs),
+    /// Records a published tag in the release index on `main`.
+    ReleaseIndex(tasks::ReleaseIndexArgs),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::DevenvFilesArgs),
     /// Regenerates every checked-in GitHub Actions workflow.
@@ -35,6 +37,7 @@ fn main() -> Result<()> {
         Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
         Command::ReleasePlan(args) => tasks::release_plan::run(args),
+        Command::ReleaseIndex(args) => tasks::release_index::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
         Command::Typegen(args) => tasks::typegen::run(args),

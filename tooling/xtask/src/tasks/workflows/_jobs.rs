@@ -2,9 +2,10 @@
 //! and wires their `needs:`.
 
 use super::{
-    Channel, GITHUB_TOKEN, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext,
+    Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext,
     helpers::{ANDROID_HOME, Environment},
     runners, steps,
+    steps::Tools,
 };
 use gh_workflow::{
     Environment as GhEnvironment, Expression, FluentBuilder, Job, JobOutput, Level, NamedJob,
@@ -61,10 +62,17 @@ fn mise_env(job: Job, envs: &[MiseEnv]) -> Job {
 
 /// Resolves the nightly tag: derive it from the workspace version, skip the run
 /// when nothing landed since the last nightly, and create the tag.
+///
+/// The tag is minted with the wp-botswain App token rather than
+/// `GITHUB_TOKEN`: a ref created with the latter raises no `push` event, so
+/// nothing downstream of the tag — the release index — would ever run.
 pub fn prepare(context: &WorkflowContext) -> PrepareJob {
+    let app_token = steps::app_token(&[("contents", "write")]);
+    let token = StepOutput::new_trusted(&app_token, "token");
+
     let planner = steps::cargo_xtask("nightly-plan", &[(BUILD_ONLY_ON_DISPATCH, None)])
         .id("nightly-plan")
-        .add_env(("GH_TOKEN", GITHUB_TOKEN));
+        .add_env(("GH_TOKEN", token.to_string()));
 
     let p_tag = StepOutput::new_trusted(&planner, "tag");
     let p_build = StepOutput::new_trusted(&planner, "should_build");
@@ -72,24 +80,43 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
     let p_version = StepOutput::new_trusted(&planner, "version_code");
     let p_bundle = StepOutput::new_trusted(&planner, "bundle_version");
 
+    let registry = steps::cargo_registry(steps::CARGO_HOME);
+
     let job = NamedJob::new(
         "prepare",
         // The planner is a `cargo xtask` run and nothing more.
         mise_env(Job::default(), &[MiseEnv::Xtask])
             .name("Plan the nightly")
-            // Write: the planner creates the nightly tag ref.
-            .permissions(Permissions::default().contents(Level::Write))
+            // Only what `checkout` needs: the tag ref is created with the App
+            // token, which carries its own write scope.
+            .permissions(Permissions::default().contents(Level::Read))
+            // Authenticates as the App and compiles through the CI cache, so
+            // the vault credential comes from the automation environment.
+            .environment(GhEnvironment::from(Environment::Ci))
             .runs_on(runners::LINUX)
-            // Tags without history: the planner resolves them to commits but
-            // never walks between them.
-            .add_step(steps::checkout().add_with(("fetch-tags", true)))
+            // Tags and the history between them: the planner walks from the
+            // last nightly to HEAD with a pathspec that drops the index
+            // directory. In a shallow clone the tip is a root commit diffed
+            // against the empty tree, so every path looks changed and the
+            // exclusion cannot bite — nightly.5 was minted from an index-only
+            // commit exactly so.
+            .add_step(
+                steps::checkout()
+                    .add_with(("fetch-depth", 0))
+                    .add_with(("fetch-tags", true)),
+            )
             .add_step(steps::setup_mise(false.into(), &context.mise_version))
             // Compiling the planner is the whole job: 5m25s of a 6m10s run,
-            // against 39s to install its tools. Cached because nothing here is
-            // published — see `rust_cache` for why writing only from `main` is
-            // what keeps that safe.
-            .add_step(steps::rust_cache())
-            .add_step(planner)
+            // against 39s to install its tools. The registry snapshot and the
+            // compiler cache are the ones the build jobs fill, under the same
+            // keys, so the compile is mostly hits.
+            .add_step(steps::cache_restore(&registry, Tools::Mise))
+            .add_step(steps::sccache_start(Tools::Mise))
+            .add_step(steps::botswain_credentials())
+            .add_step(app_token)
+            .add_step(steps::with_sccache(planner))
+            .add_step(steps::sccache_stats(Tools::Mise))
+            .add_step(steps::cache_save(&registry, Tools::Mise))
             .outputs([
                 p_tag.clone().as_output(),
                 p_build.clone().as_output(),
@@ -290,20 +317,20 @@ pub fn build(
             // `setup-android` installs the SDK but not an NDK. The snapshot
             // restores the version devenv pins; `sdkmanager` then finds it in
             // place and downloads nothing.
-            job.add_step(steps::cache_restore(cache("gradle")))
-                .add_step(steps::cache_restore(cache("android-ndk")))
+            job.add_step(steps::cache_restore(cache("gradle"), Tools::Mise))
+                .add_step(steps::cache_restore(cache("android-ndk"), Tools::Mise))
                 .add_step(steps::install_ndk(&context.android_ndk))
         })
         // Every pnpm in the job, the build's own included, must agree on the
         // store before its snapshot is restored — see `steps::pin_pnpm_store`.
         .add_step(steps::pin_pnpm_store())
-        .add_step(steps::cache_restore(cache("pnpm-store")))
+        .add_step(steps::cache_restore(cache("pnpm-store"), Tools::Mise))
         .add_step(steps::pnpm_install())
-        .add_step(steps::cache_save(cache("pnpm-store")))
-        .add_step(steps::cache_restore(cache("cargo-registry")))
+        .add_step(steps::cache_save(cache("pnpm-store"), Tools::Mise))
+        .add_step(steps::cache_restore(cache("cargo-registry"), Tools::Mise))
         // The server holds the store credential for the job; the build that
         // follows runs with none and reaches the store only through it.
-        .add_step(steps::sccache_start())
+        .add_step(steps::sccache_start(Tools::Mise))
         .add_step(
             steps::with_sccache(steps::build(channel, platform))
                 .when_some(build_code, |step, code| {
@@ -319,11 +346,11 @@ pub fn build(
                     ))
                 }),
         )
-        .add_step(steps::sccache_stats())
-        .add_step(steps::cache_save(cache("cargo-registry")))
+        .add_step(steps::sccache_stats(Tools::Mise))
+        .add_step(steps::cache_save(cache("cargo-registry"), Tools::Mise))
         .when(platform.is_android(), |job| {
-            job.add_step(steps::cache_save(cache("gradle")))
-                .add_step(steps::cache_save(cache("android-ndk")))
+            job.add_step(steps::cache_save(cache("gradle"), Tools::Mise))
+                .add_step(steps::cache_save(cache("android-ndk"), Tools::Mise))
         })
         .add_step(steps::upload_artifact(channel, platform))
         .add_step(steps::upload_to_release(platform, tag))

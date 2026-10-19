@@ -53,7 +53,18 @@ impl Platform {
         self.to_string()
     }
 
-    /// Globs matching everything this platform's build produces.
+    /// Globs matching what this platform's build produces: the installers a
+    /// person downloads, and the payloads and signatures the updater fetches.
+    ///
+    /// `createUpdaterArtifacts` signs each installer in place rather than
+    /// wrapping it — the `.nsis.zip` and `.AppImage.tar.gz` these globs used
+    /// to name are Tauri v1's shape, kept only under `"v1Compatible"` — so on
+    /// Linux and Windows one file serves both roles. macOS is the exception:
+    /// the updater cannot consume a `.dmg`, so its payload is a separate
+    /// `.app.tar.gz`, which is also why that platform lists two downloads.
+    ///
+    /// Linux signs the deb as well, which nothing fetches: the updater takes
+    /// the AppImage, and a deb is installed by a package manager.
     pub fn artifacts(self) -> &'static str {
         use Platform::*;
         match self {
@@ -63,15 +74,16 @@ impl Platform {
                 target/release/bundle/macos/*.tar.gz.sig"},
             Linux => indoc! {"
                 target/release/bundle/appimage/*.AppImage
-                target/release/bundle/appimage/*.AppImage.tar.gz
-                target/release/bundle/appimage/*.AppImage.tar.gz.sig
+                target/release/bundle/appimage/*.AppImage.sig
                 target/release/bundle/deb/*.deb"},
             Windows => indoc! {"
                 target/release/bundle/nsis/*.exe
-                target/release/bundle/nsis/*.nsis.zip
-                target/release/bundle/nsis/*.nsis.zip.sig"},
+                target/release/bundle/nsis/*.exe.sig"},
+            // Gradle splits flavor from build type for an APK
+            // (`apk/universal/release`) and joins them for a bundle
+            // (`bundle/universalRelease`).
             Android => indoc! {"
-                src-tauri/gen/android/app/build/outputs/apk/*Release/*.apk
+                src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
                 src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab"},
             iOS => "src-tauri/gen/apple/build/**/*.ipa",
         }
@@ -148,7 +160,7 @@ pub enum Arch {
     arm64,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Display, IsVariant)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, IsVariant)]
 #[display(rename_all = "lowercase")]
 pub enum Channel {
     Stable,
