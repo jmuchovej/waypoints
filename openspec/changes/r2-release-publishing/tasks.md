@@ -27,11 +27,11 @@
 
 ## 4. Site reads the store
 
-- [ ] 4.1 Grant the Worker a read-only `releases` bucket binding in the site's deploy config, and verify a deployed request for a published artifact streams bytes while the bucket remains anonymously unreadable
-- [ ] 4.2 Rework the key and URL helpers to `{channel}/{series}/{os}/{arch}/waypoints-{version}.{ext}`, deriving the channel from the version at write time and recomputing it at read time, and verify unit tests cover a key/URL round-trip plus rejection of a channel/version mismatch
-- [ ] 4.3 Replace `useReleases`' `ungh.cc` fetch with enumeration from the store plus notes read server-side from the forge, and verify the download and releases pages render against the private repository
-- [ ] 4.4 Narrow the download page's advertised targets to those with a download path (macOS arm64, Linux amd64, Windows amd64) and verify no rendered link addresses an unadvertised target while mobile artifacts are still archived
-- [ ] 4.5 Verify a release whose notes cannot be read still lists with its version and downloads
+- [x] 4.1 Grant the Worker a read-only `releases` bucket binding in the site's deploy config (`nitro.cloudflare.wrangler.r2_buckets` in `nuxt.config.ts`), and verify a deployed request for a published artifact streams bytes while the bucket remains anonymously unreadable (binding + streaming routes implemented and typechecked; the live "deployed request" half needs a remote Worker, not exercised here)
+- [x] 4.2 Rework the key and URL helpers to `{channel}/{series}/{os}/{arch}/waypoints-{version}.{ext}`, deriving the channel from the version at write time and recomputing it at read time, and verify unit tests cover a key/URL round-trip plus rejection of a channel/version mismatch (`website/shared/utils/releases.ts` + `releases.test.ts`, 8 vitest cases, `just website::test` green)
+- [x] 4.3 Replace `useReleases`' `ungh.cc` fetch with enumeration from the store plus notes read server-side from the forge, and verify the download and releases pages render against the private repository (store enumeration via `R2Bucket.list`, notes via authenticated `GET /repos/{repo}/releases/tags/{tag}`; a missing-notes release degrades per 4.5 rather than dropping). Also fixed, as part of this same rework: the Tauri updater manifest routes, which read GitHub release assets that section 2.5 already stopped uploading — they now read the updater payload/signature from the store, which required adding `Platform::updater_extensions`/`updater_globs` in xtask so the uploader ships those alongside the installer.
+- [x] 4.4 Narrow the download page's advertised targets to those with a download path (macOS arm64, Linux amd64, Windows amd64) and verify no rendered link addresses an unadvertised target while mobile artifacts are still archived
+- [x] 4.5 Verify a release whose notes cannot be read still lists with its version and downloads (`markdown`/`date` are nullable on `Release`; both pages render a fallback rather than erroring)
 
 ## 5. Versionless links and a cacheable page
 

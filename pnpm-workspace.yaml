@@ -74,6 +74,7 @@ catalogs:
     better-auth: "^1.2.0"
     "@better-auth/passkey": "^1.2.0"
     better-sqlite3: "^12.9.0"
+    "@cloudflare/workers-types": "^5.20261019.1"
     "comark": "^0.6.2"
     "@comark/nuxt": "^0.6.2"
     "@comark/vue": "^0.6.2"
@@ -174,6 +175,9 @@ catalogs:
     "@tiptap/extensions": "^3.30.1"
     "@tiptap/pm": "^3.30.1"
     "@tiptap/vue-3": "^3.30.1"
+
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20261019.1'
 
 onlyBuiltDependencies:
   - "@parcel/watcher"

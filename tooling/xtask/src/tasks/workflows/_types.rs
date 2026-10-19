@@ -164,6 +164,42 @@ impl Platform {
             iOS => &["src-tauri/gen/apple/build/**/*.ipa"],
         }
     }
+
+    /// This platform's updater artifacts beyond its installer: the payload
+    /// Tauri's updater fetches, and its signature. Empty for the two mobile
+    /// platforms, which update through their stores rather than Tauri's own.
+    ///
+    /// Linux and Windows sign the installer in place — `createUpdaterArtifacts`
+    /// wraps nothing, so the updater fetches the same file [`published_target`]
+    /// already uploads, and only the signature is new here. macOS's updater
+    /// cannot consume a `.dmg`, so its payload is the separate `.app.tar.gz`
+    /// [`artifacts`] already builds — see that doc for the full story. Paired
+    /// one-to-one with [`updater_globs`].
+    pub fn updater_extensions(self) -> &'static [&'static str] {
+        use Platform::*;
+        match self {
+            macOS => &["app.tar.gz", "app.tar.gz.sig"],
+            Linux => &["AppImage.sig"],
+            Windows => &["exe.sig"],
+            Android | iOS => &[],
+        }
+    }
+
+    /// Globs matching this platform's updater artifacts on disk, in the same
+    /// order as [`updater_extensions`] — the subset of [`Platform::artifacts`]
+    /// the updater needs beyond the installer itself.
+    pub fn updater_globs(self) -> &'static [&'static str] {
+        use Platform::*;
+        match self {
+            macOS => &[
+                "target/release/bundle/macos/*.tar.gz",
+                "target/release/bundle/macos/*.tar.gz.sig",
+            ],
+            Linux => &["target/release/bundle/appimage/*.AppImage.sig"],
+            Windows => &["target/release/bundle/nsis/*.exe.sig"],
+            Android | iOS => &[],
+        }
+    }
 }
 
 /// One platform's filing location in the release store, from
@@ -603,6 +639,27 @@ mod tests {
         let all: Vec<Platform> = Platform::iter().collect();
         for channel in [Channel::Stable, Channel::Preview, Channel::Nightly] {
             assert_eq!(channel.required_targets(), all.as_slice(), "{channel}");
+        }
+    }
+
+    /// Every updater glob names an updater extension, one for one, the same
+    /// invariant `published_globs_pair_with_published_extensions` holds for
+    /// the installer set — and the two mobile platforms have neither, since
+    /// they update through their stores.
+    #[test]
+    fn updater_globs_pair_with_updater_extensions() {
+        for platform in Platform::iter() {
+            assert_eq!(
+                platform.updater_globs().len(),
+                platform.updater_extensions().len(),
+                "{platform}"
+            );
+        }
+        assert_eq!(Platform::macOS.updater_extensions(), &["app.tar.gz", "app.tar.gz.sig"]);
+        assert_eq!(Platform::Linux.updater_extensions(), &["AppImage.sig"]);
+        assert_eq!(Platform::Windows.updater_extensions(), &["exe.sig"]);
+        for platform in [Platform::Android, Platform::iOS] {
+            assert!(platform.updater_extensions().is_empty(), "{platform}");
         }
     }
 }

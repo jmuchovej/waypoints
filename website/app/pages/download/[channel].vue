@@ -19,12 +19,14 @@
     },
   ];
 
-  const date = (date: string) =>
-    new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const date = (date: string | null) =>
+    date
+      ? new Date(date).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : null;
 
   const { data: releases } = await useReleases(channel);
 
@@ -32,6 +34,10 @@
 
   const downloadUrl = (target: string) => `/api/v1/releases/${channel.value}/${target}`;
 
+  // Narrowed to the targets with an actual download path — mobile ships
+  // through its own app store and is archived without ever being linked
+  // here. See the design's "Published formats are the bundler's installers"
+  // decision.
   const platforms = [
     {
       icon: "i-simple-icons-apple",
@@ -40,22 +46,10 @@
       target: "macos-arm64",
     },
     {
-      icon: "i-simple-icons-apple",
-      title: "macOS",
-      description: "Intel",
-      target: "macos-amd64",
-    },
-    {
       icon: "i-simple-icons-linux",
       title: "Linux",
       description: "AppImage (x86_64)",
       target: "linux-amd64",
-    },
-    {
-      icon: "i-simple-icons-linux",
-      title: "Linux",
-      description: "AppImage (ARM64)",
-      target: "linux-arm64",
     },
     {
       icon: "i-simple-icons-windows",
@@ -79,7 +73,7 @@
         <UPageHeader
           :title="latest.title"
           headline="Download"
-          :description="`Released ${date(latest.date)}`"
+          :description="date(latest.date) ? `Released ${date(latest.date)}` : undefined"
           :ui="{
             root: 'border-0',
             container: '!py-0',
@@ -89,7 +83,7 @@
             <UNavigationMenu :items="channels" variant="pill" />
           </template>
           <template #description>
-            <span>Released {{ date(latest.date) }}</span>
+            <span v-if="date(latest.date)">Released {{ date(latest.date) }}</span>
 
             <UButton :to="`/releases/${channel}/${latest.tag}`" variant="ghost">
               See the release notes

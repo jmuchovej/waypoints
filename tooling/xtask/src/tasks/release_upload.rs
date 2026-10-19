@@ -8,6 +8,12 @@
 //!
 //! The object key mirrors the design's layout exactly:
 //! `{channel}/{series}/{os}/{arch}/waypoints-{tag}.{ext}`.
+//!
+//! Uploads the installer every download link resolves to and the updater's
+//! payload and signature alongside it, under the same key scheme — the
+//! updater route the site exposes derives its keys the same deterministic
+//! way the download route does, so both sides only need to agree on
+//! [`Platform::updater_extensions`], never on a listing either reads back.
 
 use crate::tasks::{
     release_plan, release_store,
@@ -52,13 +58,27 @@ pub fn run(args: ReleaseUploadArgs) -> Result<()> {
         globs.len(),
         target.extensions.len()
     );
+    let updater_globs = args.platform.updater_globs();
+    let updater_extensions = args.platform.updater_extensions();
+    anyhow::ensure!(
+        updater_globs.len() == updater_extensions.len(),
+        "{}: {} updater globs but {} updater extensions",
+        args.platform,
+        updater_globs.len(),
+        updater_extensions.len()
+    );
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .context("failed to build tokio runtime")?;
 
-    for (glob, extension) in globs.iter().zip(target.extensions) {
+    let every_file = globs
+        .iter()
+        .zip(target.extensions)
+        .chain(updater_globs.iter().zip(updater_extensions));
+
+    for (glob, extension) in every_file {
         let path = find_one(glob)?;
         let key = format!(
             "{channel}/{series}/{os}/{arch}/waypoints-{tag}.{extension}",
@@ -175,6 +195,24 @@ mod tests {
                 platform.published_target().extensions.len(),
                 "{platform}"
             );
+        }
+    }
+
+    /// `run`'s upload loop chains the installer and the updater sets; this
+    /// pins how many files each platform actually contributes to it.
+    #[test]
+    fn every_platform_uploads_its_installer_and_its_updater_artifacts() {
+        let counts = [
+            (Platform::macOS, 1 + 2),
+            (Platform::Linux, 1 + 1),
+            (Platform::Windows, 1 + 1),
+            (Platform::Android, 2 + 0),
+            (Platform::iOS, 1 + 0),
+        ];
+        for (platform, expected) in counts {
+            let total =
+                platform.published_target().extensions.len() + platform.updater_extensions().len();
+            assert_eq!(total, expected, "{platform}");
         }
     }
 
