@@ -83,7 +83,7 @@ pub(crate) mod mark {
 }
 pub use mark::{
     Content, InlineMark, Landmark, Mark, MarkBuilder, MarkData, MarkID, MathEngine, Reading,
-    ReferenceDisplayMode, RichReference, RichText, Size, TextMarkKind, TextSegment, now_ms,
+    ReferenceDisplayMode, RichText, Size, TextMarkKind, TextSegment, now_ms,
 };
 
 pub(crate) mod chart {

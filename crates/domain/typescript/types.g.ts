@@ -1531,8 +1531,8 @@ export type Mark_Deserialize = {
    */
   created_at: string;
   /**
-   *  When the [`Mark`] was last written. Stamped on every save by the
-   *  before-save hook.
+   *  When the [`Mark`] was last written. Stamped by the before-save hook on
+   *  update-class writes; insert-class writes keep the caller's value.
    */
   updated_at: string;
   /**
@@ -1566,8 +1566,8 @@ export type Mark_Serialize = {
    */
   created_at: string;
   /**
-   *  When the [`Mark`] was last written. Stamped on every save by the
-   *  before-save hook.
+   *  When the [`Mark`] was last written. Stamped by the before-save hook on
+   *  update-class writes; insert-class writes keep the caller's value.
    */
   updated_at: string;
   /**
@@ -1665,23 +1665,6 @@ export type ReferenceDisplayMode =
   | "card-l-g"
   /**  Extra large card (full preview with rich content) */
   | "card-x-l";
-
-/**
- *  A reference that includes display mode information.
- *
- *  `RichReference` is the typed payload for [`InlineMark`][I] references
- *  within [`MarkData::Content`][C] (e.g., mentions, inline cards, embeds).
- *  Currently, it's unused but remains because it's early, not dead.
- *
- *  [I]: super::InlineMark
- *  [C]: super::MarkData::Content
- */
-export type RichReference = {
-  /**  The referenced block ID */
-  id: MarkID;
-  /**  How to display this reference in the UI */
-  as?: ReferenceDisplayMode;
-};
 
 export type RichText = RichText_Serialize;
 

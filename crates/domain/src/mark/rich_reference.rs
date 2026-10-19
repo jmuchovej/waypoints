@@ -36,7 +36,9 @@ pub enum ReferenceDisplayMode {
 ///
 /// `RichReference` is the typed payload for [`InlineMark`][I] references
 /// within [`MarkData::Content`][C] (e.g., mentions, inline cards, embeds).
-/// Currently, it's unused but remains because it's early, not dead.
+///
+/// Deliberately not re-exported from the crate root nor registered for
+/// TypeScript: nothing consumes it yet.
 ///
 /// [I]: super::InlineMark
 /// [C]: super::MarkData::Content
