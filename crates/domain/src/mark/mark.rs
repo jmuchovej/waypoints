@@ -16,10 +16,15 @@ pub fn now_ms() -> NaiveDateTime {
         .naive_utc()
 }
 
-/// Before-save hook: stamp `updated_at` on every write. `created_at` is set at
-/// construction (defaulting to now) and left alone.
-fn touch(mut mark: Mark, _op: bedrock::WriteOp) -> Mark {
-    mark.updated_at = now_ms();
+/// Before-save hook: stamp `updated_at` on update-class writes only.
+///
+/// Insert-class writes (`insert`, `insert_all`, `upsert`) preserve the caller's
+/// timestamps so Bundle ingest can restore them; `update` stamps.
+fn touch(mut mark: Mark, op: bedrock::WriteOp) -> Mark {
+    match op {
+        bedrock::WriteOp::Update => mark.updated_at = now_ms(),
+        bedrock::WriteOp::Insert => {}
+    }
     mark
 }
 
@@ -117,8 +122,8 @@ pub struct Mark {
     #[builder(default = now_ms())]
     pub created_at: NaiveDateTime,
 
-    /// When the [`Mark`] was last written. Stamped on every save by the
-    /// before-save hook.
+    /// When the [`Mark`] was last written. Stamped by the before-save hook on
+    /// update-class writes; insert-class writes keep the caller's value.
     #[builder(default = now_ms())]
     pub updated_at: NaiveDateTime,
 
