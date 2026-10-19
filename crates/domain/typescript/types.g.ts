@@ -49,6 +49,11 @@ export type Chart_Deserialize = {
    *  the properties that each [`Chart`] should have.
    */
   features: { [key in FeatureID]: Feature_Deserialize };
+  /**
+   *  Schema-less extra properties. Keys matching `^[0-9a-z]{4}$` are reserved
+   *  as [`FeatureID`] slots; namespaced (reverse-DNS) keys cannot collide.
+   */
+  extra: unknown | null;
 };
 
 export type Chart_Serialize = {
@@ -70,6 +75,11 @@ export type Chart_Serialize = {
    *  the properties that each [`Chart`] should have.
    */
   features: { [key in FeatureID]: Feature_Serialize };
+  /**
+   *  Schema-less extra properties. Keys matching `^[0-9a-z]{4}$` are reserved
+   *  as [`FeatureID`] slots; namespaced (reverse-DNS) keys cannot collide.
+   */
+  extra: unknown | null;
 };
 
 export type Color =

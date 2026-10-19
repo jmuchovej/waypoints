@@ -118,6 +118,68 @@ async fn chart_domain_roundtrip() {
 }
 
 #[tokio::test]
+async fn chart_extra_roundtrips_namespaces_and_feature_slots() {
+    let (store, _dir) = open_store().await;
+    let db = store.db();
+
+    let extra = serde_json::json!({
+        "so.waypoints.importer.logseq": { "page": "Daily/2026-07-14" },
+        "a1b2": { "unit": "attendees" },
+    });
+    let chart = domain::Chart {
+        extra: Some(extra.clone()),
+        ..domain::Chart::builder().with_name("Workshop").build()
+    };
+    let id = chart.id.clone();
+
+    db.insert(chart).await.expect("insert chart");
+
+    let fetched = db
+        .get::<domain::Chart>(&id)
+        .await
+        .expect("get")
+        .expect("chart must exist");
+    assert_eq!(fetched.extra, Some(extra));
+}
+
+#[tokio::test]
+async fn chart_extra_arrives_by_spec_diff() {
+    let dir = tempdir().expect("tempdir");
+    let path = dir.path().join("pre-extra.db");
+    let path = path.to_str().expect("utf-8 path");
+    let db = bedrock::Database::open(path).await.expect("open");
+
+    let mut before = <domain::Chart as bedrock::Collection>::spec();
+    let extra = before
+        .fields
+        .iter()
+        .position(|f| f.name == "extra")
+        .expect("Chart spec carries an `extra` field");
+    let removed = before.fields.remove(extra);
+    assert!(removed.nullable, "`extra` must be nullable to be addable");
+    db.ensure_spec(&before).await.expect("create pre-extra");
+
+    db.ensure_collection::<domain::Chart>()
+        .await
+        .expect("spec diff adds the nullable column");
+
+    let extra = serde_json::json!({ "so.waypoints.test": 1 });
+    let chart = domain::Chart {
+        extra: Some(extra.clone()),
+        ..domain::Chart::builder().with_name("Migrated").build()
+    };
+    let id = chart.id.clone();
+    db.insert(chart).await.expect("insert after migration");
+
+    let fetched = db
+        .get::<domain::Chart>(&id)
+        .await
+        .expect("get")
+        .expect("chart must exist");
+    assert_eq!(fetched.extra, Some(extra));
+}
+
+#[tokio::test]
 async fn seed_is_idempotent() {
     let (store, _dir) = open_store().await;
     let db = store.db();
