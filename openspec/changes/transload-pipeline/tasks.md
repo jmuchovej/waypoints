@@ -6,26 +6,27 @@ their subtasks except where noted; groups 4–7 build on 3.
 
 ## 1. Alignment — domain & bedrock (independently landable commits)
 
-- [ ] 1.1 Add `Chart.extra: Option<Json>` in `crates/domain/src/chart/chart.rs`
+- [x] 1.1 Add `Chart.extra: Option<Json>` in `crates/domain/src/chart/chart.rs`
       mirroring `Mark.extra` (builder mutator, specta `Unknown` annotation);
       real-engine test: save a Chart with namespaced + feature-slot-keyed
       `extra`, read back identical, and confirm bedrock's spec-diff adds the
       nullable column to a database created before the field existed.
-- [ ] 1.2 Discriminate `touch` on its `WriteOp` in
+- [x] 1.2 Discriminate `touch` on its `WriteOp` in
       `crates/domain/src/mark/mark.rs`: stamp `updated_at` on `Update` only.
       Real-engine tests: `insert_all` and `upsert` preserve explicit
       timestamps; `update` stamps.
-- [ ] 1.3 Add `ns: Option<String>` (serde-defaulted) to `ViewColumn` and
+- [x] 1.3 Add `ns: Option<String>` (serde-defaulted) to `ViewColumn` and
       `ViewScope` in `crates/bedrock-core/src/view.rs`; rework
       `ddl::json_path` to `(segments, ns)` semantics per the storage spec.
       Real-engine tests in `crates/bedrock/tests/views.rs`: a view over a
       dotted namespace key projects the right values; a legacy dotted path
       declaration projects identically to before.
-- [ ] 1.4 **(blocked on `op-log-completeness` landing its `children`
-      removal)** Un-export `RichReference`: remove from
-      `crates/domain/src/lib.rs` re-exports and `bin/typegen.rs`
-      registration; regenerate TS bindings; leave the module in-tree with a
-      doc note pointing at the data-model spec decision.
+- [x] 1.4 Un-export `RichReference`: remove from `crates/domain/src/lib.rs`
+      re-exports and the typegen registration (now
+      `tooling/xtask/src/tasks/typegen.rs`, per `lift-typegen-into-xtask`);
+      regenerate TS bindings; leave the module in-tree with a doc note
+      pointing at the data-model spec decision. (`op-log-completeness`
+      archived 2026-09-29, so the `children` removal had already landed.)
 
 ## 2. transload crate scaffold
 
