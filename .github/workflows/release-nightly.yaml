@@ -306,6 +306,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-desktop
     steps:
@@ -419,6 +421,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=macos" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-windows:
     needs:
       - prepare
@@ -433,6 +439,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-desktop
     steps:
@@ -545,6 +553,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=windows" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-linux:
     needs:
       - prepare
@@ -559,6 +571,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-desktop
     steps:
@@ -689,6 +703,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=linux" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-ios:
     needs:
       - prepare
@@ -703,6 +721,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-mobile
     steps:
@@ -823,6 +843,10 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=ios" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-android:
     needs:
       - prepare
@@ -837,6 +861,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-mobile
     steps:
@@ -1025,6 +1051,10 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=android" >> "$GITHUB_OUTPUT"
+        shell: bash
   publish-release:
     needs:
       - prepare
@@ -1034,7 +1064,7 @@ jobs:
       - build-ios
       - build-android
       - create-release
-    if: "!failure() && !cancelled() && (needs.prepare.outputs.tag != '')"
+    if: (needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android') && (needs.prepare.outputs.tag != '')
     name: Publish the release
     runs-on: ubuntu-latest
     permissions:

@@ -30,7 +30,7 @@ impl TestSuite {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Unwrap, Display, IsVariant, EnumIter)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, IsVariant, EnumIter)]
 pub enum Platform {
     #[allow(non_camel_case_types)]
     macOS,
@@ -108,6 +108,48 @@ impl Platform {
     pub fn is_macos(self) -> bool {
         matches!(self, Platform::macOS)
     }
+
+    /// The host architecture this platform's single build job targets. The
+    /// toolchain declares more (arm64/x86_64 desktop, musl) than any job
+    /// builds — see the design's "Targets are the host architecture of each
+    /// platform" decision — so this names only what is actually produced.
+    pub fn arch(self) -> Arch {
+        use Platform::*;
+        match self {
+            macOS | Android | iOS => Arch::arm64,
+            Linux | Windows => Arch::amd64,
+        }
+    }
+
+    /// Where this platform's artifacts are filed in the release store: the
+    /// `{os}/{arch}` key segments and the installer extensions uploaded
+    /// there. One per platform — a target may still carry more than one
+    /// artifact (Android's `.apk` and `.aab` share a target), which is why
+    /// `extensions` is a list while the target itself is singular.
+    pub fn published_target(self) -> PublishedTarget {
+        use Platform::*;
+        let extensions: &'static [&'static str] = match self {
+            macOS => &["dmg"],
+            Linux => &["AppImage"],
+            Windows => &["exe"],
+            Android => &["apk", "aab"],
+            iOS => &["ipa"],
+        };
+        PublishedTarget {
+            os: self.slug(),
+            arch: self.arch(),
+            extensions,
+        }
+    }
+}
+
+/// One platform's filing location in the release store, from
+/// [`Platform::published_target`].
+#[derive(Debug, PartialEq, Eq)]
+pub struct PublishedTarget {
+    pub os: String,
+    pub arch: Arch,
+    pub extensions: &'static [&'static str],
 }
 
 /// A mise config environment, as declared in `waypoints.mise.environments` and
@@ -151,8 +193,7 @@ impl MiseEnv {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Unwrap, Display, EnumIter)]
-#[allow(dead_code, reason = "no job is arch-scoped yet")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, EnumIter)]
 pub enum Arch {
     #[allow(non_camel_case_types)]
     amd64,
@@ -177,6 +218,16 @@ impl Channel {
 
     pub fn prerelease(self) -> bool {
         self != Channel::Stable
+    }
+
+    /// Platforms that must each upload successfully before this channel's
+    /// manifest is written. All three channels require today's full build
+    /// matrix — see the design's "Targets are the host architecture of each
+    /// platform" decision; a channel narrowing its own required set is a
+    /// future change to this, not to the publish gate that reads it.
+    pub fn required_targets(self) -> &'static [Platform] {
+        use Platform::*;
+        &[macOS, Windows, Linux, iOS, Android]
     }
 
     /// This channel's release tag, unwrapped for `if:` — already an expression
@@ -478,5 +529,51 @@ mod tests {
             MiseEnv::select(&[MiseEnv::Xtask, MiseEnv::BuildMobile]),
             ("MISE_ENV", "xtask,build-mobile".to_owned()),
         );
+    }
+
+    /// `published_target` returns a single `PublishedTarget`, never a
+    /// collection, so every platform names exactly one target by
+    /// construction — this pins the values to the design's target set.
+    #[test]
+    fn each_platform_reports_exactly_one_published_target() {
+        let targets: Vec<PublishedTarget> =
+            Platform::iter().map(Platform::published_target).collect();
+        assert_eq!(targets.len(), Platform::iter().count());
+
+        let macos = Platform::macOS.published_target();
+        assert_eq!(macos.os, "macos");
+        assert_eq!(macos.arch, Arch::arm64);
+        assert_eq!(macos.extensions, &["dmg"]);
+
+        let linux = Platform::Linux.published_target();
+        assert_eq!(linux.os, "linux");
+        assert_eq!(linux.arch, Arch::amd64);
+        assert_eq!(linux.extensions, &["AppImage"]);
+
+        let windows = Platform::Windows.published_target();
+        assert_eq!(windows.os, "windows");
+        assert_eq!(windows.arch, Arch::amd64);
+        assert_eq!(windows.extensions, &["exe"]);
+
+        let android = Platform::Android.published_target();
+        assert_eq!(android.os, "android");
+        assert_eq!(android.arch, Arch::arm64);
+        assert_eq!(android.extensions, &["apk", "aab"]);
+
+        let ios = Platform::iOS.published_target();
+        assert_eq!(ios.os, "ios");
+        assert_eq!(ios.arch, Arch::arm64);
+        assert_eq!(ios.extensions, &["ipa"]);
+    }
+
+    /// Today's required set is every platform, for every channel — a channel
+    /// narrowing it is a change to this list, not to the gate that counts
+    /// against it.
+    #[test]
+    fn every_channel_requires_the_full_target_set() {
+        let all: Vec<Platform> = Platform::iter().collect();
+        for channel in [Channel::Stable, Channel::Preview, Channel::Nightly] {
+            assert_eq!(channel.required_targets(), all.as_slice(), "{channel}");
+        }
     }
 }

@@ -2,7 +2,7 @@
 //! and wires their `needs:`.
 
 use super::{
-    Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext,
+    Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowContext, WorkflowInput,
     helpers::{ANDROID_HOME, Environment},
     runners, steps,
     steps::Tools,
@@ -226,16 +226,36 @@ pub fn create_release(
     NamedJob::new("create-release", job)
 }
 
-/// Publishes the draft once every upload has had its say.
+/// The job id a platform's build runs under. Shared between [`build`], which
+/// names the job, and [`publish_release`], which reads its recorded-target
+/// output back — so the convention is stated once.
+fn build_job_name(platform: Platform) -> String {
+    format!("build-{}", platform.slug())
+}
+
+/// Publishes the draft once every required target has recorded its success.
 ///
-/// `!failure() && !cancelled()`: a platform-filtered dispatch skips some
-/// builds and must still publish, while one failed build leaves the draft
-/// unpublished rather than shipping a partial release. The tag guard skips
-/// build-only runs and nightlies that built nothing.
-pub fn publish_release(prepare: Option<&PrepareJob>) -> NamedJob {
+/// Completeness is counted, not inferred from the absence of failure: a
+/// target skipped by a `platforms` subset dispatch blocks the gate exactly
+/// as one that failed, because neither writes the output this reads — see
+/// the design's "Completeness is counted, not inferred" decision. The tag
+/// guard skips build-only runs and nightlies that built nothing.
+pub fn publish_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
     let tag = prepare.map(|prepare| &prepare.tag);
+    let completeness = channel
+        .required_targets()
+        .iter()
+        .map(|platform| {
+            format!(
+                "needs.{job}.outputs.target == '{slug}'",
+                job = build_job_name(*platform),
+                slug = platform.slug(),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" && ");
     let expr = format!(
-        "!failure() && !cancelled() && ({tag})",
+        "({completeness}) && ({tag})",
         tag = Channel::tag_condition(tag).0
     );
 
@@ -251,6 +271,29 @@ pub fn publish_release(prepare: Option<&PrepareJob>) -> NamedJob {
         });
 
     NamedJob::new("publish-release", job)
+}
+
+/// Fails fast when a dispatch pairs a non-empty `tag` with a `platforms`
+/// subset. The combination can never satisfy a channel's required-target
+/// count — [`publish_release`]'s gate — so letting it proceed would burn a
+/// full build matrix on a run that looks green but quietly never publishes.
+/// Only wired for the tag-driven channels: nightly takes no `tag` dispatch
+/// input, since it mints its own.
+pub fn guard_dispatch(tag: &WorkflowInput, platforms: &WorkflowInput) -> NamedJob {
+    let expr = format!(
+        "github.event_name == 'workflow_dispatch' && {tag} != '' && {platforms} != 'All'",
+        tag = tag.expr(),
+        platforms = platforms.expr(),
+    );
+
+    let job = Job::default()
+        .name("Guard the dispatch inputs")
+        .permissions(Permissions::default())
+        .runs_on(runners::LINUX)
+        .cond(Expression::new(expr))
+        .add_step(steps::reject_tag_with_platforms_subset());
+
+    NamedJob::new("guard-dispatch", job)
 }
 
 pub fn build(
@@ -281,6 +324,11 @@ pub fn build(
             .find(|dir| dir.name == name)
             .unwrap_or_else(|| panic!("no cached directory named {name} for {platform}"))
     };
+
+    // Built before the job it joins, so its output can be declared on the
+    // job once the step itself has moved in.
+    let record_target = steps::record_target(platform);
+    let target = StepOutput::new_trusted(&record_target, "target");
 
     let job = mise_env(Job::default(), envs)
         .permissions(Permissions::default().contents(Level::Write))
@@ -357,12 +405,14 @@ pub fn build(
         .when(platform.is_mobile(), |job| {
             job.add_step(steps::fastlane(platform, channel, tag))
         })
+        .add_step(record_target)
+        .outputs([target.clone().as_output()])
         // Reads the planner's outputs, so it waits on the planner.
         .when_some(prepare, |job, prepare| {
             job.add_needs(prepare.name().to_owned())
         });
 
-    NamedJob::new(format!("build-{}", platform.slug()), job)
+    NamedJob::new(build_job_name(platform), job)
 }
 
 #[cfg(test)]
@@ -424,5 +474,50 @@ mod tests {
         for platform in [Platform::macOS, Platform::Linux, Platform::Windows] {
             assert!(app_version(&prepare, platform).is_none(), "{platform}");
         }
+    }
+
+    /// Each build records its own slug; the build job's `outputs:` has to
+    /// expose it for `publish_release` to read back through `needs`.
+    #[test]
+    fn a_build_records_its_target_as_a_job_output() {
+        let named = build(
+            Channel::Stable,
+            &WorkflowContext::fixture(),
+            Platform::macOS,
+            None,
+        );
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        assert_eq!(
+            value["outputs"]["target"],
+            "${{ steps.record-target.outputs.target }}"
+        );
+        let steps = value["steps"].as_array().expect("steps");
+        let record = steps
+            .iter()
+            .find(|step| step["id"] == "record-target")
+            .expect("record-target step");
+        assert_eq!(record["run"], r#"echo "target=macos" >> "$GITHUB_OUTPUT""#);
+    }
+
+    /// Completeness is counted against every required target, by name, and
+    /// never falls back to inferring it from `failure()`/`cancelled()` — see
+    /// the design's "Completeness is counted, not inferred" decision.
+    #[test]
+    fn publish_release_counts_every_required_target() {
+        let named = publish_release(Channel::Stable, None);
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        let cond = value["if"].as_str().expect("if");
+
+        for platform in Channel::Stable.required_targets() {
+            assert!(
+                cond.contains(&format!(
+                    "needs.build-{slug}.outputs.target == '{slug}'",
+                    slug = platform.slug()
+                )),
+                "{platform}: {cond}"
+            );
+        }
+        assert!(!cond.contains("failure()"), "{cond}");
+        assert!(!cond.contains("cancelled()"), "{cond}");
     }
 }

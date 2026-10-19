@@ -679,6 +679,55 @@ mod tests {
         }
     }
 
+    /// The gate that flips a release public must count successful targets,
+    /// never infer completeness from the absence of failure — see the
+    /// design's "Completeness is counted, not inferred" decision. A skip
+    /// (a `platforms` subset dispatch, say) satisfies `!failure() &&
+    /// !cancelled()` without having built anything, which is the bug this
+    /// replaces.
+    #[test]
+    fn a_publishing_job_never_gates_on_bare_failure_or_cancelled() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            assert_publish_gate_counts_targets(&name, &value);
+        }
+    }
+
+    fn assert_publish_gate_counts_targets(name: &str, value: &Value) {
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            let publishes = job["steps"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|step| step["id"] == "publish-release");
+            if !publishes {
+                continue;
+            }
+            let cond = job["if"].as_str().unwrap_or("");
+            assert!(
+                !cond.contains("!failure()"),
+                "{name}/{job_name}: gates on bare !failure() rather than counted targets"
+            );
+            assert!(
+                !cond.contains("!cancelled()"),
+                "{name}/{job_name}: gates on bare !cancelled() rather than counted targets"
+            );
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "gates on bare !failure()")]
+    fn a_bare_failure_gate_is_refused() {
+        assert_publish_gate_counts_targets(
+            "synthetic",
+            &json!({ "jobs": { "publish-release": {
+                "if": "!failure() && !cancelled()",
+                "steps": [{ "id": "publish-release" }]
+            }}}),
+        );
+    }
+
     /// Both halves travel together: a step with the provider but no credential
     /// would resolve nothing, one with the credential but no provider would
     /// resolve against `env://` under devenv.

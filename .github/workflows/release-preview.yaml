@@ -199,12 +199,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+  guard-dispatch:
+    if: github.event_name == 'workflow_dispatch' && inputs.tag != '' && inputs.platforms != 'All'
+    name: Guard the dispatch inputs
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - id: reject-contradiction
+        name: Reject a tag with a platforms subset
+        run: "echo \"::error::A release tag cannot be combined with a platforms subset — a subset can never satisfy every required target, so the run would build without ever publishing. Dispatch again with platforms left at All, or leave tag empty for a build-only run.\" && exit 1"
+        shell: bash
   build-macos:
     needs:
       - test-macos
       - test-windows
       - test-linux
       - create-release
+      - guard-dispatch
     if: github.event_name == 'push' || contains(fromJson('["All","Desktop","macOS"]'), inputs.platforms)
     name: Build macOS
     runs-on: macos-26
@@ -212,6 +223,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-desktop
     steps:
@@ -325,12 +338,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=macos" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-windows:
     needs:
       - test-macos
       - test-windows
       - test-linux
       - create-release
+      - guard-dispatch
     if: github.event_name == 'push' || contains(fromJson('["All","Desktop","Windows"]'), inputs.platforms)
     name: Build Windows
     runs-on: windows-latest
@@ -338,6 +356,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-desktop
     steps:
@@ -450,12 +470,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=windows" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-linux:
     needs:
       - test-macos
       - test-windows
       - test-linux
       - create-release
+      - guard-dispatch
     if: github.event_name == 'push' || contains(fromJson('["All","Desktop","Linux"]'), inputs.platforms)
     name: Build Linux
     runs-on: ubuntu-22.04
@@ -463,6 +488,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-desktop
     steps:
@@ -593,12 +620,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=linux" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-ios:
     needs:
       - test-macos
       - test-windows
       - test-linux
       - create-release
+      - guard-dispatch
     if: github.event_name == 'push' || contains(fromJson('["All","Mobile","iOS"]'), inputs.platforms)
     name: Build iOS
     runs-on: macos-26
@@ -606,6 +638,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-mobile
     steps:
@@ -724,12 +758,17 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=ios" >> "$GITHUB_OUTPUT"
+        shell: bash
   build-android:
     needs:
       - test-macos
       - test-windows
       - test-linux
       - create-release
+      - guard-dispatch
     if: github.event_name == 'push' || contains(fromJson('["All","Mobile","Android"]'), inputs.platforms)
     name: Build Android
     runs-on: ubuntu-22.04
@@ -737,6 +776,8 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      target: ${{ steps.record-target.outputs.target }}
     env:
       MISE_ENV: build-mobile
     steps:
@@ -923,6 +964,10 @@ jobs:
         env:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: record-target
+        name: Record the completed target
+        run: echo "target=android" >> "$GITHUB_OUTPUT"
+        shell: bash
   publish-release:
     needs:
       - build-macos
@@ -931,7 +976,7 @@ jobs:
       - build-ios
       - build-android
       - create-release
-    if: "!failure() && !cancelled() && ((github.event_name == 'push' && github.ref_name || inputs.tag) != '')"
+    if: (needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android') && ((github.event_name == 'push' && github.ref_name || inputs.tag) != '')
     name: Publish the release
     runs-on: ubuntu-latest
     permissions:

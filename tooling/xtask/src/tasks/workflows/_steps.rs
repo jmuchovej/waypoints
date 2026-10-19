@@ -686,6 +686,38 @@ pub fn fastlane(platform: Platform, channel: Channel, tag: Option<&JobOutput>) -
         .id("publish-mobile-app")
 }
 
+/// Fails the run with a clear message when a dispatch pairs a non-empty
+/// `tag` with a `platforms` subset. Wrapped in a job gated on exactly that
+/// contradiction by `jobs::guard_dispatch`.
+pub fn reject_tag_with_platforms_subset() -> Step<Run> {
+    Step::new("Reject a tag with a platforms subset")
+        .run(concat!(
+            "echo \"::error::A release tag cannot be combined with a platforms subset — ",
+            "a subset can never satisfy every required target, so the run would build ",
+            "without ever publishing. Dispatch again with platforms left at All, or leave ",
+            "tag empty for a build-only run.\" && exit 1"
+        ))
+        .shell("bash")
+        .id("reject-contradiction")
+}
+
+/// Records this platform's slug as a job output, so the publish gate can
+/// count it against the channel's required set instead of inferring
+/// completeness from the absence of failure — see the design's
+/// "Completeness is counted, not inferred" decision. Runs only if everything
+/// earlier in the job succeeded, which is what makes the output's presence
+/// mean something: a step's default `if:` is `success()`, so a failed or
+/// skipped build simply never writes it.
+pub fn record_target(platform: Platform) -> Step<Run> {
+    Step::new("Record the completed target")
+        .run(format!(
+            r#"echo "target={slug}" >> "$GITHUB_OUTPUT""#,
+            slug = platform.slug(),
+        ))
+        .shell("bash")
+        .id("record-target")
+}
+
 /// Uploads everything the platform's build produced, under a name naming both
 /// the platform and the channel.
 pub fn upload_artifact(channel: Channel, platform: Platform) -> Step<Use> {

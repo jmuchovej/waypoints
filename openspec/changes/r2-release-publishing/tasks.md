@@ -1,11 +1,11 @@
 ## 1. Required targets and the counted publish gate
 
-- [ ] 1.1 Add the architecture dimension and published extension to the platform type in `workflows/_types.rs` — macOS arm64/`dmg`, Linux amd64/`AppImage`, Windows amd64/`exe`, plus Android and iOS — and verify `cargo test -p xtask` covers that each platform reports exactly one published target
-- [ ] 1.2 Declare each channel's required-target set on `Channel` and verify a unit test asserts all three channels require the full five-target set
-- [ ] 1.3 Have each `build` job record its target on success, and replace `publish_release`'s `!failure() && !cancelled()` condition with an assertion that the recorded set equals the channel's required set; verify a unit test over the generated job shows the gate reads the recorded set
-- [ ] 1.4 Add a generator test forbidding a bare `!failure()` (or `!cancelled()` alone) as a publishing job's gate in any generated workflow, and verify it fails when the old condition is restored
-- [ ] 1.5 Make a non-empty `tag` combined with a `platforms` subset fail early in the run, and verify a unit test asserts the guard step precedes every build job
-- [ ] 1.6 Regenerate with `cargo xtask workflows` and verify `just check-generated` reports no diff
+- [x] 1.1 Add the architecture dimension and published extension to the platform type in `workflows/_types.rs` — macOS arm64/`dmg`, Linux amd64/`AppImage`, Windows amd64/`exe`, plus Android and iOS — and verify `cargo test -p xtask` covers that each platform reports exactly one published target
+- [x] 1.2 Declare each channel's required-target set on `Channel` and verify a unit test asserts all three channels require the full five-target set
+- [x] 1.3 Have each `build` job record its target on success, and replace `publish_release`'s `!failure() && !cancelled()` condition with an assertion that the recorded set equals the channel's required set; verify a unit test over the generated job shows the gate reads the recorded set
+- [x] 1.4 Add a generator test forbidding a bare `!failure()` (or `!cancelled()` alone) as a publishing job's gate in any generated workflow, and verify it fails when the old condition is restored
+- [x] 1.5 Make a non-empty `tag` combined with a `platforms` subset fail early in the run, and verify a unit test asserts the guard step precedes every build job
+- [x] 1.6 Regenerate with `cargo xtask workflows` and verify `just check-generated` reports no diff
 
 ## 2. Store credential and artifact upload
 
