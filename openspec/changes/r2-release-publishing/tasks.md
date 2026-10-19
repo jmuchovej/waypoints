@@ -9,12 +9,12 @@
 
 ## 2. Store credential and artifact upload
 
-- [ ] 2.1 Add a `secretspec.toml` scope carrying the `releases` bucket's S3 endpoint and the long-lived parent key pair, and verify `secretspec check --explain --profile release --scope <scope>` names exactly those keys without printing values
-- [ ] 2.2 Add an xtask that resolves the parent through secretspec's Rust API and derives a session credential by local JWT signing — HS256 under the parent secret, temporary secret as the SHA-256 hex digest of the signed JWT, session token as `base64("jwt/" + jwt)` — scoped to one channel prefix with `object-read-write` and a configurable lifetime defaulting to 3 hours; verify unit tests cover the derivation shape, the prefix scope, and the lifetime default
+- [x] 2.1 Add a `secretspec.toml` scope carrying the `releases` bucket's S3 endpoint and the long-lived parent key pair, and verify `secretspec check --explain --profile release --scope <scope>` names exactly those keys without printing values
+- [x] 2.2 Add an xtask that resolves the parent through secretspec's Rust API and derives a session credential by local JWT signing — HS256 under the parent secret, temporary secret as the SHA-256 hex digest of the signed JWT, session token as `base64("jwt/" + jwt)` — scoped to one channel prefix with `object-read-write` and a configurable lifetime defaulting to 3 hours; verify unit tests cover the derivation shape, the prefix scope, and the lifetime default
 - [ ] 2.3 Verify against the live bucket that a derived credential can write under its own channel prefix, cannot write under another channel's, and is refused once expired
-- [ ] 2.4 Add the upload step that writes a built artifact to `{channel}/{series}/{os}/{arch}/waypoints-{version}.{ext}` under a credential minted by that xtask — channel derived from the version, never supplied — refusing to overwrite an existing key, and verify a unit test asserts the parent credential reaches only the minting step and that nothing is exported to `$GITHUB_ENV`
-- [ ] 2.5 Remove the GitHub-release asset upload from the `build` job so the record carries no bytes, and verify the generated build job contains no asset-upload step
-- [ ] 2.6 Add a generator test asserting that only the minting step resolves the parent scope, that the upload and manifest steps receive a derived credential, and that all of them sit in a job declaring the release environment
+- [x] 2.4 Add the upload step that writes a built artifact to `{channel}/{series}/{os}/{arch}/waypoints-{version}.{ext}` under a credential minted by that xtask — channel derived from the version, never supplied — refusing to overwrite an existing key, and verify a unit test asserts the parent credential reaches only the minting step and that nothing is exported to `$GITHUB_ENV`
+- [x] 2.5 Remove the GitHub-release asset upload from the `build` job so the record carries no bytes, and verify the generated build job contains no asset-upload step
+- [x] 2.6 Add a generator test asserting that only the minting step resolves the parent scope, that the upload and manifest steps receive a derived credential, and that all of them sit in a job declaring the release environment
 - [ ] 2.7 Regenerate and verify `just check-generated` is clean, then confirm with a build-only dispatch (empty `tag`) that neither a credential is minted nor an upload runs
 
 ## 3. Manifest commit point and withdrawal

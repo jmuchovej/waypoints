@@ -401,7 +401,8 @@ pub fn build(
                 .add_step(steps::cache_save(cache("android-ndk"), Tools::Mise))
         })
         .add_step(steps::upload_artifact(channel, platform))
-        .add_step(steps::upload_to_release(platform, tag))
+        .add_step(steps::mint_release_credential(channel, tag))
+        .add_step(steps::upload_to_store(platform, tag))
         .when(platform.is_mobile(), |job| {
             job.add_step(steps::fastlane(platform, channel, tag))
         })
@@ -519,5 +520,93 @@ mod tests {
         }
         assert!(!cond.contains("failure()"), "{cond}");
         assert!(!cond.contains("cancelled()"), "{cond}");
+    }
+
+    /// Only the minting step resolves the parent, and it never reaches
+    /// `$GITHUB_ENV` — the upload step receives the derived credential as
+    /// its own step env, referencing the mint step's outputs, and both sit
+    /// in the job declaring the release environment. See the design's
+    /// "The store's write credential is an integrity credential" and "An
+    /// uploading job holds only a derived, expiring, scoped credential"
+    /// requirements.
+    #[test]
+    fn only_the_minting_step_resolves_the_store_parent() {
+        let named = build(
+            Channel::Stable,
+            &WorkflowContext::fixture(),
+            Platform::macOS,
+            None,
+        );
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+
+        assert_eq!(value["environment"]["name"], "App Release");
+        assert!(
+            !serde_json::to_string(&value)
+                .unwrap()
+                .contains("GITHUB_ENV")
+        );
+
+        let steps = value["steps"].as_array().expect("steps");
+        let mint = steps
+            .iter()
+            .find(|step| step["id"] == "mint-release-credential")
+            .expect("mint-release-credential step");
+        assert_eq!(
+            mint["run"].as_str().unwrap(),
+            "cargo xtask release-credential --channel stable"
+        );
+        assert!(mint["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+
+        let upload = steps
+            .iter()
+            .find(|step| step["id"] == "upload-to-store")
+            .expect("upload-to-store step");
+        assert_eq!(
+            upload["run"].as_str().unwrap(),
+            r#"cargo xtask release-upload --platform macos --tag "${TAG}""#
+        );
+        for output in [
+            "access_key_id",
+            "secret_access_key",
+            "session_token",
+            "endpoint",
+        ] {
+            let env_key = match output {
+                "access_key_id" => "R2_SESSION_ACCESS_KEY_ID",
+                "secret_access_key" => "R2_SESSION_SECRET_ACCESS_KEY",
+                "session_token" => "R2_SESSION_TOKEN",
+                "endpoint" => "R2_SESSION_ENDPOINT",
+                _ => unreachable!(),
+            };
+            assert_eq!(
+                upload["env"][env_key],
+                format!("${{{{ steps.mint-release-credential.outputs.{output} }}}}"),
+                "{env_key}"
+            );
+        }
+        // The upload step contacts the store, not the vault: it must not
+        // itself carry the vault-unlocking credential.
+        assert!(upload["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_none());
+    }
+
+    /// The record carries no bytes: a release build's artifacts reach only
+    /// the store, never a GitHub release asset.
+    #[test]
+    fn the_build_job_has_no_github_release_asset_upload() {
+        let named = build(
+            Channel::Stable,
+            &WorkflowContext::fixture(),
+            Platform::macOS,
+            None,
+        );
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        assert!(
+            steps.iter().all(|step| !step["run"]
+                .as_str()
+                .unwrap_or("")
+                .contains("gh release upload")),
+            "{steps:?}"
+        );
     }
 }

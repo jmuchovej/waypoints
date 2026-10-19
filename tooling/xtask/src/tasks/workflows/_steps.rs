@@ -663,7 +663,7 @@ pub(crate) fn cache_save(dir: &CachedDir, tools: Tools) -> Step<Run> {
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
 ///
-/// Gated on the tag like [`upload_to_release`]: a build-only run has none,
+/// Gated on the tag like [`upload_to_store`]: a build-only run has none,
 /// and its artifacts must stop at the workflow — the store build number is
 /// the date, so a dispatch that reached the store would take the day's slot
 /// from the scheduled run.
@@ -776,25 +776,56 @@ pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
         .id("draft-release")
 }
 
-/// Uploads the platform's artifacts to the release for `tag`. Skipped entirely
-/// on a build-only run, where the tag is empty.
-///
-/// `tag` is the planner's output on nightly, and `None` elsewhere — where the
-/// tag comes from the pushed ref or the dispatch input instead.
-pub fn upload_to_release(platform: Platform, tag: Option<&JobOutput>) -> Step<Run> {
-    let globs = platform
-        .artifacts()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
+/// The step id [`mint_release_credential`] writes its outputs under, and
+/// [`upload_to_store`] (and, once it exists, the manifest-write step) reads
+/// them back from.
+const MINT_RELEASE_CREDENTIAL_ID: &str = "mint-release-credential";
 
-    Step::new("Upload to GitHub Release")
-        .run(format!(r#"gh release upload "${{TAG}}" {globs} --clobber"#))
+/// Mints a short-lived, channel-scoped R2 session credential for the
+/// `releases` bucket. `xtask` resolves the long-lived parent through
+/// secretspec's Rust API inside this step alone — unlike every other
+/// credential this repo's CI resolves, the step is never wrapped in
+/// `secretspec run`/`export`, so the parent is not exported to
+/// `$GITHUB_ENV` and never becomes an OS environment variable even
+/// transiently on a child process. See the design's "Upload credentials are
+/// minted locally" decision. Skipped entirely on a build-only run, where the
+/// tag is empty.
+pub fn mint_release_credential(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
+    let step = Step::new("Mint a release store credential")
+        .run(format!(
+            "cargo xtask release-credential --channel {channel}",
+            channel = channel.flavor(),
+        ))
+        .shell("bash")
+        .id(MINT_RELEASE_CREDENTIAL_ID)
+        .if_condition(Channel::tag_condition(tag));
+    helpers::resolving(step)
+}
+
+/// Uploads the platform's published artifacts to the `releases` bucket under
+/// the credential [`mint_release_credential`] derived, read back by its step
+/// id rather than a threaded handle — the two always sit in the same job.
+/// Gated on the tag like the mint step: a build-only run uploads nothing.
+pub fn upload_to_store(platform: Platform, tag: Option<&JobOutput>) -> Step<Run> {
+    let mint_output =
+        |name: &str| format!("${{{{ steps.{MINT_RELEASE_CREDENTIAL_ID}.outputs.{name} }}}}");
+
+    Step::new("Upload to the release store")
+        .run(format!(
+            r#"cargo xtask release-upload --platform {slug} --tag "${{TAG}}""#,
+            slug = platform.slug(),
+        ))
         .shell("bash")
         .if_condition(Channel::tag_condition(tag))
-        .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("TAG", Channel::tag(tag)))
-        .id("upload-release")
+        .add_env(("R2_SESSION_ACCESS_KEY_ID", mint_output("access_key_id")))
+        .add_env((
+            "R2_SESSION_SECRET_ACCESS_KEY",
+            mint_output("secret_access_key"),
+        ))
+        .add_env(("R2_SESSION_TOKEN", mint_output("session_token")))
+        .add_env(("R2_SESSION_ENDPOINT", mint_output("endpoint")))
+        .id("upload-to-store")
 }
 
 /// Flips the draft public. When this runs is the publish job's decision.

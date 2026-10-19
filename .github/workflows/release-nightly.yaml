@@ -413,14 +413,25 @@ jobs:
             target/release/bundle/macos/*.tar.gz
             target/release/bundle/macos/*.tar.gz.sig
           if-no-files-found: error
-      - id: upload-release
-        name: Upload to GitHub Release
+      - id: mint-release-credential
+        name: Mint a release store credential
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" target/release/bundle/dmg/*.dmg target/release/bundle/macos/*.tar.gz target/release/bundle/macos/*.tar.gz.sig --clobber
+        run: cargo xtask release-credential --channel nightly
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: upload-to-store
+        name: Upload to the release store
+        if: needs.prepare.outputs.tag != ''
+        run: cargo xtask release-upload --platform macos --tag "${TAG}"
+        shell: bash
+        env:
           TAG: ${{ needs.prepare.outputs.tag }}
+          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
+          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
+          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
+          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
       - id: record-target
         name: Record the completed target
         run: echo "target=macos" >> "$GITHUB_OUTPUT"
@@ -545,14 +556,25 @@ jobs:
             target/release/bundle/nsis/*.exe
             target/release/bundle/nsis/*.exe.sig
           if-no-files-found: error
-      - id: upload-release
-        name: Upload to GitHub Release
+      - id: mint-release-credential
+        name: Mint a release store credential
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" target/release/bundle/nsis/*.exe target/release/bundle/nsis/*.exe.sig --clobber
+        run: cargo xtask release-credential --channel nightly
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: upload-to-store
+        name: Upload to the release store
+        if: needs.prepare.outputs.tag != ''
+        run: cargo xtask release-upload --platform windows --tag "${TAG}"
+        shell: bash
+        env:
           TAG: ${{ needs.prepare.outputs.tag }}
+          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
+          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
+          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
+          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
       - id: record-target
         name: Record the completed target
         run: echo "target=windows" >> "$GITHUB_OUTPUT"
@@ -695,14 +717,25 @@ jobs:
             target/release/bundle/appimage/*.AppImage.sig
             target/release/bundle/deb/*.deb
           if-no-files-found: error
-      - id: upload-release
-        name: Upload to GitHub Release
+      - id: mint-release-credential
+        name: Mint a release store credential
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" target/release/bundle/appimage/*.AppImage target/release/bundle/appimage/*.AppImage.sig target/release/bundle/deb/*.deb --clobber
+        run: cargo xtask release-credential --channel nightly
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: upload-to-store
+        name: Upload to the release store
+        if: needs.prepare.outputs.tag != ''
+        run: cargo xtask release-upload --platform linux --tag "${TAG}"
+        shell: bash
+        env:
           TAG: ${{ needs.prepare.outputs.tag }}
+          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
+          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
+          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
+          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
       - id: record-target
         name: Record the completed target
         run: echo "target=linux" >> "$GITHUB_OUTPUT"
@@ -827,14 +860,25 @@ jobs:
           name: waypoints-ios-nightly
           path: src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
-      - id: upload-release
-        name: Upload to GitHub Release
+      - id: mint-release-credential
+        name: Mint a release store credential
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" src-tauri/gen/apple/build/**/*.ipa --clobber
+        run: cargo xtask release-credential --channel nightly
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: upload-to-store
+        name: Upload to the release store
+        if: needs.prepare.outputs.tag != ''
+        run: cargo xtask release-upload --platform ios --tag "${TAG}"
+        shell: bash
+        env:
           TAG: ${{ needs.prepare.outputs.tag }}
+          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
+          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
+          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
+          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
       - id: publish-mobile-app
         name: Upload to the App Store
         if: needs.prepare.outputs.tag != ''
@@ -1035,14 +1079,25 @@ jobs:
             src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
             src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
           if-no-files-found: error
-      - id: upload-release
-        name: Upload to GitHub Release
+      - id: mint-release-credential
+        name: Mint a release store credential
         if: needs.prepare.outputs.tag != ''
-        run: gh release upload "${TAG}" src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab --clobber
+        run: cargo xtask release-credential --channel nightly
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: upload-to-store
+        name: Upload to the release store
+        if: needs.prepare.outputs.tag != ''
+        run: cargo xtask release-upload --platform android --tag "${TAG}"
+        shell: bash
+        env:
           TAG: ${{ needs.prepare.outputs.tag }}
+          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
+          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
+          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
+          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
       - id: publish-mobile-app
         name: Upload to the Play Store
         if: needs.prepare.outputs.tag != ''

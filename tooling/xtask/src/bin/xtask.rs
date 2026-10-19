@@ -15,6 +15,11 @@ enum Command {
     TestPlan(tasks::TestPlanArgs),
     /// Mints the release tag for a Nightly workflow run.
     NightlyPlan(tasks::NightlyPlanArgs),
+    /// Derives a short-lived, channel-scoped R2 session credential for the
+    /// releases bucket from its long-lived parent.
+    ReleaseCredential(tasks::ReleaseCredentialArgs),
+    /// Uploads one platform's published artifacts to the releases bucket.
+    ReleaseUpload(tasks::ReleaseUploadArgs),
     /// Plans a release-cycle transition: cut, advance, promote, or patch.
     ReleasePlan(tasks::ReleasePlanArgs),
     /// Records a published tag in the release index on `main`.
@@ -36,6 +41,8 @@ fn main() -> Result<()> {
     match args.command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
+        Command::ReleaseCredential(args) => tasks::release_credential::run(args),
+        Command::ReleaseUpload(args) => tasks::release_upload::run(args),
         Command::ReleasePlan(args) => tasks::release_plan::run(args),
         Command::ReleaseIndex(args) => tasks::release_index::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),

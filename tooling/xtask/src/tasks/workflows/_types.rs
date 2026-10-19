@@ -30,13 +30,17 @@ impl TestSuite {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, IsVariant, EnumIter)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, IsVariant, EnumIter, clap::ValueEnum,
+)]
 pub enum Platform {
     #[allow(non_camel_case_types)]
+    #[value(name = "macos")]
     macOS,
     Windows,
     Linux,
     #[allow(non_camel_case_types)]
+    #[value(name = "ios")]
     iOS,
     Android,
 }
@@ -141,6 +145,25 @@ impl Platform {
             extensions,
         }
     }
+
+    /// Globs matching this platform's published artifacts on disk: the
+    /// subset of [`Platform::artifacts`] that reaches the release store, in
+    /// the same order as [`PublishedTarget::extensions`] — every other glob
+    /// there (signatures, the updater's `.tar.gz` payload, the `.deb`) stays
+    /// a build output without becoming a published target.
+    pub fn published_globs(self) -> &'static [&'static str] {
+        use Platform::*;
+        match self {
+            macOS => &["target/release/bundle/dmg/*.dmg"],
+            Linux => &["target/release/bundle/appimage/*.AppImage"],
+            Windows => &["target/release/bundle/nsis/*.exe"],
+            Android => &[
+                "src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk",
+                "src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab",
+            ],
+            iOS => &["src-tauri/gen/apple/build/**/*.ipa"],
+        }
+    }
 }
 
 /// One platform's filing location in the release store, from
@@ -201,7 +224,7 @@ pub enum Arch {
     arm64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, IsVariant)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, IsVariant, clap::ValueEnum)]
 #[display(rename_all = "lowercase")]
 pub enum Channel {
     Stable,

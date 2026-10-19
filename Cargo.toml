@@ -29,7 +29,6 @@
     publish       = false
 
   [workspace.dependencies]
-    Waypoints        = { path = "src-tauri" }
     bedrock          = { path = "crates/bedrock" }
     bedrock-core     = { path = "crates/bedrock-core" }
     bedrock-derive   = { path = "crates/bedrock-derive" }
@@ -55,22 +54,14 @@
     chrono             = { version = "0.4.45", default-features = false, features = [
       "serde"
     ] }
-    chrono-tz          = { version = "0.10.4", default-features = false, features = [
-      "serde"
-    ] }
     clap               = { version = "4.6.1", features = [ "derive", "env" ] }
     derive_more        = "2.1.1"
     directories        = "6.0.0"
-    eyre               = "0.6.12"
-    fake               = { version = "5.1.0", default-features = false }
     fast_qr            = { version = "0.13", features = [ "svg" ] }
-    geo                = { version = "0.33.1", features = [ "use-serde" ] }
     gh-workflow        = { git = "https://github.com/waypoints-hq/gh-workflow", rev = "e4f02895aa72", version = "0.9.0" }
     heck               = "0.5"
     hex                = "0.4"
     hmac               = "0.13"
-    hostname           = "0.4"
-    iana-time-zone     = "0.1.65"
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
@@ -79,10 +70,6 @@
       "NSScrollView",
       "NSView"
     ] }
-    open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
-    paste              = "1.0.15"
-    pest               = "2.8.6"
-    pest_derive        = "2.8.6"
     postcard           = { version = "1.1", default-features = false, features = [
       "alloc"
     ] }
@@ -90,13 +77,6 @@
     proc-macro2        = "1"
     pulldown-cmark     = { version = "0.13", default-features = false }
     quote              = "1"
-    refinery           = { version = "0.9", default-features = false }
-    refinery-core      = { version = "0.9", default-features = false }
-    regex              = "1.12.4"
-    reqwest            = { version = "0.12", default-features = false, features = [
-      "json",
-      "rustls-tls"
-    ] }
     resvg              = "0.47.0"
     rqrr               = "0.10.1"
     rstest             = { version = "0.26.1", default-features = false, features = [
@@ -117,7 +97,6 @@
     syn                = { version = "2", features = [ "full" ] }
     tempfile           = "3"
     thiserror          = "2.0.18"
-    time               = { version = "0.3", features = [ "formatting", "parsing" ] }
     tokio              = { version = "1.52.3", features = [ "sync" ] }
     toml               = "0.9"
     tower-http         = { version = "0.7.0", features = [ "fs", "trace" ] }
@@ -168,9 +147,6 @@
     tauri-plugin-single-instance = { version = "2", features = [ "deep-link" ] }
     tauri-plugin-store           = "2.4.3"
     tauri-plugin-updater         = "2.10.1"
-    tauri-specta                 = { version = "2.0.0-rc.25", features = [
-      "typescript"
-    ] }
     wry                          = { version = "0.57.0", features = [
       "os-webview",
       "serde",

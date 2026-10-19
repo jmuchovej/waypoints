@@ -105,6 +105,15 @@ fn release_branch(version: &Version) -> String {
     format!("v{}.{}.x", version.major, version.minor)
 }
 
+/// The release store's series prefix for a version: the same `v{major}.{minor}.x`
+/// shape as [`release_branch`], under the name the artifact store's key layout
+/// uses for it. One minor line holds every channel's versions, which is why
+/// the channel still has to lead the key — see the design's "Channel leads
+/// the key" decision.
+pub fn series_of(version: &Version) -> String {
+    release_branch(version)
+}
+
 /// A version names its own channel: a `nightly` prerelease is nightly, any
 /// other prerelease a preview, none stable. Deriving it means a build cannot
 /// disagree with its version — and, applied to a manifest rather than a tag,

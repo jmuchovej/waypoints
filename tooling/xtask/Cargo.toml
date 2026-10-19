@@ -31,11 +31,17 @@
   }
   directories.workspace        = true
   gh-workflow.workspace        = true
+  glob                         = "0.3.4"
   heck.workspace               = true
+  hex.workspace                = true
+  hmac.workspace               = true
   indexmap.workspace           = true
   indoc.workspace              = true
+  rusty-s3                     = "0.10.2"
+  secretspec                   = { version = "0.21.1", default-features = false }
   serde.workspace              = true
   serde_json.workspace         = true
+  sha2.workspace               = true
   specta.workspace             = true
   specta-serde.workspace       = true
   specta-typescript.workspace  = true

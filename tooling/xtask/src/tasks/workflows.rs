@@ -26,7 +26,7 @@ mod release_plan;
 
 pub(crate) mod _types;
 pub(crate) use _types::{
-    Artifact, Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowInput,
+    Arch, Artifact, Channel, MiseEnv, Platform, PrepareJob, TestSuite, WorkflowInput,
 };
 pub(crate) mod _helpers;
 pub(crate) use _helpers as helpers;
