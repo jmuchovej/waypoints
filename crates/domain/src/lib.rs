@@ -86,6 +86,14 @@ pub use mark::{
     ReferenceDisplayMode, RichText, Size, TextMarkKind, TextSegment, now_ms,
 };
 
+/// The markdown dialect `Content` and `RichText` project into, documented at
+/// `docs/dialect.md`. Behind the `syntax` feature so other dependents skip it.
+#[cfg(feature = "syntax")]
+pub mod syntax {
+    pub mod block;
+    pub mod inline;
+}
+
 pub(crate) mod chart {
     pub(crate) mod ids;
     pub use ids::{Base36ID, ChartID, FeatureID, GlyphID};

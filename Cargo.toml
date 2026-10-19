@@ -14,6 +14,7 @@
     "crates/outpost-hold",
     "crates/outpost-protocol",
     "crates/store",
+    "crates/transload",
     "src-tauri",
     "tooling/xtask",
   ]
@@ -41,6 +42,7 @@
     outpost-hold     = { path = "crates/outpost-hold" }
     outpost-protocol = { path = "crates/outpost-protocol" }
     store            = { path = "crates/store" }
+    transload        = { path = "crates/transload" }
 
     anyhow             = "1.0.103"
     async-trait        = "0.1.89"
@@ -74,6 +76,13 @@
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
+    # No remote `$ref` resolution: a Bundle's schemas are self-contained, and an
+    # ingester must never reach the network. `arbitrary-precision` tracks the
+    # workspace's own `serde_json` feature — without it, numeric validation reads
+    # arbitrary-precision numbers as opaque strings.
+    jsonschema         = { version = "0.59", default-features = false, features = [
+      "arbitrary-precision"
+    ] }
     libc               = "0.2"
     objc2-app-kit      = { version = "0.3", default-features = false, features = [
       "NSScrollView",
@@ -105,6 +114,8 @@
     rustls             = { version = "0.23", default-features = false, features = [
       "ring"
     ] }
+    # Bundles are UTF-8 by definition, so the `encoding` default is dead weight.
+    saphyr             = { version = "0.2.2", default-features = false }
     serde              = { version = "1.0.228", features = [ "derive" ] }
     serde_json         = { version = "1.0.150", features = [
       "arbitrary_precision",

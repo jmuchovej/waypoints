@@ -1,0 +1,26 @@
+[package]
+  name                    = "transload"
+  version                 = "0.1.0"
+  edition.workspace       = true
+  description             = "The Bundle format: Waypoints' legible, lossless export and ingest"
+  documentation.workspace = true
+  readme.workspace        = true
+  homepage.workspace      = true
+  repository.workspace    = true
+  license.workspace       = true
+  publish.workspace       = true
+
+[dependencies]
+  bedrock.workspace = true
+  domain            = { workspace = true, features = [ "syntax" ] }
+
+  chrono.workspace     = true
+  jsonschema.workspace = true
+  saphyr.workspace     = true
+  serde.workspace      = true
+  serde_json.workspace = true
+  thiserror.workspace  = true
+  uuid.workspace       = true
+
+[lints]
+  workspace = true
