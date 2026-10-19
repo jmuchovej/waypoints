@@ -2,7 +2,7 @@ toml-version = "v1.1.0"
 
 [files]
   include              = [ "**/*.toml" ]
-  exclude              = [ "vendor/**/*.toml", ".config/mise*.toml" ]
+  exclude              = [ "tooling/patches/**/*.toml", ".config/mise*.toml" ]
   respect-ignore-files = true
 
 [format]

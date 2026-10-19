@@ -8,7 +8,7 @@ excludes                = [
   "*.patch",
   ".git{attributes,ignore,modules}",
   "LICENSE",
-  "vendor/*",
+  "tooling/patches/*",
   "*.{gif,ico}",
   "*.{properties,gradle}",
   "*.{pbxproj,xcconfig}",

@@ -206,11 +206,11 @@ patchedDependencies:
   #    annotation so `to` is typed contextually. The annotation pulled the type
   #    from docus' own vue-router instance, which is a second copy of 5.2.0 and
   #    so never matched the app's. Type-only; see also the `h3` catalog pin.
-  docus@5.12.3: patches/docus@5.12.3.patch
+  docus@5.12.3: tooling/patches/docus@5.12.3.patch
   # Upstream bug, not a local workaround: plugins/devtools-connection.client.ts
   # reads `client.host.*` off the value passed to onConnected, but the layer
   # hands that callback its guarded DevtoolsHost adapter instead of the raw
   # devtools-kit client. Every read resolved to undefined, so base/path/query
   # silently fell back to '/'. Rewritten against the adapter. Drop on any bump
   # that fixes it upstream.
-  nuxtseo-layer-devtools@5.3.12: patches/nuxtseo-layer-devtools@5.3.12.patch
+  nuxtseo-layer-devtools@5.3.12: tooling/patches/nuxtseo-layer-devtools@5.3.12.patch
