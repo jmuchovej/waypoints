@@ -75,6 +75,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
         .add_env(("GH_TOKEN", token.to_string()));
 
     let p_tag = StepOutput::new_trusted(&planner, "tag");
+    let p_tag_minted = StepOutput::new_trusted(&planner, "tag_minted");
     let p_build = StepOutput::new_trusted(&planner, "should_build");
     let p_app_version = StepOutput::new_trusted(&planner, "version");
     let p_version = StepOutput::new_trusted(&planner, "version_code");
@@ -119,6 +120,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
             .add_step(steps::cache_save(&registry, Tools::Mise))
             .outputs([
                 p_tag.clone().as_output(),
+                p_tag_minted.clone().as_output(),
                 p_build.clone().as_output(),
                 p_app_version.clone().as_output(),
                 p_version.clone().as_output(),
@@ -128,6 +130,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
 
     PrepareJob::new(
         p_tag.as_job_output(&job),
+        p_tag_minted.as_job_output(&job),
         p_build.as_job_output(&job),
         p_app_version.as_job_output(&job),
         p_version.as_job_output(&job),
@@ -233,16 +236,12 @@ fn build_job_name(platform: Platform) -> String {
     format!("build-{}", platform.slug())
 }
 
-/// Publishes the draft once every required target has recorded its success.
-///
-/// Completeness is counted, not inferred from the absence of failure: a
-/// target skipped by a `platforms` subset dispatch blocks the gate exactly
-/// as one that failed, because neither writes the output this reads — see
-/// the design's "Completeness is counted, not inferred" decision. The tag
-/// guard skips build-only runs and nightlies that built nothing.
-pub fn publish_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
-    let tag = prepare.map(|prepare| &prepare.tag);
-    let completeness = channel
+/// The `needs.<job>.outputs.target == '<slug>'` clauses, ANDed together,
+/// that assert every required target has recorded in. Shared between the
+/// publish gate and the withdraw gate, which assert the fact and its
+/// negation respectively.
+fn completeness_expr(channel: Channel) -> String {
+    channel
         .required_targets()
         .iter()
         .map(|platform| {
@@ -253,7 +252,19 @@ pub fn publish_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJ
             )
         })
         .collect::<Vec<_>>()
-        .join(" && ");
+        .join(" && ")
+}
+
+/// Publishes the draft once every required target has recorded its success.
+///
+/// Completeness is counted, not inferred from the absence of failure: a
+/// target skipped by a `platforms` subset dispatch blocks the gate exactly
+/// as one that failed, because neither writes the output this reads — see
+/// the design's "Completeness is counted, not inferred" decision. The tag
+/// guard skips build-only runs and nightlies that built nothing.
+pub fn publish_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
+    let tag = prepare.map(|prepare| &prepare.tag);
+    let completeness = completeness_expr(channel);
     let expr = format!(
         "({completeness}) && ({tag})",
         tag = Channel::tag_condition(tag).0
@@ -262,15 +273,65 @@ pub fn publish_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJ
     let job = Job::default()
         .name("Publish the release")
         .permissions(Permissions::default().contents(Level::Write))
+        // The manifest write below resolves the store credential, so the
+        // vault credential comes from the same environment every other
+        // store-touching job declares.
+        .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(runners::LINUX)
         .cond(Expression::new(expr))
         .add_step(steps::publish_release(tag))
+        // Last: the manifest is the run's true final write, ordered after
+        // the record itself goes public so the reverse — a published
+        // record naming artifacts the manifest has not confirmed — cannot
+        // happen.
+        .add_step(steps::write_manifest(tag))
         // Reads the planner's tag, so it waits on the planner.
         .when_some(prepare, |job, prepare| {
             job.add_needs(prepare.name().to_owned())
         });
 
     NamedJob::new("publish-release", job)
+}
+
+/// Cleans up a run that failed or fell short of [`publish_release`]'s
+/// completeness: discards the drafted record always, best-effort deletes
+/// the objects this run uploaded, and deletes the tag only when this run
+/// minted it — see the design's "A withdrawal deletes the keys it wrote,
+/// best-effort" and "A run deletes only a tag it minted" decisions.
+///
+/// Gated on the negation of the completeness count, ORed with `failure()`:
+/// a skipped build already leaves its target unrecorded, which the negated
+/// count alone catches, but `failure()` is kept explicit so a failure
+/// earlier in the job's own dependency chain — `create-release`, say, which
+/// a shortfall in target recording would not by itself prove — still
+/// triggers cleanup. An explicit `if:` is required either way: the job's
+/// own `needs` may have failed, and GitHub's default implicit gate would
+/// skip this job exactly when it is needed.
+pub fn withdraw_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
+    let tag = prepare.map(|prepare| &prepare.tag);
+    let completeness = completeness_expr(channel);
+    let expr = format!(
+        "({tag}) && (failure() || !({completeness}))",
+        tag = Channel::tag_condition(tag).0,
+    );
+
+    let job = Job::default()
+        .name("Withdraw the release")
+        .permissions(Permissions::default().contents(Level::Write))
+        // The object delete below resolves the store credential, so the
+        // vault credential comes from the same environment every other
+        // store-touching job declares.
+        .environment(GhEnvironment::from(Environment::AppRelease))
+        .runs_on(runners::LINUX)
+        .cond(Expression::new(expr))
+        .add_step(steps::discard_release(tag))
+        .add_step(steps::withdraw_from_store(tag))
+        .when_some(prepare, |job, prepare| {
+            job.add_step(steps::delete_minted_tag(&prepare.tag, &prepare.tag_minted))
+                .add_needs(prepare.name().to_owned())
+        });
+
+    NamedJob::new("withdraw-release", job)
 }
 
 /// Fails fast when a dispatch pairs a non-empty `tag` with a `platforms`
@@ -401,7 +462,6 @@ pub fn build(
                 .add_step(steps::cache_save(cache("android-ndk"), Tools::Mise))
         })
         .add_step(steps::upload_artifact(channel, platform))
-        .add_step(steps::mint_release_credential(channel, tag))
         .add_step(steps::upload_to_store(platform, tag))
         .when(platform.is_mobile(), |job| {
             job.add_step(steps::fastlane(platform, channel, tag))
@@ -522,15 +582,47 @@ mod tests {
         assert!(!cond.contains("cancelled()"), "{cond}");
     }
 
-    /// Only the minting step resolves the parent, and it never reaches
-    /// `$GITHUB_ENV` — the upload step receives the derived credential as
-    /// its own step env, referencing the mint step's outputs, and both sit
-    /// in the job declaring the release environment. See the design's
-    /// "The store's write credential is an integrity credential" and "An
-    /// uploading job holds only a derived, expiring, scoped credential"
-    /// requirements.
+    /// The manifest write sits in the same job as the record publish, after
+    /// it — the run's true last write — and resolves its own store
+    /// credential, so the job declares the release environment the same
+    /// way every other store-touching job does.
     #[test]
-    fn only_the_minting_step_resolves_the_store_parent() {
+    fn the_manifest_write_follows_the_record_publish_in_the_same_job() {
+        let named = publish_release(Channel::Stable, None);
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+
+        assert_eq!(value["environment"]["name"], "App Release");
+
+        let steps = value["steps"].as_array().expect("steps");
+        let publish_index = steps
+            .iter()
+            .position(|step| step["id"] == "publish-release")
+            .expect("publish-release step");
+        let manifest_index = steps
+            .iter()
+            .position(|step| step["id"] == "write-manifest")
+            .expect("write-manifest step");
+        assert!(
+            manifest_index > publish_index,
+            "the manifest write must follow the record publish"
+        );
+
+        let manifest = &steps[manifest_index];
+        assert_eq!(
+            manifest["run"].as_str().unwrap(),
+            r#"cargo xtask release-manifest --tag "${TAG}""#
+        );
+        assert!(manifest["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+    }
+
+    /// The upload step is a single one-line `xtask` dispatch: it resolves
+    /// the store credential itself, through secretspec's Rust API, so no
+    /// separate minting step exists for it to read a derived credential
+    /// back from, and no step in the job exports anything to `$GITHUB_ENV`.
+    /// See the design's "The store is reached through opendal in-process,
+    /// from one client constructor" decision.
+    #[test]
+    fn the_upload_step_is_a_one_line_dispatch_resolving_its_own_credential() {
         let named = build(
             Channel::Stable,
             &WorkflowContext::fixture(),
@@ -547,15 +639,12 @@ mod tests {
         );
 
         let steps = value["steps"].as_array().expect("steps");
-        let mint = steps
-            .iter()
-            .find(|step| step["id"] == "mint-release-credential")
-            .expect("mint-release-credential step");
-        assert_eq!(
-            mint["run"].as_str().unwrap(),
-            "cargo xtask release-credential --channel stable"
+        assert!(
+            steps
+                .iter()
+                .all(|step| step["id"] != "mint-release-credential"),
+            "no separate minting step should exist"
         );
-        assert!(mint["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
 
         let upload = steps
             .iter()
@@ -565,28 +654,15 @@ mod tests {
             upload["run"].as_str().unwrap(),
             r#"cargo xtask release-upload --platform macos --tag "${TAG}""#
         );
-        for output in [
-            "access_key_id",
-            "secret_access_key",
-            "session_token",
-            "endpoint",
+        assert!(upload["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+        for leftover in [
+            "R2_SESSION_ACCESS_KEY_ID",
+            "R2_SESSION_SECRET_ACCESS_KEY",
+            "R2_SESSION_TOKEN",
+            "R2_SESSION_ENDPOINT",
         ] {
-            let env_key = match output {
-                "access_key_id" => "R2_SESSION_ACCESS_KEY_ID",
-                "secret_access_key" => "R2_SESSION_SECRET_ACCESS_KEY",
-                "session_token" => "R2_SESSION_TOKEN",
-                "endpoint" => "R2_SESSION_ENDPOINT",
-                _ => unreachable!(),
-            };
-            assert_eq!(
-                upload["env"][env_key],
-                format!("${{{{ steps.mint-release-credential.outputs.{output} }}}}"),
-                "{env_key}"
-            );
+            assert!(upload["env"].get(leftover).is_none(), "{leftover}");
         }
-        // The upload step contacts the store, not the vault: it must not
-        // itself carry the vault-unlocking credential.
-        assert!(upload["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_none());
     }
 
     /// The record carries no bytes: a release build's artifacts reach only
@@ -608,5 +684,82 @@ mod tests {
                 .contains("gh release upload")),
             "{steps:?}"
         );
+    }
+
+    /// Only nightly mints its own tag, so only nightly's withdraw can
+    /// delete it — preview's and stable's tags predate the run, and
+    /// deleting them would move a ref out from under whoever already
+    /// fetched it. See the design's "A run deletes only a tag it minted"
+    /// decision.
+    #[test]
+    fn nightlys_withdraw_deletes_the_tag_and_the_others_do_not() {
+        let prepare = prepare(&WorkflowContext::fixture());
+        let nightly = withdraw_release(Channel::Nightly, Some(&prepare));
+        let value = serde_json::to_value(&nightly.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        let tag_delete = steps
+            .iter()
+            .find(|step| step["id"] == "delete-minted-tag")
+            .expect("nightly withdraw deletes the minted tag");
+        assert_eq!(
+            tag_delete["if"].as_str().unwrap(),
+            format!("{} == 'true'", prepare.tag_minted.expr())
+        );
+
+        for channel in [Channel::Preview, Channel::Stable] {
+            let named = withdraw_release(channel, None);
+            let value = serde_json::to_value(&named.job).expect("job serializes");
+            let steps = value["steps"].as_array().expect("steps");
+            assert!(
+                steps.iter().all(|step| step["id"] != "delete-minted-tag"),
+                "{channel}: should not delete a tag it did not mint"
+            );
+        }
+    }
+
+    /// The withdraw gate is the negation of the publish gate's completeness,
+    /// ORed with `failure()` — an explicit `if:`, since the job's own
+    /// `needs` may have failed and GitHub's default implicit gate would
+    /// skip it exactly when it is needed.
+    #[test]
+    fn withdraw_gates_on_failure_or_shortfall() {
+        let named = withdraw_release(Channel::Stable, None);
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        let cond = value["if"].as_str().expect("if");
+        assert!(cond.contains("failure()"), "{cond}");
+        for platform in Channel::Stable.required_targets() {
+            assert!(
+                cond.contains(&format!(
+                    "needs.build-{slug}.outputs.target == '{slug}'",
+                    slug = platform.slug()
+                )),
+                "{platform}: {cond}"
+            );
+        }
+    }
+
+    /// Every channel's withdraw discards the drafted record and best-effort
+    /// cleans up the store, regardless of whether it may also delete a tag.
+    #[test]
+    fn every_channel_s_withdraw_discards_the_record_and_the_store() {
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let prepare = channel
+                .is_nightly()
+                .then(|| prepare(&WorkflowContext::fixture()));
+            let named = withdraw_release(channel, prepare.as_ref());
+            let value = serde_json::to_value(&named.job).expect("job serializes");
+            assert_eq!(value["environment"]["name"], "App Release");
+            let steps = value["steps"].as_array().expect("steps");
+            assert!(
+                steps.iter().any(|step| step["id"] == "discard-release"),
+                "{channel}: no discard-release step"
+            );
+            assert!(
+                steps
+                    .iter()
+                    .any(|step| step["id"] == "withdraw-from-store"),
+                "{channel}: no withdraw-from-store step"
+            );
+        }
     }
 }

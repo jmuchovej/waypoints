@@ -53,6 +53,12 @@ pub struct NightlyPlanArgs {
 struct Plan {
     /// Empty on a build-only run.
     tag: String,
+    /// Whether this run itself created `tag`'s ref — true only on the
+    /// publish path, which always calls [`create_tag`] right after. A
+    /// withdraw job reads this back to decide whether it may delete the
+    /// tag: this run's own ref, or one that predates it (a tag push, for
+    /// the channels that have no planner at all).
+    tag_minted: bool,
     should_build: bool,
     /// The full nightly version, `{target}-nightly.{N}+{date}`, which the
     /// builds stamp into the app. Empty only when nothing builds.
@@ -68,6 +74,7 @@ impl Plan {
     fn publish(version: &Version) -> Result<Self> {
         Ok(Self {
             tag: format!("v{version}"),
+            tag_minted: true,
             ..Self::build_only(version)?
         })
     }
@@ -78,6 +85,7 @@ impl Plan {
         let (version_code, bundle_version) = build_numbers(version)?;
         Ok(Self {
             tag: String::new(),
+            tag_minted: false,
             should_build: true,
             version: version.to_string(),
             version_code,
@@ -87,6 +95,7 @@ impl Plan {
 
     const SKIP: Self = Self {
         tag: String::new(),
+        tag_minted: false,
         should_build: false,
         version: String::new(),
         version_code: String::new(),
@@ -330,6 +339,17 @@ mod tests {
         let published = Plan::publish(&v("0.2.0-nightly.7+2026.08.29")).unwrap();
         assert_eq!(published.tag, "v0.2.0-nightly.7+2026.08.29");
         assert_eq!(published.version_code, plan.version_code);
+    }
+
+    /// `tag_minted` is true only on the path that actually creates the ref
+    /// (`Plan::publish`, immediately followed by `create_tag` in `run`) — a
+    /// withdraw job reads this back to know whether it may delete the tag.
+    #[test]
+    fn tag_minted_is_set_only_on_the_publish_path() {
+        let version = v("0.2.0-nightly.7+2026.08.29");
+        assert!(Plan::publish(&version).unwrap().tag_minted);
+        assert!(!Plan::build_only(&version).unwrap().tag_minted);
+        assert!(!Plan::SKIP.tag_minted);
     }
 
     /// Nothing landed: a dispatch rebuilds the current nightly under today's

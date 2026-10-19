@@ -330,14 +330,6 @@ jobs:
             target/release/bundle/macos/*.tar.gz
             target/release/bundle/macos/*.tar.gz.sig
           if-no-files-found: error
-      - id: mint-release-credential
-        name: Mint a release store credential
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-credential --channel stable
-        shell: bash
-        env:
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-to-store
         name: Upload to the release store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
@@ -345,10 +337,8 @@ jobs:
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
-          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
-          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
-          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=macos" >> "$GITHUB_OUTPUT"
@@ -473,14 +463,6 @@ jobs:
             target/release/bundle/nsis/*.exe
             target/release/bundle/nsis/*.exe.sig
           if-no-files-found: error
-      - id: mint-release-credential
-        name: Mint a release store credential
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-credential --channel stable
-        shell: bash
-        env:
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-to-store
         name: Upload to the release store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
@@ -488,10 +470,8 @@ jobs:
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
-          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
-          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
-          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=windows" >> "$GITHUB_OUTPUT"
@@ -634,14 +614,6 @@ jobs:
             target/release/bundle/appimage/*.AppImage.sig
             target/release/bundle/deb/*.deb
           if-no-files-found: error
-      - id: mint-release-credential
-        name: Mint a release store credential
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-credential --channel stable
-        shell: bash
-        env:
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-to-store
         name: Upload to the release store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
@@ -649,10 +621,8 @@ jobs:
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
-          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
-          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
-          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=linux" >> "$GITHUB_OUTPUT"
@@ -775,14 +745,6 @@ jobs:
           name: waypoints-ios-stable
           path: src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
-      - id: mint-release-credential
-        name: Mint a release store credential
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-credential --channel stable
-        shell: bash
-        env:
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-to-store
         name: Upload to the release store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
@@ -790,10 +752,8 @@ jobs:
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
-          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
-          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
-          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: publish-mobile-app
         name: Upload to the App Store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
@@ -992,14 +952,6 @@ jobs:
             src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
             src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
           if-no-files-found: error
-      - id: mint-release-credential
-        name: Mint a release store credential
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-credential --channel stable
-        shell: bash
-        env:
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: upload-to-store
         name: Upload to the release store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
@@ -1007,10 +959,8 @@ jobs:
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          R2_SESSION_ACCESS_KEY_ID: ${{ steps.mint-release-credential.outputs.access_key_id }}
-          R2_SESSION_SECRET_ACCESS_KEY: ${{ steps.mint-release-credential.outputs.secret_access_key }}
-          R2_SESSION_TOKEN: ${{ steps.mint-release-credential.outputs.session_token }}
-          R2_SESSION_ENDPOINT: ${{ steps.mint-release-credential.outputs.endpoint }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: publish-mobile-app
         name: Upload to the Play Store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
@@ -1036,6 +986,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    environment:
+      name: App Release
     steps:
       - id: publish-release
         name: Publish the release
@@ -1045,3 +997,44 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      - id: write-manifest
+        name: Write the channel manifest
+        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        run: cargo xtask release-manifest --tag "${TAG}"
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+  withdraw-release:
+    needs:
+      - build-macos
+      - build-windows
+      - build-linux
+      - build-ios
+      - build-android
+      - create-release
+    if: ((github.event_name == 'push' && github.ref_name || inputs.tag) != '') && (failure() || !(needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android'))
+    name: Withdraw the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    environment:
+      name: App Release
+    steps:
+      - id: discard-release
+        name: Discard the drafted release
+        run: gh release delete "${TAG}" --yes || true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      - id: withdraw-from-store
+        name: Withdraw uploaded artifacts
+        run: cargo xtask release-withdraw --tag "${TAG}"
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}

@@ -1,32 +1,23 @@
-//! Uploads one platform's published artifacts to the `releases` bucket under
-//! a derived session credential — see [`super::release_credential`]. The
-//! channel is derived from the tag's version rather than accepted as an
-//! argument, and a key already holding an object is never overwritten: R2's
-//! conditional `If-None-Match: *` on `PutObject` makes that refusal atomic
-//! (confirmed against Cloudflare's own docs, 2026-10-19), so the write
-//! itself enforces what the spec requires rather than a check racing it.
+//! Uploads one platform's published artifacts to the `releases` bucket
+//! through the shared client in [`super::release_store`]. The channel is
+//! derived from the tag's version rather than accepted as an argument, and
+//! a key already holding an object is never overwritten: `write_with(..).
+//! if_not_exists(true)` sends `If-None-Match: *`, which R2 honours
+//! atomically, so the write itself enforces what the spec requires rather
+//! than a check racing it.
 //!
 //! The object key mirrors the design's layout exactly:
 //! `{channel}/{series}/{os}/{arch}/waypoints-{tag}.{ext}`.
 
 use crate::tasks::{
-    release_plan,
+    release_plan, release_store,
     workflows::{Arch, Platform},
 };
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result, bail};
 use cargo_metadata::semver::Version;
 use clap::Parser;
-use rusty_s3::{Bucket, Credentials, S3Action as _, UrlStyle, actions::PutObject};
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-    time::Duration,
-};
-
-/// How long the presigned `PutObject` URL stays valid. It only needs to
-/// outlive one `curl` upload of one artifact, so this is unrelated to — and
-/// far shorter than — the session credential's own lifetime.
-const PRESIGN_TTL: Duration = Duration::from_secs(300);
+use opendal::Operator;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 pub struct ReleaseUploadArgs {
@@ -39,6 +30,10 @@ pub struct ReleaseUploadArgs {
     /// exactly; the channel and series are derived from it, never supplied.
     #[arg(long)]
     tag: String,
+
+    /// How long the derived store credential stays valid, in seconds.
+    #[arg(long, default_value_t = release_store::DEFAULT_TTL_SECONDS)]
+    ttl_seconds: u64,
 }
 
 pub fn run(args: ReleaseUploadArgs) -> Result<()> {
@@ -47,17 +42,7 @@ pub fn run(args: ReleaseUploadArgs) -> Result<()> {
     let series = release_plan::series_of(&version);
     let target = args.platform.published_target();
 
-    let access_key_id = env_var("R2_SESSION_ACCESS_KEY_ID")?;
-    let secret_access_key = env_var("R2_SESSION_SECRET_ACCESS_KEY")?;
-    let session_token = env_var("R2_SESSION_TOKEN")?;
-    let endpoint = env_var("R2_SESSION_ENDPOINT")?;
-
-    let endpoint_url = endpoint
-        .parse()
-        .with_context(|| format!("{endpoint} is not a URL"))?;
-    let bucket = Bucket::new(endpoint_url, UrlStyle::Path, "releases", "auto")
-        .map_err(|error| anyhow!("invalid releases bucket endpoint: {error:?}"))?;
-    let credentials = Credentials::new_with_token(access_key_id, secret_access_key, session_token);
+    let client = release_store::create_r2_client(channel, args.ttl_seconds)?;
 
     let globs = args.platform.published_globs();
     anyhow::ensure!(
@@ -68,6 +53,11 @@ pub fn run(args: ReleaseUploadArgs) -> Result<()> {
         target.extensions.len()
     );
 
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("failed to build tokio runtime")?;
+
     for (glob, extension) in globs.iter().zip(target.extensions) {
         let path = find_one(glob)?;
         let key = format!(
@@ -77,15 +67,12 @@ pub fn run(args: ReleaseUploadArgs) -> Result<()> {
             arch = target.arch,
             tag = args.tag,
         );
-        upload(&bucket, &credentials, &key, &path)?;
+        let bytes = std::fs::read(&path).with_context(|| format!("reading {}", path.display()))?;
+        runtime.block_on(upload(&client, &key, bytes))?;
         println!("uploaded {} to {key}", path.display());
     }
 
     Ok(())
-}
-
-fn env_var(name: &str) -> Result<String> {
-    std::env::var(name).with_context(|| format!("${name} is not set"))
 }
 
 /// Strips the tag's leading `v` and parses the rest as semver, so the
@@ -114,28 +101,13 @@ fn find_one(pattern: &str) -> Result<PathBuf> {
     }
 }
 
-/// Presigns a conditional `PutObject` and streams `path` to it with `curl`,
-/// which handles TLS and large-file streaming without this binary carrying
-/// an HTTP client — consistent with how `tooling/bin/xcache` wraps `rclone`
-/// for the build-cache store rather than linking an S3 SDK.
-fn upload(bucket: &Bucket, credentials: &Credentials, key: &str, path: &Path) -> Result<()> {
-    let mut action = PutObject::new(bucket, Some(credentials), key);
-    action.headers_mut().insert("if-none-match", "*");
-    let url = action.sign(PRESIGN_TTL);
-
-    let status = Command::new("curl")
-        .args(["--fail", "--silent", "--show-error"])
-        .args(["--header", "If-None-Match: *"])
-        .arg("--upload-file")
-        .arg(path)
-        .arg(url.as_str())
-        .status()
-        .context("spawning curl")?;
-
-    anyhow::ensure!(
-        status.success(),
-        "curl exited with {status} uploading to {key}; a non-empty key is refused rather than overwritten"
-    );
+/// Writes `bytes` to `key`, refusing to overwrite an existing object.
+async fn upload(client: &Operator, key: &str, bytes: Vec<u8>) -> Result<()> {
+    client
+        .write_with(key, bytes)
+        .if_not_exists(true)
+        .await
+        .with_context(|| format!("uploading to {key} (refused if the key already exists)"))?;
     Ok(())
 }
 
@@ -212,5 +184,14 @@ mod tests {
             object_key("stable", "v0.1.x", "macos", Arch::arm64, "v0.1.1", "dmg"),
             "stable/v0.1.x/macos/arm64/waypoints-v0.1.1.dmg"
         );
+    }
+
+    /// The CLI default is the same lifetime `release_store` settles on;
+    /// raising it is a flag, not a code change.
+    #[test]
+    fn the_cli_defaults_to_the_store_s_ttl() {
+        let args =
+            ReleaseUploadArgs::parse_from(["xtask", "--platform", "macos", "--tag", "v0.1.1"]);
+        assert_eq!(args.ttl_seconds, release_store::DEFAULT_TTL_SECONDS);
     }
 }

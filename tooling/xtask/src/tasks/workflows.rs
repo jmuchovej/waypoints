@@ -728,6 +728,63 @@ mod tests {
         );
     }
 
+    /// Every step that reaches the `releases` bucket is a one-line `xtask`
+    /// dispatch: the client, credential derivation, and the transfer all
+    /// live inside that one process. No step names a transfer tool, unlike
+    /// the build cache's `xcache`/`rclone` pair, which stays a projected
+    /// script by bootstrap order rather than preference — see the design's
+    /// "The store is reached through opendal in-process, from one client
+    /// constructor" decision.
+    #[test]
+    fn every_store_touching_step_is_a_bare_xtask_dispatch() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            assert_store_steps_name_no_transfer_tool(&name, &value);
+        }
+    }
+
+    fn assert_store_steps_name_no_transfer_tool(name: &str, value: &Value) {
+        const STORE_STEP_IDS: [&str; 3] =
+            ["upload-to-store", "write-manifest", "withdraw-from-store"];
+        const TRANSFER_TOOLS: [&str; 3] = ["curl", "rclone", "aws "];
+
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            for step in job["steps"].as_array().into_iter().flatten() {
+                let id = step["id"].as_str().unwrap_or("");
+                if !STORE_STEP_IDS.contains(&id) {
+                    continue;
+                }
+                let run = step["run"].as_str().unwrap_or("");
+                assert!(
+                    run.trim().lines().count() == 1,
+                    "{name}/{job_name}/{id}: not a one-line dispatch: {run}"
+                );
+                assert!(
+                    run.trim_start().starts_with("cargo xtask "),
+                    "{name}/{job_name}/{id}: not an xtask dispatch: {run}"
+                );
+                for tool in TRANSFER_TOOLS {
+                    assert!(
+                        !run.contains(tool),
+                        "{name}/{job_name}/{id}: names the transfer tool `{tool}`: {run}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "names the transfer tool")]
+    fn a_store_step_naming_a_transfer_tool_is_refused() {
+        assert_store_steps_name_no_transfer_tool(
+            "synthetic",
+            &json!({ "jobs": { "build": {
+                "steps": [{ "id": "upload-to-store", "run": "cargo xtask release-upload via rclone" }]
+            }}}),
+        );
+    }
+
     /// Both halves travel together: a step with the provider but no credential
     /// would resolve nothing, one with the credential but no provider would
     /// resolve against `env://` under devenv.

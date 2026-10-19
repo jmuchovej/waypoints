@@ -776,41 +776,16 @@ pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
         .id("draft-release")
 }
 
-/// The step id [`mint_release_credential`] writes its outputs under, and
-/// [`upload_to_store`] (and, once it exists, the manifest-write step) reads
-/// them back from.
-const MINT_RELEASE_CREDENTIAL_ID: &str = "mint-release-credential";
-
-/// Mints a short-lived, channel-scoped R2 session credential for the
-/// `releases` bucket. `xtask` resolves the long-lived parent through
-/// secretspec's Rust API inside this step alone — unlike every other
-/// credential this repo's CI resolves, the step is never wrapped in
-/// `secretspec run`/`export`, so the parent is not exported to
-/// `$GITHUB_ENV` and never becomes an OS environment variable even
-/// transiently on a child process. See the design's "Upload credentials are
-/// minted locally" decision. Skipped entirely on a build-only run, where the
-/// tag is empty.
-pub fn mint_release_credential(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
-    let step = Step::new("Mint a release store credential")
-        .run(format!(
-            "cargo xtask release-credential --channel {channel}",
-            channel = channel.flavor(),
-        ))
-        .shell("bash")
-        .id(MINT_RELEASE_CREDENTIAL_ID)
-        .if_condition(Channel::tag_condition(tag));
-    helpers::resolving(step)
-}
-
-/// Uploads the platform's published artifacts to the `releases` bucket under
-/// the credential [`mint_release_credential`] derived, read back by its step
-/// id rather than a threaded handle — the two always sit in the same job.
-/// Gated on the tag like the mint step: a build-only run uploads nothing.
+/// Uploads the platform's published artifacts to the `releases` bucket.
+///
+/// One line dispatching to `xtask`, which resolves the store credential and
+/// writes through `opendal` entirely in-process — no transfer tool joins
+/// this job, and no step preceding this one carries a derived credential for
+/// it to read back. See the design's "The store is reached through opendal
+/// in-process, from one client constructor" decision. Gated on the tag like
+/// every other publishing step: a build-only run uploads nothing.
 pub fn upload_to_store(platform: Platform, tag: Option<&JobOutput>) -> Step<Run> {
-    let mint_output =
-        |name: &str| format!("${{{{ steps.{MINT_RELEASE_CREDENTIAL_ID}.outputs.{name} }}}}");
-
-    Step::new("Upload to the release store")
+    let step = Step::new("Upload to the release store")
         .run(format!(
             r#"cargo xtask release-upload --platform {slug} --tag "${{TAG}}""#,
             slug = platform.slug(),
@@ -818,14 +793,8 @@ pub fn upload_to_store(platform: Platform, tag: Option<&JobOutput>) -> Step<Run>
         .shell("bash")
         .if_condition(Channel::tag_condition(tag))
         .add_env(("TAG", Channel::tag(tag)))
-        .add_env(("R2_SESSION_ACCESS_KEY_ID", mint_output("access_key_id")))
-        .add_env((
-            "R2_SESSION_SECRET_ACCESS_KEY",
-            mint_output("secret_access_key"),
-        ))
-        .add_env(("R2_SESSION_TOKEN", mint_output("session_token")))
-        .add_env(("R2_SESSION_ENDPOINT", mint_output("endpoint")))
-        .id("upload-to-store")
+        .id("upload-to-store");
+    helpers::resolving(step)
 }
 
 /// Flips the draft public. When this runs is the publish job's decision.
@@ -842,6 +811,72 @@ pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
         .add_env(("GH_REPO", "${{ github.repository }}"))
         .add_env(("TAG", Channel::tag(tag)))
         .id("publish-release")
+}
+
+/// Writes the channel's manifest — the single commit point a channel
+/// advertises through. Ordered after [`publish_release`] in the same job,
+/// so it is the run's true last write: the reverse (a published record
+/// naming artifacts the manifest has not yet confirmed) cannot happen. One
+/// line dispatching to `xtask`, like every other store-touching step.
+pub fn write_manifest(tag: Option<&JobOutput>) -> Step<Run> {
+    let step = Step::new("Write the channel manifest")
+        .run(r#"cargo xtask release-manifest --tag "${TAG}""#)
+        .shell("bash")
+        .if_condition(Channel::tag_condition(tag))
+        .add_env(("TAG", Channel::tag(tag)))
+        .id("write-manifest");
+    helpers::resolving(step)
+}
+
+/// Discards the drafted release. Tolerant of there being none to discard —
+/// `|| true` rather than a step-level `if:` — because a run whose own
+/// `create-release` job never succeeded has no draft, and a cleanup step
+/// with nothing to clean up is not a failure. Letting the command itself
+/// absorb that case, rather than gating the step, keeps the withdraw job's
+/// later steps on their ordinary default `if: success()` instead of each
+/// needing `always()` to survive this one's absence.
+pub fn discard_release(tag: Option<&JobOutput>) -> Step<Run> {
+    Step::new("Discard the drafted release")
+        .run(r#"gh release delete "${TAG}" --yes || true"#)
+        .shell("bash")
+        .add_env(("GH_TOKEN", GITHUB_TOKEN))
+        .add_env(("GH_REPO", "${{ github.repository }}"))
+        .add_env(("TAG", Channel::tag(tag)))
+        .id("discard-release")
+}
+
+/// Best-effort deletes the objects this run uploaded. One line dispatching
+/// to `xtask`, like every other store-touching step — see the design's "The
+/// store is reached through opendal in-process, from one client
+/// constructor" decision. A failed delete is caught and warned on inside
+/// `release-withdraw` itself rather than propagated, so this step's exit
+/// code carries no information about whether every object was removed.
+pub fn withdraw_from_store(tag: Option<&JobOutput>) -> Step<Run> {
+    let step = Step::new("Withdraw uploaded artifacts")
+        .run(r#"cargo xtask release-withdraw --tag "${TAG}""#)
+        .shell("bash")
+        .add_env(("TAG", Channel::tag(tag)))
+        .id("withdraw-from-store");
+    helpers::resolving(step)
+}
+
+/// Deletes the tag this run minted, via the refs API. Conditioned on the
+/// planner's own record of having created it: preview and stable's tags
+/// predate the run and may already be fetched elsewhere, so deleting them
+/// would move a ref out from under whoever has it — see the design's "A run
+/// deletes only a tag it minted" decision.
+pub fn delete_minted_tag(tag: &JobOutput, tag_minted: &JobOutput) -> Step<Run> {
+    Step::new("Delete the minted tag")
+        .run(r#"gh api -X DELETE "repos/${GH_REPO}/git/refs/tags/${TAG}""#)
+        .shell("bash")
+        .if_condition(Expression::new(format!(
+            "{tag_minted} == 'true'",
+            tag_minted = tag_minted.expr()
+        )))
+        .add_env(("GH_TOKEN", GITHUB_TOKEN))
+        .add_env(("GH_REPO", "${{ github.repository }}"))
+        .add_env(("TAG", Channel::tag(Some(tag))))
+        .id("delete-minted-tag")
 }
 
 pub(crate) struct Nextest(Step<Run>);

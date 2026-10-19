@@ -344,6 +344,10 @@ pub struct Artifact(pub Channel, pub Platform);
 pub struct PrepareJob {
     job: NamedJob,
     pub tag: JobOutput,
+    /// Whether this run itself created `tag`'s ref. True only on the
+    /// publish path — the withdraw job reads it back to decide whether it
+    /// may delete the tag.
+    pub tag_minted: JobOutput,
     pub should_build: JobOutput,
     pub version: JobOutput,
     pub version_code: JobOutput,
@@ -355,6 +359,7 @@ impl PrepareJob {
     /// before it is moved in.
     pub fn new(
         tag: JobOutput,
+        tag_minted: JobOutput,
         should_build: JobOutput,
         version: JobOutput,
         version_code: JobOutput,
@@ -364,6 +369,7 @@ impl PrepareJob {
         Self {
             job,
             tag,
+            tag_minted,
             should_build,
             version,
             version_code,

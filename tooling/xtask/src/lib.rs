@@ -13,10 +13,12 @@ pub mod tasks {
     pub mod dev_server;
     pub mod devenv_files;
     pub mod nightly_plan;
-    pub mod release_credential;
     pub mod release_index;
+    pub mod release_manifest;
     pub mod release_plan;
+    pub mod release_store;
     pub mod release_upload;
+    pub mod release_withdraw;
     pub mod test_plan;
     pub mod typegen;
     pub mod workflows;
@@ -24,10 +26,11 @@ pub mod tasks {
     pub use dev_server::DevServerArgs;
     pub use devenv_files::DevenvFilesArgs;
     pub use nightly_plan::NightlyPlanArgs;
-    pub use release_credential::ReleaseCredentialArgs;
     pub use release_index::ReleaseIndexArgs;
+    pub use release_manifest::ReleaseManifestArgs;
     pub use release_plan::ReleasePlanArgs;
     pub use release_upload::ReleaseUploadArgs;
+    pub use release_withdraw::ReleaseWithdrawArgs;
     pub use test_plan::TestPlanArgs;
     pub use typegen::TypegenArgs;
     pub use workflows::WorkflowArgs;

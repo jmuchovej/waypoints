@@ -81,6 +81,15 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
             .add_needs(create.name.clone())
     });
 
+    // Cleans up a run that failed or fell short, on the same `needs` as the
+    // publish it mirrors.
+    let withdraw = jobs::withdraw_release(channel, prepare.as_ref()).map(|job| {
+        builds
+            .iter()
+            .fold(job, |job, build| job.add_needs(build.name.clone()))
+            .add_needs(create.name.clone())
+    });
+
     // Nightly mints its own tag, so only the tag-driven channels take one.
     let dispatch = WorkflowDispatch::default()
         .inputs([(platforms.name.into(), platforms.input())])
@@ -113,6 +122,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
                 .chain(guard)
                 .chain(builds)
                 .chain([publish])
+                .chain([withdraw])
                 .fold(workflow, |workflow, named| {
                     workflow.add_job(named.name, named.job)
                 })
@@ -161,5 +171,76 @@ mod tests {
                 .contains_key("guard-dispatch"),
             "nightly takes no tag dispatch input, so the contradiction cannot arise"
         );
+    }
+
+    /// The job writing the manifest is the same `publish-release` job, which
+    /// `needs` every build — so the manifest can never be written before
+    /// every required target has reported its success.
+    #[test]
+    fn the_manifest_write_depends_on_every_build_job() {
+        let context = WorkflowContext::fixture();
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let workflow = workflow(channel, &context);
+            let value = serde_json::to_value(&workflow).expect("workflow serializes");
+            let jobs = value["jobs"].as_object().expect("jobs");
+
+            let (job_name, job) = jobs
+                .iter()
+                .find(|(_, job)| {
+                    job["steps"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .any(|step| step["id"] == "write-manifest")
+                })
+                .unwrap_or_else(|| panic!("{channel}: no job writes the manifest"));
+
+            let needs: Vec<&str> = job["needs"]
+                .as_array()
+                .unwrap_or_else(|| panic!("{channel}/{job_name}: no needs"))
+                .iter()
+                .map(|need| need.as_str().unwrap())
+                .collect();
+
+            for platform in Platform::iter() {
+                let build_name = format!("build-{}", platform.slug());
+                assert!(
+                    needs.contains(&build_name.as_str()),
+                    "{channel}/{job_name}: does not need {build_name}"
+                );
+            }
+        }
+    }
+
+    /// The withdraw job reads every build's recorded target the same way
+    /// the publish job does — to know whether there was a shortfall — so
+    /// it must wait on the same set.
+    #[test]
+    fn the_withdraw_depends_on_every_build_job() {
+        let context = WorkflowContext::fixture();
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let workflow = workflow(channel, &context);
+            let value = serde_json::to_value(&workflow).expect("workflow serializes");
+            let jobs = value["jobs"].as_object().expect("jobs");
+
+            let needs: Vec<&str> = jobs["withdraw-release"]["needs"]
+                .as_array()
+                .unwrap_or_else(|| panic!("{channel}: withdraw-release has no needs"))
+                .iter()
+                .map(|need| need.as_str().unwrap())
+                .collect();
+
+            for platform in Platform::iter() {
+                let build_name = format!("build-{}", platform.slug());
+                assert!(
+                    needs.contains(&build_name.as_str()),
+                    "{channel}: withdraw-release does not need {build_name}"
+                );
+            }
+            assert!(
+                needs.contains(&"create-release"),
+                "{channel}: withdraw-release does not need create-release"
+            );
+        }
     }
 }
