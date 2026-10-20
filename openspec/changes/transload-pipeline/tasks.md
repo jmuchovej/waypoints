@@ -30,13 +30,13 @@ their subtasks except where noted; groups 4–7 build on 3.
 
 ## 2. transload crate scaffold
 
-- [ ] 2.1 Add the `syntax` cargo feature to `domain` (gates the dialect
+- [x] 2.1 Add the `syntax` cargo feature to `domain` (gates the dialect
       grammar module; `pulldown-cmark` becomes an optional dependency behind
       it). Create `crates/transload` (workspace member; deps: `domain` with
       `syntax`, `bedrock`, `saphyr`, `jsonschema`, `serde_json`, `uuid`,
       `chrono`; lints inherited). Confine `saphyr` behind a `frontmatter`
       module boundary per design D2.
-- [ ] 2.2 Define the crate's spine: Bundle path layout, `ExportMeta`
+- [x] 2.2 Define the crate's spine: Bundle path layout, `ExportMeta`
       (exporter version, timestamp, optional territory), and the typed
       refusal structures (per-UUID conflict list, per-line malformed list
       with source locations) per design D13.
@@ -46,18 +46,18 @@ their subtasks except where noted; groups 4–7 build on 3.
 Each lands with bidirectional unit fixtures; 3.1–3.2 live in `domain` behind
 the `syntax` feature per design D8, 3.3–3.4 in `transload`.
 
-- [ ] 3.1 Inline layer: `RichText` segments ↔ dialect inline syntax — the
+- [x] 3.1 Inline layer: `RichText` segments ↔ dialect inline syntax — the
       emphasis remapping, links, `[[…]]` mentions per design D7, and the
       Waypoints-only inlines per design D8 (span syntax canonical, character
       spellings as shortcuts). Escaping discipline fixture-tested
       (round-trip exactness per segment shape).
-- [ ] 3.2 Block layer: every `Content` variant ↔ its dialect form (paragraph,
+- [x] 3.2 Block layer: every `Content` variant ↔ its dialect form (paragraph,
       headings, blockquote, list/enum items, callout ↔ `::callout` block
       component, code, table, math, divider), parse side via pulldown-cmark
       runtime options plus the component/attribute layer.
-- [ ] 3.3 Identity comments: `wp:mark` emit + parse, container pairing /
+- [x] 3.3 Identity comments: `wp:mark` emit + parse, container pairing /
       leaf non-pairing, unknown-field preservation through re-serialization.
-- [ ] 3.4 Frontmatter: deterministic emitter (FeatureID keys, advisory name
+- [x] 3.4 Frontmatter: deterministic emitter (FeatureID keys, advisory name
       comments, `{ref, label?}` lists, `|-` block scalars with normalized
       chomping, ISO-8601 `Z` ms timestamps) + saphyr parser that ignores
       comments and labels; round-trip fixtures including hand-mangled
