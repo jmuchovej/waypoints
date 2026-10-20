@@ -16,6 +16,7 @@ pub(crate) mod bundle;
 pub(crate) mod frontmatter;
 pub(crate) mod identity;
 pub(crate) mod refusal;
+pub(crate) mod schema;
 
 pub use bundle::{Bundle, Counts, ExportMeta, Manifest, layout};
 pub use frontmatter::{Advisory, Frontmatter};
