@@ -44,10 +44,6 @@
       reason = "proc-macro-error2, compile-time only, transitive"
     },
     {
-      id     = "RUSTSEC-2026-0333",
-      reason = "noyalib via the deprecated serde_yml shim, which pins it at ^0.0.5 so nothing outside that manifest can reach the fixed 0.0.53+. Reached only from the gh-workflow fork in xtask, which serialises the workflows it generates and never parses untrusted YAML. Removed by the in-tree-workflow-generator change, which makes the manifest ours to edit"
-    },
-    {
       id     = "RUSTSEC-2026-0367",
       reason = "zip via tauri-plugin-updater, Windows targets only; blocked on tauri bumping zip to 9, and the updater verifies the archive signature before extracting"
     },
@@ -117,6 +113,6 @@
   allow-git        = []
 
   [sources.allow-org]
-    github    = [ "jmuchovej", "waypoints-hq" ]
+    github    = []
     gitlab    = []
     bitbucket = []

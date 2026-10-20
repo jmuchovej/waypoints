@@ -185,3 +185,20 @@ deny-targets:
         }
         error make {msg: "deny.toml graph.targets drifted from rust-toolchain.toml"}
     }
+
+[doc("Overlays tailcallhq/gh-workflow at REV (a full SHA or a ref, not an abbreviation) onto tooling/gh-workflow. The local delta in its README is then re-applied by hand.")]
+[script]
+gh-workflow-sync rev:
+    scratch="$(mktemp -d)"
+    trap 'rm -rf "$scratch"' EXIT
+
+    git -C "$scratch" init --quiet
+    git -C "$scratch" fetch --quiet --depth 1 https://github.com/tailcallhq/gh-workflow {{ rev }}
+    git -C "$scratch" checkout --quiet FETCH_HEAD
+
+    # README.md is ours; upstream's crate has none, and its CHANGELOG is not carried.
+    rsync -a --delete --exclude README.md --exclude CHANGELOG.md \
+      "$scratch/crates/gh-workflow/" tooling/gh-workflow/
+
+    echo "tooling/gh-workflow now holds upstream $(git -C "$scratch" rev-parse --short HEAD)."
+    echo "Re-apply the local delta from tooling/gh-workflow/README.md, update its revision, then format the crate (upstream's rustfmt style differs from the workspace's)."
