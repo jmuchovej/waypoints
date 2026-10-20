@@ -319,6 +319,25 @@ would be scope creep; retrofitting it now would be work with no consumer.
 - ~~Exact spellings for superscript, subscript, and spoiler~~ — resolved
   2026-08-18 by John's rulings, recorded in D7/D8: `^`/`_` with Typst/LaTeX
   brace rules, `||spoiler||`, `==highlight==`, Tailwind-parallel utility
-  tokens for color/size/family. Remaining open: the `comment` mark spelling
-  and the wiki-link interior convention — fixtures pin both before format
-  freeze.
+  tokens for color/size/family.
+- ~~The wiki-link interior convention~~ — resolved 2026-10-19 (John's
+  ruling): a **bare `MarkID`**, `[[<MarkID>|label]]`. A relative Landmark
+  path cannot express every mention the model allows — a mention may target a
+  Content Mark, which has no Landmark file to point at — and embedding the
+  Chart directory in body text would couple content bytes to export layout,
+  so re-grouping a Chart would rewrite every mentioning file. Fixtures pin it
+  in the inline grammar.
+- ~~Whether a mention's label is advisory~~ — resolved 2026-10-20 (John's
+  ruling): it is **anchor text and survives verbatim**; only a bare `[[id]]`
+  has a label generated, on ingest, from the target's title. This amends the
+  transload delta's "advisory and regenerated on export" clause, recorded as a
+  decision there. Frontmatter relation labels stay advisory — `Reading::Relation`
+  has nowhere for one to land.
+- ~~Whether superscript admits a bare `^c`~~ — resolved 2026-10-20 (John's
+  ruling): **both scripts are braced**, for consistency. A side effect is that
+  `^` opens nothing alone, so `2^10` needs no escape and only `^{` is hidden.
+- The `comment` mark spelling — **blocked, not open**: `TextMarkKind` has no
+  `Comment` variant to spell (the frontend's `registries.ts` already reaches
+  for one, which is a separate pre-existing gap). Marked `(pending)` in the
+  dialect doc alongside explicit enum numbers, both awaiting domain changes
+  outside this change.

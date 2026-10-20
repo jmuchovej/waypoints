@@ -244,12 +244,16 @@ comments; nothing else exists.
 
 ### Requirement: Inline references project as wiki links
 
-An inline mention SHALL project as a `[[…]]` wiki link whose interior
-identifies the mentioned Mark losslessly (a `MarkID`); any label is advisory
-and regenerated on export, separated by a pipe (`[[target|label]]`). The
-target scheme (bare id vs. relative Landmark path) is pinned by fixtures
-before format freeze. Ingest reconstructs the inline reference mark with the
-same target id.
+An inline mention SHALL project as a `[[…]]` wiki link whose interior is a
+bare `MarkID`, identifying the mentioned Mark losslessly. A label after a pipe
+(`[[target|label]]`) is the anchor text and SHALL survive export and ingest
+unchanged; only a mention carrying no label SHALL have one generated, from the
+target's title, on ingest. Ingest reconstructs the inline reference mark with
+the same target id.
+
+The interior is a bare id rather than a relative Landmark path because a
+mention may target a Content Mark, which has no Landmark file, and because a
+path would couple body bytes to export layout.
 
 #### Scenario: Landmark mention round-trips
 
@@ -257,6 +261,17 @@ same target id.
 - **THEN** the projected text carries a `[[…]]` wiki link resolving to that
   Landmark's `MarkID`
 - **AND** re-ingesting reconstructs the mention with the same target id
+
+#### Scenario: Anchor text is content
+
+- **WHEN** a mention whose anchor text differs from its target's title is
+  exported and re-ingested
+- **THEN** the anchor text is unchanged
+
+#### Scenario: A bare mention gains a label
+
+- **WHEN** a Bundle carrying `[[<MarkID>]]` with no label is ingested
+- **THEN** the reconstructed mention's text is the target's title
 
 ### Requirement: Export output is byte-stable
 
@@ -321,6 +336,29 @@ while the document still validates against the meta-schema.
 _Rejected:_ Draft-07-only (silently lossy — a fidelity violation by
 construction); a separate chart sidecar (the schema file is already the
 per-Chart structured carrier).
+
+### 2026-10-20 — A mention's anchor text is content, not an advisory label
+
+_Rationale:_ the label after the pipe is what a person chose to call the target
+in that sentence. Regenerating it from the target's title on every export would
+discard writing nobody asked to lose — "the Foundation series" is not a worse
+name for a book than the book's title. Only a bare `[[id]]` leaves nothing to
+preserve, and that is the one case a label is generated, on ingest, by the side
+that holds the store. Frontmatter's relation labels are unaffected and remain
+advisory: `Reading::Relation` holds refs and has nowhere for a label to land.
+_Rejected:_ regenerating always (the earlier draft of this requirement — silent
+content loss on a round trip that exists to be lossless).
+
+### 2026-10-20 — The wiki-link interior is a bare `MarkID`
+
+_Rationale:_ a relative Landmark path cannot express every mention the model
+allows — a mention may target a Content Mark, which has no Landmark file to
+point at — and embedding the Chart directory in body text would couple content
+bytes to export layout, so re-grouping a Chart would rewrite every mentioning
+file. The id resolves trivially for Waypoints and stays a unique greppable
+token for anything else.
+_Rejected:_ a relative Landmark path; a title-keyed interior (not lossless —
+titles change and collide).
 
 ### 2026-08-18 — Inline mentions are wiki links, not comments
 
