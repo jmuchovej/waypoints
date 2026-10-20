@@ -68,7 +68,7 @@ pub(crate) mod mark {
     pub(crate) mod rich_text;
 
     pub use mark::{Mark, MarkID, now_ms};
-    pub use mark_data::{Content, Landmark, MarkData, MathEngine, Size};
+    pub use mark_data::{BlockTheme, Content, Landmark, MarkData, MathEngine, Size};
     pub use reading::Reading;
     pub use rich_reference::{ReferenceDisplayMode, RichReference};
     pub use rich_text::{InlineMark, RichText, TextMarkKind, TextSegment};
@@ -82,8 +82,8 @@ pub(crate) mod mark {
     pub use builders::MarkBuilder;
 }
 pub use mark::{
-    Content, InlineMark, Landmark, Mark, MarkBuilder, MarkData, MarkID, MathEngine, Reading,
-    ReferenceDisplayMode, RichText, Size, TextMarkKind, TextSegment, now_ms,
+    BlockTheme, Content, InlineMark, Landmark, Mark, MarkBuilder, MarkData, MarkID, MathEngine,
+    Reading, ReferenceDisplayMode, RichText, Size, TextMarkKind, TextSegment, now_ms,
 };
 
 /// The markdown dialect `Content` and `RichText` project into, documented at

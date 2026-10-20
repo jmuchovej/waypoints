@@ -60,6 +60,16 @@ Rules the emitter holds to:
   attributes on the opening fence, after the language tag:
   `rust{filename="main.rs" highlights="1,4-6"}`.
 - **Dividers** are exactly `---`. Never `***`, never `___`.
+- **Containers carry their attributes on their opening marker.** A callout
+  always has one (`::callout{…}`); a blockquote's marker is the `> ` prefix its
+  children already wear, so an unthemed quote contributes no line of its own and
+  a themed one opens with `>{theme-green}`. Writing a bare `>` above every
+  quoted passage just to have something to hang attributes on would be a line of
+  noise in the common case.
+- **Tables** are plain GFM whenever that is honest — a header row and nothing
+  else set. Sizes, colours, a row header, or a fill-width cannot be said in GFM,
+  and a table with no header row cannot be plain GFM at all without growing one,
+  so those wrap themselves in `::table{…}` … `::` rather than losing anything.
 
 ### Block themes
 
