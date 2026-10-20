@@ -296,18 +296,41 @@ serialization boundary), and normalized YAML chomping.
 
 ### Requirement: The manifest versions the Bundle and gates ingest
 
-`manifest.json` SHALL carry `bundle_format` (semver), exporter application
-version, export timestamp, entity counts, and optional territory identity.
-An ingester SHALL refuse a Bundle whose `bundle_format` it does not support,
-before reading any other file. While the format is pre-freeze, exported
-Bundles carry a `0.x` version; the frozen `1.0.0` is reserved for the data
-covenant.
+`manifest.json` SHALL carry `bundle_format` (semver), the exporting
+application's version, the `domain` crate's version, the export timestamp,
+entity counts, a census of the content variants the Bundle uses, and optional
+territory identity. While the format is pre-freeze, exported Bundles carry a
+`0.x` version; the frozen `1.0.0` is reserved for the data covenant.
 
-#### Scenario: Newer Bundle refused
+An ingester SHALL support a _set_ of `bundle_format` versions, not only the one
+it writes, and SHALL refuse a Bundle outside that set before reading any other
+file. The supported set narrows only on a deliberate schedule, so a Bundle
+written by one build stays readable by later ones for an extended period.
 
-- **WHEN** a Bundle whose manifest declares an unsupported `bundle_format` is
-  ingested
+The `domain` version answers whether a Bundle's grammar may be newer than the
+reading build's: `domain` is its own release group, so adding a content,
+reading, feature, or terrain variant necessarily bumps it. The census answers
+whether anything new is actually _present_ — a Bundle written by a newer
+`domain` that uses no new variants is fully readable, and the version alone
+cannot say so.
+
+#### Scenario: An unsupported format is refused before anything is read
+
+- **WHEN** a Bundle whose manifest declares a `bundle_format` outside the
+  ingester's supported set is ingested
 - **THEN** ingest refuses with a version error and reads nothing else
+
+#### Scenario: An older supported format still ingests
+
+- **WHEN** a Bundle declaring an earlier `bundle_format` that is still within
+  the supported set is ingested
+- **THEN** ingest proceeds
+
+#### Scenario: A newer grammar is reported, not guessed at
+
+- **WHEN** a Bundle declares a `domain` version newer than the reading build's
+- **THEN** the result reports which version wrote it, alongside the census of
+  variants it uses
 
 ### Requirement: Ingest is atomic
 
@@ -346,6 +369,54 @@ while the document still validates against the meta-schema.
 _Rejected:_ Draft-07-only (silently lossy — a fidelity violation by
 construction); a separate chart sidecar (the schema file is already the
 per-Chart structured carrier).
+
+### 2026-10-20 — Version skew is three problems, not one
+
+_Rationale:_ "can this build read this Bundle" collapses three unrelated
+questions (John's taxonomy, 2026-10-20), and each wants a different answer:
+
+1. **Wire format** — the Bundle's layout and file set. Handled like an LTS
+   series: the ingester supports a set of `bundle_format` versions and the set
+   narrows on a schedule, so a Bundle stays readable across builds for an
+   extended period.
+2. **Feature surface** — content, reading, feature and terrain variants. Not a
+   refusal: the result reports what it cannot represent and which version wrote
+   it, so a person can upgrade or change the value. `domain` is its own release
+   group, so a variant addition necessarily bumps its version — that version in
+   the manifest is the grammar signal, and the census says what is actually
+   used.
+3. **Builtin Chart drift** — a builtin gaining or losing features. The intended
+   answer is to ingest the Bundle as it stands and then offer an additive
+   in-place upgrade of the clashing Chart. **Out of scope here**, and blocked on
+   two things that do not exist: stable ids for builtin Chart features (today
+   they are regenerated per build, so two builds do not agree on `a1b2`), and a
+   UI for a person to diff and accept the change. Until those land, the
+   per-Chart conflict refusal above stands as the interim.
+
+_Rejected:_ generating JSON Schemas for the domain's own variant types (via
+`schemars`) to support an attribute-level diff — the `domain` version answers
+the "is this newer" question with one field and no dependency, generated-artifact
+drift, or generator-version coupling; and precise per-item errors come from
+validating the Bundle's content against the reading build's own schema, which
+needs no schema-to-schema diffing at all.
+
+### 2026-10-20 — A Chart's schema closes its readings object
+
+_Rationale:_ `additionalProperties: false` on the readings object means a
+reading naming no feature of its Chart is a schema violation — a Bundle
+disagreeing with the schema it carries. Freeform readings on a Landmark are not
+representable in the app today, so nothing is lost by closing the object now,
+and reopening it later is an additive change to the face (John's ruling,
+2026-10-20; supporting freeform properties is bracketed until there is a feature
+model for them).
+
+Note this does **not** govern version skew: the face is generated from the Chart
+in the same Bundle, so a newer exporter's extra feature arrives in the Chart,
+the face, and the reading together, and validates. Skew lives only where schema
+and data come from different versions — `builtin.*` Charts, which resolve to the
+application's own and are governed by the per-Chart conflict rule above.
+_Rejected:_ leaving the object open (a typo'd feature id would ingest silently
+as data no Chart describes).
 
 ### 2026-10-20 — Frontmatter carries the Landmark's icon
 

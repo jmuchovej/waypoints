@@ -40,6 +40,14 @@
 //! [R]: crate::mark::Reading
 
 //! Shared utilities and types for the waypoints domain.
+
+/// This crate's version — the grammar signal a Bundle records.
+///
+/// Any new `Content`, `Reading`, `FeatureKind`, or `TerrainKind` variant bumps
+/// this, so it bounds what a writing build could have expressed (not tightly:
+/// unrelated changes bump it too).
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub(crate) mod _shared {
     pub type Json = serde_json::Value;
     pub type DateTime = chrono::NaiveDateTime;

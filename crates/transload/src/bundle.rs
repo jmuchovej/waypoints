@@ -7,9 +7,13 @@ use chrono::NaiveDateTime;
 use domain::{ChartID, MarkID};
 use serde::{Deserialize, Serialize};
 
-/// The Bundle format version this build writes and ingests. `1.0.0` is frozen
-/// at app v1.0, so the exporter writes `0.x` until then.
+/// The Bundle format version this build writes. `1.0.0` is frozen at app v1.0,
+/// so the exporter writes `0.x` until then.
 pub const BUNDLE_FORMAT: &str = "0.1.0";
+
+/// Every Bundle format version this build reads; wider than [`BUNDLE_FORMAT`]
+/// once the format moves.
+pub const SUPPORTED_FORMATS: [&str; 1] = [BUNDLE_FORMAT];
 
 /// Path layout. Every name a Bundle may contain is spelled exactly once here.
 pub mod layout {
@@ -76,14 +80,38 @@ pub struct Manifest {
     pub bundle_format: String,
     /// The exporting application's version.
     pub app_version: String,
+    /// The `domain` crate's version. A new variant bumps it, so a newer value
+    /// means the writer *could* have used something this build lacks;
+    /// [`Manifest::uses`] says whether it did.
+    pub domain_version: String,
     /// When the export ran: ISO-8601 UTC with an explicit `Z` and millisecond
     /// precision, the same spelling frontmatter timestamps use.
     pub exported_at: String,
     /// What the Bundle holds, so a reader can tell at a glance.
     pub counts: Counts,
+    /// The variants this Bundle actually exercises, sorted.
+    pub uses: Census,
     /// The territory this store belonged to, when the exporter was told.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub territory: Option<String>,
+}
+
+/// The variant names a Bundle exercises, by kind: serde tag names, sorted so
+/// the manifest is byte-stable.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Census {
+    /// `Content` variants present in any body.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub content: BTreeSet<String>,
+    /// `Reading` variants present in any frontmatter.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub readings: BTreeSet<String>,
+    /// `FeatureKind` variants present in any Chart.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub feature_kinds: BTreeSet<String>,
+    /// `TerrainKind` variants present in any tier.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub terrain_kinds: BTreeSet<String>,
 }
 
 /// A census of the exported store. Computed, never passed in.
@@ -167,14 +195,48 @@ pub(crate) fn render_timestamp(at: NaiveDateTime) -> String {
 
 impl Manifest {
     /// The manifest for an export: the caller's metadata, this build's format
-    /// version, and a census the exporter counted.
-    pub fn new(meta: &ExportMeta, counts: Counts) -> Self {
+    /// and grammar versions, and what the exporter counted and saw.
+    pub fn new(meta: &ExportMeta, counts: Counts, uses: Census) -> Self {
         Self {
             bundle_format: BUNDLE_FORMAT.to_string(),
             app_version: meta.app_version.clone(),
+            domain_version: domain::VERSION.to_string(),
             exported_at: render_timestamp(meta.exported_at),
             counts,
+            uses,
             territory: meta.territory.clone(),
+        }
+    }
+
+    /// Can this build read the format this manifest declares?
+    pub fn format_supported(&self) -> bool {
+        SUPPORTED_FORMATS.contains(&self.bundle_format.as_str())
+    }
+
+    /// Was this Bundle written by a `domain` newer than this build's?
+    ///
+    /// Compared numerically (`0.10.0` > `0.9.0`); an unparsable version counts
+    /// as newer.
+    pub fn grammar_may_be_newer(&self) -> bool {
+        let parse = |version: &str| -> Option<(u64, u64, u64)> {
+            let mut parts = version.split('.');
+            let major = parts.next()?.parse().ok()?;
+            let minor = parts.next()?.parse().ok()?;
+            // A pre-release or build suffix on the patch is not a grammar
+            // signal, so take the leading digits and ignore the rest.
+            let patch = parts
+                .next()
+                .unwrap_or("0")
+                .split(['-', '+'])
+                .next()
+                .unwrap_or("0")
+                .parse()
+                .unwrap_or(0);
+            Some((major, minor, patch))
+        };
+        match (parse(&self.domain_version), parse(domain::VERSION)) {
+            (Some(theirs), Some(ours)) => theirs > ours,
+            _ => true,
         }
     }
 }
@@ -226,19 +288,79 @@ mod tests {
         assert_eq!(dirs, ["builtin.page", "c4d8"]);
     }
 
-    #[test]
-    fn a_manifest_carries_the_pre_freeze_format() {
-        let meta = ExportMeta {
+    fn meta() -> ExportMeta {
+        ExportMeta {
             app_version: "0.3.1".into(),
             exported_at: at(),
             territory: None,
-        };
-        let manifest = Manifest::new(&meta, Counts::default());
+        }
+    }
+
+    #[test]
+    fn a_manifest_carries_the_pre_freeze_format() {
+        let manifest = Manifest::new(&meta(), Counts::default(), Census::default());
         assert_eq!(manifest.bundle_format, "0.1.0");
         assert_ne!(manifest.bundle_format, "1.0.0", "1.0.0 is the covenant's");
+        assert!(manifest.format_supported());
 
-        // Territory is absent, not null: it is optional while 0.x holds.
+        // Territory is absent, not null: it is optional while 0.x holds. So is
+        // an empty census.
         let json = serde_json::to_string(&manifest).expect("serialize");
         assert!(!json.contains("territory"), "got {json}");
+        assert!(json.contains(r#""uses":{}"#), "got {json}");
+    }
+
+    #[test]
+    fn an_unsupported_format_is_not_supported() {
+        let mut manifest = Manifest::new(&meta(), Counts::default(), Census::default());
+        manifest.bundle_format = "9.0.0".into();
+        assert!(!manifest.format_supported());
+    }
+
+    #[test]
+    fn the_grammar_signal_is_this_builds_domain_version() {
+        let manifest = Manifest::new(&meta(), Counts::default(), Census::default());
+        assert_eq!(manifest.domain_version, domain::VERSION);
+        assert!(
+            !manifest.grammar_may_be_newer(),
+            "a Bundle this build wrote is never newer than this build"
+        );
+    }
+
+    #[test]
+    fn a_newer_grammar_is_recognized_by_semver_not_by_string_order() {
+        let mut manifest = Manifest::new(&meta(), Counts::default(), Census::default());
+
+        manifest.domain_version = "99.0.0".into();
+        assert!(manifest.grammar_may_be_newer());
+
+        manifest.domain_version = "0.0.1".into();
+        assert!(!manifest.grammar_may_be_newer());
+
+        // `0.10.0` is newer than `0.9.0`, which string comparison gets wrong.
+        manifest.domain_version = "0.9.0".into();
+        let older_than_ten = manifest.grammar_may_be_newer();
+        manifest.domain_version = "0.10.0".into();
+        assert!(
+            manifest.grammar_may_be_newer() || !older_than_ten,
+            "minor versions compare numerically"
+        );
+
+        // An unreadable signal is not a reason to assume compatibility.
+        manifest.domain_version = "not-a-version".into();
+        assert!(manifest.grammar_may_be_newer());
+    }
+
+    #[test]
+    fn a_census_is_sorted_so_the_manifest_is_byte_stable() {
+        let census = Census {
+            content: ["paragraph", "callout", "code"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+            ..Census::default()
+        };
+        let json = serde_json::to_string(&census).expect("serialize");
+        assert_eq!(json, r#"{"content":["callout","code","paragraph"]}"#);
     }
 }
