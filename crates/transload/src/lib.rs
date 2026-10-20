@@ -13,12 +13,16 @@
 //! ingested: see [`Refusal`].
 
 pub(crate) mod bundle;
+pub(crate) mod export;
 pub(crate) mod frontmatter;
 pub(crate) mod identity;
 pub(crate) mod refusal;
 pub(crate) mod schema;
 
-pub use bundle::{Bundle, Counts, ExportMeta, Manifest, layout};
+pub use bundle::{
+    BUNDLE_FORMAT, Bundle, Census, Counts, ExportMeta, Manifest, SUPPORTED_FORMATS, layout,
+};
+pub use export::{ExportError, Exported, Tier, export, tier};
 pub use frontmatter::{Advisory, Frontmatter};
 pub use identity::{Identity, Marker};
 pub use refusal::{

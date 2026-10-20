@@ -23,5 +23,9 @@
   thiserror.workspace  = true
   uuid.workspace       = true
 
+[dev-dependencies]
+  tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
+  trybuild.workspace = true
+
 [lints]
   workspace = true
