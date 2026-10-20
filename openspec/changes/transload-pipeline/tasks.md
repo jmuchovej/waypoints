@@ -69,18 +69,18 @@ the `syntax` feature per design D8, 3.3–3.4 in `transload`.
 
 ## 4. Exporter
 
-- [ ] 4.1 Store traversal: live entities only (`deleted_at` excluded),
+- [x] 4.1 Store traversal: live entities only (`deleted_at` excluded),
       Landmarks grouped `library/<ChartID>/<MarkID>.md`, Tier-1 tree walk
       from child edges, shared Marks rendered once and byte-copied into
       every containing file.
-- [ ] 4.2 Edge tier dispatch as a non-wildcard `TerrainKind` match;
+- [x] 4.2 Edge tier dispatch as a non-wildcard `TerrainKind` match;
       `terrain.jsonl` writer — constitutive tier-3 lines with inline
       `extra`, annotative tier-1/2 lines only for extra-bearing edges,
       ordinals derived per design D9.
-- [ ] 4.3 `marks.jsonl`, `_schema.json` per referenced Chart (builtins
+- [x] 4.3 `marks.jsonl`, `_schema.json` per referenced Chart (builtins
       included), `manifest.json` (`bundle_format: "0.1.0"`); byte-stability
       pass — every unordered iteration sorted at the serialization boundary.
-- [ ] 4.4 `trybuild` compile-fail test: a `TerrainKind` variant with no tier
+- [x] 4.4 `trybuild` compile-fail test: a `TerrainKind` variant with no tier
       assignment fails compilation.
 
 ## 5. Ingester
