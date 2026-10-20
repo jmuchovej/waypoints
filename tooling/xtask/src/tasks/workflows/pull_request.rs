@@ -6,6 +6,7 @@ use gh_workflow::{Event, PullRequest, Push, Workflow};
 
 pub(crate) fn workflow(context: &WorkflowContext) -> Workflow {
     let job = jobs::test(TestSuite::Changed, Platform::Linux, context);
+    let audit = jobs::zizmor(context);
 
     helpers::named_workflow("Tests")
         .on(Event::default()
@@ -13,4 +14,5 @@ pub(crate) fn workflow(context: &WorkflowContext) -> Workflow {
             .push(Push::default().add_branch("main")))
         .concurrency(helpers::one_run_per_ref("tests"))
         .add_job(job.name, job.job)
+        .add_job(audit.name, audit.job)
 }

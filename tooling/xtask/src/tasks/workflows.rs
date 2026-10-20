@@ -37,6 +37,7 @@ pub(crate) mod _runners;
 pub(crate) use _runners as runners;
 pub(crate) mod _steps;
 pub(crate) use _steps as steps;
+mod _suppressions;
 
 /// Where a workflow lives, which is also who is allowed to consume it.
 #[derive(PartialEq, Eq, strum::EnumIter)]
@@ -362,6 +363,8 @@ impl WorkflowFile {
             .map_err(|e| anyhow!("{}: {e:?}", path.display()))?;
 
         let content = [self.family.disclaimer(self.module), body].join("\n");
+        let content = _suppressions::place(&workflow, &content)
+            .with_context(|| format!("{}", path.display()))?;
         let mut content: String = content
             .lines()
             .map(|line| format!("{}\n", line.trim_end()))
@@ -412,17 +415,14 @@ mod tests {
     /// has no business waiting on.
     ///
     /// A job that declares an environment publishes, and may restore only
-    /// what a run it trusts could have written. On GitHub's cache that means
-    /// no cache action at all, with one exception: mise's own install cache,
-    /// which GitHub's default rules let only trusted triggers write and whose
-    /// contents `mise.lock` pins. The R2-backed caches are steps this generator
-    /// emits, so their shape is asserted instead: the compiler is wrapped only
-    /// after a server start that resolved the cache scope, every directory
-    /// snapshot step is a bare `tooling/bin/xcache` call carrying the
-    /// credential that script resolves the scope with, and the store
-    /// credential is never configuration on any step. `.github/zizmor.yml`
-    /// silences zizmor's audit for the release workflows on the strength of
-    /// these checks.
+    /// what a run it trusts could have written. zizmor audits GitHub's own
+    /// cache in CI, and a step that earns an exception carries it inline. The
+    /// R2-backed caches are steps this generator emits, so their shape is
+    /// asserted instead: the compiler is wrapped only after a server start
+    /// that resolved the cache scope, every directory snapshot step is a bare
+    /// `tooling/bin/xcache` call carrying the credential that script resolves
+    /// the scope with, and the store credential is never configuration on any
+    /// step.
     #[test]
     fn environments_follow_the_vault_credential() {
         let context = WorkflowContext::fixture();
@@ -472,16 +472,6 @@ mod tests {
                     let uses = text(step, "uses");
                     let run = text(step, "run");
                     let id = text(step, "id");
-
-                    if declares_environment {
-                        let mise = uses.starts_with("jdx/mise-action");
-                        let cache_input = step["with"]["cache"].as_bool() == Some(true)
-                            || step["with"]["cache"].as_str() == Some("true");
-                        assert!(
-                            !uses.contains("cache") && (mise || !cache_input),
-                            "{label}: a publishing job restores a GitHub cache"
-                        );
-                    }
 
                     // Cargo reads the wrapper under either name; the generator
                     // emits the `CARGO_` one (see `steps::with_sccache`), but a
@@ -560,28 +550,6 @@ mod tests {
                         "OP_SERVICE_ACCOUNT_TOKEN": "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}"
                     }
                 }]
-            }}}),
-        );
-    }
-
-    #[test]
-    #[should_panic(expected = "restores a GitHub cache")]
-    fn a_cache_action_in_a_publishing_job_is_refused() {
-        assert_environments_follow_the_vault_credential(
-            "synthetic",
-            &json!({ "jobs": { "build": {
-                "environment": { "name": "App Release" },
-                "steps": [
-                    { "name": "Cache", "uses": "actions/cache@0000" },
-                    {
-                        "name": "Build",
-                        "run": "just tauri::build linux stable",
-                        "env": {
-                            "SECRETSPEC_PROVIDER": "op",
-                            "OP_SERVICE_ACCOUNT_TOKEN": "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}"
-                        }
-                    }
-                ]
             }}}),
         );
     }
