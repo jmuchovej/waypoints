@@ -9386,6 +9386,7 @@ dependencies = [
  "bedrock",
  "chrono",
  "domain",
+ "indexmap 2.14.2",
  "jsonschema",
  "saphyr",
  "serde",

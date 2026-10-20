@@ -43,8 +43,18 @@ malformed rather than resolving it.
 
 A Landmark file SHALL open with YAML frontmatter carrying the flattened root
 Mark: `title`, `chart` (a `ChartID` — 4-character base-36 or `builtin.{name}`),
-`created` and `updated` as ISO-8601 UTC wall-clock timestamps with explicit
-`Z` and millisecond precision, and `readings` keyed by `FeatureID`.
+`icon` when the Landmark has one, `created` and `updated` as ISO-8601 UTC
+wall-clock timestamps with explicit `Z` and millisecond precision, and
+`readings` keyed by `FeatureID`.
+
+The `chart` value is the whole `ChartID`, `builtin.` prefix included — not the
+display name, which would collapse a builtin binding and a custom Chart of the
+same name onto one identity.
+
+#### Scenario: An icon survives
+
+- **WHEN** a Landmark carrying an icon is exported and re-ingested
+- **THEN** the icon is unchanged
 
 Human-readable feature names SHALL ride only as YAML comments — advisory,
 regenerated on every export, and ignored on ingest. Relation Readings
@@ -336,6 +346,17 @@ while the document still validates against the meta-schema.
 _Rejected:_ Draft-07-only (silently lossy — a fidelity violation by
 construction); a separate chart sidecar (the schema file is already the
 per-Chart structured carrier).
+
+### 2026-10-20 — Frontmatter carries the Landmark's icon
+
+_Rationale:_ the requirement as first written listed title, chart, timestamps
+and readings, and omitted `Landmark.icon`. The icon is domain data on the root
+Mark, so leaving it out of the only carrier the root Mark has would be a
+fidelity hole by construction — `ingest(export(store))` could not return the
+icon. Found while implementing the frontmatter emitter.
+_Rejected:_ carrying the icon in `marks.jsonl` alongside Mark `extra` (the
+root Mark's own fields belong in its own frontmatter, and a reader editing a
+Landmark should see its icon there).
 
 ### 2026-10-20 — A mention's anchor text is content, not an advisory label
 

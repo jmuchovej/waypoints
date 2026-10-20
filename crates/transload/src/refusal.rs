@@ -128,7 +128,9 @@ impl std::fmt::Display for MalformedKind {
             } => write!(
                 f,
                 "an annotative `{kind}` line ({src} → {dst}, order {}) matching no projected edge",
-                order.map_or_else(|| "—".to_string(), |o| o.to_string())
+                order
+                    .map(|ordinal| ordinal.to_string())
+                    .unwrap_or_else(|| "—".to_string())
             ),
             Self::SchemaViolation { feature, detail } => {
                 write!(

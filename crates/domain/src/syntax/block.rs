@@ -219,7 +219,7 @@ fn emit_table(content: &Content) -> Rendered {
     let width = cells.iter().map(Vec::len).max().unwrap_or(0);
     let mut rows: Vec<String> = Vec::new();
     for (index, row) in cells.iter().enumerate() {
-        let mut columns: Vec<String> = row.iter().map(|cell| escape_cell(cell)).collect();
+        let mut columns: Vec<String> = row.iter().map(escape_cell).collect();
         columns.resize(width, String::new());
         rows.push(format!("| {} |", columns.join(" | ")));
         if index == 0 && *col_header == Some(true) {
@@ -353,8 +353,8 @@ pub fn parse(source: &str) -> Result<Content, GrammarError> {
     if first.starts_with('|') {
         return parse_gfm_table(&lines, None, None);
     }
-    if first.starts_with('>') {
-        let (_, attributes) = split_attrs(&first[1..])?;
+    if let Some(rest) = first.strip_prefix('>') {
+        let (_, attributes) = split_attrs(rest)?;
         return Ok(Content::Blockquote {
             theme: attributes.theme,
         });

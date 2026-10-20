@@ -15,6 +15,7 @@
   domain            = { workspace = true, features = [ "syntax" ] }
 
   chrono.workspace     = true
+  indexmap.workspace   = true
   jsonschema.workspace = true
   saphyr.workspace     = true
   serde.workspace      = true
