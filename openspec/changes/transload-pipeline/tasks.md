@@ -62,7 +62,7 @@ the `syntax` feature per design D8, 3.3–3.4 in `transload`.
       chomping, ISO-8601 `Z` ms timestamps) + saphyr parser that ignores
       comments and labels; round-trip fixtures including hand-mangled
       advisory content.
-- [ ] 3.5 Chart schema module: Draft-07 face generated from
+- [x] 3.5 Chart schema module: Draft-07 face generated from
       `Feature`/`FeatureKind` + canonical Chart (with `extra`) under
       `x-waypoints`; cross-validation of face against canonical form;
       meta-schema validation via `jsonschema`.
