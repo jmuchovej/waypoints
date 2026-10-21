@@ -130,13 +130,15 @@ platform :ios do
   desc "Upload stable build to TestFlight"
   lane :stable do
     asc_api_key
-    upload_to_testflight(
+    upload_to_app_store(
       ipa: ios_ipa,
       changelog: release_notes,
       app_identifier: flavor_identifier("stable"),
       skip_waiting_for_build_processing: true,
       skip_submission: true,
       distribute_external: true,
+      metadata_path: "./metadata/ios",
+      screenshots_path: "./metadata/ios/screenshots",
     )
   end
 end

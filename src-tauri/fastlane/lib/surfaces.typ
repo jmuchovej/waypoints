@@ -22,7 +22,7 @@
     store: "App Store — iPhone 6.9\"",
     // deliver reads every image under the locale and picks the device class
     // from the resolution, so 1320×2868 lands as 6.9-inch on its own.
-    dir: loc => "screenshots/" + loc,
+    dir: loc => "metadata/ios/screenshots/" + loc,
     width: 1320pt,
     height: 2868pt,
     // Taller than 9:16 while type only grows with width, so the same content
