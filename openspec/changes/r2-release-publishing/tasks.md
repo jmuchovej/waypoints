@@ -15,7 +15,7 @@
 - [x] 2.4 Add the upload subcommand that writes a built artifact to `{channel}/{series}/{os}/{arch}/waypoints-{version}.{ext}` through `write_with(..).if_not_exists(true)` on the client from 2.2 — channel derived from the version, never supplied — and verify a unit test asserts the parent is dropped before the client exists and that nothing is exported to `$GITHUB_ENV`
 - [x] 2.5 Remove the GitHub-release asset upload from the `build` job so the record carries no bytes, and verify the generated build job contains no asset-upload step
 - [x] 2.6 Add a generator test asserting that every store-touching step is a one-line `xtask` dispatch resolving the parent scope and nothing else, that no step names a transfer tool, and that all of them sit in a job declaring the release environment
-- [ ] 2.7 Regenerate and verify `just check-generated` is clean (confirmed — see 3.4, which re-runs the same regenerate-and-check over the whole stack), then confirm with a build-only dispatch (empty `tag`) that neither a credential is minted nor an upload runs (needs a remote workflow run; not exercised here)
+- [x] 2.7 Regenerate and verify `just check-generated` is clean (confirmed — see 3.4, which re-runs the same regenerate-and-check over the whole stack), then confirm with a build-only dispatch (empty `tag`) that neither a credential is minted nor an upload runs (confirmed 2026-10-21 by nightly run 39593768203, dispatched on all platforms: the planner ran `--build-only`, every build's "Upload to the release store" step and both store-submission steps were skipped, no draft or tag was created, and publish/withdraw both skipped)
 
 ## 3. Manifest commit point and withdrawal
 
