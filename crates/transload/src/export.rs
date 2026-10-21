@@ -17,11 +17,12 @@ use domain::{
 };
 
 use crate::{
-    bundle::{Bundle, Census, Counts, ExportMeta, Manifest, layout, render_timestamp},
+    bundle::{Bundle, Census, Counts, ExportMeta, Manifest, layout},
     frontmatter::{self, Advisory, Frontmatter},
     identity::{self, Identity},
     names::Names,
     schema,
+    sidecar::{self, MarkLine, TerrainLine},
 };
 
 /// The carrier an edge kind travels in.
@@ -280,22 +281,20 @@ impl Live {
 
     /// `{id, created, updated, extra?}` for every Mark in the Bundle.
     fn mark_lines(&self, reached: &BTreeSet<MarkID>) -> Option<String> {
-        let string = |value: String| serde_json::Value::String(value).to_string();
         let mut out = String::new();
         for (id, mark) in &self.marks {
             if !mark.is_landmark() && !reached.contains(id) {
                 continue;
             }
-            out.push_str(&format!(
-                "{{\"id\":{},\"created\":{},\"updated\":{}",
-                string(id.to_string()),
-                string(render_timestamp(mark.created_at)),
-                string(render_timestamp(mark.updated_at)),
-            ));
-            if let Some(extra) = &mark.extra {
-                out.push_str(&format!(",\"extra\":{extra}"));
-            }
-            out.push_str("}\n");
+            sidecar::push_line(
+                &mut out,
+                &MarkLine {
+                    id: *id,
+                    created: mark.created_at,
+                    updated: mark.updated_at,
+                    extra: mark.extra.clone(),
+                },
+            );
         }
         (!out.is_empty()).then_some(out)
     }
@@ -511,18 +510,16 @@ impl Renderer<'_> {
                 continue;
             }
 
-            let mut row = serde_json::Map::new();
-            row.insert("src".into(), edge.src_id.to_string().into());
-            row.insert("dst".into(), edge.dst_id.to_string().into());
-            row.insert("kind".into(), kind.into());
-            if ordinal > 0 || !constitutive {
-                row.insert("order".into(), ordinal.into());
-            }
-            if let Some(extra) = &edge.extra {
-                row.insert("extra".into(), extra.clone());
-            }
-            out.push_str(&serde_json::Value::Object(row).to_string());
-            out.push('\n');
+            sidecar::push_line(
+                &mut out,
+                &TerrainLine {
+                    src: edge.src_id,
+                    dst: edge.dst_id,
+                    kind,
+                    order: (ordinal > 0 || !constitutive).then_some(ordinal),
+                    extra: edge.extra.clone(),
+                },
+            );
         }
         (out, carried)
     }

@@ -19,7 +19,7 @@ use domain::{
 };
 
 use crate::{
-    bundle::{BUNDLE_FORMAT, Bundle, Manifest, layout, parse_timestamp},
+    bundle::{BUNDLE_FORMAT, Bundle, Manifest, layout},
     export::{Tier, tier},
     frontmatter,
     identity::{self, Identity, Marker},
@@ -28,6 +28,7 @@ use crate::{
         ChartConflict, DuplicateConflict, IngestError, Location, Malformed, MalformedKind, Refusal,
     },
     schema,
+    sidecar::{self, MarkLine, TerrainLine},
 };
 
 /// What an ingest wrote, and anything worth telling a person about it.
@@ -462,45 +463,20 @@ impl<'a> Stager<'a> {
         let Some(text) = self.bundle.get(layout::MARKS) else {
             return;
         };
-        for (index, line) in text
-            .lines()
-            .enumerate()
-            .filter(|(_, l)| !l.trim().is_empty())
-        {
-            let at = Location::line(layout::MARKS, index + 1);
-            let row: serde_json::Value = match serde_json::from_str(line) {
+        for (line, row) in sidecar::lines::<MarkLine>(text) {
+            let at = Location::line(layout::MARKS, line);
+            let row = match row {
                 Ok(row) => row,
-                Err(error) => {
-                    self.malformed(
-                        at,
-                        MalformedKind::Grammar {
-                            detail: error.to_string(),
-                        },
-                    );
-                    continue;
-                }
-            };
-            let id = row["id"]
-                .as_str()
-                .and_then(|id| id.parse::<uuid::Uuid>().ok());
-            let stamp = |key: &str| {
-                row[key]
-                    .as_str()
-                    .ok_or_else(|| format!("a `marks.jsonl` line with no `{key}`"))
-                    .and_then(parse_timestamp)
-            };
-            let (created, updated) = match (stamp("created"), stamp("updated")) {
-                (Ok(created), Ok(updated)) => (created, updated),
-                (Err(detail), _) | (_, Err(detail)) => {
+                Err(detail) => {
                     self.malformed(at, MalformedKind::Grammar { detail });
                     continue;
                 }
             };
-            match id.map(MarkID).and_then(|id| self.marks.get_mut(&id)) {
+            match self.marks.get_mut(&row.id) {
                 Some(mark) => {
-                    mark.extra = row.get("extra").cloned();
-                    mark.created_at = created;
-                    mark.updated_at = updated;
+                    mark.extra = row.extra;
+                    mark.created_at = row.created;
+                    mark.updated_at = row.updated;
                     self.stamped.insert(mark.id);
                 }
                 None => self.malformed(
@@ -526,34 +502,22 @@ impl<'a> Stager<'a> {
             *count += 1;
         }
 
-        for (index, line) in text
-            .lines()
-            .enumerate()
-            .filter(|(_, l)| !l.trim().is_empty())
-        {
-            let at = Location::line(layout::TERRAIN, index + 1);
+        for (line, row) in sidecar::lines::<TerrainLine>(text) {
+            let at = Location::line(layout::TERRAIN, line);
             let grammar = |detail: String| MalformedKind::Grammar { detail };
-            let row: serde_json::Value = match serde_json::from_str(line) {
+            let TerrainLine {
+                src,
+                dst,
+                kind: raw_kind,
+                order,
+                extra,
+            } = match row {
                 Ok(row) => row,
-                Err(error) => {
-                    self.malformed(at, grammar(error.to_string()));
+                Err(detail) => {
+                    self.malformed(at, grammar(detail));
                     continue;
                 }
             };
-            let endpoint = |key: &str| {
-                row[key]
-                    .as_str()
-                    .and_then(|id| id.parse::<uuid::Uuid>().ok())
-                    .map(MarkID)
-            };
-            let (Some(src), Some(dst)) = (endpoint("src"), endpoint("dst")) else {
-                self.malformed(
-                    at,
-                    grammar("a terrain line needs `src` and `dst` Mark ids".into()),
-                );
-                continue;
-            };
-            let raw_kind = row["kind"].as_str().unwrap_or_default().to_string();
             let Some(kind) = strict_kind(&raw_kind) else {
                 self.malformed(at, grammar(format!("`{raw_kind}` is not an edge kind")));
                 continue;
@@ -565,12 +529,6 @@ impl<'a> Stager<'a> {
                 );
                 continue;
             }
-            let order = row
-                .get("order")
-                .and_then(|order| order.as_u64())
-                .map(|o| o as u32);
-            let extra = row.get("extra").cloned();
-
             match tier(&kind) {
                 Tier::Structure => match projected.get(&(src, dst, order.unwrap_or(0))) {
                     Some(&slot) => edges[slot].extra = extra,

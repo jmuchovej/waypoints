@@ -20,6 +20,7 @@ pub(crate) mod ingest;
 pub(crate) mod names;
 pub(crate) mod refusal;
 pub(crate) mod schema;
+pub(crate) mod sidecar;
 
 pub use bundle::{
     BUNDLE_FORMAT, Bundle, Census, Counts, ExportMeta, Manifest, SUPPORTED_FORMATS, layout,

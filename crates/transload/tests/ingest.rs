@@ -423,6 +423,62 @@ async fn an_orphan_annotative_line_is_refused() {
 }
 
 #[tokio::test]
+async fn a_mark_line_with_an_unknown_key_is_refused_naming_it() {
+    let (source, target) = (open().await, open().await);
+    let ids = rich_store(&source).await;
+    let mut bundle = exported(&source).await;
+    edit(&mut bundle, layout::MARKS, |marks| {
+        format!(
+            "{marks}{}\n",
+            serde_json::json!({
+                "id": ids.intro.to_string(),
+                "created": "2026-08-02T09:41:00.000Z",
+                "updated": "2026-08-02T09:41:00.000Z",
+                "colour": "mauve",
+            })
+        )
+    });
+
+    let refusal = refused(&target, &bundle).await;
+    assert!(
+        refusal.malformed.iter().any(|m| matches!(
+            &m.kind,
+            MalformedKind::Grammar { detail } if detail.contains("colour")
+        ) && m.at.file == layout::MARKS
+            && m.at.line.is_some()),
+        "{refusal}"
+    );
+}
+
+#[tokio::test]
+async fn a_terrain_line_with_a_mistyped_order_is_refused() {
+    let (source, target) = (open().await, open().await);
+    let ids = rich_store(&source).await;
+    let mut bundle = exported(&source).await;
+    edit(&mut bundle, layout::TERRAIN, |terrain| {
+        format!(
+            "{terrain}{}\n",
+            serde_json::json!({
+                "src": ids.nested.to_string(),
+                "dst": ids.intro.to_string(),
+                "kind": "child",
+                "order": "0",
+            })
+        )
+    });
+
+    let refusal = refused(&target, &bundle).await;
+    assert!(
+        refusal.malformed.iter().any(|m| matches!(
+            &m.kind,
+            MalformedKind::Grammar { detail } if detail.contains("expected u32")
+        ) && m.at.file == layout::TERRAIN
+            && m.at.line.is_some()),
+        "{refusal}"
+    );
+}
+
+#[tokio::test]
 async fn a_schema_invalid_reading_is_refused_naming_file_and_feature() {
     let (source, target) = (open().await, open().await);
     let status = FeatureID::derived("status");
