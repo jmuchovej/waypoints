@@ -5,10 +5,16 @@ productName = "Waypoints"
 identifier  = "so.waypoints"
 
 [build]
-  beforeBuildCommand = "just generate"
-  beforeDevCommand   = "just dev"
-  devUrl             = "http://localhost:9297"
-  frontendDist       = "../src/.output"
+  devUrl       = "http://localhost:9297"
+  frontendDist = "../src/.output"
+
+  [build.beforeBuildCommand]
+    cwd    = ".."
+    script = "just app::generate"
+
+  [build.beforeDevCommand]
+    cwd    = ".."
+    script = "just app::dev"
 
 [bundle]
   homepage               = "https://waypoints.so"
