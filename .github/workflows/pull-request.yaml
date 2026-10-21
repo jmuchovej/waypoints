@@ -43,7 +43,7 @@ jobs:
         name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "true"
       - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
         name: Cache Rust dependencies
@@ -85,7 +85,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "false"
       - id: zizmor
         name: Audit the workflows

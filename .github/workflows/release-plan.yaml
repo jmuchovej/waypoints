@@ -39,7 +39,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "false"
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry

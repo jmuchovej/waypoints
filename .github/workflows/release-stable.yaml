@@ -47,7 +47,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "false"
       - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
         name: Cache Rust dependencies
@@ -84,7 +84,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "false"
       - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
         name: Cache Rust dependencies
@@ -132,7 +132,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "false"
       - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
         name: Cache Rust dependencies
@@ -183,7 +183,7 @@ jobs:
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "false"
       - id: gen-release-notes
         name: Generate release notes
@@ -240,7 +240,7 @@ jobs:
         name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -369,7 +369,7 @@ jobs:
         name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -515,7 +515,7 @@ jobs:
         name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -644,7 +644,7 @@ jobs:
         name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -797,7 +797,7 @@ jobs:
         name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: 2026.8.6
+          version: 2026.10.11
           cache: "true"
       - id: cache-restore-gradle
         name: Restore gradle
