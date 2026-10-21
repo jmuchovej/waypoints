@@ -23,7 +23,7 @@
 - [x] 3.2 Record in `nightly_plan.rs` that this run minted the tag, and verify `cargo test -p xtask` covers the flag being set only on the mint path
 - [x] 3.3 Add the withdraw job — discard the drafted record always, best-effort delete the objects this run uploaded through `delete_iter` on the client from 2.2, and delete the tag only when this run minted it — gated on failure or shortfall; verify unit tests assert nightly's withdraw deletes the tag and preview's and stable's do not, and that a failed object delete does not fail the job
 - [x] 3.4 Regenerate and verify `just check-generated` is clean
-- [ ] 3.5 Exercise both paths with a nightly dispatch: one complete run leaves a manifest, a published record, and a surviving tag; one run with a platform forced to fail leaves no manifest, no published record, and no tag — verify by reading the bucket and `gh release list`
+- [ ] 3.5 Exercise both paths with a nightly dispatch: one complete run leaves a manifest, a published record, and a surviving tag; one run with a platform forced to fail leaves no manifest, no published record, and no tag — verify by reading the bucket and `gh release list` (not exercised, deliberately: a dispatched nightly always runs `--build-only`, and only `main`'s schedule publishes, so neither path is reachable before merge; the next change moves every upload and store submission into one final job, which replaces most of what this would exercise, so the live publish/withdraw check moves there)
 
 ## 4. Site reads the store
 
