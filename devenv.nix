@@ -11,10 +11,9 @@
   imports = [ ./nix/devenv ];
 
   waypoints.mise = {
-    # Units of work, not actors: a job names what it does, and `MISE_ENV` takes
-    # a comma-separated list, so a consumer composes the sets it needs. A
-    # contributor working without nix names the lanes they work in — there is no
-    # `development` union, because selection already composes.
+    # `MISE_ENV` targets **units of work** rather than actors. a contributor without `nix`
+    # names the lanes they work in (since there's no `development` union).
+    # this works because `MISE_ENV` takes a comma-separated list, allowing composition.
     environments = [
       "xtask"
       "test"
@@ -37,10 +36,7 @@
         spec = "aqua:casey/just";
       };
       typst = {
-        # `withPackages` builds an env with no `version`; mise pins the compiler's.
-        package = config.languages.typst.package // {
-          inherit (pkgs.typst) version;
-        };
+        package = config.languages.typst.package;
         spec = "aqua:typst/typst";
       };
       nixfmt = {
@@ -100,8 +96,6 @@
         spec = "aqua:google/keep-sorted";
         envs = [ "devtools" ];
       };
-      # nix-only: in the shell, never in mise. treefmt's
-      # allow-missing-formatter lets mise users skip them.
       deadnix = {
         package = pkgs.deadnix;
         envs = null;
@@ -190,10 +184,8 @@
         os = [ "macos" ];
         envs = [ "build-mobile" ];
       };
-      # The Android project ships no gradlew (the wrapper jar is gitignored),
-      # so Tauri runs whichever `gradle` is on PATH. Projected so CI gets the
-      # same major as the shell: the runner image's own Gradle is a release
-      # ahead of what the pinned Android Gradle Plugin supports.
+      # since we don't ship a gradlew (its gitignored), we project it into `mise` so that
+      # CI will run the same major version as we do in devshells.
       gradle = {
         package = pkgs.gradle;
         spec = "aqua:gradle/gradle";
@@ -265,7 +257,7 @@
         spec = "core:deno";
         envs = [ "website" ];
       };
-      # Not base: only `rufo` and `fastlane` run on it, so it rides with them.
+      # since only `rufo` and `fastlane` need ruby, we don't need it in the base env.
       ruby = {
         package = config.languages.ruby.package;
         spec = "core:ruby";
@@ -300,9 +292,7 @@
     sdk.compile.version = "36";
     platforms.extra = [ "30" ];
     ndk.version = "30.0.16138531";
-    # devenv writes `files."<project-path>/..."` relative to the root, while
-    # `.env` carries the absolute path both it and mise need. Re-relativize
-    # rather than restating the path in nix.
+    # re-relativize the project-path so that `files.${project-path}` writes sensibly
     project-path = lib.removePrefix "${config.devenv.root}/" config.env.TAURI_ANDROID_PROJECT_PATH;
   };
 
@@ -346,25 +336,22 @@
     enable = true;
     lsp.enable = true;
   };
-  # `.env` ignores system and embedded fonts, so every family a
-  # `docs/marketing` asset names must come from `TYPST_FONT_PATHS`.
   languages.typst = {
     enable = true;
-    # Universe packages from nixpkgs, so rendering never fetches.
-    package = pkgs.typst.withPackages (ps: [
-      ps.typewind_0_2_0
-      ps.xmlit_0_1_3
-    ]);
+    # universe packages from nixpkgs, so rendering never fetches.
+    # re-attach the `version` to `withPackages` so `mise` can pin the compiler's.
+    package =
+      pkgs.typst.withPackages (ps: [
+        ps.typewind_0_2_0
+        ps.xmlit_0_1_3
+      ])
+      // {
+        inherit (pkgs.typst) version;
+      };
     lsp.enable = true;
     fontPaths = [
       "${pkgs.google-fonts.override { fonts = [ "Albert Sans" ]; }}/share/fonts/truetype"
-      # Static instances only: the joined `pkgs.monaspace` also carries the
-      # frozen and variable builds, so typst would see each family thrice.
       "${pkgs.monaspace.static}/share/fonts/opentype"
-      # Two emoji faces, both of which typst renders in colour: Twemoji is
-      # SVG-in-OpenType and sits on the text baseline at the surrounding size,
-      # Noto is CBDT bitmap and draws oversized and high. Marketing asks for
-      # Twemoji by name; Noto is here for anything that wants Android's own set.
       "${pkgs.twemoji-color-font}/share/fonts/truetype"
       "${pkgs.noto-fonts-color-emoji}/share/fonts/noto"
     ];

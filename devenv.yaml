@@ -5,8 +5,7 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-  # A release tag, not `main`: mise installs the published release of whatever
-  # version this builds, and `main` can carry unreleased code under that number.
+  # using a release tag instead of `main` since we would otherwise install `latest`
   mbx:
     url: github:jdx/mr-boxington/v1.26.0
     inputs:
@@ -21,10 +20,6 @@ inputs:
         follows: nixpkgs
 nixpkgs:
   allow_unfree: true
-# No `provider`: devenv would export it as SECRETSPEC_PROVIDER for the whole
-# shell, overriding every profile's own default. The manifest says where each
-# profile resolves from — `default` from the environment, the CI-facing ones
-# from 1Password — and a caller overrides per invocation.
 secretspec:
   enable: true
   profile: default
