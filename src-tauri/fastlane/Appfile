@@ -2,6 +2,8 @@
 json_key_file ENV["GOOGLE_PLAY_JSON_KEY_PATH"]
 
 # iOS
+team_id "D6NBHNJ93R"
+
 for_lane :nightly do
   app_identifier "so.waypoints.nightly"
   package_name "so.waypoints.nightly"

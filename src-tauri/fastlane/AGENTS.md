@@ -40,8 +40,8 @@ straight where supply and deliver read them — no copy step that can go stale:
 | Play feature graphic | `metadata/android/<locale>/images/featureGraphic.png` |
 | Play screenshots     | `…/images/phoneScreenshots/<nn>-<slug>.png`           |
 | Play release notes   | `metadata/android/<locale>/changelogs/default.txt`    |
-| App Store shots      | `screenshots/<locale>/<nn>-<slug>.png`                |
-| App Store notes      | `metadata/<locale>/release_notes.txt`                 |
+| App Store shots      | `metadata/ios/screenshots/<locale>/<nn>-<slug>.png`   |
+| App Store notes      | `metadata/ios/<locale>/release_notes.txt`             |
 
 `icon` and `featureGraphic` are the names supply looks for, as are the
 screenshot folder names (`sevenInchScreenshots`, `tenInchScreenshots` for
