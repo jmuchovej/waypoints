@@ -1,5 +1,5 @@
 //! mise: the config environments it composes, and the projection devenv
-//! writes to `.config/mise.toml`.
+//! writes to `.config/mise/conf.d/tools.toml`.
 //!
 //! The projection is a committed, generated file: cheap to read and stable
 //! to bake into generated output, unlike anything that needs a devenv
@@ -11,7 +11,7 @@ use std::fs;
 use strum::EnumIter;
 
 /// A mise config environment, as declared in `waypoints.mise.environments` and
-/// materialised into `.config/mise.<name>.toml`.
+/// materialised into `.config/mise/conf.d/tools.<name>.toml`.
 ///
 /// mise does not validate `MISE_ENV`: a misspelled name loads the base config
 /// and nothing else, so a job gets base-only tooling and fails on a missing
@@ -51,9 +51,9 @@ impl MiseEnv {
     }
 }
 
-const MISE_TOML: &str = ".config/mise.toml";
+const MISE_TOML: &str = ".config/mise/conf.d/tools.toml";
 
-/// The mise that writes `.config/mise.lock`, read from the projection's
+/// The mise that writes `.config/mise/mise.lock`, read from the projection's
 /// `min_version`, so CI installs the same one.
 ///
 /// Left unpinned, `mise-action` takes whatever released most recently, which
@@ -97,7 +97,7 @@ mod tests {
     fn every_variant_has_a_generated_config() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         for env in MiseEnv::iter() {
-            let config = root.join(format!(".config/mise.{env}.toml"));
+            let config = root.join(format!(".config/mise/conf.d/tools.{env}.toml"));
             assert!(
                 config.exists(),
                 "MiseEnv::{env:?} selects {}, which does not exist — has an environment been renamed in devenv.nix?",

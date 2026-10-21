@@ -38,7 +38,7 @@ let
 
   # `.env` carries no `PATH`: mise ignores a `PATH=` line from a dotenv file
   # (it tracks path additions separately, via `_.path`), so the entries live in
-  # `.config/mise/conf.d/base.toml` for mise and are restated below for the
+  # `.config/mise.toml` for mise and are restated below for the
   # devenv shell, from values nix knows without expanding anything early.
   literals = config.dotenv.resolved;
 
@@ -78,7 +78,7 @@ let
   # surface as a baffling file-not-found much later.
   unresolved = filter (name: lib.hasInfix "\${" resolved.${name}) (attrNames resolved);
 
-  # The same two directories `.config/mise/conf.d/base.toml` adds through
+  # The same two directories `.config/mise.toml` adds through
   # `_.path`: the repo-local commands (`xtauri`, `mise-lock`, …) and the debug
   # build output, so a freshly built `xtask` is callable by name.
   path-prefix = [

@@ -1,17 +1,25 @@
-min_version = "2026.10.3"
+#:tombi toml-version = "v1.1.0"
+# mise configuration that should be hand-maintained rather than projected from devenv.
 
 [env]
+  PROJECT_ROOT = "{{ config_root }}"
+  _.file       = { expand = true, path = ".env" }
+  _.path       = [ "{{ config_root }}/tooling/bin", "{{ env.CARGO_TARGET_DIR }}/debug" ]
 
-[tools]
-"aqua:1password/cli" = "2.39.0"
-"aqua:cachix/secretspec" = "0.21.1"
-"aqua:casey/just" = "1.58.0"
-"aqua:mikefarah/yq" = "4.54.1"
-"aqua:nushell/nushell" = "0.115.1"
-"aqua:tauri-apps/tauri/cargo-tauri" = "2.11.4"
-"aqua:typst/typst" = "0.15.1"
-"core:node" = "24.21.0"
+[settings]
+  experimental = true
 
-[tools."aqua:pnpm/pnpm"]
-depends = ["node"]
-version = "11.27.0"
+  idiomatic_version_file_enable_tools = [
+    "rust"                                 # load from `rust-toolchain`
+    # "pnpm" # expressly omitted because we explicitly pin it in `mise.toml`
+  ]
+
+  lockfile                 = true
+  locked                   = true
+  locked_verify_provenance = true
+
+  # let a fresh release age before this repo installs it.
+  minimum_release_age          = "7d"
+  minimum_release_age_excludes = []
+
+  # `safe` is only respected by mise in its global config

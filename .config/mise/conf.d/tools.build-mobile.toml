@@ -9,6 +9,6 @@ os = ["macos"]
 version = "2.44.1"
 
 [tools."gem:fastlane"]
-depends = ["ruby"]
+depends = ["core:ruby"]
 os = ["linux", "macos"]
 version = "2.240.1"

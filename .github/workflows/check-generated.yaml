@@ -21,22 +21,14 @@ on:
       - src-tauri/assets/icons/app/**
       - src-tauri/gen/apple/Assets.xcassets/*.appiconset/**
       - src-tauri/gen/android/app/src/*/res/**/ic_launcher*
-      - .config/mise.build-desktop.lock
-      - .config/mise.build-desktop.toml
-      - .config/mise.build-mobile.lock
-      - .config/mise.build-mobile.toml
-      - .config/mise.deploy.lock
-      - .config/mise.deploy.toml
-      - .config/mise.devtools.lock
-      - .config/mise.devtools.toml
-      - .config/mise.lock
-      - .config/mise.test.lock
-      - .config/mise.test.toml
-      - .config/mise.toml
-      - .config/mise.website.lock
-      - .config/mise.website.toml
-      - .config/mise.xtask.lock
-      - .config/mise.xtask.toml
+      - .config/mise/conf.d/tools.build-desktop.toml
+      - .config/mise/conf.d/tools.build-mobile.toml
+      - .config/mise/conf.d/tools.deploy.toml
+      - .config/mise/conf.d/tools.devtools.toml
+      - .config/mise/conf.d/tools.test.toml
+      - .config/mise/conf.d/tools.toml
+      - .config/mise/conf.d/tools.website.toml
+      - .config/mise/conf.d/tools.xtask.toml
       - src-tauri/gen/android/gradle/libs.versions.toml
       - src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
       - src-tauri/gen/android/local.properties
@@ -57,22 +49,14 @@ on:
       - src-tauri/assets/icons/app/**
       - src-tauri/gen/apple/Assets.xcassets/*.appiconset/**
       - src-tauri/gen/android/app/src/*/res/**/ic_launcher*
-      - .config/mise.build-desktop.lock
-      - .config/mise.build-desktop.toml
-      - .config/mise.build-mobile.lock
-      - .config/mise.build-mobile.toml
-      - .config/mise.deploy.lock
-      - .config/mise.deploy.toml
-      - .config/mise.devtools.lock
-      - .config/mise.devtools.toml
-      - .config/mise.lock
-      - .config/mise.test.lock
-      - .config/mise.test.toml
-      - .config/mise.toml
-      - .config/mise.website.lock
-      - .config/mise.website.toml
-      - .config/mise.xtask.lock
-      - .config/mise.xtask.toml
+      - .config/mise/conf.d/tools.build-desktop.toml
+      - .config/mise/conf.d/tools.build-mobile.toml
+      - .config/mise/conf.d/tools.deploy.toml
+      - .config/mise/conf.d/tools.devtools.toml
+      - .config/mise/conf.d/tools.test.toml
+      - .config/mise/conf.d/tools.toml
+      - .config/mise/conf.d/tools.website.toml
+      - .config/mise/conf.d/tools.xtask.toml
       - src-tauri/gen/android/gradle/libs.versions.toml
       - src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
       - src-tauri/gen/android/local.properties

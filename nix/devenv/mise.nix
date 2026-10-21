@@ -1,24 +1,8 @@
-# Owns the mise projection: every tool the shell provides is mirrored into
-# `.config/mise.toml` with pinned versions, and into `.config/mise.<env>.toml`
-# for the environments it belongs to. mise never provides dependencies inside
-# the shell — nix does; the projection exists for consumers outside it (CI
-# runners).
-#
-# Lockfiles are seeded here but never written on entry. `tooling/bin/mise-lock`
-# refreshes them when asked: mise reports success after a rate-limited run that
-# wrote only part of the file, so that cannot happen unattended.
-#
-# Every tool is one `waypoints.mise.tools.<name>` entry carrying its nix
-# package, its backend-qualified mise spec, any OS restriction, and the
-# environments it belongs to. `envs = null` is a nix-only tool: it lives in the
-# shell and is never projected. Otherwise `envs = [ ]` means the base config and
-# a non-empty list means those environments' files; an assertion refuses
-# anything projected without both a package and a spec.
-#
-# Nothing is inferred. An environment holds exactly the tools that named it, and
-# a tool whose `depends` is absent from a lane is an evaluation error rather than
-# something quietly pulled in — mise resolves such a config and exits zero, so
-# the generator has to be the one that notices.
+# handles projecting devenv into `mise` (all written to `.config/mise/conf.d/`).
+# each tool's version is synchronized with devenv. the base toolchain is stored
+# in `tools.toml` and supplemental environments are written to
+# `tools.<env>.toml`. this project exists for non-nix consumers (i.e., CI
+# runners, non-Nix contributors, etc.).
 {
   lib,
   config,
@@ -27,130 +11,92 @@
 }:
 let
   inherit (lib)
-    attrNames
     attrValues
     filter
     filterAttrs
+    mapAttrsToList
     mkOption
-    nameValuePair
-    types
+    optionalAttrs
     ;
+
   cfg = config.waypoints.mise;
+  tools-prefix = ".config/mise/conf.d";
+  tools-to-include = filterAttrs (_: tool: tool.envs != null) cfg.tools;
 
-  environment-names = cfg.environments;
+  # every lane a tool set is written for, keyed by environment. `base` is
+  # reserved for tools with no environment, which every environment loads.
+  lanes = {
+    base = filterAttrs (_: tool: tool.envs == [ ]) tools-to-include;
+  }
+  // lib.genAttrs cfg.environments (
+    env: filterAttrs (_: tool: lib.elem env tool.envs) tools-to-include
+  );
 
-  # What mise calls a tool: its spec, minus the `core:` prefix mise strips when
-  # displaying and when matching `depends`.
-  displayed = lib.removePrefix "core:";
-
-  tool-type = types.submodule {
-    options = {
-      package = mkOption {
-        type = types.nullOr types.package;
-        default = null;
-        description = "The nix package providing the tool in the shell; its version is what mise pins.";
-      };
-      spec = mkOption {
-        type = types.nullOr types.str;
-        default = null;
-        description = "Backend-qualified mise tool spec, e.g. `aqua:casey/just`.";
-      };
-      os = mkOption {
-        # mise also accepts `os/arch` pairs ("macos/arm64"); add them if a tool
-        # ever needs that granularity.
-        type = types.listOf (
-          types.enum [
+  tool-type =
+    with lib.types;
+    submodule {
+      options = {
+        package = mkOption {
+          type = nullOr package;
+          default = null;
+          description = "The nix package providing the tool in the shell; its version is what mise pins.";
+        };
+        spec = mkOption {
+          type = nullOr str;
+          default = null;
+          description = "Backend-qualified mise tool spec, e.g. `aqua:casey/just`.";
+        };
+        os = mkOption {
+          # mise also accepts `os/arch` pairs ("macos/arm64"); add them if a tool
+          # ever needs that granularity.
+          type = listOf (enum [
             "linux"
             "macos"
             "windows"
-            "unix" # everything but windows
-          ]
-        );
-        default = [ ];
-        description = "Operating systems mise installs the tool on (its `os` option); empty means everywhere.";
-      };
-      envs = mkOption {
-        type = types.nullOr (types.listOf (types.enum environment-names));
-        default = [ ];
-        description = ''
-          Environments this tool belongs to. `[ ]` puts it in the base config,
-          which every environment loads; a non-empty list writes it into each
-          named environment's file instead.
+            "unix"
+          ]);
+          default = [ ];
+          description = ''
+            Operating systems mise installs the tool on (its `os`  option);
+            empty means everywhere.
+          '';
+        };
+        envs = mkOption {
+          type = nullOr (listOf (enum cfg.environments));
+          default = [ ];
+          description = ''
+            Environments this tool belongs to. `[ ]` puts it in the base config,
+            which every environment loads; a non-empty list writes it into each
+            named environment's file instead.
 
-          `null` keeps the tool out of mise entirely — a nix-only tool that
-          lives in the shell and has no projected entry. There is no separate
-          `include` flag: a tool is projected exactly when it names where it
-          belongs.
-        '';
-      };
-      depends = mkOption {
-        type = types.listOf types.str;
-        default = [ ];
-        description = ''
-          Specs of other projected tools this one needs at run time — the
-          runtime a `gem:`/`npm:` tool executes on. Written as the spec
-          (`core:ruby`) and projected as mise's displayed name (`ruby`), which
-          is what mise matches.
+            `null` keeps the tool out of mise entirely — a nix-only tool that
+            lives in the shell and has no projected entry. There is no separate
+            `include` flag: a tool is projected exactly when it names where it
+            belongs.
+          '';
+        };
+        depends = mkOption {
+          type = listOf str;
+          default = [ ];
+          description = ''
+            Specs of other projected tools this one needs at run time — the
+            runtime a `gem:`/`npm:` tool executes on. Written and projected as
+            the spec (`core:ruby`); mise matches a dependency on any of its
+            identities, so the full spec is the unambiguous choice.
 
-          mise does not enforce this: a config naming an absent dependency
-          resolves the dependent tool and exits zero. So the dependency is not
-          pulled in here either — an environment missing one is an assertion
-          failure, and the fix is to say where the dependency belongs.
-        '';
+            mise does not enforce this: a config naming an absent dependency
+            resolves the dependent tool and exits zero. So the dependency is not
+            pulled in here either — an environment missing one is an assertion
+            failure, and the fix is to say where the dependency belongs.
+          '';
+        };
       };
     };
-  };
-
-  in-shell = filter (tool: tool.package != null) (attrValues cfg.tools);
-  included = filterAttrs (_: tool: tool.envs != null) cfg.tools;
-
-  # A tool's mise entry: a bare version string unless something forces the
-  # table form.
-  entry =
-    tool:
-    if tool.os == [ ] && tool.depends == [ ] then
-      toString tool.package.version
-    else
-      {
-        version = toString tool.package.version;
-      }
-      // lib.optionalAttrs (tool.os != [ ]) { inherit (tool) os; }
-      // lib.optionalAttrs (tool.depends != [ ]) { depends = map displayed tool.depends; };
-
-  tool-table =
-    names: lib.listToAttrs (map (n: nameValuePair included.${n}.spec (entry included.${n})) names);
-
-  # Tools with no environment go in the base, which every environment loads.
-  base-tools = attrNames (filterAttrs (_: tool: tool.envs == [ ]) included);
-
-  # What an environment's own file contains: exactly the tools that named it.
-  # Nothing is pulled in — a tool is in an environment because it says so.
-  membership = env: attrNames (filterAttrs (_: tool: lib.elem env tool.envs) included);
-
-  # Every lane a tool set is written for, base included, so the dependency
-  # assertion can ask the same question of each.
-  lanes = {
-    base = base-tools;
-  }
-  // lib.genAttrs environment-names membership;
-
-  # The mise-displayed names resolvable in a lane: its own tools plus the base,
-  # which every environment loads on top of.
-  resolvable =
-    lane: lib.unique (map (name: displayed included.${name}.spec) (lanes.base ++ lanes.${lane}));
-
-  # The basenames the declared environments own. Anything else matching
-  # `mise.<something>.{toml,lock}` under `.config` is a leftover from an
-  # environment that has been renamed or removed.
-  expected-files = lib.concatMap (env: [
-    "mise.${env}.toml"
-    "mise.${env}.lock"
-  ]) environment-names;
 in
 {
-  options.waypoints.mise = {
+  options.waypoints.mise = with lib.types; {
     environments = mkOption {
-      type = types.listOf types.str;
+      type = listOf str;
       default = [ ];
       description = ''
         Environments a consumer can select, each naming a unit of work rather
@@ -165,68 +111,100 @@ in
       '';
     };
     tools = mkOption {
-      type = types.attrsOf tool-type;
+      type = attrsOf tool-type;
       default = { };
       description = "Tools by name: nix package, mise spec, and OS restriction together.";
     };
     env = mkOption {
-      type = types.attrs;
+      type = attrs;
       default = { };
       description = ''
-        The `[env]` table of the projected `.config/mise.toml`, `_` directives
+        The `[env]` table of the projected `tools.toml`, `_` directives
         included. Normally empty: the environment mise needs — `PROJECT_ROOT`,
         the `.env` pointer, the PATH additions — is policy rather than something
         derived from the tool set, so it is hand-maintained in
-        `.config/mise/conf.d/base.toml`; see nix/devenv/default.nix for why
-        each side resolves `PROJECT_ROOT` its own way.
+        `.config/mise.toml`; see nix/devenv/default.nix for why each side
+        resolves `PROJECT_ROOT` its own way.
       '';
     };
   };
 
   config = {
     assertions =
-      map (
-        name:
-        let
-          tool = cfg.tools.${name};
-        in
-        {
+      let
+        base-is-reserved = {
+          assertion = !lib.elem "base" cfg.environments;
+          message = "waypoints.mise.environments: `base` is reserved for tools with `envs = [ ]`.";
+        };
+
+        has-package-spec-or-null-envs = mapAttrsToList (name: tool: {
           assertion = tool.envs == null || (tool.package != null && tool.spec != null);
           message = "waypoints.mise.tools.${name}: set both `package` and `spec`, or `envs = null`.";
-        }
-      ) (attrNames cfg.tools)
-      # A dependency on an unprojected tool would write a `depends` entry mise
-      # resolves to nothing and reports success for — the failure this option
-      # exists to prevent, reintroduced one level up.
-      ++ lib.concatMap (
-        name:
-        map (dependency: {
-          assertion = lib.elem dependency (map (tool: tool.spec) (attrValues included));
-          message = "waypoints.mise.tools.${name}.depends: `${dependency}` is not a projected tool's spec.";
-        }) included.${name}.depends
-      ) (attrNames included)
-      # mise will not enforce the closure and will not complain: a config whose
-      # `depends` target is absent installs the dependent tool, exits zero, and
-      # fails at run time with no interpreter. So every lane is checked to
-      # already contain what its tools depend on. Deliberately an assertion
-      # rather than a fixup — the generator pulling the dependency in silently
-      # would mean an environment's contents were never quite what it declared.
-      ++ lib.concatMap (
-        lane:
-        lib.concatMap (
-          name:
-          map (dependency: {
-            assertion = lib.elem (displayed dependency) (resolvable lane);
-            message = "waypoints.mise.${lane}: `${included.${name}.spec}` depends on `${dependency}`, which is not a member. Add `\"${lane}\"` to that tool's `envs`.";
-          }) included.${name}.depends
-        ) lanes.${lane}
-      ) (attrNames lanes);
+        }) cfg.tools;
 
-    # Every tool with a package, minus what cannot be built on this platform
-    # (xcodegen off macOS); those still project their versions into mise.toml.
-    packages = filter (lib.meta.availableOn pkgs.stdenv.hostPlatform) (
-      map (tool: tool.package) in-shell
-    );
+        # the lanes `tool` is written into that `dep` isn't.
+        missing-lanes =
+          tool: dep:
+          if dep.envs == [ ] then
+            [ ]
+          else if tool.envs == [ ] then
+            [ "base" ]
+          else
+            lib.subtractLists dep.envs tool.envs;
+
+        by-spec = lib.pipe tools-to-include [
+          attrValues
+          (map (tool: lib.nameValuePair tool.spec tool))
+          lib.listToAttrs
+        ];
+
+        depends-will-resolve-assertion =
+          {
+            name,
+            tool,
+            dep,
+          }:
+          let
+            prefix = "waypoints.mise.tools.${name}.depends: `${dep}`";
+            missing = missing-lanes tool by-spec.${dep};
+            quoted = lib.concatMapStringsSep ", " (lane: "\"${lane}\"") missing;
+          in
+          if !(by-spec ? ${dep}) then
+            {
+              assertion = false;
+              message = "${prefix} is not a projected tool's spec.";
+            }
+          else
+            {
+              assertion = missing == [ ];
+              message =
+                "${prefix} is missing from ${quoted}. "
+                + (
+                  if missing == [ "base" ] then
+                    "Give that tool `envs = [ ]`."
+                  else
+                    "Add ${quoted} to that tool's `envs`."
+                );
+            };
+
+        # mise resolves a `depends` on an unprojected tool to nothing and exits
+        # zero, so the generator has to refuse it.
+        depends-will-resolve = lib.pipe tools-to-include [
+          (mapAttrsToList (name: tool: map (dep: { inherit name tool dep; }) tool.depends))
+          lib.concatLists
+          (map depends-will-resolve-assertion)
+        ];
+      in
+      [ base-is-reserved ] ++ has-package-spec-or-null-envs ++ depends-will-resolve;
+
+    # every tool with a package, except what can't be built on this platform
+    # (e.g., xcodegen off macOS); mise still pins those.
+    packages = lib.pipe cfg.tools [
+      attrValues
+      (filter (tool: tool.package != null))
+      (map (tool: tool.package))
+      (filter (lib.meta.availableOn pkgs.stdenv.hostPlatform))
+    ];
 
     # Runs after devenv has written its files, so the expected set is on disk
     # and anything left over is genuinely orphaned.
@@ -234,57 +212,64 @@ in
       description = "Remove generated mise environment configs whose environment no longer has members";
       package = pkgs.nushell;
       after = [ "devenv:files" ];
-      before = [ "devenv:enterShell" ];
-      # `exec` runs under nushell, so the expected set is bound the nu way
-      # rather than exported by a shell.
-      exec = ''
-        $env.WAYPOINTS_MISE_ENV_FILES = "${lib.concatStringsSep "," expected-files}"
-        ${builtins.readFile ./bin/prune-mise-environments}
-      '';
+      before = [
+        "devenv:enterShell"
+        "devenv:enterTest"
+      ];
+      exec =
+        let
+          # the basenames the declared environments own.
+          expected-files = lib.pipe config.files [
+            lib.attrNames
+            (filter (lib.hasPrefix tools-prefix))
+            (map lib.baseNameOf)
+            (lib.concatStringsSep ",")
+          ];
+        in
+        ''
+          $env.WAYPOINTS_MISE_ENV_FILES = "${expected-files}"
+          ${builtins.readFile ./bin/prune-mise-environments}
+        '';
     };
 
-    files = {
-      ".config/mise.lock" = {
-        copyMode = "seed";
-        text = "# Placeholder. Run `just mise-lock` to populate; nothing writes this on shell entry.";
-      };
+    files =
+      let
+        # a tool's mise entry: a bare version string unless something forces the
+        # table form.
+        mk-tool-value =
+          tool:
+          let
+            version = toString tool.package.version;
+          in
+          if tool.os == [ ] && tool.depends == [ ] then
+            version
+          else
+            {
+              inherit version;
+            }
+            // optionalAttrs (tool.os != [ ]) { inherit (tool) os; }
+            // optionalAttrs (tool.depends != [ ]) { inherit (tool) depends; };
 
-      ".config/mise.toml" = {
-        copyMode = "copy";
-        toml = {
-          # Only what nix computes is projected. `[settings]` is hand-maintained
-          # in `.config/mise/conf.d/base.toml`: nothing there derives from the
-          # package set, and a generated file cannot be linted — treefmt has to
-          # exclude it or tombi reformats what devenv writes.
-          inherit (cfg) env;
-          # The mise devenv provides — the one that writes `.config/mise.lock`.
-          # mise reads this itself and refuses an older one, and CI installs
-          # exactly it rather than whatever released most recently: a lockfile
-          # is only as reproducible as the tool reading it. mise 2026.9.16
-          # tightened SLSA provenance and broke a nightly hours after
-          # publishing, with nothing changed here.
-          min_version = pkgs.mise.version;
-          tools = tool-table base-tools;
+        filename-for = lane: if lane == "base" then "tools" else "tools.${lane}";
+
+        toolfile = lane: tools: {
+          "${tools-prefix}/${filename-for lane}.toml" = {
+            copyMode = "copy";
+            toml = {
+              tools = lib.mapAttrs' (_: tool: lib.nameValuePair tool.spec (mk-tool-value tool)) tools;
+            }
+            // optionalAttrs (lane == "base") {
+              # project whatever `nix` computes. all other `[settings]` are
+              # hand-maintained in `.config/mise.toml`.
+              inherit (cfg) env;
+              # ensure that `mise` is at least the same as what generated `tools`
+              min_version = pkgs.mise.version;
+            };
+          };
         };
-      };
-    }
-    # One config and one seeded lockfile for every declared environment, member
-    # or not. An environment whose tools are all in the base gets a file with an
-    # empty `[tools]` rather than no file at all: a consumer names the same
-    # environment whatever it currently contains, so every workflow job carries
-    # the same `MISE_ENV` shape, and the day a lane-specific tool appears it
-    # lands in a file the jobs already select.
-    // lib.concatMapAttrs (name: members: {
-      ".config/mise.${name}.toml" = {
-        copyMode = "copy";
-        # `[tools]` and nothing else — settings, `min_version` and `[env]`
-        # stay in the base, so each is written in exactly one place.
-        toml.tools = tool-table members;
-      };
-      ".config/mise.${name}.lock" = {
-        copyMode = "seed";
-        text = "# Placeholder. Run `just mise-lock` to populate; nothing writes this on shell entry.";
-      };
-    }) (removeAttrs lanes [ "base" ]);
+      in
+      # each config fragment per-declared environment. these are selectable
+      # via `MISE_ENV`.
+      lib.concatMapAttrs toolfile lanes;
   };
 }

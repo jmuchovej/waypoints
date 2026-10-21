@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-# Remove generated mise environment configs whose environment no longer has
+# Remove generated mise config fragments whose environment no longer has
 # members.
 #
 # devenv's own `files:cleanup` will not do this. It removes a file it has
@@ -17,19 +17,16 @@
 # the environments that have members.
 
 let root = $env.PROJECT_ROOT? | default (pwd)
-let config_dir = ($root | path join ".config")
+let config_dir = ($root | path join ".config" "mise" "conf.d")
 let expected = ($env.WAYPOINTS_MISE_ENV_FILES | split row "," | where {|f| $f != ""})
 
-# `mise.toml`/`mise.lock` are the base config and never environment files:
-# `mise.*.toml` cannot match them, since nothing sits between the two dots.
+# Only generated `tools*.toml` fragments live here. The hand-maintained config
+# (`.config/mise.toml`) and the lockfile (`.config/mise/mise.lock`) sit outside
+# this directory, so nothing here is ever a human's file.
 let strays = (
   ls $config_dir
   | get name
   | path basename
-  | where {|f| $f | str starts-with "mise." }
-  | where {|f| ($f | str ends-with ".toml") or ($f | str ends-with ".lock") }
-  | where {|f| $f != "mise.toml" }
-  | where {|f| $f != "mise.lock" }
   | where {|f| $f not-in $expected }
 )
 
@@ -39,6 +36,6 @@ if ($strays | is-empty) {
 
 for stray in $strays {
   let path = ($config_dir | path join $stray)
-  print $"removing orphaned mise environment file: .config/($stray)"
+  print $"removing orphaned mise fragment: .config/mise/conf.d/($stray)"
   rm --force $path
 }

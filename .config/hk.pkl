@@ -64,7 +64,8 @@ local syncing = new Mapping<String, Step> {
       "devenv.yaml",
       "devenv.lock",
       ".config/mise.toml",
-      ".config/mise.*.toml"
+      ".config/miserc.toml",
+      ".config/mise/conf.d/*.toml"
     )
     check = "just mise-lock-check"
     fix = "just mise-lock"

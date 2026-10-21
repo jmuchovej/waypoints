@@ -1,5 +1,5 @@
 # config *discovery* only — mise reads this before `mise*.toml` files (e.g.,
-# `auto_env`, `env`, etc.). all other settings go in `.config/mise/conf.d/base.toml`.
+# `auto_env`, `env`, etc.). all other settings go in `.config/mise.toml`.
 #
 # `mise settings get` cannot test a key here — it reads a different subsystem
 # and reports "not set" for `auto_env` even while `auto_env` is working. probe

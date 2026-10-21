@@ -231,7 +231,7 @@ pub fn create_pull_request(
 /// rust with every cross-compilation target, read from `rust-toolchain.toml`.
 ///
 /// Pinned to the mise devenv provides — the one that writes
-/// `.config/mise.lock`. Unpinned, the action installs whatever released most
+/// `.config/mise/mise.lock`. Unpinned, the action installs whatever released most
 /// recently, so a committed lockfile is only as reproducible as an upstream
 /// release schedule.
 pub fn setup_mise(with_cache: Option<bool>, version: &str) -> Step<Use> {

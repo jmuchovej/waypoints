@@ -80,7 +80,7 @@ jobs:
           sign-commits: "true"
           title: "chore(devenv): update locked inputs"
           body: |-
-            Ran `devenv update`, then regenerated everything that derives from the lockfile — devenv's `files."..."` outputs, the mise configs and their lockfiles, and the workflows under `.github/workflows`.
+            Ran `devenv update`, then regenerated everything that derives from the lockfile — devenv's `files."..."` outputs, the mise config fragments, and the workflows under `.github/workflows`.
 
             Opened by the weekly schedule in `xtask::workflows::devenv_update`. Review the toolchain moves before merging; `check-generated` proves only that the tree is self-consistent, not that the new versions work.
 
@@ -89,22 +89,14 @@ jobs:
           add-paths: |-
             devenv.lock
             .github/workflows
-            .config/mise.build-desktop.lock
-            .config/mise.build-desktop.toml
-            .config/mise.build-mobile.lock
-            .config/mise.build-mobile.toml
-            .config/mise.deploy.lock
-            .config/mise.deploy.toml
-            .config/mise.devtools.lock
-            .config/mise.devtools.toml
-            .config/mise.lock
-            .config/mise.test.lock
-            .config/mise.test.toml
-            .config/mise.toml
-            .config/mise.website.lock
-            .config/mise.website.toml
-            .config/mise.xtask.lock
-            .config/mise.xtask.toml
+            .config/mise/conf.d/tools.build-desktop.toml
+            .config/mise/conf.d/tools.build-mobile.toml
+            .config/mise/conf.d/tools.deploy.toml
+            .config/mise/conf.d/tools.devtools.toml
+            .config/mise/conf.d/tools.test.toml
+            .config/mise/conf.d/tools.toml
+            .config/mise/conf.d/tools.website.toml
+            .config/mise/conf.d/tools.xtask.toml
             src-tauri/gen/android/gradle/libs.versions.toml
             src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties
             src-tauri/gen/android/local.properties
