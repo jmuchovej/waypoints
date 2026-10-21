@@ -185,6 +185,20 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
     NamedJob::new(format!("test-{}", platform.slug()), job)
 }
 
+/// Audits the generated workflows with zizmor, so a suppression is the only
+/// way past a finding.
+pub fn zizmor(context: &WorkflowContext) -> NamedJob {
+    let job = mise_env(Job::default(), &[MiseEnv::Devtools])
+        .name("Audit the workflows")
+        .permissions(Permissions::default().contents(Level::Read))
+        .runs_on(runners::LINUX)
+        .add_step(steps::checkout())
+        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(steps::zizmor());
+
+    NamedJob::new("zizmor", job)
+}
+
 /// Drafts the release every build uploads into, with git-cliff notes.
 ///
 /// The tag guards sit on the steps, not the job: the builds `need` this job,

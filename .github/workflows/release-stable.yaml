@@ -47,9 +47,10 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "false"
-      - name: Cache Rust dependencies
+      - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
+        name: Cache Rust dependencies
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -83,9 +84,10 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "false"
-      - name: Cache Rust dependencies
+      - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
+        name: Cache Rust dependencies
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -130,9 +132,10 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "false"
-      - name: Cache Rust dependencies
+      - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
+        name: Cache Rust dependencies
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -180,7 +183,7 @@ jobs:
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "false"
       - id: gen-release-notes
         name: Generate release notes
@@ -207,7 +210,7 @@ jobs:
     steps:
       - id: reject-contradiction
         name: Reject a tag with a platforms subset
-        run: "echo \"::error::A release tag cannot be combined with a platforms subset — a subset can never satisfy every required target, so the run would build without ever publishing. Dispatch again with platforms left at All, or leave tag empty for a build-only run.\" && exit 1"
+        run: echo "::error::A release tag cannot be combined with a platforms subset — a subset can never satisfy every required target, so the run would build without ever publishing. Dispatch again with platforms left at All, or leave tag empty for a build-only run." && exit 1
         shell: bash
   build-macos:
     needs:
@@ -233,10 +236,11 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
-      - name: Setup mise
+      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
+        name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -285,7 +289,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: sccache-start
         name: Start the compiler cache
-        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        run: secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
         shell: bash
         env:
           SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
@@ -297,7 +301,7 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build macOS
-        run: "just tauri::build macos stable"
+        run: just tauri::build macos stable
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -367,10 +371,11 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
-      - name: Setup mise
+      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
+        name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -419,7 +424,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: sccache-start
         name: Start the compiler cache
-        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        run: secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
         shell: bash
         env:
           SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
@@ -431,7 +436,7 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Windows
-        run: "just tauri::build windows stable"
+        run: just tauri::build windows stable
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -517,10 +522,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         shell: bash
-      - name: Setup mise
+      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
+        name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -569,7 +575,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: sccache-start
         name: Start the compiler cache
-        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        run: secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
         shell: bash
         env:
           SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
@@ -581,7 +587,7 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Linux
-        run: "just tauri::build linux stable"
+        run: just tauri::build linux stable
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -651,10 +657,11 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
-      - name: Setup mise
+      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
+        name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -703,7 +710,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: sccache-start
         name: Start the compiler cache
-        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        run: secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
         shell: bash
         env:
           SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
@@ -715,7 +722,7 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build iOS
-        run: "just tauri::build ios stable"
+        run: just tauri::build ios stable
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -814,10 +821,11 @@ jobs:
           accept-android-sdk-licenses: "true"
           log-accepted-android-sdk-licenses: "true"
           packages: platform-tools
-      - name: Setup mise
+      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
+        name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "true"
       - id: cache-restore-gradle
         name: Restore gradle
@@ -887,7 +895,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: sccache-start
         name: Start the compiler cache
-        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        run: secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
         shell: bash
         env:
           SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
@@ -899,7 +907,7 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Android
-        run: "just tauri::build android stable"
+        run: just tauri::build android stable
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
