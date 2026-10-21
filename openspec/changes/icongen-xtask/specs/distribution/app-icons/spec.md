@@ -8,7 +8,7 @@ Defines what a flavor's app icons are generated from and how they stay in step w
 
 The repository SHALL provide a single command that generates every app icon for a flavor across every platform the flavor ships to. The command SHALL derive every icon from committed sources: the logo artwork, the per-platform masks, the flavor's palette, and the table of sizes and formats each platform requires.
 
-An icon SHALL NOT be produced by any step a contributor must remember separately, and SHALL NOT depend on an asset fetched at generation time.
+An icon SHALL NOT be produced by any step a contributor must remember separately, and SHALL NOT depend on anything fetched at generation time.
 
 #### Scenario: A flavor is regenerated
 
@@ -23,7 +23,23 @@ An icon SHALL NOT be produced by any step a contributor must remember separately
 #### Scenario: Generation is offline
 
 - **WHEN** the command runs with no network available
-- **THEN** it succeeds, because every input it needs is committed
+- **THEN** it succeeds, because every input and every rendering dependency it needs is available without fetching
+
+### Requirement: The authored artwork is colored, never rewritten
+
+Generating an icon SHALL NOT modify the content of any authored artwork. The colors a flavor's palette assigns SHALL reach the artwork by being layered over it, so that the artwork's own authored colors act only as what an unstyled render shows.
+
+An authored file SHALL render meaningfully on its own, without the generator.
+
+#### Scenario: The generator runs
+
+- **WHEN** icons are generated for any flavor
+- **THEN** every authored mask and logo master is byte-identical before and after
+
+#### Scenario: Artwork is opened directly
+
+- **WHEN** an authored mask or logo master is opened in a viewer or vector editor, outside the generator
+- **THEN** it renders as a complete image in its authored colors
 
 ### Requirement: A platform's sizes and formats are data
 
@@ -50,12 +66,12 @@ Where a platform requires a manifest describing its icon set, that manifest SHAL
 
 Sources a person writes SHALL be addressable separately from artifacts a command produces. No location SHALL hold both. A contributor or a command SHALL be able to name every generated icon without naming any source, and every source without naming any generated icon.
 
-Where a platform's toolchain requires generated icons at a location that toolchain owns, those icons MAY live there; such locations SHALL NOT also hold authored sources.
+Where a platform's toolchain requires generated icons at a location that toolchain owns, those icons MAY live there; such locations SHALL NOT also hold authored sources. Files the generator does not produce SHALL sit outside the set it owns.
 
 #### Scenario: Outputs are named as a set
 
 - **WHEN** every generated icon the repository owns is to be removed or replaced
-- **THEN** they can be named as a set, without naming a mask, a palette, a size record, or the logo artwork
+- **THEN** they can be named as a set, without naming a mask, a palette, a size record, the renderer, or the logo artwork
 
 #### Scenario: A source is added
 
@@ -65,11 +81,30 @@ Where a platform's toolchain requires generated icons at a location that toolcha
 #### Scenario: A platform toolchain owns a location
 
 - **WHEN** a platform requires its icons inside a project directory that platform's toolchain generates and manages
-- **THEN** the icons are written there, and that directory holds no authored source
+- **THEN** the icons are written there, and neither the directory's authored files nor its other resources are touched by generation
+
+#### Scenario: A file the generator does not produce
+
+- **WHEN** a file sits near the generated set but is not produced by the generator
+- **THEN** generation neither overwrites nor removes it
+
+### Requirement: Generation replaces the generated set whole
+
+Generation SHALL complete before any committed output changes. A run that fails SHALL leave the committed outputs exactly as they were. A run that succeeds SHALL leave the generated set equal to what the sources describe — every output present, and no output the sources no longer describe.
+
+#### Scenario: A run fails partway
+
+- **WHEN** generation fails after some icons have been rendered
+- **THEN** no committed output has changed
+
+#### Scenario: A slot is removed
+
+- **WHEN** a slot is removed from the size record and generation runs
+- **THEN** the file that slot produced no longer exists, and nothing else is removed
 
 ### Requirement: Generated icons are committed and held in lockstep with their sources
 
-Every generated icon the repository owns SHALL be committed. Each SHALL be covered by the repository's generated-file lockstep check: the check regenerates the icons and fails on any difference against the committed tree.
+Every generated icon the repository owns SHALL be committed. Each SHALL be covered by the repository's generated-file lockstep check: the check regenerates the icons and fails on any difference against the committed tree, including a committed output the sources no longer describe.
 
 Running generation against unchanged sources SHALL produce no difference in the committed tree. A source edited without its icons being regenerated, or an icon edited by hand, SHALL fail the check. The check SHALL run on any change to a source or to a committed icon.
 
@@ -82,6 +117,11 @@ Running generation against unchanged sources SHALL produce no difference in the 
 
 - **WHEN** a committed icon is replaced by hand and the check runs
 - **THEN** the check fails, because generation does not reproduce the edit
+
+#### Scenario: An orphaned output is committed
+
+- **WHEN** a slot is removed from the size record but its old output remains committed
+- **THEN** the check fails and names the orphaned file
 
 #### Scenario: Regenerated and committed together
 

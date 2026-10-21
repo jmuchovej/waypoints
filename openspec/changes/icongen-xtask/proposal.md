@@ -1,30 +1,34 @@
 ## Why
 
-App icons are the last generated artifact in the repository produced outside the Rust dev-toolchain. A Node script owns them, which costs a native per-platform image dependency in the lockfile and keeps the icons out of the generated-file lockstep check — the one mechanism that would catch an icon whose source moved without it.
+App icons are the last generated artifact in the repository produced outside the dev-toolchain. A Node script owns them, which costs a native per-platform image dependency in the lockfile and keeps the icons out of the generated-file lockstep check — the one mechanism that would catch an icon whose source moved without it.
 
-Worse, the colors are stated twice. The icon generator resolves brand tokens from a committed palette; the marketing renderer restates the same colors as hand-written bindings. Nothing compares the two, so the icon a user installs and the logo on a store listing can diverge silently, and neither is wrong according to anything.
+Worse, the colors are stated twice. The icon generator resolves brand colors from a committed palette; the marketing renderer restates the same colors as hand-written bindings and repaints the logo with its own pattern-matching. Nothing compares the two, so the icon a user installs and the logo on a store listing can diverge silently, and neither is wrong according to anything.
 
 The directory holding all of this makes no distinction between what a person authored and what a command produced: logo masters, platform masks, palettes, size tables, and the rendered `.icns`/`.ico`/PNG sets all sit in one tree. There is no way to say "regenerate the outputs" because there is no way to name them.
 
 ## What Changes
 
-- **One palette source.** A flavor's palette file becomes the only place a brand color is named. Tokens are spelled in a single grammar that indexes the upstream color scale directly, so every renderer resolves a token to the same color without a per-renderer lookup table. The marketing renderer reads the committed palette instead of restating it.
+- **Palettes become Typst.** Each flavor's palette is a Typst file declaring its colors as Typst values, all four with the same shape. There is no token grammar and no resolver: a palette entry _is_ the color. Every brand surface — app icons and marketing alike — imports the palette rather than restating it.
 
-- **Authored inputs separate from generated outputs.** `src-tauri/res/` holds what a person writes: logo masters, platform masks, palettes, size tables, and the Tauri config fragments. `src-tauri/assets/` holds what the generator emits. `src-tauri/icons/` — the current output root — is removed.
+- **Icons are rendered by Typst, from the authored artwork, without editing it.** The masks and logo masters stay authored SVGs. A renderer loads them as trees, places the logo inside the mask's `#inner` node, and colors everything by inserting a stylesheet built from the palette. No attribute is rewritten and no pattern-matching touches the artwork. The marketing renderer paints its logo through the same renderer.
 
-- **The generator becomes an xtask task.** Icon generation joins the other dev-toolchain tasks as a Rust task, rasterizing through the SVG renderer already vendored for the app. The `@waypoints/icongen` package and its eight dependencies leave the workspace, the native image dependency among them.
+- **Rust packages and places.** A new xtask task runs the Typst render into a staging directory, packs the container formats Typst cannot write (`.icns`, `.ico`, lossless WebP), removes outputs the generator no longer produces, and places the result. It holds no knowledge of sizes, colors, or artwork — Typst hands it a manifest of what to pack and where everything goes.
 
-- **Generated icons come under the generated-file lockstep check.** Regenerating in a clean tree produces no diff; a palette or mask edit that lands without its regenerated icons fails the check. This is not possible today.
+- **Authored inputs separate from generated outputs.** `src-tauri/res/` holds what a person writes: logo masters, platform masks, palettes, the size table, the renderer, and the Tauri config fragments. `src-tauri/assets/` holds what the generator emits. `src-tauri/icons/` — the old output root — is removed.
+
+- **Generated icons come under the generated-file lockstep check**, including the case of an output that should no longer exist. This is not possible today.
+
+- **One authoring change to the desktop masks.** Their inner-shadow tint moves from a color matrix to a flood color, the one form a stylesheet can set. It also corrects a color-space error that made the tint render too light.
 
 - **BREAKING**: every flavor's bundle icon paths change, because the output root moves. The flavor config fragments are the only consumers.
 
 ### Non-goals
 
-- **Menu-bar and tray icons.** The size table for them is committed but unused and the current generator's entry point for them is inert, because the per-platform format requirements were never settled. This change ports that state rather than guessing at it: the record stays with its sizing rationale, no writer is built, and the untracked PNGs that have no generator go. Settling the formats is its own work.
-- **Mobile output locations.** iOS asset catalogs and Android mipmap resources stay where the platform toolchains require them, under the generated mobile projects. Only outputs the repository owns move to `assets/`.
-- **The artwork.** Logo masters, platform masks, and the set of flavors are unchanged. This change moves and repaints them; it does not redraw them.
-- **The marketing renderer's layout.** Only its color resolution changes. Page composition, listing copy, and capture are untouched.
-- **Pixel-identical output.** A different rasterizer will not reproduce the current bytes exactly. The change commits to a reviewed one-time difference, not to preserving the existing renders.
+- **Menu-bar and tray icons.** The size table for them is committed but unused, because the per-platform format requirements were never settled, and the PNGs under `assets/icons/menu/` are hand-placed. This change ports that state rather than guessing at it: no writer is built, and the hand-placed files sit outside the generated set. Settling the formats is its own work.
+- **Mobile output locations.** iOS asset catalogs and Android mipmap resources stay where the platform toolchains require them, under the generated mobile projects. Only outputs the repository owns outright move to `assets/`.
+- **The artwork.** Logo masters, mask geometry, and the set of flavors are unchanged. Beyond the tint primitive, nothing is redrawn.
+- **The marketing renderer's layout.** Only where its colors and its painted logo come from changes. Page composition, listing copy, and capture are untouched.
+- **Pixel-identical output.** The rasterizer changes, and the tint correction is visible. The change commits to a reviewed one-time difference, not to preserving the existing renders.
 
 ## Capabilities
 
@@ -34,8 +38,8 @@ A note on the boundary: `distribution`'s charter scopes it to delivery _outside_
 
 ### New Capabilities
 
-- `distribution/app-icons`: what an app icon set is generated from, that every flavor and platform comes from one command over committed sources, that authored inputs and generated outputs are separately addressable, and that the generated set is held in lockstep with its sources.
-- `distribution/brand-palette`: that a brand color is named once and resolved identically by every renderer, what a color token is allowed to be, and that a token no renderer can resolve is an error rather than a fallback.
+- `distribution/app-icons`: what an app icon set is generated from, that every flavor and platform comes from one command over committed sources, that authored inputs and generated outputs are separately addressable, and that the generated set — including what it no longer contains — is held in lockstep with its sources.
+- `distribution/brand-palette`: that a brand color is named once and every brand surface takes it from there, that every flavor's palette has the same shape, and that a palette color which reaches nothing is an error rather than a silent no-op.
 
 ### Modified Capabilities
 
@@ -46,23 +50,22 @@ None. `toolchain/generated-bindings` governs the TypeScript bindings specificall
 **Code**
 
 - `tooling/icongen/` — removed, package and resources both
-- `tooling/xtask/` — a new task, its palette and size-table modules, and its CLI arm
+- `tooling/xtask/` — a new task and its CLI arm
+- `src-tauri/res/icon/` — the Typst renderer and the bundle entry point
+- `src-tauri/res/palettes/` — `*.toml` replaced by `*.typ`
+- `src-tauri/res/masks/{macOS,linux,windows}.svg` — the inner-shadow tint primitive
 - `src-tauri/res/`, `src-tauri/assets/`, `src-tauri/icons/` — the input/output split
 - `src-tauri/res/configs/flavors/*.toml` — bundle icon paths
-- `src-tauri/res/palettes/*.toml` — token spelling
-- `src-tauri/fastlane/lib/palette.typ`, `lib/logo.typ` — read the committed palette instead of restating it
-- `tooling/bin/xtauri` — the config root it resolves is already stale against `res/`
+- `src-tauri/fastlane/lib/palette.typ`, `lib/logo.typ` — import the palette and the shared painter instead of restating them
+- `tooling/bin/xtauri` — the config root it resolves is stale against `res/`
 - root `justfile` — the icons module stops pointing at a Node project
 
 **Dependencies**
 
 - Leaves the workspace: the icon generator package and its eight npm dependencies, including the native image library
-- Enters the Rust workspace: an ICNS writer, an ICO writer, a mutable XML tree, and a vendored color scale. The SVG rasterizer and the PNG/WebP encoders are already workspace dependencies. New crates need the advisory and license audit the repository already runs.
-
-**Generated artifacts**
-
-- The vendored color scale is itself generated from the upstream package, so it joins the set of files the lockstep check covers and needs a regeneration path.
+- Enters the Rust workspace: an ICNS writer and an ICO writer. PNG decoding and lossless WebP encoding use a crate already in the workspace. New crates need the advisory and licence audit the repository already runs.
+- Typst packages: the color scale the marketing renderer already uses, plus an XML serializer. Both are pinned through Nix so rendering needs no network.
 
 **Risk**
 
-- The rasterizer swap is the one step that can invalidate the approach: the platform masks drive filter chains whose output is renderer-specific. This is settled by rendering and comparing before the port is built out, not after.
+- Bundle export is marked experimental by Typst. The marketing pipeline already depends on it, so this widens an accepted dependency rather than introducing one.
