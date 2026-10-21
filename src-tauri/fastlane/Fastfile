@@ -36,14 +36,6 @@ def ios_ipa
   end
 end
 
-def flavor_identifier(flavor)
-  case flavor
-  when "preview" then "so.waypoints.preview"
-  when "nightly" then "so.waypoints.nightly"
-  else "so.waypoints"
-  end
-end
-
 # TestFlight's "What to Test", written per release by
 # `xfastlane metadata`. Absent when the tag carried no
 # changelog-worthy commits, in which case the field is left as it was —
@@ -72,7 +64,6 @@ platform :android do
   desc "Upload nightly AAB to Play Store internal track"
   lane :nightly do
     upload_to_play_store(
-      package_name: flavor_identifier("nightly"),
       track: "internal",
       aab: android_aab,
       skip_upload_apk: true,
@@ -82,7 +73,6 @@ platform :android do
   desc "Upload preview AAB to Play Store internal track"
   lane :preview do
     upload_to_play_store(
-      package_name: flavor_identifier("preview"),
       track: "internal",
       aab: android_aab,
       skip_upload_apk: true,
@@ -92,7 +82,6 @@ platform :android do
   desc "Upload stable AAB to Play Store production track"
   lane :stable do
     upload_to_play_store(
-      package_name: flavor_identifier("stable"),
       track: "production",
       aab: android_aab,
       skip_upload_apk: true,
@@ -107,7 +96,6 @@ platform :ios do
     upload_to_testflight(
       ipa: ios_ipa,
       changelog: release_notes,
-      app_identifier: flavor_identifier("nightly"),
       skip_waiting_for_build_processing: true,
       skip_submission: true,
       distribute_external: false,
@@ -120,7 +108,6 @@ platform :ios do
     upload_to_testflight(
       ipa: ios_ipa,
       changelog: release_notes,
-      app_identifier: flavor_identifier("preview"),
       skip_waiting_for_build_processing: true,
       skip_submission: true,
       distribute_external: true,
@@ -133,7 +120,6 @@ platform :ios do
     upload_to_app_store(
       ipa: ios_ipa,
       changelog: release_notes,
-      app_identifier: flavor_identifier("stable"),
       skip_waiting_for_build_processing: true,
       skip_submission: true,
       distribute_external: true,

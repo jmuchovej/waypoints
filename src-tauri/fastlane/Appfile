@@ -1,6 +1,18 @@
 # Android
-json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"])
-package_name("so.waypoints")
+json_key_file ENV["GOOGLE_PLAY_JSON_KEY_PATH"]
 
 # iOS
-app_identifier("so.waypoints")
+for_lane :nightly do
+  app_identifier "so.waypoints.nightly"
+  package_name "so.waypoints.nightly"
+end
+
+for_lane :preview do
+  app_identifier "so.waypoints.preview"
+  package_name "so.waypoints.preview"
+end
+
+for_lane :stable do
+  app_identifier "so.waypoints"
+  package_name "so.waypoints"
+end
