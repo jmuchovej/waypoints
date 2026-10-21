@@ -3,7 +3,6 @@
 
 use derive_setters::Setters;
 use indexmap::IndexMap;
-use merge::Merge;
 use serde::{Deserialize, Serialize};
 
 use crate::concurrency::Concurrency;

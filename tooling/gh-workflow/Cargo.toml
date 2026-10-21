@@ -10,7 +10,6 @@
   derive_setters.workspace     = true
   gh-workflow-macros.workspace = true
   indexmap.workspace           = true
-  merge.workspace              = true
   noyalib.workspace            = true
   serde.workspace              = true
   serde_json.workspace         = true

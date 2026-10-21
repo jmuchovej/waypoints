@@ -69,7 +69,6 @@
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
     libc               = "0.2"
-    merge              = "0.2.0"
     noyalib            = "0.0.58"
     objc2-app-kit      = { version = "0.3", default-features = false, features = [
       "NSScrollView",

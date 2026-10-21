@@ -33,6 +33,11 @@ Against upstream's `crates/gh-workflow` at the base above:
 - **`Cargo.toml` rewritten.**
   Every dependency is inherited from the workspace; `derive_more` takes `features = ["from"]`; the
   `insta`, `async-trait` and `strum` dependencies upstream declares are unused here and omitted.
+- **No `merge` crate.**
+  `Event`, `StepValue` and `Input` merge through inherent `merge` methods instead of
+  `#[derive(Merge)]`, which pulled in `proc-macro-error2` (RUSTSEC-2026-0173). The
+  `fill_none!` macro in `src/lib.rs` destructures exhaustively, so a new field fails to compile
+  until it is listed. A sync brings the derives back; strip them again.
 - **Lint suppressions.**
   `Step::zizmor_ignore(rule, reason)` records a `LintIgnore` on `StepValue::lint_ignores`, a
   `#[serde(skip)]` field, so a suppression never reaches the serialized step. `Jobs::iter` exposes

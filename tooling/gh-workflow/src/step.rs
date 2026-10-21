@@ -3,7 +3,6 @@
 
 use derive_setters::Setters;
 use indexmap::IndexMap;
-use merge::Merge;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -77,14 +76,12 @@ impl From<IndexMap<String, Value>> for Input {
     }
 }
 
-impl Merge for Input {
-    /// Merges another `Input` into this one.
-    fn merge(&mut self, other: Self) {
+impl Input {
+    /// Merges another `Input` into this one; its keys win.
+    pub fn merge(&mut self, other: Self) {
         self.0.extend(other.0);
     }
-}
 
-impl Input {
     /// Adds a new input parameter to the `Input`.
     pub fn add<S: ToString, V: Into<Value>>(mut self, key: S, value: V) -> Self {
         self.0.insert(key.to_string(), value.into());
@@ -99,7 +96,7 @@ impl Input {
 
 /// Represents a step value in the workflow.
 #[allow(clippy::duplicated_attributes)]
-#[derive(Debug, Setters, Serialize, Deserialize, Clone, Default, PartialEq, Eq, Merge)]
+#[derive(Debug, Setters, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 #[setters(
     strip_option,
@@ -110,76 +107,62 @@ impl Input {
 pub struct StepValue {
     /// The ID of the step.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub id: Option<String>,
 
     /// The name of the step.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub name: Option<String>,
 
     /// The condition under which the step runs.
     #[serde(skip_serializing_if = "Option::is_none", rename = "if")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub if_condition: Option<Expression>,
 
     /// The action to use in the step.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[setters(skip)]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub uses: Option<String>,
 
     /// Input parameters for the step.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub with: Option<Input>,
 
     /// The command to run in the step.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[setters(skip)]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub run: Option<String>,
 
     /// Shell to run with
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub shell: Option<String>,
 
     /// Environment variables for the step.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub env: Option<Env>,
 
     /// The timeout for the step in minutes.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub timeout_minutes: Option<u32>,
 
     /// Whether to continue on error.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub continue_on_error: Option<bool>,
 
     /// The working directory for the step.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub working_directory: Option<String>,
 
     /// The retry strategy for the step.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub retry: Option<RetryStrategy>,
 
     /// Artifacts produced by the step.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[merge(strategy = merge::option::overwrite_none)]
     pub artifacts: Option<Artifacts>,
 
     /// Lint suppressions for the step. Never serialized: a renderer places
     /// them as comments on the step's `id:` line.
     #[serde(skip)]
     #[setters(skip)]
-    #[merge(strategy = merge::vec::append)]
     pub lint_ignores: Vec<LintIgnore>,
 }
 
@@ -193,6 +176,16 @@ pub struct LintIgnore {
 }
 
 impl StepValue {
+    /// Takes each field `other` sets that this step leaves unset, and appends
+    /// its lint suppressions.
+    pub fn merge(&mut self, other: Self) {
+        fill_none!(self, other {
+            id, name, if_condition, uses, with, run, shell, env, timeout_minutes,
+            continue_on_error, working_directory, retry, artifacts,
+        } rest { lint_ignores });
+        self.lint_ignores.extend(lint_ignores);
+    }
+
     /// Creates a new `StepValue` that runs the provided shell command.
     pub fn run<T: ToString>(cmd: T) -> Self {
         Self {

@@ -40,10 +40,6 @@
       reason = "paste via specta/rav1e/pulp, compile-time only"
     },
     {
-      id     = "RUSTSEC-2026-0173",
-      reason = "proc-macro-error2, compile-time only, transitive"
-    },
-    {
       id     = "RUSTSEC-2026-0367",
       reason = "zip via tauri-plugin-updater, Windows targets only; blocked on tauri bumping zip to 9, and the updater verifies the archive signature before extracting"
     },

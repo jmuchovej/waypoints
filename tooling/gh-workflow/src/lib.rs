@@ -1,5 +1,19 @@
 extern crate proc_macro;
 
+/// Fills each `None` field of `$this` from `$other`, which is destructured
+/// exhaustively: a field added to the struct fails to compile until it is
+/// listed. Fields named after `rest` are bound for the caller to merge.
+macro_rules! fill_none {
+    ($this:ident, $other:ident { $($field:ident),* $(,)? } $(rest { $($extra:ident),* $(,)? })?) => {
+        let Self { $($field,)* $($($extra,)*)? } = $other;
+        $(
+            if $this.$field.is_none() {
+                $this.$field = $field;
+            }
+        )*
+    };
+}
+
 mod artifacts;
 mod cargo;
 mod concurrency;
