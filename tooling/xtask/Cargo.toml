@@ -27,7 +27,16 @@
   clap.workspace                 = true
   derive_more                    = {
     workspace = true,
-    features  = [ "as_ref", "display", "into", "is_variant", "unwrap" ]
+    features  = [
+      "as_ref",
+      "deref",
+      "display",
+      "from",
+      "from_str",
+      "into",
+      "is_variant",
+      "unwrap"
+    ]
   }
   directories.workspace          = true
   gh-workflow.workspace          = true
@@ -40,6 +49,7 @@
   image.workspace                = true
   indexmap.workspace             = true
   indoc.workspace                = true
+  octocrab                       = "0.54.5"
   opendal                        = {
     version          = "0.59.5",
     default-features = false,
