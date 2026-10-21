@@ -19,18 +19,9 @@ val tauriProperties =
 val waypointsFlavor = System.getenv("WAYPOINTS_FLAVOR") ?: "stable"
 val waypointsBuild = System.getenv("WAYPOINTS_BUILD") == "1"
 
-val minSdkVersion = run {
-  val config = rootProject.file("../../configs/platforms/android.toml")
-  val declared =
-      Regex("""^\s*minSdkVersion\s*=\s*(\d+)""", RegexOption.MULTILINE)
-          .find(config.readText())
-          ?.groupValues
-          ?.get(1)
-  requireNotNull(declared) { "minSdkVersion is not declared in ${config.path}" }.toInt()
-}
-
 android {
-  compileSdk = 36
+  compileSdk = libs.versions.compileSdk.get().toInt()
+  ndkVersion = libs.versions.ndk.get()
   buildToolsVersion = libs.versions.buildTools.get()
   namespace = "so.waypoints"
   defaultConfig {
@@ -47,8 +38,8 @@ android {
             } else {
               ""
             }
-    minSdk = minSdkVersion
-    targetSdk = 36
+    minSdk = libs.versions.minSdk.get().toInt()
+    targetSdk = libs.versions.targetSdk.get().toInt()
     versionCode =
         (System.getenv("WAYPOINTS_BUILD_CODE")?.takeIf { it.isNotBlank() }
                 ?: tauriProperties.getProperty("tauri.android.versionCode", "1"))
@@ -69,9 +60,9 @@ android {
         "string",
         "app_name",
         when (waypointsFlavor) {
-          "development" -> "Waypoints (Dev)"
-          "preview" -> "Waypoints (Preview)"
-          "nightly" -> "Waypoints (Nightly)"
+          "development" -> "Waypoints Development Edition"
+          "preview" -> "Waypoints Preview"
+          "nightly" -> "Waypoints Nightly"
           else -> "Waypoints"
         },
     )
@@ -79,9 +70,9 @@ android {
         "string",
         "main_activity_title",
         when (waypointsFlavor) {
-          "development" -> "Waypoints (Dev)"
-          "preview" -> "Waypoints (Preview)"
-          "nightly" -> "Waypoints (Nightly)"
+          "development" -> "Waypoints Development Edition"
+          "preview" -> "Waypoints Preview"
+          "nightly" -> "Waypoints Nightly"
           else -> "Waypoints"
         },
     )

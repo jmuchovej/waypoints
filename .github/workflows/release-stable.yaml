@@ -757,7 +757,7 @@ jobs:
       - id: publish-mobile-app
         name: Upload to the App Store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: secretspec run --profile release --scope ios -- fastlane ios stable
+        run: secretspec run --profile release --scope ios -- xfastlane publish ios stable
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op
@@ -964,7 +964,7 @@ jobs:
       - id: publish-mobile-app
         name: Upload to the Play Store
         if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: secretspec run --profile release --scope android -- fastlane android stable
+        run: secretspec run --profile release --scope android -- xfastlane publish android stable
         shell: bash
         env:
           SECRETSPEC_PROVIDER: op

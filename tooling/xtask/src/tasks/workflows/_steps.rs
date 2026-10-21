@@ -663,13 +663,18 @@ pub(crate) fn cache_save(dir: &CachedDir, tools: Tools) -> Step<Run> {
 
 /// Runs a fastlane lane with the platform's secrets injected for its lifetime.
 ///
+/// Through `tooling/bin/xfastlane`, which renders the store assets and writes
+/// the listing copy before invoking the lane, and runs fastlane from the app
+/// directory — fastlane locates its Fastfile by looking for `./fastlane` in
+/// the working directory, and `src-tauri/fastlane` is not the repository root.
+///
 /// Gated on the tag like [`upload_to_store`]: a build-only run has none,
 /// and its artifacts must stop at the workflow — the store build number is
 /// the date, so a dispatch that reached the store would take the day's slot
 /// from the scheduled run.
 pub fn fastlane(platform: Platform, channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
     let spec = SecretSpec::run(format!(
-        "fastlane {lane} {flavor}",
+        "xfastlane publish {lane} {flavor}",
         lane = platform.slug(),
         flavor = channel.flavor()
     ))

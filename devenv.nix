@@ -283,10 +283,9 @@
   waypoints.android = {
     agp.version = "8.13.2";
     build-tools.version = "35.0.0";
-    platforms.versions = [
-      "36"
-      "30"
-    ];
+    sdk.target.version = "36";
+    sdk.compile.version = "36";
+    platforms.extra = [ "30" ];
     ndk.version = "30.0.16138531";
     # devenv writes `files."<project-path>/..."` relative to the root, while
     # `.env` carries the absolute path both it and mise need. Re-relativize
@@ -330,6 +329,24 @@
   languages.typescript = {
     enable = true;
     lsp.enable = true;
+  };
+  # `.env` ignores system and embedded fonts, so every family a
+  # `docs/marketing` asset names must come from `TYPST_FONT_PATHS`.
+  languages.typst = {
+    enable = true;
+    lsp.enable = true;
+    fontPaths = [
+      "${pkgs.google-fonts.override { fonts = [ "Albert Sans" ]; }}/share/fonts/truetype"
+      # Static instances only: the joined `pkgs.monaspace` also carries the
+      # frozen and variable builds, so typst would see each family thrice.
+      "${pkgs.monaspace.static}/share/fonts/opentype"
+      # Two emoji faces, both of which typst renders in colour: Twemoji is
+      # SVG-in-OpenType and sits on the text baseline at the surrounding size,
+      # Noto is CBDT bitmap and draws oversized and high. Marketing asks for
+      # Twemoji by name; Noto is here for anything that wants Android's own set.
+      "${pkgs.twemoji-color-font}/share/fonts/truetype"
+      "${pkgs.noto-fonts-color-emoji}/share/fonts/noto"
+    ];
   };
 
   tasks."waypoints:sync-deny-targets" = {

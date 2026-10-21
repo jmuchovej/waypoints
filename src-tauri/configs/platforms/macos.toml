@@ -3,6 +3,7 @@
 
 # https://tauri.app/distribute/macos-application-bundle/
 [bundle.macOS]
+  minimumSystemVersion = "15"
   # entitlements = "./platforms/macos/Entitlements.plist"
   # frameworks = []
 

@@ -41,8 +41,6 @@ Outpost — the sync layer for Waypoints.
 [dev-dependencies]
   outpost = { workspace = true, features = [ "cli", "station", "vessel" ] }
 
-  # The process-level tests signal the spawned `outpost` binary by pid.
-  libc     = { workspace = true }
   rand     = { workspace = true }
   tempfile = { workspace = true }
   tokio    = { workspace = true, features = [
@@ -52,6 +50,10 @@ Outpost — the sync layer for Waypoints.
     "rt-multi-thread",
     "time",
   ] }
+
+[target."cfg(unix)".dev-dependencies]
+  # gated b/c `libc` doesn't provide `kill` or `pid_t` on Windows
+  libc = { workspace = true }
 
 [features]
   default = [ "vessel" ]
