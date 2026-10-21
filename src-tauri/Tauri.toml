@@ -6,7 +6,7 @@ identifier  = "so.waypoints"
 
 [build]
   devUrl       = "http://localhost:9297"
-  frontendDist = "../src/.output"
+  frontendDist = "../src/.output/public"
 
   [build.beforeBuildCommand]
     cwd    = ".."
