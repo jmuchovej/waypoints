@@ -5,9 +5,9 @@
 
 #![cfg(unix)]
 
-mod common;
+#[path = "common/process.rs"]
+mod process;
 
-use common::process::{StationProcess, outpost};
 use ed25519_dalek::SigningKey;
 use outpost::{
     hold::TerritoryHold,
@@ -17,6 +17,7 @@ use outpost::{
     replica::Replica,
     vessel::{SubscriptionEvent, Vessel},
 };
+use process::{StationProcess, outpost};
 use rand::SeedableRng;
 use std::{path::Path, time::Duration};
 use tokio::time::timeout;

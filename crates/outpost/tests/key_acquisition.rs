@@ -17,15 +17,16 @@
 //!
 //! [`Vessel::refresh_keys`]: outpost::vessel::Vessel::refresh_keys
 
-mod common;
+#[path = "common/territory.rs"]
+mod territory;
 
-use common::{TerritoryBuilder, kem, signing};
 use outpost::{
     protocol::{EpochID, NoticeID, ReadKey},
     replica::Replica,
     vessel::{ACLRecord, Vessel, VesselError},
 };
 use rand::SeedableRng;
+use territory::{TerritoryBuilder, kem, signing};
 
 const EPOCH0: EpochID = EpochID::ZERO;
 

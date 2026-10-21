@@ -11,9 +11,9 @@
 //!
 //! [`refresh_keys`]: outpost::vessel::Vessel::refresh_keys
 
-mod common;
+#[path = "common/territory.rs"]
+mod territory;
 
-use common::{TerritoryBuilder, kem, signing};
 use outpost::{
     protocol::{EpochID, NoticeID, ReadKey},
     replica::Replica,
@@ -21,6 +21,7 @@ use outpost::{
     vessel::Vessel,
 };
 use rand::SeedableRng;
+use territory::{TerritoryBuilder, kem, signing};
 
 #[tokio::test]
 async fn a_joining_vessel_syncs_acl_key_and_history_in_one_shot() {

@@ -4,9 +4,10 @@
 
 #![cfg(unix)]
 
-mod common;
+#[path = "common/process.rs"]
+mod process;
 
-use common::process::{StationProcess, http_get, outpost};
+use process::{StationProcess, http_get, outpost};
 use std::{
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener},
     time::Duration,
