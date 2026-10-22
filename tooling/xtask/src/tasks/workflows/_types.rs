@@ -97,9 +97,10 @@ impl Platform {
         use Platform::*;
         let extensions: &'static [&'static str] = match self {
             macOS => &["dmg"],
-            // The AppImage first: it is the one the download link serves and
-            // the updater fetches. The deb is published for package managers.
-            Linux => &["AppImage", "deb"],
+            // The AppImage first: it is the one the download link serves. The
+            // deb and rpm are for package managers, and each updates itself
+            // from its own format.
+            Linux => &["AppImage", "deb", "rpm"],
             Windows => &["exe"],
             Android => &["apk", "aab"],
             iOS => &["ipa"],
@@ -122,6 +123,7 @@ impl Platform {
             Linux => &[
                 "target/release/bundle/appimage/*.AppImage",
                 "target/release/bundle/deb/*.deb",
+                "target/release/bundle/rpm/*.rpm",
             ],
             Windows => &["target/release/bundle/nsis/*.exe"],
             // Gradle splits flavor from build type for an APK
@@ -144,12 +146,15 @@ impl Platform {
     /// only under `"v1Compatible"` — so the updater fetches the same file
     /// [`published_target`] already uploads, and only the signature is new
     /// here. macOS's updater cannot consume a `.dmg`, so its payload is a
-    /// separate `.app.tar.gz`. Paired one-to-one with [`updater_globs`].
+    /// separate `.app.tar.gz`. Linux signs all three installers: the updater
+    /// in an app installed from a deb or rpm asks for its own format's entry
+    /// and refuses any other payload. Paired one-to-one with
+    /// [`updater_globs`].
     pub fn updater_extensions(self) -> &'static [&'static str] {
         use Platform::*;
         match self {
             macOS => &["app.tar.gz", "app.tar.gz.sig"],
-            Linux => &["AppImage.sig"],
+            Linux => &["AppImage.sig", "deb.sig", "rpm.sig"],
             Windows => &["exe.sig"],
             Android | iOS => &[],
         }
@@ -165,7 +170,11 @@ impl Platform {
                 "target/release/bundle/macos/*.tar.gz",
                 "target/release/bundle/macos/*.tar.gz.sig",
             ],
-            Linux => &["target/release/bundle/appimage/*.AppImage.sig"],
+            Linux => &[
+                "target/release/bundle/appimage/*.AppImage.sig",
+                "target/release/bundle/deb/*.deb.sig",
+                "target/release/bundle/rpm/*.rpm.sig",
+            ],
             Windows => &["target/release/bundle/nsis/*.exe.sig"],
             Android | iOS => &[],
         }
@@ -583,7 +592,7 @@ mod tests {
         let linux = Platform::Linux.published_target();
         assert_eq!(linux.os, "linux");
         assert_eq!(linux.arch, Arch::amd64);
-        assert_eq!(linux.extensions, &["AppImage", "deb"]);
+        assert_eq!(linux.extensions, &["AppImage", "deb", "rpm"]);
 
         let windows = Platform::Windows.published_target();
         assert_eq!(windows.os, "windows");
@@ -629,7 +638,10 @@ mod tests {
             Platform::macOS.updater_extensions(),
             &["app.tar.gz", "app.tar.gz.sig"]
         );
-        assert_eq!(Platform::Linux.updater_extensions(), &["AppImage.sig"]);
+        assert_eq!(
+            Platform::Linux.updater_extensions(),
+            &["AppImage.sig", "deb.sig", "rpm.sig"]
+        );
         assert_eq!(Platform::Windows.updater_extensions(), &["exe.sig"]);
         for platform in [Platform::Android, Platform::iOS] {
             assert!(platform.updater_extensions().is_empty(), "{platform}");

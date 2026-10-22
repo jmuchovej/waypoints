@@ -39,7 +39,9 @@ Every platform's extensions are its own, so the flat directories merge without c
 
 The iOS build also stages its `AppStoreInfo.plist` in `release/`, beside the ipa, where fastlane reads it. It is upload metadata for the App Store, not a published artifact: `release-upload` skips exactly that name and never sends it to the store.
 
-Linux's deb is staged and published as the target's second installer, after the AppImage, the same way Android's aab follows its apk. The AppImage stays first, so it remains what the download link serves and the updater fetches. The deb gets a stable stored address for future package-manager channels (a Debian repository, an AUR PKGBUILD). Its signature is not staged, since nothing verifies it.
+Linux builds and publishes three installers: the AppImage, then the deb and the rpm, the same way Android's aab follows its apk. The AppImage stays first, so it remains what the download link serves. The deb and rpm get stable stored addresses for package-manager channels (a Debian repository, an AUR PKGBUILD). Each is signed for the updater and its `.sig` is staged too. Tauri's updater (2.12) in an app installed from a deb or rpm asks for its own format's entry (`linux-x86_64-deb`) before the bare `linux-x86_64`, and refuses a payload that is not its own format. The bundler builds the rpm in-process, so the runner needs no `rpmbuild`.
+
+`release-withdraw` deletes the updater artifacts along with the installers. Before, it attempted only the installer keys, which left a shortfall run's signatures and macOS payload behind.
 
 Rejected: staging into the store's nested key layout. Downloaded artifacts would keep a five-level tree, and the per-platform trees would merge only by luck of disjoint paths. Also rejected: renaming in the publishing job, which would need every platform's bundler globs and would see a changed export only after every build had finished.
 

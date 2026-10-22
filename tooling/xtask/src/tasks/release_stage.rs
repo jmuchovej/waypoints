@@ -162,6 +162,9 @@ mod tests {
                     "release/waypoints-v0.1.1.AppImage",
                     "release/waypoints-v0.1.1.AppImage.sig",
                     "release/waypoints-v0.1.1.deb",
+                    "release/waypoints-v0.1.1.deb.sig",
+                    "release/waypoints-v0.1.1.rpm",
+                    "release/waypoints-v0.1.1.rpm.sig",
                 ],
             ),
             (

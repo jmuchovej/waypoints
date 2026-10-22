@@ -23,7 +23,7 @@ export interface ReleaseTarget {
 export const REQUIRED_TARGETS: ReleaseTarget[] = [
   { os: "macos", arch: "arm64", extensions: ["dmg"] },
   { os: "windows", arch: "amd64", extensions: ["exe"] },
-  { os: "linux", arch: "amd64", extensions: ["AppImage", "deb"] },
+  { os: "linux", arch: "amd64", extensions: ["AppImage", "deb", "rpm"] },
   { os: "ios", arch: "arm64", extensions: ["ipa"] },
   { os: "android", arch: "arm64", extensions: ["apk", "aab"] },
 ];
