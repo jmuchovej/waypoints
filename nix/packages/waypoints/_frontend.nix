@@ -38,7 +38,9 @@ let
     (root + "/package.json")
     (root + "/pnpm-lock.yaml")
     (root + "/pnpm-workspace.yaml")
-    (root + "/patches")
+    # `patchedDependencies` lives beside the vendored Rust crates; only the
+    # `.patch` files concern pnpm.
+    (lib.fileset.fileFilter (file: file.hasExt "patch") (root + "/tooling/patches"))
     (root + "/src/package.json")
     (root + "/website/package.json")
     (root + "/crates/domain/package.json")
