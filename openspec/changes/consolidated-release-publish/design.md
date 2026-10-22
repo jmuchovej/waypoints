@@ -37,7 +37,9 @@ Every run stages, build-only included, so the rename is exercised by every dispa
 
 Every platform's extensions are its own, so the flat directories merge without collision, and a file's extension alone files it under `{os}/{arch}`. `release-upload --from release/` maps each `waypoints-{tag}.{ext}` to `{channel}/{series}/{os}/{arch}/` (channel derived from the version, as now), refuses a subdirectory or any other file, and writes each with `if_not_exists`. The bundler's globs stay in the build; the publishing job needs only the extensions `Platform` already declares.
 
-The iOS build also stages its `AppStoreInfo.plist` in `release/`, beside the ipa, where fastlane reads it. It is upload metadata for the App Store, not a published artifact: `release-upload` skips exactly that name and never sends it to the store. Linux's deb is neither staged nor published.
+The iOS build also stages its `AppStoreInfo.plist` in `release/`, beside the ipa, where fastlane reads it. It is upload metadata for the App Store, not a published artifact: `release-upload` skips exactly that name and never sends it to the store.
+
+Linux's deb is staged and published as the target's second installer, after the AppImage, the same way Android's aab follows its apk. The AppImage stays first, so it remains what the download link serves and the updater fetches. The deb gets a stable stored address for future package-manager channels (a Debian repository, an AUR PKGBUILD). Its signature is not staged, since nothing verifies it.
 
 Rejected: staging into the store's nested key layout. Downloaded artifacts would keep a five-level tree, and the per-platform trees would merge only by luck of disjoint paths. Also rejected: renaming in the publishing job, which would need every platform's bundler globs and would see a changed export only after every build had finished.
 

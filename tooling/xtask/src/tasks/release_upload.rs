@@ -311,7 +311,7 @@ mod tests {
     fn every_platform_uploads_its_installer_and_its_updater_artifacts() {
         let counts = [
             (Platform::macOS, 1, 2),
-            (Platform::Linux, 1, 1),
+            (Platform::Linux, 2, 1),
             (Platform::Windows, 1, 1),
             (Platform::Android, 2, 0),
             (Platform::iOS, 1, 0),
@@ -393,8 +393,9 @@ mod tests {
         for foreign in [
             // another tag
             "waypoints-v0.1.0.dmg",
-            // a file no build publishes
-            "waypoints-v0.1.1.deb",
+            // a file no build publishes: the deb's signature, which nothing
+            // verifies
+            "waypoints-v0.1.1.deb.sig",
             // an unrenamed bundler output
             "Waypoints (Nightly)_0.1.0-nightly_aarch64.dmg",
         ] {

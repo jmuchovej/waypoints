@@ -161,6 +161,7 @@ mod tests {
                 &[
                     "release/waypoints-v0.1.1.AppImage",
                     "release/waypoints-v0.1.1.AppImage.sig",
+                    "release/waypoints-v0.1.1.deb",
                 ],
             ),
             (

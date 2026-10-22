@@ -97,7 +97,9 @@ impl Platform {
         use Platform::*;
         let extensions: &'static [&'static str] = match self {
             macOS => &["dmg"],
-            Linux => &["AppImage"],
+            // The AppImage first: it is the one the download link serves and
+            // the updater fetches. The deb is published for package managers.
+            Linux => &["AppImage", "deb"],
             Windows => &["exe"],
             Android => &["apk", "aab"],
             iOS => &["ipa"],
@@ -113,15 +115,14 @@ impl Platform {
     /// downloads — in the same order as [`PublishedTarget::extensions`].
     /// `release-stage` renames each match, and requires exactly one, so a
     /// change in what the bundler exports fails the build.
-    ///
-    /// Linux also builds a deb, which is neither published nor staged: the
-    /// updater takes the AppImage, and a deb is installed by a package
-    /// manager.
     pub fn published_globs(self) -> &'static [&'static str] {
         use Platform::*;
         match self {
             macOS => &["target/release/bundle/dmg/*.dmg"],
-            Linux => &["target/release/bundle/appimage/*.AppImage"],
+            Linux => &[
+                "target/release/bundle/appimage/*.AppImage",
+                "target/release/bundle/deb/*.deb",
+            ],
             Windows => &["target/release/bundle/nsis/*.exe"],
             // Gradle splits flavor from build type for an APK
             // (`apk/universal/release`) and joins them for a bundle
@@ -582,7 +583,7 @@ mod tests {
         let linux = Platform::Linux.published_target();
         assert_eq!(linux.os, "linux");
         assert_eq!(linux.arch, Arch::amd64);
-        assert_eq!(linux.extensions, &["AppImage"]);
+        assert_eq!(linux.extensions, &["AppImage", "deb"]);
 
         let windows = Platform::Windows.published_target();
         assert_eq!(windows.os, "windows");
