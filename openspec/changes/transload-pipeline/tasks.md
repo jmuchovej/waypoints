@@ -113,17 +113,21 @@ the `syntax` feature per design D8, 3.3–3.4 in `transload`.
 
 ## 6. Conformance suite
 
-- [ ] 6.1 Property roundtrip in `transload` over generated stores
+- [x] 6.1 Property roundtrip in `transload` over generated stores
       (self-contained Chart fixtures spanning every Reading and Content
       variant, shared Marks, custom edges with `extra`):
       `ingest(export(s)) == s` over content/structure/identity.
-- [ ] 6.2 Byte-stability: `export(s)` twice → byte-identical;
+      (`tests/conformance.rs`: a seeded generator, 64 stores by default,
+      `TRANSLOAD_SEEDS` for a deep run — 10 000 ran clean. Its finds were
+      fixed in the dialect, frontmatter, schema and ingester; the dialect
+      rules they forced are recorded in `crates/domain/docs/dialect.md`.)
+- [x] 6.2 Byte-stability: `export(s)` twice → byte-identical;
       `export(ingest(export(s))) == export(s)` bytes.
-- [ ] 6.3 The 1980 test: strip all comments from every projection file,
+- [x] 6.3 The 1980 test: strip all comments from every projection file,
       assert zero machine-shaped residue (`wp:` markers and UUIDs only as
       link targets) and that every file still parses under the dialect
       grammar.
-- [ ] 6.4 Suite-level meta-schema check: every `_schema.json` in every
+- [x] 6.4 Suite-level meta-schema check: every `_schema.json` in every
       test-exported Bundle validates against the Draft-07 meta-schema.
 
 ## 7. Corpus migration — `getting-started`

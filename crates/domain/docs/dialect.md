@@ -39,8 +39,8 @@ they hold no text of their own and their children supply it.
 | `ListItem`    | `- ` (container-capable)           |
 | `EnumItem`    | `+ ` auto-numbered, `N. ` explicit |
 | `Callout`     | `::callout{…}` … `::` (container)  |
-| `Code`        | a three-backtick fence, tagged     |
-| `Table`       | GFM pipe table                     |
+| `Code`        | a backtick fence, tagged           |
+| `Table`       | GFM pipe table, rows open `\| `    |
 | `Math`        | `$$` … `$$`                        |
 | `Divider`     | `---`                              |
 
@@ -53,9 +53,12 @@ Rules the emitter holds to:
   change lands.
 - **Indentation** is two spaces per level on emit. On parse, nesting is read by
   _relative_ indentation, Typst-style — the one deliberate leniency in the
-  dialect — and normalizes to two spaces when re-emitted.
+  dialect — and normalizes to two spaces when re-emitted. Any block's children
+  sit indented beneath it, not only a list item's — save the two containers,
+  whose children wear the `> ` prefix or sit between the callout's markers.
 - **Headings** are ATX. There is no `####`: the model stops at three levels.
-- **Code** is always fenced with three backticks and always carries its
+- **Code** is always fenced — three backticks, or one more than the longest
+  backtick run inside, so no line of the code closes it — and always carries its
   language, even when empty. `filename` and `highlights` ride as block
   attributes on the opening fence, after the language tag:
   `rust{filename="main.rs" highlights="1,4-6"}`.
@@ -70,6 +73,10 @@ Rules the emitter holds to:
   else set. Sizes, colours, a row header, or a fill-width cannot be said in GFM,
   and a table with no header row cannot be plain GFM at all without growing one,
   so those wrap themselves in `::table{…}` … `::` rather than losing anything.
+  A row opens with `| ` — a line opening with `|` alone may be a `||` spoiler.
+- **A text line ending in `}`** — a literal brace or an inline `{tokens}`
+  suffix, trailing whitespace aside — always carries an attribute list, empty
+  if need be (`set x = {1}{}`), since its last brace would otherwise read as one.
 
 ### Block themes
 
@@ -139,7 +146,8 @@ scripts reading differently is worse than either rule, so both are braced:
 `^{text}` and `_{text}`, or the span forms `[text]{sup}` and `[text]{sub}`.
 
 One consequence is a gain: `^` opens nothing on its own, so `2^10` is ordinary
-text that needs no escape. Only `^{` is hidden, as `\^{`.
+text that needs no escape. Only `^{` is hidden, as `\^{` — and a `^` ending a
+run, whose neighbour may begin with `{`.
 
 The cost is one case: an italic run whose text begins with `{` would make `_{`
 read as the subscript opener. Rather than add an escaping rule for it, that one
@@ -233,17 +241,28 @@ and no more. A character is escaped when leaving it bare would open a construct:
 
 - `\`, `[`, `]`, `*`, `_`, `` ` ``, `$` — always, since each opens a construct
   on its own
-- `~`, `=`, `|` — only when doubled, since only `~~`, `==` and `||` are
-  significant. Prose keeps its lone tildes and pipes.
-- `^` — only before `{`, since the scripts are braced. `2^10` stays bare.
+- `~`, `=`, `|` — only when doubled or at a run's edge, since only `~~`, `==`
+  and `||` are significant and a neighbouring run may supply the double. Prose
+  keeps its lone interior tildes and pipes.
+- `^` — only before `{` or at a run's end, since the scripts are braced. `2^10`
+  stays bare.
+- `}` inside a braced script, which would close it early
+- `{` opening a plain run, which would read as the preceding span's tokens
+- `)` and `\` in a link target, which would end it early
 - `#`, `>`, `-`, `+` at the start of a line — the block layer's business, since
   only there do they begin anything
+
+Table cells add their own, all removed again before inline parsing: every `|`
+becomes `\|` (as GFM), an edge space is escaped so the row's trim keeps it, and a
+cell of nothing but `-` and `:` gets a leading `\` so its row cannot read as
+the delimiter row.
 
 Code and math interiors are **verbatim**: nothing inside them is escaped, so a
 text carrying their own delimiter has no shortcut and takes the span form.
 
 Escaping is fixture-tested per `Content` variant and per segment shape, round
-trip exact.
+trip exact, and `transload`'s conformance suite drives it with generated stores
+(`TRANSLOAD_SEEDS` raises the default 64).
 
 ## What is normalized
 
