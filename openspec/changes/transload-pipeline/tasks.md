@@ -148,3 +148,19 @@ the `syntax` feature per design D8, 3.3–3.4 in `transload`.
       names.
 - [ ] 7.4 Regenerate TS bindings (`Chart.extra` appears; with 1.4 landed,
       `RichReference` is gone); confirm the app compiles untouched.
+
+## 8. Legibility pass (from the first corpus audit)
+
+- [x] 8.1 Wiki links name their targets: Landmark titles, every holder of a
+      shared, empty or id-shaped title suffixed from its id; blocks as
+      `[[Page Title#prefix]]`; a target outside the Bundle keeps its id. The
+      dialect gains `Links` (`emit_with`/`parse_with`); `transload` builds
+      the names on both sides, ingest from an outline pass.
+- [x] 8.2 Identity comments carry only the id; `marks.jsonl` carries
+      `{id, created, updated, extra?}` for every Mark and is normative.
+- [x] 8.3 Frontmatter: timestamps marked `# advisory`, feature names trailing
+      their reading's key line.
+- [x] 8.4 A blank line between sibling blocks.
+- [x] 8.5 Conformance generator covers shared and empty titles, block and
+      dangling targets, and labels equal to their target's title; 10 000
+      seeds clean. Corpus re-staged for audit.

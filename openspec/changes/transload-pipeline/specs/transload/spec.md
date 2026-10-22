@@ -56,8 +56,13 @@ same name onto one identity.
 - **WHEN** a Landmark carrying an icon is exported and re-ingested
 - **THEN** the icon is unchanged
 
-Human-readable feature names SHALL ride only as YAML comments — advisory,
-regenerated on every export, and ignored on ingest. Relation Readings
+The frontmatter `created` and `updated` SHALL be marked `# advisory`:
+`marks.jsonl` is normative for every Mark's timestamps, and the frontmatter
+values are read only when a Landmark has no `marks.jsonl` line.
+
+Human-readable feature names SHALL ride only as YAML comments trailing the
+reading's key line — advisory, regenerated on every export, and ignored on
+ingest — so a reading costs no extra line. Relation Readings
 serialize as lists of `{ref, label?}` where `ref` is normative and `label` is
 advisory and regenerated. Rich-text Readings serialize as YAML block scalars
 with normalized chomping. No hybrid logical clock, op-log record, or sync
@@ -68,7 +73,7 @@ artifact SHALL appear anywhere in a Bundle.
 - **WHEN** a Landmark with a Reading on feature `a1b2` ("Attendees") is
   exported
 - **THEN** the frontmatter key is `a1b2`, with `# Attendees` present only as
-  a comment
+  a comment on that key's line
 
 #### Scenario: Advisory labels are not trusted
 
@@ -79,22 +84,23 @@ artifact SHALL appear anywhere in a Bundle.
 
 #### Scenario: Timestamps survive ingest
 
-- **WHEN** a Bundle whose frontmatter carries `updated: 2026-08-02T09:41:00.000Z`
-  is ingested
-- **THEN** the resulting Mark's update timestamp is exactly that instant
+- **WHEN** a Bundle whose `marks.jsonl` line for a Landmark carries
+  `"updated":"2026-08-02T09:41:00.000Z"` is ingested
+- **THEN** the resulting Mark's update timestamp is exactly that instant,
+  whatever its frontmatter's advisory `updated` says
 
 ### Requirement: Every body Mark carries an identity comment
 
 Every Mark in a Landmark body SHALL be preceded by a `wp:mark` identity
-comment carrying its `id`, and for a Content Mark its `created` and `updated`
-timestamps. A Mark with children SHALL use paired
-`<!-- wp:mark … --> … <!-- /wp:mark -->` comments enclosing them; a Mark
-without children SHALL use a single unpaired comment. Unknown fields inside an
-identity comment SHALL be preserved through re-serialization.
+comment carrying its `id` and nothing else: `<!-- wp:mark <MarkID> -->`. A
+Mark with children SHALL use paired `<!-- wp:mark … --> … <!-- /wp:mark -->`
+comments enclosing them; a Mark without children SHALL use a single unpaired
+comment. Sibling blocks SHALL be separated by a blank line, so each reads as
+its own paragraph to any markdown reader and an editor can fold it.
 
 A Landmark nested under another Mark SHALL appear in its parent's body at its
-sibling position, as an identity comment over a `[[<MarkID>|title]]` line; its
-content lives in its own file.
+sibling position, as an identity comment over a `[[Title]]` line naming it;
+its content lives in its own file.
 
 A Mark shared by multiple Landmarks SHALL be rendered once and byte-copied
 into every containing file — identical identity comment, identical content —
@@ -110,11 +116,11 @@ so divergence within a single export is impossible. On ingest, identical
 - **AND** the blockquote carries an opening and a closing comment enclosing
   its children
 
-#### Scenario: Unknown comment fields round-trip
+#### Scenario: Siblings are separated
 
-- **WHEN** a Bundle whose identity comment carries an unrecognized field is
-  ingested and re-exported
-- **THEN** the field is present, unmodified, in the re-exported comment
+- **WHEN** a Landmark body with two sibling paragraphs is exported
+- **THEN** a blank line stands between the first paragraph and the second's
+  identity comment
 
 ### Requirement: Divergent same-id duplicates refuse loudly
 
@@ -172,9 +178,10 @@ SHALL NOT be carried.
 
 ### Requirement: Entity residue lands in per-entity carriers
 
-`extra` on Marks (Landmark roots and Content Marks alike) SHALL export to
-`marks.jsonl` as one `{id, extra}` line per extra-bearing Mark. `extra` on
-edges rides in their `terrain.jsonl` lines. `extra` on Charts rides inside
+Every Mark in the Bundle (Landmark roots and Content Marks alike) SHALL export
+one `marks.jsonl` line, `{id, created, updated, extra?}`, carrying its
+normative timestamps and, when it has one, its `extra`. A Content Mark with no
+line SHALL refuse. `extra` on edges rides in their `terrain.jsonl` lines. `extra` on Charts rides inside
 the Chart's `_schema.json`. Re-ingesting a Bundle SHALL restore every `extra`
 value unchanged.
 
@@ -242,8 +249,8 @@ freeze-frame is absence.
 
 Stripping every comment from every projection file SHALL yield documents
 that read as text, proper — every remaining marker a legible dialect
-convention, with zero machine-shaped residue (`wp:` markers and UUIDs
-appearing only as link targets). Renderer conformance is not the bar; the
+convention, with zero machine-shaped residue (`wp:` markers, and UUIDs save
+as the target of a link to a Mark the Bundle does not carry). Renderer conformance is not the bar; the
 claim is Org-Mode-style plain-text legibility. Content a reader should see
 rides in dialect syntax or attributes; identity and provenance ride in
 comments; nothing else exists.
@@ -253,28 +260,47 @@ comments; nothing else exists.
 - **WHEN** all comments are stripped from every `.md` file in an exported
   Bundle
 - **THEN** no file contains a `wp:` marker, a UUID, or other machine-shaped
-  residue outside link targets
+  residue, save the bare target of a link to a Mark the Bundle does not carry
 - **AND** every file still parses under the dialect grammar
 
 ### Requirement: Inline references project as wiki links
 
-An inline mention SHALL project as a `[[…]]` wiki link whose interior is a
-bare `MarkID`, identifying the mentioned Mark losslessly. A label after a pipe
-(`[[target|label]]`) is the anchor text and SHALL survive export and ingest
-unchanged; only a mention carrying no label SHALL have one generated, from the
-target's title, on ingest. Ingest reconstructs the inline reference mark with
-the same target id.
+An inline mention SHALL project as a `[[…]]` wiki link naming its target in
+plain text, and ingest SHALL resolve the name back to the same `MarkID`:
 
-The interior is a bare id rather than a relative Landmark path because a
-mention may target a Content Mark, which has no Landmark file, and because a
-path would couple body bytes to export layout.
+- A Landmark is named by its title's plain text. Every Landmark sharing a
+  title — and any whose title is empty or reads as an id — SHALL carry a
+  suffix, `Title (4f2a)`, from the start of its id, lengthened until the
+  holders differ. No holder is left unsuffixed.
+- A Content Mark is named `[[Page Title#4f2a]]`: the Landmark whose file
+  writes it, plus the shortest id prefix (four characters or more) that is
+  unique among that file's blocks. A block written in several files is named
+  in the first by Landmark id.
+- A target the Bundle does not carry keeps its bare `MarkID`.
+
+A label after a pipe (`[[target|label]]`) is the anchor text and SHALL survive
+export and ingest unchanged. A label equal to its Landmark target's title is
+elided, except inside a Landmark title, whose names are built before any
+mention resolves. A mention carrying no label SHALL have one generated, from
+the target's title, on ingest.
 
 #### Scenario: Landmark mention round-trips
 
-- **WHEN** a paragraph mentioning a Landmark is exported
-- **THEN** the projected text carries a `[[…]]` wiki link resolving to that
-  Landmark's `MarkID`
+- **WHEN** a paragraph mentioning a Landmark titled "Cosmos" is exported
+- **THEN** the projected text carries `[[Cosmos]]`
 - **AND** re-ingesting reconstructs the mention with the same target id
+
+#### Scenario: Shared titles are all suffixed
+
+- **WHEN** two Landmarks titled "Cosmos" are mentioned and exported
+- **THEN** both links carry a suffix drawn from their ids
+- **AND** each resolves to its own Landmark on ingest
+
+#### Scenario: A block mention names its page
+
+- **WHEN** a paragraph mentioning a Content Mark is exported
+- **THEN** the link reads `[[Page Title#prefix]]`
+- **AND** re-ingesting reconstructs the mention with that block's id
 
 #### Scenario: Anchor text is content
 
@@ -284,7 +310,7 @@ path would couple body bytes to export layout.
 
 #### Scenario: A bare mention gains a label
 
-- **WHEN** a Bundle carrying `[[<MarkID>]]` with no label is ingested
+- **WHEN** a Bundle carrying `[[Title]]` with no label is ingested
 - **THEN** the reconstructed mention's text is the target's title
 
 ### Requirement: Export output is byte-stable

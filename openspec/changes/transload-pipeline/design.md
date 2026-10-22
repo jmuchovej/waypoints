@@ -326,7 +326,19 @@ would be scope creep; retrofitting it now would be work with no consumer.
   Content Mark, which has no Landmark file to point at — and embedding the
   Chart directory in body text would couple content bytes to export layout,
   so re-grouping a Chart would rewrite every mentioning file. Fixtures pin it
-  in the inline grammar.
+  in the inline grammar. **Superseded 2026-10-22 (John's ruling):** the
+  interior is the target's plain-text title — `[[Title]]`, every holder of a
+  shared title suffixed `Title (4f2a)`, a Content Mark `[[Page Title#4f2a]]`
+  with the shortest id prefix unique in that page's file, and only a target the
+  Bundle lacks keeping its bare id. A Bundle is a snapshot, so a rename
+  rewriting the files that mention it is accepted. The dialect owns the
+  `page#block` grammar; `transload` supplies the names through `Links`.
+- Legibility pass — resolved 2026-10-22 (John's rulings): identity comments
+  carry only the id; `marks.jsonl` carries `{id, created, updated, extra?}` for
+  every Mark and is normative for timestamps; frontmatter keeps its timestamps
+  marked `# advisory`; a feature's name trails its reading's key line; sibling
+  blocks stand a blank line apart. Landmark aliases are a later domain change,
+  with titles taking precedence over aliases.
 - ~~Whether a mention's label is advisory~~ — resolved 2026-10-20 (John's
   ruling): it is **anchor text and survives verbatim**; only a bare `[[id]]`
   has a label generated, on ingest, from the target's title. This amends the
