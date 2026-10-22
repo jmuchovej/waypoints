@@ -137,17 +137,24 @@ the `syntax` feature per design D8, 3.3–3.4 in `transload`.
       John's audit. **Do not commit the corpus before the audit.**
       (Staged at `target/getting-started-audit/`: 28 Landmarks over three
       builtin Charts, 264 content blocks, no warnings. The 24 legacy `@uuid`
-      mentions export with their UUID as anchor text, as predicted.)
-- [ ] 7.2 After audit approval: commit the corpus as
+      mentions export with their UUID as anchor text, as predicted; after
+      group 8 the conversion clears those labels, so they read `[[Title]]`.)
+- [x] 7.2 After audit approval: commit the corpus as
       `crates/store/src/collections/getting-started/`; flip seeding to
       Bundle ingest (`store` gains the `transload` dependency, drops
       optional `importer`); remove `demo.rs` and the legacy corpus in the
-      same commit.
-- [ ] 7.3 Store-level roundtrip test seeded from the `getting-started`
+      same commit. (A build script embeds the directory; treefmt excludes
+      it, since a markdown formatter rewrites the exporter's bytes.)
+- [x] 7.3 Store-level roundtrip test seeded from the `getting-started`
       collection against the real engine — the fixture the transload spec
-      names.
-- [ ] 7.4 Regenerate TS bindings (`Chart.extra` appears; with 1.4 landed,
+      names. (Every file but the manifest re-exports byte for byte.)
+- [x] 7.4 Regenerate TS bindings (`Chart.extra` appears; with 1.4 landed,
       `RichReference` is gone); confirm the app compiles untouched.
+      (`cargo xtask typegen` is a no-op — the bindings landed with 1.1/1.4;
+      the app crate checks with `development`. The frontend typecheck cannot
+      run at this lineage's base — `@nuxt/fonts` does not resolve, fixed
+      only in later `main` — so it is unverified; the frontend names no
+      `RichReference` and only reads `Chart`.)
 
 ## 8. Legibility pass (from the first corpus audit)
 
