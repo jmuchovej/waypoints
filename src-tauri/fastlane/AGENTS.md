@@ -151,11 +151,20 @@ file would upload blank ones.
 | `xfastlane watch [locale]`           | recompiles on save, no alpha strip        |
 | `xfastlane metadata [flavor] [loc]`  | listing copy and release notes            |
 | `xfastlane clean`                    | removes everything generated              |
-| `xfastlane publish <platform> [fl.]` | all of the above, then the lane           |
+| `xfastlane prepare [flavor] [loc]`   | build + metadata; on Linux, Transporter   |
+| `xfastlane publish <platform> [fl.]` | the lane only; refuses without `prepare`  |
 
-`publish` is what CI runs. It invokes fastlane from the app directory, because
-fastlane finds its Fastfile by looking for `./fastlane` in the working
-directory and `src-tauri/fastlane` is not the repository root.
+A release runs `prepare` once, then `publish` per store. Everything that can
+fail without consequence — rendering, copy limits, fetching Transporter — is in
+`prepare`, so it fails before the first submission. `publish` never prepares on
+its own. It invokes fastlane from the app directory, because fastlane finds its
+Fastfile by looking for `./fastlane` in the working directory and
+`src-tauri/fastlane` is not the repository root.
+
+On Linux, `prepare` fetches Apple's current Transporter build into
+`.transporter/` (an exception under `toolchain/tool-projection`; never pin it),
+and `publish ios` points fastlane at it. TestFlight uploads off macOS also need
+the `AppStoreInfo.plist` the iOS export writes beside the ipa.
 
 Three things the recipe gets right that a bare `typst compile` does not:
 

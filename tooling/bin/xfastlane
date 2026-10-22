@@ -1,25 +1,34 @@
 #!/usr/bin/env nu
 # Renders the store assets, writes the listing copy fastlane reads, and runs
-# the lanes — so a publish is one command rather than three that have to be
-# sequenced correctly.
+# the lanes.
 #
 #   xfastlane build    [locale]
 #   xfastlane watch    [locale]
 #   xfastlane metadata [flavor] [locale]
 #   xfastlane clean
-#   xfastlane publish  <platform> [flavor] [locale]
+#   xfastlane prepare  [flavor] [locale]
+#   xfastlane publish  <platform> [flavor]
 #
-# `publish` is what CI calls. It renders and writes before invoking the lane,
-# and runs fastlane from the app directory: fastlane finds its Fastfile by
-# looking for `./fastlane` in the working directory, and supply and deliver
-# resolve `metadata/` and `screenshots/` from the same place.
+# A release runs `prepare` once, then `publish` per store. `prepare` does
+# everything that touches nothing outside the machine — render, write, check,
+# and on Linux fetch Transporter — so it fails before any submission has run.
+# `publish` only runs the lane, from the app directory: fastlane finds its
+# Fastfile by looking for `./fastlane` in the working directory, and supply and
+# deliver resolve `metadata/` and `screenshots/` from the same place.
 
 # Play truncates "What's new" at 500 characters; the App Store and TestFlight
 # allow 4000. 500 is what the text has to survive.
 const PLAY_NOTES_LIMIT = 500
 const APPLE_NOTES_LIMIT = 4000
 
+# Apple serves only its current Linux build, at this one unversioned URL.
+const TRANSPORTER_URL = "https://itunesconnect.apple.com/WebObjects/iTunesConnect.woa/ra/resources/download/public/Transporter__Linux/bin"
+
 def fastlane-root []: nothing -> path { $env.TAURI_APP_PATH | path join "fastlane" }
+
+# Where `prepare` unpacks Transporter, and the flavor it last prepared.
+def transporter-root []: nothing -> path { fastlane-root | path join ".transporter" }
+def prepared-marker []: nothing -> path { fastlane-root | path join ".prepared" }
 
 def flavor-config [flavor: string]: nothing -> path {
   $env.TAURI_APP_PATH | path join "configs" "flavors" $"($flavor).toml"
@@ -69,7 +78,7 @@ def "main watch" [locale: string = "en-US"]: nothing -> nothing {
 
 def "main clean" []: nothing -> nothing {
   cd (fastlane-root)
-  rm -rf metadata screenshots index.html
+  rm -rf metadata screenshots index.html .transporter .prepared
 }
 
 # FLAVOR only picks the listing name — preview and nightly ship under their own
@@ -140,18 +149,56 @@ def "main metadata" [flavor: string = "stable", locale: string = "en-US"]: nothi
   print $"wrote release notes \(($notes | lines | length) lines\)"
 }
 
-def "main publish" [
-  platform: string,
-  flavor: string = "stable",
-  locale: string = "en-US",
-]: nothing -> nothing {
+# Fetched at run time, not projected: an exception under `toolchain/
+# tool-projection`'s run-time-fetched-tool requirement. `--noexec` unpacks the
+# Makeself archive without running Apple's install script (two licence prompts
+# and a copy into /usr/local); Makeself still verifies its embedded checksum.
+def fetch-transporter []: nothing -> nothing {
+  let root = (transporter-root)
+  let download = (mktemp -d)
+  # `--remote-header-name` keeps Apple's filename, which names the build.
+  let installer = (
+    ^curl --fail --silent --show-error --location --proto "=https"
+      --remote-name --remote-header-name --output-dir $download
+      --write-out "%{filename_effective}" $TRANSPORTER_URL
+  )
+  rm -rf $root
+  ^sh $installer --noexec --target $root
+  rm -rf $download
+  print $"unpacked ($installer | path basename) to ($root)"
+}
+
+def "main prepare" [flavor: string = "stable", locale: string = "en-US"]: nothing -> nothing {
   main build $locale
   main metadata $flavor $locale
+  if $nu.os-info.name == "linux" { fetch-transporter }
+  $flavor | save --force (prepared-marker)
+}
+
+def "main publish" [platform: string, flavor: string = "stable"]: nothing -> nothing {
+  # Never prepares on its own: that would move rendering and the Transporter
+  # fetch back after the first submission whenever a caller skipped `prepare`.
+  let marker = (prepared-marker)
+  if not ($marker | path exists) or (open --raw $marker | str trim) != $flavor {
+    error make { msg: $"run `xfastlane prepare ($flavor)` before `xfastlane publish`" }
+  }
+
+  # fastlane uploads to TestFlight through Transporter off macOS, and only
+  # through its shell-script executor reads the AppStoreInfo.plist beside the ipa.
+  let transporter = (
+    if $platform == "ios" and $nu.os-info.name == "linux" {
+      let itms = (transporter-root | path join "itms")
+      if not ($itms | path exists) {
+        error make { msg: $"no Transporter at ($itms); run `xfastlane prepare ($flavor)` on this machine" }
+      }
+      { FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT: "true", FASTLANE_ITUNES_TRANSPORTER_PATH: $itms }
+    } else { {} }
+  )
 
   # From the app directory, so `./fastlane` is the Fastfile's directory and the
-  # metadata written above sits where supply and deliver look for it.
+  # metadata `prepare` wrote sits where supply and deliver look for it.
   cd $env.TAURI_APP_PATH
-  ^fastlane $platform $flavor
+  with-env $transporter { ^fastlane $platform $flavor }
 }
 
 def main []: nothing -> nothing {
