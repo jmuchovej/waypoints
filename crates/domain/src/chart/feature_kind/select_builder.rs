@@ -104,6 +104,23 @@ pub struct SelectGroup {
     pub default_options: Vec<GlyphID>,
 }
 
+impl SelectOption {
+    /// Give this option a deterministic id. Call before inserting it anywhere
+    /// keyed by id, including a group's default.
+    pub fn keyed(mut self, key: &str) -> Self {
+        self.id = GlyphID::derived(key);
+        self
+    }
+}
+
+impl SelectGroup {
+    /// Give this group a deterministic id. Call before adding it to a select.
+    pub fn keyed(mut self, key: &str) -> Self {
+        self.id = GlyphID::derived(key);
+        self
+    }
+}
+
 impl From<String> for SelectOption {
     fn from(name: String) -> Self {
         SelectOption::builder()
