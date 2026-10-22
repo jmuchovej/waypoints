@@ -1,4 +1,5 @@
 #import "@preview/typewind:0.2.0" as tw
+#import "/res/palettes/stable.typ" as brand
 
 #let ink = tw.slate-950
 #let paper = tw.slate-50
@@ -7,7 +8,8 @@
 // would take the divider away from every file importing this one.
 #let edge = tw.slate-600
 
-#let accent = (tw.sky-400, tw.emerald-400, tw.amber-400, tw.rose-500)
+// The logo's quadrant colours, in the order the listing uses them.
+#let accent = ("NW", "SW", "SE", "NE").map(id => brand.fills.dark.at(id))
 
 #let sans = "Albert Sans"
 #let mono = "Monaspace Argon"

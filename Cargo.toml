@@ -65,6 +65,10 @@
     heck               = "0.5"
     hex                = "0.4"
     hmac               = "0.13"
+    icns               = { version = "0.5.0", default-features = false, features = [
+      "pngio"
+    ] }
+    ico                = "0.5.0"
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"

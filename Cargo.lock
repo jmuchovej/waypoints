@@ -3844,6 +3844,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "icns"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f55019ac1db606ff01afed8a9d18d91b83e6463da421084f767c89026467b619"
+dependencies = [
+ "byteorder",
+ "png 0.18.1",
+]
+
+[[package]]
 name = "ico"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12050,6 +12060,9 @@ dependencies = [
  "heck 0.5.0",
  "hex",
  "hmac 0.13.0",
+ "icns",
+ "ico",
+ "image",
  "indexmap 2.14.2",
  "indoc",
  "next_version",
@@ -12064,6 +12077,7 @@ dependencies = [
  "specta-serde",
  "specta-typescript",
  "strum 0.28.0",
+ "tempfile",
  "tokio",
  "toml 0.9.12+spec-1.1.0",
  "tower-http 0.7.1",

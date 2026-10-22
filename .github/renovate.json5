@@ -80,7 +80,7 @@
       groupSlug: "website-minor-patch",
     },
     {
-      description: "Covers src/, crates/domain and tooling/icongen, which all draw from the app catalog.",
+      description: "Covers src/ and crates/domain, which both draw from the app catalog.",
       matchUpdateTypes: ["minor", "patch"],
       matchDepTypes: ["pnpm.catalog.app"],
       groupName: "app non-major",

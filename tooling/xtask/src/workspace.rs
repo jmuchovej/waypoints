@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::{Context as _, Result};
 use cargo_metadata::{Metadata, MetadataCommand, semver::Version};
 
@@ -24,6 +26,17 @@ pub fn version() -> Result<Version> {
         .iter()
         .find(|package| package.name.as_str() == APP)
         .map(|package| package.version.clone())
+        .with_context(|| format!("no `{APP}` package in this workspace"))
+}
+
+/// The [`APP`] package's directory: `src-tauri/`.
+pub fn app_dir(metadata: &Metadata) -> Result<PathBuf> {
+    metadata
+        .packages
+        .iter()
+        .find(|package| package.name.as_str() == APP)
+        .and_then(|package| package.manifest_path.parent())
+        .map(|dir| dir.as_std_path().to_path_buf())
         .with_context(|| format!("no `{APP}` package in this workspace"))
 }
 

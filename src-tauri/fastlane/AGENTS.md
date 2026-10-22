@@ -91,7 +91,7 @@ flavor's Tauri config, so preview and nightly list under their own names —
 read it the way `src/justfile` reads the identifier:
 
 ```bash
-yq -p toml '.productName' configs/flavors/<flavor>.toml
+yq -p toml '.productName' res/configs/flavors/<flavor>.toml
 ```
 
 | Key                     | Store     | Limit                       |
@@ -207,11 +207,11 @@ root so its `<img src>` paths resolve against the same tree the stores read.
   an unqualified glyph picks one by discovery order. Twemoji is the default
   because it sits on the baseline at the surrounding size; Noto Color Emoji is
   CBDT bitmap and draws oversized and high.
-- **The logo is painted at render time.** `logo(variant: "md")` recolours the
-  exported SVG's quadrant ids — the same ids `tooling/icongen/flavors/*.toml`
-  paints. Do not commit a pre-coloured copy, and do not read icongen's
-  `background-inner`/`background-outer` as a radial: it is a flat fill plus an
-  inner-shadow tint.
+- **The logo is painted at render time.** `logo(variant: "md")` is the app
+  icons' own painter (`/res/icon/lib.typ`), styling the exported SVG's quadrant
+  ids from `/res/palettes/stable.typ`. Do not commit a pre-coloured copy, and do
+  not read a palette's `background-inner`/`background-outer` as a radial: it is
+  a flat fill plus an inner-shadow tint.
 
 ## What a listing may claim
 

@@ -1,0 +1,16 @@
+#:schema https://schema.tauri.app/config/2
+
+productName = "Waypoints Development Edition"
+identifier  = "so.waypoints.dev"
+
+[plugins.updater]
+  endpoints = []
+
+[bundle]
+  icon = [
+    "assets/icons/app/dev-032.png",
+    "assets/icons/app/dev-128.png",
+    "assets/icons/app/dev-128@2x.png",
+    "assets/icons/app/dev.icns",
+    "assets/icons/app/dev.ico",
+  ]

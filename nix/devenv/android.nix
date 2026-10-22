@@ -92,7 +92,7 @@ in
         default =
           let
             tauri = fromTOML (
-              builtins.readFile "${config.devenv.root}/src-tauri/configs/platforms/android.toml"
+              builtins.readFile "${config.devenv.root}/src-tauri/res/configs/platforms/android.toml"
             );
           in
           toString tauri.bundle.android.minSdkVersion;

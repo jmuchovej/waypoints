@@ -33,7 +33,7 @@ mod xtask "tooling/xtask/justfile"
 mod website "website/justfile"
 
 # Icon generation for every app flavor
-mod icons "tooling/icongen/justfile"
+mod icons "src-tauri/res/icon/justfile"
 
 # Station deployment: manifest validation and a kind cluster
 mod deploy "deploy/justfile"
@@ -86,7 +86,7 @@ mise-lock-check:
     export SECRETSPEC_REASON="just mise-lock-check compares the mise lockfiles against their configs; no secret values are read"
     devenv shell -- mise-lock --check
 
-[doc("Verifies that devenv-managed files, the TypeScript bindings, and xtask-generated workflows don't differ from committed files.")]
+[doc("Verifies that devenv-managed files, the TypeScript bindings, the app icons, and xtask-generated workflows don't differ from committed files.")]
 [script]
 check-generated:
     # devenv's secretspec integration gates evaluation behind a stated reason.
@@ -110,6 +110,15 @@ check-generated:
     devenv shell cargo xtask typegen
     files="$files $bindings"
 
+    # App icons are diffed by the locations the generator owns, not the files
+    # it writes, so a committed output it no longer produces shows up as a
+    # deletion. The globs are pathspecs: `set -f` keeps the shell from
+    # expanding them to only the files that exist.
+    icons='src-tauri/assets/icons/app src-tauri/gen/apple/Assets.xcassets/*.appiconset src-tauri/gen/android/app/src/*/res/mipmap-*/ic_launcher* src-tauri/gen/android/app/src/*/res/values/ic_launcher_background.xml'
+    devenv shell cargo xtask icongen
+    files="$files $icons"
+    set -f
+
     rc=0
     # Colocated checkouts have a .git where HEAD is jj's @-; added jj
     # workspaces have no .git, but `jj diff -r @` asks the same question
@@ -117,9 +126,16 @@ check-generated:
     if git rev-parse --git-dir >/dev/null 2>&1; then
       git --no-pager diff HEAD --exit-code -- $files || rc=1
     else
-      stale="$(jj diff -r @ --name-only -- $files)"
+      filesets=""
+      for f in $files; do
+        case "$f" in
+          *'*'*) filesets="$filesets glob:\"$f\"" ;;
+          *) filesets="$filesets $f" ;;
+        esac
+      done
+      stale="$(jj diff -r @ --name-only -- $filesets)"
       if [ -n "$stale" ]; then
-        jj diff -r @ --git -- $files
+        jj diff -r @ --git -- $filesets
         rc=1
       fi
     fi

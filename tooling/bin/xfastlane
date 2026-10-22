@@ -31,7 +31,7 @@ def transporter-root []: nothing -> path { fastlane-root | path join ".transport
 def prepared-marker []: nothing -> path { fastlane-root | path join ".prepared" }
 
 def flavor-config [flavor: string]: nothing -> path {
-  $env.TAURI_APP_PATH | path join "configs" "flavors" $"($flavor).toml"
+  $env.TAURI_APP_PATH | path join "res" "configs" "flavors" $"($flavor).toml"
 }
 
 # Cuts on a line boundary, so a bullet is never severed mid-word.

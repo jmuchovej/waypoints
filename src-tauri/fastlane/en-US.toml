@@ -4,7 +4,7 @@
 # absent: it is `productName` from the shipping flavor's Tauri config, so
 # preview and nightly list under their own names.
 #
-#   yq -p toml '.productName' configs/flavors/<flavor>.toml
+#   yq -p toml '.productName' res/configs/flavors/<flavor>.toml
 #
 # Limits are per store and counted in characters — Play: short 80, full 4000.
 # App Store: subtitle 30, promotional 170, description 4000, and keywords 100
