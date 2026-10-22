@@ -65,6 +65,10 @@ Rejected: a macOS publishing job. It needs no extra tooling, but pays macOS minu
 
 `xfastlane publish <platform> [flavor]` only runs the lane. It refuses to run if `prepare` has not, rather than preparing implicitly — an implicit prepare would move rendering and fetching back past the point of no return the moment a caller forgot the first step. On Linux, `publish ios` sets `FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT=true` and `FASTLANE_ITUNES_TRANSPORTER_PATH` to the prepared tree itself, so the workflow step names no fastlane internals. Locally, the two commands run in sequence.
 
+`publish --from <dir>` takes the package from the staged tree instead of the build output, which the publishing job does not have: it finds the one aab or ipa under `release/` and hands it to the lane as `WAYPOINTS_STORE_PACKAGE`, which only `xfastlane` and the Fastfile name. fastlane reads `AppStoreInfo.plist` only from the ipa's own directory (`ipa_upload_package_builder.rb`), and `release/` holds store objects alone, so `publish ios --from` also takes `--app-store-info app-store/AppStoreInfo.plist` and copies the two into a scratch directory side by side. Without `--from`, the lanes read the build output as before.
+
+Rejected: a second artifact mirroring the build paths, so the Fastfile's globs find the packages unchanged — the ipa and aab would cross artifact storage twice. Also rejected: letting the plist into `release/` with `release-upload` skipping it by name, which weakens the rule that every staged path is a store key.
+
 Rejected: fetching Transporter in its own workflow step outside `xfastlane`. It spreads fastlane's requirements across the generator and the script, and a step only the iOS-on-Linux path needs would sit in a job that otherwise knows nothing about fastlane. Also rejected: fetching it inside `publish ios`, which would put a download — the likeliest failure of the lot — after the Android submission.
 
 ### Transporter is fetched at run time, as a recorded exception (2026-10-21)
@@ -89,7 +93,7 @@ Rejected: dropping the count in favour of `needs:` plus `success()`. Viable if v
 
 ### Withdrawal reads the point of no return (2026-10-21)
 
-Step 5 writes `submitted=true` as a job output immediately before the first submission. The withdraw job's gate becomes: a tag is present, and either the count fell short or the publishing job failed, and `needs.publish.outputs.submitted != 'true'`. Marking *before* the first submission is deliberately conservative: a submission that failed partway may still have reached the store, so it is treated as past the line. A run past the line fails without withdrawing; its remaining steps (the second submission, the manifest) are re-run by hand.
+Step 5 writes `submitted=true` as a job output immediately before the first submission. The withdraw job's gate becomes: a tag is present, and either the count fell short or the publishing job failed, and `needs.publish.outputs.submitted != 'true'`. Marking _before_ the first submission is deliberately conservative: a submission that failed partway may still have reached the store, so it is treated as past the line. A run past the line fails without withdrawing; its remaining steps (the second submission, the manifest) are re-run by hand.
 
 Withdrawal itself is unchanged: discard the draft, `release-withdraw` (best-effort delete of every key the tag could have produced), and delete the tag only when the nightly planner job (`prepare` in the workflow — not `xfastlane prepare`) minted it.
 

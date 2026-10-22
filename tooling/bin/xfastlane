@@ -7,7 +7,7 @@
 #   xfastlane metadata [flavor] [locale]
 #   xfastlane clean
 #   xfastlane prepare  [flavor] [locale]
-#   xfastlane publish  <platform> [flavor]
+#   xfastlane publish  <platform> [flavor] [--from <dir>] [--app-store-info <plist>]
 #
 # A release runs `prepare` once, then `publish` per store. `prepare` does
 # everything that touches nothing outside the machine — render, write, check,
@@ -175,13 +175,49 @@ def "main prepare" [flavor: string = "stable", locale: string = "en-US"]: nothin
   $flavor | save --force (prepared-marker)
 }
 
-def "main publish" [platform: string, flavor: string = "stable"]: nothing -> nothing {
+# The one package under `dir` a lane submits: the aab for Play, the ipa for
+# TestFlight.
+def staged-package [platform: string, dir: path]: nothing -> path {
+  let extension = (if $platform == "ios" { "ipa" } else { "aab" })
+  let found = (glob $"($dir | path expand)/**/*.($extension)")
+  if ($found | length) != 1 {
+    error make { msg: $"expected one .($extension) under ($dir), found ($found | length)" }
+  }
+  $found | first
+}
+
+# `--from` submits a package from `release-stage`'s tree rather than the build
+# output. fastlane reads AppStoreInfo.plist only from beside the ipa, and the
+# staged tree holds store objects alone, so for iOS the two meet in a scratch
+# directory.
+def "main publish" [
+  platform: string,
+  flavor: string = "stable",
+  --from: path,            # a staged tree to take the package from
+  --app-store-info: path,  # the iOS export's AppStoreInfo.plist, with --from
+]: nothing -> nothing {
   # Never prepares on its own: that would move rendering and the Transporter
   # fetch back after the first submission whenever a caller skipped `prepare`.
   let marker = (prepared-marker)
   if not ($marker | path exists) or (open --raw $marker | str trim) != $flavor {
     error make { msg: $"run `xfastlane prepare ($flavor)` before `xfastlane publish`" }
   }
+
+  let package = (
+    if $from == null { {} } else {
+      let found = (staged-package $platform $from)
+      if $platform == "ios" and $app_store_info != null {
+        let beside = (mktemp -d)
+        cp $found $beside
+        cp $app_store_info ($beside | path join "AppStoreInfo.plist")
+        { WAYPOINTS_STORE_PACKAGE: ($beside | path join ($found | path basename)) }
+      } else if $platform == "ios" and $nu.os-info.name == "linux" {
+        error make { msg: "`publish ios --from` on Linux needs --app-store-info" }
+      } else {
+        { WAYPOINTS_STORE_PACKAGE: $found }
+      }
+    }
+  )
 
   # fastlane uploads to TestFlight through Transporter off macOS, and only
   # through its shell-script executor reads the AppStoreInfo.plist beside the ipa.
@@ -198,7 +234,7 @@ def "main publish" [platform: string, flavor: string = "stable"]: nothing -> not
   # From the app directory, so `./fastlane` is the Fastfile's directory and the
   # metadata `prepare` wrote sits where supply and deliver look for it.
   cd $env.TAURI_APP_PATH
-  with-env $transporter { ^fastlane $platform $flavor }
+  with-env ($transporter | merge $package) { ^fastlane $platform $flavor }
 }
 
 def main []: nothing -> nothing {

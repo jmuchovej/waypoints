@@ -37,6 +37,8 @@
 
   [default.extend-words]
     writeable = "writeable"
+    # Apple's Transporter unpacks to `itms/`
+    itms      = "itms"
 
 [type.storyboard]
   extend-glob      = [ "*.storyboard", "*.xib" ]
