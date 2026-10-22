@@ -729,7 +729,9 @@ mod tests {
                     "{name}/{job_name}/{id}: not a one-line dispatch: {run}"
                 );
                 assert!(
-                    run.trim_start().starts_with("cargo xtask "),
+                    run.trim_start()
+                        .trim_start_matches("devenv shell -- ")
+                        .starts_with("cargo xtask "),
                     "{name}/{job_name}/{id}: not an xtask dispatch: {run}"
                 );
                 for tool in TRANSFER_TOOLS {
@@ -772,11 +774,16 @@ mod tests {
                 // `xcache` entered that way names its profile inside the
                 // script, and the `ci` profile's own default provider is the
                 // vault — so the step carries neither spelling, and needs
-                // neither.
+                // neither. The same holds for a release-store `xtask` entered
+                // that way: it resolves the `release` profile in-process, and
+                // that profile's default provider is the vault too.
                 let run = step["run"].as_str().unwrap_or("");
                 let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some()
                     || run.contains("--provider op")
-                    || run.starts_with("devenv shell -- xcache ");
+                    || run.starts_with("devenv shell -- xcache ")
+                    || ["upload", "manifest", "withdraw"].iter().any(|task| {
+                        run.starts_with(&format!("devenv shell -- cargo xtask release-{task} "))
+                    });
                 let credential = step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some();
                 assert_eq!(provider, credential, "{name}: {}", step["name"]);
             }

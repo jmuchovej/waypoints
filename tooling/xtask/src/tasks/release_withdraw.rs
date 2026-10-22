@@ -76,7 +76,11 @@ fn candidate_keys(channel: Channel, tag: &str) -> Vec<String> {
     let mut keys = Vec::new();
     for platform in channel.required_targets() {
         let target = platform.published_target();
-        for extension in target.extensions {
+        for extension in target
+            .extensions
+            .iter()
+            .chain(platform.updater_extensions())
+        {
             keys.push(format!(
                 "{channel}/{series}/{os}/{arch}/waypoints-{tag}.{extension}",
                 channel = channel.flavor(),
@@ -101,6 +105,19 @@ mod tests {
         assert!(keys.contains(&"stable/v0.1.x/macos/arm64/waypoints-v0.1.1.dmg".to_owned()));
         assert!(keys.contains(&"stable/v0.1.x/android/arm64/waypoints-v0.1.1.apk".to_owned()));
         assert!(keys.contains(&"stable/v0.1.x/android/arm64/waypoints-v0.1.1.aab".to_owned()));
+    }
+
+    /// The updater's payloads and signatures were uploaded with the
+    /// installers, so they are withdrawn with them.
+    #[test]
+    fn candidate_keys_cover_the_updater_artifacts() {
+        let keys = candidate_keys(Channel::Stable, "v0.1.1");
+        for key in [
+            "stable/v0.1.x/macos/arm64/waypoints-v0.1.1.app.tar.gz",
+            "stable/v0.1.x/linux/amd64/waypoints-v0.1.1.rpm.sig",
+        ] {
+            assert!(keys.contains(&key.to_owned()), "{key}");
+        }
     }
 
     #[test]

@@ -5,8 +5,9 @@ import { updaterPayloadKey } from "../../../../../../utils/updater";
 
 /**
  * Streams the updater payload for one of Tauri's own target spellings
- * (`darwin-aarch64`, `linux-x86_64`, `windows-x86_64`) — the `url` the
- * updater manifest hands the client. Separate from the installer route:
+ * (`darwin-aarch64`, `linux-x86_64`, `linux-x86_64-deb`, `windows-x86_64`,
+ * …) — the `url` the updater manifest hands the client. Separate from the
+ * installer route:
  * macOS's payload (`.app.tar.gz`) is a different object than its installer
  * (`.dmg`), even though Linux and Windows serve the very same file both
  * ways.

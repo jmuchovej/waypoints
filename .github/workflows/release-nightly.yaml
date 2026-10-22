@@ -408,25 +408,19 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform macos ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-macos-nightly
-          path: |-
-            target/release/bundle/dmg/*.dmg
-            target/release/bundle/macos/*.tar.gz
-            target/release/bundle/macos/*.tar.gz.sig
+          path: release
           if-no-files-found: error
-      - id: upload-to-store
-        name: Upload to the release store
-        if: needs.prepare.outputs.tag != ''
-        run: cargo xtask release-upload --platform macos --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=macos" >> "$GITHUB_OUTPUT"
@@ -543,24 +537,19 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform windows ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-windows-nightly
-          path: |-
-            target/release/bundle/nsis/*.exe
-            target/release/bundle/nsis/*.exe.sig
+          path: release
           if-no-files-found: error
-      - id: upload-to-store
-        name: Upload to the release store
-        if: needs.prepare.outputs.tag != ''
-        run: cargo xtask release-upload --platform windows --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=windows" >> "$GITHUB_OUTPUT"
@@ -694,25 +683,19 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform linux ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-linux-nightly
-          path: |-
-            target/release/bundle/appimage/*.AppImage
-            target/release/bundle/appimage/*.AppImage.sig
-            target/release/bundle/deb/*.deb
+          path: release
           if-no-files-found: error
-      - id: upload-to-store
-        name: Upload to the release store
-        if: needs.prepare.outputs.tag != ''
-        run: cargo xtask release-upload --platform linux --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=linux" >> "$GITHUB_OUTPUT"
@@ -831,30 +814,19 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform ios ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-ios-nightly
-          path: src-tauri/gen/apple/build/**/*.ipa
+          path: release
           if-no-files-found: error
-      - id: upload-to-store
-        name: Upload to the release store
-        if: needs.prepare.outputs.tag != ''
-        run: cargo xtask release-upload --platform ios --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - id: publish-mobile-app
-        name: Upload to the App Store
-        if: needs.prepare.outputs.tag != ''
-        run: secretspec run --profile release --scope ios -- xfastlane publish ios nightly
-        shell: bash
-        env:
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=ios" >> "$GITHUB_OUTPUT"
@@ -1039,37 +1011,24 @@ jobs:
           SECRETSPEC_REASON: saving the android-ndk snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform android ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-android-nightly
-          path: |-
-            src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
-            src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
+          path: release
           if-no-files-found: error
-      - id: upload-to-store
-        name: Upload to the release store
-        if: needs.prepare.outputs.tag != ''
-        run: cargo xtask release-upload --platform android --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      - id: publish-mobile-app
-        name: Upload to the Play Store
-        if: needs.prepare.outputs.tag != ''
-        run: secretspec run --profile release --scope android -- xfastlane publish android nightly
-        shell: bash
-        env:
-          SECRETSPEC_PROVIDER: op
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: record-target
         name: Record the completed target
         run: echo "target=android" >> "$GITHUB_OUTPUT"
         shell: bash
-  publish-release:
+  publish:
     needs:
       - prepare
       - build-macos
@@ -1085,7 +1044,103 @@ jobs:
       contents: write
     environment:
       name: App Release
+    outputs:
+      submitted: ${{ steps.mark-submitted.outputs.submitted }}
     steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: "false"
+          fetch-depth: "0"
+          fetch-tags: "true"
+      - id: free-disk
+        name: Free runner disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
+      - id: setup-nix
+        name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      - id: setup-devenv-cachix
+        name: Use the devenv binary cache
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
+        with:
+          name: devenv
+      - id: setup-nix-profile
+        name: Install devenv
+        run: nix profile install nixpkgs#devenv
+        shell: bash
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: devenv shell -- xcache restore "${CACHE_KEY}" "${HOME}/.cargo/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: devenv shell -- secretspec run --profile ci --provider op --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
+      - id: build-xtask
+        name: Build xtask
+        run: devenv shell -- cargo build --package xtask
+        shell: bash
+        env:
+          SECRETSPEC_REASON: compiles xtask; no secret values are read
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          devenv shell -- sccache --show-stats
+          devenv shell -- sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: devenv shell -- xcache save "${CACHE_KEY}" "${HOME}/.cargo/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: download-staged
+        name: Download the staged release
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: waypoints-*-nightly
+          merge-multiple: "true"
+          path: release
+      - id: prepare-listing
+        name: Prepare the store listings
+        run: devenv shell -- xfastlane prepare nightly
+        shell: bash
+        env:
+          SECRETSPEC_REASON: xfastlane prepare renders store assets; no secret values are read
+      - id: upload-to-store
+        name: Upload to the release store
+        run: devenv shell -- cargo xtask release-upload --from release --tag "${TAG}"
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          SECRETSPEC_REASON: release-upload derives a short-lived, channel-scoped store credential
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: publish-release
         name: Publish the release
         run: gh release edit "${TAG}" --draft=false
@@ -1094,15 +1149,34 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.prepare.outputs.tag }}
+      - id: mark-submitted
+        name: Mark the point of no return
+        run: echo "submitted=true" >> "$GITHUB_OUTPUT"
+        shell: bash
+      - id: submit-android
+        name: Submit to the Play Store
+        run: devenv shell -- secretspec run --profile release --provider op --scope android -- xfastlane publish android nightly --from release
+        shell: bash
+        env:
+          SECRETSPEC_REASON: fastlane submits the Android build to its store with the Android release scope
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: submit-ios
+        name: Submit to the App Store
+        run: devenv shell -- secretspec run --profile release --provider op --scope ios -- xfastlane publish ios nightly --from release
+        shell: bash
+        env:
+          SECRETSPEC_REASON: fastlane submits the iOS build to its store with the iOS release scope
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: write-manifest
         name: Write the channel manifest
         if: needs.prepare.outputs.tag != ''
-        run: cargo xtask release-manifest --tag "${TAG}"
+        run: devenv shell -- cargo xtask release-manifest --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_PROVIDER: op
+          SECRETSPEC_REASON: release-manifest derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
   withdraw-release:
     needs:
       - prepare
@@ -1112,7 +1186,8 @@ jobs:
       - build-ios
       - build-android
       - create-release
-    if: (needs.prepare.outputs.tag != '') && (failure() || !(needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android'))
+      - publish
+    if: (needs.prepare.outputs.tag != '') && (failure() || !(needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android')) && needs.publish.outputs.submitted != 'true'
     name: Withdraw the release
     runs-on: ubuntu-latest
     permissions:
@@ -1120,6 +1195,34 @@ jobs:
     environment:
       name: App Release
     steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: "false"
+      - id: free-disk
+        name: Free runner disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          android: "true"
+          dotnet: "true"
+          haskell: "true"
+          large-packages: "true"
+          docker-images: "true"
+          preinstalled-runtimes: "false"
+          swap-storage: "false"
+      - id: setup-nix
+        name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      - id: setup-devenv-cachix
+        name: Use the devenv binary cache
+        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
+        with:
+          name: devenv
+      - id: setup-nix-profile
+        name: Install devenv
+        run: nix profile install nixpkgs#devenv
+        shell: bash
       - id: discard-release
         name: Discard the drafted release
         run: gh release delete "${TAG}" --yes || true
@@ -1130,11 +1233,11 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
       - id: withdraw-from-store
         name: Withdraw uploaded artifacts
-        run: cargo xtask release-withdraw --tag "${TAG}"
+        run: devenv shell -- cargo xtask release-withdraw --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_PROVIDER: op
+          SECRETSPEC_REASON: release-withdraw derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: delete-minted-tag
         name: Delete the minted tag

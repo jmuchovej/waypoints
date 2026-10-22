@@ -16,6 +16,7 @@ pub mod tasks {
     pub mod release_index;
     pub mod release_manifest;
     pub mod release_plan;
+    pub mod release_stage;
     pub mod release_store;
     pub mod release_upload;
     pub mod release_withdraw;
@@ -29,6 +30,7 @@ pub mod tasks {
     pub use release_index::ReleaseIndexArgs;
     pub use release_manifest::ReleaseManifestArgs;
     pub use release_plan::ReleasePlanArgs;
+    pub use release_stage::ReleaseStageArgs;
     pub use release_upload::ReleaseUploadArgs;
     pub use release_withdraw::ReleaseWithdrawArgs;
     pub use test_plan::TestPlanArgs;

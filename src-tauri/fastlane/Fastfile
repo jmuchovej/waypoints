@@ -1,6 +1,14 @@
 opt_out_usage
 
+# `xfastlane publish --from` names the staged package; otherwise the lanes
+# take the build output.
+def staged_package
+  ENV.fetch("WAYPOINTS_STORE_PACKAGE", nil)
+end
+
 def android_aab
+  return staged_package if staged_package
+
   project = ENV.fetch("TAURI_ANDROID_PROJECT_PATH")
   pattern = File.join(project, "app/build/outputs/bundle/*Release/*.aab")
   matches = Dir.glob(pattern)
@@ -15,6 +23,8 @@ end
 # `upload_to_testflight` only finds an ipa on its own when `gym` ran in the
 # same lane; ours comes from `cargo tauri ios build`, so it is located here.
 def ios_ipa
+  return staged_package if staged_package
+
   project = ENV.fetch("TAURI_IOS_PROJECT_PATH")
   pattern = File.join(project, "build/**/*.ipa")
   matches = Dir.glob(pattern)

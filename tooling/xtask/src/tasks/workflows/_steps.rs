@@ -433,7 +433,7 @@ pub(crate) enum Tools {
 
 impl Tools {
     /// `command`, run where the tools are.
-    fn command(self, command: &str) -> String {
+    pub(crate) fn command(self, command: &str) -> String {
         match self {
             Tools::Mise => command.to_owned(),
             Tools::Devenv => format!("devenv shell -- {command}"),
@@ -686,34 +686,132 @@ pub(crate) fn cache_save(dir: &CachedDir, tools: Tools) -> Step<Run> {
     tools.resolving(step)
 }
 
-/// Runs a fastlane lane with the platform's secrets injected for its lifetime.
-///
-/// Through `tooling/bin/xfastlane`, which renders the store assets and writes
-/// the listing copy before invoking the lane, and runs fastlane from the app
-/// directory — fastlane locates its Fastfile by looking for `./fastlane` in
-/// the working directory, and `src-tauri/fastlane` is not the repository root.
-///
-/// Gated on the tag like [`upload_to_store`]: a build-only run has none,
-/// and its artifacts must stop at the workflow — the store build number is
-/// the date, so a dispatch that reached the store would take the day's slot
-/// from the scheduled run.
-pub fn fastlane(platform: Platform, channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
-    let spec = SecretSpec::run(format!(
-        "xfastlane publish {lane} {flavor}",
+/// The flat directory `release-stage` fills and `release-upload --from`
+/// reads.
+pub const STAGE_DIR: &str = "release";
+
+fn upload_artifact_action() -> Action {
+    Action::new(
+        "actions",
+        "upload-artifact",
+        "ea165f8d65b6e75b540449e92b4886f43607fa02", // v4
+    )
+}
+
+fn download_artifact_action() -> Action {
+    Action::new(
+        "actions",
+        "download-artifact",
+        "d3f86a106a0bac45b974a628896c90dbdf5c8093", // v4
+    )
+}
+
+/// Renames the platform's published and updater artifacts out of the
+/// bundler's nested output into the flat [`STAGE_DIR`], as
+/// `waypoints-{tag}.{ext}`. Every run stages, build-only included, so a
+/// change in what Tauri exports fails the build that produced it. `tag` is
+/// the tag the files are named for — on a build-only run, the one it would
+/// have published; when it is empty, `release-stage` takes the app's own
+/// version. Needs no credential.
+pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
+    Step::new("Stage the release artifacts")
+        .run(format!(
+            r#"cargo xtask release-stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
+            slug = platform.slug(),
+        ))
+        .shell("bash")
+        .add_env(("TAG", tag))
+        .id("stage-release")
+}
+
+/// Uploads the flat staged directory, under a name naming both the platform
+/// and the channel. A directory path, so the artifact holds the files alone
+/// and every platform's merges into one directory.
+pub fn upload_staged(channel: Channel, platform: Platform) -> Step<Use> {
+    upload_artifact_action()
+        .step("Upload artifacts")
+        .add_with(("name", Artifact(channel, platform).to_string()))
+        .add_with(("path", STAGE_DIR))
+        .add_with(("if-no-files-found", "error"))
+        .id("upload-artifacts")
+}
+
+/// Merges every platform's staged files into one flat [`STAGE_DIR`].
+pub fn download_staged(channel: Channel) -> Step<Use> {
+    download_artifact_action()
+        .step("Download the staged release")
+        .add_with(("pattern", format!("waypoints-*-{channel}")))
+        .add_with(("merge-multiple", true))
+        .add_with(("path", STAGE_DIR))
+        .id("download-staged")
+}
+
+/// Renders the store assets and listing copy, and on Linux fetches
+/// Transporter: everything both submissions need that touches nothing
+/// outside the runner. Resolves no credential.
+pub fn prepare_listing(channel: Channel) -> Step<Run> {
+    Step::new("Prepare the store listings")
+        .run(Tools::Devenv.command(&format!("xfastlane prepare {}", channel.flavor())))
+        .shell("bash")
+        .add_env((
+            "SECRETSPEC_REASON",
+            "xfastlane prepare renders store assets; no secret values are read",
+        ))
+        .id("prepare-listing")
+}
+
+/// Uploads the staged tree to the `releases` bucket; `release-upload`
+/// derives its own store credential.
+pub fn upload_to_store(tag: Option<&JobOutput>) -> Step<Run> {
+    let step = Step::new("Upload to the release store")
+        .run(Tools::Devenv.command(&format!(
+            r#"cargo xtask release-upload --from {STAGE_DIR} --tag "${{TAG}}""#
+        )))
+        .shell("bash")
+        .add_env(("TAG", Channel::tag(tag)))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release-upload derives a short-lived, channel-scoped store credential",
+        ))
+        .id("upload-to-store");
+    Tools::Devenv.resolving(step)
+}
+
+/// Marks the point of no return: everything after this submits to a store,
+/// which cannot be withdrawn. Immediately before the first submission, so
+/// one that fails partway still counts as past it.
+pub fn mark_submitted() -> Step<Run> {
+    Step::new("Mark the point of no return")
+        .run(r#"echo "submitted=true" >> "$GITHUB_OUTPUT""#)
+        .shell("bash")
+        .id("mark-submitted")
+}
+
+/// Submits the staged package to the platform's store, with the platform's
+/// release scope resolved for that one command. Every fastlane concern —
+/// the lane, Transporter, where the package and its plist sit — stays
+/// inside `xfastlane`.
+pub fn submit(platform: Platform, channel: Channel) -> Step<Run> {
+    let command = format!(
+        "xfastlane publish {lane} {flavor} --from {STAGE_DIR}",
         lane = platform.slug(),
         flavor = channel.flavor()
-    ))
-    .resolving(Resolution::Release(platform));
+    );
+    let spec = SecretSpec::run(command)
+        .resolving(Resolution::Release(platform))
+        .inside_devenv()
+        .with_reason(format!(
+            "fastlane submits the {platform} build to its store with the {platform} release scope"
+        ));
 
     Into::<Step<Run>>::into(spec)
         .when(platform.is_android(), |step| {
-            step.name("Upload to the Play Store")
+            step.name("Submit to the Play Store")
         })
         .when(platform.is_ios(), |step| {
-            step.name("Upload to the App Store")
+            step.name("Submit to the App Store")
         })
-        .if_condition(Channel::tag_condition(tag))
-        .id("publish-mobile-app")
+        .id(format!("submit-{}", platform.slug()))
 }
 
 /// Fails the run with a clear message when a dispatch pairs a non-empty
@@ -746,21 +844,6 @@ pub fn record_target(platform: Platform) -> Step<Run> {
         ))
         .shell("bash")
         .id("record-target")
-}
-
-/// Uploads everything the platform's build produced, under a name naming both
-/// the platform and the channel.
-pub fn upload_artifact(channel: Channel, platform: Platform) -> Step<Use> {
-    Action::new(
-        "actions",
-        "upload-artifact",
-        "ea165f8d65b6e75b540449e92b4886f43607fa02", // v4
-    )
-    .step("Upload artifacts")
-    .add_with(("name", Artifact(channel, platform).to_string()))
-    .add_with(("path", platform.artifacts()))
-    .add_with(("if-no-files-found", "error"))
-    .id("upload-artifacts")
 }
 
 /// Renders the notes for `tag` with git-cliff: everything since the previous
@@ -806,27 +889,6 @@ pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
         .id("draft-release")
 }
 
-/// Uploads the platform's published artifacts to the `releases` bucket.
-///
-/// One line dispatching to `xtask`, which resolves the store credential and
-/// writes through `opendal` entirely in-process — no transfer tool joins
-/// this job, and no step preceding this one carries a derived credential for
-/// it to read back. See the design's "The store is reached through opendal
-/// in-process, from one client constructor" decision. Gated on the tag like
-/// every other publishing step: a build-only run uploads nothing.
-pub fn upload_to_store(platform: Platform, tag: Option<&JobOutput>) -> Step<Run> {
-    let step = Step::new("Upload to the release store")
-        .run(format!(
-            r#"cargo xtask release-upload --platform {slug} --tag "${{TAG}}""#,
-            slug = platform.slug(),
-        ))
-        .shell("bash")
-        .if_condition(Channel::tag_condition(tag))
-        .add_env(("TAG", Channel::tag(tag)))
-        .id("upload-to-store");
-    helpers::resolving(step)
-}
-
 /// Flips the draft public. When this runs is the publish job's decision.
 ///
 /// `GH_REPO` because this is the one `gh` call in a job that checks nothing
@@ -850,12 +912,16 @@ pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
 /// line dispatching to `xtask`, like every other store-touching step.
 pub fn write_manifest(tag: Option<&JobOutput>) -> Step<Run> {
     let step = Step::new("Write the channel manifest")
-        .run(r#"cargo xtask release-manifest --tag "${TAG}""#)
+        .run(Tools::Devenv.command(r#"cargo xtask release-manifest --tag "${TAG}""#))
         .shell("bash")
         .if_condition(Channel::tag_condition(tag))
         .add_env(("TAG", Channel::tag(tag)))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release-manifest derives a short-lived, channel-scoped store credential",
+        ))
         .id("write-manifest");
-    helpers::resolving(step)
+    Tools::Devenv.resolving(step)
 }
 
 /// Discards the drafted release. Tolerant of there being none to discard —
@@ -883,11 +949,15 @@ pub fn discard_release(tag: Option<&JobOutput>) -> Step<Run> {
 /// code carries no information about whether every object was removed.
 pub fn withdraw_from_store(tag: Option<&JobOutput>) -> Step<Run> {
     let step = Step::new("Withdraw uploaded artifacts")
-        .run(r#"cargo xtask release-withdraw --tag "${TAG}""#)
+        .run(Tools::Devenv.command(r#"cargo xtask release-withdraw --tag "${TAG}""#))
         .shell("bash")
         .add_env(("TAG", Channel::tag(tag)))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release-withdraw derives a short-lived, channel-scoped store credential",
+        ))
         .id("withdraw-from-store");
-    helpers::resolving(step)
+    Tools::Devenv.resolving(step)
 }
 
 /// Deletes the tag this run minted, via the refs API. Conditioned on the

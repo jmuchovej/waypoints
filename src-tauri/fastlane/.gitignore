@@ -8,3 +8,8 @@
 # Typst sources are what is tracked.
 metadata/
 screenshots/
+
+# Written by `xfastlane prepare`: the unpacked Transporter (Linux only) and the
+# flavor it last prepared, which `publish` checks before running a lane.
+.transporter/
+.prepared

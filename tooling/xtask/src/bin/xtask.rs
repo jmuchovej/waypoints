@@ -15,7 +15,9 @@ enum Command {
     TestPlan(tasks::TestPlanArgs),
     /// Mints the release tag for a Nightly workflow run.
     NightlyPlan(tasks::NightlyPlanArgs),
-    /// Uploads one platform's published artifacts to the releases bucket.
+    /// Copies one platform's published artifacts into `release/` under their store keys.
+    ReleaseStage(tasks::ReleaseStageArgs),
+    /// Uploads published artifacts to the releases bucket.
     ReleaseUpload(tasks::ReleaseUploadArgs),
     /// Writes a channel's manifest after every required target has uploaded.
     ReleaseManifest(tasks::ReleaseManifestArgs),
@@ -42,6 +44,7 @@ fn main() -> Result<()> {
     match args.command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
+        Command::ReleaseStage(args) => tasks::release_stage::run(args),
         Command::ReleaseUpload(args) => tasks::release_upload::run(args),
         Command::ReleaseManifest(args) => tasks::release_manifest::run(args),
         Command::ReleaseWithdraw(args) => tasks::release_withdraw::run(args),

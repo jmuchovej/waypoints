@@ -7,6 +7,7 @@ import {
   latestUrl,
   objectKey,
   seriesOf,
+  TAURI_UPDATER_TARGETS,
   versionedUrl,
   versionFromKey,
 } from "./releases";
@@ -59,6 +60,16 @@ describe("versionFromKey", () => {
     expect(versionFromKey(signature)).toBe(version);
   });
 
+  it("round-trips every updater payload and signature", () => {
+    const version = "v0.2.0-nightly.3+2026.10.19";
+    for (const target of Object.values(TAURI_UPDATER_TARGETS)) {
+      for (const extension of [target.payload, target.signature]) {
+        const key = objectKey("nightly", version, target.os, target.arch, extension);
+        expect(versionFromKey(key)).toBe(version);
+      }
+    }
+  });
+
   it("reports null for a key this scheme did not produce", () => {
     expect(versionFromKey("stable/v0.1.x/macos/arm64/not-ours.dmg")).toBeNull();
   });
@@ -80,6 +91,34 @@ describe("latestUrl and versionedUrl", () => {
     expect(resolved).not.toBe(alias);
     expect(resolved.endsWith("waypoints-v0.1.1.dmg")).toBe(true);
     expect(alias.endsWith("waypoints-latest.dmg")).toBe(true);
+  });
+});
+
+describe("TAURI_UPDATER_TARGETS", () => {
+  // An app installed from a deb or rpm asks for its own format's entry and
+  // refuses any other payload, so every Linux and Windows installer needs one.
+  // macOS's updater installs the `.app.tar.gz`, never the `.dmg`.
+  it("gives every Linux and Windows installer an entry that installs it", () => {
+    for (const target of DOWNLOADABLE_TARGETS.filter((target) => target.os !== "macos")) {
+      const payloads = Object.values(TAURI_UPDATER_TARGETS)
+        .filter((entry) => entry.os === target.os && entry.arch === target.arch)
+        .map((entry) => entry.payload);
+      for (const extension of target.extensions) {
+        expect(payloads, `${target.os}/${extension}`).toContain(extension);
+      }
+    }
+  });
+
+  it("serves a deb install the deb, an rpm install the rpm, and the rest the AppImage", () => {
+    expect(TAURI_UPDATER_TARGETS["linux-x86_64-deb"]).toMatchObject({
+      payload: "deb",
+      signature: "deb.sig",
+    });
+    expect(TAURI_UPDATER_TARGETS["linux-x86_64-rpm"]).toMatchObject({
+      payload: "rpm",
+      signature: "rpm.sig",
+    });
+    expect(TAURI_UPDATER_TARGETS["linux-x86_64"]?.payload).toBe("AppImage");
   });
 });
 

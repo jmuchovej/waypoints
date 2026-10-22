@@ -9,7 +9,7 @@ use super::{
 };
 use gh_workflow::{
     Environment as GhEnvironment, Expression, FluentBuilder, Job, JobOutput, Level, NamedJob,
-    Permissions, StepOutput,
+    Permissions, Step, StepOutput,
 };
 
 /// The environment variable a build reads its store build number from. One
@@ -269,14 +269,31 @@ fn completeness_expr(channel: Channel) -> String {
         .join(" && ")
 }
 
-/// Publishes the draft once every required target has recorded its success.
+/// The publishing job's id, which the withdraw gate reads the point of no
+/// return back through.
+pub const PUBLISH_JOB: &str = "publish";
+
+/// Enters the devenv shell: the tree's pinned `cargo`, and the typst, its
+/// fonts, and ImageMagick `xfastlane prepare` renders with, exist nowhere
+/// else. Entering realises the whole environment, which a stock image
+/// cannot hold.
+fn with_devenv(job: Job) -> Job {
+    job.add_step(steps::free_disk_space(true))
+        .add_step(steps::install_nix())
+        .add_step(steps::cachix("devenv"))
+        .add_step(steps::nix_profile_install(&["devenv"]))
+}
+
+/// Publishes a complete run, in order of retractability: the store upload,
+/// the public record, the point of no return, both store submissions, and
+/// the manifest last. One job, so the order is a step order.
 ///
 /// Completeness is counted, not inferred from the absence of failure: a
 /// target skipped by a `platforms` subset dispatch blocks the gate exactly
 /// as one that failed, because neither writes the output this reads — see
-/// the design's "Completeness is counted, not inferred" decision. The tag
-/// guard skips build-only runs and nightlies that built nothing.
-pub fn publish_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
+/// the design's "The counted gate stays" decision. The tag guard skips
+/// build-only runs and nightlies that built nothing.
+pub fn publish(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
     let tag = prepare.map(|prepare| &prepare.tag);
     let completeness = completeness_expr(channel);
     let expr = format!(
@@ -284,48 +301,85 @@ pub fn publish_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJ
         tag = Channel::tag_condition(tag).0
     );
 
+    let mark = steps::mark_submitted();
+    let submitted = StepOutput::new_trusted(&mark, "submitted");
+
+    // The devenv shell leaves `CARGO_HOME` unset, so cargo keeps its registry
+    // at its default; the snapshot has to land there.
+    let registry = steps::cargo_registry("${HOME}/.cargo");
+    let compile = Step::new("Build xtask")
+        .run(Tools::Devenv.command("cargo build --package xtask"))
+        .shell("bash")
+        .add_env((
+            "SECRETSPEC_REASON",
+            "compiles xtask; no secret values are read",
+        ))
+        .id("build-xtask");
+
     let job = Job::default()
         .name("Publish the release")
         .permissions(Permissions::default().contents(Level::Write))
-        // The manifest write below resolves the store credential, so the
-        // vault credential comes from the same environment every other
-        // store-touching job declares.
+        // Every step that resolves anything reads the vault credential from
+        // the release environment.
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(runners::LINUX)
         .cond(Expression::new(expr))
+        // `prepare` renders the release notes with git-cliff, which walks
+        // from the tag back to the one before it.
+        .add_step(
+            steps::checkout()
+                .add_with(("fetch-depth", 0))
+                .add_with(("fetch-tags", true)),
+        );
+    let job = with_devenv(job)
+        // Compiled up front, through the build jobs' cache, so its server is
+        // stopped before anything publishes; the wrapper stays set on every
+        // later `cargo xtask`, so none of them recompiles.
+        .add_step(steps::cache_restore(&registry, Tools::Devenv))
+        .add_step(steps::sccache_start(Tools::Devenv))
+        .add_step(steps::with_sccache(compile))
+        .add_step(steps::sccache_stats(Tools::Devenv))
+        .add_step(steps::cache_save(&registry, Tools::Devenv))
+        .add_step(steps::download_staged(channel))
+        .add_step(steps::prepare_listing(channel))
+        .add_step(steps::with_sccache(steps::upload_to_store(tag)))
         .add_step(steps::publish_release(tag))
-        // Last: the manifest is the run's true final write, ordered after
-        // the record itself goes public so the reverse — a published
-        // record naming artifacts the manifest has not confirmed — cannot
-        // happen.
-        .add_step(steps::write_manifest(tag))
+        .add_step(mark)
+        .add_step(steps::submit(Platform::Android, channel))
+        .add_step(steps::submit(Platform::iOS, channel))
+        // Last: the manifest is what the updater and the download links
+        // read, and it is idempotent, so a failure here is repaired by
+        // running it again.
+        .add_step(steps::with_sccache(steps::write_manifest(tag)))
+        .outputs([submitted.as_output()])
         // Reads the planner's tag, so it waits on the planner.
         .when_some(prepare, |job, prepare| {
             job.add_needs(prepare.name().to_owned())
         });
 
-    NamedJob::new("publish-release", job)
+    NamedJob::new(PUBLISH_JOB, job)
 }
 
-/// Cleans up a run that failed or fell short of [`publish_release`]'s
-/// completeness: discards the drafted record always, best-effort deletes
-/// the objects this run uploaded, and deletes the tag only when this run
-/// minted it — see the design's "A withdrawal deletes the keys it wrote,
-/// best-effort" and "A run deletes only a tag it minted" decisions.
+/// Cleans up a run that failed or fell short before reaching a store:
+/// discards the drafted record always, best-effort deletes the objects this
+/// run uploaded, and deletes the tag only when this run minted it — see the
+/// design's "Withdrawal reads the point of no return" decision.
 ///
 /// Gated on the negation of the completeness count, ORed with `failure()`:
 /// a skipped build already leaves its target unrecorded, which the negated
 /// count alone catches, but `failure()` is kept explicit so a failure
-/// earlier in the job's own dependency chain — `create-release`, say, which
-/// a shortfall in target recording would not by itself prove — still
-/// triggers cleanup. An explicit `if:` is required either way: the job's
-/// own `needs` may have failed, and GitHub's default implicit gate would
-/// skip this job exactly when it is needed.
+/// elsewhere in the job's dependency chain — `create-release`, or
+/// [`publish`] itself — still triggers cleanup. Never past the point of no
+/// return: once [`publish`] has marked `submitted`, a store already has the
+/// build. An explicit `if:` is required either way: the job's own `needs`
+/// may have failed, and GitHub's default implicit gate would skip this job
+/// exactly when it is needed.
 pub fn withdraw_release(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
     let tag = prepare.map(|prepare| &prepare.tag);
     let completeness = completeness_expr(channel);
     let expr = format!(
-        "({tag}) && (failure() || !({completeness}))",
+        "({tag}) && (failure() || !({completeness})) && \
+         needs.{PUBLISH_JOB}.outputs.submitted != 'true'",
         tag = Channel::tag_condition(tag).0,
     );
 
@@ -338,6 +392,9 @@ pub fn withdraw_release(channel: Channel, prepare: Option<&PrepareJob>) -> Named
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(runners::LINUX)
         .cond(Expression::new(expr))
+        // `release-withdraw` is a `cargo xtask`, so it needs the tree.
+        .add_step(steps::checkout());
+    let job = with_devenv(job)
         .add_step(steps::discard_release(tag))
         .add_step(steps::withdraw_from_store(tag))
         .when_some(prepare, |job, prepare| {
@@ -380,7 +437,14 @@ pub fn build(
     // Absent off nightly, where the tag's own semver suffices.
     let build_code = prepare.and_then(|prepare| build_code(prepare, platform));
     let version = prepare.and_then(|prepare| app_version(prepare, platform));
-    let tag = prepare.map(|prepare| &prepare.tag);
+    // What the staged files are named for. A nightly's tag is `v` and the
+    // planner's version, which a build-only run carries too; elsewhere the
+    // tag, or on a build-only run nothing, and `release-stage` takes the
+    // app's own version.
+    let stage_tag = match prepare {
+        Some(prepare) => format!("v{}", prepare.version),
+        None => Channel::tag(None),
+    };
 
     // The mobile lanes need `fastlane`, `xcodegen` and the nushell the `_build`
     // recipes are written in; the desktop ones do not.
@@ -475,11 +539,11 @@ pub fn build(
             job.add_step(steps::cache_save(cache("gradle"), Tools::Mise))
                 .add_step(steps::cache_save(cache("android-ndk"), Tools::Mise))
         })
-        .add_step(steps::upload_artifact(channel, platform))
-        .add_step(steps::upload_to_store(platform, tag))
-        .when(platform.is_mobile(), |job| {
-            job.add_step(steps::fastlane(platform, channel, tag))
-        })
+        // Staged, not published: renamed flat and handed on, so the
+        // publishing job uploads and submits once every build has recorded
+        // in. Every run stages, so a build-only run exercises the rename too.
+        .add_step(steps::stage_release(platform, stage_tag))
+        .add_step(steps::upload_staged(channel, platform))
         .add_step(record_target)
         .outputs([target.clone().as_output()])
         // Reads the planner's outputs, so it waits on the planner.
@@ -494,6 +558,7 @@ pub fn build(
 mod tests {
     use super::*;
     use std::{fs, path::Path};
+    use strum::IntoEnumIterator as _;
 
     /// Swapping these would hand Play a value it cannot parse.
     #[test]
@@ -578,8 +643,8 @@ mod tests {
     /// never falls back to inferring it from `failure()`/`cancelled()` — see
     /// the design's "Completeness is counted, not inferred" decision.
     #[test]
-    fn publish_release_counts_every_required_target() {
-        let named = publish_release(Channel::Stable, None);
+    fn publish_counts_every_required_target() {
+        let named = publish(Channel::Stable, None);
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let cond = value["if"].as_str().expect("if");
 
@@ -596,87 +661,224 @@ mod tests {
         assert!(!cond.contains("cancelled()"), "{cond}");
     }
 
-    /// The manifest write sits in the same job as the record publish, after
-    /// it — the run's true last write — and resolves its own store
-    /// credential, so the job declares the release environment the same
-    /// way every other store-touching job does.
-    #[test]
-    fn the_manifest_write_follows_the_record_publish_in_the_same_job() {
-        let named = publish_release(Channel::Stable, None);
+    fn publish_steps() -> Vec<serde_json::Value> {
+        let named = publish(Channel::Stable, None);
         let value = serde_json::to_value(&named.job).expect("job serializes");
-
         assert_eq!(value["environment"]["name"], "App Release");
-
-        let steps = value["steps"].as_array().expect("steps");
-        let publish_index = steps
-            .iter()
-            .position(|step| step["id"] == "publish-release")
-            .expect("publish-release step");
-        let manifest_index = steps
-            .iter()
-            .position(|step| step["id"] == "write-manifest")
-            .expect("write-manifest step");
-        assert!(
-            manifest_index > publish_index,
-            "the manifest write must follow the record publish"
-        );
-
-        let manifest = &steps[manifest_index];
-        assert_eq!(
-            manifest["run"].as_str().unwrap(),
-            r#"cargo xtask release-manifest --tag "${TAG}""#
-        );
-        assert!(manifest["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
+        value["steps"].as_array().expect("steps").clone()
     }
 
-    /// The upload step is a single one-line `xtask` dispatch: it resolves
-    /// the store credential itself, through secretspec's Rust API, so no
-    /// separate minting step exists for it to read a derived credential
-    /// back from, and no step in the job exports anything to `$GITHUB_ENV`.
-    /// See the design's "The store is reached through opendal in-process,
-    /// from one client constructor" decision.
+    fn step<'a>(steps: &'a [serde_json::Value], id: &str) -> &'a serde_json::Value {
+        steps
+            .iter()
+            .find(|step| step["id"] == id)
+            .unwrap_or_else(|| panic!("no {id} step"))
+    }
+
+    /// Ordered by retractability: everything that only touches the runner,
+    /// then the store, the record, the mark, the submissions, and the
+    /// manifest last — nothing between them.
     #[test]
-    fn the_upload_step_is_a_one_line_dispatch_resolving_its_own_credential() {
-        let named = build(
+    fn the_publish_steps_run_in_order_of_retractability() {
+        let order = [
+            "download-staged",
+            "prepare-listing",
+            "upload-to-store",
+            "publish-release",
+            "mark-submitted",
+            "submit-android",
+            "submit-ios",
+            "write-manifest",
+        ];
+        let steps = publish_steps();
+        let ids = steps
+            .iter()
+            .filter_map(|step| step["id"].as_str())
+            .skip_while(|id| *id != order[0])
+            .collect::<Vec<_>>();
+        assert_eq!(ids, order);
+    }
+
+    /// The upload reads the merged staged directory, and the submissions
+    /// take their packages from it.
+    #[test]
+    fn the_publish_job_works_from_the_staged_tree() {
+        let steps = publish_steps();
+        assert!(
+            step(&steps, "upload-to-store")["run"]
+                .as_str()
+                .unwrap()
+                .contains("cargo xtask release-upload --from release --tag")
+        );
+        assert_eq!(step(&steps, "download-staged")["with"]["path"], "release");
+        assert_eq!(
+            step(&steps, "download-staged")["with"]["merge-multiple"],
+            "true"
+        );
+        // The plist is staged beside the ipa, where fastlane looks for it.
+        let ios = step(&steps, "submit-ios")["run"].as_str().unwrap();
+        assert!(
+            ios.contains("xfastlane publish ios stable --from release"),
+            "{ios}"
+        );
+        let android = step(&steps, "submit-android")["run"].as_str().unwrap();
+        assert!(
+            android.contains("xfastlane publish android stable --from release"),
+            "{android}"
+        );
+    }
+
+    /// Each step resolves only its own credential: the store on the upload
+    /// and the manifest (derived in-process), each platform's release scope
+    /// on its own submission, `GITHUB_TOKEN` on the record, and nothing on
+    /// the preparation or the mark.
+    #[test]
+    fn every_publish_step_resolves_only_its_own_scope() {
+        let steps = publish_steps();
+        let vault = |id: &str| {
+            step(&steps, id)["env"]
+                .get("OP_SERVICE_ACCOUNT_TOKEN")
+                .is_some()
+        };
+        let github = |id: &str| step(&steps, id)["env"].get("GH_TOKEN").is_some();
+        let run = |id: &str| step(&steps, id)["run"].as_str().unwrap().to_owned();
+
+        for id in ["prepare-listing", "mark-submitted"] {
+            assert!(!vault(id) && !github(id), "{id} resolves nothing");
+        }
+        for id in ["upload-to-store", "write-manifest"] {
+            assert!(vault(id) && !github(id), "{id}");
+            assert!(
+                !run(id).contains("--scope"),
+                "{id}: the store scope is in-process"
+            );
+        }
+        assert!(github("publish-release") && !vault("publish-release"));
+        for (id, scope, other) in [
+            ("submit-android", "android", "ios"),
+            ("submit-ios", "ios", "android"),
+        ] {
+            assert!(vault(id) && !github(id), "{id}");
+            assert!(run(id).contains("--profile release"), "{id}");
+            assert!(run(id).contains(&format!("--scope {scope} ")), "{id}");
+            assert!(!run(id).contains(&format!("--scope {other}")), "{id}");
+        }
+    }
+
+    /// fastlane's own variables — Transporter's and the staged package's —
+    /// are set inside `xfastlane`, never by the workflow.
+    #[test]
+    fn no_publish_step_names_a_fastlane_variable() {
+        let rendered = serde_json::to_string(&publish_steps()).unwrap();
+        for name in ["FASTLANE_", "WAYPOINTS_STORE_PACKAGE"] {
+            assert!(!rendered.contains(name), "{name}");
+        }
+    }
+
+    /// `prepare` reads the release notes from git-cliff, which needs the
+    /// history back to the previous tag.
+    #[test]
+    fn the_publish_job_checks_out_full_history_and_tags() {
+        let steps = publish_steps();
+        let checkout = step(&steps, "checkout");
+        assert_eq!(checkout["with"]["fetch-depth"], "0");
+        assert_eq!(checkout["with"]["fetch-tags"], "true");
+    }
+
+    /// The point of no return is a job output, which the withdraw gate can
+    /// read across jobs.
+    #[test]
+    fn the_publish_job_exposes_its_point_of_no_return() {
+        let named = publish(Channel::Stable, None);
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        assert_eq!(
+            value["outputs"]["submitted"],
+            "${{ steps.mark-submitted.outputs.submitted }}"
+        );
+    }
+
+    /// Builds stage and hand off; they never reach the store or a store's
+    /// submission themselves.
+    #[test]
+    fn no_build_job_publishes() {
+        for platform in Platform::iter() {
+            let named = build(Channel::Stable, &WorkflowContext::fixture(), platform, None);
+            let value = serde_json::to_value(&named.job).expect("job serializes");
+            let steps = value["steps"].as_array().expect("steps");
+            for step in steps {
+                let run = step["run"].as_str().unwrap_or("");
+                for publishing in ["release-upload", "release-manifest", "xfastlane"] {
+                    assert!(!run.contains(publishing), "{platform}: {run}");
+                }
+            }
+
+            // Every run stages, build-only included, so a changed export
+            // fails the build that produced it.
+            let stage = step(steps, "stage-release");
+            assert!(stage["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_none());
+            assert!(stage.get("if").is_none(), "{platform}: {stage}");
+
+            // One artifact per build, and it is the flat staged directory.
+            let uploads = steps
+                .iter()
+                .filter(|step| {
+                    step["uses"]
+                        .as_str()
+                        .is_some_and(|uses| uses.starts_with("actions/upload-artifact@"))
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(uploads.len(), 1, "{platform}");
+            assert_eq!(uploads[0]["with"]["path"], "release", "{platform}");
+            assert_eq!(
+                uploads[0]["with"]["name"],
+                format!("waypoints-{}-stable", platform.slug())
+            );
+        }
+    }
+
+    /// A nightly names its staged files for the tag the planner would mint,
+    /// which a build-only run carries as its version; the other channels
+    /// pass the tag, and on a build-only run fall back to the app's version.
+    #[test]
+    fn the_staged_files_are_named_for_the_run_s_tag() {
+        let prepare = prepare(&WorkflowContext::fixture());
+        let nightly = build(
+            Channel::Nightly,
+            &WorkflowContext::fixture(),
+            Platform::Linux,
+            Some(&prepare),
+        );
+        let value = serde_json::to_value(&nightly.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        assert_eq!(
+            step(steps, "stage-release")["env"]["TAG"],
+            format!("v{}", prepare.version)
+        );
+
+        let stable = build(
             Channel::Stable,
             &WorkflowContext::fixture(),
-            Platform::macOS,
+            Platform::Linux,
             None,
         );
-        let value = serde_json::to_value(&named.job).expect("job serializes");
-
-        assert_eq!(value["environment"]["name"], "App Release");
-        assert!(
-            !serde_json::to_string(&value)
-                .unwrap()
-                .contains("GITHUB_ENV")
-        );
-
+        let value = serde_json::to_value(&stable.job).expect("job serializes");
         let steps = value["steps"].as_array().expect("steps");
+        let stage = step(steps, "stage-release");
+        assert_eq!(stage["env"]["TAG"], Channel::tag(None));
         assert!(
-            steps
-                .iter()
-                .all(|step| step["id"] != "mint-release-credential"),
-            "no separate minting step should exist"
+            stage["run"]
+                .as_str()
+                .unwrap()
+                .ends_with(r#"${TAG:+--tag "${TAG}"}"#)
         );
+    }
 
-        let upload = steps
-            .iter()
-            .find(|step| step["id"] == "upload-to-store")
-            .expect("upload-to-store step");
-        assert_eq!(
-            upload["run"].as_str().unwrap(),
-            r#"cargo xtask release-upload --platform macos --tag "${TAG}""#
-        );
-        assert!(upload["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some());
-        for leftover in [
-            "R2_SESSION_ACCESS_KEY_ID",
-            "R2_SESSION_SECRET_ACCESS_KEY",
-            "R2_SESSION_TOKEN",
-            "R2_SESSION_ENDPOINT",
-        ] {
-            assert!(upload["env"].get(leftover).is_none(), "{leftover}");
-        }
+    /// The publishing job merges exactly this channel's builds.
+    #[test]
+    fn the_publish_job_merges_its_own_channel_s_artifacts() {
+        let steps = publish_steps();
+        let download = step(&steps, "download-staged");
+        assert_eq!(download["with"]["pattern"], "waypoints-*-stable");
     }
 
     /// The record carries no bytes: a release build's artifacts reach only
@@ -741,6 +943,12 @@ mod tests {
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let cond = value["if"].as_str().expect("if");
         assert!(cond.contains("failure()"), "{cond}");
+        // A top-level conjunct, so neither a failure nor a shortfall can
+        // override it: past the mark, a store already has the build.
+        assert!(
+            cond.ends_with(") && needs.publish.outputs.submitted != 'true'"),
+            "{cond}"
+        );
         for platform in Channel::Stable.required_targets() {
             assert!(
                 cond.contains(&format!(

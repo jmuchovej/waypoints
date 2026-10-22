@@ -13,7 +13,7 @@ identifier  = "so.waypoints"
 [bundle]
   homepage               = "https://waypoints.so"
   active                 = true
-  targets                = [ "app", "dmg", "nsis", "appimage", "deb" ]
+  targets                = [ "app", "dmg", "nsis", "appimage", "deb", "rpm" ]
   createUpdaterArtifacts = true
   icon                   = [
     "icons/stable/32x32.png",
