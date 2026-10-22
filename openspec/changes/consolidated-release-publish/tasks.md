@@ -6,7 +6,7 @@
 
 ## 2. The iOS export writes its App Store description
 
-- [ ] 2.1 Add `generateAppStoreInformation = true` to `src-tauri/gen/apple/ExportOptions.plist`; verify a local `cargo tauri ios build` (or the next iOS build job) writes `AppStoreInfo.plist` beside the ipa
+- [x] 2.1 Add `generateAppStoreInformation = true` to `src-tauri/gen/apple/ExportOptions.plist`; verify a local `cargo tauri ios build` (or the next iOS build job) writes `AppStoreInfo.plist` beside the ipa (key added; a local build was not run, since it needs the distribution signing identity — the check is the iOS artifact in 7.2)
 
 ## 3. Staging and upload from a directory
 
