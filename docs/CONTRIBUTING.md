@@ -67,6 +67,7 @@ Do not invent regions (the one-offs `flux`, `vox`, `obx`, `things` are retired).
 | `outpost`    | the `outpost*` crates **only** (sync/networking)                                                             |
 | `store`      | the `store` data layer _(transitional — expected to fold into `cartograph`)_                                 |
 | `importer`   | the `importer` crate _(kept out of `cartograph` on purpose, to limit its sprawl)_                            |
+| `transload`  | the `transload` crate — the Bundle format's export and ingest                                                |
 | `app`        | the Tauri app + frontend                                                                                     |
 | `website`    | the marketing/docs site                                                                                      |
 | `dev`        | developer tooling — `tooling/xtask` (the Rust dev-toolchain: codegen, CI planning, the dev server), `devenv` |
