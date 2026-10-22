@@ -16,6 +16,7 @@ pub(crate) mod bundle;
 pub(crate) mod export;
 pub(crate) mod frontmatter;
 pub(crate) mod identity;
+pub(crate) mod ingest;
 pub(crate) mod refusal;
 pub(crate) mod schema;
 
@@ -24,6 +25,7 @@ pub use bundle::{
 };
 pub use export::{ExportError, Exported, Tier, export, tier};
 pub use frontmatter::{Advisory, Frontmatter};
+pub use ingest::{Ingested, ingest};
 pub use identity::{Identity, Marker};
 pub use refusal::{
     ChartConflict, DuplicateConflict, IngestError, Location, Malformed, MalformedKind, Refusal,
