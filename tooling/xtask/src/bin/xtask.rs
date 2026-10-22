@@ -32,6 +32,8 @@ enum Command {
     Workflows(tasks::WorkflowArgs),
     /// Regenerates the TypeScript bindings from the Rust data model.
     Typegen(tasks::TypegenArgs),
+    /// Regenerates every app icon from the authored artwork in `src-tauri/res/`.
+    Icongen(tasks::IcongenArgs),
     /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
     DevServer(tasks::DevServerArgs),
 }
@@ -50,6 +52,7 @@ fn main() -> Result<()> {
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
         Command::Typegen(args) => tasks::typegen::run(args),
+        Command::Icongen(args) => tasks::icongen::run(args),
         Command::DevServer(args) => tasks::dev_server::run(args),
     }
 }
