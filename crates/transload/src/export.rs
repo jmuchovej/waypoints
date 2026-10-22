@@ -94,7 +94,10 @@ pub async fn export(db: &Database, meta: &ExportMeta) -> Result<Exported, Export
     }
 
     for root in live.landmarks() {
-        out.landmark(root, charts.get(layout::chart_id(&landmark_chart(root))).copied());
+        out.landmark(
+            root,
+            charts.get(layout::chart_id(&landmark_chart(root))).copied(),
+        );
     }
 
     for id in &live.content {
@@ -279,7 +282,9 @@ impl Renderer<'_> {
         let mut advisory = Advisory::default();
         if let Some(chart) = chart {
             for (id, feature) in &chart.features {
-                advisory.feature_names.insert(id.clone(), feature.name.clone());
+                advisory
+                    .feature_names
+                    .insert(id.clone(), feature.name.clone());
             }
         }
         for target in self.live.roots.iter() {
@@ -307,7 +312,8 @@ impl Renderer<'_> {
             file.push('\n');
             file.push_str(&body);
         }
-        self.bundle.insert(layout::landmark(&data.chart, &root.id), file);
+        self.bundle
+            .insert(layout::landmark(&data.chart, &root.id), file);
 
         if let Some(chart) = chart
             && let Err(problems) =
@@ -373,6 +379,12 @@ impl Renderer<'_> {
         let mut inner = String::new();
         self.children(mark.id, path, &mut inner);
         if inner.is_empty() {
+            // A block with no line of its own and nothing beneath it still
+            // needs one line, or its comment would stand over nothing.
+            if rendered.lines.is_empty() {
+                out.push_str(&rendered.opener());
+                out.push('\n');
+            }
             if let Children::Closed(closer) = rendered.children {
                 out.push_str(closer);
                 out.push('\n');
@@ -380,7 +392,6 @@ impl Renderer<'_> {
             return;
         }
         match rendered.children {
-            Children::None => out.push_str(&inner),
             Children::Prefixed(prefix) => {
                 for line in inner.lines() {
                     out.push_str(prefix.trim_end());

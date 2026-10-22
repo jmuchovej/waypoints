@@ -99,8 +99,12 @@ pub fn parse(raw: &str) -> Result<Option<Marker>, MalformedKind> {
         return Ok(None);
     };
 
-    let mut fields: serde_json::Map<String, Json> = serde_json::from_str(payload.trim())
-        .map_err(|error| grammar(format!("a `{MARKER}` comment whose fields are not JSON: {error}")))?;
+    let mut fields: serde_json::Map<String, Json> =
+        serde_json::from_str(payload.trim()).map_err(|error| {
+            grammar(format!(
+                "a `{MARKER}` comment whose fields are not JSON: {error}"
+            ))
+        })?;
 
     // `src` is Fragment grammar: refused, never resolved.
     if fields.contains_key("src") {
@@ -109,7 +113,11 @@ pub fn parse(raw: &str) -> Result<Option<Marker>, MalformedKind> {
 
     let id = match fields.remove("id") {
         Some(Json::String(id)) => id,
-        Some(_) => return Err(grammar(format!("a `{MARKER}` comment whose `id` is not a string"))),
+        Some(_) => {
+            return Err(grammar(format!(
+                "a `{MARKER}` comment whose `id` is not a string"
+            )));
+        }
         None => return Err(grammar(format!("a `{MARKER}` comment with no `id`"))),
     };
     let id: uuid::Uuid = id
@@ -165,7 +173,10 @@ mod tests {
     fn timestamps_round_trip() {
         let identity = Identity::stamped(id(1), at(0), at(250));
         let open = emit_open(&identity);
-        assert!(open.contains("\"updated\":\"2026-08-02T09:41:00.250Z\""), "{open}");
+        assert!(
+            open.contains("\"updated\":\"2026-08-02T09:41:00.250Z\""),
+            "{open}"
+        );
         assert_eq!(parse(&open).expect("parse"), Some(Marker::Open(identity)));
     }
 

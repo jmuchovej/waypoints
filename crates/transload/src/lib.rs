@@ -25,8 +25,8 @@ pub use bundle::{
 };
 pub use export::{ExportError, Exported, Tier, export, tier};
 pub use frontmatter::{Advisory, Frontmatter};
-pub use ingest::{Ingested, ingest};
 pub use identity::{Identity, Marker};
+pub use ingest::{Ingested, ingest};
 pub use refusal::{
     ChartConflict, DuplicateConflict, IngestError, Location, Malformed, MalformedKind, Refusal,
 };

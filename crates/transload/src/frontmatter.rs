@@ -63,7 +63,7 @@ pub fn emit(front: &Frontmatter, advisory: &Advisory) -> String {
     push_line(
         &mut out,
         0,
-        &format!("chart: {}", crate::layout::chart_id(&front.chart)),
+        &format!("chart: {}", plain(crate::layout::chart_id(&front.chart))),
     );
     if let Some(icon) = &front.icon {
         // JSON is a subset of YAML, so a compact flow mapping is valid and
@@ -104,23 +104,40 @@ fn push_line(out: &mut String, depth: usize, line: &str) {
     out.push('\n');
 }
 
-/// `key: |-` plus the indented body — the one spelling rich text ever takes.
+/// `key: |-` plus the indented body — the one spelling rich text takes.
 ///
-/// `|-` strips the trailing newline, so chomping is normalized by construction
-/// rather than by hoping a library agrees.
+/// A value opening with a space gets an explicit indentation indicator, or
+/// YAML would read the space as indentation and drop it.
 fn push_block_scalar(out: &mut String, key: &str, value: &str, depth: usize) {
     if value.is_empty() {
         push_line(out, depth, &format!("{key}: \"\""));
         return;
     }
-    push_line(out, depth, &format!("{key}: |-"));
+    let indicator = if value.starts_with(' ') {
+        STEP.len().to_string()
+    } else {
+        String::new()
+    };
+    push_line(out, depth, &format!("{key}: |{indicator}-"));
     for line in value.split('\n') {
         push_line(out, depth + 1, line);
     }
 }
 
+/// A base-36 id as a YAML scalar, quoted where YAML would re-type it:
+/// `0001` reads as an integer, `12e3` as a float, `null` and `true` as such.
+fn plain(id: &str) -> String {
+    let retyped = id.starts_with(|c: char| c.is_ascii_digit())
+        || matches!(id, "null" | "true" | "false" | "~");
+    if retyped {
+        format!("\"{id}\"")
+    } else {
+        id.to_string()
+    }
+}
+
 fn push_reading(out: &mut String, feature: &FeatureID, reading: &Reading, advisory: &Advisory) {
-    let key = feature.to_string();
+    let key = plain(&feature.to_string());
     match reading {
         Reading::Null => push_line(out, 1, &format!("{key}: null")),
         Reading::Text(rich) => push_block_scalar(out, &key, &inline::emit(rich), 1),
@@ -132,23 +149,38 @@ fn push_reading(out: &mut String, feature: &FeatureID, reading: &Reading, adviso
             push_line(out, 2, &format!("from: {}", render_timestamp(*from)));
             push_line(out, 2, &format!("to: {}", render_timestamp(*to)));
         }
-        Reading::Select(glyph) => push_line(out, 1, &format!("{key}: {glyph}")),
+        Reading::Select(glyph) => {
+            push_line(out, 1, &format!("{key}: {}", plain(&glyph.to_string())))
+        }
+        // An empty collection is written in flow form: `key:` alone reads as null.
+        Reading::MultiSelect(glyphs) if glyphs.is_empty() => {
+            push_line(out, 1, &format!("{key}: []"))
+        }
+        Reading::GroupedSelect(groups) if groups.is_empty() => {
+            push_line(out, 1, &format!("{key}: {{}}"))
+        }
+        Reading::References(targets) if targets.is_empty() => {
+            push_line(out, 1, &format!("{key}: []"))
+        }
         Reading::MultiSelect(glyphs) => {
             push_line(out, 1, &format!("{key}:"));
             for glyph in glyphs {
-                push_line(out, 2, &format!("- {glyph}"));
+                push_line(out, 2, &format!("- {}", plain(&glyph.to_string())));
             }
         }
         Reading::GroupedSelect(groups) => {
             push_line(out, 1, &format!("{key}:"));
-            // A `HashMap`, so sorted at the serialization boundary — byte
-            // stability is a property of the writer, not of the hash seed.
+            // A `HashMap`: sorted here, so bytes do not depend on the hash seed.
             let mut sorted: Vec<_> = groups.iter().collect();
             sorted.sort_by_key(|(group, _)| group.to_string());
             for (group, members) in sorted {
-                push_line(out, 2, &format!("{group}:"));
+                if members.is_empty() {
+                    push_line(out, 2, &format!("{}: []", plain(&group.to_string())));
+                    continue;
+                }
+                push_line(out, 2, &format!("{}:", plain(&group.to_string())));
                 for member in members {
-                    push_line(out, 3, &format!("- {member}"));
+                    push_line(out, 3, &format!("- {}", plain(&member.to_string())));
                 }
             }
         }

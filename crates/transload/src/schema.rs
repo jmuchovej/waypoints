@@ -68,6 +68,9 @@ fn property(feature: &Feature) -> Json {
             Some(Json::String(kind)) => {
                 let kind = kind.clone();
                 object.insert("type".into(), json!([kind, "null"]));
+                if let Some(Json::Array(allowed)) = object.get_mut("enum") {
+                    allowed.push(Json::Null);
+                }
                 Json::Object(object)
             }
             _ => json!({ "anyOf": [Json::Object(object), { "type": "null" }] }),
@@ -305,7 +308,10 @@ fn reading_instance(reading: &Reading) -> Json {
                 .map(|target| json!({ "ref": target.to_string() }))
                 .collect::<Vec<_>>()
         ),
-        Reading::URL(value) | Reading::Email(value) | Reading::File(value) | Reading::Formula(value) => {
+        Reading::URL(value)
+        | Reading::Email(value)
+        | Reading::File(value)
+        | Reading::Formula(value) => {
             json!(value)
         }
         Reading::Phone(first, second) => json!([first, second]),
@@ -476,7 +482,7 @@ mod tests {
         let chart = chart_with(vec![feature("a1b2", "Status", select_kind())]);
         let document = emit(&chart);
         let enumerated = &document["properties"]["a1b2"]["enum"];
-        assert_eq!(enumerated, &serde_json::json!(["0001", "0002"]));
+        assert_eq!(enumerated, &serde_json::json!(["0001", "0002", null]));
     }
 
     #[test]

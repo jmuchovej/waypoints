@@ -22,8 +22,19 @@ struct Ids {
 /// Landmark, a reading, Mark extra, edge extra on a child, and a custom edge.
 async fn rich_store(db: &Database) -> Ids {
     let (root, nested) = (MarkID::new(), MarkID::new());
-    let [intro, quote, quoted, item, sub, callout, inside, code, table, rule, page] =
-        std::array::from_fn(|_| MarkID::new());
+    let [
+        intro,
+        quote,
+        quoted,
+        item,
+        sub,
+        callout,
+        inside,
+        code,
+        table,
+        rule,
+        page,
+    ] = std::array::from_fn(|_| MarkID::new());
 
     db.insert(chart()).await.expect("chart");
     let mut root_mark = landmark(root, "Weekly sync");
@@ -33,20 +44,29 @@ async fn rich_store(db: &Database) -> Ids {
     }
     root_mark.extra = Some(serde_json::json!({ "so.waypoints.test": { "pinned": true } }));
     db.insert(root_mark).await.expect("root");
-    db.insert(landmark(nested, "Child page")).await.expect("nested");
+    db.insert(landmark(nested, "Child page"))
+        .await
+        .expect("nested");
 
-    let mut intro_mark = paragraph(intro, "intro with *bold* and a [link](https://waypoints.so)");
+    let mut intro_mark = paragraph(
+        intro,
+        "intro with *bold* and a [link](https://waypoints.so)",
+    );
     intro_mark.extra = Some(serde_json::json!({ "so.waypoints.test": 7 }));
     db.insert(intro_mark).await.expect("intro");
     db.insert(content(
         quote,
         Content::Blockquote {
-            theme: Some(BlockTheme { color: Color::Green }),
+            theme: Some(BlockTheme {
+                color: Color::Green,
+            }),
         },
     ))
     .await
     .expect("quote");
-    db.insert(paragraph(quoted, "quoted")).await.expect("quoted");
+    db.insert(paragraph(quoted, "quoted"))
+        .await
+        .expect("quoted");
     db.insert(content(
         item,
         Content::ListItem {
@@ -66,7 +86,9 @@ async fn rich_store(db: &Database) -> Ids {
     ))
     .await
     .expect("callout");
-    db.insert(paragraph(inside, "mind the gap")).await.expect("inside");
+    db.insert(paragraph(inside, "mind the gap"))
+        .await
+        .expect("inside");
     db.insert(content(
         code,
         Content::Code {
@@ -83,8 +105,14 @@ async fn rich_store(db: &Database) -> Ids {
         table,
         Content::Table {
             cells: vec![
-                vec![RichText::from("a".to_string()), RichText::from("b".to_string())],
-                vec![RichText::from("1".to_string()), RichText::from("2".to_string())],
+                vec![
+                    RichText::from("a".to_string()),
+                    RichText::from("b".to_string()),
+                ],
+                vec![
+                    RichText::from("1".to_string()),
+                    RichText::from("2".to_string()),
+                ],
             ],
             col_size: None,
             row_size: None,
@@ -98,8 +126,12 @@ async fn rich_store(db: &Database) -> Ids {
     ))
     .await
     .expect("table");
-    db.insert(content(rule, Content::Divider { theme: None })).await.expect("rule");
-    db.insert(paragraph(page, "on the child page")).await.expect("page");
+    db.insert(content(rule, Content::Divider { theme: None }))
+        .await
+        .expect("rule");
+    db.insert(paragraph(page, "on the child page"))
+        .await
+        .expect("page");
 
     let mut annotated = child(root, intro, "a");
     annotated.extra = Some(serde_json::json!({ "collapsed": false }));
@@ -124,7 +156,11 @@ async fn rich_store(db: &Database) -> Ids {
     ] {
         db.insert(edge).await.expect("edge");
     }
-    Ids { root, nested, intro }
+    Ids {
+        root,
+        nested,
+        intro,
+    }
 }
 
 async fn exported(db: &Database) -> Bundle {
@@ -148,7 +184,11 @@ fn edit(bundle: &mut Bundle, path: &str, edit: impl FnOnce(&str) -> String) {
 async fn refused(target: &Database, bundle: &Bundle) -> transload::Refusal {
     let before = census(target).await;
     let error = ingest(target, bundle).await.expect_err("must refuse");
-    assert_eq!(census(target).await, before, "a refusal leaves the store untouched");
+    assert_eq!(
+        census(target).await,
+        before,
+        "a refusal leaves the store untouched"
+    );
     match error {
         IngestError::Refused(refusal) => *refusal,
         other => panic!("expected a refusal, got {other}"),
@@ -163,9 +203,17 @@ async fn an_export_ingests_into_an_empty_store_and_re_exports_identically() {
 
     let ingested = ingest(&target, &bundle).await.expect("ingest");
     assert!(ingested.advisories.is_empty(), "{:?}", ingested.advisories);
-    assert_eq!(exported(&target).await, bundle, "re-export is byte-identical");
+    assert_eq!(
+        exported(&target).await,
+        bundle,
+        "re-export is byte-identical"
+    );
 
-    assert_eq!(marks(&source).await, marks(&target).await, "every Mark, exactly");
+    assert_eq!(
+        marks(&source).await,
+        marks(&target).await,
+        "every Mark, exactly"
+    );
     assert_eq!(
         target.get::<Chart>(&chart_id()).await.expect("get"),
         Some(chart()),
@@ -190,7 +238,15 @@ async fn edges(db: &Database) -> Vec<String> {
         .await
         .expect("edges")
         .into_iter()
-        .map(|edge| format!("{} {} {} {:?}", edge.src_id, edge.dst_id, edge.kind.to_storage(), edge.extra))
+        .map(|edge| {
+            format!(
+                "{} {} {} {:?}",
+                edge.src_id,
+                edge.dst_id,
+                edge.kind.to_storage(),
+                edge.extra
+            )
+        })
         .collect();
     edges.sort();
     edges
@@ -215,18 +271,30 @@ async fn a_bare_mention_gains_its_target_title() {
     let ids = rich_store(&source).await;
     let mut bundle = exported(&source).await;
     edit(&mut bundle, &landmark_path(ids.root), |file| {
-        file.replace("\nintro with ", &format!("\nintro with [[{}]] ", ids.nested))
+        file.replace(
+            "\nintro with ",
+            &format!("\nintro with [[{}]] ", ids.nested),
+        )
     });
 
     ingest(&target, &bundle).await.expect("ingest");
-    let intro = target.get::<Mark>(&ids.intro).await.expect("get").expect("intro");
+    let intro = target
+        .get::<Mark>(&ids.intro)
+        .await
+        .expect("get")
+        .expect("intro");
     let MarkData::Content(Content::Paragraph { rich_text, .. }) = intro.data else {
         panic!("intro is a paragraph");
     };
     let mention = rich_text
         .segments()
         .iter()
-        .find(|segment| segment.marks.iter().any(|m| m.kind == TextMarkKind::Mention))
+        .find(|segment| {
+            segment
+                .marks
+                .iter()
+                .any(|m| m.kind == TextMarkKind::Mention)
+        })
         .expect("a mention");
     assert_eq!(mention.text, "Child page");
 }
@@ -256,7 +324,9 @@ async fn an_unsupported_format_is_refused_before_anything_else_is_read() {
     let (source, target) = (open().await, open().await);
     rich_store(&source).await;
     let mut bundle = exported(&source).await;
-    edit(&mut bundle, layout::MANIFEST, |m| m.replace("\"0.1.0\"", "\"9.9.9\""));
+    edit(&mut bundle, layout::MANIFEST, |m| {
+        m.replace("\"0.1.0\"", "\"9.9.9\"")
+    });
     // Garbage everywhere else: if any of it were read, the error would differ.
     bundle.insert("assets/junk.bin", "not a bundle file");
     bundle.insert(landmark_path(MarkID::new()), "not even frontmatter");
@@ -300,15 +370,22 @@ async fn divergent_duplicates_name_every_file() {
     let (one, two, shared) = (MarkID::new(), MarkID::new(), MarkID::new());
     source.insert(landmark(one, "One")).await.expect("one");
     source.insert(landmark(two, "Two")).await.expect("two");
-    source.insert(paragraph(shared, "shared text")).await.expect("shared");
+    source
+        .insert(paragraph(shared, "shared text"))
+        .await
+        .expect("shared");
     source.insert(child(one, shared, "a")).await.expect("edge");
     source.insert(child(two, shared, "a")).await.expect("edge");
 
     let clean = exported(&source).await;
-    ingest(&open().await, &clean).await.expect("identical copies unify");
+    ingest(&open().await, &clean)
+        .await
+        .expect("identical copies unify");
 
     let mut bundle = clean;
-    edit(&mut bundle, &landmark_path(two), |f| f.replace("shared text", "tampered"));
+    edit(&mut bundle, &landmark_path(two), |f| {
+        f.replace("shared text", "tampered")
+    });
     let refusal = refused(&target, &bundle).await;
     let conflict = refusal
         .duplicates
@@ -385,7 +462,10 @@ async fn a_schema_invalid_reading_is_refused_naming_file_and_feature() {
     let mut bundle = exported(&source).await;
     let open_glyph = domain::GlyphID::derived("open").to_string();
     edit(&mut bundle, &landmark_path(root), |f| {
-        f.replace(&format!("{status}: {open_glyph}"), &format!("{status}: zzzz"))
+        f.replace(
+            &format!("{status}: {open_glyph}"),
+            &format!("{status}: zzzz"),
+        )
     });
 
     let refusal = refused(&target, &bundle).await;
@@ -407,7 +487,10 @@ async fn unknown_content_is_refused() {
 
     let refusal = refused(&target, &bundle).await;
     assert!(
-        refusal.malformed.iter().any(|m| matches!(m.kind, MalformedKind::UnknownContent { .. })),
+        refusal
+            .malformed
+            .iter()
+            .any(|m| matches!(m.kind, MalformedKind::UnknownContent { .. })),
         "{refusal}"
     );
 }
@@ -424,20 +507,31 @@ async fn a_valid_prefix_with_an_invalid_tail_writes_nothing() {
             .await
             .expect("landmark");
         let block = MarkID::new();
-        source.insert(paragraph(block, "fine")).await.expect("block");
+        source
+            .insert(paragraph(block, "fine"))
+            .await
+            .expect("block");
         source.insert(child(*root, block, "a")).await.expect("edge");
     }
     let mut bundle = exported(&source).await;
     // The last file in path order is the one ingest reaches last.
     let last = landmark_path(*roots.last().expect("roots"));
-    edit(&mut bundle, &last, |f| format!("{f}<!-- wp:mark {{\"id\":\"broken\"}} -->\n"));
+    edit(&mut bundle, &last, |f| {
+        format!("{f}<!-- wp:mark {{\"id\":\"broken\"}} -->\n")
+    });
 
     // A target already holding unrelated data, which must survive as-is.
     target.insert(chart()).await.expect("chart");
-    target.insert(landmark(MarkID::new(), "Pre-existing")).await.expect("existing");
+    target
+        .insert(landmark(MarkID::new(), "Pre-existing"))
+        .await
+        .expect("existing");
 
     let refusal = refused(&target, &bundle).await;
-    assert!(refusal.malformed.iter().any(|m| m.at.file == last), "{refusal}");
+    assert!(
+        refusal.malformed.iter().any(|m| m.at.file == last),
+        "{refusal}"
+    );
 }
 
 #[tokio::test]
@@ -460,7 +554,9 @@ async fn a_builtin_requiring_what_this_build_lacks_is_a_chart_conflict() {
         extra: None,
     };
     let mut theirs = ours.clone();
-    theirs.features.insert(extra_feature.id.clone(), extra_feature.clone());
+    theirs
+        .features
+        .insert(extra_feature.id.clone(), extra_feature.clone());
     source.insert(theirs).await.expect("their builtin");
     target.insert(ours).await.expect("our builtin");
 
@@ -498,7 +594,13 @@ async fn a_builtin_is_resolved_never_overwritten() {
     }
     source.insert(mark).await.expect("landmark");
 
-    ingest(&target, &exported(&source).await).await.expect("ingest");
-    let stored = target.get::<Chart>(&builtin).await.expect("get").expect("page");
+    ingest(&target, &exported(&source).await)
+        .await
+        .expect("ingest");
+    let stored = target
+        .get::<Chart>(&builtin)
+        .await
+        .expect("get")
+        .expect("page");
     assert_eq!(stored.name, "Our page");
 }

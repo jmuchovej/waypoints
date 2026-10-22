@@ -165,7 +165,13 @@ impl<'a> Stager<'a> {
             }
         }
 
-        for dir in self.bundle.chart_dirs().into_iter().map(str::to_string).collect::<Vec<_>>() {
+        for dir in self
+            .bundle
+            .chart_dirs()
+            .into_iter()
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+        {
             self.chart(&dir).await?;
         }
         for (path, dir, id) in landmark_files {
@@ -200,7 +206,12 @@ impl<'a> Stager<'a> {
         let document = match serde_json::from_str(text) {
             Ok(document) => document,
             Err(error) => {
-                self.malformed(at, MalformedKind::Grammar { detail: format!("not JSON: {error}") });
+                self.malformed(
+                    at,
+                    MalformedKind::Grammar {
+                        detail: format!("not JSON: {error}"),
+                    },
+                );
                 return Ok(());
             }
         };
@@ -355,7 +366,10 @@ impl<'a> Stager<'a> {
             };
             let signature = (
                 content.clone(),
-                node.children.iter().map(|child| child.identity.id).collect(),
+                node.children
+                    .iter()
+                    .map(|child| child.identity.id)
+                    .collect(),
             );
             if let Some((first, earlier)) = self.seen.get(&id) {
                 // A shared Mark is byte-copied into every file; anything else is surgery.
@@ -363,7 +377,10 @@ impl<'a> Stager<'a> {
                     let files = vec![first.clone(), path.to_string()];
                     match self.refusal.duplicates.iter_mut().find(|dup| dup.id == id) {
                         Some(dup) => dup.files.push(path.to_string()),
-                        None => self.refusal.duplicates.push(DuplicateConflict { id, files }),
+                        None => self
+                            .refusal
+                            .duplicates
+                            .push(DuplicateConflict { id, files }),
                     }
                 }
                 continue;
@@ -414,16 +431,27 @@ impl<'a> Stager<'a> {
         let Some(text) = self.bundle.get(layout::MARKS) else {
             return;
         };
-        for (index, line) in text.lines().enumerate().filter(|(_, l)| !l.trim().is_empty()) {
+        for (index, line) in text
+            .lines()
+            .enumerate()
+            .filter(|(_, l)| !l.trim().is_empty())
+        {
             let at = Location::line(layout::MARKS, index + 1);
             let row: serde_json::Value = match serde_json::from_str(line) {
                 Ok(row) => row,
                 Err(error) => {
-                    self.malformed(at, MalformedKind::Grammar { detail: error.to_string() });
+                    self.malformed(
+                        at,
+                        MalformedKind::Grammar {
+                            detail: error.to_string(),
+                        },
+                    );
                     continue;
                 }
             };
-            let id = row["id"].as_str().and_then(|id| id.parse::<uuid::Uuid>().ok());
+            let id = row["id"]
+                .as_str()
+                .and_then(|id| id.parse::<uuid::Uuid>().ok());
             match id.map(MarkID).and_then(|id| self.marks.get_mut(&id)) {
                 Some(mark) => mark.extra = row.get("extra").cloned(),
                 None => self.malformed(
@@ -449,7 +477,11 @@ impl<'a> Stager<'a> {
             *count += 1;
         }
 
-        for (index, line) in text.lines().enumerate().filter(|(_, l)| !l.trim().is_empty()) {
+        for (index, line) in text
+            .lines()
+            .enumerate()
+            .filter(|(_, l)| !l.trim().is_empty())
+        {
             let at = Location::line(layout::TERRAIN, index + 1);
             let grammar = |detail: String| MalformedKind::Grammar { detail };
             let row: serde_json::Value = match serde_json::from_str(line) {
@@ -466,7 +498,10 @@ impl<'a> Stager<'a> {
                     .map(MarkID)
             };
             let (Some(src), Some(dst)) = (endpoint("src"), endpoint("dst")) else {
-                self.malformed(at, grammar("a terrain line needs `src` and `dst` Mark ids".into()));
+                self.malformed(
+                    at,
+                    grammar("a terrain line needs `src` and `dst` Mark ids".into()),
+                );
                 continue;
             };
             let raw_kind = row["kind"].as_str().unwrap_or_default().to_string();
@@ -475,10 +510,16 @@ impl<'a> Stager<'a> {
                 continue;
             };
             if !self.marks.contains_key(&src) || !self.marks.contains_key(&dst) {
-                self.malformed(at, grammar("a terrain line names a Mark the Bundle does not carry".into()));
+                self.malformed(
+                    at,
+                    grammar("a terrain line names a Mark the Bundle does not carry".into()),
+                );
                 continue;
             }
-            let order = row.get("order").and_then(|order| order.as_u64()).map(|o| o as u32);
+            let order = row
+                .get("order")
+                .and_then(|order| order.as_u64())
+                .map(|o| o as u32);
             let extra = row.get("extra").cloned();
 
             match tier(&kind) {
@@ -648,7 +689,10 @@ fn parse_node(lines: &Region, start: usize) -> Parsed<(Node, usize)> {
     };
     let mut at = start + 1;
     let Some((first_no, first)) = lines.get(at) else {
-        return Err(grammar(*line_no, "a `wp:mark` comment with no block after it"));
+        return Err(grammar(
+            *line_no,
+            "a `wp:mark` comment with no block after it",
+        ));
     };
     let (first_no, first) = (*first_no, first.clone());
 
@@ -670,9 +714,11 @@ fn parse_node(lines: &Region, start: usize) -> Parsed<(Node, usize)> {
     };
 
     let mut children: Vec<(usize, String)> = Vec::new();
+    let mut indented_children = true;
     let own: String;
     if first.starts_with("```") {
-        let end = take_until(at, "```")?;
+        let fence = &first[..first.len() - first.trim_start_matches('`').len()];
+        let end = take_until(at, fence)?;
         own = join(&lines[at..=end]);
         at = end + 1;
     } else if first.starts_with("$$") {
@@ -680,23 +726,26 @@ fn parse_node(lines: &Region, start: usize) -> Parsed<(Node, usize)> {
         own = join(&lines[at..=end]);
         at = end + 1;
     } else if let Some(name) = first.strip_prefix("::") {
-        let end = matching_closer(lines, at).ok_or_else(|| grammar(first_no, "unclosed `::` component"))?;
+        let end = matching_closer(lines, at)
+            .ok_or_else(|| grammar(first_no, "unclosed `::` component"))?;
         let name = name.split('{').next().unwrap_or_default();
         if block::CONTAINER_COMPONENTS.contains(&name) {
             own = first.clone();
             children = lines[at + 1..end].to_vec();
+            indented_children = false;
         } else {
             own = join(&lines[at..=end]);
         }
         at = end + 1;
-    } else if first.starts_with('|') {
+    } else if first.starts_with(block::TABLE_ROW) {
         let end = (at..lines.len())
-            .take_while(|&index| lines[index].1.starts_with('|'))
+            .take_while(|&index| lines[index].1.starts_with(block::TABLE_ROW))
             .last()
             .unwrap_or(at);
         own = join(&lines[at..=end]);
         at = end + 1;
     } else if first.starts_with('>') {
+        indented_children = false;
         if first.starts_with(">{") {
             own = first.clone();
             at += 1;
@@ -716,22 +765,26 @@ fn parse_node(lines: &Region, start: usize) -> Parsed<(Node, usize)> {
     } else {
         own = first.clone();
         at += 1;
-        if first.starts_with("- ") || first.starts_with("+ ") {
-            let indent = " ".repeat(block::INDENT);
-            while let Some((number, line)) = lines.get(at) {
-                let continues = line.starts_with(&indent)
-                    || (line.is_empty()
-                        && lines[at + 1..]
-                            .iter()
-                            .find(|(_, next)| !next.is_empty())
-                            .map(|(_, next)| next.starts_with(&indent))
-                            .unwrap_or(false));
-                if !continues {
-                    break;
-                }
-                children.push((*number, line.strip_prefix(&indent).unwrap_or("").to_string()));
-                at += 1;
+    }
+
+    if indented_children {
+        let indent = " ".repeat(block::INDENT);
+        while let Some((number, line)) = lines.get(at) {
+            let continues = line.starts_with(&indent)
+                || (line.is_empty()
+                    && lines[at + 1..]
+                        .iter()
+                        .find(|(_, next)| !next.is_empty())
+                        .map(|(_, next)| next.starts_with(&indent))
+                        .unwrap_or(false));
+            if !continues {
+                break;
             }
+            children.push((
+                *number,
+                line.strip_prefix(&indent).unwrap_or("").to_string(),
+            ));
+            at += 1;
         }
     }
 
@@ -762,11 +815,23 @@ fn join(lines: &Region) -> String {
         .join("\n")
 }
 
-/// The `::` closing the component opened at `start`, counting nested ones.
+/// The `::` closing the component opened at `start`, counting nested ones and
+/// skipping fenced code and math, whose lines are verbatim.
 fn matching_closer(lines: &Region, start: usize) -> Option<usize> {
     let mut depth = 0;
+    let mut fence: Option<&str> = None;
     for (index, (_, line)) in lines.iter().enumerate().skip(start) {
-        if line == "::" {
+        if let Some(open) = fence {
+            if line == open {
+                fence = None;
+            }
+            continue;
+        }
+        if line.starts_with("```") {
+            fence = Some(&line[..line.len() - line.trim_start_matches('`').len()]);
+        } else if line.starts_with("$$") {
+            fence = Some("$$");
+        } else if line == "::" {
             depth -= 1;
             if depth == 0 {
                 return Some(index);
@@ -802,7 +867,12 @@ mod tests {
             strict_kind("reading::builtin.meeting::a1b2"),
             Some(TerrainKind::Reading(_, _))
         ));
-        for bad in ["", "children", "reading::c4d8", "reading::not a chart::a1b2"] {
+        for bad in [
+            "",
+            "children",
+            "reading::c4d8",
+            "reading::not a chart::a1b2",
+        ] {
             assert_eq!(strict_kind(bad), None, "{bad}");
         }
     }
@@ -810,12 +880,20 @@ mod tests {
     #[test]
     fn paths_classify_by_the_layout() {
         assert!(matches!(classify("manifest.json"), Some(Kind::Sidecar)));
-        assert!(matches!(classify("library/c4d8/_schema.json"), Some(Kind::Schema(_))));
+        assert!(matches!(
+            classify("library/c4d8/_schema.json"),
+            Some(Kind::Schema(_))
+        ));
         assert!(matches!(
             classify("library/c4d8/00000000-0000-0000-0000-000000000001.md"),
             Some(Kind::Landmark(_, _))
         ));
-        for unknown in ["assets/x.png", "beacons/a", "library/c4d8/notes.txt", "README.md"] {
+        for unknown in [
+            "assets/x.png",
+            "beacons/a",
+            "library/c4d8/notes.txt",
+            "README.md",
+        ] {
             assert!(classify(unknown).is_none(), "{unknown}");
         }
     }
