@@ -17,9 +17,10 @@ use domain::{
 };
 
 use crate::{
-    bundle::{Bundle, Census, Counts, ExportMeta, Manifest, layout},
+    bundle::{Bundle, Census, Counts, ExportMeta, Manifest, layout, render_timestamp},
     frontmatter::{self, Advisory, Frontmatter},
     identity::{self, Identity},
+    names::Names,
     schema,
 };
 
@@ -59,8 +60,19 @@ pub enum ExportError {
 
 pub async fn export(db: &Database, meta: &ExportMeta) -> Result<Exported, ExportError> {
     let live = Live::load(db).await?;
+    let titles = live
+        .roots
+        .iter()
+        .filter_map(|id| Some((*id, live.title(id)?)))
+        .collect();
+    let files = live
+        .roots
+        .iter()
+        .map(|root| (*root, live.file_blocks(*root)))
+        .collect();
     let mut out = Renderer {
         live: &live,
+        names: Names::new(&titles, &files),
         bundle: Bundle::new(),
         census: Census::default(),
         warnings: Vec::new(),
@@ -243,18 +255,47 @@ impl Live {
         }
     }
 
+    /// The Content Marks a root's file writes, walked as the renderer walks.
+    fn file_blocks(&self, root: MarkID) -> Vec<MarkID> {
+        let mut out = Vec::new();
+        self.collect_blocks(root, &mut vec![root], &mut out);
+        out
+    }
+
+    fn collect_blocks(&self, parent: MarkID, path: &mut Vec<MarkID>, out: &mut Vec<MarkID>) {
+        for child in self.children.get(&parent).into_iter().flatten() {
+            let is_content = self
+                .marks
+                .get(child)
+                .is_some_and(|mark| !mark.is_landmark());
+            if path.contains(child) || !is_content {
+                continue;
+            }
+            out.push(*child);
+            path.push(*child);
+            self.collect_blocks(*child, path, out);
+            path.pop();
+        }
+    }
+
+    /// `{id, created, updated, extra?}` for every Mark in the Bundle.
     fn mark_lines(&self, reached: &BTreeSet<MarkID>) -> Option<String> {
+        let string = |value: String| serde_json::Value::String(value).to_string();
         let mut out = String::new();
         for (id, mark) in &self.marks {
-            let Some(extra) = &mark.extra else {
-                continue;
-            };
             if !mark.is_landmark() && !reached.contains(id) {
                 continue;
             }
-            let row = serde_json::json!({ "id": id.to_string(), "extra": extra });
-            out.push_str(&serde_json::to_string(&row).unwrap_or_default());
-            out.push('\n');
+            out.push_str(&format!(
+                "{{\"id\":{},\"created\":{},\"updated\":{}",
+                string(id.to_string()),
+                string(render_timestamp(mark.created_at)),
+                string(render_timestamp(mark.updated_at)),
+            ));
+            if let Some(extra) = &mark.extra {
+                out.push_str(&format!(",\"extra\":{extra}"));
+            }
+            out.push_str("}\n");
         }
         (!out.is_empty()).then_some(out)
     }
@@ -262,6 +303,7 @@ impl Live {
 
 struct Renderer<'a> {
     live: &'a Live,
+    names: Names,
     bundle: Bundle,
     census: Census,
     warnings: Vec<String>,
@@ -304,7 +346,7 @@ impl Renderer<'_> {
             updated: root.updated_at,
             readings: data.readings.clone(),
         };
-        let mut file = frontmatter::emit(&front, &advisory);
+        let mut file = frontmatter::emit(&front, &advisory, &self.names);
         let mut body = String::new();
         let mut path = vec![root.id];
         self.children(root.id, &mut path, &mut body);
@@ -334,6 +376,7 @@ impl Renderer<'_> {
             return;
         };
         let first_expansion = self.expanded.insert(parent);
+        let mut written = false;
         for child in kids {
             if path.contains(&child) {
                 self.warnings.push(format!(
@@ -347,12 +390,17 @@ impl Renderer<'_> {
             if first_expansion {
                 *self.projected.entry((parent, child)).or_default() += 1;
             }
+            // A blank line between siblings, so each block reads as its own.
+            if written {
+                out.push('\n');
+            }
+            written = true;
             match &mark.data {
                 // A nested Landmark is its own file; here it is only a position.
                 MarkData::Landmark(data) => {
                     out.push_str(&identity::emit_open(&Identity::new(child)));
                     out.push('\n');
-                    out.push_str(&mention_line(child, data.title.plain_text()));
+                    out.push_str(&mention_line(child, data.title.plain_text(), &self.names));
                     out.push('\n');
                 }
                 MarkData::Content(content) => {
@@ -367,9 +415,8 @@ impl Renderer<'_> {
 
     fn block(&mut self, mark: &Mark, content: &Content, path: &mut Vec<MarkID>, out: &mut String) {
         self.census.content.insert(variant_name(content));
-        let rendered = block::emit(content);
-        let identity = Identity::stamped(mark.id, mark.created_at, mark.updated_at);
-        out.push_str(&identity::emit_open(&identity));
+        let rendered = block::emit_with(content, &self.names);
+        out.push_str(&identity::emit_open(&Identity::new(mark.id)));
         out.push('\n');
         for line in &rendered.lines {
             out.push_str(line);
@@ -481,15 +528,18 @@ impl Renderer<'_> {
     }
 }
 
-/// `[[id|Title]]` — a nested Landmark's place in its parent's body.
-fn mention_line(id: MarkID, title: &str) -> String {
-    inline::emit(&RichText::new(vec![TextSegment {
-        text: title.to_string(),
-        marks: vec![InlineMark {
-            kind: TextMarkKind::Mention,
-            data: Some(serde_json::Value::String(id.to_string())),
-        }],
-    }]))
+/// `[[Title]]` — a nested Landmark's place in its parent's body.
+fn mention_line(id: MarkID, title: &str, names: &Names) -> String {
+    inline::emit_with(
+        &RichText::new(vec![TextSegment {
+            text: title.to_string(),
+            marks: vec![InlineMark {
+                kind: TextMarkKind::Mention,
+                data: Some(serde_json::Value::String(id.to_string())),
+            }],
+        }]),
+        names,
+    )
 }
 
 #[cfg(test)]

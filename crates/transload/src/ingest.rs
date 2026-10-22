@@ -5,20 +5,25 @@
 //! transaction. A refused Bundle never reaches the transaction, so the store is
 //! untouched.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use bedrock::Database;
+use chrono::NaiveDateTime;
 use domain::{
-    Chart, ChartID, Content, FeatureID, Landmark, Mark, MarkData, MarkID, Reading, RichText,
-    Terrain, TerrainID, TerrainKind, TextMarkKind, fractional_index,
-    syntax::{block, inline},
+    Chart, ChartID, Content, FeatureID, FeatureKind, Landmark, Mark, MarkData, MarkID, Reading,
+    RichText, Terrain, TerrainID, TerrainKind, TextMarkKind, fractional_index,
+    syntax::{
+        block,
+        inline::{self, Links},
+    },
 };
 
 use crate::{
-    bundle::{BUNDLE_FORMAT, Bundle, Manifest, layout},
+    bundle::{BUNDLE_FORMAT, Bundle, Manifest, layout, parse_timestamp},
     export::{Tier, tier},
     frontmatter,
     identity::{self, Identity, Marker},
+    names::{Lenient, Names},
     refusal::{
         ChartConflict, DuplicateConflict, IngestError, Location, Malformed, MalformedKind, Refusal,
     },
@@ -125,6 +130,9 @@ struct Stager<'a> {
     /// Child edges in sibling order, so ordinals and order keys follow it.
     children: Vec<(MarkID, Vec<MarkID>)>,
     extra_edges: Vec<Terrain>,
+    names: Names,
+    /// Marks whose timestamps `marks.jsonl` supplied.
+    stamped: BTreeSet<MarkID>,
 }
 
 impl<'a> Stager<'a> {
@@ -140,6 +148,8 @@ impl<'a> Stager<'a> {
             seen: BTreeMap::new(),
             children: Vec::new(),
             extra_edges: Vec::new(),
+            names: Names::default(),
+            stamped: BTreeSet::new(),
         }
     }
 
@@ -174,11 +184,36 @@ impl<'a> Stager<'a> {
         {
             self.chart(&dir).await?;
         }
+        // Names need every title and block before any mention is read.
+        let mut titles = BTreeMap::new();
+        let mut files = BTreeMap::new();
+        for (path, dir, id) in &landmark_files {
+            if let Some((title, blocks)) = self.outline(path, dir) {
+                titles.insert(*id, title);
+                files.insert(*id, blocks);
+            }
+        }
+        self.names = Names::new(&titles, &files);
+
         for (path, dir, id) in landmark_files {
             self.landmark(&path, &dir, id);
         }
         let mut edges = self.child_edges();
         self.mark_sidecar();
+        let unstamped: Vec<MarkID> = self
+            .marks
+            .values()
+            .filter(|mark| !mark.is_landmark() && !self.stamped.contains(&mark.id))
+            .map(|mark| mark.id)
+            .collect();
+        for id in unstamped {
+            self.malformed(
+                Location::file(layout::MARKS),
+                MalformedKind::Grammar {
+                    detail: format!("Content Mark {id} has no `marks.jsonl` line"),
+                },
+            );
+        }
         self.terrain_sidecar(&mut edges);
         self.fill_bare_mentions();
 
@@ -271,12 +306,7 @@ impl<'a> Stager<'a> {
             );
             return;
         };
-        let kinds = chart
-            .features
-            .iter()
-            .map(|(id, feature)| (id.clone(), feature.kind.clone()))
-            .collect();
-        let front = match frontmatter::parse(front, &kinds) {
+        let front = match frontmatter::parse(front, &kinds(&chart), &self.names) {
             Ok(front) => front,
             Err(kind) => return self.malformed(at(), kind),
         };
@@ -319,23 +349,33 @@ impl<'a> Stager<'a> {
             },
         );
 
-        let first_body_line = file
-            .lines()
-            .enumerate()
-            .filter(|(_, line)| *line == "---")
-            .nth(1)
-            .map(|(index, _)| index + 1)
-            .unwrap_or(0);
-        let lines: Vec<(usize, String)> = file
-            .lines()
-            .enumerate()
-            .skip(first_body_line)
-            .map(|(index, line)| (index + 1, line.to_string()))
-            .collect();
-        match parse_region(&lines) {
+        match parse_region(&body_lines(file), &self.names) {
             Ok(nodes) => self.stage(id, nodes, path),
             Err((line, kind)) => self.malformed(Location::line(path, line), kind),
         }
+    }
+
+    /// A Landmark file's plain title and the Content Marks its body writes,
+    /// read with every mention left unresolved. `None` when the file is
+    /// malformed, which its full read reports.
+    fn outline(&self, path: &str, dir: &str) -> Option<(String, Vec<MarkID>)> {
+        let chart = self.charts.get(dir)?;
+        let file = self.bundle.get(path)?;
+        let (front, _) = frontmatter::split(file)?;
+        let front = frontmatter::parse(front, &kinds(chart), &Lenient).ok()?;
+        let nodes = parse_region(&body_lines(file), &Lenient).ok()?;
+
+        fn collect(nodes: &[Node], landmarks: &BTreeSet<MarkID>, out: &mut Vec<MarkID>) {
+            for node in nodes {
+                if node.content.is_some() && !landmarks.contains(&node.identity.id) {
+                    out.push(node.identity.id);
+                }
+                collect(&node.children, landmarks, out);
+            }
+        }
+        let mut blocks = Vec::new();
+        collect(&nodes, &self.landmarks, &mut blocks);
+        Some((front.title.plain_text().to_string(), blocks))
     }
 
     fn stage(&mut self, parent: MarkID, nodes: Vec<Node>, path: &str) {
@@ -352,16 +392,6 @@ impl<'a> Stager<'a> {
                         },
                     );
                 }
-                continue;
-            };
-            let (Some(created), Some(updated)) = (node.identity.created, node.identity.updated)
-            else {
-                self.malformed(
-                    Location::line(path, node.line),
-                    MalformedKind::Grammar {
-                        detail: format!("Content Mark {id} carries no timestamps"),
-                    },
-                );
                 continue;
             };
             let signature = (
@@ -399,8 +429,9 @@ impl<'a> Stager<'a> {
                     id,
                     data: MarkData::Content(content),
                     extra: None,
-                    created_at: created,
-                    updated_at: updated,
+                    // `marks.jsonl` supplies these, or the Mark is refused.
+                    created_at: NaiveDateTime::default(),
+                    updated_at: NaiveDateTime::default(),
                     deleted_at: None,
                 },
             );
@@ -452,8 +483,26 @@ impl<'a> Stager<'a> {
             let id = row["id"]
                 .as_str()
                 .and_then(|id| id.parse::<uuid::Uuid>().ok());
+            let stamp = |key: &str| {
+                row[key]
+                    .as_str()
+                    .ok_or_else(|| format!("a `marks.jsonl` line with no `{key}`"))
+                    .and_then(parse_timestamp)
+            };
+            let (created, updated) = match (stamp("created"), stamp("updated")) {
+                (Ok(created), Ok(updated)) => (created, updated),
+                (Err(detail), _) | (_, Err(detail)) => {
+                    self.malformed(at, MalformedKind::Grammar { detail });
+                    continue;
+                }
+            };
             match id.map(MarkID).and_then(|id| self.marks.get_mut(&id)) {
-                Some(mark) => mark.extra = row.get("extra").cloned(),
+                Some(mark) => {
+                    mark.extra = row.get("extra").cloned();
+                    mark.created_at = created;
+                    mark.updated_at = updated;
+                    self.stamped.insert(mark.id);
+                }
                 None => self.malformed(
                     at,
                     MalformedKind::Grammar {
@@ -582,6 +631,30 @@ impl<'a> Stager<'a> {
     }
 }
 
+fn kinds(chart: &Chart) -> HashMap<FeatureID, FeatureKind> {
+    chart
+        .features
+        .iter()
+        .map(|(id, feature)| (id.clone(), feature.kind.clone()))
+        .collect()
+}
+
+/// A Landmark file's lines after its frontmatter, numbered from 1.
+fn body_lines(file: &str) -> Vec<(usize, String)> {
+    let first_body_line = file
+        .lines()
+        .enumerate()
+        .filter(|(_, line)| *line == "---")
+        .nth(1)
+        .map(|(index, _)| index + 1)
+        .unwrap_or(0);
+    file.lines()
+        .enumerate()
+        .skip(first_body_line)
+        .map(|(index, line)| (index + 1, line.to_string()))
+        .collect()
+}
+
 fn rich_text_mut(content: &mut Content) -> Option<&mut RichText> {
     match content {
         Content::Paragraph { rich_text, .. }
@@ -666,7 +739,7 @@ fn grammar(line: usize, detail: impl Into<String>) -> (usize, MalformedKind) {
 }
 
 /// Parse a sequence of sibling nodes.
-fn parse_region(lines: &Region) -> Parsed<Vec<Node>> {
+fn parse_region(lines: &Region, links: &dyn Links) -> Parsed<Vec<Node>> {
     let mut nodes = Vec::new();
     let mut at = 0;
     while at < lines.len() {
@@ -674,14 +747,14 @@ fn parse_region(lines: &Region) -> Parsed<Vec<Node>> {
             at += 1;
             continue;
         }
-        let (node, next) = parse_node(lines, at)?;
+        let (node, next) = parse_node(lines, at, links)?;
         nodes.push(node);
         at = next;
     }
     Ok(nodes)
 }
 
-fn parse_node(lines: &Region, start: usize) -> Parsed<(Node, usize)> {
+fn parse_node(lines: &Region, start: usize, links: &dyn Links) -> Parsed<(Node, usize)> {
     let (line_no, line) = &lines[start];
     let identity = match identity::parse(line).map_err(|kind| (*line_no, kind))? {
         Some(Marker::Open(identity)) => identity,
@@ -697,7 +770,7 @@ fn parse_node(lines: &Region, start: usize) -> Parsed<(Node, usize)> {
     let (first_no, first) = (*first_no, first.clone());
 
     // A nested Landmark: its own comment over a link to itself.
-    if is_self_link(&first, identity.id) {
+    if is_self_link(&first, identity.id, links) {
         let node = Node {
             identity,
             content: None,
@@ -788,8 +861,9 @@ fn parse_node(lines: &Region, start: usize) -> Parsed<(Node, usize)> {
         }
     }
 
-    let content = block::parse(&own).map_err(|error| grammar(first_no, error.to_string()))?;
-    let children = parse_region(&children)?;
+    let content =
+        block::parse_with(&own, links).map_err(|error| grammar(first_no, error.to_string()))?;
+    let children = parse_region(&children, links)?;
     if !children.is_empty() {
         match lines.get(at) {
             Some((_, line)) if matches!(identity::parse(line), Ok(Some(Marker::Close))) => at += 1,
@@ -843,8 +917,8 @@ fn matching_closer(lines: &Region, start: usize) -> Option<usize> {
     None
 }
 
-fn is_self_link(line: &str, id: MarkID) -> bool {
-    let Ok(rich) = inline::parse(line) else {
+fn is_self_link(line: &str, id: MarkID, links: &dyn Links) -> bool {
+    let Ok(rich) = inline::parse_with(line, links) else {
         return false;
     };
     match rich.segments() {

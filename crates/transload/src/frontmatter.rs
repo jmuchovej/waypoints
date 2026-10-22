@@ -12,12 +12,12 @@ use std::{borrow::Cow, collections::HashMap};
 use chrono::NaiveDateTime;
 use domain::{
     Base36ID, ChartID, FeatureID, FeatureKind, GlyphID, Icon, MarkID, Reading, RichText,
-    syntax::inline,
+    syntax::inline::{self, Links},
 };
 use indexmap::IndexMap;
 use saphyr::{LoadableYamlNode, Mapping, Scalar, Yaml};
 
-use crate::{bundle::render_timestamp, refusal::MalformedKind};
+use crate::{bundle::render_timestamp, names::KeepLabels, refusal::MalformedKind};
 
 /// The frontmatter fence.
 const FENCE: &str = "---";
@@ -54,12 +54,17 @@ pub struct Advisory {
 // ── Emit ─────────────────────────────────────────────────────────────────────
 
 /// Render frontmatter, fences included.
-pub fn emit(front: &Frontmatter, advisory: &Advisory) -> String {
+pub fn emit(front: &Frontmatter, advisory: &Advisory, links: &dyn Links) -> String {
     let mut out = String::new();
     out.push_str(FENCE);
     out.push('\n');
 
-    push_block_scalar(&mut out, "title", &inline::emit(&front.title), 0);
+    push_block_scalar(
+        &mut out,
+        "title",
+        &inline::emit_with(&front.title, &KeepLabels(links)),
+        0,
+    );
     push_line(
         &mut out,
         0,
@@ -70,24 +75,32 @@ pub fn emit(front: &Frontmatter, advisory: &Advisory) -> String {
         // deterministic without a recursive YAML writer.
         push_line(&mut out, 0, &format!("icon: {}", compact_json(icon)));
     }
+    // `marks.jsonl` is normative for timestamps; these are for the reader.
     push_line(
         &mut out,
         0,
-        &format!("created: {}", render_timestamp(front.created)),
+        &format!("created: {} # advisory", render_timestamp(front.created)),
     );
     push_line(
         &mut out,
         0,
-        &format!("updated: {}", render_timestamp(front.updated)),
+        &format!("updated: {} # advisory", render_timestamp(front.updated)),
     );
 
     if !front.readings.is_empty() {
         push_line(&mut out, 0, "readings:");
         for (feature, reading) in &front.readings {
+            let mut lines = String::new();
+            push_reading(&mut lines, feature, reading, advisory, links);
+            // The feature's name trails the reading's key line.
+            let (first, rest) = lines.split_once('\n').unwrap_or((&lines, ""));
+            out.push_str(first);
             if let Some(name) = advisory.feature_names.get(feature) {
-                push_line(&mut out, 1, &format!("# {}", one_line(name)));
+                out.push_str(" # ");
+                out.push_str(&one_line(name));
             }
-            push_reading(&mut out, feature, reading, advisory);
+            out.push('\n');
+            out.push_str(rest);
         }
     }
 
@@ -136,11 +149,17 @@ fn plain(id: &str) -> String {
     }
 }
 
-fn push_reading(out: &mut String, feature: &FeatureID, reading: &Reading, advisory: &Advisory) {
+fn push_reading(
+    out: &mut String,
+    feature: &FeatureID,
+    reading: &Reading,
+    advisory: &Advisory,
+    links: &dyn Links,
+) {
     let key = plain(&feature.to_string());
     match reading {
         Reading::Null => push_line(out, 1, &format!("{key}: null")),
-        Reading::Text(rich) => push_block_scalar(out, &key, &inline::emit(rich), 1),
+        Reading::Text(rich) => push_block_scalar(out, &key, &inline::emit_with(rich, links), 1),
         Reading::Number(number) => push_line(out, 1, &format!("{key}: {}", compact_json(number))),
         Reading::Bool(flag) => push_line(out, 1, &format!("{key}: {flag}")),
         Reading::Date(at) => push_line(out, 1, &format!("{key}: {}", render_timestamp(*at))),
@@ -251,6 +270,7 @@ pub fn split(file: &str) -> Option<(&str, &str)> {
 pub fn parse(
     source: &str,
     kinds: &HashMap<FeatureID, FeatureKind>,
+    links: &dyn Links,
 ) -> Result<Frontmatter, MalformedKind> {
     let documents = Yaml::load_from_str(source).map_err(|error| MalformedKind::Grammar {
         detail: format!("frontmatter is not YAML: {error}"),
@@ -262,7 +282,7 @@ pub fn parse(
     };
 
     let title = match get(&root, "title") {
-        Some(node) => inline::parse(&as_text(node)?).map_err(grammar)?,
+        Some(node) => inline::parse_with(&as_text(node)?, &KeepLabels(links)).map_err(grammar)?,
         None => RichText::default(),
     };
     let chart = match get(&root, "chart") {
@@ -290,7 +310,7 @@ pub fn parse(
                     detail: format!("reading `{key}` names no feature of this Chart"),
                 });
             };
-            readings.insert(feature, reading(value, kind, &key)?);
+            readings.insert(feature, reading(value, kind, &key, links)?);
         }
     }
 
@@ -396,14 +416,19 @@ fn sequence<'a, 'b>(node: &'a Yaml<'b>, what: &str) -> Result<&'a [Yaml<'b>], Ma
 }
 
 /// One YAML value read as the kind its feature declares.
-fn reading(node: &Yaml<'_>, kind: &FeatureKind, key: &str) -> Result<Reading, MalformedKind> {
+fn reading(
+    node: &Yaml<'_>,
+    kind: &FeatureKind,
+    key: &str,
+    links: &dyn Links,
+) -> Result<Reading, MalformedKind> {
     if matches!(node, Yaml::Value(Scalar::Null)) {
         return Ok(Reading::Null);
     }
 
     match kind {
         FeatureKind::Text => Ok(Reading::Text(
-            inline::parse(&as_text(node)?).map_err(grammar)?,
+            inline::parse_with(&as_text(node)?, links).map_err(grammar)?,
         )),
         FeatureKind::Number { .. } => {
             let text = as_text(node)?;
@@ -505,6 +530,14 @@ mod tests {
     use super::*;
     use chrono::NaiveDate;
     use domain::ReferenceDisplayMode;
+    use domain::syntax::inline::Verbatim;
+
+    fn parse(
+        source: &str,
+        kinds: &HashMap<FeatureID, FeatureKind>,
+    ) -> Result<Frontmatter, MalformedKind> {
+        super::parse(source, kinds, &Verbatim)
+    }
 
     /// The constraint-free shapes of the struct variants, so a fixture can name
     /// a kind without restating five fields it does not care about.
@@ -578,7 +611,7 @@ mod tests {
 
     /// Emit, parse with the given kinds, and demand the same frontmatter back.
     fn survives(front: Frontmatter, kinds: HashMap<FeatureID, FeatureKind>) {
-        let source = emit(&front, &Advisory::default());
+        let source = emit(&front, &Advisory::default(), &Verbatim);
         let (inner, _) = split(&source).expect("fences");
         let parsed = parse(inner, &kinds).unwrap_or_else(|e| panic!("parse {source}: {e}"));
         assert_eq!(parsed, front, "via\n{source}");
@@ -586,17 +619,18 @@ mod tests {
 
     #[test]
     fn the_shape_is_fenced_and_ordered() {
-        let source = emit(&base(IndexMap::new()), &Advisory::default());
+        let source = emit(&base(IndexMap::new()), &Advisory::default(), &Verbatim);
         assert_eq!(
             source,
             "---\ntitle: |-\n  Weekly sync\nchart: builtin.meeting\n\
-             created: 2026-08-02T09:41:00.000Z\nupdated: 2026-08-02T09:41:00.000Z\n---\n"
+             created: 2026-08-02T09:41:00.000Z # advisory\n\
+             updated: 2026-08-02T09:41:00.000Z # advisory\n---\n"
         );
     }
 
     #[test]
     fn the_chart_keeps_its_builtin_prefix() {
-        let source = emit(&base(IndexMap::new()), &Advisory::default());
+        let source = emit(&base(IndexMap::new()), &Advisory::default(), &Verbatim);
         assert!(source.contains("chart: builtin.meeting"), "{source}");
     }
 
@@ -608,7 +642,7 @@ mod tests {
             feature_names: HashMap::from([(feature("a1b2"), "Attendees".to_string())]),
             ..Advisory::default()
         };
-        let source = emit(&base(readings), &advisory);
+        let source = emit(&base(readings), &advisory, &Verbatim);
         assert!(source.contains("# Attendees"), "{source}");
         assert!(source.contains("a1b2: true"), "{source}");
     }
@@ -625,8 +659,9 @@ mod tests {
                 feature_names: HashMap::from([(feature("a1b2"), "NONSENSE".to_string())]),
                 mark_titles: HashMap::from([(mark(7), "also nonsense".to_string())]),
             },
+            &Verbatim,
         );
-        let without = emit(&base(readings), &Advisory::default());
+        let without = emit(&base(readings), &Advisory::default(), &Verbatim);
 
         let parsed_with = parse(split(&with_advice).expect("fences").0, &kinds).expect("parse");
         let parsed_without = parse(split(&without).expect("fences").0, &kinds).expect("parse");
@@ -640,7 +675,7 @@ mod tests {
     fn timestamps_keep_their_instant() {
         let mut front = base(IndexMap::new());
         front.updated = at(123);
-        let source = emit(&front, &Advisory::default());
+        let source = emit(&front, &Advisory::default(), &Verbatim);
         assert!(
             source.contains("updated: 2026-08-02T09:41:00.123Z"),
             "{source}"
@@ -656,8 +691,8 @@ mod tests {
         let mut readings = IndexMap::new();
         readings.insert(feature("a1b2"), Reading::GroupedSelect(groups));
 
-        let first = emit(&base(readings.clone()), &Advisory::default());
-        let second = emit(&base(readings), &Advisory::default());
+        let first = emit(&base(readings.clone()), &Advisory::default(), &Verbatim);
+        let second = emit(&base(readings), &Advisory::default(), &Verbatim);
         assert_eq!(first, second, "a HashMap must not leak its iteration order");
         let aaaa = first.find("aaaa").expect("aaaa");
         let zzzz = first.find("zzzz").expect("zzzz");
@@ -784,8 +819,8 @@ mod tests {
         );
         let front = base(readings);
         assert_eq!(
-            emit(&front, &Advisory::default()),
-            emit(&front, &Advisory::default())
+            emit(&front, &Advisory::default(), &Verbatim),
+            emit(&front, &Advisory::default(), &Verbatim)
         );
     }
 

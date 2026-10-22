@@ -9,7 +9,7 @@ use domain::{
     BlockTheme, Chart, ChartID, Color, Content, Feature, FeatureID, FeatureKind, GlyphID,
     InlineMark, Landmark, Mark, MarkData, MarkID, MathEngine, Reading, ReferenceDisplayMode,
     RichText, SelectGroup, SelectOption, Size, Terrain, TerrainKind, TextMarkKind, TextSegment,
-    syntax::inline,
+    syntax::inline::{self, LinkName, Links},
 };
 use indexmap::IndexMap;
 use rand::{RngExt, SeedableRng, rngs::StdRng};
@@ -46,6 +46,7 @@ const STYLES: [TextMarkKind; 10] = [
 struct Gen {
     rng: StdRng,
     targets: Vec<MarkID>,
+    titles: HashMap<MarkID, String>,
 }
 
 impl Gen {
@@ -66,8 +67,19 @@ impl Gen {
         let mut segments = Vec::new();
         for _ in 0..self.rng.random_range(1..4) {
             let mut marks = Vec::new();
+            let mut text = self.text();
             if self.chance(0.15) && !self.targets.is_empty() {
-                let target = self.pick(&self.targets.clone());
+                // Landmarks, blocks, and now and then a Mark the Bundle lacks.
+                let target = if self.chance(0.05) {
+                    MarkID::new()
+                } else {
+                    self.pick(&self.targets.clone())
+                };
+                if self.chance(0.3)
+                    && let Some(title) = self.titles.get(&target)
+                {
+                    text = title.clone();
+                }
                 marks.push(mark(TextMarkKind::Mention, Some(target.to_string())));
             } else if self.chance(0.15) {
                 marks.push(mark(
@@ -91,10 +103,7 @@ impl Gen {
                     marks.push(mark(kind, Some(value.into())));
                 }
             }
-            segments.push(TextSegment {
-                text: self.text(),
-                marks,
-            });
+            segments.push(TextSegment { text, marks });
         }
         RichText::new(inline::coalesce(&segments))
     }
@@ -353,6 +362,7 @@ async fn generate(db: &Database, seed: u64) {
     let mut g = Gen {
         rng: StdRng::seed_from_u64(seed),
         targets: Vec::new(),
+        titles: HashMap::new(),
     };
     let chart = wide_chart();
     db.insert(chart.clone()).await.expect("chart");
@@ -365,7 +375,16 @@ async fn generate(db: &Database, seed: u64) {
     let mut marks: Vec<Mark> = Vec::new();
     let mut edges: Vec<Terrain> = Vec::new();
     let mut content_ids: Vec<MarkID> = Vec::new();
+    let mut previous: Option<RichText> = None;
     for root in &roots {
+        // Shared and empty titles, which the names must tell apart.
+        let title = match (&previous, g.rng.random_range(0..10)) {
+            (Some(shared), 0..=2) => shared.clone(),
+            (_, 3) => RichText::default(),
+            _ => g.rich(),
+        };
+        previous = Some(title.clone());
+        g.titles.insert(*root, title.plain_text().to_string());
         let mut readings = IndexMap::new();
         for (id, feature) in &chart.features {
             if g.chance(0.6) {
@@ -377,7 +396,7 @@ async fn generate(db: &Database, seed: u64) {
             id: *root,
             data: MarkData::Landmark(Landmark {
                 chart: chart.id.clone(),
-                title: g.rich(),
+                title,
                 icon: None,
                 readings,
             }),
@@ -444,6 +463,7 @@ fn tree(
         link.extra = g.extra();
         edges.push(link);
         content_ids.push(id);
+        g.targets.push(id);
         if depth < 2 {
             tree(g, id, depth + 1, marks, edges, content_ids);
         }
@@ -631,12 +651,29 @@ async fn the_1980_test() {
                     });
                     continue;
                 }
+                // Grammar only; name resolution is the round trip's business.
                 if !bare.is_empty() && !bare.starts_with(['|', ':']) {
-                    domain::syntax::block::parse(bare)
+                    domain::syntax::block::parse_with(bare, &AnyName)
                         .unwrap_or_else(|error| panic!("seed {seed} {path}: `{line}`: {error}"));
                 }
             }
         }
+    }
+}
+
+struct AnyName;
+
+impl Links for AnyName {
+    fn name(&self, target: &str) -> LinkName {
+        LinkName {
+            page: target.to_string(),
+            block: None,
+            title: None,
+        }
+    }
+
+    fn resolve(&self, page: &str, _: Option<&str>) -> Result<String, String> {
+        Ok(page.to_string())
     }
 }
 

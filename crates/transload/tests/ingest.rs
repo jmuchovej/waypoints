@@ -271,10 +271,7 @@ async fn a_bare_mention_gains_its_target_title() {
     let ids = rich_store(&source).await;
     let mut bundle = exported(&source).await;
     edit(&mut bundle, &landmark_path(ids.root), |file| {
-        file.replace(
-            "\nintro with ",
-            &format!("\nintro with [[{}]] ", ids.nested),
-        )
+        file.replace("\nintro with ", "\nintro with [[Child page]] ")
     });
 
     ingest(&target, &bundle).await.expect("ingest");
@@ -347,8 +344,8 @@ async fn a_src_keyed_identity_is_refused() {
     let mut bundle = exported(&source).await;
     edit(&mut bundle, &landmark_path(ids.root), |file| {
         file.replacen(
-            &format!("{{\"id\":\"{}\"", ids.intro),
-            "{\"src\":\"logseq/page-7\"",
+            &format!("wp:mark {} ", ids.intro),
+            "wp:mark {\"src\":\"logseq/page-7\"} ",
             1,
         )
     });

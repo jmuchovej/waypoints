@@ -169,9 +169,16 @@ async fn a_body_carries_identity_comments_and_its_blocks() {
 
     assert!(
         file.contains(&format!(
-            "<!-- wp:mark {{\"id\":\"{first}\",\"created\":\"2026-08-02T09:41:00.000Z\""
+            "<!-- wp:mark {first} -->\nfirst\n\n<!-- wp:mark {second} -->\nsecond\n"
         )),
-        "a Content Mark's comment carries its timestamps:\n{file}"
+        "a comment carries only the id, and siblings stand a blank line apart:\n{file}"
+    );
+    let marks = exported.bundle.get(layout::MARKS).expect("marks.jsonl");
+    assert!(
+        marks.contains(&format!(
+            "{{\"id\":\"{first}\",\"created\":\"2026-08-02T09:41:00.000Z\""
+        )),
+        "a Content Mark's timestamps ride the sidecar:\n{marks}"
     );
     let first_at = file.find("\nfirst\n").expect("first");
     let second_at = file.find("\nsecond\n").expect("second");
@@ -204,10 +211,10 @@ async fn a_nested_landmark_keeps_its_place_among_its_siblings() {
         .bundle
         .get(&layout::landmark(&ChartID("c4d8".into()), &root))
         .expect("parent file");
-    let link = format!("[[{nested}|Child page]]");
+    let link = "[[Child page]]";
     let (b, l, a) = (
         file.find("\nbefore\n").expect("before"),
-        file.find(&link).expect("nested link"),
+        file.find(link).expect("nested link"),
         file.find("\nafter\n").expect("after"),
     );
     assert!(

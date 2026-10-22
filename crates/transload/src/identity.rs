@@ -2,23 +2,20 @@
 //! stripping comments leaves plain text. Containers pair; leaves do not.
 //!
 //! ```text
-//! <!-- wp:mark {"id":"018f…","created":"…","updated":"…"} -->
+//! <!-- wp:mark 018f… -->
 //! A paragraph.
 //!
-//! <!-- wp:mark {"id":"018e…"} -->
+//! <!-- wp:mark 018e… -->
 //! > a blockquote, its children inside the pair
 //! <!-- /wp:mark -->
 //! ```
+//!
+//! A comment carries the id and nothing else; timestamps and `extra` ride in
+//! `marks.jsonl`.
 
-use std::collections::BTreeMap;
-
-use chrono::NaiveDateTime;
 use domain::{Json, MarkID};
 
-use crate::{
-    bundle::{parse_timestamp, render_timestamp},
-    refusal::MalformedKind,
-};
+use crate::refusal::MalformedKind;
 
 const MARKER: &str = "wp:mark";
 
@@ -26,30 +23,11 @@ const MARKER: &str = "wp:mark";
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Identity {
     pub id: MarkID,
-    /// A Content Mark's timestamps. Absent on a Landmark, whose frontmatter
-    /// carries them.
-    pub created: Option<NaiveDateTime>,
-    pub updated: Option<NaiveDateTime>,
-    /// Fields this build does not recognize, re-emitted unchanged.
-    pub unknown: BTreeMap<String, Json>,
 }
 
 impl Identity {
     pub fn new(id: MarkID) -> Self {
-        Self {
-            id,
-            created: None,
-            updated: None,
-            unknown: BTreeMap::new(),
-        }
-    }
-
-    pub fn stamped(id: MarkID, created: NaiveDateTime, updated: NaiveDateTime) -> Self {
-        Self {
-            created: Some(created),
-            updated: Some(updated),
-            ..Self::new(id)
-        }
+        Self { id }
     }
 }
 
@@ -60,20 +38,8 @@ pub enum Marker {
     Close,
 }
 
-/// `id`, then timestamps, then unknown fields in key order.
 pub fn emit_open(identity: &Identity) -> String {
-    let mut fields = serde_json::Map::new();
-    fields.insert("id".into(), Json::String(identity.id.to_string()));
-    if let Some(created) = identity.created {
-        fields.insert("created".into(), Json::String(render_timestamp(created)));
-    }
-    if let Some(updated) = identity.updated {
-        fields.insert("updated".into(), Json::String(render_timestamp(updated)));
-    }
-    for (key, value) in &identity.unknown {
-        fields.insert(key.clone(), value.clone());
-    }
-    format!("<!-- {MARKER} {} -->", Json::Object(fields))
+    format!("<!-- {MARKER} {} -->", identity.id)
 }
 
 pub fn emit_close() -> String {
@@ -98,64 +64,28 @@ pub fn parse(raw: &str) -> Result<Option<Marker>, MalformedKind> {
     let Some(payload) = body.strip_prefix(MARKER) else {
         return Ok(None);
     };
-
-    let mut fields: serde_json::Map<String, Json> =
-        serde_json::from_str(payload.trim()).map_err(|error| {
-            grammar(format!(
-                "a `{MARKER}` comment whose fields are not JSON: {error}"
-            ))
-        })?;
+    let payload = payload.trim();
 
     // `src` is Fragment grammar: refused, never resolved.
-    if fields.contains_key("src") {
+    if let Ok(Json::Object(fields)) = serde_json::from_str::<Json>(payload)
+        && fields.contains_key("src")
+    {
         return Err(MalformedKind::SourceKeyedIdentity);
     }
-
-    let id = match fields.remove("id") {
-        Some(Json::String(id)) => id,
-        Some(_) => {
-            return Err(grammar(format!(
-                "a `{MARKER}` comment whose `id` is not a string"
-            )));
-        }
-        None => return Err(grammar(format!("a `{MARKER}` comment with no `id`"))),
-    };
-    let id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| grammar(format!("`{id}` is not a Mark id")))?;
-
-    let mut stamp = |key: &str| -> Result<Option<NaiveDateTime>, MalformedKind> {
-        match fields.remove(key) {
-            Some(Json::String(text)) => parse_timestamp(&text).map(Some).map_err(grammar),
-            Some(_) => Err(grammar(format!("`{key}` is not a timestamp string"))),
-            None => Ok(None),
-        }
-    };
-    let created = stamp("created")?;
-    let updated = stamp("updated")?;
-
-    Ok(Some(Marker::Open(Identity {
-        id: MarkID(id),
-        created,
-        updated,
-        unknown: fields.into_iter().collect(),
-    })))
+    let id: uuid::Uuid = payload.parse().map_err(|_| {
+        grammar(format!(
+            "a `{MARKER}` comment takes a Mark id, not `{payload}`"
+        ))
+    })?;
+    Ok(Some(Marker::Open(Identity::new(MarkID(id)))))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::NaiveDate;
 
     fn id(n: u128) -> MarkID {
         MarkID(uuid::Uuid::from_u128(n))
-    }
-
-    fn at(milli: u32) -> NaiveDateTime {
-        NaiveDate::from_ymd_opt(2026, 8, 2)
-            .unwrap()
-            .and_hms_milli_opt(9, 41, 0, milli)
-            .unwrap()
     }
 
     #[test]
@@ -164,18 +94,7 @@ mod tests {
         let open = emit_open(&identity);
         assert_eq!(
             open,
-            "<!-- wp:mark {\"id\":\"00000000-0000-0000-0000-000000000001\"} -->"
-        );
-        assert_eq!(parse(&open).expect("parse"), Some(Marker::Open(identity)));
-    }
-
-    #[test]
-    fn timestamps_round_trip() {
-        let identity = Identity::stamped(id(1), at(0), at(250));
-        let open = emit_open(&identity);
-        assert!(
-            open.contains("\"updated\":\"2026-08-02T09:41:00.250Z\""),
-            "{open}"
+            "<!-- wp:mark 00000000-0000-0000-0000-000000000001 -->"
         );
         assert_eq!(parse(&open).expect("parse"), Some(Marker::Open(identity)));
     }
@@ -184,25 +103,6 @@ mod tests {
     fn a_container_pairs() {
         assert_eq!(emit_close(), "<!-- /wp:mark -->");
         assert_eq!(parse(&emit_close()).expect("parse"), Some(Marker::Close));
-    }
-
-    #[test]
-    fn unknown_fields_survive_re_serialization() {
-        let raw = "<!-- wp:mark {\"id\":\"00000000-0000-0000-0000-000000000001\",\
-                   \"from_the_future\":{\"nested\":true},\"flag\":7} -->";
-        let Some(Marker::Open(identity)) = parse(raw).expect("parse") else {
-            panic!("expected an opening marker");
-        };
-        let round_tripped = emit_open(&identity);
-        assert_eq!(
-            round_tripped,
-            "<!-- wp:mark {\"id\":\"00000000-0000-0000-0000-000000000001\",\
-             \"flag\":7,\"from_the_future\":{\"nested\":true}} -->"
-        );
-        assert_eq!(
-            parse(&round_tripped).expect("parse"),
-            Some(Marker::Open(identity))
-        );
     }
 
     #[test]
@@ -222,11 +122,8 @@ mod tests {
     fn malformed_comments_are_refused() {
         for raw in [
             "<!-- wp:mark -->",
-            "<!-- wp:mark not json -->",
-            "<!-- wp:mark {} -->",
-            "<!-- wp:mark {\"id\":7} -->",
-            "<!-- wp:mark {\"id\":\"not-a-uuid\"} -->",
-            "<!-- wp:mark {\"id\":\"00000000-0000-0000-0000-000000000001\",\"created\":\"yesterday\"} -->",
+            "<!-- wp:mark not-a-uuid -->",
+            "<!-- wp:mark {\"id\":\"00000000-0000-0000-0000-000000000001\"} -->",
         ] {
             assert!(parse(raw).is_err(), "{raw} should be refused");
         }

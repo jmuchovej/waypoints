@@ -17,6 +17,7 @@ pub(crate) mod export;
 pub(crate) mod frontmatter;
 pub(crate) mod identity;
 pub(crate) mod ingest;
+pub(crate) mod names;
 pub(crate) mod refusal;
 pub(crate) mod schema;
 
