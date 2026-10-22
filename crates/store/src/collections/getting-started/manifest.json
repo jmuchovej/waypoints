@@ -1,0 +1,38 @@
+{
+  "bundle_format": "0.1.0",
+  "app_version": "0.1.0",
+  "domain_version": "0.1.0",
+  "exported_at": "2026-10-22T14:31:31.433Z",
+  "counts": {
+    "landmarks": 28,
+    "content": 264,
+    "terrains": 264,
+    "charts": 3
+  },
+  "uses": {
+    "content": [
+      "blockquote",
+      "callout",
+      "code",
+      "divider",
+      "enum-item",
+      "heading-2",
+      "heading-3",
+      "list-item",
+      "paragraph"
+    ],
+    "readings": [
+      "references",
+      "text"
+    ],
+    "feature_kinds": [
+      "email",
+      "phone",
+      "reference",
+      "text"
+    ],
+    "terrain_kinds": [
+      "child"
+    ]
+  }
+}

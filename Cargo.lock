@@ -7930,8 +7930,6 @@ dependencies = [
  "chrono",
  "derive_more",
  "domain",
- "importer",
- "indexmap 2.14.2",
  "outpost-protocol",
  "rstest",
  "serde",
@@ -7941,6 +7939,7 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tracing",
+ "transload",
  "turso",
  "uuid",
 ]
