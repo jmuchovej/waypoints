@@ -35,6 +35,13 @@
         package = pkgs.just;
         spec = "aqua:casey/just";
       };
+      typst = {
+        # `withPackages` builds an env with no `version`; mise pins the compiler's.
+        package = config.languages.typst.package // {
+          inherit (pkgs.typst) version;
+        };
+        spec = "aqua:typst/typst";
+      };
       nixfmt = {
         package = pkgs.nixfmt-rs;
         spec = "github:Mic92/nixfmt-rs";
