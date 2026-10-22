@@ -1,7 +1,10 @@
 //! The Bundle: its path layout, its manifest, and the in-memory form both
 //! directions pass through.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+};
 
 use chrono::NaiveDateTime;
 use domain::{ChartID, MarkID};
@@ -182,15 +185,54 @@ impl Bundle {
             .filter_map(|rest| rest.split('/').next())
             .collect()
     }
+
+    /// Read a Bundle directory. Every file must be UTF-8.
+    pub fn read_dir(root: &Path) -> std::io::Result<Self> {
+        let mut bundle = Self::new();
+        let mut pending = vec![root.to_path_buf()];
+        while let Some(dir) = pending.pop() {
+            for entry in std::fs::read_dir(&dir)? {
+                let path = entry?.path();
+                if path.is_dir() {
+                    pending.push(path);
+                    continue;
+                }
+                let relative = path
+                    .strip_prefix(root)
+                    .map_err(std::io::Error::other)?
+                    .components()
+                    .map(|part| part.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/");
+                bundle.insert(relative, std::fs::read_to_string(&path)?);
+            }
+        }
+        Ok(bundle)
+    }
+
+    /// Write every file beneath `root`, creating directories as needed.
+    pub fn write_dir(&self, root: &Path) -> std::io::Result<()> {
+        for (relative, contents) in &self.files {
+            let path = root.join(relative);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(path, contents)?;
+        }
+        Ok(())
+    }
 }
 
-/// Render a naive UTC timestamp the one way a Bundle ever spells one:
-/// ISO-8601 with an explicit `Z` and millisecond precision.
-///
-/// The engine's `timestamp` columns hold millisecond precision, so this is
-/// lossless in both directions.
+/// ISO-8601 UTC with an explicit `Z` and millisecond precision — the only way a
+/// Bundle spells a timestamp. Lossless: the engine stores milliseconds.
 pub(crate) fn render_timestamp(at: NaiveDateTime) -> String {
     at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+}
+
+/// The inverse of [`render_timestamp`].
+pub(crate) fn parse_timestamp(text: &str) -> Result<NaiveDateTime, String> {
+    NaiveDateTime::parse_from_str(text.trim(), "%Y-%m-%dT%H:%M:%S%.3fZ")
+        .map_err(|error| format!("`{text}` is not an ISO-8601 UTC millisecond timestamp: {error}"))
 }
 
 impl Manifest {
@@ -286,6 +328,24 @@ mod tests {
 
         let dirs: Vec<_> = bundle.chart_dirs().into_iter().collect();
         assert_eq!(dirs, ["builtin.page", "c4d8"]);
+    }
+
+    #[test]
+    fn a_bundle_round_trips_through_a_directory() {
+        let mut bundle = Bundle::new();
+        bundle.insert(layout::MANIFEST, "{}\n");
+        bundle.insert("library/builtin.page/x.md", "---\nbody\n");
+        bundle.insert(layout::TERRAIN, "");
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        bundle.write_dir(dir.path()).expect("write");
+        assert_eq!(Bundle::read_dir(dir.path()).expect("read"), bundle);
+    }
+
+    #[test]
+    fn timestamps_parse_back_to_the_same_instant() {
+        assert_eq!(parse_timestamp(&render_timestamp(at())), Ok(at()));
+        assert!(parse_timestamp("2026-08-02").is_err());
     }
 
     fn meta() -> ExportMeta {

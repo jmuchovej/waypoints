@@ -167,13 +167,104 @@ async fn a_body_carries_identity_comments_and_its_blocks() {
         .get(&layout::landmark(&ChartID("c4d8".into()), &root))
         .expect("landmark file");
 
-    assert!(file.contains(&format!("<!-- wp:mark {{\"id\":\"{first}\"}} -->")));
-    assert!(file.contains("first"));
-    assert!(file.contains("second"));
-    let first_at = file.find("first").expect("first");
-    let second_at = file.find("second").expect("second");
+    assert!(
+        file.contains(&format!(
+            "<!-- wp:mark {{\"id\":\"{first}\",\"created\":\"2026-08-02T09:41:00.000Z\""
+        )),
+        "a Content Mark's comment carries its timestamps:\n{file}"
+    );
+    let first_at = file.find("\nfirst\n").expect("first");
+    let second_at = file.find("\nsecond\n").expect("second");
     assert!(first_at < second_at, "ordered by fractional key:\n{file}");
     assert!(!file.contains("<!-- /wp:mark -->"), "got\n{file}");
+}
+
+#[tokio::test]
+async fn a_nested_landmark_keeps_its_place_among_its_siblings() {
+    let db = open().await;
+    db.insert(chart()).await.expect("chart");
+    let (root, before, nested, after) = (MarkID::new(), MarkID::new(), MarkID::new(), MarkID::new());
+    db.insert(landmark(root, "Parent", IndexMap::new())).await.expect("root");
+    db.insert(landmark(nested, "Child page", IndexMap::new())).await.expect("nested");
+    db.insert(paragraph(before, "before")).await.expect("before");
+    db.insert(paragraph(after, "after")).await.expect("after");
+    db.insert(child(root, before, "a")).await.expect("edge");
+    db.insert(child(root, nested, "b")).await.expect("edge");
+    db.insert(child(root, after, "c")).await.expect("edge");
+
+    let exported = export(&db, &meta()).await.expect("export");
+    let file = exported
+        .bundle
+        .get(&layout::landmark(&ChartID("c4d8".into()), &root))
+        .expect("parent file");
+    let link = format!("[[{nested}|Child page]]");
+    let (b, l, a) = (
+        file.find("\nbefore\n").expect("before"),
+        file.find(&link).expect("nested link"),
+        file.find("\nafter\n").expect("after"),
+    );
+    assert!(b < l && l < a, "the nested Landmark sits between its siblings:\n{file}");
+    assert!(exported.warnings.is_empty(), "{:?}", exported.warnings);
+}
+
+#[tokio::test]
+async fn a_cycle_is_broken_with_a_warning_not_an_infinite_walk() {
+    let db = open().await;
+    db.insert(chart()).await.expect("chart");
+    let (root, a, b) = (MarkID::new(), MarkID::new(), MarkID::new());
+    db.insert(landmark(root, "Hi", IndexMap::new())).await.expect("root");
+    db.insert(paragraph(a, "a")).await.expect("a");
+    db.insert(paragraph(b, "b")).await.expect("b");
+    db.insert(child(root, a, "a")).await.expect("edge");
+    db.insert(child(a, b, "a")).await.expect("edge");
+    db.insert(child(b, a, "a")).await.expect("cycle");
+
+    let exported = export(&db, &meta()).await.expect("export");
+    assert!(
+        exported.warnings.iter().any(|w| w.contains("cycle")),
+        "{:?}",
+        exported.warnings
+    );
+}
+
+#[tokio::test]
+async fn unreachable_content_is_reported() {
+    let db = open().await;
+    db.insert(chart()).await.expect("chart");
+    db.insert(landmark(MarkID::new(), "Hi", IndexMap::new())).await.expect("root");
+    let stray = MarkID::new();
+    db.insert(paragraph(stray, "stray")).await.expect("stray");
+
+    let exported = export(&db, &meta()).await.expect("export");
+    assert!(
+        exported.warnings.iter().any(|w| w.contains(&stray.to_string())),
+        "{:?}",
+        exported.warnings
+    );
+}
+
+#[tokio::test]
+async fn a_reading_edge_is_carried_by_its_own_line() {
+    let db = open().await;
+    db.insert(chart()).await.expect("chart");
+    let (src, dst) = (MarkID::new(), MarkID::new());
+    db.insert(landmark(src, "One", IndexMap::new())).await.expect("src");
+    db.insert(landmark(dst, "Two", IndexMap::new())).await.expect("dst");
+    db.insert(Terrain {
+        id: TerrainID::new(),
+        src_id: src,
+        dst_id: dst,
+        kind: TerrainKind::Reading(ChartID("c4d8".into()), feature_id("a1b2")),
+        order: None,
+        extra: None,
+        deleted_at: None,
+    })
+    .await
+    .expect("edge");
+
+    let exported = export(&db, &meta()).await.expect("export");
+    let terrain = exported.bundle.get(layout::TERRAIN).expect("terrain.jsonl");
+    assert!(terrain.contains("reading::c4d8::a1b2"), "{terrain}");
 }
 
 #[tokio::test]

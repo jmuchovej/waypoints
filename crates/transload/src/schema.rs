@@ -9,10 +9,11 @@
 //!
 //! Every referenced Chart emits one, builtins included.
 
-use domain::{Chart, Feature, FeatureID, FeatureKind, Json};
+use domain::{Chart, Feature, FeatureID, FeatureKind, GlyphID, Json, Reading, syntax::inline};
+use indexmap::IndexMap;
 use serde_json::{Map, json};
 
-use crate::refusal::MalformedKind;
+use crate::{bundle::render_timestamp, refusal::MalformedKind};
 
 /// The reserved member carrying the canonical Chart.
 pub const X_WAYPOINTS: &str = "x-waypoints";
@@ -262,6 +263,53 @@ pub fn check_meta_schema(document: &Json) -> Result<(), MalformedKind> {
     jsonschema::draft7::meta::validate(document).map_err(|error| MalformedKind::Grammar {
         detail: format!("not a valid Draft-07 schema: {error}"),
     })
+}
+
+/// Readings as the instance the face validates — the shape frontmatter writes,
+/// not `Reading`'s own tagged serialization.
+pub(crate) fn instance(readings: &IndexMap<FeatureID, Reading>) -> Json {
+    let mut out = Map::new();
+    for (feature, reading) in readings {
+        out.insert(feature.to_string(), reading_instance(reading));
+    }
+    Json::Object(out)
+}
+
+fn reading_instance(reading: &Reading) -> Json {
+    let names = |glyphs: &[GlyphID]| glyphs.iter().map(ToString::to_string).collect::<Vec<_>>();
+    match reading {
+        Reading::Null => json!(null),
+        Reading::Text(rich) => json!(inline::emit(rich)),
+        Reading::Number(number) => json!(number),
+        Reading::Bool(flag) => json!(flag),
+        Reading::Date(at) => json!(render_timestamp(*at)),
+        Reading::DateRange(from, to) => json!({
+            "from": render_timestamp(*from),
+            "to": render_timestamp(*to),
+        }),
+        Reading::Select(glyph) => json!(glyph.to_string()),
+        Reading::MultiSelect(glyphs) => json!(names(glyphs)),
+        Reading::GroupedSelect(groups) => {
+            let mut sorted: Vec<_> = groups.iter().collect();
+            sorted.sort_by_key(|(group, _)| group.to_string());
+            Json::Object(
+                sorted
+                    .into_iter()
+                    .map(|(group, members)| (group.to_string(), json!(names(members))))
+                    .collect(),
+            )
+        }
+        Reading::References(targets) => json!(
+            targets
+                .iter()
+                .map(|target| json!({ "ref": target.to_string() }))
+                .collect::<Vec<_>>()
+        ),
+        Reading::URL(value) | Reading::Email(value) | Reading::File(value) | Reading::Formula(value) => {
+            json!(value)
+        }
+        Reading::Phone(first, second) => json!([first, second]),
+    }
 }
 
 #[cfg(test)]

@@ -1,29 +1,19 @@
-//! `export(store) → Bundle`.
+//! `export(store) → Bundle`: a freeze-frame of live knowledge. Soft-deleted
+//! Marks and edges are absent.
 //!
-//! A freeze-frame of live knowledge: soft-deleted Marks and edges do not
-//! appear, because deletion in a freeze-frame is absence and sync — not the
-//! Bundle — is the carrier of deletion history.
-//!
-//! The exporter reads through `bedrock::Database` generics rather than through
-//! `store`, so this crate stays below it and seeding can ingest a corpus
-//! without a dependency cycle.
-//!
-//! **It trusts the store.** Whatever the database hands back is serialized
-//! faithfully; `transload` knows nothing about how Charts and Readings stay in
-//! step, and declines to second-guess it. The one check it does make is on its
-//! own output — a Bundle whose Landmark readings do not satisfy the
-//! `_schema.json` the same export generated is internally inconsistent, and
-//! saying so where it originates beats a baffling ingest refusal months later.
-//! That is a **warning, never a refusal**: the covenant's promise is that you
-//! can always get your data out, so an export must not fail because the store
-//! is in a state the exporter did not expect.
+//! Anything that will not survive re-ingest (an orphaned Mark, a cycle, a
+//! reading its Chart rejects) is a warning, never a refusal.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use bedrock::{Database, Filter, Query};
 use domain::{
-    Chart, ChartID, Content, Mark, MarkData, MarkID, Reading, Terrain, TerrainKind,
-    syntax::block::{self, Children},
+    Chart, Content, InlineMark, Mark, MarkData, MarkID, RichText, Terrain, TerrainKind,
+    TextMarkKind, TextSegment,
+    syntax::{
+        block::{self, Children},
+        inline,
+    },
 };
 
 use crate::{
@@ -33,231 +23,146 @@ use crate::{
     schema,
 };
 
-/// Which carrier an edge kind travels in.
-///
-/// Every edge rides exactly one tier, and the ingester rebuilds Terrain as the
-/// union of all three — so a kind assigned to no tier would be silently
-/// dropped, which is what [`tier`]'s exhaustiveness prevents.
+/// The carrier an edge kind travels in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tier {
-    /// Structure. Document nesting carries it; nothing is written for it.
+    /// Document nesting carries it; a sidecar line only hangs `extra` on it.
     Structure,
-    /// Reading-bound. A frontmatter `readings.*[].ref` carries it.
-    ReadingBound,
-    /// Constitutive. A `terrain.jsonl` line *is* the edge.
+    /// A `terrain.jsonl` line is the edge.
     Constitutive,
 }
 
 /// No wildcard arm: a new `TerrainKind` must be assigned a tier to compile.
+/// `Reading` edges are constitutive because the app does not keep them in step
+/// with reading refs.
 pub fn tier(kind: &TerrainKind) -> Tier {
     match kind {
         TerrainKind::Child => Tier::Structure,
-        TerrainKind::Reading(_, _) => Tier::ReadingBound,
-        TerrainKind::Reference => Tier::Constitutive,
-        TerrainKind::Custom => Tier::Constitutive,
+        TerrainKind::Reference | TerrainKind::Custom | TerrainKind::Reading(_, _) => {
+            Tier::Constitutive
+        }
     }
 }
 
-/// A Bundle, plus anything the exporter noticed on the way out.
+/// A Bundle, plus what the exporter noticed on the way out.
 #[derive(Clone, Debug)]
 pub struct Exported {
-    /// The Bundle itself.
     pub bundle: Bundle,
-    /// Advisories about the store, not failures. An export never refuses.
     pub warnings: Vec<String>,
 }
 
-/// Why an export could not be produced at all.
 #[derive(Debug, thiserror::Error)]
 pub enum ExportError {
-    /// The store could not be read.
     #[error("reading the store: {0}")]
     Store(#[from] bedrock::BedrockError),
 }
 
-/// Export every live entity in a store as a [`Bundle`].
 pub async fn export(db: &Database, meta: &ExportMeta) -> Result<Exported, ExportError> {
     let live = Live::load(db).await?;
-    let mut bundle = Bundle::new();
-    let mut warnings = Vec::new();
-    let mut census = Census::default();
+    let mut out = Renderer {
+        live: &live,
+        bundle: Bundle::new(),
+        census: Census::default(),
+        warnings: Vec::new(),
+        reached: BTreeSet::new(),
+        expanded: BTreeSet::new(),
+        projected: BTreeMap::new(),
+    };
 
-    // Charts first: a Landmark's body cannot be rendered without the Chart's
-    // feature names for its advisory comments.
-    let mut schemas: BTreeMap<String, Chart> = BTreeMap::new();
-    for landmark in live.landmarks() {
-        let MarkData::Landmark(data) = &landmark.data else {
+    let mut charts: BTreeMap<String, &Chart> = BTreeMap::new();
+    for root in live.landmarks() {
+        let MarkData::Landmark(data) = &root.data else {
             continue;
         };
-        if let Some(chart) = live.charts.get(layout::chart_id(&data.chart)) {
-            schemas.insert(layout::chart_id(&data.chart).to_string(), chart.clone());
-        } else {
-            warnings.push(format!(
-                "Landmark {} names Chart `{}`, which the store does not hold; \
-                 its schema is absent from the Bundle",
-                landmark.id,
-                layout::chart_id(&data.chart)
+        let key = layout::chart_id(&data.chart);
+        match live.charts.get(key) {
+            Some(chart) => {
+                charts.insert(key.to_string(), chart);
+            }
+            None => out.warnings.push(format!(
+                "Landmark {} names Chart `{key}`, which the store does not hold",
+                root.id
+            )),
+        }
+    }
+    for chart in charts.values() {
+        for feature in chart.features.values() {
+            out.census.feature_kinds.insert(variant_name(&feature.kind));
+        }
+        out.bundle
+            .insert(layout::schema(&chart.id), pretty(&schema::emit(chart)));
+    }
+
+    for root in live.landmarks() {
+        out.landmark(root, charts.get(layout::chart_id(&landmark_chart(root))).copied());
+    }
+
+    for id in &live.content {
+        if !out.reached.contains(id) {
+            out.warnings.push(format!(
+                "Content Mark {id} is not reachable from any Landmark and is not in the Bundle"
             ));
         }
     }
-    for chart in schemas.values() {
-        for feature in chart.features.values() {
-            census.feature_kinds.insert(variant_name(&feature.kind));
-        }
-        let document = schema::emit(chart);
-        bundle.insert(layout::schema(&chart.id), pretty(&document));
+
+    let (terrain, terrains) = out.terrain_lines();
+    if !terrain.is_empty() {
+        out.bundle.insert(layout::TERRAIN, terrain);
+    }
+    if let Some(marks) = live.mark_lines(&out.reached) {
+        out.bundle.insert(layout::MARKS, marks);
     }
 
-    // Landmark files.
-    let mut counts = Counts::default();
-    for landmark in live.landmarks() {
-        let MarkData::Landmark(data) = &landmark.data else {
-            continue;
-        };
-        counts.landmarks += 1;
-
-        let advisory = live.advisory_for(data.chart.clone());
-        let front = Frontmatter {
-            title: data.title.clone(),
-            chart: data.chart.clone(),
-            icon: data.icon.clone(),
-            created: landmark.created_at,
-            updated: landmark.updated_at,
-            readings: data.readings.clone(),
-        };
-        for reading in data.readings.values() {
-            census.readings.insert(variant_name(reading));
-        }
-
-        let mut file = frontmatter::emit(&front, &advisory);
-        let mut body = String::new();
-        live.render_children(landmark.id, &mut body, &mut census);
-        if !body.is_empty() {
-            file.push('\n');
-            file.push_str(&body);
-        }
-        bundle.insert(layout::landmark(&data.chart, &landmark.id), file);
-
-        // The self-check: does this Landmark satisfy the schema this same
-        // export just generated for its Chart?
-        if let Some(chart) = schemas.get(layout::chart_id(&data.chart)) {
-            let document = schema::emit(chart);
-            let readings = readings_as_json(&front);
-            if let Err(problems) = schema::validate_readings(&document, &readings) {
-                for (feature, detail) in problems {
-                    warnings.push(format!(
-                        "Landmark {} has a reading the Chart's own schema rejects \
-                         (`{feature}`): {detail}. It is in the Bundle, but will not \
-                         re-ingest — the store and its Chart disagree.",
-                        landmark.id
-                    ));
-                }
-            }
-        }
-    }
-    counts.charts = schemas.len() as u64;
-    counts.content = live.content.len() as u64;
-
-    // Sidecars.
-    let (terrain_lines, terrain_count) = live.terrain_lines(&mut census);
-    counts.terrains = terrain_count;
-    if !terrain_lines.is_empty() {
-        bundle.insert(layout::TERRAIN, terrain_lines);
-    }
-    if let Some(marks) = live.mark_lines() {
-        bundle.insert(layout::MARKS, marks);
-    }
-
-    bundle.insert(
+    let counts = Counts {
+        landmarks: live.roots.len() as u64,
+        content: out.reached.len() as u64,
+        terrains,
+        charts: charts.len() as u64,
+    };
+    let manifest = Manifest::new(meta, counts, out.census);
+    out.bundle.insert(
         layout::MANIFEST,
-        pretty(
-            &serde_json::to_value(Manifest::new(meta, counts, census))
-                .unwrap_or(serde_json::Value::Null),
-        ),
+        pretty(&serde_json::to_value(manifest).unwrap_or_default()),
     );
 
-    Ok(Exported { bundle, warnings })
+    Ok(Exported {
+        bundle: out.bundle,
+        warnings: out.warnings,
+    })
 }
 
-/// Pretty JSON with a trailing newline — a Bundle's files are text files.
+fn landmark_chart(mark: &Mark) -> domain::ChartID {
+    match &mark.data {
+        MarkData::Landmark(data) => data.chart.clone(),
+        MarkData::Content(_) => domain::ChartID(String::new()),
+    }
+}
+
 fn pretty(value: &serde_json::Value) -> String {
-    let mut out = serde_json::to_string_pretty(value).unwrap_or_else(|_| "null".to_string());
+    let mut out = serde_json::to_string_pretty(value).unwrap_or_else(|_| "null".into());
     out.push('\n');
     out
 }
 
-/// A serde tag name, for the census — the spelling the Bundle itself uses.
-fn variant_name<T: serde::Serialize>(value: &T) -> String {
+/// A value's serde tag — the spelling the Bundle itself uses.
+pub(crate) fn variant_name<T: serde::Serialize>(value: &T) -> String {
     match serde_json::to_value(value) {
         Ok(serde_json::Value::Object(map)) => map
             .get("type")
             .and_then(|tag| tag.as_str())
-            .map(str::to_string)
-            .unwrap_or_else(|| "unknown".to_string()),
+            .unwrap_or("unknown")
+            .to_string(),
         Ok(serde_json::Value::String(tag)) => tag,
-        _ => "unknown".to_string(),
+        _ => "unknown".into(),
     }
 }
 
-/// A Landmark's readings as the JSON the Draft-07 face validates.
-fn readings_as_json(front: &Frontmatter) -> serde_json::Value {
-    let mut out = serde_json::Map::new();
-    for (feature, reading) in &front.readings {
-        out.insert(feature.to_string(), reading_instance(reading));
-    }
-    serde_json::Value::Object(out)
-}
-
-/// One reading as the schema expects to see it — mirroring what frontmatter
-/// writes, not `Reading`'s own tagged serialization.
-fn reading_instance(reading: &Reading) -> serde_json::Value {
-    use serde_json::json;
-    match reading {
-        Reading::Null => json!(null),
-        Reading::Text(rich) => json!(domain::syntax::inline::emit(rich)),
-        Reading::Number(number) => json!(number),
-        Reading::Bool(flag) => json!(flag),
-        Reading::Date(at) => json!(crate::bundle::render_timestamp(*at)),
-        Reading::DateRange(from, to) => json!({
-            "from": crate::bundle::render_timestamp(*from),
-            "to": crate::bundle::render_timestamp(*to),
-        }),
-        Reading::Select(glyph) => json!(glyph.to_string()),
-        Reading::MultiSelect(glyphs) => {
-            json!(glyphs.iter().map(ToString::to_string).collect::<Vec<_>>())
-        }
-        Reading::GroupedSelect(groups) => {
-            let mut out = serde_json::Map::new();
-            let mut sorted: Vec<_> = groups.iter().collect();
-            sorted.sort_by_key(|(group, _)| group.to_string());
-            for (group, members) in sorted {
-                out.insert(
-                    group.to_string(),
-                    json!(members.iter().map(ToString::to_string).collect::<Vec<_>>()),
-                );
-            }
-            serde_json::Value::Object(out)
-        }
-        Reading::References(targets) => json!(
-            targets
-                .iter()
-                .map(|target| json!({ "ref": target.to_string() }))
-                .collect::<Vec<_>>()
-        ),
-        Reading::URL(value)
-        | Reading::Email(value)
-        | Reading::File(value)
-        | Reading::Formula(value) => json!(value),
-        Reading::Phone(first, second) => json!([first, second]),
-    }
-}
-
-/// Everything live in the store, indexed the ways the exporter walks it.
+/// Everything live, indexed the ways the exporter walks it.
 struct Live {
     marks: BTreeMap<MarkID, Mark>,
     content: BTreeSet<MarkID>,
     roots: Vec<MarkID>,
-    /// Parent → children, already in order.
+    /// Parent → children, in fractional-key order.
     children: BTreeMap<MarkID, Vec<MarkID>>,
     edges: Vec<Terrain>,
     charts: BTreeMap<String, Chart>,
@@ -281,12 +186,14 @@ impl Live {
             }
             by_id.insert(mark.id, mark);
         }
-        // Sorted, so file order and iteration order are the Bundle's, not the
-        // engine's.
         roots.sort();
 
-        // Child edges, ordered by their runtime fractional key. The key itself
-        // never reaches a Bundle — only the order it implies.
+        // An edge to a soft-deleted Mark is dead weight, not live structure.
+        let edges: Vec<Terrain> = edges
+            .into_iter()
+            .filter(|edge| by_id.contains_key(&edge.src_id) && by_id.contains_key(&edge.dst_id))
+            .collect();
+
         let mut children: BTreeMap<MarkID, Vec<(Option<String>, MarkID)>> = BTreeMap::new();
         for edge in &edges {
             if tier(&edge.kind) == Tier::Structure {
@@ -299,7 +206,6 @@ impl Live {
         let children = children
             .into_iter()
             .map(|(parent, mut kids)| {
-                // `None` sorts last: an edge with no key has no claim to a place.
                 kids.sort_by(|left, right| match (&left.0, &right.0) {
                     (Some(a), Some(b)) => a.cmp(b).then(left.1.cmp(&right.1)),
                     (Some(_), None) => std::cmp::Ordering::Less,
@@ -327,180 +233,22 @@ impl Live {
         self.roots.iter().filter_map(|id| self.marks.get(id))
     }
 
-    /// Feature names and reference labels for one Chart — regenerated every
-    /// export, never read back.
-    fn advisory_for(&self, chart: ChartID) -> Advisory {
-        let mut advisory = Advisory::default();
-        if let Some(chart) = self.charts.get(&chart.0) {
-            for (id, feature) in &chart.features {
-                advisory
-                    .feature_names
-                    .insert(id.clone(), feature.name.clone());
-            }
-        }
-        for (id, mark) in &self.marks {
-            if let MarkData::Landmark(data) = &mark.data {
-                advisory
-                    .mark_titles
-                    .insert(*id, data.title.plain_text().to_string());
-            }
-        }
-        advisory
-    }
-
-    /// Render a Mark's children beneath it, recursively.
-    ///
-    /// A Mark shared by several Landmarks is rendered identically into each —
-    /// the bytes come from the same code path with the same inputs, so
-    /// divergence within one export is not possible.
-    fn render_children(&self, parent: MarkID, out: &mut String, census: &mut Census) {
-        let Some(kids) = self.children.get(&parent) else {
-            return;
-        };
-        for child in kids {
-            let Some(mark) = self.marks.get(child) else {
-                continue;
-            };
-            let MarkData::Content(content) = &mark.data else {
-                // A Landmark nested under another is its own file; the edge to
-                // it is structure, and the child's file carries its content.
-                continue;
-            };
-            self.render_block(mark.id, content, out, census);
+    fn title(&self, id: &MarkID) -> Option<String> {
+        match &self.marks.get(id)?.data {
+            MarkData::Landmark(data) => Some(data.title.plain_text().to_string()),
+            MarkData::Content(_) => None,
         }
     }
 
-    fn render_block(&self, id: MarkID, content: &Content, out: &mut String, census: &mut Census) {
-        census.content.insert(variant_name(content));
-        let rendered = block::emit(content);
-        let has_children = self
-            .children
-            .get(&id)
-            .map(|kids| !kids.is_empty())
-            .unwrap_or(false);
-
-        out.push_str(&identity::emit_open(&Identity::new(id)));
-        out.push('\n');
-        for line in &rendered.lines {
-            out.push_str(line);
-            out.push('\n');
-        }
-
-        if has_children {
-            let mut inner = String::new();
-            self.render_children(id, &mut inner, census);
-            match rendered.children {
-                Children::None => out.push_str(&inner),
-                Children::Prefixed(prefix) => {
-                    for line in inner.lines() {
-                        out.push_str(prefix.trim_end());
-                        if !line.is_empty() {
-                            out.push(' ');
-                            out.push_str(line);
-                        }
-                        out.push('\n');
-                    }
-                }
-                Children::Indented(width) => {
-                    for line in inner.lines() {
-                        if !line.is_empty() {
-                            out.push_str(&" ".repeat(width));
-                            out.push_str(line);
-                        }
-                        out.push('\n');
-                    }
-                }
-                Children::Closed(closer) => {
-                    out.push_str(&inner);
-                    out.push_str(closer);
-                    out.push('\n');
-                }
-            }
-            // Paired only when there are children to enclose: a closer with
-            // nothing between it and its opener says nothing.
-            out.push_str(&identity::emit_close());
-            out.push('\n');
-        } else if let Children::Closed(closer) = rendered.children {
-            // A childless component still has to close its own syntax.
-            out.push_str(closer);
-            out.push('\n');
-        }
-    }
-
-    /// `terrain.jsonl`, plus how many live edges the Bundle accounts for.
-    ///
-    /// Constitutive kinds get a line that *is* the edge. Structure and
-    /// reading-bound kinds are already carried by the projection, so they get a
-    /// line only to hang `extra` on — addressed by natural key, never by id.
-    fn terrain_lines(&self, census: &mut Census) -> (String, u64) {
-        let mut ordinals: BTreeMap<(MarkID, MarkID, String), u32> = BTreeMap::new();
-        let mut rows: Vec<serde_json::Value> = Vec::new();
-        let mut counted = 0;
-
-        // Sorted by natural key so the file is byte-stable and ordinals are
-        // assigned the same way every time.
-        let mut edges: Vec<&Terrain> = self.edges.iter().collect();
-        edges.sort_by(|left, right| {
-            (
-                left.src_id,
-                left.dst_id,
-                left.kind.to_storage(),
-                left.order.clone(),
-            )
-                .cmp(&(
-                    right.src_id,
-                    right.dst_id,
-                    right.kind.to_storage(),
-                    right.order.clone(),
-                ))
-        });
-
-        for edge in edges {
-            counted += 1;
-            census.terrain_kinds.insert(variant_name(&edge.kind));
-            let kind = edge.kind.to_storage();
-            let slot = ordinals
-                .entry((edge.src_id, edge.dst_id, kind.clone()))
-                .or_insert(0);
-            let ordinal = *slot;
-            *slot += 1;
-
-            let constitutive = tier(&edge.kind) == Tier::Constitutive;
-            if !constitutive && edge.extra.is_none() {
-                // Fully carried by the projection; nothing to say.
-                continue;
-            }
-
-            let mut row = serde_json::Map::new();
-            row.insert("src".into(), serde_json::json!(edge.src_id.to_string()));
-            row.insert("dst".into(), serde_json::json!(edge.dst_id.to_string()));
-            row.insert("kind".into(), serde_json::json!(kind));
-            if ordinal > 0 || !constitutive {
-                // An annotative line must always say which parallel edge it
-                // annotates; a constitutive one only when it is not the first.
-                row.insert("order".into(), serde_json::json!(ordinal));
-            }
-            if let Some(extra) = &edge.extra {
-                row.insert("extra".into(), extra.clone());
-            }
-            rows.push(serde_json::Value::Object(row));
-        }
-
-        let mut out = String::new();
-        for row in rows {
-            out.push_str(&serde_json::to_string(&row).unwrap_or_default());
-            out.push('\n');
-        }
-        (out, counted)
-    }
-
-    /// `marks.jsonl` — one `{id, extra}` line per extra-bearing Mark.
-    fn mark_lines(&self) -> Option<String> {
+    fn mark_lines(&self, reached: &BTreeSet<MarkID>) -> Option<String> {
         let mut out = String::new();
         for (id, mark) in &self.marks {
             let Some(extra) = &mark.extra else {
                 continue;
             };
+            if !mark.is_landmark() && !reached.contains(id) {
+                continue;
+            }
             let row = serde_json::json!({ "id": id.to_string(), "extra": extra });
             out.push_str(&serde_json::to_string(&row).unwrap_or_default());
             out.push('\n');
@@ -509,23 +257,245 @@ impl Live {
     }
 }
 
+struct Renderer<'a> {
+    live: &'a Live,
+    bundle: Bundle,
+    census: Census,
+    warnings: Vec<String>,
+    /// Content Marks that made it into some body.
+    reached: BTreeSet<MarkID>,
+    /// Marks whose child edges have been counted, so a shared Mark rendered
+    /// into several files counts its edges once.
+    expanded: BTreeSet<MarkID>,
+    /// How many `(parent, child)` structure edges the bodies carry.
+    projected: BTreeMap<(MarkID, MarkID), u32>,
+}
+
+impl Renderer<'_> {
+    fn landmark(&mut self, root: &Mark, chart: Option<&Chart>) {
+        let MarkData::Landmark(data) = &root.data else {
+            return;
+        };
+        let mut advisory = Advisory::default();
+        if let Some(chart) = chart {
+            for (id, feature) in &chart.features {
+                advisory.feature_names.insert(id.clone(), feature.name.clone());
+            }
+        }
+        for target in self.live.roots.iter() {
+            if let Some(title) = self.live.title(target) {
+                advisory.mark_titles.insert(*target, title);
+            }
+        }
+        for reading in data.readings.values() {
+            self.census.readings.insert(variant_name(reading));
+        }
+
+        let front = Frontmatter {
+            title: data.title.clone(),
+            chart: data.chart.clone(),
+            icon: data.icon.clone(),
+            created: root.created_at,
+            updated: root.updated_at,
+            readings: data.readings.clone(),
+        };
+        let mut file = frontmatter::emit(&front, &advisory);
+        let mut body = String::new();
+        let mut path = vec![root.id];
+        self.children(root.id, &mut path, &mut body);
+        if !body.is_empty() {
+            file.push('\n');
+            file.push_str(&body);
+        }
+        self.bundle.insert(layout::landmark(&data.chart, &root.id), file);
+
+        if let Some(chart) = chart
+            && let Err(problems) =
+                schema::validate_readings(&schema::emit(chart), &schema::instance(&data.readings))
+        {
+            for (feature, detail) in problems {
+                self.warnings.push(format!(
+                    "Landmark {}: reading `{feature}` fails its Chart's schema and will not \
+                     re-ingest: {detail}",
+                    root.id
+                ));
+            }
+        }
+    }
+
+    fn children(&mut self, parent: MarkID, path: &mut Vec<MarkID>, out: &mut String) {
+        let Some(kids) = self.live.children.get(&parent).cloned() else {
+            return;
+        };
+        let first_expansion = self.expanded.insert(parent);
+        for child in kids {
+            if path.contains(&child) {
+                self.warnings.push(format!(
+                    "the edge {parent} → {child} closes a cycle and is not in the Bundle"
+                ));
+                continue;
+            }
+            let Some(mark) = self.live.marks.get(&child) else {
+                continue;
+            };
+            if first_expansion {
+                *self.projected.entry((parent, child)).or_default() += 1;
+            }
+            match &mark.data {
+                // A nested Landmark is its own file; here it is only a position.
+                MarkData::Landmark(data) => {
+                    out.push_str(&identity::emit_open(&Identity::new(child)));
+                    out.push('\n');
+                    out.push_str(&mention_line(child, data.title.plain_text()));
+                    out.push('\n');
+                }
+                MarkData::Content(content) => {
+                    self.reached.insert(child);
+                    path.push(child);
+                    self.block(mark, content, path, out);
+                    path.pop();
+                }
+            }
+        }
+    }
+
+    fn block(&mut self, mark: &Mark, content: &Content, path: &mut Vec<MarkID>, out: &mut String) {
+        self.census.content.insert(variant_name(content));
+        let rendered = block::emit(content);
+        let identity = Identity::stamped(mark.id, mark.created_at, mark.updated_at);
+        out.push_str(&identity::emit_open(&identity));
+        out.push('\n');
+        for line in &rendered.lines {
+            out.push_str(line);
+            out.push('\n');
+        }
+
+        let mut inner = String::new();
+        self.children(mark.id, path, &mut inner);
+        if inner.is_empty() {
+            if let Children::Closed(closer) = rendered.children {
+                out.push_str(closer);
+                out.push('\n');
+            }
+            return;
+        }
+        match rendered.children {
+            Children::None => out.push_str(&inner),
+            Children::Prefixed(prefix) => {
+                for line in inner.lines() {
+                    out.push_str(prefix.trim_end());
+                    if !line.is_empty() {
+                        out.push(' ');
+                        out.push_str(line);
+                    }
+                    out.push('\n');
+                }
+            }
+            Children::Indented(width) => {
+                for line in inner.lines() {
+                    if !line.is_empty() {
+                        out.push_str(&" ".repeat(width));
+                        out.push_str(line);
+                    }
+                    out.push('\n');
+                }
+            }
+            Children::Closed(closer) => {
+                out.push_str(&inner);
+                out.push_str(closer);
+                out.push('\n');
+            }
+        }
+        out.push_str(&identity::emit_close());
+        out.push('\n');
+    }
+
+    /// `terrain.jsonl`, sorted by natural key so ordinals and bytes are stable,
+    /// and the number of live edges the Bundle accounts for.
+    fn terrain_lines(&mut self) -> (String, u64) {
+        let mut edges: Vec<&Terrain> = self.live.edges.iter().collect();
+        edges.sort_by_key(|edge| {
+            (
+                edge.src_id,
+                edge.dst_id,
+                edge.kind.to_storage(),
+                edge.order.clone(),
+            )
+        });
+
+        let mut ordinals: BTreeMap<(MarkID, MarkID, String), u32> = BTreeMap::new();
+        let mut out = String::new();
+        let mut carried = 0;
+        for edge in edges {
+            let kind = edge.kind.to_storage();
+            let ordinal = {
+                let slot = ordinals
+                    .entry((edge.src_id, edge.dst_id, kind.clone()))
+                    .or_insert(0);
+                *slot += 1;
+                *slot - 1
+            };
+            let constitutive = tier(&edge.kind) == Tier::Constitutive;
+            if !constitutive {
+                let projected = self
+                    .projected
+                    .get(&(edge.src_id, edge.dst_id))
+                    .copied()
+                    .unwrap_or(0);
+                if ordinal >= projected {
+                    // Unreachable or cycle-breaking structure: already warned.
+                    continue;
+                }
+            }
+            carried += 1;
+            self.census.terrain_kinds.insert(variant_name(&edge.kind));
+            if !constitutive && edge.extra.is_none() {
+                continue;
+            }
+
+            let mut row = serde_json::Map::new();
+            row.insert("src".into(), edge.src_id.to_string().into());
+            row.insert("dst".into(), edge.dst_id.to_string().into());
+            row.insert("kind".into(), kind.into());
+            if ordinal > 0 || !constitutive {
+                row.insert("order".into(), ordinal.into());
+            }
+            if let Some(extra) = &edge.extra {
+                row.insert("extra".into(), extra.clone());
+            }
+            out.push_str(&serde_json::Value::Object(row).to_string());
+            out.push('\n');
+        }
+        (out, carried)
+    }
+}
+
+/// `[[id|Title]]` — a nested Landmark's place in its parent's body.
+fn mention_line(id: MarkID, title: &str) -> String {
+    inline::emit(&RichText::new(vec![TextSegment {
+        text: title.to_string(),
+        marks: vec![InlineMark {
+            kind: TextMarkKind::Mention,
+            data: Some(serde_json::Value::String(id.to_string())),
+        }],
+    }]))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn every_terrain_kind_has_a_tier() {
-        // The exhaustive match in `tier` is the real guarantee; this pins the
-        // assignments so a silent re-tiering shows up as a test failure.
         assert_eq!(tier(&TerrainKind::Child), Tier::Structure);
         assert_eq!(tier(&TerrainKind::Reference), Tier::Constitutive);
         assert_eq!(tier(&TerrainKind::Custom), Tier::Constitutive);
         assert_eq!(
             tier(&TerrainKind::Reading(
-                ChartID::builtin("meeting"),
-                domain::FeatureID(domain::Base36ID("a1b2".into()))
+                domain::ChartID::builtin("meeting"),
+                domain::FeatureID::derived("attendees")
             )),
-            Tier::ReadingBound
+            Tier::Constitutive
         );
     }
 
@@ -533,6 +503,6 @@ mod tests {
     fn variant_names_are_the_serde_tags() {
         assert_eq!(variant_name(&TerrainKind::Child), "child");
         assert_eq!(variant_name(&Content::Divider { theme: None }), "divider");
-        assert_eq!(variant_name(&Reading::Null), "null");
+        assert_eq!(variant_name(&domain::Reading::Null), "null");
     }
 }

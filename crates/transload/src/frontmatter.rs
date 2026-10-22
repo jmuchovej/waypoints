@@ -346,14 +346,8 @@ fn timestamp(root: &Mapping<'_>, key: &str) -> Result<NaiveDateTime, MalformedKi
     parse_timestamp(&as_text(node)?)
 }
 
-/// ISO-8601 with an explicit `Z` and millisecond precision — the one spelling a
-/// Bundle ever uses.
 fn parse_timestamp(text: &str) -> Result<NaiveDateTime, MalformedKind> {
-    NaiveDateTime::parse_from_str(text.trim(), "%Y-%m-%dT%H:%M:%S%.3fZ").map_err(|error| {
-        MalformedKind::Grammar {
-            detail: format!("`{text}` is not an ISO-8601 UTC millisecond timestamp: {error}"),
-        }
-    })
+    crate::bundle::parse_timestamp(text).map_err(|detail| MalformedKind::Grammar { detail })
 }
 
 fn glyph(node: &Yaml<'_>) -> Result<GlyphID, MalformedKind> {
