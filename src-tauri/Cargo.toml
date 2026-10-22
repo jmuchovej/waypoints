@@ -10,14 +10,26 @@
   homepage.workspace    = true
   repository            = "https://dev.waypoints.so/lib"
   license.workspace     = true
-  default-run           = "waypoints"
 
 [lib]
   crate-type = [ "cdylib", "rlib", "staticlib" ]
   name       = "waypoints"
 
 [[bin]]
-  name = "waypoints"
+  name              = "waypoints-development"
+  required-features = [ "development" ]
+
+[[bin]]
+  name              = "waypoints-nightly"
+  required-features = [ "nightly" ]
+
+[[bin]]
+  name              = "waypoints-preview"
+  required-features = [ "preview" ]
+
+[[bin]]
+  name              = "waypoints"
+  required-features = [ "stable" ]
 
 [dependencies]
   cartograph.workspace = true

@@ -237,6 +237,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
       "x86_64-linux"
       "aarch64-linux"
     ];
-    mainProgram = "waypoints";
+    # Each flavor's executable carries its name (see src-tauri/Cargo.toml).
+    mainProgram = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
   };
 })
