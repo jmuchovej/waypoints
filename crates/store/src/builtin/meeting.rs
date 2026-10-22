@@ -23,19 +23,22 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("date-time"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Status")
                 .with_kind(status.into())
-                .build(),
+                .build()
+                .keyed("status"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Agenda")
                 .with_kind(Reference::builder().with_display_card_sm().build().into())
-                .build(),
+                .build()
+                .keyed("agenda"),
         )
         .add_feature(
             Feature::builder()
@@ -47,7 +50,8 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("attendees"),
         )
         .add_feature(
             Feature::builder()
@@ -59,13 +63,15 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("action-items"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Location")
                 .with_kind(FeatureKind::Text)
-                .build(),
+                .build()
+                .keyed("location"),
         )
         .add_feature(tags_feature())
         .build();

@@ -8,12 +8,14 @@ pub fn status_multi_select() -> Select {
             .with_name("Sometime")
             .with_icon(Icon::system_emoji("melting-face"))
             .with_color(Color::Default)
-            .build();
+            .build()
+            .keyed("sometime");
         let not_started = SelectOption::builder()
             .with_name("Not Started")
             .with_icon(Icon::system_emoji("alarm-clock"))
             .with_color(Color::Gray)
-            .build();
+            .build()
+            .keyed("not-started");
         let id = not_started.id.clone();
         SelectGroup::builder()
             .with_name("Pending")
@@ -22,6 +24,7 @@ pub fn status_multi_select() -> Select {
             .with_default_option(id)
             .with_single_selection()
             .build()
+            .keyed("group/pending")
     };
 
     let status_progress_group = {
@@ -29,12 +32,14 @@ pub fn status_multi_select() -> Select {
             .with_name("Waiting")
             .with_icon(Icon::system_emoji("vertical-traffic-light"))
             .with_color(Color::Blue)
-            .build();
+            .build()
+            .keyed("waiting");
         let in_progress = SelectOption::builder()
             .with_name("In Progress")
             .with_icon(Icon::system_emoji("construction"))
             .with_color(Color::Yellow)
-            .build();
+            .build()
+            .keyed("in-progress");
         let id = in_progress.id.clone();
         SelectGroup::builder()
             .with_name("In Progress")
@@ -43,6 +48,7 @@ pub fn status_multi_select() -> Select {
             .with_default_option(id)
             .with_single_selection()
             .build()
+            .keyed("group/in-progress")
     };
 
     let status_finished_group = {
@@ -50,18 +56,21 @@ pub fn status_multi_select() -> Select {
             .with_name("Completed")
             .with_icon(Icon::system_emoji("party-popper"))
             .with_color(Color::Green)
-            .build();
+            .build()
+            .keyed("completed");
         let id = completed.id.clone();
         let dropped = SelectOption::builder()
             .with_name("Dropped")
             .with_icon(Icon::system_emoji("drop-of-blood"))
             .with_color(Color::Red)
-            .build();
+            .build()
+            .keyed("dropped");
         let cancelled = SelectOption::builder()
             .with_name("Cancelled")
             .with_icon(Icon::system_emoji("person-gesturing-no"))
             .with_color(Color::Orange)
-            .build();
+            .build()
+            .keyed("cancelled");
         SelectGroup::builder()
             .with_name("Finished")
             .with_option(completed)
@@ -70,6 +79,7 @@ pub fn status_multi_select() -> Select {
             .with_default_option(id)
             .with_single_selection()
             .build()
+            .keyed("group/finished")
     };
 
     Select::builder()
@@ -85,4 +95,5 @@ pub fn tags_feature() -> Feature {
         .with_name("Tags")
         .with_kind(Reference::builder().with_display_mention().build().into())
         .build()
+        .keyed("tags")
 }

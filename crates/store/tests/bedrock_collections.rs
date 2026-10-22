@@ -257,6 +257,47 @@ async fn seed_is_idempotent() {
     assert_eq!(count, 9);
 }
 
+/// Readings are keyed by feature id, so a reopen must not re-mint them.
+#[tokio::test]
+async fn builtin_feature_ids_survive_a_reopen() {
+    let dir = tempdir().expect("tempdir");
+    let path = dir.path().join("reopen.db");
+    let meeting = store::builtin::meeting::type_id();
+
+    let mut seen = Vec::new();
+    for _ in 0..2 {
+        let store = Store::open(&path).await.expect("open");
+        let chart = store
+            .db()
+            .get::<domain::Chart>(&meeting)
+            .await
+            .expect("get")
+            .expect("seeded");
+        seen.push(chart);
+    }
+    assert_eq!(seen[0], seen[1]);
+}
+
+#[test]
+fn every_builtin_chart_is_deterministic() {
+    use store::builtin::*;
+    let charts: [fn() -> domain::Chart; 9] = [
+        page::chart,
+        objective::chart,
+        note::chart,
+        person::chart,
+        campaign::chart,
+        meeting::chart,
+        bookmark::chart,
+        journal::chart,
+        book::chart,
+    ];
+    for chart in charts {
+        let (first, second) = (chart(), chart());
+        assert_eq!(first, second, "{} mints a random id", first.name);
+    }
+}
+
 // ── Terrain round-trip ───────────────────────────────────────────────────────
 
 #[tokio::test]

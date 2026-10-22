@@ -12,10 +12,26 @@ pub fn chart() -> Chart {
 
     let priority_group = SelectGroup::builder()
         .with_name("Priority")
-        .with_option(SelectOption::builder().with_name("Low").build())
-        .with_option(SelectOption::builder().with_name("Medium").build())
-        .with_option(SelectOption::builder().with_name("High").build())
-        .build();
+        .with_option(
+            SelectOption::builder()
+                .with_name("Low")
+                .build()
+                .keyed("low"),
+        )
+        .with_option(
+            SelectOption::builder()
+                .with_name("Medium")
+                .build()
+                .keyed("medium"),
+        )
+        .with_option(
+            SelectOption::builder()
+                .with_name("High")
+                .build()
+                .keyed("high"),
+        )
+        .build()
+        .keyed("group/priority");
 
     let chart = Chart::builder()
         .with_name("Objective")
@@ -25,13 +41,15 @@ pub fn chart() -> Chart {
             Feature::builder()
                 .with_name("Status")
                 .with_kind(status.into())
-                .build(),
+                .build()
+                .keyed("status"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Due Date")
                 .with_kind(Date::builder().build().into())
-                .build(),
+                .build()
+                .keyed("due-date"),
         )
         .add_feature(
             Feature::builder()
@@ -43,7 +61,8 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("priority"),
         )
         .add_feature(
             Feature::builder()
@@ -56,7 +75,8 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("assignee"),
         )
         .add_feature(tags_feature())
         .build();
