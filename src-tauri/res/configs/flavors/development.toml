@@ -14,3 +14,7 @@ identifier  = "so.waypoints.dev"
     "assets/icons/app/dev.icns",
     "assets/icons/app/dev.ico",
   ]
+
+  [bundle.windows.nsis]
+    installerIcon   = "assets/icons/app/dev.ico"
+    uninstallerIcon = "assets/icons/app/dev.ico"

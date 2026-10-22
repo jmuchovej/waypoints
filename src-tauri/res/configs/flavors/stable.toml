@@ -14,3 +14,7 @@ identifier  = "so.waypoints"
     "assets/icons/app/stable.icns",
     "assets/icons/app/stable.ico",
   ]
+
+  [bundle.windows.nsis]
+    installerIcon   = "assets/icons/app/stable.ico"
+    uninstallerIcon = "assets/icons/app/stable.ico"

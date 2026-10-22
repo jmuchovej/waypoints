@@ -14,3 +14,7 @@ identifier  = "so.waypoints.preview"
     "assets/icons/app/preview.icns",
     "assets/icons/app/preview.ico",
   ]
+
+  [bundle.windows.nsis]
+    installerIcon   = "assets/icons/app/preview.ico"
+    uninstallerIcon = "assets/icons/app/preview.ico"

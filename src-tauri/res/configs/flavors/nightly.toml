@@ -14,3 +14,7 @@ identifier  = "so.waypoints.nightly"
     "assets/icons/app/nightly.icns",
     "assets/icons/app/nightly.ico",
   ]
+
+  [bundle.windows.nsis]
+    installerIcon   = "assets/icons/app/nightly.ico"
+    uninstallerIcon = "assets/icons/app/nightly.ico"
