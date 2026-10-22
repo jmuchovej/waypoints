@@ -1,11 +1,24 @@
+#:tombi toml-version = "v1.0.0"
+
+# Read by Typst, whose TOML parser is 1.0: no multi-line inline tables.
+#
+# Paths are relative to `src-tauri/`. Desktop outputs are named for a flavor's
+# short name, `{short}`; mobile outputs live in projects keyed by the full
+# flavor name, `{flavor}`.
+short.development = "dev"
+short.nightly     = "nightly"
+short.preview     = "preview"
+short.stable      = "stable"
+
 linux = [
-  { name = "32x32.png", px = 32 },
-  { name = "128x128.png", px = 128 },
-  { name = "128x128@2x.png", px = 256 },
+  { file = "assets/icons/app/{short}-032.png", px = 32 },
+  { file = "assets/icons/app/{short}-128.png", px = 128 },
+  { file = "assets/icons/app/{short}-128@2x.png", px = 256 },
 ]
 
-# macOS .icns table: osType + pixel size.
-macOS = [
+# .icns members: OSType + pixel size.
+macOS.file    = "assets/icons/app/{short}.icns"
+macOS.members = [
   { os = "ic04", px = 16 },
   { os = "ic05", px = 32 },
   { os = "ic11", px = 32 },
@@ -18,10 +31,12 @@ macOS = [
   { os = "ic10", px = 1024 },
 ]
 
-windows = [ { px = 16 }, { px = 32 }, { px = 48 }, { px = 256 } ]
+windows.file    = "assets/icons/app/{short}.ico"
+windows.members = [ { px = 16 }, { px = 32 }, { px = 48 }, { px = 256 } ]
 
-# iOS AppIcon.appiconset manifest (full modern set: iPhone + iPad + marketing).
-iOS = [
+# AppIcon.appiconset (full modern set: iPhone + iPad + marketing).
+iOS.dir   = "gen/apple/Assets.xcassets/{flavor}.appiconset"
+iOS.slots = [
   { idiom = "iphone", size = "20x20", scale = "2x", px = 40 },
   { idiom = "iphone", size = "20x20", scale = "3x", px = 60 },
   { idiom = "iphone", size = "29x29", scale = "2x", px = 58 },
@@ -53,8 +68,9 @@ menu-bar = [
   { name = "menu-bar@3x.png", px = 54 },
 ]
 
-# Android adaptive-icon foreground layer: 108dp at each mipmap density.
-android = [
+# Adaptive-icon foreground layer: 108dp at each mipmap density.
+android.dir       = "gen/android/app/src/{flavor}/res"
+android.densities = [
   { px = 108, density = "mdpi" },
   { px = 162, density = "hdpi" },
   { px = 216, density = "xhdpi" },
