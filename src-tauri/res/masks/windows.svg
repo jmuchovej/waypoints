@@ -16,7 +16,8 @@
       <feGaussianBlur stdDeviation="24" in="shadowSpreadInner1" result="shadowBlurInner1"/>
       <feOffset dx="0" dy="0" in="shadowBlurInner1" result="shadowOffsetInner1"/>
       <feComposite in="shadowOffsetInner1" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowInnerInner1"/>
-      <feColorMatrix values="0 0 0 0 0.278431373   0 0 0 0 0.333333333   0 0 0 0 0.411764706  0 0 0 1 0" type="matrix" in="shadowInnerInner1"/>
+      <feFlood id="inner-tint" flood-color="#475569" result="tint"/>
+      <feComposite in="tint" in2="shadowInnerInner1" operator="in"/>
     </filter>
   </defs>
   <g id="macOS" stroke="none" fill="none" xlink:href="#path-1">
