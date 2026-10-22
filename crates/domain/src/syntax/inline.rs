@@ -148,13 +148,19 @@ fn emit_segment(segment: &TextSegment, out: &mut String) {
         out.push('[');
         out.push_str(&escape_text(&segment.text));
         out.push_str("](");
-        out.push_str(data_str(link).unwrap_or_default());
+        out.push_str(&escape_href(data_str(link).unwrap_or_default()));
         out.push(')');
         emit_attrs(&segment.marks, &[TextMarkKind::Link], out);
         return;
     }
 
     match segment.marks.as_slice() {
+        // A plain run opening with `{` may follow a bracketed atom or a
+        // shortcut, and would read as its attribute list.
+        [] if segment.text.starts_with('{') => {
+            out.push('\\');
+            out.push_str(&escape_text(&segment.text));
+        }
         [] => out.push_str(&escape_text(&segment.text)),
         [only] if let Some(spelled) = shortcut(only, &segment.text) => out.push_str(&spelled),
         _ => {
@@ -180,8 +186,8 @@ fn shortcut(mark: &InlineMark, text: &str) -> Option<String> {
         TextMarkKind::Strikethrough => wrap("~~"),
         TextMarkKind::Highlight if mark.data.is_none() => wrap("=="),
         TextMarkKind::Spoiler => wrap("||"),
-        TextMarkKind::Superscript => Some(format!("^{{{}}}", escape_text(text))),
-        TextMarkKind::Subscript => Some(format!("_{{{}}}", escape_text(text))),
+        TextMarkKind::Superscript => Some(format!("^{{{}}}", escape_script(text))),
+        TextMarkKind::Subscript => Some(format!("_{{{}}}", escape_script(text))),
         // Code and math interiors are literal: nothing inside them can be
         // escaped, so a text carrying their own delimiter has no shortcut.
         TextMarkKind::Code if !text.contains('`') => Some(format!("`{text}`")),
@@ -230,17 +236,20 @@ fn emit_attrs(marks: &[InlineMark], skip: &[TextMarkKind], out: &mut String) {
 }
 
 /// Escape what would otherwise open a construct, and nothing more.
+///
+/// A segment's edges count as neighbours of unknown characters: the next
+/// segment may supply the second `~` of a `~~` or the `{` after a `^`.
 fn escape_text(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let chars: Vec<char> = text.chars().collect();
+    let last = chars.len().saturating_sub(1);
     for (index, &current) in chars.iter().enumerate() {
-        let doubled = chars.get(index + 1) == Some(&current);
-        let previous_doubled = index > 0 && chars[index - 1] == current;
-        // `^` opens nothing on its own now that superscript is always braced,
-        // so `2^10` stays legible and only `^{` needs hiding.
-        let opens_script = current == '^' && chars.get(index + 1) == Some(&'{');
+        let edge = index == 0 || index == last;
+        let doubled =
+            chars.get(index + 1) == Some(&current) || (index > 0 && chars[index - 1] == current);
+        let opens_script = current == '^' && (index == last || chars.get(index + 1) == Some(&'{'));
         if ALWAYS_ESCAPED.contains(&current)
-            || (matches!(current, '~' | '=' | '|') && (doubled || previous_doubled))
+            || (matches!(current, '~' | '=' | '|') && (doubled || edge))
             || opens_script
         {
             out.push('\\');
@@ -248,6 +257,16 @@ fn escape_text(text: &str) -> String {
         out.push(current);
     }
     out
+}
+
+/// A braced script's text, where a `}` would close the script early.
+fn escape_script(text: &str) -> String {
+    escape_text(text).replace('}', "\\}")
+}
+
+/// A link target, where a `)` would end the link early.
+fn escape_href(href: &str) -> String {
+    href.replace('\\', "\\\\").replace(')', "\\)")
 }
 
 /// A mention's label is delimited by `|` and `]]`, so only those need hiding.

@@ -12,34 +12,25 @@ use inline::GrammarError;
 /// A block's own lines, plus how its children attach beneath it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rendered {
-    /// The lines the block itself contributes, in order.
     pub lines: Vec<String>,
-    /// How a child's lines attach under this block.
     pub children: Children,
 }
 
-/// How a block's children attach to it — the walker's instruction.
+/// How a block's children attach. Any Mark may have children, so every block
+/// has an answer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Children {
-    /// A leaf. Nothing attaches.
-    None,
     /// Every child line takes this prefix. Blockquotes.
     Prefixed(&'static str),
-    /// Children indent by this many spaces. List and enum items.
+    /// Children indent by this many spaces. Everything else.
     Indented(usize),
-    /// Children sit above this closing line. Block components.
+    /// Children sit above this closing line. Container components.
     Closed(&'static str),
 }
 
 impl Rendered {
-    /// The source a walker hands back to [`parse`] to recover this block.
-    ///
-    /// Usually the first of [`lines`](Rendered::lines) — but a blockquote
-    /// carrying no theme has no line of its own, because its marker *is* the
-    /// `> ` prefix its children already wear. Writing a bare `>` above the quote
-    /// just to have something to parse would be a line of noise in every
-    /// quoted passage, so the walker recovers the block from the prefix
-    /// instead, and this is where that correspondence is stated once.
+    /// The source to hand back to [`parse`]. An unthemed blockquote has no line
+    /// of its own — its marker is the prefix its children wear.
     pub fn opener(&self) -> String {
         match (self.lines.first(), self.children) {
             (Some(line), _) => line.clone(),
@@ -49,19 +40,15 @@ impl Rendered {
     }
 }
 
-/// The dialect's one indentation step.
 pub const INDENT: usize = 2;
 
-/// The component name a themed table wraps itself in.
 const TABLE_COMPONENT: &str = "table";
-
-// ── Emit ─────────────────────────────────────────────────────────────────────
 
 /// Render one block to its dialect lines.
 pub fn emit(content: &Content) -> Rendered {
     let leaf = |line: String| Rendered {
         lines: vec![line],
-        children: Children::None,
+        children: Children::Indented(INDENT),
     };
 
     match content {
@@ -125,12 +112,13 @@ pub fn emit(content: &Content) -> Rendered {
                         .join(","),
                 ));
             }
-            let mut out = vec![format!("```{language}{}", attrs(theme, &pairs))];
+            let fence = code_fence(lines);
+            let mut out = vec![format!("{fence}{language}{}", attrs(theme, &pairs))];
             out.extend(lines.iter().cloned());
-            out.push("```".to_string());
+            out.push(fence);
             Rendered {
                 lines: out,
-                children: Children::None,
+                children: Children::Indented(INDENT),
             }
         }
 
@@ -148,7 +136,7 @@ pub fn emit(content: &Content) -> Rendered {
             out.push("$$".to_string());
             Rendered {
                 lines: out,
-                children: Children::None,
+                children: Children::Indented(INDENT),
             }
         }
 
@@ -156,17 +144,35 @@ pub fn emit(content: &Content) -> Rendered {
     }
 }
 
+/// Characters that open another block when they start a bare paragraph line.
+const LINE_OPENERS: [char; 6] = ['#', '>', '-', '+', ':', '<'];
+
 /// A prefix, the inline text, and an attribute suffix.
 ///
-/// A text ending in `}` would read as an attribute list, so when the block has
-/// no attributes of its own that brace is escaped.
+/// Text ending in `}` — a literal brace or an inline `{tokens}` suffix — would
+/// read as the block's attribute list, so such a line always carries one, even
+/// if empty. A bare paragraph opening like another block is escaped.
 fn text_line(prefix: &str, rich: &RichText, attrs: String) -> String {
     let mut body = inline::emit(rich);
-    if attrs.is_empty() && body.ends_with('}') {
-        body.pop();
-        body.push_str("\\}");
+    let attrs = if attrs.is_empty() && body.trim_end().ends_with('}') {
+        "{}".into()
+    } else {
+        attrs
+    };
+    if prefix.is_empty() && body.starts_with(LINE_OPENERS) {
+        body.insert(0, '\\');
     }
     format!("{prefix}{body}{attrs}")
+}
+
+/// A fence longer than any backtick run in the code, so no line closes it.
+fn code_fence(lines: &[String]) -> String {
+    let longest = lines
+        .iter()
+        .map(|line| line.split(|c| c != '`').map(str::len).max().unwrap_or(0))
+        .max()
+        .unwrap_or(0);
+    "`".repeat(longest.max(2) + 1)
 }
 
 /// `{theme-blue key="value"}`, or `""` when there is nothing to say. The theme
@@ -239,7 +245,7 @@ fn emit_table(content: &Content) -> Rendered {
     if plain_gfm {
         return Rendered {
             lines: rows,
-            children: Children::None,
+            children: Children::Indented(INDENT),
         };
     }
 
@@ -271,14 +277,31 @@ fn emit_table(content: &Content) -> Rendered {
     lines.push("::".to_string());
     Rendered {
         lines,
-        children: Children::None,
+        children: Children::Indented(INDENT),
     }
 }
 
-/// A pipe inside a cell would end it, and a newline would end the row.
+/// Escape what the row syntax would eat. Every `|` gets a backslash that
+/// [`split_cells`] removes again before inline parsing, as GFM does; edge
+/// spaces would be trimmed away, so they are escaped for the inline layer.
 fn escape_cell(cell: &RichText) -> String {
-    inline::emit(cell).replace('|', "\\|").replace('\n', " ")
+    let mut out = inline::emit(cell).replace('|', "\\|");
+    // A cell of only `-`/`:` would make its row read as the delimiter row.
+    if !out.is_empty() && out.chars().all(|c| c == '-' || c == ':') {
+        out.insert(0, '\\');
+    }
+    // Trailing first: a lone space then needs only the one escape.
+    if out.ends_with(' ') {
+        out.insert(out.len() - 1, '\\');
+    }
+    if out.starts_with(' ') {
+        out.insert(0, '\\');
+    }
+    out
 }
+
+/// A table row starts here; a line starting with `|` alone may be a spoiler.
+pub const TABLE_ROW: &str = "| ";
 
 fn join_sizes(sizes: &[Option<Size>]) -> String {
     sizes
@@ -341,8 +364,9 @@ pub fn parse(source: &str) -> Result<Content, GrammarError> {
     let lines: Vec<&str> = source.lines().collect();
     let first = lines.first().copied().unwrap_or_default();
 
-    if let Some(rest) = first.strip_prefix("```") {
-        return parse_code(rest, &lines[1..]);
+    if first.starts_with("```") {
+        let fence = &first[..first.len() - first.trim_start_matches('`').len()];
+        return parse_code(fence, &first[fence.len()..], &lines[1..]);
     }
     if let Some(rest) = first.strip_prefix("$$") {
         return parse_math(rest, &lines[1..]);
@@ -350,7 +374,7 @@ pub fn parse(source: &str) -> Result<Content, GrammarError> {
     if let Some(rest) = first.strip_prefix("::") {
         return parse_component(rest, &lines[1..]);
     }
-    if first.starts_with('|') {
+    if first.starts_with(TABLE_ROW) {
         return parse_gfm_table(&lines, None, None);
     }
     if let Some(rest) = first.strip_prefix('>') {
@@ -433,15 +457,30 @@ impl Attributes {
 /// so an unescaped trailing one is a real list and an unparsable one an error.
 fn split_attrs(line: &str) -> Result<(String, Attributes), GrammarError> {
     let trimmed = line.trim_end();
-    if !trimmed.ends_with('}') || trimmed.ends_with("\\}") {
+    let bytes = trimmed.as_bytes();
+    // Escaped when preceded by an odd run of backslashes.
+    let escaped = |index: usize| {
+        bytes[..index]
+            .iter()
+            .rev()
+            .take_while(|byte| **byte == b'\\')
+            .count()
+            % 2
+            == 1
+    };
+    if !trimmed.ends_with('}') || escaped(bytes.len() - 1) {
         return Ok((line.to_string(), Attributes::default()));
     }
-    let bytes = trimmed.as_bytes();
     let mut open = None;
-    for index in (0..bytes.len()).rev() {
-        if bytes[index] == b'{' && (index == 0 || bytes[index - 1] != b'\\') {
-            open = Some(index);
-            break;
+    let mut quoted = false;
+    for index in (0..bytes.len() - 1).rev() {
+        match bytes[index] {
+            b'"' if !escaped(index) => quoted = !quoted,
+            b'{' if !quoted && !escaped(index) => {
+                open = Some(index);
+                break;
+            }
+            _ => {}
         }
     }
     let Some(open) = open else {
@@ -512,11 +551,11 @@ fn split_tokens(interior: &str) -> Vec<String> {
     out
 }
 
-fn parse_code(fence: &str, rest: &[&str]) -> Result<Content, GrammarError> {
-    let (language, attributes) = split_attrs(fence)?;
+fn parse_code(fence: &str, opener: &str, rest: &[&str]) -> Result<Content, GrammarError> {
+    let (language, attributes) = split_attrs(opener)?;
     let body: Vec<String> = rest
         .iter()
-        .take_while(|line| !line.trim_end().starts_with("```"))
+        .take_while(|line| line.trim_end() != fence)
         .map(|line| (*line).to_string())
         .collect();
     Ok(Content::Code {
@@ -628,23 +667,30 @@ fn split_cells(line: &str) -> Vec<String> {
     let inner = line.trim().trim_start_matches('|').trim_end_matches('|');
     let mut out = Vec::new();
     let mut current = String::new();
-    let mut escaped = false;
+    // `\|` is content and loses its backslash before inline parsing; a bare `|`
+    // ends the cell. Inverts `escape_cell`, which escapes every pipe.
     for character in inner.chars() {
         match character {
-            '\\' if !escaped => {
-                escaped = true;
-                current.push(character);
+            '|' if current.ends_with('\\') => {
+                current.pop();
+                current.push('|');
             }
-            '|' if !escaped => out.push(std::mem::take(&mut current)),
-            character => {
-                current.push(character);
-                escaped = false;
-            }
+            '|' => out.push(std::mem::take(&mut current)),
+            character => current.push(character),
         }
     }
     out.push(current);
     out.into_iter()
-        .map(|cell| cell.trim().to_string())
+        .map(|cell| {
+            let mut trimmed = cell.trim().to_string();
+            // Content never ends in an odd run of backslashes, so one here is
+            // the escape of a trailing space the trim just removed.
+            let run = trimmed.chars().rev().take_while(|c| *c == '\\').count();
+            if run % 2 == 1 {
+                trimmed.push(' ');
+            }
+            trimmed
+        })
         .collect()
 }
 
@@ -675,7 +721,7 @@ mod tests {
             theme: None,
         };
         assert_eq!(only(&block), "hello");
-        assert_eq!(emit(&block).children, Children::None);
+        assert_eq!(emit(&block).children, Children::Indented(INDENT));
     }
 
     #[test]
@@ -865,7 +911,12 @@ mod tests {
             rich_text: rich("set x = {1}"),
             theme: None,
         };
-        assert_eq!(only(&block), "set x = {1\\}");
+        assert_eq!(only(&block), "set x = {1}{}");
+        let spaced = Content::Paragraph {
+            rich_text: rich("set x = {1} "),
+            theme: None,
+        };
+        assert_eq!(only(&spaced), "set x = {1} {}");
     }
 
     #[test]
@@ -1008,6 +1059,20 @@ mod tests {
             col_colors: Some(vec![Some(Color::Blue), None]),
             row_colors: Some(vec![Some(Color::Red)]),
             theme: themed(Color::Yellow),
+        });
+        survives(Content::Table {
+            cells: vec![
+                vec![rich(" "), rich(" a "), rich("b\\ ")],
+                vec![rich("-"), rich(":-:"), rich("--")],
+            ],
+            col_size: None,
+            row_size: None,
+            col_header: Some(false),
+            row_header: None,
+            fill_width: None,
+            col_colors: None,
+            row_colors: None,
+            theme: None,
         });
     }
 
