@@ -74,7 +74,7 @@ The renderer inserts a `<style>` element as the first child of the mask's root, 
 
 CSS outranks presentation attributes, so the files' authored `fill="…"` values become defaults that only an unstyled render shows. `[id="…"]` rather than `#…` because `SW→NW` is not a valid `#` selector without escaping. One stylesheet governs the whole document, the spliced logo included.
 
-The renderer collects every `id` in the mask and logo trees and fails if a stylesheet rule targets one that is absent, which is how `brand-palette`'s "a color that reaches nothing fails" is enforced.
+The renderer collects every `id` in the mask and logo trees and fails if a stylesheet rule targets one that is absent, which is how `brand-palette`'s "a color that reaches nothing fails" is enforced. Coverage is scoped to where a color is meant to apply (2026-10-21): the `xs` master deliberately omits the connectors, so a logo color must reach an element in _some_ logo master rather than in the one being rendered; `background` must exist in every mask; and `inner-tint` is colored — and required — exactly when a mask has an `#inner-shadow`, which only the desktop masks do. A misspelled or removed id still fails; a master that legitimately lacks an element does not.
 
 Surface variants are stylesheet variants, not artwork variants. The Android foreground layer is the dark fills with `[id="background"]{fill:transparent}`; the monochrome layers swap in the `mono` fills.
 
@@ -159,6 +159,8 @@ iOS asset catalogs (`gen/apple/Assets.xcassets/<flavor>.appiconset/`) and Androi
 
 Generated icons stay **committed**: the Tauri bundler needs them at build time, including in release and Nix builds that have no generation step, and committing them is what makes the lockstep check possible.
 
+`Tauri.toml` keeps stable's icons as its base `bundle.icon` (2026-10-22). Builds that merge no flavor fragment — `cargo check`, clippy, the test suite — still compile `tauri::generate_context!()`, which takes the window icon from `bundle.icon` and otherwise falls back to a hard-coded `icons/icon.png` that no longer exists. Every flavor fragment overrides the base, so shipped builds are unaffected. Rejected: keeping the base icon-free and exporting a flavor config into every cargo invocation, which would make plain `cargo` depend on environment machinery.
+
 ### 2026-10-19 — Output naming and flavor shortening live in the size record
 
 The flavor fragments demand a flat `<short-flavor>-<zero-padded>.png` scheme while the size table carries the old names (`name = "32x32.png"`). The naming scheme and the long→short flavor map (`development` → `dev`) become data beside the sizes, not string munging in the renderer, so the fragments and the generator do not encode one convention twice. The size table stays TOML, read by Typst's `toml()`.
@@ -176,7 +178,7 @@ Alternatives considered:
 
 ### 2026-10-19 — Container encoding
 
-- **ICNS**: a dedicated writer crate. It covers all ten OSTypes the size table names, `ic04` and `ic05` included, but types those two as raw-ARGB variants where the current pipeline embeds PNG for every entry. Expect a different construction path for them, or dropping them — macOS falls back to `ic11`. Decide when the packer is written.
+- **ICNS**: a dedicated writer crate, with default features off and only `pngio` on — its default `jp2io` exists to _decode_ JPEG 2000 and would pull in `hayro-jpeg2000` and `fearless_simd` for nothing. It covers all ten OSTypes the size table names. `ic04` and `ic05` are written as run-length-encoded ARGB, Apple's native form for those two types, where the old pipeline embedded PNG (decided 2026-10-21): nothing is dropped, and macOS's own `iconutil` reads all ten entries back. The crate also rejects a member whose pixel size disagrees with its OSType, so the size table and the ICNS slots cannot drift apart silently.
 - **ICO**: a dedicated writer crate, replacing `png-to-ico`.
 - **Lossless WebP**: the `image` crate, already a workspace dependency; its WebP encoder writes lossless only, which is exactly what the Android layers need.
 
@@ -186,7 +188,6 @@ Alternatives considered:
 - **`xml()` drops namespaces** → Harmless for the current artwork. A mask that depended on a non-SVG namespace would degrade without an error; the lockstep check would show the render change.
 - **Logo and mask share id names** → Unchanged from today and rendering correctly. The stylesheet targets only ids the palette names, all of which are distinct between logo and mask.
 - **Every committed icon diffs on the first real run** → Expected: the tint correction is deliberately visible, and the rasterizer changes. One reviewed commit, checked visually at large and small size.
-- **`ic04`/`ic05` cannot be written as PNG** → Two of ten entries; macOS degrades to `ic11`.
 - **The xtask depends on a CLI on `PATH`** → The same `typst` the marketing pipeline uses, pinned by devenv; the task fails naming the missing binary rather than falling back.
 
 ## Migration Plan
