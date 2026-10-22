@@ -73,8 +73,9 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
         })
         .collect();
 
-    // Flips the draft public once every required target has recorded in.
-    let publish = jobs::publish_release(channel, prepare.as_ref()).map(|job| {
+    // Uploads, publishes, and submits once every required target has
+    // recorded in.
+    let publish = jobs::publish(channel, prepare.as_ref()).map(|job| {
         builds
             .iter()
             .fold(job, |job, build| job.add_needs(build.name.clone()))
@@ -82,12 +83,14 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
     });
 
     // Cleans up a run that failed or fell short, on the same `needs` as the
-    // publish it mirrors.
+    // publish it mirrors, and on the publish itself for its point of no
+    // return.
     let withdraw = jobs::withdraw_release(channel, prepare.as_ref()).map(|job| {
         builds
             .iter()
             .fold(job, |job, build| job.add_needs(build.name.clone()))
             .add_needs(create.name.clone())
+            .add_needs(publish.name.clone())
     });
 
     // Nightly mints its own tag, so only the tag-driven channels take one.
@@ -194,6 +197,11 @@ mod tests {
                         .any(|step| step["id"] == "write-manifest")
                 })
                 .unwrap_or_else(|| panic!("{channel}: no job writes the manifest"));
+            assert_eq!(job_name, jobs::PUBLISH_JOB, "{channel}");
+            assert!(
+                !jobs.contains_key("publish-release"),
+                "{channel}: the publishing job replaces publish-release"
+            );
 
             let needs: Vec<&str> = job["needs"]
                 .as_array()
@@ -240,6 +248,10 @@ mod tests {
             assert!(
                 needs.contains(&"create-release"),
                 "{channel}: withdraw-release does not need create-release"
+            );
+            assert!(
+                needs.contains(&jobs::PUBLISH_JOB),
+                "{channel}: withdraw-release cannot read the point of no return"
             );
         }
     }

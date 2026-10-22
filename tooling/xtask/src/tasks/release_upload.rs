@@ -8,10 +8,9 @@
 //! The object key mirrors the design's layout exactly:
 //! `{channel}/{series}/{os}/{arch}/waypoints-{tag}.{ext}`.
 //!
-//! Two sources: `--platform` reads one platform's build output, and `--from`
-//! reads a directory [`super::release_stage`] filled, whose paths already are
-//! the keys. A staged path is checked against every key the scheme produces
-//! for the tag before any credential is derived.
+//! Reads a directory [`super::release_stage`] filled, whose paths already are
+//! the keys. Every staged path is checked against the keys the scheme
+//! produces for the tag before any credential is derived.
 //!
 //! Uploads the installer every download link resolves to and the updater's
 //! payload and signature alongside it, under the same key scheme — the
@@ -33,17 +32,11 @@ use std::{
 };
 
 #[derive(Parser)]
-#[command(group(clap::ArgGroup::new("source").required(true).args(["platform", "from"])))]
 pub struct ReleaseUploadArgs {
-    /// The platform whose published artifacts this uploads from its build
-    /// output.
-    #[arg(long, value_enum)]
-    platform: Option<Platform>,
-
     /// A directory `release-stage` filled; every file under it is uploaded
     /// to the key its path names.
     #[arg(long)]
-    from: Option<PathBuf>,
+    from: PathBuf,
 
     /// The release tag, e.g. `v0.1.1` or `v0.2.0-nightly.3+2026.10.19`. Both
     /// the store's version segment and the saved filename come from this
@@ -60,11 +53,7 @@ pub fn run(args: ReleaseUploadArgs) -> Result<()> {
     let version = tag_version(&args.tag)?;
     let channel = release_plan::channel_of(&version);
 
-    let files = match (args.platform, &args.from) {
-        (_, Some(dir)) => staged_files(dir, channel, &args.tag)?,
-        (Some(platform), None) => built_files(platform, &args.tag, Path::new("."))?,
-        (None, None) => unreachable!("clap requires `--platform` or `--from`"),
-    };
+    let files = staged_files(&args.from, channel, &args.tag)?;
 
     let client = release_store::create_r2_client(channel, args.ttl_seconds)?;
 
@@ -362,26 +351,18 @@ mod tests {
     /// raising it is a flag, not a code change.
     #[test]
     fn the_cli_defaults_to_the_store_s_ttl() {
-        let args =
-            ReleaseUploadArgs::parse_from(["xtask", "--platform", "macos", "--tag", "v0.1.1"]);
+        let args = ReleaseUploadArgs::parse_from(["xtask", "--from", "release", "--tag", "v0.1.1"]);
         assert_eq!(args.ttl_seconds, release_store::DEFAULT_TTL_SECONDS);
     }
 
+    /// A build's output is never uploaded directly; only a staged tree is.
     #[test]
-    fn the_cli_takes_exactly_one_source() {
+    fn the_cli_uploads_only_a_staged_tree() {
         let tag = ["--tag", "v0.1.1"];
         assert!(ReleaseUploadArgs::try_parse_from(["xtask"].iter().chain(&tag)).is_err());
         assert!(
-            ReleaseUploadArgs::try_parse_from(
-                ["xtask", "--platform", "ios", "--from", "release"]
-                    .iter()
-                    .chain(&tag)
-            )
-            .is_err()
-        );
-        assert!(
-            ReleaseUploadArgs::try_parse_from(["xtask", "--from", "release"].iter().chain(&tag))
-                .is_ok()
+            ReleaseUploadArgs::try_parse_from(["xtask", "--platform", "ios"].iter().chain(&tag))
+                .is_err()
         );
     }
 

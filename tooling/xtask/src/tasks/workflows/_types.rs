@@ -89,7 +89,11 @@ impl Platform {
             Android => indoc! {"
                 src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
                 src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab"},
-            iOS => "src-tauri/gen/apple/build/**/*.ipa",
+            // The plist rides along so a build-only run shows the export
+            // wrote it; TestFlight needs it beside the ipa off macOS.
+            iOS => indoc! {"
+                src-tauri/gen/apple/build/**/*.ipa
+                src-tauri/gen/apple/build/**/AppStoreInfo.plist"},
         }
         .trim()
     }

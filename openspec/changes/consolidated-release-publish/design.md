@@ -57,6 +57,12 @@ One job, so the retractability order is a step order the runner enforces rather 
 
 `prepare` runs before the store upload rather than just before the mark: it touches nothing outside the runner, so running it first means a render or fetch failure costs the run before a single object reaches the store.
 
+The job runs its commands inside the devenv shell, as `release-index` and `check-generated` do. No mise lane carries typst or ImageMagick, and typst's fonts are nix store paths, so the shell is the only place `prepare` can render. It also supplies `cargo`, `fastlane`, `git-cliff`, `secretspec`, and `op`. xtask is compiled once up front through the build jobs' compiler cache, and that cache's server is stopped before the first publishing step. The store steps resolve the `release` profile in-process, and that profile's default provider is the vault, so under devenv they carry the vault credential alone.
+
+`withdraw-release` gets the same checkout and shell. Its `cargo xtask release-withdraw` previously ran on a runner with no checkout and no toolchain, as did the old `publish-release` job's manifest write. Neither had run yet, because no run had published.
+
+Staging is gated on the tag, like the publishing it feeds. A build-only run has no tag to name the staged files, so it stages nothing. The iOS build's debug artifact carries `AppStoreInfo.plist` beside the ipa, so a build-only run still shows the export wrote it. The staging itself first runs on a publishing run, where a failure is still fully retractable.
+
 Rejected: a macOS publishing job. It needs no extra tooling, but pays macOS minutes for a job that compiles nothing. Also rejected: splitting the iOS submission into its own job, which reintroduces a cross-job ordering between steps 3, 5, and 6, and two jobs each able to fail after the other has passed the point of no return.
 
 ### `xfastlane` splits into `prepare` and `publish` (2026-10-21)
