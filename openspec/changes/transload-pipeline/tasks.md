@@ -132,9 +132,12 @@ the `syntax` feature per design D8, 3.3–3.4 in `transload`.
 
 ## 7. Corpus migration — `getting-started`
 
-- [ ] 7.1 One-off scripted conversion: temp DB → builtin seed → legacy demo
+- [x] 7.1 One-off scripted conversion: temp DB → builtin seed → legacy demo
       seed (the legacy importer's last act) → `export`; stage the output for
       John's audit. **Do not commit the corpus before the audit.**
+      (Staged at `target/getting-started-audit/`: 28 Landmarks over three
+      builtin Charts, 264 content blocks, no warnings. The 24 legacy `@uuid`
+      mentions export with their UUID as anchor text, as predicted.)
 - [ ] 7.2 After audit approval: commit the corpus as
       `crates/store/src/collections/getting-started/`; flip seeding to
       Bundle ingest (`store` gains the `transload` dependency, drops
