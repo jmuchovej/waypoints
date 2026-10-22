@@ -61,7 +61,7 @@ let
 
   # Channel identity (product name, identifier, icons, update endpoint) — never
   # the version: a Tauri config `version` would override the manifest's.
-  flavor-config = fromTOML (read "/src-tauri/configs/flavors/${flavor}.toml");
+  flavor-config = fromTOML (read "/src-tauri/res/configs/flavors/${flavor}.toml");
 
   # The single source of the version, tracking the branch this tree sits on.
   # Kept parseable by `builtins.fromTOML` (strict TOML 1.0) — see the
@@ -182,9 +182,9 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   tauriBuildFlags = [
     "--config"
-    "configs/platforms/${platform}.toml"
+    "res/configs/platforms/${platform}.toml"
     "--config"
-    "configs/flavors/${flavor}.toml"
+    "res/configs/flavors/${flavor}.toml"
     "--config"
     "${build-config}"
   ];

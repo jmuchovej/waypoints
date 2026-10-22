@@ -73,7 +73,7 @@ def version-config [target: string]: nothing -> list<string> {
 }
 const FORWARDED_PREFIXES = ["MISE_"]
 
-def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "configs" }
+def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "res" "configs" }
 def platform-config [target: string]: nothing -> path { configs-root | path join "platforms" $"($target).toml" }
 def flavor-config [flavor: string]: nothing -> path { configs-root | path join "flavors" $"($flavor).toml" }
 

@@ -8,9 +8,9 @@ identifier  = "so.waypoints.dev"
 
 [bundle]
   icon = [
-    "icons/development/32x32.png",
-    "icons/development/128x128.png",
-    "icons/development/128x128@2x.png",
-    "icons/development/icon.icns",
-    "icons/development/icon.ico",
+    "assets/icons/app/dev-032.png",
+    "assets/icons/app/dev-128.png",
+    "assets/icons/app/dev-128@2x.png",
+    "assets/icons/app/dev.icns",
+    "assets/icons/app/dev.ico",
   ]

@@ -22,7 +22,7 @@ const APPLE_NOTES_LIMIT = 4000
 def fastlane-root []: nothing -> path { $env.TAURI_APP_PATH | path join "fastlane" }
 
 def flavor-config [flavor: string]: nothing -> path {
-  $env.TAURI_APP_PATH | path join "configs" "flavors" $"($flavor).toml"
+  $env.TAURI_APP_PATH | path join "res" "configs" "flavors" $"($flavor).toml"
 }
 
 # Cuts on a line boundary, so a bullet is never severed mid-word.

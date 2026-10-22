@@ -18,7 +18,7 @@
 // Hex rather than oklch: resvg has no oklch, and these assets land in sRGB PNGs
 // regardless, so nothing survives export that the clip would have lost.
 #let logo(variant: "md", fills: logo-fills, ..args) = {
-  let painted = read("/fastlane/logo/" + variant + ".svg").replace(
+  let painted = read("/res/logo/" + variant + ".svg").replace(
     regex("id=\"([A-Z→]+)\" fill=\"[^\"]*\""),
     m => {
       let id = m.captures.at(0)

@@ -11,7 +11,7 @@ via-nuxi +ARGS:
 # Resolve a flavor's bundle identifier from its Tauri config (single source of truth).
 [private]
 _identifier flavor:
-    @yq -p toml -o yaml '.identifier' "{{ TAURI_ROOT }}/configs/flavors/{{ flavor }}.toml"
+    @yq -p toml -o yaml '.identifier' "{{ TAURI_ROOT }}/res/configs/flavors/{{ flavor }}.toml"
 
 dev flavor="development":
     VITE_WAYPOINTS_FLAVOR=$(just _identifier {{ flavor }}) just via-nuxi dev

@@ -1,0 +1,27 @@
+[fills.light]
+  SW      = "emerald.400"
+  "SW→NW" = "emerald.50"
+  NW      = "emerald.50"
+  "NW→SE" = "emerald.50"
+  SE      = "emerald.50"
+  NE      = "emerald.50"
+
+[fills.dark]
+  SW      = "emerald.400"
+  "SW→NW" = "emerald.50"
+  NW      = "emerald.50"
+  "NW→SE" = "emerald.50"
+  SE      = "emerald.50"
+  NE      = "emerald.50"
+
+[fills.mono]
+  SW      = "white"
+  "SW→NW" = "white/50"
+  NW      = "white/50"
+  "NW→SE" = "white/50"
+  SE      = "white/50"
+  NE      = "white/50"
+
+[app]
+  background-inner = "emerald.900"
+  background-outer = "emerald.800"

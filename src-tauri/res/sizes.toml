@@ -1,0 +1,63 @@
+linux = [
+  { name = "32x32.png", px = 32 },
+  { name = "128x128.png", px = 128 },
+  { name = "128x128@2x.png", px = 256 },
+]
+
+# macOS .icns table: osType + pixel size.
+macOS = [
+  { os = "ic04", px = 16 },
+  { os = "ic05", px = 32 },
+  { os = "ic11", px = 32 },
+  { os = "ic12", px = 64 },
+  { os = "ic07", px = 128 },
+  { os = "ic13", px = 256 },
+  { os = "ic08", px = 256 },
+  { os = "ic14", px = 512 },
+  { os = "ic09", px = 512 },
+  { os = "ic10", px = 1024 },
+]
+
+windows = [ { px = 16 }, { px = 32 }, { px = 48 }, { px = 256 } ]
+
+# iOS AppIcon.appiconset manifest (full modern set: iPhone + iPad + marketing).
+iOS = [
+  { idiom = "iphone", size = "20x20", scale = "2x", px = 40 },
+  { idiom = "iphone", size = "20x20", scale = "3x", px = 60 },
+  { idiom = "iphone", size = "29x29", scale = "2x", px = 58 },
+  { idiom = "iphone", size = "29x29", scale = "3x", px = 87 },
+  { idiom = "iphone", size = "40x40", scale = "2x", px = 80 },
+  { idiom = "iphone", size = "40x40", scale = "3x", px = 120 },
+  { idiom = "iphone", size = "60x60", scale = "2x", px = 120 },
+  { idiom = "iphone", size = "60x60", scale = "3x", px = 180 },
+  { idiom = "ipad", size = "20x20", scale = "1x", px = 20 },
+  { idiom = "ipad", size = "20x20", scale = "2x", px = 40 },
+  { idiom = "ipad", size = "29x29", scale = "1x", px = 29 },
+  { idiom = "ipad", size = "29x29", scale = "2x", px = 58 },
+  { idiom = "ipad", size = "40x40", scale = "1x", px = 40 },
+  { idiom = "ipad", size = "40x40", scale = "2x", px = 80 },
+  { idiom = "ipad", size = "76x76", scale = "2x", px = 152 },
+  { idiom = "ipad", size = "83.5x83.5", scale = "2x", px = 167 },
+  { idiom = "ios-marketing", size = "1024x1024", scale = "1x", px = 1024 },
+]
+
+# PARKED — nothing generates from this record. The per-platform tray formats
+# are unsettled; `assets/icons/menu/` is hand-placed until they are.
+#
+# macOS HIG menu bar is 18pt tall → 18/36/54 for @1x/@2x/@3x. Unverified:
+# that the same PNGs serve Linux status-notifier and Windows notification-area
+# icons.
+menu-bar = [
+  { name = "menu-bar@1x.png", px = 18 },
+  { name = "menu-bar@2x.png", px = 36 },
+  { name = "menu-bar@3x.png", px = 54 },
+]
+
+# Android adaptive-icon foreground layer: 108dp at each mipmap density.
+android = [
+  { px = 108, density = "mdpi" },
+  { px = 162, density = "hdpi" },
+  { px = 216, density = "xhdpi" },
+  { px = 324, density = "xxhdpi" },
+  { px = 432, density = "xxxhdpi" },
+]

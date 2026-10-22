@@ -91,7 +91,7 @@ flavor's Tauri config, so preview and nightly list under their own names —
 read it the way `src/justfile` reads the identifier:
 
 ```bash
-yq -p toml '.productName' configs/flavors/<flavor>.toml
+yq -p toml '.productName' res/configs/flavors/<flavor>.toml
 ```
 
 | Key                     | Store     | Limit                       |

@@ -8,9 +8,9 @@ identifier  = "so.waypoints"
 
 [bundle]
   icon = [
-    "icons/stable/32x32.png",
-    "icons/stable/128x128.png",
-    "icons/stable/128x128@2x.png",
-    "icons/stable/icon.icns",
-    "icons/stable/icon.ico",
+    "assets/icons/app/stable-032.png",
+    "assets/icons/app/stable-128.png",
+    "assets/icons/app/stable-128@2x.png",
+    "assets/icons/app/stable.icns",
+    "assets/icons/app/stable.ico",
   ]

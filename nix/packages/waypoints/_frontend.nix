@@ -28,7 +28,7 @@
 }:
 let
   # Path arithmetic, not interpolation — see the note in package.nix.
-  inherit ((fromTOML (builtins.readFile (root + "/src-tauri/configs/flavors/${flavor}.toml"))))
+  inherit ((fromTOML (builtins.readFile (root + "/src-tauri/res/configs/flavors/${flavor}.toml"))))
     identifier
     ;
 
