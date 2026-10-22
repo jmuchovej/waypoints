@@ -8,9 +8,10 @@
 //! The object key mirrors the design's layout exactly:
 //! `{channel}/{series}/{os}/{arch}/waypoints-{tag}.{ext}`.
 //!
-//! Reads a directory [`super::release_stage`] filled, whose paths already are
-//! the keys. Every staged path is checked against the keys the scheme
-//! produces for the tag before any credential is derived.
+//! Reads the flat directory every build's [`super::release_stage`] output
+//! merges into. Each file is already named `waypoints-{tag}.{ext}`, and every
+//! platform's extensions are its own, so the extension alone files it under
+//! its `{os}/{arch}`. Every file is checked before any credential is derived.
 //!
 //! Uploads the installer every download link resolves to and the updater's
 //! payload and signature alongside it, under the same key scheme — the
@@ -27,14 +28,14 @@ use cargo_metadata::semver::Version;
 use clap::Parser;
 use opendal::Operator;
 use std::{
-    collections::BTreeSet,
+    collections::BTreeMap,
     path::{Path, PathBuf},
 };
 
 #[derive(Parser)]
 pub struct ReleaseUploadArgs {
-    /// A directory `release-stage` filled; every file under it is uploaded
-    /// to the key its path names.
+    /// The flat directory every build's `release-stage` output merges into;
+    /// each file is uploaded to the key its name and extension determine.
     #[arg(long)]
     from: PathBuf,
 
@@ -81,12 +82,18 @@ pub fn tag_version(tag: &str) -> Result<Version> {
     Version::parse(version).with_context(|| format!("tag `{tag}` is not a valid version"))
 }
 
+/// Upload metadata the iOS build stages beside its ipa: TestFlight reads it
+/// off macOS, and it never becomes a store object.
+pub const APP_STORE_INFO: &str = "AppStoreInfo.plist";
+
+/// What a published artifact is named, staged and stored alike.
+pub fn file_name(tag: &str, extension: &str) -> String {
+    format!("waypoints-{tag}.{extension}")
+}
+
 /// Pairs each of `platform`'s published and updater artifacts under `root`
-/// with the key it is published at.
-pub fn built_files(platform: Platform, tag: &str, root: &Path) -> Result<Vec<(PathBuf, String)>> {
-    let version = tag_version(tag)?;
-    let channel = release_plan::channel_of(&version);
-    let series = release_plan::series_of(&version);
+/// with its extension.
+pub fn built_files(platform: Platform, root: &Path) -> Result<Vec<(PathBuf, &'static str)>> {
     let target = platform.published_target();
 
     let globs = platform.published_globs();
@@ -109,49 +116,53 @@ pub fn built_files(platform: Platform, tag: &str, root: &Path) -> Result<Vec<(Pa
         .iter()
         .zip(target.extensions)
         .chain(updater_globs.iter().zip(updater_extensions))
-        .map(|(glob, extension)| {
-            let path = find_one(root, glob)?;
-            Ok((path, object_key(channel, &series, &target, tag, extension)))
-        })
+        .map(|(glob, extension)| Ok((find_one(root, glob)?, *extension)))
         .collect()
 }
 
-/// Every file under `dir`, paired with the key its relative path names.
-/// Refuses a path that is not a key the scheme produces for `tag` in
-/// `channel` — another channel's or series', or a file no build publishes —
-/// and an empty directory.
+/// Every file in the flat directory `dir`, paired with the key it is stored
+/// at; [`APP_STORE_INFO`] is skipped. Refuses a subdirectory, a file not
+/// named for `tag` with an extension one of `channel`'s required targets
+/// publishes, and an empty directory.
 pub(crate) fn staged_files(
     dir: &Path,
     channel: Channel,
     tag: &str,
 ) -> Result<Vec<(PathBuf, String)>> {
-    let expected = expected_keys(channel, tag)?;
+    let keys = keys_by_file_name(channel, tag)?;
+
+    let mut entries = std::fs::read_dir(dir)
+        .with_context(|| format!("reading {}", dir.display()))?
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<std::io::Result<Vec<_>>>()
+        .with_context(|| format!("reading {}", dir.display()))?;
+    entries.sort();
 
     let mut files = Vec::new();
-    for path in walk(dir)? {
-        let key = path
-            .strip_prefix(dir)
-            .expect("walked from `dir`")
-            .components()
-            .map(|part| part.as_os_str().to_str())
-            .collect::<Option<Vec<_>>>()
-            .with_context(|| format!("{} is not UTF-8", path.display()))?
-            .join("/");
-        if !expected.contains(&key) {
-            bail!("{} is not a store key for {tag}", path.display());
+    for path in entries {
+        let name = path.file_name().and_then(|name| name.to_str());
+        if path.is_dir() || name.is_none() {
+            bail!("{} is not a staged file", path.display());
         }
-        files.push((path, key));
+        let name = name.expect("checked above");
+        if name == APP_STORE_INFO {
+            continue;
+        }
+        let key = keys
+            .get(name)
+            .with_context(|| format!("{} is not a published artifact of {tag}", path.display()))?;
+        files.push((path, key.clone()));
     }
 
     if files.is_empty() {
-        bail!("nothing staged under {}", dir.display());
+        bail!("nothing staged in {}", dir.display());
     }
     Ok(files)
 }
 
-/// Every key `channel`'s required targets publish for `tag`: installers and
-/// updater artifacts both.
-fn expected_keys(channel: Channel, tag: &str) -> Result<BTreeSet<String>> {
+/// Every file name `channel`'s required targets publish for `tag` —
+/// installers and updater artifacts both — mapped to its store key.
+fn keys_by_file_name(channel: Channel, tag: &str) -> Result<BTreeMap<String, String>> {
     let series = release_plan::series_of(&tag_version(tag)?);
     Ok(channel
         .required_targets()
@@ -163,30 +174,15 @@ fn expected_keys(channel: Channel, tag: &str) -> Result<BTreeSet<String>> {
                 .iter()
                 .chain(platform.updater_extensions());
             extensions
-                .map(|extension| object_key(channel, &series, &target, tag, extension))
+                .map(|extension| {
+                    (
+                        file_name(tag, extension),
+                        object_key(channel, &series, &target, tag, extension),
+                    )
+                })
                 .collect::<Vec<_>>()
         })
         .collect())
-}
-
-/// The files under `dir`, recursively, in a stable order.
-fn walk(dir: &Path) -> Result<Vec<PathBuf>> {
-    let mut entries = std::fs::read_dir(dir)
-        .with_context(|| format!("reading {}", dir.display()))?
-        .map(|entry| entry.map(|entry| entry.path()))
-        .collect::<std::io::Result<Vec<_>>>()
-        .with_context(|| format!("reading {}", dir.display()))?;
-    entries.sort();
-
-    let mut files = Vec::new();
-    for path in entries {
-        if path.is_dir() {
-            files.extend(walk(&path)?);
-        } else {
-            files.push(path);
-        }
-    }
-    Ok(files)
 }
 
 /// Resolves `pattern`, relative to `root`, to exactly one file. The bundler
@@ -226,10 +222,11 @@ pub fn object_key(
     extension: &str,
 ) -> String {
     format!(
-        "{channel}/{series}/{os}/{arch}/waypoints-{tag}.{extension}",
+        "{channel}/{series}/{os}/{arch}/{name}",
         channel = channel.flavor(),
         os = target.os,
         arch = target.arch,
+        name = file_name(tag, extension),
     )
 }
 
@@ -366,12 +363,15 @@ mod tests {
         );
     }
 
+    /// Each extension belongs to one platform, so a flat name files itself;
+    /// the App Store description beside the ipa is skipped.
     #[test]
-    fn a_staged_tree_uploads_to_the_keys_its_paths_name() {
+    fn a_staged_file_is_filed_by_its_extension() {
         let staged = Scratch::new();
-        staged.touch("stable/v0.1.x/macos/arm64/waypoints-v0.1.1.dmg");
-        staged.touch("stable/v0.1.x/macos/arm64/waypoints-v0.1.1.app.tar.gz.sig");
-        staged.touch("stable/v0.1.x/android/arm64/waypoints-v0.1.1.aab");
+        staged.touch("waypoints-v0.1.1.dmg");
+        staged.touch("waypoints-v0.1.1.app.tar.gz.sig");
+        staged.touch("waypoints-v0.1.1.aab");
+        staged.touch(APP_STORE_INFO);
 
         let keys = staged_files(&staged.0, Channel::Stable, "v0.1.1")
             .unwrap()
@@ -389,27 +389,35 @@ mod tests {
     }
 
     #[test]
-    fn a_path_the_scheme_would_not_produce_is_refused() {
+    fn a_file_the_scheme_would_not_produce_is_refused() {
         for foreign in [
-            // another channel
-            "preview/v0.1.x/macos/arm64/waypoints-v0.1.1.dmg",
-            // another series
-            "stable/v0.2.x/macos/arm64/waypoints-v0.1.1.dmg",
             // another tag
-            "stable/v0.1.x/macos/arm64/waypoints-v0.1.0.dmg",
+            "waypoints-v0.1.0.dmg",
             // a file no build publishes
-            "stable/v0.1.x/linux/amd64/waypoints-v0.1.1.deb",
-            "AppStoreInfo.plist",
+            "waypoints-v0.1.1.deb",
+            // an unrenamed bundler output
+            "Waypoints (Nightly)_0.1.0-nightly_aarch64.dmg",
         ] {
             let staged = Scratch::new();
-            staged.touch("stable/v0.1.x/macos/arm64/waypoints-v0.1.1.dmg");
+            staged.touch("waypoints-v0.1.1.dmg");
             staged.touch(foreign);
             let error = staged_files(&staged.0, Channel::Stable, "v0.1.1").unwrap_err();
             assert!(
-                error.to_string().contains("is not a store key"),
+                error.to_string().contains("is not a published artifact"),
                 "{foreign}: {error}"
             );
         }
+    }
+
+    /// The staged tree is flat; a nested directory is a build that skipped
+    /// its rename.
+    #[test]
+    fn a_nested_directory_is_refused() {
+        let staged = Scratch::new();
+        staged.touch("waypoints-v0.1.1.dmg");
+        staged.touch("dmg/waypoints-v0.1.1.dmg");
+        let error = staged_files(&staged.0, Channel::Stable, "v0.1.1").unwrap_err();
+        assert!(error.to_string().contains("not a staged file"), "{error}");
     }
 
     #[test]
@@ -422,7 +430,10 @@ mod tests {
     /// updater artifacts alike — so a full release is never refused.
     #[test]
     fn every_published_key_is_expected() {
-        let keys = expected_keys(Channel::Nightly, "v0.2.0-nightly.3+2026.10.19").unwrap();
+        let keys = keys_by_file_name(Channel::Nightly, "v0.2.0-nightly.3+2026.10.19")
+            .unwrap()
+            .into_values()
+            .collect::<std::collections::BTreeSet<_>>();
         let count = Channel::Nightly
             .required_targets()
             .iter()

@@ -686,19 +686,9 @@ pub(crate) fn cache_save(dir: &CachedDir, tools: Tools) -> Step<Run> {
     tools.resolving(step)
 }
 
-/// The directory `release-stage` fills and `release-upload --from` reads.
+/// The flat directory `release-stage` fills and `release-upload --from`
+/// reads.
 pub const STAGE_DIR: &str = "release";
-
-/// Where the iOS build stages its `AppStoreInfo.plist`, outside [`STAGE_DIR`].
-pub const APP_STORE_INFO_DIR: &str = "app-store";
-
-/// The workflow artifact carrying one platform's staged tree.
-fn staged_artifact(platform: Platform) -> String {
-    format!("staged-{}", platform.slug())
-}
-
-/// The workflow artifact carrying the iOS export's App Store description.
-const APP_STORE_INFO_ARTIFACT: &str = "app-store-info";
 
 fn upload_artifact_action() -> Action {
     Action::new(
@@ -716,62 +706,44 @@ fn download_artifact_action() -> Action {
     )
 }
 
-/// Copies the platform's published and updater artifacts into
-/// [`STAGE_DIR`] under their store keys. Needs no credential; gated on the
-/// tag, which names the staged files.
-pub fn stage_release(platform: Platform, tag: Option<&JobOutput>) -> Step<Run> {
+/// Renames the platform's published and updater artifacts out of the
+/// bundler's nested output into the flat [`STAGE_DIR`], as
+/// `waypoints-{tag}.{ext}`. Every run stages, build-only included, so a
+/// change in what Tauri exports fails the build that produced it. `tag` is
+/// the tag the files are named for — on a build-only run, the one it would
+/// have published; when it is empty, `release-stage` takes the app's own
+/// version. Needs no credential.
+pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
     Step::new("Stage the release artifacts")
         .run(format!(
-            r#"cargo xtask release-stage --platform {slug} --tag "${{TAG}}""#,
+            r#"cargo xtask release-stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
             slug = platform.slug(),
         ))
         .shell("bash")
-        .if_condition(Channel::tag_condition(tag))
-        .add_env(("TAG", Channel::tag(tag)))
+        .add_env(("TAG", tag))
         .id("stage-release")
 }
 
-/// Hands the staged tree to the publishing job. A directory path, so the
-/// artifact's root is the tree itself and every platform's merges into one.
-pub fn upload_staged(platform: Platform, tag: Option<&JobOutput>) -> Step<Use> {
+/// Uploads the flat staged directory, under a name naming both the platform
+/// and the channel. A directory path, so the artifact holds the files alone
+/// and every platform's merges into one directory.
+pub fn upload_staged(channel: Channel, platform: Platform) -> Step<Use> {
     upload_artifact_action()
-        .step("Upload the staged release")
-        .add_with(("name", staged_artifact(platform)))
+        .step("Upload artifacts")
+        .add_with(("name", Artifact(channel, platform).to_string()))
         .add_with(("path", STAGE_DIR))
         .add_with(("if-no-files-found", "error"))
-        .if_condition(Channel::tag_condition(tag))
-        .id("upload-staged")
+        .id("upload-artifacts")
 }
 
-/// Hands the iOS export's `AppStoreInfo.plist` to the publishing job, apart
-/// from the staged tree: it is upload metadata, never a store object.
-pub fn upload_app_store_info(tag: Option<&JobOutput>) -> Step<Use> {
-    upload_artifact_action()
-        .step("Upload the App Store description")
-        .add_with(("name", APP_STORE_INFO_ARTIFACT))
-        .add_with(("path", APP_STORE_INFO_DIR))
-        .add_with(("if-no-files-found", "error"))
-        .if_condition(Channel::tag_condition(tag))
-        .id("upload-app-store-info")
-}
-
-/// Merges every platform's staged tree back into [`STAGE_DIR`].
-pub fn download_staged() -> Step<Use> {
+/// Merges every platform's staged files into one flat [`STAGE_DIR`].
+pub fn download_staged(channel: Channel) -> Step<Use> {
     download_artifact_action()
         .step("Download the staged release")
-        .add_with(("pattern", "staged-*"))
+        .add_with(("pattern", format!("waypoints-*-{channel}")))
         .add_with(("merge-multiple", true))
         .add_with(("path", STAGE_DIR))
         .id("download-staged")
-}
-
-/// Restores the iOS `AppStoreInfo.plist` to [`APP_STORE_INFO_DIR`].
-pub fn download_app_store_info() -> Step<Use> {
-    download_artifact_action()
-        .step("Download the App Store description")
-        .add_with(("name", APP_STORE_INFO_ARTIFACT))
-        .add_with(("path", APP_STORE_INFO_DIR))
-        .id("download-app-store-info")
 }
 
 /// Renders the store assets and listing copy, and on Linux fetches
@@ -820,16 +792,11 @@ pub fn mark_submitted() -> Step<Run> {
 /// the lane, Transporter, where the package and its plist sit — stays
 /// inside `xfastlane`.
 pub fn submit(platform: Platform, channel: Channel) -> Step<Run> {
-    let mut command = format!(
+    let command = format!(
         "xfastlane publish {lane} {flavor} --from {STAGE_DIR}",
         lane = platform.slug(),
         flavor = channel.flavor()
     );
-    if platform.is_ios() {
-        command.push_str(&format!(
-            " --app-store-info {APP_STORE_INFO_DIR}/AppStoreInfo.plist"
-        ));
-    }
     let spec = SecretSpec::run(command)
         .resolving(Resolution::Release(platform))
         .inside_devenv()
@@ -877,17 +844,6 @@ pub fn record_target(platform: Platform) -> Step<Run> {
         ))
         .shell("bash")
         .id("record-target")
-}
-
-/// Uploads everything the platform's build produced, under a name naming both
-/// the platform and the channel.
-pub fn upload_artifact(channel: Channel, platform: Platform) -> Step<Use> {
-    upload_artifact_action()
-        .step("Upload artifacts")
-        .add_with(("name", Artifact(channel, platform).to_string()))
-        .add_with(("path", platform.artifacts()))
-        .add_with(("if-no-files-found", "error"))
-        .id("upload-artifacts")
 }
 
 /// Renders the notes for `tag` with git-cliff: everything since the previous

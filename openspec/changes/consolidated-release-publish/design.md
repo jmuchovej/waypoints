@@ -29,13 +29,17 @@ Constraints that shape the approach:
 
 ## Decisions
 
-### Builds stage, the publishing job publishes (2026-10-21)
+### Builds stage, the publishing job publishes (2026-10-21, flattened 2026-10-22)
 
-Each build job runs a new `cargo xtask release-stage --platform <p> --tag <t>`, which copies the platform's published and updater artifacts into `release/` under their final store keys — the same `{channel}/{series}/{os}/{arch}/waypoints-{tag}.{ext}` the uploader computes today — and the job uploads that directory as a workflow artifact named for the platform. Staging needs no credential. `release-upload` becomes `release-upload --from release/`: it walks the merged directory, refuses any path that is not a key the scheme would produce for this tag (channel derived from the version, as now), and writes each with `if_not_exists`. The keys are computed once, in the build that produced the file, and only checked in the publishing job.
+Each build job runs a new `cargo xtask release-stage --platform <p> [--tag <t>]`, which renames the platform's published and updater artifacts out of the bundler's nested output (`dmg/`, `macos/`, `appimage/`, `nsis/`, Gradle's `outputs/`) into one flat `release/`, each as `waypoints-{tag}.{ext}` — the name it is stored under. Every expected output must match exactly one file, so a change in what Tauri exports fails the build that produced it. The job uploads `release/` as its one workflow artifact, `waypoints-{platform}-{channel}`, replacing the nested upload of the bundle output. Staging needs no credential.
 
-The iOS build also stages its `AppStoreInfo.plist` beside the ipa, outside `release/`: it is upload metadata for the App Store, not a published artifact, and never reaches the store. The existing debug `upload-artifact` of the full bundle output stays as it is.
+Every run stages, build-only included, so the rename is exercised by every dispatch. A build-only run has no tag; a nightly names its files for the tag the planner would mint (`v` and its version, which a build-only plan carries), and preview and stable fall back to `v` and the app's own version.
 
-Rejected: having the build upload raw bundler output and renaming in the publishing job. The publishing job would need every platform's glob knowledge and would run on one OS's path conventions for all five.
+Every platform's extensions are its own, so the flat directories merge without collision, and a file's extension alone files it under `{os}/{arch}`. `release-upload --from release/` maps each `waypoints-{tag}.{ext}` to `{channel}/{series}/{os}/{arch}/` (channel derived from the version, as now), refuses a subdirectory or any other file, and writes each with `if_not_exists`. The bundler's globs stay in the build; the publishing job needs only the extensions `Platform` already declares.
+
+The iOS build also stages its `AppStoreInfo.plist` in `release/`, beside the ipa, where fastlane reads it. It is upload metadata for the App Store, not a published artifact: `release-upload` skips exactly that name and never sends it to the store. Linux's deb is neither staged nor published.
+
+Rejected: staging into the store's nested key layout. Downloaded artifacts would keep a five-level tree, and the per-platform trees would merge only by luck of disjoint paths. Also rejected: renaming in the publishing job, which would need every platform's bundler globs and would see a changed export only after every build had finished.
 
 ### The iOS export writes its App Store description (2026-10-21)
 
@@ -47,7 +51,7 @@ Rejected: `--export-method release-testing`. Despite the CLI help, it is Xcode 1
 
 One job, so the retractability order is a step order the runner enforces rather than a `needs:` chain across jobs. Nothing in it needs macOS once the ipa arrives with its `AppStoreInfo.plist`. Order, each a separate step:
 
-1. download every platform's staged artifact, merged into `release/`, and the iOS upload metadata beside it;
+1. download every platform's staged artifact, merged into one flat `release/`;
 2. `xfastlane prepare <flavor>` — renders, writes, checks, and fetches everything both submissions need (see below); resolves no credential;
 3. `release-upload --from release/` — derives the one store credential;
 4. `gh release edit --draft=false`;
@@ -60,9 +64,6 @@ One job, so the retractability order is a step order the runner enforces rather 
 The job runs its commands inside the devenv shell, as `release-index` and `check-generated` do. No mise lane carries typst or ImageMagick, and typst's fonts are nix store paths, so the shell is the only place `prepare` can render. It also supplies `cargo`, `fastlane`, `git-cliff`, `secretspec`, and `op`. xtask is compiled once up front through the build jobs' compiler cache, and that cache's server is stopped before the first publishing step. The store steps resolve the `release` profile in-process, and that profile's default provider is the vault, so under devenv they carry the vault credential alone.
 
 `withdraw-release` gets the same checkout and shell. Its `cargo xtask release-withdraw` previously ran on a runner with no checkout and no toolchain, as did the old `publish-release` job's manifest write. Neither had run yet, because no run had published.
-
-Staging is gated on the tag, like the publishing it feeds. A build-only run has no tag to name the staged files, so it stages nothing. The iOS build's debug artifact carries `AppStoreInfo.plist` beside the ipa, so a build-only run still shows the export wrote it. The staging itself first runs on a publishing run, where a failure is still fully retractable.
-
 Rejected: a macOS publishing job. It needs no extra tooling, but pays macOS minutes for a job that compiles nothing. Also rejected: splitting the iOS submission into its own job, which reintroduces a cross-job ordering between steps 3, 5, and 6, and two jobs each able to fail after the other has passed the point of no return.
 
 ### `xfastlane` splits into `prepare` and `publish` (2026-10-21)
@@ -71,9 +72,9 @@ Rejected: a macOS publishing job. It needs no extra tooling, but pays macOS minu
 
 `xfastlane publish <platform> [flavor]` only runs the lane. It refuses to run if `prepare` has not, rather than preparing implicitly — an implicit prepare would move rendering and fetching back past the point of no return the moment a caller forgot the first step. On Linux, `publish ios` sets `FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT=true` and `FASTLANE_ITUNES_TRANSPORTER_PATH` to the prepared tree itself, so the workflow step names no fastlane internals. Locally, the two commands run in sequence.
 
-`publish --from <dir>` takes the package from the staged tree instead of the build output, which the publishing job does not have: it finds the one aab or ipa under `release/` and hands it to the lane as `WAYPOINTS_STORE_PACKAGE`, which only `xfastlane` and the Fastfile name. fastlane reads `AppStoreInfo.plist` only from the ipa's own directory (`ipa_upload_package_builder.rb`), and `release/` holds store objects alone, so `publish ios --from` also takes `--app-store-info app-store/AppStoreInfo.plist` and copies the two into a scratch directory side by side. Without `--from`, the lanes read the build output as before.
+`publish --from <dir>` takes the package from the staged directory instead of the build output, which the publishing job does not have: it finds the one aab or ipa in `release/` and hands it to the lane as `WAYPOINTS_STORE_PACKAGE`, which only `xfastlane` and the Fastfile name. fastlane reads `AppStoreInfo.plist` only from the ipa's own directory (`ipa_upload_package_builder.rb`), which in the flat `release/` is where the iOS build staged it. Without `--from`, the lanes read the build output as before.
 
-Rejected: a second artifact mirroring the build paths, so the Fastfile's globs find the packages unchanged — the ipa and aab would cross artifact storage twice. Also rejected: letting the plist into `release/` with `release-upload` skipping it by name, which weakens the rule that every staged path is a store key.
+Rejected: a second artifact mirroring the build paths, so the Fastfile's globs find the packages unchanged — the ipa and aab would cross artifact storage twice.
 
 Rejected: fetching Transporter in its own workflow step outside `xfastlane`. It spreads fastlane's requirements across the generator and the script, and a step only the iOS-on-Linux path needs would sit in a job that otherwise knows nothing about fastlane. Also rejected: fetching it inside `publish ios`, which would put a download — the likeliest failure of the lot — after the Android submission.
 
@@ -129,7 +130,7 @@ No data migrates; the store and its keys do not change.
 2. Add `generateAppStoreInformation` to the export options.
 3. Add `release-stage` and `release-upload --from`, with unit tests over staging and path refusal.
 4. Rewire the generator: build jobs stage and lose their store and fastlane steps; the publishing job replaces `publish-release`; the withdraw gate reads `submitted`. Regenerate; `check-generated` proves the committed workflows match.
-5. Dispatch a build-only nightly and confirm every build stages, the iOS build stages `AppStoreInfo.plist`, and nothing publishes.
+5. Dispatch a build-only nightly and confirm every build uploads a flat, renamed artifact, the iOS one carries `AppStoreInfo.plist`, and nothing publishes.
 6. Merge; the first scheduled nightly is the live publish check.
 
 Rollback: steps 1–4 are confined to `xtask`, `xfastlane`, and one plist; reverting and regenerating restores the per-build publishing of the archived change.

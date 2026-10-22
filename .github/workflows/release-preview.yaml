@@ -324,29 +324,17 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform macos ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-macos-preview
-          path: |-
-            target/release/bundle/dmg/*.dmg
-            target/release/bundle/macos/*.tar.gz
-            target/release/bundle/macos/*.tar.gz.sig
-          if-no-files-found: error
-      - id: stage-release
-        name: Stage the release artifacts
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-stage --platform macos --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-      - id: upload-staged
-        name: Upload the staged release
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: staged-macos
           path: release
           if-no-files-found: error
       - id: record-target
@@ -465,28 +453,17 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform windows ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-windows-preview
-          path: |-
-            target/release/bundle/nsis/*.exe
-            target/release/bundle/nsis/*.exe.sig
-          if-no-files-found: error
-      - id: stage-release
-        name: Stage the release artifacts
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-stage --platform windows --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-      - id: upload-staged
-        name: Upload the staged release
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: staged-windows
           path: release
           if-no-files-found: error
       - id: record-target
@@ -622,29 +599,17 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform linux ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-linux-preview
-          path: |-
-            target/release/bundle/appimage/*.AppImage
-            target/release/bundle/appimage/*.AppImage.sig
-            target/release/bundle/deb/*.deb
-          if-no-files-found: error
-      - id: stage-release
-        name: Stage the release artifacts
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-stage --platform linux --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-      - id: upload-staged
-        name: Upload the staged release
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: staged-linux
           path: release
           if-no-files-found: error
       - id: record-target
@@ -763,37 +728,18 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform ios ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-ios-preview
-          path: |-
-            src-tauri/gen/apple/build/**/*.ipa
-            src-tauri/gen/apple/build/**/AppStoreInfo.plist
-          if-no-files-found: error
-      - id: stage-release
-        name: Stage the release artifacts
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-stage --platform ios --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-      - id: upload-staged
-        name: Upload the staged release
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: staged-ios
           path: release
-          if-no-files-found: error
-      - id: upload-app-store-info
-        name: Upload the App Store description
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: app-store-info
-          path: app-store
           if-no-files-found: error
       - id: record-target
         name: Record the completed target
@@ -977,28 +923,17 @@ jobs:
           SECRETSPEC_REASON: saving the android-ndk snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: stage-release
+        name: Stage the release artifacts
+        run: cargo xtask release-stage --platform android ${TAG:+--tag "${TAG}"}
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: waypoints-android-preview
-          path: |-
-            src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
-            src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab
-          if-no-files-found: error
-      - id: stage-release
-        name: Stage the release artifacts
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        run: cargo xtask release-stage --platform android --tag "${TAG}"
-        shell: bash
-        env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-      - id: upload-staged
-        name: Upload the staged release
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: staged-android
           path: release
           if-no-files-found: error
       - id: record-target
@@ -1099,15 +1034,9 @@ jobs:
         name: Download the staged release
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          pattern: staged-*
+          pattern: waypoints-*-preview
           merge-multiple: "true"
           path: release
-      - id: download-app-store-info
-        name: Download the App Store description
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: app-store-info
-          path: app-store
       - id: prepare-listing
         name: Prepare the store listings
         run: devenv shell -- xfastlane prepare preview
@@ -1144,7 +1073,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: submit-ios
         name: Submit to the App Store
-        run: devenv shell -- secretspec run --profile release --provider op --scope ios -- xfastlane publish ios preview --from release --app-store-info app-store/AppStoreInfo.plist
+        run: devenv shell -- secretspec run --profile release --provider op --scope ios -- xfastlane publish ios preview --from release
         shell: bash
         env:
           SECRETSPEC_REASON: fastlane submits the iOS build to its store with the iOS release scope

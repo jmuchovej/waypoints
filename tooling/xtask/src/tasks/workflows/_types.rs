@@ -57,47 +57,6 @@ impl Platform {
         self.to_string()
     }
 
-    /// Globs matching what this platform's build produces: the installers a
-    /// person downloads, and the payloads and signatures the updater fetches.
-    ///
-    /// `createUpdaterArtifacts` signs each installer in place rather than
-    /// wrapping it — the `.nsis.zip` and `.AppImage.tar.gz` these globs used
-    /// to name are Tauri v1's shape, kept only under `"v1Compatible"` — so on
-    /// Linux and Windows one file serves both roles. macOS is the exception:
-    /// the updater cannot consume a `.dmg`, so its payload is a separate
-    /// `.app.tar.gz`, which is also why that platform lists two downloads.
-    ///
-    /// Linux signs the deb as well, which nothing fetches: the updater takes
-    /// the AppImage, and a deb is installed by a package manager.
-    pub fn artifacts(self) -> &'static str {
-        use Platform::*;
-        match self {
-            macOS => indoc! {"
-                target/release/bundle/dmg/*.dmg
-                target/release/bundle/macos/*.tar.gz
-                target/release/bundle/macos/*.tar.gz.sig"},
-            Linux => indoc! {"
-                target/release/bundle/appimage/*.AppImage
-                target/release/bundle/appimage/*.AppImage.sig
-                target/release/bundle/deb/*.deb"},
-            Windows => indoc! {"
-                target/release/bundle/nsis/*.exe
-                target/release/bundle/nsis/*.exe.sig"},
-            // Gradle splits flavor from build type for an APK
-            // (`apk/universal/release`) and joins them for a bundle
-            // (`bundle/universalRelease`).
-            Android => indoc! {"
-                src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
-                src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab"},
-            // The plist rides along so a build-only run shows the export
-            // wrote it; TestFlight needs it beside the ipa off macOS.
-            iOS => indoc! {"
-                src-tauri/gen/apple/build/**/*.ipa
-                src-tauri/gen/apple/build/**/AppStoreInfo.plist"},
-        }
-        .trim()
-    }
-
     pub fn is_desktop(self) -> bool {
         use Platform::{Linux, Windows, macOS};
         matches!(self, Linux | macOS | Windows)
@@ -150,17 +109,23 @@ impl Platform {
         }
     }
 
-    /// Globs matching this platform's published artifacts on disk: the
-    /// subset of [`Platform::artifacts`] that reaches the release store, in
-    /// the same order as [`PublishedTarget::extensions`] — every other glob
-    /// there (signatures, the updater's `.tar.gz` payload, the `.deb`) stays
-    /// a build output without becoming a published target.
+    /// Globs matching this platform's installers on disk — what a person
+    /// downloads — in the same order as [`PublishedTarget::extensions`].
+    /// `release-stage` renames each match, and requires exactly one, so a
+    /// change in what the bundler exports fails the build.
+    ///
+    /// Linux also builds a deb, which is neither published nor staged: the
+    /// updater takes the AppImage, and a deb is installed by a package
+    /// manager.
     pub fn published_globs(self) -> &'static [&'static str] {
         use Platform::*;
         match self {
             macOS => &["target/release/bundle/dmg/*.dmg"],
             Linux => &["target/release/bundle/appimage/*.AppImage"],
             Windows => &["target/release/bundle/nsis/*.exe"],
+            // Gradle splits flavor from build type for an APK
+            // (`apk/universal/release`) and joins them for a bundle
+            // (`bundle/universalRelease`).
             Android => &[
                 "src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk",
                 "src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab",
@@ -174,11 +139,11 @@ impl Platform {
     /// platforms, which update through their stores rather than Tauri's own.
     ///
     /// Linux and Windows sign the installer in place — `createUpdaterArtifacts`
-    /// wraps nothing, so the updater fetches the same file [`published_target`]
-    /// already uploads, and only the signature is new here. macOS's updater
-    /// cannot consume a `.dmg`, so its payload is the separate `.app.tar.gz`
-    /// [`artifacts`] already builds — see that doc for the full story. Paired
-    /// one-to-one with [`updater_globs`].
+    /// wraps nothing; the `.nsis.zip` and `.AppImage.tar.gz` of Tauri v1 exist
+    /// only under `"v1Compatible"` — so the updater fetches the same file
+    /// [`published_target`] already uploads, and only the signature is new
+    /// here. macOS's updater cannot consume a `.dmg`, so its payload is a
+    /// separate `.app.tar.gz`. Paired one-to-one with [`updater_globs`].
     pub fn updater_extensions(self) -> &'static [&'static str] {
         use Platform::*;
         match self {
@@ -190,8 +155,8 @@ impl Platform {
     }
 
     /// Globs matching this platform's updater artifacts on disk, in the same
-    /// order as [`updater_extensions`] — the subset of [`Platform::artifacts`]
-    /// the updater needs beyond the installer itself.
+    /// order as [`updater_extensions`]: what the updater needs beyond the
+    /// installer itself.
     pub fn updater_globs(self) -> &'static [&'static str] {
         use Platform::*;
         match self {

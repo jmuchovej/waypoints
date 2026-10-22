@@ -340,8 +340,7 @@ pub fn publish(channel: Channel, prepare: Option<&PrepareJob>) -> NamedJob {
         .add_step(steps::with_sccache(compile))
         .add_step(steps::sccache_stats(Tools::Devenv))
         .add_step(steps::cache_save(&registry, Tools::Devenv))
-        .add_step(steps::download_staged())
-        .add_step(steps::download_app_store_info())
+        .add_step(steps::download_staged(channel))
         .add_step(steps::prepare_listing(channel))
         .add_step(steps::with_sccache(steps::upload_to_store(tag)))
         .add_step(steps::publish_release(tag))
@@ -438,7 +437,14 @@ pub fn build(
     // Absent off nightly, where the tag's own semver suffices.
     let build_code = prepare.and_then(|prepare| build_code(prepare, platform));
     let version = prepare.and_then(|prepare| app_version(prepare, platform));
-    let tag = prepare.map(|prepare| &prepare.tag);
+    // What the staged files are named for. A nightly's tag is `v` and the
+    // planner's version, which a build-only run carries too; elsewhere the
+    // tag, or on a build-only run nothing, and `release-stage` takes the
+    // app's own version.
+    let stage_tag = match prepare {
+        Some(prepare) => format!("v{}", prepare.version),
+        None => Channel::tag(None),
+    };
 
     // The mobile lanes need `fastlane`, `xcodegen` and the nushell the `_build`
     // recipes are written in; the desktop ones do not.
@@ -533,14 +539,11 @@ pub fn build(
             job.add_step(steps::cache_save(cache("gradle"), Tools::Mise))
                 .add_step(steps::cache_save(cache("android-ndk"), Tools::Mise))
         })
-        .add_step(steps::upload_artifact(channel, platform))
-        // Staged, not published: the publishing job uploads and submits once
-        // every build has recorded in.
-        .add_step(steps::stage_release(platform, tag))
-        .add_step(steps::upload_staged(platform, tag))
-        .when(platform.is_ios(), |job| {
-            job.add_step(steps::upload_app_store_info(tag))
-        })
+        // Staged, not published: renamed flat and handed on, so the
+        // publishing job uploads and submits once every build has recorded
+        // in. Every run stages, so a build-only run exercises the rename too.
+        .add_step(steps::stage_release(platform, stage_tag))
+        .add_step(steps::upload_staged(channel, platform))
         .add_step(record_target)
         .outputs([target.clone().as_output()])
         // Reads the planner's outputs, so it waits on the planner.
@@ -679,7 +682,6 @@ mod tests {
     fn the_publish_steps_run_in_order_of_retractability() {
         let order = [
             "download-staged",
-            "download-app-store-info",
             "prepare-listing",
             "upload-to-store",
             "publish-release",
@@ -697,8 +699,8 @@ mod tests {
         assert_eq!(ids, order);
     }
 
-    /// The upload reads the merged staged tree, and the submissions take
-    /// their packages from it — the iOS one with its plist.
+    /// The upload reads the merged staged directory, and the submissions
+    /// take their packages from it.
     #[test]
     fn the_publish_job_works_from_the_staged_tree() {
         let steps = publish_steps();
@@ -713,11 +715,10 @@ mod tests {
             step(&steps, "download-staged")["with"]["merge-multiple"],
             "true"
         );
+        // The plist is staged beside the ipa, where fastlane looks for it.
         let ios = step(&steps, "submit-ios")["run"].as_str().unwrap();
         assert!(
-            ios.contains(
-                "xfastlane publish ios stable --from release --app-store-info app-store/AppStoreInfo.plist"
-            ),
+            ios.contains("xfastlane publish ios stable --from release"),
             "{ios}"
         );
         let android = step(&steps, "submit-android")["run"].as_str().unwrap();
@@ -811,28 +812,73 @@ mod tests {
                 }
             }
 
-            let stage = steps
-                .iter()
-                .find(|step| step["id"] == "stage-release")
-                .unwrap_or_else(|| panic!("{platform}: no stage-release step"));
+            // Every run stages, build-only included, so a changed export
+            // fails the build that produced it.
+            let stage = step(steps, "stage-release");
             assert!(stage["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_none());
-            assert!(stage["if"].as_str().unwrap().contains("!= ''"));
-            let upload = steps
+            assert!(stage.get("if").is_none(), "{platform}: {stage}");
+
+            // One artifact per build, and it is the flat staged directory.
+            let uploads = steps
                 .iter()
-                .find(|step| step["id"] == "upload-staged")
-                .unwrap_or_else(|| panic!("{platform}: no upload-staged step"));
+                .filter(|step| {
+                    step["uses"]
+                        .as_str()
+                        .is_some_and(|uses| uses.starts_with("actions/upload-artifact@"))
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(uploads.len(), 1, "{platform}");
+            assert_eq!(uploads[0]["with"]["path"], "release", "{platform}");
             assert_eq!(
-                upload["with"]["name"],
-                format!("staged-{}", platform.slug())
-            );
-            assert_eq!(
-                steps
-                    .iter()
-                    .any(|step| step["id"] == "upload-app-store-info"),
-                platform.is_ios(),
-                "{platform}"
+                uploads[0]["with"]["name"],
+                format!("waypoints-{}-stable", platform.slug())
             );
         }
+    }
+
+    /// A nightly names its staged files for the tag the planner would mint,
+    /// which a build-only run carries as its version; the other channels
+    /// pass the tag, and on a build-only run fall back to the app's version.
+    #[test]
+    fn the_staged_files_are_named_for_the_run_s_tag() {
+        let prepare = prepare(&WorkflowContext::fixture());
+        let nightly = build(
+            Channel::Nightly,
+            &WorkflowContext::fixture(),
+            Platform::Linux,
+            Some(&prepare),
+        );
+        let value = serde_json::to_value(&nightly.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        assert_eq!(
+            step(steps, "stage-release")["env"]["TAG"],
+            format!("v{}", prepare.version)
+        );
+
+        let stable = build(
+            Channel::Stable,
+            &WorkflowContext::fixture(),
+            Platform::Linux,
+            None,
+        );
+        let value = serde_json::to_value(&stable.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        let stage = step(steps, "stage-release");
+        assert_eq!(stage["env"]["TAG"], Channel::tag(None));
+        assert!(
+            stage["run"]
+                .as_str()
+                .unwrap()
+                .ends_with(r#"${TAG:+--tag "${TAG}"}"#)
+        );
+    }
+
+    /// The publishing job merges exactly this channel's builds.
+    #[test]
+    fn the_publish_job_merges_its_own_channel_s_artifacts() {
+        let steps = publish_steps();
+        let download = step(&steps, "download-staged");
+        assert_eq!(download["with"]["pattern"], "waypoints-*-stable");
     }
 
     /// The record carries no bytes: a release build's artifacts reach only

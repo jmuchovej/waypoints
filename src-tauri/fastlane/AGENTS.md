@@ -166,11 +166,10 @@ On Linux, `prepare` fetches Apple's current Transporter build into
 and `publish ios` points fastlane at it. TestFlight uploads off macOS also need
 the `AppStoreInfo.plist` the iOS export writes beside the ipa.
 
-`publish --from <dir>` submits the one aab or ipa under a `release-stage` tree
-instead of the build output, handing it to the Fastfile as
-`WAYPOINTS_STORE_PACKAGE`. The staged tree holds store objects only, so iOS
-takes the plist separately (`--app-store-info`) and `publish` puts the two side
-by side in a scratch directory.
+`publish --from <dir>` submits the one aab or ipa in a `release-stage`
+directory instead of the build output, handing it to the Fastfile as
+`WAYPOINTS_STORE_PACKAGE`. The iOS build stages its plist in the same flat
+directory, beside the ipa, where fastlane looks for it.
 
 Three things the recipe gets right that a bare `typst compile` does not:
 

@@ -1,23 +1,29 @@
-//! Copies one platform's published and updater artifacts out of its build
-//! output into [`STAGE_DIR`], each at the path of the store key it will be
-//! published under, so the publishing job's `release-upload --from` only
-//! checks and writes them. Touches nothing outside the working tree and
-//! resolves no credential.
+//! Renames one platform's published and updater artifacts out of the
+//! bundler's nested output into the flat [`STAGE_DIR`], each as
+//! `waypoints-{tag}.{ext}` — the name it is stored under — so the build
+//! uploads one flat artifact and the publishing job only checks and writes
+//! the merged directory. Every expected output must match exactly one file:
+//! a Tauri change to what the bundler exports fails the build here, not the
+//! publish. Touches nothing outside the working tree and resolves no
+//! credential.
 //!
-//! iOS also stages the `AppStoreInfo.plist` its export wrote, to
-//! [`APP_STORE_INFO`]: TestFlight needs it beside the ipa to upload off
-//! macOS, but it is upload metadata, never a store object.
+//! iOS also stages the [`APP_STORE_INFO`] its export wrote, beside the ipa:
+//! TestFlight needs it there to upload off macOS, but it is upload metadata,
+//! never a store object.
 
-use crate::tasks::{release_upload, workflows::Platform};
+use crate::{
+    tasks::{
+        release_upload::{self, APP_STORE_INFO},
+        workflows::Platform,
+    },
+    workspace,
+};
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::path::{Path, PathBuf};
 
-/// The staged tree, laid out as store keys.
+/// The flat staged directory every platform's artifact holds.
 pub const STAGE_DIR: &str = "release";
-
-/// Where the iOS build stages its App Store description.
-pub const APP_STORE_INFO: &str = "app-store/AppStoreInfo.plist";
 
 /// Where `xcodebuild -exportArchive` writes it: beside the ipa.
 const APP_STORE_INFO_GLOB: &str = "src-tauri/gen/apple/build/**/AppStoreInfo.plist";
@@ -28,35 +34,46 @@ pub struct ReleaseStageArgs {
     #[arg(long, value_enum)]
     platform: Platform,
 
-    /// The release tag; names the staged files and, through its version,
-    /// their channel and series.
+    /// The release tag the files are named for. A build-only run has none:
+    /// it passes the tag it would have published, or omits this to take
+    /// `v` and the app's own version.
     #[arg(long)]
-    tag: String,
+    tag: Option<String>,
 }
 
 pub fn run(args: ReleaseStageArgs) -> Result<()> {
-    for path in stage(args.platform, &args.tag, Path::new("."))? {
+    let tag = match args.tag {
+        Some(tag) => tag,
+        None => format!("v{}", workspace::version()?),
+    };
+    for path in stage(args.platform, &tag, Path::new("."))? {
         println!("staged {}", path.display());
     }
     Ok(())
 }
 
 /// Stages `platform`'s artifacts from the build output under `root` into
-/// the staged tree under `root`, returning the paths written.
+/// the flat staged directory under `root`, returning the paths written.
 fn stage(platform: Platform, tag: &str, root: &Path) -> Result<Vec<PathBuf>> {
-    let mut copies = release_upload::built_files(platform, tag, root)?
+    release_upload::tag_version(tag)?;
+    let staged = root.join(STAGE_DIR);
+
+    let mut copies = release_upload::built_files(platform, root)?
         .into_iter()
-        .map(|(source, key)| (source, root.join(STAGE_DIR).join(key)))
+        .map(|(source, extension)| {
+            (
+                source,
+                staged.join(release_upload::file_name(tag, extension)),
+            )
+        })
         .collect::<Vec<_>>();
     if platform.is_ios() {
         let plist = release_upload::find_one(root, APP_STORE_INFO_GLOB)?;
-        copies.push((plist, root.join(APP_STORE_INFO)));
+        copies.push((plist, staged.join(APP_STORE_INFO)));
     }
 
+    std::fs::create_dir_all(&staged).with_context(|| format!("creating {}", staged.display()))?;
     for (source, destination) in &copies {
-        let parent = destination.parent().expect("a staged path has a parent");
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("creating {}", parent.display()))?;
         std::fs::copy(source, destination).with_context(|| {
             format!("copying {} to {}", source.display(), destination.display())
         })?;
@@ -71,6 +88,7 @@ fn stage(platform: Platform, tag: &str, root: &Path) -> Result<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tasks::workflows::Channel;
     use strum::IntoEnumIterator as _;
 
     /// A scratch working tree, removed on drop.
@@ -128,43 +146,40 @@ mod tests {
     }
 
     #[test]
-    fn every_platform_stages_under_its_store_keys() {
+    fn every_platform_stages_flat_under_its_published_names() {
         let expected: [(Platform, &[&str]); 5] = [
             (
                 Platform::macOS,
                 &[
-                    "release/stable/v0.1.x/macos/arm64/waypoints-v0.1.1.app.tar.gz",
-                    "release/stable/v0.1.x/macos/arm64/waypoints-v0.1.1.app.tar.gz.sig",
-                    "release/stable/v0.1.x/macos/arm64/waypoints-v0.1.1.dmg",
+                    "release/waypoints-v0.1.1.app.tar.gz",
+                    "release/waypoints-v0.1.1.app.tar.gz.sig",
+                    "release/waypoints-v0.1.1.dmg",
                 ],
             ),
             (
                 Platform::Linux,
                 &[
-                    "release/stable/v0.1.x/linux/amd64/waypoints-v0.1.1.AppImage",
-                    "release/stable/v0.1.x/linux/amd64/waypoints-v0.1.1.AppImage.sig",
+                    "release/waypoints-v0.1.1.AppImage",
+                    "release/waypoints-v0.1.1.AppImage.sig",
                 ],
             ),
             (
                 Platform::Windows,
                 &[
-                    "release/stable/v0.1.x/windows/amd64/waypoints-v0.1.1.exe",
-                    "release/stable/v0.1.x/windows/amd64/waypoints-v0.1.1.exe.sig",
+                    "release/waypoints-v0.1.1.exe",
+                    "release/waypoints-v0.1.1.exe.sig",
                 ],
             ),
             (
                 Platform::Android,
                 &[
-                    "release/stable/v0.1.x/android/arm64/waypoints-v0.1.1.aab",
-                    "release/stable/v0.1.x/android/arm64/waypoints-v0.1.1.apk",
+                    "release/waypoints-v0.1.1.aab",
+                    "release/waypoints-v0.1.1.apk",
                 ],
             ),
             (
                 Platform::iOS,
-                &[
-                    "app-store/AppStoreInfo.plist",
-                    "release/stable/v0.1.x/ios/arm64/waypoints-v0.1.1.ipa",
-                ],
+                &["release/AppStoreInfo.plist", "release/waypoints-v0.1.1.ipa"],
             ),
         ];
         assert_eq!(expected.len(), Platform::iter().count());
@@ -184,20 +199,26 @@ mod tests {
         let tree = Tree::new();
         tree.build_platform(Platform::macOS);
         stage(Platform::macOS, "v0.1.1", &tree.0).unwrap();
-        let payload = tree
-            .0
-            .join("release/stable/v0.1.x/macos/arm64/waypoints-v0.1.1.app.tar.gz");
+        let payload = tree.0.join("release/waypoints-v0.1.1.app.tar.gz");
         assert_eq!(
             std::fs::read_to_string(payload).unwrap(),
             "target/release/bundle/macos/*.tar.gz"
         );
     }
 
+    /// A Tauri change to what the bundler exports — a file gone, or a
+    /// second where one was expected — fails the build at the rename.
     #[test]
-    fn a_missing_artifact_fails_the_stage() {
-        let tree = Tree::new();
-        tree.build(Platform::Android.published_globs()[0]);
-        assert!(stage(Platform::Android, "v0.1.1", &tree.0).is_err());
+    fn an_unexpected_export_fails_the_stage() {
+        let missing = Tree::new();
+        missing.build(Platform::Android.published_globs()[0]);
+        assert!(stage(Platform::Android, "v0.1.1", &missing.0).is_err());
+
+        let ambiguous = Tree::new();
+        ambiguous.build_platform(Platform::Linux);
+        ambiguous.build("target/release/bundle/appimage/second.AppImage");
+        let error = stage(Platform::Linux, "v0.1.1", &ambiguous.0).unwrap_err();
+        assert!(error.to_string().contains("more than one"), "{error}");
     }
 
     #[test]
@@ -208,21 +229,18 @@ mod tests {
         assert!(error.to_string().contains("AppStoreInfo.plist"), "{error}");
     }
 
-    /// What `release-stage` writes under [`STAGE_DIR`] is exactly what
-    /// `release-upload --from` accepts.
+    /// Every platform's stage merges into one flat directory that is
+    /// exactly what `release-upload --from` accepts.
     #[test]
-    fn the_stage_uploads_as_staged() {
+    fn the_merged_stage_uploads_as_staged() {
         let tree = Tree::new();
         for platform in Platform::iter() {
             tree.build_platform(platform);
             stage(platform, "v0.1.1", &tree.0).unwrap();
         }
-        let staged = release_upload::staged_files(
-            &tree.0.join(STAGE_DIR),
-            crate::tasks::workflows::Channel::Stable,
-            "v0.1.1",
-        )
-        .unwrap();
+        let staged =
+            release_upload::staged_files(&tree.0.join(STAGE_DIR), Channel::Stable, "v0.1.1")
+                .unwrap();
         let count = Platform::iter()
             .map(|p| p.published_target().extensions.len() + p.updater_extensions().len())
             .sum::<usize>();
