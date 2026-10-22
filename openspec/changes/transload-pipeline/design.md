@@ -219,8 +219,8 @@ per Content variant.
 ### D9 — Ordinals from fractional keys, and back (2026-08-18)
 
 Export: parallel `(src, dst, kind)` edges take `order` = occurrence index,
-ordered by the runtime fractional key (Child edges) or reading-list position
-(Tier-2). Ingest: fractional keys regenerate via
+ordered by the runtime fractional key. (There is no reading-bound tier: see the
+transload spec's 2026-10-21 decision.) Ingest: fractional keys regenerate via
 `domain::fractional_index::generate_n` (the public re-export — the `_shared`
 parent module is `pub(crate)`) over each sibling sequence.
 Order _strings_ never appear in a Bundle; `GroupedSelect`'s `HashMap` (and

@@ -85,25 +85,28 @@ the `syntax` feature per design D8, 3.3–3.4 in `transload`.
 
 ## 5. Ingester
 
-- [ ] 5.1 Manifest version gate (refuse-before-reading-anything), Bundle
+- [x] 5.1 Manifest version gate (refuse-before-reading-anything), Bundle
       walk, frontmatter + body parse into a staged graph of Marks, edges,
       and Charts.
-- [ ] 5.2 Identity: declared `id` only; `src`-keyed identity refused as
+- [x] 5.2 Identity: declared `id` only; `src`-keyed identity refused as
       malformed; identical same-`id` duplicates unify, divergent ones
       accumulate the per-UUID conflict report.
-- [ ] 5.3 Terrain reconstruction as exactly Tier 1 ∪ 2 ∪ 3: structure from
-      nesting, relations from reading refs, constitutive lines verbatim;
-      annotative `extra` attached by `(src, dst, kind, order)` natural key;
-      orphan annotative lines accumulate malformed refusals. Strict kind
-      parsing — never the lossy `from_storage` degradation.
-- [ ] 5.4 Chart handling per design D10: instance validation of readings
+- [x] 5.3 Terrain reconstruction as exactly the union of the tiers: structure
+      from nesting, constitutive lines verbatim (`Reading` edges included —
+      nothing is rebuilt from reading refs, per the 2026-10-21 spec
+      decision); annotative `extra` attached by `(src, dst, kind, order)`
+      natural key; orphan annotative lines accumulate malformed refusals.
+      Strict kind parsing — never the lossy `from_storage` degradation.
+- [x] 5.4 Chart handling per design D10: instance validation of readings
       against the Draft-07 face; `builtin.*` resolves to app builtins with
       per-Chart conflict entries on mismatch; custom Charts upsert from
-      `x-waypoints`.
-- [ ] 5.5 Single-transaction apply: fresh `TerrainID`s, fractional order
+      `x-waypoints`. (Unblocked by deriving builtin feature ids from stable
+      slugs — they were re-minted on every launch.)
+- [x] 5.5 Single-transaction apply: fresh `TerrainID`s, fractional order
       keys regenerated via `fractional_index::generate_n`, timestamps
-      written as domain data (relies on 1.2).
-- [ ] 5.6 Refusal tests, each asserting the store is untouched afterward:
+      written as domain data (relies on 1.2). `WriteTx` gained typed
+      `insert`/`upsert` for this.
+- [x] 5.6 Refusal tests, each asserting the store is untouched afterward:
       `src` in Bundle position, divergent duplicates, orphan annotative
       line, schema-invalid reading, unsupported `bundle_format`, and a
       valid-prefix-then-invalid-tail Bundle (atomicity).

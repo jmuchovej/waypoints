@@ -86,10 +86,15 @@ artifact SHALL appear anywhere in a Bundle.
 ### Requirement: Every body Mark carries an identity comment
 
 Every Mark in a Landmark body SHALL be preceded by a `wp:mark` identity
-comment carrying its `id`. Container Marks SHALL use paired
-`<!-- wp:mark … --> … <!-- /wp:mark -->` comments; leaf Marks SHALL use a
-single unpaired comment. Unknown fields inside an identity comment SHALL be
-preserved through re-serialization.
+comment carrying its `id`, and for a Content Mark its `created` and `updated`
+timestamps. A Mark with children SHALL use paired
+`<!-- wp:mark … --> … <!-- /wp:mark -->` comments enclosing them; a Mark
+without children SHALL use a single unpaired comment. Unknown fields inside an
+identity comment SHALL be preserved through re-serialization.
+
+A Landmark nested under another Mark SHALL appear in its parent's body at its
+sibling position, as an identity comment over a `[[<MarkID>|title]]` line; its
+content lives in its own file.
 
 A Mark shared by multiple Landmarks SHALL be rendered once and byte-copied
 into every containing file — identical identity comment, identical content —
@@ -125,21 +130,20 @@ every involved file. It SHALL NOT pick a winner silently.
   file paths
 - **AND** the store is unchanged
 
-### Requirement: Terrain edges export by exactly one of three tiers
+### Requirement: Terrain edges export by exactly one of two tiers
 
-Structural (child) edges SHALL be carried by document nesting; Reading-bound
-relational edges by `readings.*[].ref` in frontmatter; every other edge kind
-by a `terrain.jsonl` line. The exporter's dispatch over edge kinds SHALL be
-exhaustive without a wildcard: introducing a new edge kind without an explicit
-tier assignment fails compilation. The ingester SHALL reconstruct Terrain as
-exactly the union of the three tiers — no edge is silently dropped.
+Structural (child) edges SHALL be carried by document nesting; every other edge
+kind, `Reading` included, by a `terrain.jsonl` line. The exporter's dispatch
+over edge kinds SHALL be exhaustive without a wildcard: introducing a new edge
+kind without an explicit tier assignment fails compilation. The ingester SHALL
+reconstruct Terrain as exactly the union of the two tiers — no edge is silently
+dropped, and none is synthesized from reading refs.
 
 `terrain.jsonl` lines are `{src, dst, kind, order?, extra?}`. Constitutive
-lines (tier-three kinds) are the edge record. Annotative lines (tier-one/two
-kinds) exist only to attach `extra` to an edge whose structure lives in the
-projection, addressed by the natural key `(src, dst, kind, order)`; an
-annotative line matching no projected edge SHALL refuse the Bundle as
-malformed.
+lines are the edge record. Annotative lines (child kind) exist only to attach
+`extra` to an edge whose structure lives in the projection, addressed by the
+natural key `(src, dst, kind, order)`; an annotative line matching no projected
+edge SHALL refuse the Bundle as malformed.
 
 A `TerrainID` SHALL NOT appear in a Bundle; edge identities regenerate
 unconditionally on ingest. `order` is an ordinal among parallel
@@ -370,6 +374,47 @@ _Rejected:_ Draft-07-only (silently lossy — a fidelity violation by
 construction); a separate chart sidecar (the schema file is already the
 per-Chart structured carrier).
 
+### 2026-10-21 — Reading edges are constitutive, not rebuilt from refs
+
+_Rationale:_ the three-tier design assumed `References` readings and
+`Reading`-kind edges are kept in step. They are not: nothing in the app
+materializes those edges, so rebuilding them from refs on ingest would invent
+edges and break `ingest(export(store)) == store` for every store with a
+reference reading. A sidecar line per `Reading` edge is lossless whether or not
+the app ever keeps the two in step.
+_Rejected:_ rebuilding from refs (fabricates edges today); dropping `Reading`
+edges (loses them in any store that has them).
+
+### 2026-10-21 — Content Marks carry their timestamps in the identity comment
+
+_Rationale:_ the round trip quantifies over every Mark's timestamps, and only a
+Landmark had a carrier for them (its frontmatter). Timestamps are machine
+metadata, which the carrier rule assigns to comments.
+
+### 2026-10-21 — A nested Landmark keeps its place in its parent's body
+
+_Rationale:_ a child edge to a Landmark had no carrier — the body skipped it and
+the sidecar holds only annotations for structure. Rendering it in place as an
+identity comment over a `[[id|title]]` line keeps its sibling position and
+reads as a link once comments are stripped.
+
+### 2026-10-21 — What cannot survive a round trip is a warning on export
+
+_Rationale:_ the exporter serializes what the store holds and never refuses —
+getting data out is the covenant's point — so a cycle-closing child edge,
+Content unreachable from any Landmark, and a reading its own Chart rejects are
+reported rather than written in a form ingest would refuse.
+
+### 2026-10-21 — Builtin feature and option ids derive from stable slugs
+
+_Rationale:_ builtin ids were random and re-minted on every launch, so no Bundle
+could ingest anywhere but the store that wrote it — and live readings were
+orphaned at each boot. A slug's SHA-256, reduced into the id space, gives the
+same id in every store; the slug is fixed and decoupled from the display name,
+so renaming a feature does not re-key readings. This is the minimal form of the
+stable-builtin-id work; upgrading a drifted builtin in place remains out of
+scope.
+
 ### 2026-10-20 — Version skew is three problems, not one
 
 _Rationale:_ "can this build read this Bundle" collapses three unrelated
@@ -387,11 +432,11 @@ questions (John's taxonomy, 2026-10-20), and each wants a different answer:
    used.
 3. **Builtin Chart drift** — a builtin gaining or losing features. The intended
    answer is to ingest the Bundle as it stands and then offer an additive
-   in-place upgrade of the clashing Chart. **Out of scope here**, and blocked on
-   two things that do not exist: stable ids for builtin Chart features (today
-   they are regenerated per build, so two builds do not agree on `a1b2`), and a
-   UI for a person to diff and accept the change. Until those land, the
-   per-Chart conflict refusal above stands as the interim.
+   in-place upgrade of the clashing Chart. **Out of scope here.** Builtin
+   feature ids are now stable (derived from slugs, below), which was the first
+   blocker; the second, a UI for a person to diff and accept the change, does
+   not exist. Until it lands, the per-Chart conflict refusal above stands as
+   the interim.
 
 _Rejected:_ generating JSON Schemas for the domain's own variant types (via
 `schemars`) to support an attribute-level diff — the `domain` version answers
