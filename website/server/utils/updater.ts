@@ -1,12 +1,6 @@
 import type { H3Event } from "h3";
 
-import {
-  TAURI_UPDATER_TARGETS,
-  UPDATER_PAYLOAD_EXT,
-  UPDATER_SIG_EXT,
-  objectKey,
-  type Channel,
-} from "#shared/utils/releases";
+import { TAURI_UPDATER_TARGETS, objectKey, type Channel } from "#shared/utils/releases";
 
 import { fetchReleaseNotes } from "./notes";
 import { readManifest, readText } from "./store";
@@ -40,11 +34,11 @@ export async function buildUpdateManifest(
 
   const platforms: Record<string, TauriPlatformEntry> = {};
 
-  for (const [tauriTarget, { os, arch }] of Object.entries(TAURI_UPDATER_TARGETS)) {
-    const sigExt = UPDATER_SIG_EXT[os];
-    if (!sigExt) continue;
-
-    const sigKey = objectKey(channel, manifest.version, os, arch, sigExt);
+  // A target whose signature is absent — a release from before it was
+  // published — is left out, and its clients fall back to the bare
+  // `{os}-{arch}` entry as they did before.
+  for (const [tauriTarget, target] of Object.entries(TAURI_UPDATER_TARGETS)) {
+    const sigKey = objectKey(channel, manifest.version, target.os, target.arch, target.signature);
     const signature = await readText(event, sigKey);
     if (!signature) continue;
 
@@ -77,11 +71,10 @@ export async function updaterPayloadKey(
   tauriTarget: string,
 ): Promise<string | null> {
   const target = TAURI_UPDATER_TARGETS[tauriTarget];
-  const payloadExt = target && UPDATER_PAYLOAD_EXT[target.os];
-  if (!target || !payloadExt) return null;
+  if (!target) return null;
 
   const manifest = await readManifest(event, channel);
   if (!manifest) return null;
 
-  return objectKey(channel, manifest.version, target.os, target.arch, payloadExt);
+  return objectKey(channel, manifest.version, target.os, target.arch, target.payload);
 }

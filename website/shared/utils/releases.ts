@@ -42,29 +42,38 @@ export function targetSlug(target: Pick<ReleaseTarget, "os" | "arch">): string {
   return `${target.os}-${target.arch}`;
 }
 
-/**
- * Tauri's updater payload and signature extensions, beyond the installer —
- * mirrors `Platform::updater_extensions`. Linux and Windows sign the
- * installer in place, so the payload is the same file already published;
- * macOS's updater cannot consume a `.dmg`, so its payload is the separate
- * `.app.tar.gz` the bundler also builds.
- */
-export const UPDATER_PAYLOAD_EXT: Record<string, string> = {
-  macos: "app.tar.gz",
-  linux: "AppImage",
-  windows: "exe",
-};
-export const UPDATER_SIG_EXT: Record<string, string> = {
-  macos: "app.tar.gz.sig",
-  linux: "AppImage.sig",
-  windows: "exe.sig",
-};
+export interface UpdaterTarget {
+  os: string;
+  arch: string;
+  /** The extension of the file the updater downloads and installs. */
+  payload: string;
+  /** The extension of that file's updater signature. */
+  signature: string;
+}
 
-/** Tauri's own updater target spelling, mapped to our `{os, arch}` pair. */
-export const TAURI_UPDATER_TARGETS: Record<string, { os: string; arch: string }> = {
-  "darwin-aarch64": { os: "macos", arch: "arm64" },
-  "linux-x86_64": { os: "linux", arch: "amd64" },
-  "windows-x86_64": { os: "windows", arch: "amd64" },
+/**
+ * Tauri's own updater target spellings, each mapped to our `{os, arch}` and
+ * the payload it installs — mirrors `Platform::updater_extensions`. Linux
+ * and Windows sign the installer in place, so the payload is the file
+ * already published; macOS's updater cannot consume a `.dmg`, so its payload
+ * is the separate `.app.tar.gz`.
+ *
+ * An app installed from a deb or rpm asks for `{os}-{arch}-{bundle_type}`
+ * before the bare `{os}-{arch}`, and refuses a payload of any other format,
+ * so each Linux installer has its own entry. The bare `linux-x86_64` is the
+ * AppImage.
+ */
+export const TAURI_UPDATER_TARGETS: Record<string, UpdaterTarget> = {
+  "darwin-aarch64": {
+    os: "macos",
+    arch: "arm64",
+    payload: "app.tar.gz",
+    signature: "app.tar.gz.sig",
+  },
+  "linux-x86_64": { os: "linux", arch: "amd64", payload: "AppImage", signature: "AppImage.sig" },
+  "linux-x86_64-deb": { os: "linux", arch: "amd64", payload: "deb", signature: "deb.sig" },
+  "linux-x86_64-rpm": { os: "linux", arch: "amd64", payload: "rpm", signature: "rpm.sig" },
+  "windows-x86_64": { os: "windows", arch: "amd64", payload: "exe", signature: "exe.sig" },
 };
 
 /**
@@ -117,8 +126,7 @@ export function objectKey(
 const KNOWN_EXTENSIONS = [
   ...new Set([
     ...REQUIRED_TARGETS.flatMap((target) => target.extensions),
-    ...Object.values(UPDATER_PAYLOAD_EXT),
-    ...Object.values(UPDATER_SIG_EXT),
+    ...Object.values(TAURI_UPDATER_TARGETS).flatMap((target) => [target.payload, target.signature]),
   ]),
 ].sort((a, b) => b.length - a.length);
 
