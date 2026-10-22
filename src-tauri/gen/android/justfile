@@ -58,7 +58,6 @@ verification-metadata:
     WAYPOINTS_FLAVOR=stable WAYPOINTS_BUILD=1 \
     cargo tauri android build \
         --features stable \
-        --config res/configs/platforms/android.toml \
         --config res/configs/flavors/stable.toml \
         "${targets[@]}"
 

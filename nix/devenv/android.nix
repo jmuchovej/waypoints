@@ -91,9 +91,7 @@ in
         readOnly = true;
         default =
           let
-            tauri = fromTOML (
-              builtins.readFile "${config.devenv.root}/src-tauri/res/configs/platforms/android.toml"
-            );
+            tauri = fromTOML (builtins.readFile "${config.devenv.root}/src-tauri/Tauri.toml");
           in
           toString tauri.bundle.android.minSdkVersion;
         description = "Oldest supported API level. Read from the Tauri config, which owns it — `tauri-cli` deserializes `bundle.android.minSdkVersion` itself, and that struct is `deny_unknown_fields`, so it cannot live anywhere else.";
