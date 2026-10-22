@@ -196,39 +196,45 @@ marks has one spelling. Parse accepts any order.
 
 ### Mentions
 
-A mention is a wiki link whose interior is a bare `MarkID`:
+A mention is a wiki link naming its target in plain text:
 
 ```md
-Asimov wrote [[018f3c2a-5f1e-7c3b-9a44-2d9f0b1c7e55|Foundation]].
+Asimov wrote [[Foundation]], which [[Foundation|the series]] grew from.
+Kuhn's point is made in [[Structure of Scientific Revolutions#0164b041]].
 ```
 
-The interior is normative and identifies the target losslessly. The label after
-the pipe is the **anchor text** — what a person chose to call the target in this
-sentence — and it survives verbatim in both directions. "the Foundation series"
-stays "the Foundation series"; replacing it with the target's title on every
-export would quietly discard what someone wrote.
+The interior is `page` or `page#block`. The dialect owns that grammar — a `#`,
+`|` or `]` in a page name is escaped — and the caller owns the names, through
+the `Links` trait: `emit_with`/`parse_with` take one, while `emit`/`parse` use
+`Verbatim`, which writes the target id itself as the page. Bundle naming rules
+(title suffixes, block prefixes, targets outside the Bundle) live in
+`transload` and its spec.
 
-Only a **bare** mention, `[[id]]`, has no anchor text, and that is the one case
-the label is generated: the ingester resolves the target's title, since it is
-the side holding the store. (John's ruling, 2026-10-20, amending the spec
-delta's "advisory and regenerated on export".)
+The label after the pipe is the **anchor text** — what a person chose to call
+the target in this sentence — and it survives verbatim in both directions. "the
+Foundation series" stays "the Foundation series"; replacing it with the
+target's title on every export would quietly discard what someone wrote. A
+label equal to the target's title is elided, so `[[Foundation]]` rather than
+`[[Foundation|Foundation]]`.
+
+A **bare** mention has no anchor text, and that is the one case the label is
+generated: the ingester resolves the target's title, since it is the side
+holding the store. (John's ruling, 2026-10-20, amending the spec delta's
+"advisory and regenerated on export".)
 
 Frontmatter is the other story: a relation Reading's `{ref, label?}` label _is_
 advisory and ignored on ingest, because `Reading::Relation` holds refs and has
 nowhere for a label to land.
 
-A bare `MarkID`, rather than a relative Landmark path, because a mention may
-target a Content Mark, which has no Landmark file to point at — and because
-embedding the Chart directory in body text would couple content bytes to export
-layout, so re-grouping a Chart would rewrite every mentioning file.
+Names rather than ids, because stripped of its comments a Bundle should read
+as text with no machine residue; and names rather than relative paths, because
+a path would couple body text to export layout. The cost is accepted for a
+snapshot format: renaming a Landmark, or giving a second one the same title,
+changes how links to it are written elsewhere. (John's ruling, 2026-10-22,
+replacing the bare-`MarkID` interior.)
 
 `Mention.data` is a bare JSON string holding the UUID. That is what
 `cartograph::editor::projection` reads and what the legacy importer writes.
-
-Legacy content whose mention text was the raw UUID — the `@uuid` grammar the
-demo corpus used — therefore exports with a UUID for its anchor text. That is
-legal (a UUID inside `[[…]]` is a link target) but ugly, and it is one of the
-things the corpus audit exists to catch.
 
 A mention needing more than a target — a non-default reference display mode —
 escalates to an inline component. That is the only reserved use of inline

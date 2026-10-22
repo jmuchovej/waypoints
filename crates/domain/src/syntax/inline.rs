@@ -5,7 +5,7 @@
 //! Canonical form: a segment with exactly one mark that has an unambiguous
 //! shortcut gets the shortcut; anything else gets `[text]{tokens}`. Adjacent
 //! runs with identical marks coalesce and marks are emitted in one order. A
-//! mention's label survives verbatim; only a bare `[[id]]` has none.
+//! mention's label survives verbatim; only a bare `[[name]]` has none.
 
 use crate::{Color, InlineMark, RichText, TextMarkKind, TextSegment};
 
@@ -57,6 +57,44 @@ impl std::fmt::Display for GrammarError {
 }
 
 impl std::error::Error for GrammarError {}
+
+/// A mention target as written: `[[page]]`, or `[[page#block]]` for a block.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LinkName {
+    pub page: String,
+    /// An id prefix naming a block within `page`.
+    pub block: Option<String>,
+    /// What a bare mention's label regenerates to; a label equal to it is
+    /// elided.
+    pub title: Option<String>,
+}
+
+/// Spells mention targets and reads them back. The dialect owns the grammar,
+/// the caller the names.
+pub trait Links {
+    fn name(&self, target: &str) -> LinkName;
+    fn resolve(&self, page: &str, block: Option<&str>) -> Result<String, String>;
+}
+
+/// The target itself as the page, for callers with no names to give.
+pub struct Verbatim;
+
+impl Links for Verbatim {
+    fn name(&self, target: &str) -> LinkName {
+        LinkName {
+            page: target.to_string(),
+            block: None,
+            title: None,
+        }
+    }
+
+    fn resolve(&self, page: &str, block: Option<&str>) -> Result<String, String> {
+        match block {
+            None => Ok(page.to_string()),
+            Some(_) => Err("a block link needs names to resolve against".into()),
+        }
+    }
+}
 
 fn has(marks: &[InlineMark], kind: TextMarkKind) -> bool {
     marks.iter().any(|mark| mark.kind == kind)
@@ -119,23 +157,35 @@ pub fn coalesce(segments: &[TextSegment]) -> Vec<TextSegment> {
 
 /// Render [`RichText`] as dialect inline source.
 ///
-/// A mention segment's `text` is its label, written out verbatim. An empty one
-/// emits a bare `[[id]]`, which is the ingester's cue to regenerate it.
+/// A mention segment's `text` is its label, written out verbatim. An empty one,
+/// or one equal to the name's `title`, emits a bare `[[name]]`, which is the
+/// ingester's cue to regenerate it.
 pub fn emit(rich: &RichText) -> String {
+    emit_with(rich, &Verbatim)
+}
+
+/// [`emit`], spelling mention targets through `links`.
+pub fn emit_with(rich: &RichText, links: &dyn Links) -> String {
     let mut out = String::new();
     for segment in coalesce(rich.segments()) {
-        emit_segment(&segment, &mut out);
+        emit_segment(&segment, links, &mut out);
     }
     out
 }
 
-fn emit_segment(segment: &TextSegment, out: &mut String) {
+fn emit_segment(segment: &TextSegment, links: &dyn Links, out: &mut String) {
     // Carriers own the text's delimiters, so they are written outermost and
     // anything else becomes an attribute suffix on top.
     if let Some(mention) = find(&segment.marks, TextMarkKind::Mention) {
+        let name = links.name(data_str(mention).unwrap_or_default());
         out.push_str("[[");
-        out.push_str(data_str(mention).unwrap_or_default());
-        if !segment.text.is_empty() {
+        out.push_str(&escape_page(&name.page));
+        if let Some(block) = &name.block {
+            out.push('#');
+            out.push_str(block);
+        }
+        let elided = name.title.as_deref() == Some(segment.text.as_str());
+        if !segment.text.is_empty() && !elided {
             out.push('|');
             out.push_str(&escape_label(&segment.text));
         }
@@ -269,6 +319,11 @@ fn escape_href(href: &str) -> String {
     href.replace('\\', "\\\\").replace(')', "\\)")
 }
 
+/// A mention's page also ends at `#`, where a block prefix begins.
+fn escape_page(text: &str) -> String {
+    escape_label(text).replace('#', "\\#")
+}
+
 /// A mention's label is delimited by `|` and `]]`, so only those need hiding.
 fn escape_label(text: &str) -> String {
     text.replace('\\', "\\\\")
@@ -281,8 +336,14 @@ fn escape_label(text: &str) -> String {
 /// Accepts more than the emitter writes (nested shortcuts, tokens in any order)
 /// and re-emits canonically.
 pub fn parse(src: &str) -> Result<RichText, GrammarError> {
+    parse_with(src, &Verbatim)
+}
+
+/// [`parse`], reading mention targets back through `links`.
+pub fn parse_with(src: &str, links: &dyn Links) -> Result<RichText, GrammarError> {
     let mut parser = Parser {
         src,
+        links,
         at: 0,
         segments: Vec::new(),
         pending: String::new(),
@@ -294,6 +355,7 @@ pub fn parse(src: &str) -> Result<RichText, GrammarError> {
 
 struct Parser<'a> {
     src: &'a str,
+    links: &'a dyn Links,
     at: usize,
     segments: Vec<TextSegment>,
     pending: String,
@@ -409,13 +471,14 @@ impl Parser<'_> {
         Ok(false)
     }
 
-    /// `[[<MarkID>|label]]` — the interior is normative, the label advisory.
+    /// `[[page#block|label]]` — the target is normative, the label advisory.
     fn mention(&mut self) -> Result<(), GrammarError> {
         self.flush();
         let opened = self.at;
         self.at += 2;
 
-        let mut target = String::new();
+        let mut page = String::new();
+        let mut block: Option<String> = None;
         let mut label = String::new();
         let mut in_label = false;
         loop {
@@ -429,28 +492,37 @@ impl Parser<'_> {
             }
             let mut chars = self.rest().chars();
             let current = chars.next().expect("not at end");
-            if current == '\\'
-                && let Some(escaped) = chars.next()
-            {
-                let sink = if in_label { &mut label } else { &mut target };
-                sink.push(escaped);
-                self.at += current.len_utf8() + escaped.len_utf8();
-                continue;
-            }
-            if current == '|' && !in_label {
-                in_label = true;
-                self.at += 1;
-                continue;
-            }
-            let sink = if in_label { &mut label } else { &mut target };
-            sink.push(current);
-            self.at += current.len_utf8();
+            let (character, width) = match (current, chars.next()) {
+                ('\\', Some(escaped)) => (escaped, current.len_utf8() + escaped.len_utf8()),
+                ('|', _) if !in_label => {
+                    in_label = true;
+                    self.at += 1;
+                    continue;
+                }
+                ('#', _) if !in_label && block.is_none() => {
+                    block = Some(String::new());
+                    self.at += 1;
+                    continue;
+                }
+                _ => (current, current.len_utf8()),
+            };
+            let sink = match (in_label, &mut block) {
+                (true, _) => &mut label,
+                (false, Some(block)) => block,
+                (false, None) => &mut page,
+            };
+            sink.push(character);
+            self.at += width;
         }
 
-        if target.is_empty() {
+        if page.is_empty() && block.is_none() {
             self.at = opened;
             return Err(self.error("a mention with no target"));
         }
+        let target = self
+            .links
+            .resolve(&page, block.as_deref())
+            .map_err(|detail| GrammarError { detail, at: opened })?;
         self.segments.push(TextSegment {
             text: label,
             marks: vec![InlineMark {
@@ -982,5 +1054,66 @@ mod tests {
             )],
         )]);
         survives(vec![seg("* _ ` $ ^ [ ] \\ ~~ == ||", vec![])]);
+    }
+
+    /// Pages by name; a block is `page:block`.
+    struct Names(Vec<(&'static str, &'static str)>);
+
+    impl Links for Names {
+        fn name(&self, target: &str) -> LinkName {
+            let (page, block) = match target.split_once(':') {
+                Some((page, block)) => (page, Some(block.to_string())),
+                None => (target, None),
+            };
+            let (name, title) = self
+                .0
+                .iter()
+                .find(|(_, id)| *id == page)
+                .map(|(name, _)| (name.to_string(), name.to_string()))
+                .unwrap_or_else(|| (page.to_string(), page.to_string()));
+            LinkName {
+                page: name,
+                title: block.is_none().then_some(title),
+                block,
+            }
+        }
+
+        fn resolve(&self, page: &str, block: Option<&str>) -> Result<String, String> {
+            let (_, id) = self
+                .0
+                .iter()
+                .find(|(name, _)| *name == page)
+                .ok_or_else(|| format!("no page `{page}`"))?;
+            Ok(match block {
+                Some(block) => format!("{id}:{block}"),
+                None => id.to_string(),
+            })
+        }
+    }
+
+    #[test]
+    fn named_mentions_escape_the_page_and_elide_a_title_label() {
+        let names = Names(vec![("A#b|c]d", "p1"), ("Cosmos", "p2")]);
+        let mention = |target: &str, label: &str| {
+            RichText::new(vec![seg(
+                label,
+                vec![mark_with(TextMarkKind::Mention, serde_json::json!(target))],
+            )])
+        };
+        for (rich, spelled) in [
+            (mention("p1", "x"), "[[A\\#b\\|c\\]d|x]]"),
+            (mention("p2", "Cosmos"), "[[Cosmos]]"),
+            (mention("p2", "the book"), "[[Cosmos|the book]]"),
+            (mention("p2:4f2a", ""), "[[Cosmos#4f2a]]"),
+            (mention("p2:4f2a", "that bit"), "[[Cosmos#4f2a|that bit]]"),
+        ] {
+            let emitted = emit_with(&rich, &names);
+            assert_eq!(emitted, spelled);
+            let parsed = parse_with(&emitted, &names).expect("parse");
+            let target = parsed.segments()[0].marks[0].data.clone();
+            assert_eq!(target, rich.segments()[0].marks[0].data, "{spelled}");
+        }
+        let unknown = parse_with("[[Nowhere]]", &names).expect_err("unresolvable");
+        assert_eq!(unknown.detail, "no page `Nowhere`");
     }
 }

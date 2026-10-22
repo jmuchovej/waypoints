@@ -7,7 +7,7 @@
 
 use crate::{BlockTheme, Color, Content, MathEngine, RichText, Size, syntax::inline};
 
-use inline::GrammarError;
+use inline::{GrammarError, Links, Verbatim};
 
 /// A block's own lines, plus how its children attach beneath it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -44,8 +44,13 @@ pub const INDENT: usize = 2;
 
 const TABLE_COMPONENT: &str = "table";
 
-/// Render one block to its dialect lines.
+/// Render one block to its dialect lines, mention targets written verbatim.
 pub fn emit(content: &Content) -> Rendered {
+    emit_with(content, &Verbatim)
+}
+
+/// Render one block, spelling mention targets through `links`.
+pub fn emit_with(content: &Content, links: &dyn Links) -> Rendered {
     let leaf = |line: String| Rendered {
         lines: vec![line],
         children: Children::Indented(INDENT),
@@ -53,25 +58,25 @@ pub fn emit(content: &Content) -> Rendered {
 
     match content {
         Content::Paragraph { rich_text, theme } => {
-            leaf(text_line("", rich_text, attrs(theme, &[])))
+            leaf(text_line(links, "", rich_text, attrs(theme, &[])))
         }
         Content::Heading1 { rich_text, theme } => {
-            leaf(text_line("# ", rich_text, attrs(theme, &[])))
+            leaf(text_line(links, "# ", rich_text, attrs(theme, &[])))
         }
         Content::Heading2 { rich_text, theme } => {
-            leaf(text_line("## ", rich_text, attrs(theme, &[])))
+            leaf(text_line(links, "## ", rich_text, attrs(theme, &[])))
         }
         Content::Heading3 { rich_text, theme } => {
-            leaf(text_line("### ", rich_text, attrs(theme, &[])))
+            leaf(text_line(links, "### ", rich_text, attrs(theme, &[])))
         }
         Content::ListItem { rich_text, theme } => Rendered {
-            lines: vec![text_line("- ", rich_text, attrs(theme, &[]))],
+            lines: vec![text_line(links, "- ", rich_text, attrs(theme, &[]))],
             children: Children::Indented(INDENT),
         },
         // Auto-numbered. Explicit numbers are (pending): `EnumItem` carries no
         // field for one, so `N.` is never emitted.
         Content::EnumItem { rich_text, theme } => Rendered {
-            lines: vec![text_line("+ ", rich_text, attrs(theme, &[]))],
+            lines: vec![text_line(links, "+ ", rich_text, attrs(theme, &[]))],
             children: Children::Indented(INDENT),
         },
         Content::Divider { theme } => leaf(format!("---{}", attrs(theme, &[]))),
@@ -140,7 +145,7 @@ pub fn emit(content: &Content) -> Rendered {
             }
         }
 
-        Content::Table { .. } => emit_table(content),
+        Content::Table { .. } => emit_table(content, links),
     }
 }
 
@@ -152,8 +157,8 @@ const LINE_OPENERS: [char; 6] = ['#', '>', '-', '+', ':', '<'];
 /// Text ending in `}` — a literal brace or an inline `{tokens}` suffix — would
 /// read as the block's attribute list, so such a line always carries one, even
 /// if empty. A bare paragraph opening like another block is escaped.
-fn text_line(prefix: &str, rich: &RichText, attrs: String) -> String {
-    let mut body = inline::emit(rich);
+fn text_line(links: &dyn Links, prefix: &str, rich: &RichText, attrs: String) -> String {
+    let mut body = inline::emit_with(rich, links);
     let attrs = if attrs.is_empty() && body.trim_end().ends_with('}') {
         "{}".into()
     } else {
@@ -206,7 +211,7 @@ fn color_from(token: &str) -> Option<Color> {
 
 /// A table as GFM pipe rows — wrapped in a `::table` component when the model
 /// carries more than GFM can say (anything beyond a header row).
-fn emit_table(content: &Content) -> Rendered {
+fn emit_table(content: &Content, links: &dyn Links) -> Rendered {
     let Content::Table {
         cells,
         col_size,
@@ -225,7 +230,7 @@ fn emit_table(content: &Content) -> Rendered {
     let width = cells.iter().map(Vec::len).max().unwrap_or(0);
     let mut rows: Vec<String> = Vec::new();
     for (index, row) in cells.iter().enumerate() {
-        let mut columns: Vec<String> = row.iter().map(escape_cell).collect();
+        let mut columns: Vec<String> = row.iter().map(|cell| escape_cell(cell, links)).collect();
         columns.resize(width, String::new());
         rows.push(format!("| {} |", columns.join(" | ")));
         if index == 0 && *col_header == Some(true) {
@@ -284,8 +289,8 @@ fn emit_table(content: &Content) -> Rendered {
 /// Escape what the row syntax would eat. Every `|` gets a backslash that
 /// [`split_cells`] removes again before inline parsing, as GFM does; edge
 /// spaces would be trimmed away, so they are escaped for the inline layer.
-fn escape_cell(cell: &RichText) -> String {
-    let mut out = inline::emit(cell).replace('|', "\\|");
+fn escape_cell(cell: &RichText, links: &dyn Links) -> String {
+    let mut out = inline::emit_with(cell, links).replace('|', "\\|");
     // A cell of only `-`/`:` would make its row read as the delimiter row.
     if !out.is_empty() && out.chars().all(|c| c == '-' || c == ':') {
         out.insert(0, '\\');
@@ -361,6 +366,11 @@ pub const CONTAINER_COMPONENTS: [&str; 1] = ["callout"];
 /// One block's dialect source (prefix and indent already stripped) back into
 /// [`Content`]. A container's source is just its opening marker.
 pub fn parse(source: &str) -> Result<Content, GrammarError> {
+    parse_with(source, &Verbatim)
+}
+
+/// [`parse`], reading mention targets back through `links`.
+pub fn parse_with(source: &str, links: &dyn Links) -> Result<Content, GrammarError> {
     let lines: Vec<&str> = source.lines().collect();
     let first = lines.first().copied().unwrap_or_default();
 
@@ -372,10 +382,10 @@ pub fn parse(source: &str) -> Result<Content, GrammarError> {
         return parse_math(rest, &lines[1..]);
     }
     if let Some(rest) = first.strip_prefix("::") {
-        return parse_component(rest, &lines[1..]);
+        return parse_component(rest, &lines[1..], links);
     }
     if first.starts_with(TABLE_ROW) {
-        return parse_gfm_table(&lines, None, None);
+        return parse_gfm_table(&lines, None, links);
     }
     if let Some(rest) = first.strip_prefix('>') {
         let (_, attributes) = split_attrs(rest)?;
@@ -386,20 +396,20 @@ pub fn parse(source: &str) -> Result<Content, GrammarError> {
     for (prefix, build) in HEADINGS {
         if let Some(rest) = first.strip_prefix(prefix) {
             let (text, attributes) = split_attrs(rest)?;
-            return Ok(build(inline::parse(&text)?, attributes.theme));
+            return Ok(build(inline::parse_with(&text, links)?, attributes.theme));
         }
     }
     if let Some(rest) = first.strip_prefix("- ") {
         let (text, attributes) = split_attrs(rest)?;
         return Ok(Content::ListItem {
-            rich_text: inline::parse(&text)?,
+            rich_text: inline::parse_with(&text, links)?,
             theme: attributes.theme,
         });
     }
     if let Some(rest) = first.strip_prefix("+ ") {
         let (text, attributes) = split_attrs(rest)?;
         return Ok(Content::EnumItem {
-            rich_text: inline::parse(&text)?,
+            rich_text: inline::parse_with(&text, links)?,
             theme: attributes.theme,
         });
     }
@@ -411,7 +421,7 @@ pub fn parse(source: &str) -> Result<Content, GrammarError> {
         });
     }
     Ok(Content::Paragraph {
-        rich_text: inline::parse(&text)?,
+        rich_text: inline::parse_with(&text, links)?,
         theme: attributes.theme,
     })
 }
@@ -590,7 +600,11 @@ fn parse_math(fence: &str, rest: &[&str]) -> Result<Content, GrammarError> {
     })
 }
 
-fn parse_component(opener: &str, rest: &[&str]) -> Result<Content, GrammarError> {
+fn parse_component(
+    opener: &str,
+    rest: &[&str],
+    links: &dyn Links,
+) -> Result<Content, GrammarError> {
     let (name, attributes) = split_attrs(opener)?;
     let name = name.trim();
     match name {
@@ -604,7 +618,7 @@ fn parse_component(opener: &str, rest: &[&str]) -> Result<Content, GrammarError>
                 .take_while(|line| line.trim_end() != "::")
                 .copied()
                 .collect();
-            parse_gfm_table(&rows, Some(attributes), None)
+            parse_gfm_table(&rows, Some(attributes), links)
         }
         other => Err(GrammarError {
             detail: format!("`::{other}` is not a block component in this dialect"),
@@ -617,7 +631,7 @@ fn parse_component(opener: &str, rest: &[&str]) -> Result<Content, GrammarError>
 fn parse_gfm_table(
     lines: &[&str],
     attributes: Option<Attributes>,
-    _reserved: Option<()>,
+    links: &dyn Links,
 ) -> Result<Content, GrammarError> {
     let mut cells: Vec<Vec<RichText>> = Vec::new();
     let mut saw_delimiter = false;
@@ -632,7 +646,7 @@ fn parse_gfm_table(
         }
         let mut row = Vec::new();
         for cell in split_cells(trimmed) {
-            row.push(inline::parse(&cell)?);
+            row.push(inline::parse_with(&cell, links)?);
         }
         cells.push(row);
     }
