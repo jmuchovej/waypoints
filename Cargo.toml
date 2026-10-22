@@ -15,6 +15,7 @@
     "crates/outpost-protocol",
     "crates/store",
     "src-tauri",
+    "tooling/gh-workflow",
     "tooling/xtask",
   ]
 
@@ -34,6 +35,7 @@
     bedrock-derive   = { path = "crates/bedrock-derive" }
     cartograph       = { path = "crates/cartograph" }
     domain           = { path = "crates/domain" }
+    gh-workflow      = { path = "tooling/gh-workflow" }
     importer         = { path = "crates/importer" }
     outpost          = { path = "crates/outpost", default-features = false }
     outpost-fabric   = { path = "crates/outpost-fabric" }
@@ -56,9 +58,10 @@
     ] }
     clap               = { version = "4.6.1", features = [ "derive", "env" ] }
     derive_more        = "2.1.1"
+    derive_setters     = "0.1.9"
     directories        = "6.0.0"
     fast_qr            = { version = "0.13", features = [ "svg" ] }
-    gh-workflow        = { git = "https://github.com/waypoints-hq/gh-workflow", rev = "e4f02895aa72", version = "0.9.0" }
+    gh-workflow-macros = "0.9.0"
     heck               = "0.5"
     hex                = "0.4"
     hmac               = "0.13"
@@ -66,6 +69,7 @@
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
     libc               = "0.2"
+    noyalib            = "0.0.58"
     objc2-app-kit      = { version = "0.3", default-features = false, features = [
       "NSScrollView",
       "NSView"

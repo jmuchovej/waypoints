@@ -58,7 +58,7 @@ jobs:
           name: devenv
       - id: setup-nix-profile
         name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: nix profile install nixpkgs#devenv
         shell: bash
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
@@ -70,7 +70,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: sccache-start
         name: Start the compiler cache
-        run: "devenv shell -- secretspec run --profile ci --provider op --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        run: devenv shell -- secretspec run --profile ci --provider op --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
         shell: bash
         env:
           SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential

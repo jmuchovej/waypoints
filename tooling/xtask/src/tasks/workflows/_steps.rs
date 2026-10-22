@@ -103,6 +103,17 @@ pub fn just(recipe: &str) -> Step<Run> {
         .id(recipe)
 }
 
+/// Audits every workflow with zizmor, the check `hk` runs locally. The token
+/// lets its online audits (impostor commits, known-vulnerable actions) query
+/// GitHub.
+pub fn zizmor() -> Step<Run> {
+    Step::new("Audit the workflows")
+        .run("zizmor .github/workflows")
+        .shell("bash")
+        .id("zizmor")
+        .add_env(("GH_TOKEN", "${{ github.token }}"))
+}
+
 /// Runs an `xtask` subcommand via the `cargo xtask` alias in
 /// `.cargo/config.toml`.
 ///
@@ -225,14 +236,23 @@ pub fn create_pull_request(
 /// recently, so a committed lockfile is only as reproducible as an upstream
 /// release schedule.
 pub fn setup_mise(with_cache: Option<bool>, version: &str) -> Step<Use> {
-    Action::new(
+    let cache = with_cache.unwrap_or(true);
+    let step = Action::new(
         "jdx",
         "mise-action",
         "c2a87611a18de5b3828c5652fe268e992400cb5c", // v4.3.0
     )
     .step("Setup mise")
     .add_with(("version", version.to_owned()))
-    .add_with(("cache", with_cache.unwrap_or(true)))
+    .add_with(("cache", cache));
+    if cache {
+        step.id("setup-mise").zizmor_ignore(
+            "cache-poisoning",
+            "mise's install cache under GitHub's default write rules, tools pinned by mise.lock",
+        )
+    } else {
+        step
+    }
 }
 
 /// Restores compiled registry dependencies between runs.
@@ -246,7 +266,12 @@ pub(crate) fn rust_cache() -> Step<Use> {
         "6323deb102c322ba6fcbdcafc7e3dddab59af2b6", // v2
     )
     .step("Cache Rust dependencies")
+    .id("rust-cache")
     .add_with(("save-if", "${{ github.ref == 'refs/heads/main' }}"))
+    .zizmor_ignore(
+        "cache-poisoning",
+        "written only from main (save-if), restored by test jobs that publish nothing",
+    )
 }
 
 pub fn pnpm_install() -> Step<Run> {

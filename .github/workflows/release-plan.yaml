@@ -39,7 +39,7 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.8.6
           cache: "false"
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
@@ -52,7 +52,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: sccache-start
         name: Start the compiler cache
-        run: "secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'"
+        run: secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
         shell: bash
         env:
           SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential

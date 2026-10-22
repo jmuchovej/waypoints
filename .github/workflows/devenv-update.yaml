@@ -7,7 +7,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 on:
   schedule:
-    - cron: "0 4 * * 1"
+    - cron: 0 4 * * 1
   workflow_dispatch: {}
 permissions: {}
 jobs:
@@ -45,7 +45,7 @@ jobs:
           name: devenv
       - id: setup-nix-profile
         name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: nix profile install nixpkgs#devenv
         shell: bash
       - id: devenv-update
         name: Update devenv inputs

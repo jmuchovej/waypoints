@@ -103,7 +103,7 @@ jobs:
           name: devenv
       - id: setup-nix-profile
         name: Install devenv and just
-        run: "nix profile install nixpkgs#devenv nixpkgs#just"
+        run: nix profile install nixpkgs#devenv nixpkgs#just
         shell: bash
       - id: check-generated
         name: Check generated files
