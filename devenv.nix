@@ -334,6 +334,11 @@
   # `docs/marketing` asset names must come from `TYPST_FONT_PATHS`.
   languages.typst = {
     enable = true;
+    # Universe packages from nixpkgs, so rendering never fetches.
+    package = pkgs.typst.withPackages (ps: [
+      ps.typewind_0_2_0
+      ps.xmlit_0_1_3
+    ]);
     lsp.enable = true;
     fontPaths = [
       "${pkgs.google-fonts.override { fonts = [ "Albert Sans" ]; }}/share/fonts/truetype"
