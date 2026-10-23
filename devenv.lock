@@ -78,6 +78,27 @@
         "type": "github"
       }
     },
+    "mbx": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792522622,
+        "narHash": "sha256-bhcaK0kUd3vnWln+BbTEVXmaZWMvIOFG0FdL3c5G7g0=",
+        "owner": "jdx",
+        "repo": "mr-boxington",
+        "rev": "bb29fdca7beec4b2d0b46479463650200b73b02e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jdx",
+        "ref": "v1.26.0",
+        "repo": "mr-boxington",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "inputs": {
         "nixpkgs-src": "nixpkgs-src"
@@ -118,6 +139,7 @@
       "inputs": {
         "android-nixpkgs": "android-nixpkgs",
         "devenv": "devenv",
+        "mbx": "mbx",
         "nixpkgs": "nixpkgs",
         "rust-overlay": "rust-overlay"
       }

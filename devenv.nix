@@ -2,6 +2,7 @@
   pkgs,
   lib,
   config,
+  inputs,
   ...
 }:
 {
@@ -239,6 +240,11 @@
         spec = "aqua:EmbarkStudios/cargo-deny";
         envs = [ "devtools" ];
       };
+      mbx = {
+        package = inputs.mbx.packages.${pkgs.stdenv.hostPlatform.system}.mbx;
+        spec = "github:jdx/mr-boxington";
+        envs = [ "devtools" ];
+      };
       git-cliff = {
         package = pkgs.git-cliff;
         spec = "aqua:orhun/git-cliff";
@@ -322,6 +328,9 @@
     lsp.enable = true;
     toolchainFile = ./rust-toolchain.toml;
   };
+  enterShell = ''
+    export PATH="${config.waypoints.mise.tools.mbx.package}/libexec/mbx:$PATH"
+  '';
   languages.deno.enable = true;
   languages.ruby.enable = true;
   languages.kotlin.enable = true;

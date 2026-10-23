@@ -10,6 +10,7 @@
 "core:ruby" = "3.4.9"
 "github:Mic92/nixfmt-rs" = "0.5.3"
 "github:facebook/ktfmt" = "0.63"
+"github:jdx/mr-boxington" = "1.26.0"
 
 [tools."aqua:numtide/treefmt"]
 os = ["linux", "macos"]
