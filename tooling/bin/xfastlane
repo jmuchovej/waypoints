@@ -219,10 +219,19 @@ def "main publish" [
     } else { {} }
   )
 
+  # On macOS fastlane finds Transporter inside Xcode, through DEVELOPER_DIR. The
+  # devenv shell points that at a nix-store SDK with no xcodebuild, and fastlane
+  # then fails on a nil Xcode version, so hand it the system's selected Xcode.
+  let xcode = (
+    if $platform == "ios" and $nu.os-info.name == "macos" and ($env.DEVELOPER_DIR? | default "" | str starts-with "/nix/store/") {
+      { DEVELOPER_DIR: (^env -u DEVELOPER_DIR /usr/bin/xcode-select -p | str trim) }
+    } else { {} }
+  )
+
   # From the app directory, so `./fastlane` is the Fastfile's directory and the
   # metadata `prepare` wrote sits where supply and deliver look for it.
   cd $env.TAURI_APP_PATH
-  with-env ($transporter | merge $package) { ^fastlane $platform $flavor }
+  with-env ($transporter | merge $xcode | merge $package) { ^fastlane $platform $flavor }
 }
 
 def main []: nothing -> nothing {
