@@ -1,6 +1,11 @@
 //! Driving the `outpost` binary the way a supervisor does: spawn a Station
 //! in a temp directory on an ephemeral port, read its JSON log line by
 //! line, send it a signal by pid, and wait for it to exit within a bound.
+//!
+//! Declared by the tests that drive the binary, not by a shared parent, so
+//! a test that only builds Territories never compiles it.
+
+#![allow(dead_code, reason = "each process test uses a different subset")]
 
 use outpost::fabric::EndpointAddr;
 use serde_json::Value;

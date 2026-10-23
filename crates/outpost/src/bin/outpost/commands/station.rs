@@ -60,6 +60,12 @@ pub async fn run(args: StationArgs) -> Result<()> {
         port,
         advertise,
     } = args;
+    // Signals before sockets: SIGTERM's default disposition kills the
+    // process, so a Station that registers late can be killed by the very
+    // signal it means to handle. Nothing below is observable to a
+    // supervisor until the handlers exist.
+    let mut shutdown = Shutdown::install();
+
     let advertise = parse_advertise(&advertise)?;
     std::fs::create_dir_all(&data)?;
     let secret = match &key_file {
@@ -96,24 +102,24 @@ pub async fn run(args: StationArgs) -> Result<()> {
     );
 
     tokio::select! {
-        _ = shutdown_signal() => {
-            tracing::info!("termination signal received; closing the endpoint");
-            // Awaiting the close is what lets peers see a close instead of
-            // a timeout. A second signal, or the bound, ends the wait.
-            tokio::select! {
-                closed = tokio::time::timeout(CLOSE_BOUND, station.endpoint().close()) => {
-                    if closed.is_err() {
-                        tracing::warn!(bound = ?CLOSE_BOUND, "endpoint close timed out; exiting anyway");
-                    }
-                }
-                _ = shutdown_signal() => {
-                    tracing::warn!("second signal; exiting without waiting for the close");
-                }
-            }
-            Ok(())
-        }
-        served = serve_loop => served.context("serve loop task failed")?.map_err(Into::into),
+        _ = shutdown.recv() => {}
+        served = serve_loop => return served.context("serve loop task failed")?.map_err(Into::into),
     }
+
+    tracing::info!("termination signal received; closing the endpoint");
+    // Awaiting the close is what lets peers see a close instead of a
+    // timeout. A second signal, or the bound, ends the wait.
+    tokio::select! {
+        closed = tokio::time::timeout(CLOSE_BOUND, station.endpoint().close()) => {
+            if closed.is_err() {
+                tracing::warn!(bound = ?CLOSE_BOUND, "endpoint close timed out; exiting anyway");
+            }
+        }
+        _ = shutdown.recv() => {
+            tracing::warn!("second signal; exiting without waiting for the close");
+        }
+    }
+    Ok(())
 }
 
 /// Bind the probe listener and the Station on one port number, and start
@@ -168,27 +174,41 @@ async fn bind_pair(
     }
 }
 
-/// Resolves on SIGTERM or SIGINT (Ctrl-C) — the two ways a supervisor or
-/// a terminal asks a process to stop. Off Unix only Ctrl-C exists.
-async fn shutdown_signal() {
+/// The ways a supervisor or a terminal asks the Station to stop: SIGTERM
+/// and SIGINT (Ctrl-C), or off Unix only Ctrl-C. Handlers are installed by
+/// [`install`](Self::install), not by the first await, so a signal that
+/// arrives before anyone waits on it is queued rather than fatal.
+struct Shutdown {
     #[cfg(unix)]
-    {
-        use tokio::signal::unix::{SignalKind, signal};
-        match signal(SignalKind::terminate()) {
-            Ok(mut terminate) => {
-                tokio::select! {
-                    _ = tokio::signal::ctrl_c() => {}
-                    _ = terminate.recv() => {}
-                }
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "cannot listen for SIGTERM; Ctrl-C only");
-                let _ = tokio::signal::ctrl_c().await;
-            }
+    terminate: Option<tokio::signal::unix::Signal>,
+}
+
+impl Shutdown {
+    fn install() -> Self {
+        #[cfg(unix)]
+        {
+            use tokio::signal::unix::{SignalKind, signal};
+            let terminate = signal(SignalKind::terminate())
+                .inspect_err(
+                    |e| tracing::warn!(error = %e, "cannot listen for SIGTERM; Ctrl-C only"),
+                )
+                .ok();
+            Self { terminate }
         }
+        #[cfg(not(unix))]
+        Self {}
     }
-    #[cfg(not(unix))]
-    {
+
+    /// Resolves on the next signal. Call it again for the one after.
+    async fn recv(&mut self) {
+        #[cfg(unix)]
+        if let Some(terminate) = self.terminate.as_mut() {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = terminate.recv() => {}
+            }
+            return;
+        }
         let _ = tokio::signal::ctrl_c().await;
     }
 }

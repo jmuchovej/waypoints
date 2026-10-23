@@ -63,7 +63,7 @@
                 v-for="release in filtered"
                 :key="release.tag"
                 :title="release.title"
-                :date="release.date"
+                :date="release.date ?? undefined"
                 :to="version ? undefined : `/releases/${channel}/${release.tag}`"
                 :indicator="false"
                 :ui="{
@@ -82,7 +82,8 @@
                   // 'justify-start sticky top-(--ui-header-height) pt-4 -mt-4 flex flex-col items-end',
                 }">
                 <template #body>
-                  <MDC :value="release.markdown" />
+                  <MDC v-if="release.markdown" :value="release.markdown" />
+                  <p v-else class="text-muted italic">Release notes are unavailable.</p>
                 </template>
               </UChangelogVersion>
             </UChangelogVersions>

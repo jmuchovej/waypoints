@@ -51,6 +51,16 @@
       "initialization_options": {
         "linters": ["rubocop"]
       }
+    },
+    "tinymist": {
+      "settings": {
+        "exportPdf": "never",
+        "exportTarget": "bundle",
+        "lint": {
+          "enabled": true,
+          "when": "onSave"
+        }
+      }
     }
   },
   "languages": {

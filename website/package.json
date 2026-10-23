@@ -52,6 +52,7 @@
     "zod": "catalog:website"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "catalog:website",
     "@iconify-json/lucide": "catalog:website",
     "@iconify-json/simple-icons": "catalog:website",
     "@nuxt/test-utils": "catalog:website",

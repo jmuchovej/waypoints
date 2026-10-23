@@ -13,14 +13,17 @@ identifier  = "so.waypoints"
 [bundle]
   homepage               = "https://waypoints.so"
   active                 = true
-  targets                = [ "app", "dmg", "nsis", "appimage", "deb" ]
+  targets                = [ "app", "dmg", "nsis", "appimage", "deb", "rpm" ]
   createUpdaterArtifacts = true
+  # Stable's, for builds that merge no flavor fragment (cargo check, clippy,
+  # tests): `generate_context!` takes the window icon from here. Each flavor
+  # fragment overrides it.
   icon                   = [
-    "icons/stable/32x32.png",
-    "icons/stable/128x128.png",
-    "icons/stable/128x128@2x.png",
-    "icons/stable/icon.icns",
-    "icons/stable/icon.ico",
+    "assets/icons/app/stable-032.png",
+    "assets/icons/app/stable-128.png",
+    "assets/icons/app/stable-128@2x.png",
+    "assets/icons/app/stable.icns",
+    "assets/icons/app/stable.ico",
   ]
   resources              = []
   externalBin            = []
@@ -28,6 +31,48 @@ identifier  = "so.waypoints"
   category               = "DeveloperTool"
   shortDescription       = ""
   longDescription        = ""
+
+  # https://tauri.app/distribute/macos-application-bundle/
+  [bundle.macOS]
+    minimumSystemVersion = "15"
+    # entitlements = "./platforms/macos/Entitlements.plist"
+    # frameworks = []
+
+  # https://tauri.app/distribute/sign/ios/
+  [bundle.iOS]
+    developmentTeam      = "D6NBHNJ93R"
+    minimumSystemVersion = "18.0"
+
+    # Rust builds a staticlib, so its `#[link]` directives never reach the final
+    # link — Xcode performs that, and only links what this list names. Two crates
+    # in the iroh/outpost stack need SystemConfiguration:
+    #   * hickory-resolver, via `system_configuration`, for DNS (SCDynamicStore*,
+    #     SCPreferencesCreate) — all iOS-supported;
+    #   * netdev, for interface enumeration (SCNetworkInterface*, SCNetworkService*)
+    #     — those are marked API_UNAVAILABLE(ios) in the SDK headers. They are
+    #     exported by the iOS .tbd so they link, but see the note below.
+    #
+    # Only takes effect when `tauri ios init` regenerates gen/apple/project.yml;
+    # `tauri ios build` merely runs xcodegen against the existing file. The matching
+    # `- sdk: SystemConfiguration.framework` entry is therefore committed there too,
+    # and the two must be changed together.
+    frameworks = [ "SystemConfiguration" ]
+
+  # https://tauri.app/distribute/google-play/
+  [bundle.android]
+    minSdkVersion            = 28
+    debugApplicationIdSuffix = ".debug"
+
+  [bundle.linux.deb]
+
+  [bundle.linux.appimage]
+    bundleMediaFramework = true
+
+  [bundle.linux.rpm]
+
+  [bundle.windows]
+    digestAlgorithm = "sha256"
+    timestampUrl    = ""
 
 # Pairing links: the waypoints:// scheme opens the app everywhere it is
 # installed; the waypoints.so association upgrades https://waypoints.so/pair

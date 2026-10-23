@@ -1,4 +1,6 @@
 <script setup lang="ts">
+  import { DOWNLOADABLE_TARGETS, latestUrl, targetSlug } from "#shared/utils/releases";
+
   const route = useRoute();
   const channel = computed(() => route.params.channel as "stable" | "preview");
 
@@ -19,55 +21,42 @@
     },
   ];
 
-  const date = (date: string) =>
-    new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const date = (date: string | null) =>
+    date
+      ? new Date(date).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : null;
 
-  const { data: releases } = await useReleases(channel);
+  // Client-side only, deliberately — the links below never depend on this,
+  // so a slow or failed fetch degrades the heading, never the download
+  // surface. See the design's "The download page is static; only the
+  // displayed version is live" decision.
+  const { data: current } = useCurrentRelease(channel);
 
-  const latest = computed(() => releases.value?.[0] ?? null);
-
-  const downloadUrl = (target: string) => `/api/v1/releases/${channel.value}/${target}`;
-
-  const platforms = [
-    {
-      icon: "i-simple-icons-apple",
-      title: "macOS",
-      description: "Apple Silicon",
-      target: "macos-arm64",
-    },
-    {
-      icon: "i-simple-icons-apple",
-      title: "macOS",
-      description: "Intel",
-      target: "macos-amd64",
-    },
-    {
-      icon: "i-simple-icons-linux",
-      title: "Linux",
-      description: "AppImage (x86_64)",
-      target: "linux-amd64",
-    },
-    {
-      icon: "i-simple-icons-linux",
-      title: "Linux",
-      description: "AppImage (ARM64)",
-      target: "linux-arm64",
-    },
-    {
-      icon: "i-simple-icons-windows",
-      title: "Windows",
-      description: "64-bit installer",
-      target: "windows-amd64",
-    },
-  ];
+  // Narrowed to the targets with an actual download path — mobile ships
+  // through its own app store and is archived without ever being linked
+  // here. See the design's "Published formats are the bundler's installers"
+  // decision. Links point at the versionless alias, never a resolved
+  // version — see the design's "`latest` is a redirect to the versioned
+  // URL" decision, which is what keeps this page's markup unchanged by a
+  // publish.
+  const PLATFORM_META: Record<string, { icon: string; title: string; description: string }> = {
+    macos: { icon: "i-simple-icons-apple", title: "macOS", description: "Apple Silicon" },
+    linux: { icon: "i-simple-icons-linux", title: "Linux", description: "AppImage (x86_64)" },
+    windows: { icon: "i-simple-icons-windows", title: "Windows", description: "64-bit installer" },
+  };
+  const platforms = DOWNLOADABLE_TARGETS.map((target) => ({
+    ...PLATFORM_META[target.os],
+    target: targetSlug(target),
+    url: latestUrl(channel.value, target.os, target.arch, target.extensions[0]!),
+  }));
 </script>
 
 <template>
-  <main v-if="latest">
+  <main>
     <UContainer>
       <UPage>
         <template #left>
@@ -77,9 +66,9 @@
         <template #right> </template>
 
         <UPageHeader
-          :title="latest.title"
+          :title="current?.title ?? 'Waypoints'"
           headline="Download"
-          :description="`Released ${date(latest.date)}`"
+          :description="date(current?.date ?? null) ? `Released ${date(current!.date)}` : undefined"
           :ui="{
             root: 'border-0',
             container: '!py-0',
@@ -89,9 +78,9 @@
             <UNavigationMenu :items="channels" variant="pill" />
           </template>
           <template #description>
-            <span>Released {{ date(latest.date) }}</span>
+            <span v-if="date(current?.date ?? null)">Released {{ date(current!.date) }}</span>
 
-            <UButton :to="`/releases/${channel}/${latest.tag}`" variant="ghost">
+            <UButton v-if="current" :to="`/releases/${channel}/${current.tag}`" variant="ghost">
               See the release notes
             </UButton>
           </template>
@@ -105,7 +94,7 @@
               :icon="platform.icon"
               :title="platform.title"
               :description="platform.description"
-              :to="downloadUrl(platform.target)"
+              :to="platform.url"
               target="_blank" />
           </UPageGrid>
         </UPageBody>

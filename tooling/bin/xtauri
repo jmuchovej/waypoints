@@ -73,9 +73,14 @@ def version-config [target: string]: nothing -> list<string> {
 }
 const FORWARDED_PREFIXES = ["MISE_"]
 
-def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "configs" }
-def platform-config [target: string]: nothing -> path { configs-root | path join "platforms" $"($target).toml" }
+def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "res" "configs" }
 def flavor-config [flavor: string]: nothing -> path { configs-root | path join "flavors" $"($flavor).toml" }
+
+# The flavor's executable (src-tauri/Cargo.toml): stable ships as `waypoints`,
+# every other flavor as `waypoints-<flavor>`.
+def bin-name [flavor: string]: nothing -> string {
+  if $flavor == "stable" { "waypoints" } else { $"waypoints-($flavor)" }
+}
 
 # `cargo tauri android build`, `cargo tauri ios dev`, plain `cargo tauri build`.
 def tauri-subcommand [target: string]: nothing -> list<string> {
@@ -175,7 +180,6 @@ def run-build [
   let build = [
     cargo tauri ...(tauri-subcommand $target) build
     --features $flavor
-    --config (platform-config $target)
     --config (flavor-config $flavor)
     ...$args
   ]
@@ -295,10 +299,10 @@ def build-android [flavor: string, rest: list<string>] {
   let ndk_bin = $ndk_home | path join toolchains llvm prebuilt $host bin
   if not ($ndk_bin | path exists) { error make { msg: $"No NDK toolchain at ($ndk_bin)" } }
 
-  let platform_config = platform-config android
-  let api = open $platform_config | get -o bundle.android.minSdkVersion
+  let tauri_config = $env.TAURI_APP_PATH | path join Tauri.toml
+  let api = open $tauri_config | get -o bundle.android.minSdkVersion
   if $api == null {
-    error make { msg: $"minSdkVersion is not declared in ($platform_config)" }
+    error make { msg: $"minSdkVersion is not declared in ($tauri_config)" }
   }
 
   # Align targets handed to `tauri` with targets supported by `rust-toolchain.toml`.
@@ -353,11 +357,23 @@ def "main dev" [
 ]: nothing -> nothing {
   let target = resolve-target $target
   let flavor = normalize-flavor $flavor
+  # `cargo run` does not narrow by `required-features`, so a desktop dev names
+  # the flavor's executable among the runner args (those after the first `--`).
+  let rest = if ($target in [ios android]) {
+    $rest
+  } else {
+    let bin = [--bin (bin-name $flavor)]
+    let split = $rest | enumerate | where item == "--" | get -o 0.index
+    if $split == null {
+      $rest ++ ["--"] ++ $bin
+    } else {
+      ($rest | take ($split + 1)) ++ $bin ++ ($rest | skip ($split + 1))
+    }
+  }
   with-env { WAYPOINTS_FLAVOR: $flavor } {
     (^secretspec run --profile development --scope $target --
       cargo tauri ...(tauri-subcommand $target) dev
       --features $flavor
-      --config (platform-config $target)
       --config (flavor-config $flavor)
       ...$rest)
   }

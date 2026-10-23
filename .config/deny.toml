@@ -24,80 +24,12 @@
 [advisories]
   ignore = [
     {
-      id     = "RUSTSEC-2026-0194",
-      reason = "blocked on tauri->plist bumping quick-xml to 0.41; parser DoS on untrusted XML, which we don't accept"
-    },
-    {
-      id     = "RUSTSEC-2026-0195",
-      reason = "blocked on tauri->plist bumping quick-xml to 0.41; parser DoS on untrusted XML, which we don't accept"
-    },
-    {
-      id     = "RUSTSEC-2024-0411",
-      reason = "gdkwayland-sys: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0412",
-      reason = "gdk: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0413",
-      reason = "atk: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0414",
-      reason = "gdkx11-sys: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0415",
-      reason = "gtk: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0416",
-      reason = "atk-sys: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0417",
-      reason = "gdkx11: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0418",
-      reason = "gdk-sys: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0419",
-      reason = "gtk3-macros: GTK3 required by tauri/wry on Linux"
-    },
-    {
-      id     = "RUSTSEC-2024-0420",
-      reason = "gtk-sys: GTK3 required by tauri/wry on Linux"
-    },
-    {
       id     = "RUSTSEC-2026-0206",
       reason = "rustybuzz via usvg; waiting on upstream migration to harfrust"
     },
     {
       id     = "RUSTSEC-2026-0192",
       reason = "ttf-parser via usvg; waiting on upstream migration to skrifa"
-    },
-    {
-      id     = "RUSTSEC-2025-0075",
-      reason = "unic-char-range via usvg stack; upstream concern"
-    },
-    {
-      id     = "RUSTSEC-2025-0080",
-      reason = "unic-common via usvg stack; upstream concern"
-    },
-    {
-      id     = "RUSTSEC-2025-0081",
-      reason = "unic-char-property via usvg stack; upstream concern"
-    },
-    {
-      id     = "RUSTSEC-2025-0098",
-      reason = "unic-ucd-version via usvg stack; upstream concern"
-    },
-    {
-      id     = "RUSTSEC-2025-0100",
-      reason = "unic-ucd-ident via usvg stack; upstream concern"
     },
     {
       id     = "RUSTSEC-2024-0370",
@@ -108,8 +40,28 @@
       reason = "paste via specta/rav1e/pulp, compile-time only"
     },
     {
-      id     = "RUSTSEC-2026-0173",
-      reason = "proc-macro-error2, compile-time only, transitive"
+      id     = "RUSTSEC-2026-0367",
+      reason = "zip via tauri-plugin-updater, Windows targets only; blocked on tauri bumping zip to 9, and the updater verifies the archive signature before extracting"
+    },
+    {
+      id     = "RUSTSEC-2026-0368",
+      reason = "zip via tauri-plugin-updater, Windows targets only; blocked on tauri bumping zip to 9, and the updater verifies the archive signature before extracting"
+    },
+    {
+      id     = "RUSTSEC-2026-0369",
+      reason = "zip via tauri-plugin-updater, Windows targets only; blocked on tauri bumping zip to 9, and the updater verifies the archive signature before extracting"
+    },
+    {
+      id     = "RUSTSEC-2026-0370",
+      reason = "zvariant via zbus 5 via tauri-plugin-notification/single-instance on Linux; blocked on tauri moving to zbus 6"
+    },
+    {
+      id     = "RUSTSEC-2026-0371",
+      reason = "zbus_names via zbus 5 via tauri-plugin-notification/single-instance on Linux; blocked on tauri moving to zbus 6"
+    },
+    {
+      id     = "RUSTSEC-2026-0372",
+      reason = "zvariant_derive via zbus 5 via tauri-plugin-notification/single-instance on Linux; blocked on tauri moving to zbus 6"
     },
   ]
 
@@ -157,6 +109,6 @@
   allow-git        = []
 
   [sources.allow-org]
-    github    = [ "jmuchovej", "waypoints-hq" ]
+    github    = []
     gitlab    = []
     bitbucket = []

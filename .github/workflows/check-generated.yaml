@@ -14,9 +14,13 @@ on:
       - tooling/xtask/**
       - crates/domain/**
       - crates/cartograph/**
+      - src-tauri/res/**
       - .github/workflows/**
       - crates/domain/typescript/**
       - crates/cartograph/typescript/**
+      - src-tauri/assets/icons/app/**
+      - src-tauri/gen/apple/Assets.xcassets/*.appiconset/**
+      - src-tauri/gen/android/app/src/*/res/**/ic_launcher*
       - .config/mise.build-desktop.lock
       - .config/mise.build-desktop.toml
       - .config/mise.build-mobile.lock
@@ -46,9 +50,13 @@ on:
       - tooling/xtask/**
       - crates/domain/**
       - crates/cartograph/**
+      - src-tauri/res/**
       - .github/workflows/**
       - crates/domain/typescript/**
       - crates/cartograph/typescript/**
+      - src-tauri/assets/icons/app/**
+      - src-tauri/gen/apple/Assets.xcassets/*.appiconset/**
+      - src-tauri/gen/android/app/src/*/res/**/ic_launcher*
       - .config/mise.build-desktop.lock
       - .config/mise.build-desktop.toml
       - .config/mise.build-mobile.lock
@@ -103,7 +111,7 @@ jobs:
           name: devenv
       - id: setup-nix-profile
         name: Install devenv and just
-        run: "nix profile install nixpkgs#devenv nixpkgs#just"
+        run: nix profile install nixpkgs#devenv nixpkgs#just
         shell: bash
       - id: check-generated
         name: Check generated files

@@ -9,11 +9,12 @@
     reason = "the observed window is for the person running the test; there is no runtime to swallow stdout"
 )]
 
-mod common;
+#[path = "common/process.rs"]
+mod process;
 
-use common::process::{outpost, try_http_get};
 use ed25519_dalek::SigningKey;
 use outpost::{protocol::KeyRoot, station::Station, vessel::Vessel};
+use process::{outpost, try_http_get};
 use rand::SeedableRng;
 use std::{
     net::{Ipv4Addr, SocketAddr, TcpListener, UdpSocket},

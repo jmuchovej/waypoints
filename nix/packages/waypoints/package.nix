@@ -1,6 +1,6 @@
 # The desktop app, one flavor per package (stable/preview/nightly — never
 # development). Reuses the existing pipeline's config layering
-# (platform toml + flavor toml) via nixpkgs' cargo-tauri.hook, which builds
+# (Tauri.toml + flavor toml) via nixpkgs' cargo-tauri.hook, which builds
 # the bare platform bundle: `.app` into $out/Applications on darwin,
 # deb-unpacked bin/.desktop/icons into $out on Linux. dmg/nsis/appimage stay
 # with the release pipeline.
@@ -61,7 +61,7 @@ let
 
   # Channel identity (product name, identifier, icons, update endpoint) — never
   # the version: a Tauri config `version` would override the manifest's.
-  flavor-config = fromTOML (read "/src-tauri/configs/flavors/${flavor}.toml");
+  flavor-config = fromTOML (read "/src-tauri/res/configs/flavors/${flavor}.toml");
 
   # The single source of the version, tracking the branch this tree sits on.
   # Kept parseable by `builtins.fromTOML` (strict TOML 1.0) — see the
@@ -88,8 +88,6 @@ let
       assert lib.assertMsg (lib.hasPrefix manifest-version version && (suffix == "" || extends))
         "waypoints.${flavor}: version ${version} does not extend the manifest version ${manifest-version}";
       version;
-
-  platform = if stdenv.hostPlatform.isDarwin then "macos" else "linux";
 
   # Hashes nix cannot derive from the tree: the pnpm dependency closure and the
   # git-sourced cargo crates. They live in data rather than in these
@@ -182,9 +180,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   tauriBuildFlags = [
     "--config"
-    "configs/platforms/${platform}.toml"
-    "--config"
-    "configs/flavors/${flavor}.toml"
+    "res/configs/flavors/${flavor}.toml"
     "--config"
     "${build-config}"
   ];
@@ -241,6 +237,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
       "x86_64-linux"
       "aarch64-linux"
     ];
-    mainProgram = "waypoints";
+    # Each flavor's executable carries its name (see src-tauri/Cargo.toml).
+    mainProgram = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
   };
 })

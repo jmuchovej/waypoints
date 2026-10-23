@@ -18,37 +18,69 @@
   domain.workspace = true
   next_version     = "0.2"
 
-  anyhow.workspace             = true
-  async-trait.workspace        = true
-  axum.workspace               = true
-  base64.workspace             = true
-  cargo_metadata.workspace     = true
-  chrono                       = { workspace = true, features = [ "clock", "std" ] }
-  clap.workspace               = true
-  derive_more                  = {
+  anyhow.workspace               = true
+  async-trait.workspace          = true
+  axum.workspace                 = true
+  base64.workspace               = true
+  cargo_metadata.workspace       = true
+  chrono                         = { workspace = true, features = [ "clock", "std" ] }
+  clap.workspace                 = true
+  derive_more                    = {
     workspace = true,
-    features  = [ "as_ref", "display", "into", "is_variant", "unwrap" ]
+    features  = [
+      "as_ref",
+      "deref",
+      "display",
+      "from",
+      "from_str",
+      "into",
+      "is_variant",
+      "unwrap"
+    ]
   }
-  directories.workspace        = true
-  gh-workflow.workspace        = true
-  heck.workspace               = true
-  indexmap.workspace           = true
-  indoc.workspace              = true
-  serde.workspace              = true
-  serde_json.workspace         = true
-  specta.workspace             = true
-  specta-serde.workspace       = true
-  specta-typescript.workspace  = true
-  strum.workspace              = true
-  tokio                        = {
+  directories.workspace          = true
+  gh-workflow.workspace          = true
+  glob                           = "0.3.4"
+  heck.workspace                 = true
+  hex.workspace                  = true
+  hmac.workspace                 = true
+  icns.workspace                 = true
+  ico.workspace                  = true
+  image.workspace                = true
+  indexmap.workspace             = true
+  indoc.workspace                = true
+  octocrab                       = "0.54.5"
+  opendal                        = {
+    version          = "0.59.5",
+    default-features = false,
+    features         = [
+      "http-transport-reqwest-rustls-no-provider",
+      "layers-retry",
+      "services-s3"
+    ]
+  }
+  opendal-http-transport-reqwest = { version = "0.59.5", default-features = false }
+  rustls.workspace               = true
+  secretspec                     = { version = "0.21.1", default-features = false }
+  serde.workspace                = true
+  serde_json.workspace           = true
+  sha2.workspace                 = true
+  specta.workspace               = true
+  specta-serde.workspace         = true
+  specta-typescript.workspace    = true
+  strum.workspace                = true
+  tokio                          = {
     workspace = true,
     features  = [ "fs", "macros", "net", "rt-multi-thread" ]
   }
-  toml.workspace               = true
-  tower-http.workspace         = true
-  tracing.workspace            = true
-  tracing-subscriber.workspace = true
-  uuid.workspace               = true
+  toml.workspace                 = true
+  tower-http.workspace           = true
+  tracing.workspace              = true
+  tracing-subscriber.workspace   = true
+  uuid.workspace                 = true
+
+[dev-dependencies]
+  tempfile.workspace = true
 
 [lints]
   workspace = true

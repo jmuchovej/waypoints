@@ -28,7 +28,7 @@
 }:
 let
   # Path arithmetic, not interpolation — see the note in package.nix.
-  inherit ((fromTOML (builtins.readFile (root + "/src-tauri/configs/flavors/${flavor}.toml"))))
+  inherit ((fromTOML (builtins.readFile (root + "/src-tauri/res/configs/flavors/${flavor}.toml"))))
     identifier
     ;
 
@@ -38,12 +38,13 @@ let
     (root + "/package.json")
     (root + "/pnpm-lock.yaml")
     (root + "/pnpm-workspace.yaml")
-    (root + "/patches")
+    # `patchedDependencies` lives beside the vendored Rust crates; only the
+    # `.patch` files concern pnpm.
+    (lib.fileset.fileFilter (file: file.hasExt "patch") (root + "/tooling/patches"))
     (root + "/src/package.json")
     (root + "/website/package.json")
     (root + "/crates/domain/package.json")
     (root + "/crates/cartograph/package.json")
-    (root + "/tooling/icongen/package.json")
   ];
   # `devEngines` in package.json (node ^24.4, deno ^2.9.4, onFail: error) is
   # enforced at every pnpm boot, including inside the fetch sandbox.
