@@ -10,6 +10,13 @@
 
   imports = [ ./nix/devenv ];
 
+  overlays = [
+    inputs.mise.overlay
+    # `mise`'s debug test binary is too large to link on `aarch64-darwin`; skip
+    # with `doCheck = false`.
+    (_: prev: { mise = prev.mise.overrideAttrs { doCheck = false; }; })
+  ];
+
   waypoints.mise = {
     # Units of work, not actors: a job names what it does, and `MISE_ENV` takes
     # a comma-separated list, so a consumer composes the sets it needs. A
