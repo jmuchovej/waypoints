@@ -7,7 +7,7 @@
 #   xfastlane metadata [flavor] [locale]
 #   xfastlane clean
 #   xfastlane prepare  [flavor] [locale]
-#   xfastlane publish  <platform> [flavor] [--from <dir>]
+#   xfastlane publish  <platform> [flavor] [--from <dir>]   (default: release)
 #
 # A release runs `prepare` once, then `publish` per store. `prepare` does
 # everything that touches nothing outside the machine — render, write, check,
@@ -181,18 +181,19 @@ def staged-package [platform: string, dir: path]: nothing -> path {
   let extension = (if $platform == "ios" { "ipa" } else { "aab" })
   let found = (glob $"($dir | path expand)/*.($extension)")
   if ($found | length) != 1 {
-    error make { msg: $"expected one .($extension) in ($dir), found ($found | length)" }
+    error make { msg: $"expected one .($extension) in ($dir), found ($found | length); stage it with `cargo xtask release-stage --platform ($platform)`" }
   }
   $found | first
 }
 
-# `--from` submits a package from `release-stage`'s flat directory rather than
-# the build output. The iOS build stages AppStoreInfo.plist there too, beside
-# the ipa, which is the one place fastlane reads it from.
+# Submits the package in `release-stage`'s flat directory, never the build
+# output: staging is what checks the export and names the file. The iOS build
+# stages AppStoreInfo.plist there too, beside the ipa, which is the one place
+# fastlane reads it from.
 def "main publish" [
   platform: string,
   flavor: string = "stable",
-  --from: path,  # a staged directory to take the package from
+  --from: path = "release",  # the staged directory to take the package from
 ]: nothing -> nothing {
   # Never prepares on its own: that would move rendering and the Transporter
   # fetch back after the first submission whenever a caller skipped `prepare`.
@@ -201,11 +202,7 @@ def "main publish" [
     error make { msg: $"run `xfastlane prepare ($flavor)` before `xfastlane publish`" }
   }
 
-  let package = (
-    if $from == null { {} } else {
-      { WAYPOINTS_STORE_PACKAGE: (staged-package $platform $from) }
-    }
-  )
+  let package = { WAYPOINTS_STORE_PACKAGE: (staged-package $platform $from) }
 
   # fastlane uploads to TestFlight through Transporter off macOS, and only
   # through its shell-script executor reads the AppStoreInfo.plist beside the ipa.

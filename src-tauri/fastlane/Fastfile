@@ -1,38 +1,10 @@
 opt_out_usage
 
-# `xfastlane publish --from` names the staged package; otherwise the lanes
-# take the build output.
+# The aab or ipa `xfastlane publish` found in the staged directory. Only ever
+# a staged package: `release-stage` has already required exactly one.
 def staged_package
-  ENV.fetch("WAYPOINTS_STORE_PACKAGE", nil)
-end
-
-def android_aab
-  return staged_package if staged_package
-
-  project = ENV.fetch("TAURI_ANDROID_PROJECT_PATH")
-  pattern = File.join(project, "app/build/outputs/bundle/*Release/*.aab")
-  matches = Dir.glob(pattern)
-
-  case matches.length
-  when 1 then matches.first
-  when 0 then UI.user_error!("No AAB found at #{pattern} — was `just tauri::build android` run?")
-  else UI.user_error!("Ambiguous AAB: #{matches.join(", ")}")
-  end
-end
-
-# `upload_to_testflight` only finds an ipa on its own when `gym` ran in the
-# same lane; ours comes from `cargo tauri ios build`, so it is located here.
-def ios_ipa
-  return staged_package if staged_package
-
-  project = ENV.fetch("TAURI_IOS_PROJECT_PATH")
-  pattern = File.join(project, "build/**/*.ipa")
-  matches = Dir.glob(pattern)
-
-  case matches.length
-  when 1 then matches.first
-  when 0 then UI.user_error!("No ipa found at #{pattern} — was `just tauri::build ios` run?")
-  else UI.user_error!("Ambiguous ipa: #{matches.join(", ")}")
+  ENV.fetch("WAYPOINTS_STORE_PACKAGE") do
+    UI.user_error!("No staged package — run the lane through `xfastlane publish`")
   end
 end
 
@@ -65,7 +37,7 @@ platform :android do
   lane :nightly do
     upload_to_play_store(
       track: "internal",
-      aab: android_aab,
+      aab: staged_package,
       skip_upload_apk: true,
     )
   end
@@ -74,7 +46,7 @@ platform :android do
   lane :preview do
     upload_to_play_store(
       track: "internal",
-      aab: android_aab,
+      aab: staged_package,
       skip_upload_apk: true,
     )
   end
@@ -83,7 +55,7 @@ platform :android do
   lane :stable do
     upload_to_play_store(
       track: "production",
-      aab: android_aab,
+      aab: staged_package,
       skip_upload_apk: true,
     )
   end
@@ -94,7 +66,7 @@ platform :ios do
   lane :nightly do
     asc_api_key
     upload_to_testflight(
-      ipa: ios_ipa,
+      ipa: staged_package,
       changelog: release_notes,
       skip_waiting_for_build_processing: true,
       skip_submission: true,
@@ -106,7 +78,7 @@ platform :ios do
   lane :preview do
     asc_api_key
     upload_to_testflight(
-      ipa: ios_ipa,
+      ipa: staged_package,
       changelog: release_notes,
       skip_waiting_for_build_processing: true,
       skip_submission: true,
@@ -118,7 +90,7 @@ platform :ios do
   lane :stable do
     asc_api_key
     upload_to_app_store(
-      ipa: ios_ipa,
+      ipa: staged_package,
       changelog: release_notes,
       skip_waiting_for_build_processing: true,
       skip_submission: true,
