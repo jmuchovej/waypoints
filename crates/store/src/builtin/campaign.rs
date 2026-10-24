@@ -18,19 +18,22 @@ pub fn chart() -> Chart {
             Feature::builder()
                 .with_name("Status")
                 .with_kind(status.into())
-                .build(),
+                .build()
+                .keyed("status"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Start Date")
                 .with_kind(Date::builder().build().into())
-                .build(),
+                .build()
+                .keyed("start-date"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("End Date")
                 .with_kind(Date::builder().build().into())
-                .build(),
+                .build()
+                .keyed("end-date"),
         )
         .add_feature(
             Feature::builder()
@@ -42,7 +45,8 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("team-members"),
         )
         .add_feature(tags_feature())
         .build();

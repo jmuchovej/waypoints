@@ -64,8 +64,8 @@ fn domain_types() -> Types {
     use domain::{
         AccountID, Base36ID, Chart, ChartID, Color, Content, DateGranularity, DeviceID, Feature,
         FeatureID, FeatureKind, GlyphID, Icon, IconNamespace, InlineMark, Landmark, Mark, MarkData,
-        MarkID, MathEngine, OpID, Reading, RealmID, ReferenceDisplayMode, RichReference, RichText,
-        SelectGroup, SelectOption, Size, Terrain, TerrainKind, TextMarkKind, TextSegment,
+        MarkID, MathEngine, OpID, Reading, RealmID, ReferenceDisplayMode, RichText, SelectGroup,
+        SelectOption, Size, Terrain, TerrainKind, TextMarkKind, TextSegment,
     };
 
     let mut collection = Types::default();
@@ -100,7 +100,7 @@ fn domain_types() -> Types {
     collection.register_mut::<TextSegment>();
     collection.register_mut::<InlineMark>();
     collection.register_mut::<TextMarkKind>();
-    collection.register_mut::<RichReference>();
+    // `RichReference` is unexported from `domain`; `FeatureKind` still needs this.
     collection.register_mut::<ReferenceDisplayMode>();
 
     // terrain

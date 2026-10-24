@@ -13,13 +13,15 @@ pub fn chart() -> Chart {
             Feature::builder()
                 .with_name("Tags")
                 .with_kind(Select::builder().with_unlimited_selections().build().into())
-                .build(),
+                .build()
+                .keyed("tag-select"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Source URL")
                 .with_kind(FeatureKind::URL)
-                .build(),
+                .build()
+                .keyed("source-url"),
         )
         .add_feature(tags_feature())
         .build();

@@ -45,6 +45,7 @@ async fn inferred_discriminant_scopes_a_view_and_projects_a_reading() {
         Entry::discriminant_scope("note"),
         ViewScope {
             document: "body".into(),
+            ns: None,
             path: "kind".into(),
             equals: "note".into(),
         }
@@ -73,6 +74,7 @@ async fn inferred_discriminant_scopes_a_view_and_projects_a_reading() {
         columns: vec![ViewColumn {
             name: "title".into(),
             document: "body".into(),
+            ns: None,
             path: "title".into(),
             column_type: ColumnType::Text,
         }],
@@ -115,6 +117,7 @@ fn explicit_discriminant_and_general_scope() {
         Tagged::discriminant_scope("chart-x"),
         ViewScope {
             document: "meta".into(),
+            ns: None,
             path: "kind".into(),
             equals: "chart-x".into(),
         }
@@ -125,6 +128,7 @@ fn explicit_discriminant_and_general_scope() {
         Tagged::scope("label", "hi"),
         ViewScope {
             document: "meta".into(),
+            ns: None,
             path: "label".into(),
             equals: "hi".into(),
         }

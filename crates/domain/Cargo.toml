@@ -27,9 +27,11 @@
     ]
   }
   indexmap.workspace          = true
+  pulldown-cmark              = { workspace = true, optional = true }
   rand.workspace              = true
   serde.workspace             = true
   serde_json.workspace        = true
+  sha2.workspace              = true
   specta.workspace            = true
   specta-typescript.workspace = true
   thiserror.workspace         = true
@@ -42,6 +44,10 @@
   development = []
   preview     = []
   stable      = []
+  # The markdown dialect `Content` and `TextMarkKind` project into: one module,
+  # both directions. Only `transload` needs it, so every other dependent pays
+  # neither the module nor `pulldown-cmark`.
+  syntax      = [ "dep:pulldown-cmark" ]
 
 [lints]
   workspace = true

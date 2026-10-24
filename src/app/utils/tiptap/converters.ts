@@ -15,8 +15,12 @@ export function toTipTapMark(mark: InlineMark): TipTapMark {
   if (mark.kind === InlineKind.Link && typeof mark.data === "string") {
     return { type: mark.kind, attrs: { href: mark.data } };
   }
-  if (mark.kind === InlineKind.Mention && mark.data) {
-    return { type: mark.kind, attrs: { id: (mark.data as Record<string, unknown>).id } };
+  // A mention's data is the target id as a bare string — what `toInlineMark`
+  // writes below, what `cartograph::editor::projection` reads, and what the
+  // importer produces. Reading `.id` off it yielded `undefined` for every
+  // mention.
+  if (mark.kind === InlineKind.Mention && typeof mark.data === "string") {
+    return { type: mark.kind, attrs: { id: mark.data } };
   }
   if (
     (mark.kind === InlineKind.Highlight || mark.kind === InlineKind.Color) &&
@@ -54,7 +58,7 @@ export function toTipTap(rt: RichText): JSONContent[] {
     .map((s: TextSegment) => ({
       type: "text" as const,
       text: s.text,
-      ...(s.marks?.length > 0 ? { marks: s.marks.map(toTipTapMark) } : {}),
+      ...(s.marks && s.marks.length > 0 ? { marks: s.marks.map(toTipTapMark) } : {}),
     }));
 }
 

@@ -36,6 +36,25 @@ impl Base36ID {
         Self(id)
     }
 
+    /// A deterministic ID from a stable slug — never a display name, which may
+    /// change. For builtins, whose IDs must agree across stores and launches.
+    pub fn derived(key: &str) -> Self {
+        use sha2::{Digest, Sha256};
+
+        const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+        let digest = Sha256::digest(key.as_bytes());
+        let mut prefix = [0u8; 8];
+        prefix.copy_from_slice(&digest[..8]);
+        let mut value = u64::from_be_bytes(prefix) % 36u64.pow(BASE36ID_LEN as u32);
+
+        let mut id = [b'0'; BASE36ID_LEN];
+        for slot in id.iter_mut().rev() {
+            *slot = CHARS[(value % 36) as usize];
+            value /= 36;
+        }
+        Self(String::from_utf8_lossy(&id).into_owned())
+    }
+
     /// Parse a base-36 ID from a string
     pub fn parse(s: &str) -> DomainResult<Base36ID> {
         use DomainError::{Base36IDInvalidCharacters, Base36IDLengthMismatch};
@@ -163,6 +182,11 @@ impl FeatureID {
     pub fn new() -> Self {
         Self(Base36ID::new())
     }
+
+    /// See [`Base36ID::derived`].
+    pub fn derived(key: &str) -> Self {
+        Self(Base36ID::derived(key))
+    }
 }
 
 impl Default for FeatureID {
@@ -191,6 +215,11 @@ impl GlyphID {
     pub fn new() -> Self {
         Self(Base36ID::new())
     }
+
+    /// See [`Base36ID::derived`].
+    pub fn derived(key: &str) -> Self {
+        Self(Base36ID::derived(key))
+    }
 }
 
 impl Default for GlyphID {
@@ -202,5 +231,18 @@ impl Default for GlyphID {
 impl From<GlyphID> for String {
     fn from(id: GlyphID) -> Self {
         id.0.as_str().to_string()
+    }
+}
+
+#[cfg(test)]
+mod derived_tests {
+    use super::*;
+
+    #[test]
+    fn a_derived_id_is_deterministic_and_well_formed() {
+        let id = Base36ID::derived("authors");
+        assert_eq!(id, Base36ID::derived("authors"));
+        assert_eq!(Base36ID::parse(&id.0).expect("valid base-36"), id);
+        assert_ne!(id, Base36ID::derived("summary"));
     }
 }

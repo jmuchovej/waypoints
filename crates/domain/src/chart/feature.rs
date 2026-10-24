@@ -61,3 +61,12 @@ pub struct Feature {
     ))]
     pub required: bool,
 }
+
+impl Feature {
+    /// Give this feature a deterministic id. Call before adding it to a Chart,
+    /// which keys features by id.
+    pub fn keyed(mut self, key: &str) -> Self {
+        self.id = FeatureID::derived(key);
+        self
+    }
+}

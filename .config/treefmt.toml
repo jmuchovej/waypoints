@@ -20,6 +20,8 @@ excludes                = [
   "*/mise.*.toml",
   "libs.versions.toml",
   "*/libs.versions.toml",
+  # an exported Bundle; its bytes are the exporter's, checked by a test.
+  "crates/store/src/collections/getting-started/**",
 ]
 on-unmatched            = "info"
 verbose                 = 1

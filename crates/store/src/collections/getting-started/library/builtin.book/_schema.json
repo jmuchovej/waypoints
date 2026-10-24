@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Book",
+  "description": "The dead-tree version of PDFs!.",
+  "type": "object",
+  "properties": {
+    "ms2w": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "tdm0": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "yl85": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "x-waypoints": {
+    "id": "builtin.book",
+    "name": "Book",
+    "description": "The dead-tree version of PDFs!.",
+    "icon": {
+      "identifier": "iconify:heroicons:bookmark-solid",
+      "alt_text": "Icon: heroicons:bookmark-solid"
+    },
+    "features": {
+      "ms2w": {
+        "id": "ms2w",
+        "name": "Author(s)",
+        "kind": {
+          "type": "reference",
+          "allowed_types": [
+            "builtin.person"
+          ],
+          "max_references": null,
+          "display_field": "title",
+          "as": "avatar",
+          "filter_criteria": null
+        },
+        "description": null,
+        "required": false
+      },
+      "tdm0": {
+        "id": "tdm0",
+        "name": "Summary",
+        "kind": {
+          "type": "text"
+        },
+        "description": null,
+        "required": false
+      },
+      "yl85": {
+        "id": "yl85",
+        "name": "Tags",
+        "kind": {
+          "type": "reference",
+          "allowed_types": null,
+          "max_references": null,
+          "display_field": "title",
+          "as": "mention",
+          "filter_criteria": null
+        },
+        "description": null,
+        "required": false
+      }
+    },
+    "extra": null
+  }
+}

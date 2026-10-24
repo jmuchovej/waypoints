@@ -13,31 +13,36 @@ pub fn chart() -> Chart {
             Feature::builder()
                 .with_name("Email")
                 .with_kind(FeatureKind::Email)
-                .build(),
+                .build()
+                .keyed("email"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Phone")
                 .with_kind(FeatureKind::Phone)
-                .build(),
+                .build()
+                .keyed("phone"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Company")
                 .with_kind(FeatureKind::Text)
-                .build(),
+                .build()
+                .keyed("company"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Role")
                 .with_kind(FeatureKind::Text)
-                .build(),
+                .build()
+                .keyed("role"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Nickname")
                 .with_kind(FeatureKind::Text)
-                .build(),
+                .build()
+                .keyed("nickname"),
         )
         .add_feature(tags_feature())
         .build();

@@ -50,11 +50,9 @@ impl Store {
             .await?;
         collections::seed::run(&db).await?;
 
-        // Dev-only: seed the demo document corpus so a fresh DB has something
-        // to work with. Runs after chart seeding (readings resolve against
-        // chart features) and is idempotent.
+        // Must run after chart seeding: its builtin Charts resolve against the app's.
         #[cfg(feature = "mock")]
-        collections::demo::run(&db).await?;
+        collections::getting_started::run(&db).await?;
 
         Ok(Store { db: Arc::new(db) })
     }

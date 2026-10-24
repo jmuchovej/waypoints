@@ -1,5 +1,5 @@
 use super::{ChartID, Feature, FeatureID};
-use crate::{HasIcon, Icon};
+use crate::{HasIcon, Icon, Json};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -64,6 +64,19 @@ pub struct Chart {
       )
     )]
     pub features: IndexMap<FeatureID, Feature>,
+
+    /// Schema-less extra properties. Keys matching `^[0-9a-z]{4}$` are reserved
+    /// as [`FeatureID`] slots; namespaced (reverse-DNS) keys cannot collide.
+    #[builder(
+      via_mutators,
+      mutators(
+        pub fn with_extra(&self, extra: Json) {
+          self.extra = Some(extra)
+        }
+      )
+    )]
+    #[specta(type = Option<specta_typescript::Unknown>)]
+    pub extra: Option<Json>,
 }
 
 impl Chart {

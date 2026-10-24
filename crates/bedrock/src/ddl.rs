@@ -146,14 +146,24 @@ pub(crate) fn create_index(spec: &CollectionSpec, index: &IndexSpec) -> String {
 /// A dotted path as a JSON path expression: `readings.abc` → `$.readings.abc`.
 /// Segments are bare object keys; array indices and wildcards are not supported.
 ///
+/// An optional namespace is the path's first element, emitted quoted and never
+/// split. An empty path addresses the namespace itself.
+///
 /// The result is inlined into a single-quoted SQL string literal, so embedded
 /// single quotes are escaped here — the same reason a scope's discriminant value
 /// is escaped where it is inlined.
-fn json_path(path: &str) -> String {
+fn json_path(path: &str, ns: Option<&str>) -> String {
     let mut out = String::from("$");
-    for segment in path.split('.') {
-        out.push('.');
-        out.push_str(segment);
+    if let Some(ns) = ns {
+        out.push_str(".\"");
+        out.push_str(ns);
+        out.push('"');
+    }
+    if !path.is_empty() {
+        for segment in path.split('.') {
+            out.push('.');
+            out.push_str(segment);
+        }
     }
     out.replace('\'', "''")
 }
@@ -169,7 +179,7 @@ pub(crate) fn create_view(spec: &CollectionSpec, view: &ViewSpec) -> String {
         projections.push(format!(
             "json_extract({}, '{}') AS {}",
             quote(&column.document),
-            json_path(&column.path),
+            json_path(&column.path, column.ns.as_deref()),
             quote(&column.name)
         ));
     }
@@ -183,7 +193,7 @@ pub(crate) fn create_view(spec: &CollectionSpec, view: &ViewSpec) -> String {
         sql.push_str(&format!(
             " WHERE json_extract({}, '{}') = '{}'",
             quote(&scope.document),
-            json_path(&scope.path),
+            json_path(&scope.path, scope.ns.as_deref()),
             scope.equals.replace('\'', "''")
         ));
     }
