@@ -8,7 +8,6 @@
     "crates/bedrock-derive",
     "crates/cartograph",
     "crates/domain",
-    "crates/importer",
     "crates/outpost",
     "crates/outpost-fabric",
     "crates/outpost-hold",
@@ -37,7 +36,6 @@
     cartograph       = { path = "crates/cartograph" }
     domain           = { path = "crates/domain" }
     gh-workflow      = { path = "tooling/gh-workflow" }
-    importer         = { path = "crates/importer" }
     outpost          = { path = "crates/outpost", default-features = false }
     outpost-fabric   = { path = "crates/outpost-fabric" }
     outpost-hold     = { path = "crates/outpost-hold" }

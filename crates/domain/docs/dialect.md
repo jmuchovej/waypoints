@@ -234,7 +234,7 @@ changes how links to it are written elsewhere. (John's ruling, 2026-10-22,
 replacing the bare-`MarkID` interior.)
 
 `Mention.data` is a bare JSON string holding the UUID. That is what
-`cartograph::editor::projection` reads and what the legacy importer writes.
+`cartograph::editor::projection` reads and what the ingester writes.
 
 A mention needing more than a target — a non-default reference display mode —
 escalates to an inline component. That is the only reserved use of inline

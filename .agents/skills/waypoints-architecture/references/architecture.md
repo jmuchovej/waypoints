@@ -17,7 +17,7 @@ The Rust backend is organized into domain-focused crates:
 - **`domain`** — Core data structures: Mark, MarkData (Content/Landmark), Chart, Feature, FeatureKind, Terrain, TerrainKind, Reading, RichText, TextMark. Depends on `bedrock` as a façade only, to derive `Collection`/`Scalar` on domain types; it carries no query or connection logic.
 - **`store`** — Persistence: `query/` (`mark.rs`, `chart.rs`, `terrain.rs`), builtin Chart definitions (`builtin/`), and seeding (`collections/`). Built on `bedrock`. Exposes an opaque `Store` handle.
 - **`cartograph`** — Orchestration layer. Contains the editor subsystem (`editor/` — mutation, history, projection, undo/redo), the app-side sync driver (`sync/`), and handles for charts, marks, and territories. Re-exports editor types (`EditorHandle`, `EditorResult`, `RenderNode`, etc.) as public API. Also owns `WaypointsRuntime` which manages the active territory and database lifecycle.
-- **`importer`** — Markdown parsing and import (Waypoints format, GitHub Flavored Markdown with GFM alert → callout mapping).
+- **`transload`** — The Bundle format: `export` writes a store as human-legible markdown with YAML frontmatter and JSON sidecars; `ingest` reads one back, all or nothing. The markdown dialect itself lives in `domain::syntax`.
 - **`bedrock-core`, `bedrock-derive`, `bedrock`** — Typed document storage over turso. Collections, derive macros, queries (including JSON-path filters), pooling, and durability. `domain` depends only on the `bedrock` façade.
 - **`outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost`** — The E2EE local-first sync engine. `outpost-protocol` is pure (no tokio/iroh/bedrock). See §11.
 
@@ -382,7 +382,7 @@ This section enumerates known gaps and missing capabilities. An agent should ref
 
 5. **No full-text search infrastructure.** SQLite FTS5 or similar is not set up. Full-text search across Marks requires this.
 
-6. **Logseq/Notion/Obsidian importers not implemented.** The `importer` crate has Waypoints Markdown and GFM parsing, but no external tool importers exist yet.
+6. **Logseq/Notion/Obsidian importers not implemented.** `transload` ingests Waypoints' own Bundle format; no importer for an external tool exists yet.
 
 7. **The `extra` field on Marks and Terrain is unindexed and unvalidated.** Any feature that relies on querying or filtering by `extra` contents will be slow (full-table scan with JSON parsing) unless auxiliary indexing is added.
 
