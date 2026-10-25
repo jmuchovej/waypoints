@@ -4,27 +4,19 @@
 -->
 
 <script setup lang="ts">
-  import { DOWNLOADABLE_TARGETS, latestUrl, targetSlug } from "#shared/utils/releases";
+  import { buildChannelButtons } from "#imports";
+  import {
+    type Channel,
+    DOWNLOADABLE_TARGETS,
+    latestUrl,
+    targetSlug,
+  } from "#shared/utils/releases";
 
   const route = useRoute();
-  const channel = computed(() => route.params.channel as "stable" | "preview");
+  const channel = computed(() => route.params.channel as Channel);
 
-  if (!["stable", "preview"].includes(channel.value)) {
-    throw createError({ statusCode: 404, statusMessage: "Not Found" });
-  }
-
-  const channels = [
-    {
-      label: "Stable",
-      to: "/download/stable",
-      active: channel.value === "stable",
-    },
-    {
-      label: "Preview",
-      to: "/download/preview",
-      active: channel.value === "preview",
-    },
-  ];
+  routeGuard(channel);
+  const channels = buildChannelButtons("download", channel);
 
   const date = (date: string | null) =>
     date
@@ -58,40 +50,55 @@
     target: targetSlug(target),
     url: latestUrl(channel.value, target.os, target.arch, target.extensions[0]!),
   }));
+
+  const stores = computed(() => STORE_LINKS[channel.value] ?? []);
 </script>
 
 <template>
-  <main>
-    <UContainer>
-      <UPage>
-        <template #left>
-          <img :src="`/icons/${channel}.png`" alt="Waypoints logo" class="mx-auto w-full" />
+  <UContainer>
+    <UPage>
+      <template #left>
+        <img :src="`/icons/${channel}.png`" alt="Waypoints logo" class="mx-auto w-full" />
+      </template>
+
+      <template #right> </template>
+
+      <UPageHeader
+        :title="current?.title ?? 'Waypoints'"
+        headline="Download"
+        :description="date(current?.date ?? null) ? `Released ${date(current!.date)}` : undefined"
+        :ui="{
+          root: 'border-0',
+          container: '!py-0',
+          description: 'flex flex-1 items-center justify-between',
+        }">
+        <template #links>
+          <UNavigationMenu :items="channels" variant="pill" />
         </template>
+        <template #description>
+          <span v-if="date(current?.date ?? null)">Released {{ date(current!.date) }}</span>
 
-        <template #right> </template>
+          <UButton v-if="current" :to="`/releases/${channel}/${current.tag}`" variant="ghost">
+            See the release notes
+          </UButton>
+        </template>
+      </UPageHeader>
 
-        <UPageHeader
-          :title="current?.title ?? 'Waypoints'"
-          headline="Download"
-          :description="date(current?.date ?? null) ? `Released ${date(current!.date)}` : undefined"
-          :ui="{
-            root: 'border-0',
-            container: '!py-0',
-            description: 'flex flex-1 items-center justify-between',
-          }">
-          <template #links>
-            <UNavigationMenu :items="channels" variant="pill" />
-          </template>
-          <template #description>
-            <span v-if="date(current?.date ?? null)">Released {{ date(current!.date) }}</span>
+      <UPageBody>
+        <UPageGrid class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <UPageCard
+            v-for="platform in platforms"
+            :key="platform.target"
+            :icon="platform.icon"
+            :title="platform.title"
+            :description="platform.description"
+            :to="platform.url"
+            target="_blank" />
+        </UPageGrid>
 
-            <UButton v-if="current" :to="`/releases/${channel}/${current.tag}`" variant="ghost">
-              See the release notes
-            </UButton>
-          </template>
-        </UPageHeader>
+        <template v-if="stores.length">
+          <USeparator label="On your phone" class="my-10" />
 
-        <UPageBody>
           <UPageGrid class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <UPageCard
               v-for="platform in platforms"
@@ -99,7 +106,7 @@
               :icon="platform.icon"
               :title="platform.title"
               :description="platform.description"
-              :to="platform.url"
+              :to="downloadUrl(platform.target)"
               target="_blank" />
           </UPageGrid>
         </UPageBody>

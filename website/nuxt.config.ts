@@ -1,6 +1,3 @@
-// SPDX-FileCopyrightText: 2026 John Muchovej
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
 import { defineNuxtConfig } from "nuxt/config";
 
 const URL = "https://waypoints.so";
@@ -186,12 +183,7 @@ export default defineNuxtConfig({
     "/download/**": { prerender: true },
     "/releases": { redirect: "/releases/stable" },
     "/releases/**": { prerender: true, experimentalNoScripts: false },
-    // Not prerendered: each reads the live `releases` store through the R2
-    // binding, which exists only inside a deployed Worker — baking one
-    // answer in at build time would freeze the updater on whatever version
-    // happened to be current then.
-    "/api/v1/releases/**": { prerender: false },
-    "/api/v1/update/**": { prerender: false },
+    "/api/v1/update/**": { prerender: true },
   },
 
   css: ["~/assets/css/main.css"],
@@ -224,13 +216,6 @@ export default defineNuxtConfig({
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
-      wrangler: {
-        // Read-only by convention, never by anything Cloudflare enforces on
-        // the binding itself — writes reach the bucket only through the S3
-        // endpoint `xtask` uses. See the design's "Write via the S3
-        // endpoint, read via a binding" decision.
-        r2_buckets: [{ binding: "RELEASES", bucket_name: "releases" }],
-      },
     },
     prerender: {
       autoSubfolderIndex: true,

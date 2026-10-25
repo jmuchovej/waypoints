@@ -1,19 +1,6 @@
-// SPDX-FileCopyrightText: 2026 John Muchovej
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-import { channelOf } from "#shared/utils/releases";
-
-import { REPO } from "../utils/notes";
-
 /**
- * At prerender time, list releases from the forge (not the store — the R2
- * binding only exists inside a deployed Worker, never during the build) and
- * register each individual version route so the static generator visits it.
- *
- * The update-manifest routes are deliberately **not** added here any more:
- * they read the live store through `buildUpdateManifest`, so baking one
- * answer into the build would freeze the updater on whatever version
- * happened to be current at build time.
+ * At prerender time, fetch all releases from ungh.cc and register
+ * each individual version route so the static generator visits them.
  */
 export default defineNitroPlugin((nitroApp) => {
   if (!import.meta.prerender) return;
@@ -22,27 +9,24 @@ export default defineNitroPlugin((nitroApp) => {
   // routes); it isn't part of NitroRuntimeHooks, so the hooks object is cast.
   (nitroApp.hooks as any).hook("prerender:routes", async (routes: Set<string>) => {
     try {
-      const { github } = useRuntimeConfig();
-      const releases = await $fetch<{ tag_name: string; prerelease: boolean; draft: boolean }[]>(
-        `https://api.github.com/repos/${REPO}/releases`,
-        {
-          headers: {
-            Accept: "application/vnd.github+json",
-            ...(github.token && { Authorization: `Bearer ${github.token}` }),
-          },
-        },
-      );
+      const data = await $fetch<{
+        releases: { tag: string; prerelease: boolean; draft: boolean }[];
+      }>(`https://ungh.cc/repos/${REPO}/releases`);
 
-      for (const release of releases) {
+      for (const release of data.releases) {
         if (release.draft) continue;
-        const channel = channelOf(release.tag_name);
+        const channel = channelForTag(release.tag);
         // Nightlies are an ephemeral dev channel — don't prerender a marketing
         // notes page per build. Only stable/preview get per-release pages.
         if (channel !== "stable" && channel !== "preview") continue;
-        routes.add(`/releases/${channel}/${release.tag_name}`);
+        routes.add(`/releases/${channel}/${release.tag}`);
       }
     } catch (err) {
-      console.warn("[prerender-releases] Failed to list releases:", err);
+      console.warn("[prerender-releases] Failed to fetch releases:", err);
     }
+
+    routes.add("/api/v1/update/stable.json");
+    routes.add("/api/v1/update/preview.json");
+    routes.add("/api/v1/update/nightly.json");
   });
 });

@@ -1,29 +1,46 @@
-// SPDX-FileCopyrightText: 2026 John Muchovej
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-import type { Channel } from "#shared/utils/releases";
+interface UnghRelease {
+  id: number;
+  tag: string;
+  author: string;
+  name: string;
+  draft: boolean;
+  prerelease: boolean;
+  createdAt: string;
+  publishedAt: string;
+  markdown: string;
+  html: string;
+}
 
 export interface Release {
   tag: string;
   title: string;
-  date: string | null;
+  date: string;
   prerelease: boolean;
-  /** `null` when the forge's notes for this tag couldn't be read — the
-   * release still lists with its version, just without a changelog body.
-   * See the design's "Notes stay in the forge" decision and task 4.5. */
-  markdown: string | null;
+  markdown: string;
 }
 
-/**
- * Every version the store holds for `channel`, newest first, with notes
- * read server-side from the forge. Replaces the old `ungh.cc` fetch, which
- * is unauthenticated and cannot read this private repository.
- */
-export function useReleases(channel: MaybeRef<Channel>) {
-  const url = computed(() => `/api/v1/releases/${toValue(channel)}`);
+export function useReleases(channel: MaybeRef<"stable" | "preview">) {
+  const appConfig = useAppConfig();
+  const isDev = import.meta.dev;
+
+  const url = computed(() =>
+    isDev ? "/__dev/releases" : `https://ungh.cc/repos/${appConfig.repository}/releases`,
+  );
 
   return useFetch(url, {
     key: `releases-${toValue(channel)}`,
-    transform: (data: { releases: Release[] }) => data.releases,
+    transform(data: { releases: UnghRelease[] }) {
+      return data.releases
+        .filter((r) => !r.draft)
+        .filter((r) => (toValue(channel) === "preview" ? r.prerelease : !r.prerelease))
+        .map((r) => ({
+          tag: r.tag,
+          title: r.name || r.tag,
+          date: r.publishedAt,
+          prerelease: r.prerelease,
+          markdown: r.markdown,
+        }))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    },
   });
 }
