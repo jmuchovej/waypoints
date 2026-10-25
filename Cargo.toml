@@ -80,6 +80,7 @@
       "arbitrary-precision"
     ] }
     libc               = "0.2"
+    mimalloc           = "0.1"
     noyalib            = "0.0.58"
     objc2-app-kit      = { version = "0.3", default-features = false, features = [
       "NSScrollView",
