@@ -10,31 +10,24 @@
   license.workspace       = true
   publish.workspace       = true
 
-[[bin]]
-  name              = "typegen"
-  path              = "bin/typegen.rs"
-  required-features = [ "development" ]
-
 [dependencies]
   domain.workspace = true
   outpost          = { workspace = true, features = [ "vessel" ] }
   store.workspace  = true
 
-  async-trait.workspace       = true
-  base64.workspace            = true
-  chrono.workspace            = true
-  fast_qr.workspace           = true
-  hex.workspace               = true
-  rand.workspace              = true
-  serde.workspace             = true
-  serde_json.workspace        = true
-  specta.workspace            = true
-  specta-serde.workspace      = true
-  specta-typescript.workspace = true
-  thiserror.workspace         = true
-  tokio.workspace             = true
-  tracing.workspace           = true
-  uuid.workspace              = true
+  async-trait.workspace = true
+  base64.workspace      = true
+  chrono.workspace      = true
+  fast_qr.workspace     = true
+  hex.workspace         = true
+  rand.workspace        = true
+  serde.workspace       = true
+  serde_json.workspace  = true
+  specta.workspace      = true
+  thiserror.workspace   = true
+  tokio.workspace       = true
+  tracing.workspace     = true
+  uuid.workspace        = true
 
 [dev-dependencies]
   cartograph = { workspace = true, features = [ "development" ] }

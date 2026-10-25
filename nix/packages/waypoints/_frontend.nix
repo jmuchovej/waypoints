@@ -4,9 +4,11 @@
 # `package.nix` as `frontendDist`, never exposed as a package.
 #
 # The pnpm dependency FOD's `src` is manifests-only: all flavors share one
-# fetch, and app-code edits never invalidate it. To refresh the hash after a
-# `pnpm-lock.yaml` change, see the comment at `hash` below.
+# fetch, and app-code edits never invalidate it. Its hash comes from
+# `hashes.json` by way of package.nix; refresh it with `just nix-pins` after a
+# `pnpm-lock.yaml` change.
 {
+  # The tree being built: package.nix's `workingTree`.
   root,
   lib,
   stdenv,
@@ -16,13 +18,17 @@
   nodejs,
   deno,
   flavor,
-  # Passed down from package.nix, which reads it from the app manifest — the
-  # single place the version is tracked. Not re-read here: one parse, one
-  # source. See design.md D9.
+  # Passed down from package.nix, which resolves it once — the app manifest's,
+  # or the published version a tag carries. Not re-read here: one parse, one
+  # source. See the nix-flake-overlay design, D9.
   version,
+  # Likewise from package.nix, which reads it from `hashes.json`. Refresh it
+  # with `just nix-pins` after any `pnpm-lock.yaml` change; never by hand.
+  pnpmDepsHash,
 }:
 let
-  inherit ((fromTOML (builtins.readFile "${root}/src-tauri/configs/flavors/${flavor}.toml")))
+  # Path arithmetic, not interpolation — see the note in package.nix.
+  inherit ((fromTOML (builtins.readFile (root + "/src-tauri/res/configs/flavors/${flavor}.toml"))))
     identifier
     ;
 
@@ -32,12 +38,13 @@ let
     (root + "/package.json")
     (root + "/pnpm-lock.yaml")
     (root + "/pnpm-workspace.yaml")
-    (root + "/patches")
+    # `patchedDependencies` lives beside the vendored Rust crates; only the
+    # `.patch` files concern pnpm.
+    (lib.fileset.fileFilter (file: file.hasExt "patch") (root + "/tooling/patches"))
     (root + "/src/package.json")
     (root + "/website/package.json")
     (root + "/crates/domain/package.json")
     (root + "/crates/cartograph/package.json")
-    (root + "/tooling/icongen/package.json")
   ];
   # `devEngines` in package.json (node ^24.4, deno ^2.9.4, onFail: error) is
   # enforced at every pnpm boot, including inside the fetch sandbox.
@@ -83,10 +90,7 @@ stdenv.mkDerivation (finalAttrs: {
     pnpm = pnpm_11;
     fetcherVersion = 4;
     nativeBuildInputs = [ deno ];
-    # Refresh after any pnpm-lock.yaml change:
-    #   set to lib.fakeHash, run `nix build .#waypoints`, copy the
-    #   "got:" hash from the mismatch error back here.
-    hash = "sha256-zFz9iUIhZQ66U5lSjCQ+RKiAXfUC7HcWuEAMd2CKgcU=";
+    hash = pnpmDepsHash;
   };
 
   env = {

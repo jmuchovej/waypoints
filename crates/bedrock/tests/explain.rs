@@ -180,6 +180,7 @@ async fn explain_view_query_plans_and_matches_execution() {
         columns: vec![ViewColumn {
             name: "weight".into(),
             document: "meta".into(),
+            ns: None,
             path: "weight".into(),
             column_type: ColumnType::Integer,
         }],

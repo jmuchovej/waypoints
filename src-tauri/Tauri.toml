@@ -5,45 +5,80 @@ productName = "Waypoints"
 identifier  = "so.waypoints"
 
 [build]
-  beforeBuildCommand = "just generate"
-  beforeDevCommand   = "just dev"
-  devUrl             = "http://localhost:9297"
-  frontendDist       = "../src/.output"
+  devUrl       = "http://localhost:9297"
+  frontendDist = "../src/.output/public"
+
+  [build.beforeBuildCommand]
+    cwd    = ".."
+    script = "just app::generate"
+
+  [build.beforeDevCommand]
+    cwd    = ".."
+    script = "just app::dev"
 
 [bundle]
   homepage               = "https://waypoints.so"
   active                 = true
-  targets                = [ "app", "dmg", "nsis", "appimage", "deb" ]
+  targets                = [ "app", "dmg", "nsis", "appimage", "deb", "rpm" ]
   createUpdaterArtifacts = true
-  icon                   = [
-    "icons/stable/32x32.png",
-    "icons/stable/128x128.png",
-    "icons/stable/128x128@2x.png",
-    "icons/stable/icon.icns",
-    "icons/stable/icon.ico",
-  ]
-  resources              = []
   externalBin            = []
   copyright              = ""
-  category               = "DeveloperTool"
+  category               = "Productivity"
   shortDescription       = ""
   longDescription        = ""
+  icon                   = [
+    "assets/icons/app/stable-032.png",
+    "assets/icons/app/stable-128.png",
+    "assets/icons/app/stable-128@2x.png",
+    "assets/icons/app/stable.icns",
+    "assets/icons/app/stable.ico",
+  ]
+
+  [bundle.macOS]
+    minimumSystemVersion = "15"
+
+  # https://tauri.app/distribute/sign/ios/
+  [bundle.iOS]
+    minimumSystemVersion = "18.0"
+    developmentTeam      = "D6NBHNJ93R"
+    # this only takes effect with `tauri ios init`, but should be kept in-sync with the
+    # xcodegen `project.yml`
+    frameworks           = [
+      # needed by iroh/outpost for DNS/interface enumeration
+      "SystemConfiguration"
+    ]
+
+  # https://tauri.app/distribute/google-play/
+  [bundle.android]
+    minSdkVersion            = 35
+    debugApplicationIdSuffix = ".debug"
+
+  [bundle.linux.deb]
+
+  [bundle.linux.appimage]
+    bundleMediaFramework = true
+
+  [bundle.linux.rpm]
+
+  [bundle.windows]
+    digestAlgorithm = "sha256"
+    timestampUrl    = ""
+
+    [bundle.windows.nsis]
 
 # Pairing links: the waypoints:// scheme opens the app everywhere it is
 # installed; the waypoints.so association upgrades https://waypoints.so/pair
 # links on iOS/Android (requires the .well-known files the website serves).
-[plugins.deep-link.desktop]
-  schemes = [ "waypoints" ]
+[plugins.deep-link]
+  [plugins.deep-link.desktop]
+    schemes = [ "waypoints" ]
 
-[[plugins.deep-link.mobile]]
-  host       = "waypoints.so"
-  pathPrefix = [ "/pair" ]
+  [[plugins.deep-link.mobile]]
+    host       = "waypoints.so"
+    pathPrefix = [ "/pair" ]
 
 [plugins.updater]
-  endpoints = [
-    "https://api.waypoints.so/releases/{{target}}/{{arch}}/{{current_version}}"
-  ]
-  pubkey    = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
+  pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
 
 [[app.windows]]
   title      = "Waypoints"

@@ -2,10 +2,10 @@
   import type { ThemeUI } from "@nuxt/ui";
 
   import { buildChannelButtons } from "#imports";
-  import type { UpdateChannel } from "#shared/utils/releases";
+  import type { Channel } from "#shared/utils/releases";
 
   const route = useRoute();
-  const channel = computed(() => route.params.channel as UpdateChannel);
+  const channel = computed(() => route.params.channel as Channel);
   const version = computed(() => route.params.version as string | undefined);
 
   routeGuard(channel);
@@ -77,11 +77,12 @@
               v-for="release in filtered"
               :key="release.tag"
               :title="release.title"
-              :date="release.date"
+              :date="release.date ?? undefined"
               :to="version ? undefined : `/releases/${channel}/${release.tag}`"
               :indicator="false">
               <template #body>
-                <MDC :value="release.markdown" />
+                <MDC v-if="release.markdown" :value="release.markdown" />
+                <p v-else class="text-muted italic">Release notes are unavailable.</p>
               </template>
             </UChangelogVersion>
           </UChangelogVersions>

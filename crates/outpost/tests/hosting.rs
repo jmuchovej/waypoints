@@ -7,7 +7,9 @@
 
 use ed25519_dalek::SigningKey;
 use outpost::{
-    protocol::{EpochID, KeyRoot, NoticeID},
+    protocol::{
+        ACLPayload, EpochID, InviteKey, KeyRoot, NoticeID, Permissions, RecordBody, RecordID,
+    },
     station::Station,
     vessel::Vessel,
 };
@@ -16,6 +18,16 @@ use std::sync::Arc;
 
 fn station_key() -> SigningKey {
     SigningKey::from_bytes(&[100; 32])
+}
+
+/// A UDP port the kernel considers free right now — racy by nature, the
+/// accepted cost of exercising a *fixed* bind.
+fn free_udp_port() -> u16 {
+    std::net::UdpSocket::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
 }
 
 #[tokio::test]
@@ -108,4 +120,78 @@ async fn a_station_homes_many_territories_learned_over_the_wire() {
             .is_some(),
         "A's Notice survived the restart"
     );
+}
+
+/// The deployed one-process Fleet: a routable orderer on an operator-chosen
+/// port homes a Territory learned over the wire and orders a record for it.
+/// Every socket it bound sits on that port, so the address a Service or a
+/// firewall rule names is the address that serves.
+#[tokio::test]
+async fn a_routable_orderer_on_a_chosen_port_homes_and_orders() {
+    let mut rng = rand::rngs::StdRng::from_seed([8; 32]);
+    let dir = tempfile::tempdir().unwrap();
+    let fleet_key = SigningKey::from_bytes(&[0xF1; 32]);
+    let fleet_pub = fleet_key.verifying_key();
+    let port = free_udp_port();
+
+    let (owner_id, owner_dev) = {
+        let r = KeyRoot::from_seed([3; 64]);
+        (r.identity(), r.device(0))
+    };
+    let owner = Vessel::create_territory(&owner_id, &owner_dev, ":memory:", &mut rng)
+        .await
+        .unwrap();
+    let territory = owner.territory_id().await.unwrap();
+    let root = owner.replica().hold().acl_records().await.unwrap()[0].clone();
+
+    let station = Arc::new(
+        Station::hosting_orderer_routable_at(&station_key(), fleet_key, dir.path(), port)
+            .await
+            .unwrap(),
+    );
+    // No operator-advertised sockets: the address is the bound sockets, with
+    // the wildcard rewritten to loopback — every one of them on `port`.
+    let addr = station.advertised_addr();
+    let ports: Vec<u16> = addr.ip_addrs().map(|s| s.port()).collect();
+    assert!(!ports.is_empty());
+    assert!(
+        ports.iter().all(|p| *p == port),
+        "every bound socket is on the configured port {port}: {ports:?}"
+    );
+
+    let serving = Arc::clone(&station);
+    let serve_loop = tokio::spawn(async move { serving.serve_loop().await });
+
+    // Learned over the wire, as in production: register, then order.
+    owner.register(addr.clone(), territory).await.unwrap();
+    assert!(station.serves(&territory));
+
+    let invite_secret = SigningKey::from_bytes(&[9; 32]);
+    let invite = RecordBody {
+        prev: Some(RecordID::of(&root).unwrap()),
+        author: owner_id.verifying_key(),
+        payload: ACLPayload::Invite {
+            invite_key: InviteKey::from_bytes(invite_secret.verifying_key().to_bytes()),
+            permissions: Permissions::Writer,
+        },
+    }
+    .sign(owner_id.signing_key())
+    .unwrap();
+    let proof = owner.submit_acl(addr, &invite).await.unwrap();
+    proof
+        .verify(&fleet_pub, RecordID::of(&invite).unwrap())
+        .unwrap();
+    assert_eq!(proof.position, 1);
+    assert_eq!(
+        station
+            .replica_for(&territory)
+            .unwrap()
+            .acl_len()
+            .await
+            .unwrap(),
+        2,
+        "the orderer stored the ordered record after the root"
+    );
+
+    serve_loop.abort();
 }

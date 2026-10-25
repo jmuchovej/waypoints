@@ -14,6 +14,9 @@ mod app "src/justfile"
 # App (back-end) scoped recipes
 mod tauri "src-tauri/justfile"
 
+# Gradle-side maintenance for the Android project
+mod android "src-tauri/gen/android/justfile"
+
 # Recipes for `cartograph`
 mod cartograph "crates/cartograph/justfile"
 
@@ -30,12 +33,14 @@ mod xtask "tooling/xtask/justfile"
 mod website "website/justfile"
 
 # Icon generation for every app flavor
-mod icons "tooling/icongen/justfile"
+mod icons "src-tauri/res/icon/justfile"
+
+# Station deployment: manifest validation and a kind cluster
+mod deploy "deploy/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
-    @just domain::typegen
-    @just cartograph::typegen
+    cargo xtask typegen
 
 # Validate TypeScript types on the app & website
 typecheck:
@@ -67,18 +72,26 @@ mise-lock:
     export SECRETSPEC_REASON="just mise-lock refreshes the mise lockfiles, which needs an authenticated GitHub client"
     devenv shell -- secretspec run --reason "mise resolves lockfile entries through the GitHub API, which is rate-limited to sixty requests an hour unauthenticated" -- mise-lock
 
+[doc("Refreshes the hashes nix cannot derive from the tree, after a lockfile change.")]
+nix-pins pin="":
+    nix-pins {{ pin }}
+
+[doc("Reports what those hashes would become, writing nothing.")]
+nix-pins-check pin="":
+    nix-pins {{ pin }} --dry-run
+
 [doc("Checks every mise lockfile against its config. Offline; no token needed.")]
 [script]
 mise-lock-check:
     export SECRETSPEC_REASON="just mise-lock-check compares the mise lockfiles against their configs; no secret values are read"
     devenv shell -- mise-lock --check
 
-[doc("Verifies that devenv-managed files and xtask-generated workflows don't differ from committed files.")]
+[doc("Verifies that devenv-managed files, the TypeScript bindings, the app icons, and xtask-generated workflows don't differ from committed files.")]
 [script]
 check-generated:
     # devenv's secretspec integration gates evaluation behind a stated reason.
-    # This recipe reads generated file lists and regenerates workflows; it never
-    # reads a secret value.
+    # This recipe reads generated file lists and regenerates bindings and
+    # workflows; it never reads a secret value.
     export SECRETSPEC_REASON="just check-generated compares devenv- and xtask-generated files against the committed tree; no secret values are read"
 
     # Entering the devenv shell is what regenerates devenv's outputs, so the
@@ -91,6 +104,21 @@ check-generated:
       exit 1
     fi
 
+    # The TypeScript bindings are regenerated in place the same way, and
+    # diffed against the same baseline.
+    bindings="crates/domain/typescript/types.g.ts crates/domain/typescript/schema.g.ts crates/cartograph/typescript/types.g.ts"
+    devenv shell cargo xtask typegen
+    files="$files $bindings"
+
+    # App icons are diffed by the locations the generator owns, not the files
+    # it writes, so a committed output it no longer produces shows up as a
+    # deletion. The globs are pathspecs: `set -f` keeps the shell from
+    # expanding them to only the files that exist.
+    icons='src-tauri/assets/icons/app src-tauri/gen/apple/Assets.xcassets/*.appiconset src-tauri/gen/android/app/src/*/res/mipmap-*/ic_launcher* src-tauri/gen/android/app/src/*/res/values/ic_launcher_background.xml'
+    devenv shell cargo xtask icongen
+    files="$files $icons"
+    set -f
+
     rc=0
     # Colocated checkouts have a .git where HEAD is jj's @-; added jj
     # workspaces have no .git, but `jj diff -r @` asks the same question
@@ -98,17 +126,24 @@ check-generated:
     if git rev-parse --git-dir >/dev/null 2>&1; then
       git --no-pager diff HEAD --exit-code -- $files || rc=1
     else
-      stale="$(jj diff -r @ --name-only -- $files)"
+      filesets=""
+      for f in $files; do
+        case "$f" in
+          *'*'*) filesets="$filesets glob:\"$f\"" ;;
+          *) filesets="$filesets $f" ;;
+        esac
+      done
+      stale="$(jj diff -r @ --name-only -- $filesets)"
       if [ -n "$stale" ]; then
-        jj diff -r @ --git -- $files
+        jj diff -r @ --git -- $filesets
         rc=1
       fi
     fi
     devenv shell cargo xtask workflows --check || rc=1
 
     if [ "$rc" -ne 0 ]; then
-      echo "Generated files are stale. Any devenv output diffed above has already" >&2
-      echo "been regenerated; for workflows, run \`cargo xtask workflows\`." >&2
+      echo "Generated files are stale. Any devenv output or binding diffed above has" >&2
+      echo "already been regenerated; for workflows, run \`cargo xtask workflows\`." >&2
       echo "Review and commit the result." >&2
       exit 1
     fi
@@ -166,3 +201,20 @@ deny-targets:
         }
         error make {msg: "deny.toml graph.targets drifted from rust-toolchain.toml"}
     }
+
+[doc("Overlays tailcallhq/gh-workflow at REV (a full SHA or a ref, not an abbreviation) onto tooling/gh-workflow. The local delta in its README is then re-applied by hand.")]
+[script]
+gh-workflow-sync rev:
+    scratch="$(mktemp -d)"
+    trap 'rm -rf "$scratch"' EXIT
+
+    git -C "$scratch" init --quiet
+    git -C "$scratch" fetch --quiet --depth 1 https://github.com/tailcallhq/gh-workflow {{ rev }}
+    git -C "$scratch" checkout --quiet FETCH_HEAD
+
+    # README.md is ours; upstream's crate has none, and its CHANGELOG is not carried.
+    rsync -a --delete --exclude README.md --exclude CHANGELOG.md \
+      "$scratch/crates/gh-workflow/" tooling/gh-workflow/
+
+    echo "tooling/gh-workflow now holds upstream $(git -C "$scratch" rev-parse --short HEAD)."
+    echo "Re-apply the local delta from tooling/gh-workflow/README.md, update its revision, then format the crate (upstream's rustfmt style differs from the workspace's)."

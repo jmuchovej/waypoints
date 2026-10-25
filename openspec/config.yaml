@@ -14,7 +14,7 @@ context: |
     - `domain` (pure data model, no DB deps)
     - `store` (persistence, migrations, builtin Charts)
     - `cartograph` (orchestration: editor, undo/redo, runtime)
-    - `importer` (Markdown/GFM)
+    - `transload` (the Bundle format: export, ingest, the markdown dialect)
     - `bedrock-core`, `bedrock-derive`, `bedrock` (typed document storage on turso)
     - `outpost-protocol`, `outpost-fabric`, `outpost-hold`, `outpost` (E2EE
       local-first sync engine; the protocol crate is pure — no tokio/iroh/bedrock)
@@ -40,8 +40,8 @@ context: |
         code: domain · seed: waypoints-architecture skill
     - editor: block mutation, undo/redo, projection, selection.
         code: cartograph, app
-    - import: Waypoints-Markdown/GFM parsing and import.
-        code: importer
+    - transload: the Bundle format — export, ingest, dialect grammar.
+        code: transload, domain (syntax)
     - app-shell: Tauri command surface, typed IPC, runtime lifecycle.
         code: src-tauri, cartograph
     - storage: collection specs, migrations, query semantics.

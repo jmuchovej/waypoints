@@ -57,12 +57,6 @@
       enabled: false,
     },
     {
-      description: "waypoints-hq fork, rev-pinned deliberately; bump by hand when the fork moves.",
-      matchManagers: ["cargo"],
-      matchPackageNames: ["gh-workflow"],
-      enabled: false,
-    },
-    {
       matchDepTypes: ["resolutions"],
       enabled: false,
     },
@@ -86,7 +80,7 @@
       groupSlug: "website-minor-patch",
     },
     {
-      description: "Covers src/, crates/domain and tooling/icongen, which all draw from the app catalog.",
+      description: "Covers src/ and crates/domain, which both draw from the app catalog.",
       matchUpdateTypes: ["minor", "patch"],
       matchDepTypes: ["pnpm.catalog.app"],
       groupName: "app non-major",
@@ -118,6 +112,13 @@
       matchManagers: ["cargo"],
       matchPackageNames: ["turso", "turso_core"],
       groupName: "turso",
+      dependencyDashboardApproval: true,
+    },
+    {
+      description: "tooling/gh-workflow is in-tree source written against these two. Every noyalib 0.0.x bump is semver-breaking, and a gh-workflow-macros release past 0.9.x may need the in-tree source to move with it (see tooling/gh-workflow/README.md); accept on the dashboard, then build and re-run `cargo xtask workflows`.",
+      matchManagers: ["cargo"],
+      matchPackageNames: ["noyalib", "gh-workflow-macros"],
+      groupName: "gh-workflow backend",
       dependencyDashboardApproval: true,
     },
     {

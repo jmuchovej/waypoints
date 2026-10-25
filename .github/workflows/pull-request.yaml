@@ -39,12 +39,14 @@ jobs:
           docker-images: "true"
           preinstalled-runtimes: "false"
           swap-storage: "false"
-      - name: Setup mise
+      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
+        name: Setup mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
-          version: "2026.8.6"
+          version: 2026.10.11
           cache: "true"
-      - name: Cache Rust dependencies
+      - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
+        name: Cache Rust dependencies
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -67,6 +69,30 @@ jobs:
           CARGO_INCREMENTAL: "0"
           CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
+  zizmor:
+    name: Audit the workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      MISE_ENV: devtools
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: "false"
+      - name: Setup mise
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        with:
+          version: 2026.10.11
+          cache: "false"
+      - id: zizmor
+        name: Audit the workflows
+        run: zizmor .github/workflows
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true

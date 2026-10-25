@@ -13,9 +13,9 @@
 //!
 //! [`Vessel::refresh_keys`]: outpost::vessel::Vessel::refresh_keys
 
-mod common;
+#[path = "common/territory.rs"]
+mod territory;
 
-use common::{TerritoryBuilder, kem, signing};
 use outpost::{
     protocol::{EpochID, NoticeID, ReadKey},
     replica::Replica,
@@ -23,6 +23,7 @@ use outpost::{
     vessel::Vessel,
 };
 use rand::SeedableRng;
+use territory::{TerritoryBuilder, kem, signing};
 
 #[tokio::test]
 async fn vessel_station_vessel_converges_over_quic() {

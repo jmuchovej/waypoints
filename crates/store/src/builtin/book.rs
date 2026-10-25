@@ -19,7 +19,8 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("authors"),
         )
         // .add_feature(
         //     Feature::builder()
@@ -31,7 +32,8 @@ pub fn chart() -> Chart {
             Feature::builder()
                 .with_name("Summary")
                 .with_kind(FeatureKind::Text)
-                .build(),
+                .build()
+                .keyed("summary"),
         )
         .add_feature(tags_feature())
         .build();

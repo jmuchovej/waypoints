@@ -39,6 +39,84 @@ checksum = "sha256:f1771298a70f6db5a29daf62378c4e18a17fc33c9ba6b14362e0cdf406103
 url = "https://github.com/gradle/gradle-distributions/releases/download/v8.14.4/gradle-8.14.4-bin.zip"
 url_api = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/344871718"
 
+[[tools."aqua:mozilla/sccache"]]
+version = "0.17.0"
+backend = "aqua:mozilla/sccache"
+
+[tools."aqua:mozilla/sccache"."platforms.linux-arm64"]
+checksum = "sha256:821a86343191aa1cbab74bd42f9e93c9a63bf85e4742945f40d3ae84193c1c77"
+url = "https://github.com/mozilla/sccache/releases/download/v0.17.0/sccache-v0.17.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/mozilla/sccache/releases/assets/493678924"
+
+[tools."aqua:mozilla/sccache"."platforms.linux-arm64-musl"]
+checksum = "sha256:821a86343191aa1cbab74bd42f9e93c9a63bf85e4742945f40d3ae84193c1c77"
+url = "https://github.com/mozilla/sccache/releases/download/v0.17.0/sccache-v0.17.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/mozilla/sccache/releases/assets/493678924"
+
+[tools."aqua:mozilla/sccache"."platforms.linux-x64"]
+checksum = "sha256:67c4a96dd237c1f518f6b36083f270f9976d516f1e57fce891755ea782e50006"
+url = "https://github.com/mozilla/sccache/releases/download/v0.17.0/sccache-v0.17.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/mozilla/sccache/releases/assets/493679099"
+
+[tools."aqua:mozilla/sccache"."platforms.linux-x64-musl"]
+checksum = "sha256:67c4a96dd237c1f518f6b36083f270f9976d516f1e57fce891755ea782e50006"
+url = "https://github.com/mozilla/sccache/releases/download/v0.17.0/sccache-v0.17.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/mozilla/sccache/releases/assets/493679099"
+
+[tools."aqua:mozilla/sccache"."platforms.macos-arm64"]
+checksum = "sha256:0c560bfba31aef5bdfb4fb3d2677f6e61d71c5c00952f2a83344f47aa31f00f1"
+url = "https://github.com/mozilla/sccache/releases/download/v0.17.0/sccache-v0.17.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/mozilla/sccache/releases/assets/493678886"
+
+[tools."aqua:mozilla/sccache"."platforms.macos-x64"]
+checksum = "sha256:c2144cafbfe3d22e34ae637f9974ce53613543ac19477fdb287df22ea3668261"
+url = "https://github.com/mozilla/sccache/releases/download/v0.17.0/sccache-v0.17.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/mozilla/sccache/releases/assets/493679070"
+
+[tools."aqua:mozilla/sccache"."platforms.windows-x64"]
+checksum = "sha256:caf1932d76a909c909b7a2e41443cdfe3c79a49a380da1a22fa422e1d00d3ca7"
+url = "https://github.com/mozilla/sccache/releases/download/v0.17.0/sccache-v0.17.0-x86_64-pc-windows-msvc.tar.gz"
+url_api = "https://api.github.com/repos/mozilla/sccache/releases/assets/493679085"
+
+[[tools."aqua:rclone/rclone"]]
+version = "1.75.1"
+backend = "aqua:rclone/rclone"
+
+[tools."aqua:rclone/rclone"."platforms.linux-arm64"]
+checksum = "sha256:03f2504174034b6d004152ed7369251c9a9ec1f7e0836eda420f5c7a5ec0dff9"
+url = "https://github.com/rclone/rclone/releases/download/v1.75.1/rclone-v1.75.1-linux-arm64.zip"
+url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/544639310"
+
+[tools."aqua:rclone/rclone"."platforms.linux-arm64-musl"]
+checksum = "sha256:03f2504174034b6d004152ed7369251c9a9ec1f7e0836eda420f5c7a5ec0dff9"
+url = "https://github.com/rclone/rclone/releases/download/v1.75.1/rclone-v1.75.1-linux-arm64.zip"
+url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/544639310"
+
+[tools."aqua:rclone/rclone"."platforms.linux-x64"]
+checksum = "sha256:982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab"
+url = "https://github.com/rclone/rclone/releases/download/v1.75.1/rclone-v1.75.1-linux-amd64.zip"
+url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/544638482"
+
+[tools."aqua:rclone/rclone"."platforms.linux-x64-musl"]
+checksum = "sha256:982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab"
+url = "https://github.com/rclone/rclone/releases/download/v1.75.1/rclone-v1.75.1-linux-amd64.zip"
+url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/544638482"
+
+[tools."aqua:rclone/rclone"."platforms.macos-arm64"]
+checksum = "sha256:c61d7a371c62bcbbe882c3423aa4b8bf63485c248dd0f692997b8f0c3f6d0c6f"
+url = "https://github.com/rclone/rclone/releases/download/v1.75.1/rclone-v1.75.1-osx-arm64.zip"
+url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/544645575"
+
+[tools."aqua:rclone/rclone"."platforms.macos-x64"]
+checksum = "sha256:29253d0288b8fbbac46baad6e5f6add6cb01d462c79f10805bbd4631c4cdf82c"
+url = "https://github.com/rclone/rclone/releases/download/v1.75.1/rclone-v1.75.1-osx-amd64.zip"
+url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/544645299"
+
+[tools."aqua:rclone/rclone"."platforms.windows-x64"]
+checksum = "sha256:200eb602c126d82aa38b51e0f6b9ae837473ff99b51278d3f6f837574c494d6e"
+url = "https://github.com/rclone/rclone/releases/download/v1.75.1/rclone-v1.75.1-windows-amd64.zip"
+url_api = "https://api.github.com/repos/rclone/rclone/releases/assets/544647178"
+
 [[tools."aqua:yonaskolb/XcodeGen"]]
 version = "2.44.1"
 backend = "aqua:yonaskolb/XcodeGen"

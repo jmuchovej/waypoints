@@ -8,13 +8,14 @@
     "crates/bedrock-derive",
     "crates/cartograph",
     "crates/domain",
-    "crates/importer",
     "crates/outpost",
     "crates/outpost-fabric",
     "crates/outpost-hold",
     "crates/outpost-protocol",
     "crates/store",
+    "crates/transload",
     "src-tauri",
+    "tooling/gh-workflow",
     "tooling/xtask",
   ]
 
@@ -29,18 +30,18 @@
     publish       = false
 
   [workspace.dependencies]
-    Waypoints        = { path = "src-tauri" }
     bedrock          = { path = "crates/bedrock" }
     bedrock-core     = { path = "crates/bedrock-core" }
     bedrock-derive   = { path = "crates/bedrock-derive" }
     cartograph       = { path = "crates/cartograph" }
     domain           = { path = "crates/domain" }
-    importer         = { path = "crates/importer" }
+    gh-workflow      = { path = "tooling/gh-workflow" }
     outpost          = { path = "crates/outpost", default-features = false }
     outpost-fabric   = { path = "crates/outpost-fabric" }
     outpost-hold     = { path = "crates/outpost-hold" }
     outpost-protocol = { path = "crates/outpost-protocol" }
     store            = { path = "crates/store" }
+    transload        = { path = "crates/transload" }
 
     anyhow             = "1.0.103"
     async-trait        = "0.1.89"
@@ -55,33 +56,36 @@
     chrono             = { version = "0.4.45", default-features = false, features = [
       "serde"
     ] }
-    chrono-tz          = { version = "0.10.4", default-features = false, features = [
-      "serde"
-    ] }
-    clap               = { version = "4.6.1", features = [ "derive" ] }
+    clap               = { version = "4.6.1", features = [ "derive", "env" ] }
     derive_more        = "2.1.1"
+    derive_setters     = "0.1.9"
     directories        = "6.0.0"
-    eyre               = "0.6.12"
-    fake               = { version = "5.1.0", default-features = false }
     fast_qr            = { version = "0.13", features = [ "svg" ] }
-    geo                = { version = "0.33.1", features = [ "use-serde" ] }
-    gh-workflow        = { git = "https://github.com/waypoints-hq/gh-workflow", rev = "e4f02895aa72", version = "0.9.0" }
+    gh-workflow-macros = "0.9.0"
     heck               = "0.5"
     hex                = "0.4"
     hmac               = "0.13"
-    hostname           = "0.4"
-    iana-time-zone     = "0.1.65"
+    icns               = { version = "0.5.0", default-features = false, features = [
+      "pngio"
+    ] }
+    ico                = "0.5.0"
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
+    # No remote `$ref` resolution: a Bundle's schemas are self-contained, and an
+    # ingester must never reach the network. `arbitrary-precision` tracks the
+    # workspace's own `serde_json` feature — without it, numeric validation reads
+    # arbitrary-precision numbers as opaque strings.
+    jsonschema         = { version = "0.59", default-features = false, features = [
+      "arbitrary-precision"
+    ] }
+    libc               = "0.2"
+    mimalloc           = "0.1"
+    noyalib            = "0.0.58"
     objc2-app-kit      = { version = "0.3", default-features = false, features = [
       "NSScrollView",
       "NSView"
     ] }
-    open-location-code = { git = "https://github.com/google/open-location-code", version = "0.2.0" }
-    paste              = "1.0.15"
-    pest               = "2.8.6"
-    pest_derive        = "2.8.6"
     postcard           = { version = "1.1", default-features = false, features = [
       "alloc"
     ] }
@@ -89,13 +93,6 @@
     proc-macro2        = "1"
     pulldown-cmark     = { version = "0.13", default-features = false }
     quote              = "1"
-    refinery           = { version = "0.9", default-features = false }
-    refinery-core      = { version = "0.9", default-features = false }
-    regex              = "1.12.4"
-    reqwest            = { version = "0.12", default-features = false, features = [
-      "json",
-      "rustls-tls"
-    ] }
     resvg              = "0.47.0"
     rqrr               = "0.10.1"
     rstest             = { version = "0.26.1", default-features = false, features = [
@@ -104,6 +101,8 @@
     rustls             = { version = "0.23", default-features = false, features = [
       "ring"
     ] }
+    # Bundles are UTF-8 by definition, so the `encoding` default is dead weight.
+    saphyr             = { version = "0.2.2", default-features = false }
     serde              = { version = "1.0.228", features = [ "derive" ] }
     serde_json         = { version = "1.0.150", features = [
       "arbitrary_precision",
@@ -116,7 +115,6 @@
     syn                = { version = "2", features = [ "full" ] }
     tempfile           = "3"
     thiserror          = "2.0.18"
-    time               = { version = "0.3", features = [ "formatting", "parsing" ] }
     tokio              = { version = "1.52.3", features = [ "sync" ] }
     toml               = "0.9"
     tower-http         = { version = "0.7.0", features = [ "fs", "trace" ] }
@@ -167,9 +165,6 @@
     tauri-plugin-single-instance = { version = "2", features = [ "deep-link" ] }
     tauri-plugin-store           = "2.4.3"
     tauri-plugin-updater         = "2.10.1"
-    tauri-specta                 = { version = "2.0.0-rc.25", features = [
-      "typescript"
-    ] }
     wry                          = { version = "0.57.0", features = [
       "os-webview",
       "serde",
@@ -204,13 +199,13 @@
   # list-attribute (incl. foreign ones like derive_more `#[display]` / typed_builder
   # `#[builder(mutators(...))]`) as specta's grammar and errors. The patch skips
   # unparsable non-`specta` attributes. Drop this once upstream ships a fix.
-  specta-macros = { path = "vendor/specta-macros" }
+  specta-macros = { path = "tooling/patches/specta-macros" }
   # Local fork of specta-serde 0.0.12: PhasesFormat re-nests internally-tagged
   # newtype-variant enums (e.g. `MarkData`) under the variant name on its second
   # rewrite pass, because it fails to detect the already-merged tag intersection.
   # The patch teaches `variant_repr_already_rewritten` to recognise that shape.
   # Drop once upstream ships a fix.
-  specta-serde  = { path = "vendor/specta-serde" }
+  specta-serde  = { path = "tooling/patches/specta-serde" }
 
 [profile.dev]
   incremental = true  # Compile your binary in smaller steps.

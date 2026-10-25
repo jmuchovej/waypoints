@@ -1,0 +1,7 @@
+# $schema=https://www.rubyschema.org/rubocop.json
+Style/StringLiterals:
+  EnforcedStyle: "double_quotes"
+  ConsistentQuotesInMultiline: true
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: "double_quotes"

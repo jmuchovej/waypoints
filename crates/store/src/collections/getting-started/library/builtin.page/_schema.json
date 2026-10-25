@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Page",
+  "description": "The plainest document you could ever have!",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false,
+  "x-waypoints": {
+    "id": "builtin.page",
+    "name": "Page",
+    "description": "The plainest document you could ever have!",
+    "icon": {
+      "identifier": "iconify:heroicons:document-solid",
+      "alt_text": "Icon: heroicons:document-solid"
+    },
+    "features": {},
+    "extra": null
+  }
+}

@@ -41,11 +41,17 @@ const SYSTEM_FIRST = [macos ios]
 # secretspec, so the profile default applies when the caller names nothing.
 # `build.rs` and the Android project stamp the GitHub and build-code values
 # into the binary, treating absence as "not a CI build"; the version is what
-# the mobile builds hand Tauri as its config `version`.
+# the mobile builds hand Tauri as its config `version`. CARGO_BUILD_RUSTC_WRAPPER
+# names the compiler cache; its client talks to an already-running server over
+# a local port and carries no store configuration or credential, so nothing of
+# sccache's crosses. Cargo also reads the wrapper as RUSTC_WRAPPER, but the
+# cargo Xcode runs for iOS sees only what the Tauri CLI forwards to it — an
+# allowlist that includes CARGO_* and not that name.
 const FORWARDED = [
   CARGO_HOME CARGO_TARGET_DIR RUSTUP_HOME RUSTUP_TOOLCHAIN
   SECRETSPEC_PROVIDER OP_SERVICE_ACCOUNT_TOKEN SOPS_AGE_KEY_FILE SOPS_AGE_KEY
   GITHUB_SHA GITHUB_REF_NAME WAYPOINTS_BUILD_CODE WAYPOINTS_VERSION
+  CARGO_BUILD_RUSTC_WRAPPER
 ]
 
 # The app version for a mobile build, as a `--config` fragment. Tauri writes
@@ -67,9 +73,14 @@ def version-config [target: string]: nothing -> list<string> {
 }
 const FORWARDED_PREFIXES = ["MISE_"]
 
-def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "configs" }
-def platform-config [target: string]: nothing -> path { configs-root | path join "platforms" $"($target).toml" }
+def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "res" "configs" }
 def flavor-config [flavor: string]: nothing -> path { configs-root | path join "flavors" $"($flavor).toml" }
+
+# The flavor's executable (src-tauri/Cargo.toml): stable ships as `waypoints`,
+# every other flavor as `waypoints-<flavor>`.
+def bin-name [flavor: string]: nothing -> string {
+  if $flavor == "stable" { "waypoints" } else { $"waypoints-($flavor)" }
+}
 
 # `cargo tauri android build`, `cargo tauri ios dev`, plain `cargo tauri build`.
 def tauri-subcommand [target: string]: nothing -> list<string> {
@@ -119,6 +130,35 @@ def forwarded []: nothing -> record {
     | reduce --fold {} { |it, acc| $acc | merge { $"($it.key)": $it.value } }
 }
 
+# When a compiler wrapper is in effect, the C and C++ compilers go through it
+# too — the workspace compiles C on every platform (ring, zstd, mimalloc,
+# blake3), and sccache caches those as readily as rustc. cc-rs recognises a
+# leading `sccache` token in CC/CXX and splits it off, so the compilers a
+# platform names explicitly (iOS, Android) are prefixed in place, and the
+# desktop targets that lean on the system `cc` get CC/CXX set so there is
+# something to prefix. Windows is left alone: cc-rs finds MSVC's cl.exe itself
+# only while CC is unset. The linker is never wrapped — sccache does not cache
+# links, and cargo wants a bare path there. iOS's compilers are prefixed like
+# the rest but never reach the compile: the cargo Xcode runs sees only what the
+# Tauri CLI forwards, which excludes CC_*. Its C compiles are cached anyway —
+# with no CC set, cc-rs wraps the compiler itself from the rustc wrapper cargo
+# hands every build script.
+def wrap-c-compilers [target: string, vars: record]: nothing -> record {
+  let wrapper = $vars | get -o CARGO_BUILD_RUSTC_WRAPPER | default ""
+  if ($wrapper | is-empty) { return $vars }
+  let wrapped = $vars
+    | items { |key, value|
+        let value = if ($key =~ '^(CC|CXX)(_|$)') { $"($wrapper) ($value)" } else { $value }
+        { key: $key, value: $value }
+      }
+    | reduce --fold {} { |it, acc| $acc | merge { $"($it.key)": $it.value } }
+  if ($target in [macos linux]) and ("CC" not-in ($wrapped | columns)) {
+    $wrapped | merge { CC: $"($wrapper) cc", CXX: $"($wrapper) c++" }
+  } else {
+    $wrapped
+  }
+}
+
 # Runs `cargo tauri … build` for `target` with the release scope's secrets.
 # `extra` is environment the platform needs beyond the common set, `path_prefix`
 # goes between the system directories and the ambient PATH, and `args` follow
@@ -134,11 +174,12 @@ def run-build [
   args: list<string>,
   --derived: record = {},
 ] {
-  let vars = (forwarded) | merge $extra | merge { WAYPOINTS_FLAVOR: $flavor, WAYPOINTS_BUILD: "1" }
+  let vars = wrap-c-compilers $target (
+    (forwarded) | merge $extra | merge { WAYPOINTS_FLAVOR: $flavor, WAYPOINTS_BUILD: "1" }
+  )
   let build = [
     cargo tauri ...(tauri-subcommand $target) build
     --features $flavor
-    --config (platform-config $target)
     --config (flavor-config $flavor)
     ...$args
   ]
@@ -258,10 +299,10 @@ def build-android [flavor: string, rest: list<string>] {
   let ndk_bin = $ndk_home | path join toolchains llvm prebuilt $host bin
   if not ($ndk_bin | path exists) { error make { msg: $"No NDK toolchain at ($ndk_bin)" } }
 
-  let platform_config = platform-config android
-  let api = open $platform_config | get -o bundle.android.minSdkVersion
+  let tauri_config = $env.TAURI_APP_PATH | path join Tauri.toml
+  let api = open $tauri_config | get -o bundle.android.minSdkVersion
   if $api == null {
-    error make { msg: $"minSdkVersion is not declared in ($platform_config)" }
+    error make { msg: $"minSdkVersion is not declared in ($tauri_config)" }
   }
 
   # Align targets handed to `tauri` with targets supported by `rust-toolchain.toml`.
@@ -316,11 +357,23 @@ def "main dev" [
 ]: nothing -> nothing {
   let target = resolve-target $target
   let flavor = normalize-flavor $flavor
+  # `cargo run` does not narrow by `required-features`, so a desktop dev names
+  # the flavor's executable among the runner args (those after the first `--`).
+  let rest = if ($target in [ios android]) {
+    $rest
+  } else {
+    let bin = [--bin (bin-name $flavor)]
+    let split = $rest | enumerate | where item == "--" | get -o 0.index
+    if $split == null {
+      $rest ++ ["--"] ++ $bin
+    } else {
+      ($rest | take ($split + 1)) ++ $bin ++ ($rest | skip ($split + 1))
+    }
+  }
   with-env { WAYPOINTS_FLAVOR: $flavor } {
     (^secretspec run --profile development --scope $target --
       cargo tauri ...(tauri-subcommand $target) dev
       --features $flavor
-      --config (platform-config $target)
       --config (flavor-config $flavor)
       ...$rest)
   }

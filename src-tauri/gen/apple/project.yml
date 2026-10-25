@@ -2,7 +2,7 @@ name: Waypoints
 options:
   bundleIdPrefix: so.waypoints
   deploymentTarget:
-    iOS: 17.0
+    iOS: "17.0"
 fileGroups: [../../src]
 configs:
   debug: debug
@@ -32,6 +32,7 @@ targets:
       - path: Sources
       - path: Assets.xcassets
       - path: Externals
+        excludes: ["**/*.a"]
       - path: Waypoints_iOS
       - path: assets
         buildPhase: resources

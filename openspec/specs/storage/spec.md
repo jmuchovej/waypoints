@@ -246,6 +246,31 @@ configuration is part of the contract.
 - **THEN** the suite demonstrates recovery from process termination only, and makes no assertion
   about power loss, operating-system crash, or media failure
 
+### Requirement: View projections address namespaced document keys
+
+A view column or scope MAY declare a namespace alongside its path. The
+namespace SHALL be emitted as the first JSON-path element, always quoted and
+never split, so a top-level key containing dots (e.g.
+`so.waypoints.importer.logseq`) addresses one key rather than a chain of
+nested segments. A single-segment dotted path without a namespace SHALL
+retain segment-splitting semantics (`readings.abc` → `$.readings.abc`),
+byte-for-byte compatible with existing view declarations. Declarations
+without a namespace remain valid; stored view specifications require no
+rewrite.
+
+#### Scenario: Namespaced key extracts
+
+- **WHEN** a view column declares namespace `so.waypoints.importer.logseq`
+  and path `id` over a document whose `extra` carries that namespace object
+- **THEN** the view projects the namespace object's `id` value, verified
+  against the real engine
+
+#### Scenario: Legacy paths unchanged
+
+- **WHEN** a view column declares path `readings.abc` and no namespace
+- **THEN** the emitted JSON path is `$.readings.abc`, identical to the
+  pre-change lowering
+
 ## Decisions
 
 ### 2026-07-30 — Set `synchronous = FULL` explicitly rather than inheriting the engine default

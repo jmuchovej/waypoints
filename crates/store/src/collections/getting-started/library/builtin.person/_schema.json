@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Person",
+  "description": "A person with contact information and relationships",
+  "type": "object",
+  "properties": {
+    "q8ho": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "email"
+    },
+    "pib8": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "7hi2": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "8ebb": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "9xve": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "yl85": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "x-waypoints": {
+    "id": "builtin.person",
+    "name": "Person",
+    "description": "A person with contact information and relationships",
+    "icon": {
+      "identifier": "iconify:heroicons:user-solid",
+      "alt_text": "Icon: heroicons:user-solid"
+    },
+    "features": {
+      "q8ho": {
+        "id": "q8ho",
+        "name": "Email",
+        "kind": {
+          "type": "email"
+        },
+        "description": null,
+        "required": false
+      },
+      "pib8": {
+        "id": "pib8",
+        "name": "Phone",
+        "kind": {
+          "type": "phone"
+        },
+        "description": null,
+        "required": false
+      },
+      "7hi2": {
+        "id": "7hi2",
+        "name": "Company",
+        "kind": {
+          "type": "text"
+        },
+        "description": null,
+        "required": false
+      },
+      "8ebb": {
+        "id": "8ebb",
+        "name": "Role",
+        "kind": {
+          "type": "text"
+        },
+        "description": null,
+        "required": false
+      },
+      "9xve": {
+        "id": "9xve",
+        "name": "Nickname",
+        "kind": {
+          "type": "text"
+        },
+        "description": null,
+        "required": false
+      },
+      "yl85": {
+        "id": "yl85",
+        "name": "Tags",
+        "kind": {
+          "type": "reference",
+          "allowed_types": null,
+          "max_references": null,
+          "display_field": "title",
+          "as": "mention",
+          "filter_criteria": null
+        },
+        "description": null,
+        "required": false
+      }
+    },
+    "extra": null
+  }
+}

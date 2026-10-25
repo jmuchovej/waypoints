@@ -2,12 +2,20 @@
   pkgs,
   lib,
   config,
+  inputs,
   ...
 }:
 {
   stdenv = pkgs.clangStdenv;
 
   imports = [ ./nix/devenv ];
+
+  overlays = [
+    inputs.mise.overlay
+    # `mise`'s debug test binary is too large to link on `aarch64-darwin`; skip
+    # with `doCheck = false`.
+    (_: prev: { mise = prev.mise.overrideAttrs { doCheck = false; }; })
+  ];
 
   waypoints.mise = {
     # Units of work, not actors: a job names what it does, and `MISE_ENV` takes
@@ -21,6 +29,7 @@
       "build-desktop"
       "build-mobile"
       "website"
+      "deploy"
     ];
 
     tools = {
@@ -33,6 +42,13 @@
       just = {
         package = pkgs.just;
         spec = "aqua:casey/just";
+      };
+      typst = {
+        # `withPackages` builds an env with no `version`; mise pins the compiler's.
+        package = config.languages.typst.package // {
+          inherit (pkgs.typst) version;
+        };
+        spec = "aqua:typst/typst";
       };
       nixfmt = {
         package = pkgs.nixfmt-rs;
@@ -115,6 +131,24 @@
         envs = [ "devtools" ];
       };
 
+      # The deploy lane: validating the Station manifests under deploy/ and
+      # standing them up on kind (`just deploy::…`).
+      kubeconform = {
+        package = pkgs.kubeconform;
+        spec = "aqua:yannh/kubeconform";
+        envs = [ "deploy" ];
+      };
+      kubectl = {
+        package = pkgs.kubectl;
+        spec = "aqua:kubernetes/kubernetes/kubectl";
+        envs = [ "deploy" ];
+      };
+      kind = {
+        package = pkgs.kind;
+        spec = "aqua:kubernetes-sigs/kind";
+        envs = [ "deploy" ];
+      };
+
       # Shell-only: the local development store for secrets. No CI lane
       # decrypts a sops file — CI reads 1Password through `op` — so neither is
       # projected.
@@ -172,6 +206,28 @@
         spec = "aqua:gradle/gradle";
         envs = [ "build-mobile" ];
       };
+      # The CI build cache: sccache fronts rustc and the C compilers, and
+      # rclone moves directory snapshots to and from the same R2 bucket. The
+      # build lanes, and the xtask lane whose planners compile the toolchain
+      # on every run — every lane that compiles under an environment.
+      sccache = {
+        package = pkgs.sccache;
+        spec = "aqua:mozilla/sccache";
+        envs = [
+          "build-desktop"
+          "build-mobile"
+          "xtask"
+        ];
+      };
+      rclone = {
+        package = pkgs.rclone;
+        spec = "aqua:rclone/rclone";
+        envs = [
+          "build-desktop"
+          "build-mobile"
+          "xtask"
+        ];
+      };
       cargo-tauri = {
         package = pkgs.cargo-tauri;
         spec = "aqua:tauri-apps/tauri/cargo-tauri";
@@ -189,6 +245,11 @@
       cargo-deny = {
         package = pkgs.cargo-deny;
         spec = "aqua:EmbarkStudios/cargo-deny";
+        envs = [ "devtools" ];
+      };
+      mbx = {
+        package = inputs.mbx.packages.${pkgs.stdenv.hostPlatform.system}.mbx;
+        spec = "github:jdx/mr-boxington";
         envs = [ "devtools" ];
       };
       git-cliff = {
@@ -242,10 +303,9 @@
   waypoints.android = {
     agp.version = "8.13.2";
     build-tools.version = "35.0.0";
-    platforms.versions = [
-      "36"
-      "30"
-    ];
+    sdk.target.version = "36";
+    sdk.compile.version = "36";
+    platforms.extra = [ "30" ];
     ndk.version = "30.0.16138531";
     # devenv writes `files."<project-path>/..."` relative to the root, while
     # `.env` carries the absolute path both it and mise need. Re-relativize
@@ -275,6 +335,9 @@
     lsp.enable = true;
     toolchainFile = ./rust-toolchain.toml;
   };
+  enterShell = ''
+    export PATH="${config.waypoints.mise.tools.mbx.package}/libexec/mbx:$PATH"
+  '';
   languages.deno.enable = true;
   languages.ruby.enable = true;
   languages.kotlin.enable = true;
@@ -289,6 +352,29 @@
   languages.typescript = {
     enable = true;
     lsp.enable = true;
+  };
+  # `.env` ignores system and embedded fonts, so every family a
+  # `docs/marketing` asset names must come from `TYPST_FONT_PATHS`.
+  languages.typst = {
+    enable = true;
+    # Universe packages from nixpkgs, so rendering never fetches.
+    package = pkgs.typst.withPackages (ps: [
+      ps.typewind_0_2_0
+      ps.xmlit_0_1_3
+    ]);
+    lsp.enable = true;
+    fontPaths = [
+      "${pkgs.google-fonts.override { fonts = [ "Albert Sans" ]; }}/share/fonts/truetype"
+      # Static instances only: the joined `pkgs.monaspace` also carries the
+      # frozen and variable builds, so typst would see each family thrice.
+      "${pkgs.monaspace.static}/share/fonts/opentype"
+      # Two emoji faces, both of which typst renders in colour: Twemoji is
+      # SVG-in-OpenType and sits on the text baseline at the surrounding size,
+      # Noto is CBDT bitmap and draws oversized and high. Marketing asks for
+      # Twemoji by name; Noto is here for anything that wants Android's own set.
+      "${pkgs.twemoji-color-font}/share/fonts/truetype"
+      "${pkgs.noto-fonts-color-emoji}/share/fonts/noto"
+    ];
   };
 
   tasks."waypoints:sync-deny-targets" = {

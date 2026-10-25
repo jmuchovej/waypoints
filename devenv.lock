@@ -9,11 +9,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791504725,
-        "narHash": "sha256-c3oa0TaqsbI1/6TOrkrvZK5142aScS4tAv8KQVqRVJI=",
+        "lastModified": 1791674019,
+        "narHash": "sha256-V1GM+7+q6GBimztDXfFVqTF4fy5RXVmju3GZAa32jgE=",
         "owner": "tadfisher",
         "repo": "android-nixpkgs",
-        "rev": "e1cd276b67170cc9b7e8cdbb9f312d411d1b74f9",
+        "rev": "93e981d3c57a87c4b1ee6a91068197fa88097843",
         "type": "github"
       },
       "original": {
@@ -25,11 +25,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1791471428,
-        "narHash": "sha256-Iva5vlTiCPCHx3k3X7VFMn/TRJxcThJAUuOGjOAsHhQ=",
+        "lastModified": 1791785848,
+        "narHash": "sha256-8hOkttkgaVPCKwLHK5T2XbfBIj1k4G6xO1r4UVYm5aA=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "c69190c2702bad99474200b6b7a80be86146ae71",
+        "rev": "a60ff7da8843686d06b4c6646846024d97138da8",
         "type": "github"
       },
       "original": {
@@ -78,6 +78,67 @@
         "type": "github"
       }
     },
+    "flake-utils_2": {
+      "inputs": {
+        "systems": "systems_2"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "mbx": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792522622,
+        "narHash": "sha256-bhcaK0kUd3vnWln+BbTEVXmaZWMvIOFG0FdL3c5G7g0=",
+        "owner": "jdx",
+        "repo": "mr-boxington",
+        "rev": "bb29fdca7beec4b2d0b46479463650200b73b02e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jdx",
+        "ref": "v1.26.0",
+        "repo": "mr-boxington",
+        "type": "github"
+      }
+    },
+    "mise": {
+      "inputs": {
+        "flake-utils": "flake-utils_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792053152,
+        "narHash": "sha256-J43v+sQJAbbleZ1YYSKGSQdW1HxuWXN894CeqGZQce0=",
+        "owner": "jdx",
+        "repo": "mise",
+        "rev": "977d01586727a647cdcbe583d42ce46b90f8899d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jdx",
+        "ref": "v2026.10.11",
+        "repo": "mise",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "inputs": {
         "nixpkgs-src": "nixpkgs-src"
@@ -118,6 +179,8 @@
       "inputs": {
         "android-nixpkgs": "android-nixpkgs",
         "devenv": "devenv",
+        "mbx": "mbx",
+        "mise": "mise",
         "nixpkgs": "nixpkgs",
         "rust-overlay": "rust-overlay"
       }
@@ -129,11 +192,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791535654,
-        "narHash": "sha256-QFgGi6Wgh7AgqPFdAXEmkTgnR0B5M0omheIHvo/02dU=",
+        "lastModified": 1791795448,
+        "narHash": "sha256-12C5ef8a3endLXBvLOVR/jynM9EHGgP1t+y5uBorwx4=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "4ca2963243427cb86bd6b4d9ca6010db0162a619",
+        "rev": "404b7a5537f0adc6e5c558a1b94612e683dec504",
         "type": "github"
       },
       "original": {
@@ -143,6 +206,21 @@
       }
     },
     "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "systems_2": {
       "locked": {
         "lastModified": 1681028828,
         "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",

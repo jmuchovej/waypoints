@@ -7,7 +7,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 on:
   schedule:
-    - cron: "0 4 * * 1"
+    - cron: 0 4 * * 1
   workflow_dispatch: {}
 permissions: {}
 jobs:
@@ -45,7 +45,7 @@ jobs:
           name: devenv
       - id: setup-nix-profile
         name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: nix profile install nixpkgs#devenv
         shell: bash
       - id: devenv-update
         name: Update devenv inputs
@@ -55,11 +55,11 @@ jobs:
         shell: bash
         env:
           SECRETSPEC_REASON: devenv update refreshes locked inputs and regenerates devenv- and xtask-managed files; no secret values are read
-      - name: Resolve the automation secrets
-        run: devenv shell -- secretspec export --profile automation --provider op --format gha
+      - name: Resolve the botswain secrets
+        run: devenv shell -- secretspec export --profile ci --provider op --scope botswain --format gha
         shell: bash
         env:
-          SECRETSPEC_REASON: CI resolves the automation profile to authenticate as the app it names
+          SECRETSPEC_REASON: CI resolves the ci profile's botswain scope to authenticate as the App it names
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: app-token
         name: Mint a wp-botswain token
@@ -83,6 +83,8 @@ jobs:
             Ran `devenv update`, then regenerated everything that derives from the lockfile — devenv's `files."..."` outputs, the mise configs and their lockfiles, and the workflows under `.github/workflows`.
 
             Opened by the weekly schedule in `xtask::workflows::devenv_update`. Review the toolchain moves before merging; `check-generated` proves only that the tree is self-consistent, not that the new versions work.
+
+            If Gradle, Kotlin, or the Android Gradle Plugin moved, the Android build fails dependency verification until `just android::verification-metadata` has been run and its output committed on this branch.
           commit-message: "chore(devenv): update locked inputs"
           add-paths: |-
             devenv.lock
@@ -91,6 +93,8 @@ jobs:
             .config/mise.build-desktop.toml
             .config/mise.build-mobile.lock
             .config/mise.build-mobile.toml
+            .config/mise.deploy.lock
+            .config/mise.deploy.toml
             .config/mise.devtools.lock
             .config/mise.devtools.toml
             .config/mise.lock

@@ -1,0 +1,5 @@
+# Check out every text file with LF on every platform. Windows runners
+# default to core.autocrlf=true, which turned the getting-started bundle's
+# `---\n` frontmatter fences into `---\r\n` at checkout; include_str! then
+# embedded them that way and the store refused every Landmark on open.
+* text=auto eol=lf

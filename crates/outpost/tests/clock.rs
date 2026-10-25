@@ -4,9 +4,9 @@
 //! at the protocol layer — these tests cover the Vessel-side behavior only
 //! (protocol indifference is pinned in `outpost-protocol`'s validate suite).
 
-mod common;
+#[path = "common/territory.rs"]
+mod territory;
 
-use common::{TerritoryBuilder, kem, signing};
 use outpost::{
     hold::TerritoryHold,
     protocol::{
@@ -16,6 +16,7 @@ use outpost::{
     vessel::Vessel,
 };
 use rand::SeedableRng;
+use territory::{TerritoryBuilder, kem, signing};
 
 fn rng() -> rand::rngs::StdRng {
     rand::rngs::StdRng::from_seed([7; 32])

@@ -13,19 +13,22 @@ pub fn chart() -> Chart {
             Feature::builder()
                 .with_name("URL")
                 .with_kind(FeatureKind::URL)
-                .build(),
+                .build()
+                .keyed("url"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Description")
                 .with_kind(FeatureKind::Text)
-                .build(),
+                .build()
+                .keyed("description"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Tags")
                 .with_kind(Select::builder().with_unlimited_selections().build().into())
-                .build(),
+                .build()
+                .keyed("tag-select"),
         )
         .add_feature(
             Feature::builder()
@@ -37,7 +40,8 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("authors"),
         )
         .add_feature(tags_feature())
         .build();

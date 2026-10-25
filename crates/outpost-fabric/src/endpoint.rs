@@ -125,6 +125,29 @@ impl Endpoint {
         Ok(Self { inner })
     }
 
+    /// [`bind_routable`](Self::bind_routable) at a fixed UDP `port`, on the
+    /// wildcard address of both families (`0.0.0.0:port` and `[::]:port`).
+    /// The deployed posture: a Service, a firewall rule, and the advertised
+    /// address all name one number, so the Station must be at it. Fails if
+    /// the port cannot be bound — it never falls back to another port. A
+    /// `port` of 0 lets the kernel choose, independently per family; a
+    /// caller that needs one number across protocols picks it first and
+    /// passes it here.
+    pub async fn bind_routable_at(secret: SecretKey, port: u16) -> Result<Self, TransportError> {
+        let inner = iroh::Endpoint::builder(iroh::endpoint::presets::Minimal)
+            .secret_key(secret)
+            .alpns(vec![ALPN.to_vec()])
+            .clear_ip_transports()
+            .bind_addr(format!("0.0.0.0:{port}").as_str())
+            .map_err(err)?
+            .bind_addr(format!("[::]:{port}").as_str())
+            .map_err(err)?
+            .bind()
+            .await
+            .map_err(err)?;
+        Ok(Self { inner })
+    }
+
     /// [`bind`](Self::bind) from an Ed25519 identity key. The 32-byte seed
     /// is shared, so the endpoint's authenticated id equals the key's public
     /// half — the roster peer key. Lets the role crates bind without
@@ -143,6 +166,15 @@ impl Endpoint {
         key: &ed25519_dalek::SigningKey,
     ) -> Result<Self, TransportError> {
         Self::bind_routable(SecretKey::from_bytes(&key.to_bytes())).await
+    }
+
+    /// [`bind_routable_at`](Self::bind_routable_at) from an Ed25519 identity
+    /// key — how a deployed Station lands on its configured port.
+    pub async fn bind_routable_identity_at(
+        key: &ed25519_dalek::SigningKey,
+        port: u16,
+    ) -> Result<Self, TransportError> {
+        Self::bind_routable_at(SecretKey::from_bytes(&key.to_bytes()), port).await
     }
 
     /// This endpoint's dialable address (id + discovered socket hints).

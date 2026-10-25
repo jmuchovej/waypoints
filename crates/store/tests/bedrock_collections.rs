@@ -52,12 +52,11 @@ async fn mark_insert_get_roundtrip() {
         .expect("get mark")
         .expect("mark must exist");
 
-    // The before_save hook stamps updated_at, so we only compare fields that
-    // shouldn't change.
     assert_eq!(fetched.id, id);
     assert_eq!(fetched.data, data);
     assert_eq!(fetched.extra, None);
     assert_eq!(fetched.created_at, now);
+    assert_eq!(fetched.updated_at, now);
     assert!(fetched.deleted_at.is_none());
 }
 
@@ -85,6 +84,73 @@ async fn mark_with_extra_roundtrips() {
     assert_eq!(fetched.id, id);
     assert_eq!(fetched.data, data);
     assert_eq!(fetched.extra, Some(extra));
+}
+
+fn mark_at(id: MarkID, ts: NaiveDateTime) -> Mark {
+    Mark {
+        id,
+        data: MarkData::Content(Content::default()),
+        extra: None,
+        created_at: ts,
+        updated_at: ts,
+        deleted_at: None,
+    }
+}
+
+#[tokio::test]
+async fn insert_class_writes_preserve_timestamps() {
+    let (store, _dir) = open_store().await;
+    let db = store.db();
+
+    let past = at(1);
+    let (bulk, single) = (MarkID::new(), MarkID::new());
+
+    db.insert_all(vec![mark_at(bulk, past)])
+        .await
+        .expect("insert_all");
+    db.upsert(mark_at(single, past)).await.expect("upsert");
+
+    for id in [bulk, single] {
+        let fetched = db.get::<Mark>(&id).await.expect("get").expect("exists");
+        assert_eq!(fetched.created_at, past, "created_at preserved for {id}");
+        assert_eq!(fetched.updated_at, past, "updated_at preserved for {id}");
+    }
+}
+
+#[tokio::test]
+async fn upsert_over_existing_row_keeps_the_carried_timestamp() {
+    let (store, _dir) = open_store().await;
+    let db = store.db();
+
+    let id = MarkID::new();
+    db.insert(mark_at(id, at(1))).await.expect("insert");
+
+    let later = at(2);
+    db.upsert(mark_at(id, later)).await.expect("upsert");
+
+    let fetched = db.get::<Mark>(&id).await.expect("get").expect("exists");
+    assert_eq!(fetched.updated_at, later);
+}
+
+#[tokio::test]
+async fn update_stamps_the_write_time() {
+    let (store, _dir) = open_store().await;
+    let db = store.db();
+
+    let id = MarkID::new();
+    let past = at(1);
+    db.insert(mark_at(id, past)).await.expect("insert");
+
+    let updated = db.update(mark_at(id, past)).await.expect("update");
+    assert!(updated, "the row exists, so the update applies");
+
+    let fetched = db.get::<Mark>(&id).await.expect("get").expect("exists");
+    assert!(
+        fetched.updated_at > past,
+        "update stamped the write time, got {}",
+        fetched.updated_at
+    );
+    assert_eq!(fetched.created_at, past, "created_at is left alone");
 }
 
 // ── Chart round-trip ─────────────────────────────────────────────────────────
@@ -118,6 +184,68 @@ async fn chart_domain_roundtrip() {
 }
 
 #[tokio::test]
+async fn chart_extra_roundtrips_namespaces_and_feature_slots() {
+    let (store, _dir) = open_store().await;
+    let db = store.db();
+
+    let extra = serde_json::json!({
+        "so.waypoints.importer.logseq": { "page": "Daily/2026-07-14" },
+        "a1b2": { "unit": "attendees" },
+    });
+    let chart = domain::Chart {
+        extra: Some(extra.clone()),
+        ..domain::Chart::builder().with_name("Workshop").build()
+    };
+    let id = chart.id.clone();
+
+    db.insert(chart).await.expect("insert chart");
+
+    let fetched = db
+        .get::<domain::Chart>(&id)
+        .await
+        .expect("get")
+        .expect("chart must exist");
+    assert_eq!(fetched.extra, Some(extra));
+}
+
+#[tokio::test]
+async fn chart_extra_arrives_by_spec_diff() {
+    let dir = tempdir().expect("tempdir");
+    let path = dir.path().join("pre-extra.db");
+    let path = path.to_str().expect("utf-8 path");
+    let db = bedrock::Database::open(path).await.expect("open");
+
+    let mut before = <domain::Chart as bedrock::Collection>::spec();
+    let extra = before
+        .fields
+        .iter()
+        .position(|f| f.name == "extra")
+        .expect("Chart spec carries an `extra` field");
+    let removed = before.fields.remove(extra);
+    assert!(removed.nullable, "`extra` must be nullable to be addable");
+    db.ensure_spec(&before).await.expect("create pre-extra");
+
+    db.ensure_collection::<domain::Chart>()
+        .await
+        .expect("spec diff adds the nullable column");
+
+    let extra = serde_json::json!({ "so.waypoints.test": 1 });
+    let chart = domain::Chart {
+        extra: Some(extra.clone()),
+        ..domain::Chart::builder().with_name("Migrated").build()
+    };
+    let id = chart.id.clone();
+    db.insert(chart).await.expect("insert after migration");
+
+    let fetched = db
+        .get::<domain::Chart>(&id)
+        .await
+        .expect("get")
+        .expect("chart must exist");
+    assert_eq!(fetched.extra, Some(extra));
+}
+
+#[tokio::test]
 async fn seed_is_idempotent() {
     let (store, _dir) = open_store().await;
     let db = store.db();
@@ -127,6 +255,47 @@ async fn seed_is_idempotent() {
 
     let count = db.count::<domain::Chart>().await.expect("count");
     assert_eq!(count, 9);
+}
+
+/// Readings are keyed by feature id, so a reopen must not re-mint them.
+#[tokio::test]
+async fn builtin_feature_ids_survive_a_reopen() {
+    let dir = tempdir().expect("tempdir");
+    let path = dir.path().join("reopen.db");
+    let meeting = store::builtin::meeting::type_id();
+
+    let mut seen = Vec::new();
+    for _ in 0..2 {
+        let store = Store::open(&path).await.expect("open");
+        let chart = store
+            .db()
+            .get::<domain::Chart>(&meeting)
+            .await
+            .expect("get")
+            .expect("seeded");
+        seen.push(chart);
+    }
+    assert_eq!(seen[0], seen[1]);
+}
+
+#[test]
+fn every_builtin_chart_is_deterministic() {
+    use store::builtin::*;
+    let charts: [fn() -> domain::Chart; 9] = [
+        page::chart,
+        objective::chart,
+        note::chart,
+        person::chart,
+        campaign::chart,
+        meeting::chart,
+        bookmark::chart,
+        journal::chart,
+        book::chart,
+    ];
+    for chart in charts {
+        let (first, second) = (chart(), chart());
+        assert_eq!(first, second, "{} mints a random id", first.name);
+    }
 }
 
 // ── Terrain round-trip ───────────────────────────────────────────────────────

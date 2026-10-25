@@ -4,8 +4,5 @@
   "type": "module",
   "exports": {
     ".": "./typescript/index.ts"
-  },
-  "dependencies": {
-    "scule": "catalog:app"
   }
 }

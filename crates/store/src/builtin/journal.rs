@@ -13,33 +13,39 @@ pub fn chart() -> Chart {
             SelectOption::builder()
                 .with_name("Great")
                 .with_icon(Icon::system_emoji("smiling-face-with-smiling-eyes"))
-                .build(),
+                .build()
+                .keyed("great"),
         )
         .with_option(
             SelectOption::builder()
                 .with_name("Good")
                 .with_icon(Icon::system_emoji("slightly-smiling-face"))
-                .build(),
+                .build()
+                .keyed("good"),
         )
         .with_option(
             SelectOption::builder()
                 .with_name("Okay")
                 .with_icon(Icon::system_emoji("neutral-face"))
-                .build(),
+                .build()
+                .keyed("okay"),
         )
         .with_option(
             SelectOption::builder()
                 .with_name("Not Great")
                 .with_icon(Icon::system_emoji("slightly-frowning-face"))
-                .build(),
+                .build()
+                .keyed("not-great"),
         )
         .with_option(
             SelectOption::builder()
                 .with_name("Rough")
                 .with_icon(Icon::system_emoji("pensive-face"))
-                .build(),
+                .build()
+                .keyed("rough"),
         )
-        .build();
+        .build()
+        .keyed("group/mood");
     let chart = Chart::builder()
         .with_name("Journal")
         .with_description("A daily journal entry for tracking thoughts and activities.")
@@ -48,7 +54,8 @@ pub fn chart() -> Chart {
             Feature::builder()
                 .with_name("Date")
                 .with_kind(Date::builder().build().into())
-                .build(),
+                .build()
+                .keyed("date"),
         )
         .add_feature(
             Feature::builder()
@@ -60,19 +67,22 @@ pub fn chart() -> Chart {
                         .build()
                         .into(),
                 )
-                .build(),
+                .build()
+                .keyed("mood"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Highlights")
                 .with_kind(Reference::builder().build().into())
-                .build(),
+                .build()
+                .keyed("highlights"),
         )
         .add_feature(
             Feature::builder()
                 .with_name("Goals for Tomorrow")
                 .with_kind(Reference::builder().build().into())
-                .build(),
+                .build()
+                .keyed("goals-for-tomorrow"),
         )
         .add_feature(tags_feature())
         .build();

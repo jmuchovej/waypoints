@@ -1,21 +1,3 @@
-.devenv/
-.direnv/
-.devenv.flake.nix
-# `nix build` out-links. Also gc roots, so a stray one pins its closure.
-result
-result-*
-local.properties
-.mcp.json
-.android/
-
-_research/
-.scratch/
-data/
-
-.idea/
-
-**/src-tauri/gen/schemas/*.json
-
 # Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,rust,flutter,dart,deno,database,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,rust,flutter,dart,deno,database,node
 
@@ -360,13 +342,24 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,macos,windows,rust,flutter,dart,deno,database,node
 
-# .env holds no secrets — those come from secretspec. It is the shared
-# environment description devenv and mise both read, so it must be committed.
-!.env
+.devenv/
+.direnv/
+.devenv.flake.nix
+# `nix build` out-links. Also gc roots, so a stray one pins its closure.
+result
+result-*
+.mcp.json
+.android/
+.ruby-lsp/
 
-# Local development stores for secretspec's `sops` and `sops-web` providers,
-# encrypted to your own age key. CI reads 1Password; nothing committed holds a
-# secret.
+_research/
+.scratch/
+data/
+
+!.env
+!.envrc
+
+# Local development stores for secretspec (via `sops`). Encrypt with your own age key.
 secrets.sops.yaml
 website/secrets.sops.yaml
 

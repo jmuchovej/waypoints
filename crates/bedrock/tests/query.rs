@@ -104,12 +104,14 @@ async fn query_materialized_view() {
             ViewColumn {
                 name: "note".into(),
                 document: "meta".into(),
+                ns: None,
                 path: "note".into(),
                 column_type: ColumnType::Text,
             },
             ViewColumn {
                 name: "weight".into(),
                 document: "meta".into(),
+                ns: None,
                 path: "weight".into(),
                 column_type: ColumnType::Integer,
             },

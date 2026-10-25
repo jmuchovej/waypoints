@@ -7,8 +7,9 @@
 //! (see [`crate::pool`]).
 
 use crate::{
-    BedrockError,
+    BedrockError, Collection, WriteOp, ddl,
     pool::{ReadGuard, WriteGuard},
+    value,
 };
 use std::sync::atomic::{AtomicU64, Ordering};
 use turso::{IntoParams, Rows};
@@ -67,6 +68,29 @@ impl WriteTx {
     /// Run a query within the transaction.
     pub async fn query(&self, sql: &str, params: impl IntoParams) -> Result<Rows, BedrockError> {
         Ok(self.conn.query(sql, params).await?)
+    }
+
+    /// Insert one entity within the transaction, as [`Database::insert`].
+    ///
+    /// [`Database::insert`]: crate::Database::insert
+    pub async fn insert<C: Collection>(&self, entity: C) -> Result<C, BedrockError> {
+        self.write(entity, false).await
+    }
+
+    /// Insert or replace one entity within the transaction, as
+    /// [`Database::upsert`].
+    ///
+    /// [`Database::upsert`]: crate::Database::upsert
+    pub async fn upsert<C: Collection>(&self, entity: C) -> Result<C, BedrockError> {
+        self.write(entity, true).await
+    }
+
+    async fn write<C: Collection>(&self, entity: C, replace: bool) -> Result<C, BedrockError> {
+        let entity = entity.before_save(WriteOp::Insert);
+        let spec = C::spec();
+        let params = value::to_params(&spec, &entity.to_row()?)?;
+        self.execute(&ddl::insert(&spec, replace), params).await?;
+        Ok(entity)
     }
 
     /// Commit the transaction.

@@ -1,4 +1,4 @@
-min_version = "2026.8.6"
+min_version = "2026.10.11"
 
 [env]
 
@@ -9,6 +9,7 @@ min_version = "2026.8.6"
 "aqua:mikefarah/yq" = "4.53.3"
 "aqua:nushell/nushell" = "0.115.1"
 "aqua:tauri-apps/tauri/cargo-tauri" = "2.11.4"
+"aqua:typst/typst" = "0.15.1"
 "core:node" = "24.20.0"
 
 [tools."aqua:pnpm/pnpm"]

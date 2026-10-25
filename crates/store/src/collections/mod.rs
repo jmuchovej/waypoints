@@ -1,4 +1,4 @@
 pub mod seed;
 
 #[cfg(feature = "mock")]
-pub mod demo;
+pub mod getting_started;

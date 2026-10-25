@@ -185,13 +185,25 @@ struct Caller {
     cert: DeviceCert,
 }
 
+/// Which socket a Station binds. Private: the public constructors name the
+/// postures, and this is the one place they meet the fabric.
+enum Bind {
+    /// Loopback only — tests and same-host embeds.
+    Loopback,
+    /// The wildcard address on a kernel-chosen port.
+    Routable,
+    /// The wildcard address on an operator-chosen port (0 lets the kernel
+    /// choose, per family).
+    RoutableAt(u16),
+}
+
 impl Station {
     /// Bind a storage-only Station on `secret` (its roster peer key)
     /// seeded with a single `replica` — it serves that one Territory and
     /// accepts no new registrations. For tests and single-Territory embeds;
     /// a self-host Station uses [`hosting`](Self::hosting).
     pub async fn new(secret: &SigningKey, replica: Replica) -> StationResult<Self> {
-        Self::build(secret, None, None, vec![replica], false).await
+        Self::build(secret, None, None, vec![replica], Bind::Loopback).await
     }
 
     /// [`new`](Self::new) on a routable bind — reachable from other hosts.
@@ -199,7 +211,7 @@ impl Station {
     /// [`advertised_addr`](Self::advertised_addr) hands Vessels an address
     /// that routes to this host.
     pub async fn new_routable(secret: &SigningKey, replica: Replica) -> StationResult<Self> {
-        Self::build(secret, None, None, vec![replica], true).await
+        Self::build(secret, None, None, vec![replica], Bind::Routable).await
     }
 
     /// [`new`](Self::new) that also runs the per-Fleet **orderer**,
@@ -209,7 +221,7 @@ impl Station {
         fleet_key: SigningKey,
         replica: Replica,
     ) -> StationResult<Self> {
-        Self::build(secret, Some(fleet_key), None, vec![replica], false).await
+        Self::build(secret, Some(fleet_key), None, vec![replica], Bind::Loopback).await
     }
 
     /// Bind a Station that homes many Territories under `storage` (a
@@ -218,17 +230,53 @@ impl Station {
     ///
     /// [`Register`]: crate::protocol::SyncMessage::Register
     pub async fn hosting(secret: &SigningKey, storage: &Path) -> StationResult<Self> {
-        Self::build(secret, None, Some(storage.to_owned()), Vec::new(), false).await
+        Self::build(
+            secret,
+            None,
+            Some(storage.to_owned()),
+            Vec::new(),
+            Bind::Loopback,
+        )
+        .await
     }
 
     /// [`hosting`](Self::hosting) on a routable bind — the self-host
     /// posture: reachable from other hosts at an operator-advertised
     /// address ([`with_advertised`](Self::with_advertised)).
     pub async fn hosting_routable(secret: &SigningKey, storage: &Path) -> StationResult<Self> {
-        Self::build(secret, None, Some(storage.to_owned()), Vec::new(), true).await
+        Self::build(
+            secret,
+            None,
+            Some(storage.to_owned()),
+            Vec::new(),
+            Bind::Routable,
+        )
+        .await
+    }
+
+    /// [`hosting_routable`](Self::hosting_routable) at a fixed UDP `port` —
+    /// the deployed posture, where a Service, a firewall rule, and the
+    /// advertised address all name one number. `port` 0 lets the kernel
+    /// choose. The fixed-port forms are `_at` siblings rather than an
+    /// `Option<u16>` on the existing constructors so that no caller's
+    /// signature moves.
+    pub async fn hosting_routable_at(
+        secret: &SigningKey,
+        storage: &Path,
+        port: u16,
+    ) -> StationResult<Self> {
+        Self::build(
+            secret,
+            None,
+            Some(storage.to_owned()),
+            Vec::new(),
+            Bind::RoutableAt(port),
+        )
+        .await
     }
 
     /// [`hosting`](Self::hosting) that also runs the per-Fleet **orderer**.
+    /// Loopback-bound, like `hosting`: the same-host development posture.
     pub async fn hosting_orderer(
         secret: &SigningKey,
         fleet_key: SigningKey,
@@ -239,7 +287,27 @@ impl Station {
             Some(fleet_key),
             Some(storage.to_owned()),
             Vec::new(),
-            false,
+            Bind::Loopback,
+        )
+        .await
+    }
+
+    /// [`hosting_routable_at`](Self::hosting_routable_at) that also runs the
+    /// per-Fleet **orderer** — the one-process Fleet a self-hoster deploys,
+    /// reachable off-host at its configured port. There is deliberately no
+    /// ephemeral-port routable orderer beside it: pass `port` 0.
+    pub async fn hosting_orderer_routable_at(
+        secret: &SigningKey,
+        fleet_key: SigningKey,
+        storage: &Path,
+        port: u16,
+    ) -> StationResult<Self> {
+        Self::build(
+            secret,
+            Some(fleet_key),
+            Some(storage.to_owned()),
+            Vec::new(),
+            Bind::RoutableAt(port),
         )
         .await
     }
@@ -249,12 +317,12 @@ impl Station {
         fleet_key: Option<SigningKey>,
         storage: Option<PathBuf>,
         seed: Vec<Replica>,
-        routable: bool,
+        bind: Bind,
     ) -> StationResult<Self> {
-        let endpoint = if routable {
-            Endpoint::bind_routable_identity(secret).await?
-        } else {
-            Endpoint::bind_identity(secret).await?
+        let endpoint = match bind {
+            Bind::Loopback => Endpoint::bind_identity(secret).await?,
+            Bind::Routable => Endpoint::bind_routable_identity(secret).await?,
+            Bind::RoutableAt(port) => Endpoint::bind_routable_identity_at(secret, port).await?,
         };
         let mut territories = BTreeMap::new();
         let mut hold = None;

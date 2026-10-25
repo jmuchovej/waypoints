@@ -1,6 +1,14 @@
 [alias]
   xtask = "run --package xtask --"
 
+# Inert unless a rustc wrapper is in effect (CI sets one). Set here rather than
+# on the build step because cargo applies [env] to every rustc and build-script
+# process it spawns, including the cargo Xcode runs for iOS, which inherits
+# nothing of the step's environment. A sccache client that loses its server
+# then compiles directly instead of failing the build.
+[env]
+  SCCACHE_IGNORE_SERVER_IO_ERROR = "1"
+
 # macOS: sign every linked executable with a stable identity so the
 # application firewall recognizes rebuilt dev binaries (routable binds) and
 # prompts once instead of on every rebuild. A no-op without an identity in

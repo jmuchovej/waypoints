@@ -4,10 +4,11 @@
 allow-missing-formatter = true
 excludes                = [
   "*.lock",
+  "pnpm-lock.yaml",
   "*.patch",
   ".git{attributes,ignore,modules}",
   "LICENSE",
-  "vendor/*",
+  "tooling/patches/*",
   "*.{gif,ico}",
   "*.{properties,gradle}",
   "*.{pbxproj,xcconfig}",
@@ -19,6 +20,8 @@ excludes                = [
   "*/mise.*.toml",
   "libs.versions.toml",
   "*/libs.versions.toml",
+  # an exported Bundle; its bytes are the exporter's, checked by a test.
+  "crates/store/src/collections/getting-started/**",
 ]
 on-unmatched            = "info"
 verbose                 = 1
@@ -75,7 +78,7 @@ verbose                 = 1
 [formatter.rufo]
   command  = "rufo"
   options  = [ "-x" ]
-  includes = [ "*.rb", "**/Podfile", "*.podspec" ]
+  includes = [ "*.rb", "**/Appfile", "**/Fastfile", "**/Podfile", "*.podspec" ]
 
 [formatter.rustfmt]
   command  = "rustfmt"

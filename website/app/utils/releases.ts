@@ -1,7 +1,7 @@
-import { UPDATE_CHANNELS, type UpdateChannel } from "#shared/utils/releases";
+import { type Channel, isChannel } from "#shared/utils/releases";
 
-export function routeGuard(channel: ComputedRef<UpdateChannel>) {
-  if (!UPDATE_CHANNELS.includes(channel.value)) {
+export function routeGuard(channel: ComputedRef<Channel>) {
+  if (!isChannel(channel.value)) {
     throw createError({ statusCode: 404, statusMessage: "Not Found" });
   }
 }
@@ -20,7 +20,7 @@ export type ChannelLink = {
   active: boolean;
 };
 
-export function buildChannelButtons(prefix: ChannelPrefix, channel: ComputedRef<UpdateChannel>) {
+export function buildChannelButtons(prefix: ChannelPrefix, channel: ComputedRef<Channel>) {
   return ref<ChannelLink[]>([
     {
       label: "Stable",
@@ -39,3 +39,25 @@ export function buildChannelButtons(prefix: ChannelPrefix, channel: ComputedRef<
     },
   ]);
 }
+
+export type StoreLink = {
+  icon: string;
+  title: string;
+  description: string;
+  to: string;
+};
+
+// Per `fastlane/Fastfile`, stable on Play is the only publicly reachable listing: iOS is
+// never submitted to the App Store (`skip_submission`), and preview/nightly are internal-track.
+export const STORE_LINKS: Record<Channel, StoreLink[]> = {
+  stable: [
+    {
+      icon: "i-simple-icons-googleplay",
+      title: "Android",
+      description: "Google Play",
+      to: "https://play.google.com/store/apps/details?id=so.waypoints",
+    },
+  ],
+  preview: [],
+  nightly: [],
+};
