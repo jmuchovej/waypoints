@@ -21,6 +21,7 @@ they ship the app, not describe it.
 | `lib/surfaces.typ`    | the store surfaces, and the screens × surfaces fan-out |
 | `lib/sheet.typ`       | the `index.html` contact sheet and its CSS             |
 | `logo/{md,xs}.svg`    | the bare logo, quadrant ids painted at render time     |
+| `res/`                | device frames — in the tree, never in history          |
 | `<locale>.typ`        | that locale's screens and fixed slots                  |
 | `<locale>.toml`       | listing copy, every store in one file                  |
 | `metadata/`           | generated — supply's tree, and deliver's `.txt`        |
@@ -200,6 +201,49 @@ rendered without appearing on the sheet.
 Open `index-<locale>.html` to review a build: every asset linked and previewed
 on a chequerboard, with its store requirement beside it. It sits at the output
 root so its `<img src>` paths resolve against the same tree the stores read.
+
+## Device frames
+
+`res/` holds the frames the phone screenshots are composed into. They are in
+the tree and never in history: `**/*.png` ignores them, `res/.gitkeep` is the
+only tracked file, and whoever renders obtains the exports under their own
+plan.
+
+**Source.** Mockuuups Studio, straight-on template, one per device. The
+exports are licensed, not owned: the commercial licence (paid plan) permits
+editing them and incorporating them into marketing material, apps and online
+platforms with no attribution (§4.2, §4.3), and exports stay usable after the
+plan ends (§1.2, §6). It forbids redistributing a mockup standalone, modified
+or not (§5, §5.1) — which is what a committed PNG would be in any tree that
+could be published. The device makers' own rights in their hardware are
+separate from that licence and apply to any render from any vendor.
+`https://mockuuups.studio/license/`, last updated 2025-04-24.
+
+**Export.** Mockuuups fills the screen with opaque black, so export with a
+white screen background and key the white out afterwards. Keep the export
+under `res/exports/<device>.png` and run `res/alpha-key.nu` on it:
+
+```bash
+cd src-tauri/fastlane/res
+./alpha-key.nu exports/apple-iphone-17-pro.png   # writes ./apple-iphone-17-pro.png
+```
+
+It keys in two passes, because the screen edge is anti-aliased against white:
+a flood fill from the screen's centre finds the pure-white interior (never key
+by colour — the bezel highlights are also pure white), then a white-matte
+removal on a 3px ring around it turns the grey edge pixels back into bezel
+colour at partial alpha instead of leaving a pale halo. Across the boundary
+alpha should ramp ≈0.97, 0.50, 0.03, 0. The script prints the screen rect and
+corner radius, which are what `lib/devices.typ` records.
+
+| device                | export    | screen rect          | radius | vs. native     |
+| --------------------- | --------- | -------------------- | ------ | -------------- |
+| `apple-iphone-17-pro` | 1317×2716 | 1202×2619 at 58,49   | 222 px | 1206×2622 — 1× |
+| `google-pixel-10-pro` | 2781×5854 | 2519×5615 at 121,120 | 338 px | 1280×2856 — 2× |
+
+Composition layers the capture under the frame: clip the capture to the
+rounded screen rect, draw the frame over it, and the island or punch hole
+occludes the capture as the hardware does.
 
 ## Brand
 
