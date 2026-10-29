@@ -515,6 +515,9 @@ catalogs:
     '@nuxt/ui':
       specifier: ^4.6.1
       version: 4.10.0
+    '@nuxtjs/color-mode':
+      specifier: ^4.0.1
+      version: 4.0.1
     '@nuxtjs/i18n':
       specifier: ^10.3.0
       version: 10.6.0
@@ -952,6 +955,9 @@ importers:
       '@nuxt/ui':
         specifier: catalog:website
         version: 4.10.0(b1d9fb08db57705569662622e400300c)
+      '@nuxtjs/color-mode':
+        specifier: catalog:website
+        version: 4.0.1(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.135.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)))
       '@nuxtjs/i18n':
         specifier: catalog:website
         version: 10.6.0(@vue/compiler-dom@3.5.41)(db0@0.3.4(@libsql/client@0.15.15)(better-sqlite3@12.11.1)(drizzle-orm@0.44.7(@cloudflare/workers-types@5.20261019.1)(@libsql/client@0.15.15)(@opentelemetry/api@1.9.1)(better-sqlite3@12.11.1)(kysely@0.29.5)))(esbuild@0.28.2)(eslint@10.8.1(jiti@2.7.0)(supports-color@10.2.2))(ioredis@5.11.1(supports-color@10.2.2))(magicast@0.5.4)(pinia@3.0.4(typescript@6.0.3)(vue@3.5.41(typescript@6.0.3)))(rolldown@1.2.4)(rollup@4.62.4)(supports-color@10.2.2)(typescript@6.0.3)(vite@8.2.1(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0))(vue@3.5.41(typescript@6.0.3))
@@ -15082,6 +15088,20 @@ snapshots:
   '@nuxtjs/color-mode@4.0.1(magic-string@0.30.21)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@7.3.6(@types/node@25.9.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)))':
     dependencies:
       '@nuxt/kit': 4.5.2(magic-string@0.30.21)(magicast@0.5.4)(oxc-parser@0.140.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@7.3.6(@types/node@25.9.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)))
+      exsolve: 1.1.1
+      pathe: 2.0.3
+      pkg-types: 2.3.1
+      semver: 7.8.5
+    transitivePeerDependencies:
+      - magic-string
+      - magicast
+      - oxc-parser
+      - rolldown
+      - unplugin
+
+  '@nuxtjs/color-mode@4.0.1(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.135.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)))':
+    dependencies:
+      '@nuxt/kit': 4.5.2(magic-string@1.2.0)(magicast@0.5.4)(oxc-parser@0.135.0)(rolldown@1.2.4)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.4)(rollup@4.62.4)(vite@8.2.1(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0)))
       exsolve: 1.1.1
       pathe: 2.0.3
       pkg-types: 2.3.1
