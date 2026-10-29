@@ -1,6 +1,3 @@
 {
-  "pnpmDeps": "sha256-jMkz43RHwWlHVrXMsez0NImC5/lCiC2wpzVDwIHEyx0=",
-  "cargoOutputHashes": {
-    "gh-workflow-0.9.0": "sha256-CMzElgOmzseY3JOw7g2Q9uDGrS3usCzzdQt/nVNcn+E="
-  }
+  "pnpmDeps": "sha256-Gm6mvzWIexDdShPSWRzSy0VFPpNqXQkuEcH4jMamPUA="
 }

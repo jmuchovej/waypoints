@@ -159,7 +159,6 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   cargoLock = {
     lockFile = workingTree + "/Cargo.lock";
-    outputHashes = pins.cargoOutputHashes;
   };
 
   buildAndTestSubdir = "src-tauri";
