@@ -1,0 +1,2 @@
+# hotfix to ensure we don't track intermediate files from devenv
+mise/conf.d/.tools*
