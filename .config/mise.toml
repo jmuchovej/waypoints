@@ -17,6 +17,16 @@
   lockfile                 = true
   locked                   = true
   locked_verify_provenance = true
+  lockfile_platforms       = [
+    "linux-x64",
+    "linux-x64-musl",
+    "linux-x64-gnu",
+    "linux-arm64",
+    "linux-arm64-gnu",
+    "linux-arm64-musl",
+    "macos-arm64",
+    "windows-x64"
+  ]
 
   # let a fresh release age before this repo installs it.
   minimum_release_age          = "7d"
