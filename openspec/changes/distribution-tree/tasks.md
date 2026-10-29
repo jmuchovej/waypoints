@@ -1,0 +1,75 @@
+# Tasks
+
+Tree changes are stated against commit `ce4067aca`. `just check-generated` diffs against `HEAD`, so where a task names it the check passes once that task's commit exists.
+
+## 0. Restore the working tree
+
+- [ ] 0.1 Restore the uncommitted `distribution/` sketches and `nix/justfile` to `ce4067aca` (`jj restore` the paths) so the move below starts from the committed layout; verify `jj status` shows no `distribution/` or `nix/justfile` entries
+
+## 1. Move the deployment tree
+
+- [ ] 1.1 Move `deploy/kubernetes/{base,kind}/` to `distribution/kubernetes/{base,kind}/` unchanged (`kind/kustomization.yaml` keeps `resources: [../base]`); verify `kubectl kustomize distribution/kubernetes/base | kubeconform -strict -summary` and the same for `distribution/kubernetes/kind` both pass
+- [ ] 1.2 Move `deploy/justfile` to `distribution/kubernetes/justfile`, keeping every recipe name and repointing `lint`'s paths (`base`, `kind`), `kind-up`'s config path (`kind/kind-config.yaml`), `kind-apply`'s `-k kind`, and `image`'s flake ref (`../..#packages…`); add `distribution/justfile` with `mod kubernetes "kubernetes/justfile"`; replace the root `mod deploy "deploy/justfile"` with `mod dist "distribution/justfile"`; verify `just dist::kubernetes::lint` passes and `just --list dist` shows the six recipes under `kubernetes`
+- [ ] 1.3 Update the recipe names in the comments of `distribution/kubernetes/base/kustomization.yaml`, `distribution/kubernetes/base/statefulset.yaml`, and `distribution/kubernetes/kind/kind-config.yaml` (`just deploy::…` → `just dist::kubernetes::…`); verify `rg "deploy::" distribution` is empty
+- [ ] 1.4 Rename the mise lane `deploy` to `dist` in `devenv.nix` (kubeconform, kubectl, kind) and regenerate its projection so `.config/mise/conf.d/tools.deploy.toml` is replaced by `tools.dist.toml`; verify `just dist::kubernetes::lint` still resolves its tools and, once committed, `just check-generated` passes
+- [ ] 1.5 Remove the now-empty `deploy/`; verify `rg -n "deploy/" --glob "!openspec/**" --glob "!*.lock"` is empty (the main spec and the open changes are handled in group 3)
+
+## 2. Move the Nix channel and the devenv modules
+
+- [ ] 2.1 Move `nix/overlay.nix`, `nix/channel.nix`, `nix/packages/`, and `nix/releases/` to `distribution/nix/`; in `overlay.nix` set `tree = ../..` and the fetched-tree recipe path to `/distribution/nix/packages/waypoints/package.nix`; update the path strings in `releases/default.nix`'s error messages and the two recipes' comments; verify `nix eval --raw .#checks.aarch64-darwin.waypoints-in-tree.drvPath` and `nix eval --raw .#outpost.drvPath` succeed from the main checkout
+- [ ] 2.2 Repoint `flake.nix`'s five `./nix/` references (`overlay.nix` at the flake level and in `perSystem`, `channel.nix`, `packages/outpost/_image.nix`, `packages/waypoints/package.nix`) to `./distribution/nix/…`; verify `nix flake show` lists the same outputs as before the move and `nix eval .#packages.aarch64-darwin.nightly` fails only because the recorded tree lacks `distribution/nix/`
+- [ ] 2.3 Update `tooling/bin/nix-pins` (`PINS_FILE` and the `callPackage` path); verify `just nix-pins-check` reports no change
+- [ ] 2.4 Update `tooling/xtask/src/releases/index.rs` (`INDEX_DIR`, `PRODUCT_PATHSPEC`, the doc comment, the two path assertions) and the reason string in `workflows/release_index.rs`, then regenerate `.github/workflows/release-index.yaml`; verify `cargo test -p xtask releases::index` passes and, once committed, `just check-generated` passes
+- [ ] 2.5 Move `nix/devenv/` to `tooling/devenv/` and `nix/AGENTS.md` to `tooling/devenv/AGENTS.md` trimmed to the devenv rules (layout table, where a script goes, generated vs hand-maintained, cleanup, tasks that write what they watch); update `devenv.nix` (`imports = [ ./tooling/devenv ]`, the `readFile ./tooling/devenv/bin/sync-deny-targets`, the two comments) and the comments in `tooling/devenv/{default,mise}.nix` and `tooling/bin/xtauri`; verify `devenv shell -q -- true` enters
+- [ ] 2.6 Update `openspec/config.yaml` (`distribution`'s `code:` → `distribution/`, `package-channels` added to its area list; `toolchain`'s `code:` → `tooling/devenv`) and remove the now-empty `nix/`; verify `rg -nP "(?<!distribution/)nix/(packages|releases|overlay|channel)" --glob "!openspec/**" --glob "!*.lock"` and `rg -n "nix/devenv" --glob "!openspec/**"` are both empty
+
+## 3. Spec and open-change paths
+
+- [ ] 3.1 Confirm the delta specs under `openspec/changes/distribution-tree/specs/` match the moved paths and recipe names; verify `openspec validate distribution-tree --strict` passes
+- [ ] 3.2 Update `deploy/…` paths and `just deploy::…` recipes in the open changes `fleet-roster`, `station-replication`, and `outpost-observability` (proposal, design, tasks, and delta specs) to `distribution/kubernetes/…` and `just dist::kubernetes::…` — `station-replication`'s delta for "Reference manifests describe a one-Station Fleet…" rewrites the requirement wholesale, so its path is changed there too; verify `rg -n "deploy/|deploy::" openspec/changes --glob "!archive/**"` is empty and each change still passes `openspec validate <name> --strict`
+- [ ] 3.3 Update `nix/channel.nix`, `nix/overlay.nix`, `nix/packages/…`, and `nix/releases/` references in the open changes `channel-flavors`, `library-minting`, and `release-groups-guards` — including `release-groups-guards`' `paths = [ "nix/releases/" ]` ruleset — to their `distribution/nix/…` paths; verify `rg -nP "(?<!distribution/)nix/" openspec/changes --glob "!archive/**"` is empty and each change still passes `openspec validate <name> --strict`
+
+## 4. Digests and the manifest route
+
+- [ ] 4.1 Add `digests: BTreeMap<String, String>` (extension → SHA-256 hex) to `ManifestTarget` in `tooling/xtask/src/releases/manifest.rs`, covering every file the run uploads for the target (installers and updater payloads and signatures alike), computed from the staged files; `Manifest::build` takes the staged directory; verify a unit test over a scratch stage asserts every published and updater extension of a target has a digest equal to the file's hash
+- [ ] 4.2 Thread the staged directory into `release-manifest` (`tooling/xtask/src/bin/xtask/tasks/release_manifest.rs`) and the generated publishing step so the manifest is written from what was uploaded; verify the workflow generator tests pass and the regenerated workflow is committed
+- [ ] 4.3 Add the optional `digests` field to `ReleaseManifest` in `website/shared/utils/releases.ts` and keep every reader compiling; verify the website's typecheck recipe passes and `website/shared/utils/releases.test.ts` still passes
+- [ ] 4.4 Add `website/server/routes/api/v1/releases/[channel]/manifest.get.ts` returning `readManifest`'s object verbatim (404 on an unknown channel, `null`-as-missing like `current`), with `/api/v1/releases/**` already excluded from prerendering; verify a route test returns a fixture manifest's bytes unchanged and a 404 for `foo`
+
+## 5. Rendering
+
+- [ ] 5.1 Add `tera` to xtask's dependencies through the workspace `Cargo.toml`; verify `cargo build -p xtask` succeeds and `cargo deny check` stays green
+- [ ] 5.2 Author `distribution/channels.toml` — a table per release channel (`stable`, `preview`, `nightly`), each mapping `brew`, `aur`, `winget`, and `chocolatey` to that release channel's package identity (`waypoints`/`waypoints@preview`/`waypoints@nightly`; `waypoints-bin`/`waypoints-preview-bin`/`waypoints-nightly-bin`; `Waypoints.Waypoints`/`.Preview`/`.Nightly`; `waypoints`/`waypoints-preview`/`waypoints-nightly`) — and its reader in `tooling/xtask/src/dist/`; verify a unit test parses the committed file, rejects a table name that is not a `Channel`, and reports the listed release channels for a distribution channel
+- [ ] 5.3 Implement the render context in `tooling/xtask/src/dist/`: `flavor` (`id` from the registry; `product_name`, `identifier` from `src-tauri/res/configs/flavors/<flavor>.toml`; `executable` from `Channel`), `release` (`tag`, `version` without `v`, `series`), `artifact.<os>_<arch>.<ext>` (`url`, `file_name`, `sha256` from a manifest), and the filters `pkgver`, `winget_version`, `choco_version`; verify unit tests cover each filter (`v0.1.0-pre.2` → `0.1.0pre.2`; `v0.2.0-nightly.3+2026.10.19` → the winget and Chocolatey spellings) and a missing digest fails with the artifact named
+- [ ] 5.4 Add `cargo xtask dist render <channel> --flavor <flavor> [--manifest <path|url>]` (default `https://waypoints.so/api/v1/releases/<flavor>/manifest`) rendering every file under `distribution/<channel>/` — file names through the same context as contents — to `target/dist/<channel>/<flavor>/`, in tera strict mode, writing nothing on failure, and refusing `nix` and `kubernetes` as having nothing to render; verify a test renders a fixture twice and the outputs are byte-identical under identical names, `{{ flavor.id }}.rb` renders to `waypoints@nightly.rb`, and a release channel the registry does not list for the channel is refused naming the listed ones
+- [ ] 5.5 Add `cargo xtask dist check` scanning `distribution/` — excluding `distribution/nix/releases/` — for a concrete tag, a 64-hex digest, or a versioned `/api/v1/releases/` URL; wire `just dist::check` and a step in the pull-request workflow's check job (`tooling/xtask/src/workflows/`); verify a test fixture with a stamped version fails naming the file, the committed `distribution/nix/releases/nightly.json` does not, and the workflow generator tests pass
+- [ ] 5.6 Add a manifest fixture with digests under `tooling/xtask/tests/fixtures/`; verify it round-trips through `Manifest` deserialization
+- [ ] 5.7 Add `.config/treefmt.toml` coverage for the channel files before any is authored: `.nuspec` to the XML formatter; PKGBUILD, `.SRCINFO`, winget YAML, and `.ps1` excluded with a comment naming the absent formatter; `.rb` already under rufo, `channels.toml` under tombi; verify `treefmt --fail-on-change` is clean
+
+## 6. Homebrew
+
+- [ ] 6.1 Author `distribution/brew/{{ flavor.id }}.rb` as one template with placeholders inside string literals: `cask "{{ flavor.id }}"`, `version "{{ release.tag }}"`, `arch arm:`/`os macos: linux:` stanzas, `sha256 arm:` and `x86_64_linux:` from the dmg and AppImage digests, one `url` whose extension comes from `on_system_conditional macos: "dmg", linux: "AppImage"`, `livecheck` with `strategy :json` reading `tag` from `/current`, `auto_updates true`; `on_macos` with `depends_on macos: :sequoia`, `arch: :arm64`, `app`, `uninstall quit:`, `zap trash:` on `~/Library/Application Support/<identifier>` and `Caches`; `on_linux` with `depends_on arch: :x86_64`, `app_image "{{ artifact.linux_amd64.AppImage.file_name }}", target: "<executable>"`, `zap trash:` on `~/.cache`, `~/.config`, `~/.local/share` for the identifier; no `license`, no second `url`, no `binary`; verify `cargo xtask dist render brew --flavor nightly --manifest <fixture>` produces `waypoints@nightly.rb` and rufo/rubocop accept the template under treefmt
+- [ ] 6.2 Add `distribution/brew/justfile` with `audit` running `brew style` and `brew audit --cask` against `target/dist/brew/<flavor>/*.rb` for the host and, with the simulation flags `brew audit --help` documents for OS and architecture, for Linux x86_64, where `brew` exists and reporting skipped otherwise; register `mod brew` in `distribution/justfile`; verify `just dist::brew::audit` passes on macOS for all three release channels and the Linux simulation accepts `app_image` (note the Homebrew version if it predates brew#24343 and rerun after `brew update`)
+- [ ] 6.3 Install the rendered nightly cask from a local tap on a Linux host or container with Homebrew: verify the AppImage lands in the AppImage directory, a desktop entry appears under `~/.local/share/applications` with `Exec` pointing at it, the app launches from it, and `brew uninstall` removes both
+
+## 7. AUR
+
+- [ ] 7.1 Author `distribution/aur/PKGBUILD` and `distribution/aur/.SRCINFO` templates (`pkgname={{ flavor.id }}`) extracting the published deb with bsdtar, `pkgver` from the `pkgver` filter, `sha256sums` from the deb digest, and a `pkgdesc` that names the release channel; verify `cargo xtask dist render aur --flavor stable --manifest <fixture>` renders both files
+- [ ] 7.2 Add `distribution/aur/justfile` with `check` diffing the rendered `.SRCINFO` against `makepkg --printsrcinfo` and running `namcap` where `makepkg` exists, reporting skipped otherwise; register the module; verify the recipe reports skipped on macOS and passes in an Arch container
+
+## 8. winget and Chocolatey
+
+- [ ] 8.1 Author the templates `distribution/winget/{{ flavor.id }}.yaml`, `{{ flavor.id }}.installer.yaml`, `{{ flavor.id }}.locale.en-US.yaml` (`PackageIdentifier: {{ flavor.id }}`, `InstallerType: nsis`, `Scope: user`, `InstallerSha256` from the exe digest, `ProductCode` from the bundle identifier; the description says the app updates itself after installation); verify renders for all three release channels carry the identifier in their file names and pass `winget validate` where available, skipped otherwise
+- [ ] 8.2 Author the templates `distribution/chocolatey/{{ flavor.id }}.nuspec` and `tools/chocolateyinstall.ps1` (`<id>{{ flavor.id }}</id>`, version from `choco_version`; `url64` on the versioned exe, `checksum64` from the digest, `checksumType64 sha256`, `silentArgs /S`, `validExitCodes @(0)`; the description says the app updates itself after installation); verify renders for all three release channels pass `choco pack` where `choco` exists, skipped otherwise
+- [ ] 8.3 Add `distribution/winget/justfile` and `distribution/chocolatey/justfile` with their `check` recipes and register the modules; verify each reports skipped on macOS with a reason
+
+## 9. Integration
+
+- [ ] 9.1 Add a `just dist::check-all` recipe that renders every package channel for every release channel the registry lists against the fixture manifest and runs each channel's `check`; wire it into the pull-request workflow's check job on the macOS runner the release workflow already uses, so `brew audit` runs there while the AUR, winget, and Chocolatey checks report skipped; verify it passes locally and in CI, and the CI log shows exactly which checks ran and which skipped
+- [ ] 9.2 Run `jj fix -s @`, the hook steps, `just check-generated`, `just dist::check`, and `just dist::kubernetes::lint`; verify all green
+
+## Workflow follow-up
+
+- The first nightly after merge records the first `distribution/nix/releases/nightly.json` entry through its index pull request and closes the `waypoints.nightly` evaluation gap.
+- A distribute workflow, triggered by a successful release, renders from the registry and submits upstream — self-merging pull requests where the upstream is ours, and per-upstream cadence rules where it is not; a Windows signing identity precedes submitting to winget and Chocolatey.
+- Archive this change once the first nightly after merge has written a manifest with digests and `just dist::check-all` is green in CI.
