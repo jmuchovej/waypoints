@@ -72,6 +72,7 @@
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
+    itertools          = "0.15.0"
     # No remote `$ref` resolution: a Bundle's schemas are self-contained, and an
     # ingester must never reach the network. `arbitrary-precision` tracks the
     # workspace's own `serde_json` feature — without it, numeric validation reads

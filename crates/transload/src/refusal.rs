@@ -4,10 +4,13 @@
 //! returns them as a structure a caller can render. A refused Bundle leaves the
 //! store untouched.
 
+use derive_more::with_trait::Display;
 use domain::{ChartID, FeatureID, MarkID};
+use itertools::Itertools;
 
 /// Where in a Bundle something was found.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Display)]
+#[display("{file}{}", line.map(|l| format!(":{l}")).unwrap_or_default())]
 pub struct Location {
     /// The Bundle-relative file path.
     pub file: String,
@@ -33,18 +36,10 @@ impl Location {
     }
 }
 
-impl std::fmt::Display for Location {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.line {
-            Some(line) => write!(f, "{}:{line}", self.file),
-            None => write!(f, "{}", self.file),
-        }
-    }
-}
-
 /// One `id` carried with divergent content by more than one file — Bundle
 /// surgery, or a hand-merge that went wrong.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Display)]
+#[display("{id} differs between {}", files.join(", "))]
 pub struct DuplicateConflict {
     /// The Mark id that disagrees with itself.
     pub id: MarkID,
@@ -55,7 +50,11 @@ pub struct DuplicateConflict {
 
 /// A Bundle's builtin Chart asking for more than the application's builtin can
 /// give. Refusal, not silent narrowing.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Display)]
+#[display(
+  "builtin Chart `{chart}` requires features this build lacks: {}",
+  missing_features.iter().join(", ")
+)]
 pub struct ChartConflict {
     /// The builtin binding the Bundle named.
     pub chart: ChartID,
@@ -65,7 +64,8 @@ pub struct ChartConflict {
 }
 
 /// A Bundle that does not hold together.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Display)]
+#[display("{at}: {kind}")]
 pub struct Malformed {
     /// Where the problem is.
     pub at: Location,
@@ -74,13 +74,18 @@ pub struct Malformed {
 }
 
 /// The ways a Bundle can fail to be one.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Display)]
 pub enum MalformedKind {
     /// An identity comment keyed by importer provenance (`src`) rather than an
     /// `id`: Fragment grammar, refused rather than resolved.
+    #[display("a `src`-keyed identity, which an export-Bundle never carries")]
     SourceKeyedIdentity,
     /// An annotative `terrain.jsonl` line whose natural key matches no edge
     /// reconstructible from the projection.
+    #[display(
+      "an annotative `{kind}` line ({src} → {dst}, order {}) matching no projected edge",
+      order.map(|o| o.to_string()).unwrap_or_else(|| "—".to_string())
+    )]
     OrphanAnnotativeEdge {
         /// The line's source endpoint.
         src: MarkID,
@@ -92,6 +97,7 @@ pub enum MalformedKind {
         order: Option<u32>,
     },
     /// A reading that violates its Chart's schema.
+    #[display("reading `{feature}` violates its Chart's schema: {detail}")]
     SchemaViolation {
         /// The feature whose reading is invalid.
         feature: FeatureID,
@@ -100,53 +106,29 @@ pub enum MalformedKind {
     },
     /// Content the Bundle format does not define here — a reserved directory
     /// that was emitted, or a file the layout has no place for.
+    #[display("unknown content: {detail}")]
     UnknownContent {
         /// What was found.
         detail: String,
     },
     /// The dialect, frontmatter, or sidecar grammar did not parse.
+    #[display("{detail}")]
     Grammar {
         /// What failed to parse.
         detail: String,
     },
 }
 
-impl std::fmt::Display for MalformedKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SourceKeyedIdentity => {
-                write!(
-                    f,
-                    "a `src`-keyed identity, which an export-Bundle never carries"
-                )
-            }
-            Self::OrphanAnnotativeEdge {
-                src,
-                dst,
-                kind,
-                order,
-            } => write!(
-                f,
-                "an annotative `{kind}` line ({src} → {dst}, order {}) matching no projected edge",
-                order
-                    .map(|ordinal| ordinal.to_string())
-                    .unwrap_or_else(|| "—".to_string())
-            ),
-            Self::SchemaViolation { feature, detail } => {
-                write!(
-                    f,
-                    "reading `{feature}` violates its Chart's schema: {detail}"
-                )
-            }
-            Self::UnknownContent { detail } => write!(f, "unknown content: {detail}"),
-            Self::Grammar { detail } => write!(f, "{detail}"),
-        }
-    }
-}
-
 /// Everything wrong with one Bundle, collected rather than thrown one at a
 /// time — a hand-edited Bundle deserves the whole list.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Display)]
+#[display(
+  "{}",
+  duplicates.iter().map(ToString::to_string)
+  .chain(charts.iter().map(ToString::to_string))
+  .chain(malformed.iter().map(ToString::to_string))
+  .join("\n")
+)]
 pub struct Refusal {
     /// Same-`id` Marks whose content disagrees.
     pub duplicates: Vec<DuplicateConflict>,
@@ -169,49 +151,6 @@ impl Refusal {
         } else {
             Err(IngestError::Refused(Box::new(self)))
         }
-    }
-}
-
-impl std::fmt::Display for Refusal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut first = true;
-        let mut line = |f: &mut std::fmt::Formatter<'_>| -> std::fmt::Result {
-            if first {
-                first = false;
-                Ok(())
-            } else {
-                writeln!(f)
-            }
-        };
-        for duplicate in &self.duplicates {
-            line(f)?;
-            write!(
-                f,
-                "{} differs between {}",
-                duplicate.id,
-                duplicate.files.join(", ")
-            )?;
-        }
-        for conflict in &self.charts {
-            line(f)?;
-            let missing: Vec<_> = conflict
-                .missing_features
-                .iter()
-                .map(ToString::to_string)
-                .collect();
-            write!(
-                f,
-                // Raw id, not `Display`, which strips `builtin.`.
-                "builtin Chart `{}` requires features this build lacks: {}",
-                crate::layout::chart_id(&conflict.chart),
-                missing.join(", ")
-            )?;
-        }
-        for malformed in &self.malformed {
-            line(f)?;
-            write!(f, "{}: {}", malformed.at, malformed.kind)?;
-        }
-        Ok(())
     }
 }
 
@@ -251,6 +190,21 @@ mod tests {
     #[test]
     fn an_empty_refusal_is_not_an_error() {
         assert!(Refusal::default().into_result().is_ok());
+    }
+
+    #[test]
+    fn a_single_class_refusal_has_no_blank_lines() {
+        let refusal = Refusal {
+            duplicates: vec![DuplicateConflict {
+                id: mark(7),
+                files: vec!["a.md".into(), "b.md".into()],
+            }],
+            ..Refusal::default()
+        };
+        assert_eq!(
+            refusal.to_string(),
+            "00000000-0000-0000-0000-000000000007 differs between a.md, b.md"
+        );
     }
 
     #[test]
