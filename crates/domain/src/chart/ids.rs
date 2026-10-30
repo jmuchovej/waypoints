@@ -4,13 +4,14 @@
 //! [F]: super::Feature
 //! [S]: super::Select
 use crate::{DomainError, DomainResult};
-use derive_more::{Debug, Display, FromStr};
+use derive_more::{AsRef, Debug, Display, FromStr};
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use uuid::Uuid;
 
 const BASE36ID_LEN: usize = 4;
+const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
 
 /// Base-36 encoded identifier newtype. (Currently 4-character limit.)
 ///
@@ -27,7 +28,6 @@ impl Base36ID {
         let mut rng = rand::rng();
         let mut id = String::with_capacity(BASE36ID_LEN);
 
-        const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
         for _ in 0..BASE36ID_LEN {
             let idx = rng.random_range(0..CHARS.len());
             id.push(CHARS[idx] as char);
@@ -41,7 +41,6 @@ impl Base36ID {
     pub fn derived(key: &str) -> Self {
         use sha2::{Digest, Sha256};
 
-        const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
         let digest = Sha256::digest(key.as_bytes());
         let mut prefix = [0u8; 8];
         prefix.copy_from_slice(&digest[..8]);
@@ -105,7 +104,19 @@ impl std::str::FromStr for Base36ID {
 ///
 /// [C]: super::Chart
 #[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type, bedrock::Scalar,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Display,
+    Type,
+    bedrock::Scalar,
+    AsRef,
+    Ord,
+    PartialOrd,
 )]
 #[display("{}", self.name())]
 #[debug("ChartID({})", self.name())]
