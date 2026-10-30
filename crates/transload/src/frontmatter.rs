@@ -68,7 +68,7 @@ pub fn emit(front: &Frontmatter, advisory: &Advisory, links: &dyn Links) -> Stri
     push_line(
         &mut out,
         0,
-        &format!("chart: {}", plain(crate::layout::chart_id(&front.chart))),
+        &format!("chart: {}", plain(&front.chart.as_ref())),
     );
     if let Some(icon) = &front.icon {
         // JSON is a subset of YAML, so a compact flow mapping is valid and

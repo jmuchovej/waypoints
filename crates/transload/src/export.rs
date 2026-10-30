@@ -87,7 +87,7 @@ pub async fn export(db: &Database, meta: &ExportMeta) -> Result<Exported, Export
         let MarkData::Landmark(data) = &root.data else {
             continue;
         };
-        let key = layout::chart_id(&data.chart);
+        let key = data.chart.as_ref();
         match live.charts.get(key) {
             Some(chart) => {
                 charts.insert(key.to_string(), chart);
@@ -107,10 +107,7 @@ pub async fn export(db: &Database, meta: &ExportMeta) -> Result<Exported, Export
     }
 
     for root in live.landmarks() {
-        out.landmark(
-            root,
-            charts.get(layout::chart_id(&landmark_chart(root))).copied(),
-        );
+        out.landmark(root, charts.get(landmark_chart(root).as_ref()).copied());
     }
 
     for id in &live.content {

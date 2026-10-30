@@ -37,26 +37,19 @@ pub mod layout {
     /// either as unknown content rather than guessing at it.
     pub const RESERVED: [&str; 2] = ["assets", "beacons"];
 
-    /// A Chart id as a Bundle spells it, `builtin.` prefix included. Not
-    /// `Display`, which strips the prefix and would collapse `builtin.page`
-    /// onto a custom Chart named `page`.
-    pub fn chart_id(chart: &ChartID) -> &str {
-        chart.0.as_str()
-    }
-
     /// `library/<ChartID>/<MarkID>.md`
     pub fn landmark(chart: &ChartID, mark: &MarkID) -> String {
-        format!("{LIBRARY}/{}/{mark}.md", chart_id(chart))
+        format!("{}/{mark}.md", chart_dir(chart))
     }
 
     /// `library/<ChartID>/_schema.json`
     pub fn schema(chart: &ChartID) -> String {
-        format!("{LIBRARY}/{}/{SCHEMA}", chart_id(chart))
+        format!("{}/{SCHEMA}", chart_dir(chart))
     }
 
     /// `library/<ChartID>`
     pub fn chart_dir(chart: &ChartID) -> String {
-        format!("{LIBRARY}/{}", chart_id(chart))
+        format!("{LIBRARY}/{}", &chart)
     }
 }
 

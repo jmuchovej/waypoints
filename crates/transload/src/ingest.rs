@@ -256,7 +256,7 @@ impl<'a> Stager<'a> {
             return Ok(());
         }
         let chart = schema::read(&document).expect("consistent, so readable");
-        if layout::chart_id(&chart.id) != dir {
+        if chart.id.as_ref() != dir {
             self.malformed(
                 at,
                 MalformedKind::Grammar {
@@ -311,7 +311,7 @@ impl<'a> Stager<'a> {
             Ok(front) => front,
             Err(kind) => return self.malformed(at(), kind),
         };
-        if layout::chart_id(&front.chart) != dir {
+        if front.chart.as_ref() != dir {
             return self.malformed(
                 at(),
                 MalformedKind::Grammar {
