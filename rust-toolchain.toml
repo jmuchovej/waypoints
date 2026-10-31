@@ -24,4 +24,8 @@
     # Android (x86_64 only serves the emulator on non-ARM hosts)
     "aarch64-linux-android",
     "x86_64-linux-android",
+
+    # WebAssembly (importer plugins; `wasip1` is the proven target, `unknown-unknown` the experiment)
+    "wasm32-wasip1",
+    "wasm32-unknown-unknown",
   ]
