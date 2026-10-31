@@ -33,7 +33,7 @@ pub enum BedrockError {
 
     /// A schema change could not be applied automatically (it was destructive).
     #[error(transparent)]
-    Migration(#[from] crate::migrate::MigrationError),
+    Migration(#[from] crate::engine::migrate::MigrationError),
 
     /// The database on disk was stamped with a different `user_version` than the
     /// one the caller requires.

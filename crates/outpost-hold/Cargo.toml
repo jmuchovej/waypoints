@@ -13,7 +13,7 @@ Outpost Hold — the storage interface for Outpost records.
   publish.workspace  = true
 
 [dependencies]
-  bedrock.workspace = true
+  bedrock = { workspace = true, features = [ "engine" ] }
 
   blake3.workspace           = true
   bytes.workspace            = true

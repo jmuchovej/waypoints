@@ -11,8 +11,8 @@
   publish.workspace       = true
 
 [dependencies]
-  bedrock.workspace = true
-  domain            = { workspace = true, features = [ "syntax" ] }
+  bedrock = { workspace = true, features = [ "engine" ] }
+  domain  = { workspace = true, features = [ "syntax" ] }
 
   chrono.workspace     = true
   derive_more          = { workspace = true, features = [ "display" ] }

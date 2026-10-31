@@ -30,7 +30,9 @@
     publish       = false
 
   [workspace.dependencies]
-    bedrock          = { path = "crates/bedrock" }
+    # No default features: the façade alone. Crates that open a database
+    # enable `engine` on their own line, so the manifests say who reaches it.
+    bedrock          = { path = "crates/bedrock", default-features = false }
     bedrock-core     = { path = "crates/bedrock-core" }
     bedrock-derive   = { path = "crates/bedrock-derive" }
     cartograph       = { path = "crates/cartograph" }

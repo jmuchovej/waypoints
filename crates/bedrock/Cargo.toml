@@ -16,31 +16,27 @@ Bedrock — the database engine for Waypoints, built on Turso.
 # and SIGKILLed mid-write. Dev-only in spirit — the package is publish = false,
 # so the extra target costs nothing beyond its own compile.
 [[bin]]
-  name = "crash-victim"
-  path = "src/bin/crash_victim.rs"
+  name              = "crash-victim"
+  path              = "src/bin/crash_victim.rs"
+  required-features = [ "engine" ]
 
 [dependencies]
   bedrock-core.workspace   = true
   bedrock-derive.workspace = true
 
-  indoc.workspace      = true
+  indoc                = { workspace = true, optional = true }
   serde_json.workspace = true
   thiserror.workspace  = true
   # "rt" is for the crash-victim bin (bins build with regular deps, not
   # dev-deps); the library itself only needs "sync".
-  tokio                = { workspace = true, features = [ "rt" ] }
-  tracing.workspace    = true
-  turso.workspace      = true
+  tokio                = { workspace = true, features = [ "rt" ], optional = true }
+  tracing              = { workspace = true, optional = true }
+  turso                = { workspace = true, optional = true }
   # Direct dependency for two reasons: it makes the workspace's exact engine
   # clamp bind (the facade alone would let turso_core float within its caret
   # range), and it is the honest path for the engine types bedrock uses
   # (`SyncMode`).
-  turso_core.workspace = true
-
-# bionic refuses initial-exec TLS in a dlopened library; turso's mimalloc
-# defaults to it.
-[target.'cfg(target_os = "android")'.dependencies]
-  mimalloc = { workspace = true, features = [ "local_dynamic_tls" ] }
+  turso_core           = { workspace = true, optional = true }
 
 [dev-dependencies]
   chrono.workspace   = true
@@ -52,6 +48,26 @@ Bedrock — the database engine for Waypoints, built on Turso.
 [build-dependencies]
   # Reads the resolved turso_core version out of Cargo.lock (see build.rs).
   cargo-lock.workspace = true
+
+# bionic refuses initial-exec TLS in a dlopened library; turso's mimalloc
+# defaults to it.
+[target.'cfg(target_os = "android")'.dependencies]
+  mimalloc = { workspace = true, features = [ "local_dynamic_tls" ], optional = true }
+
+[features]
+  default = [ "engine" ]
+  # The turso-backed engine. Off, the crate is the `bedrock-core` vocabulary
+  # plus the derives — the surface a crate needs to *define* collections
+  # without ever opening a database (a grammar-only build, a WebAssembly
+  # module).
+  engine  = [
+    "dep:indoc",
+    "dep:mimalloc",
+    "dep:tokio",
+    "dep:tracing",
+    "dep:turso",
+    "dep:turso_core",
+  ]
 
 [lints]
   workspace = true

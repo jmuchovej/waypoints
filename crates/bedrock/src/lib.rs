@@ -20,31 +20,38 @@
 //! only on `bedrock` can define and store its types without ever naming
 //! `bedrock-core` or `bedrock-derive`.
 
-mod config;
-mod database;
-mod ddl;
-mod durability;
-mod error;
-mod explain;
-mod migrate;
-mod pool;
-mod query;
-mod tx;
-mod value;
+#[cfg(feature = "engine")]
+mod engine {
+    pub(crate) mod config;
+    pub(crate) mod database;
+    pub(crate) mod ddl;
+    pub(crate) mod durability;
+    pub(crate) mod error;
+    pub(crate) mod explain;
+    pub(crate) mod migrate;
+    pub(crate) mod pool;
+    pub(crate) mod query;
+    pub(crate) mod tx;
+    pub(crate) mod value;
+
+    // The synchronous level is the engine's own type, re-exported: `Config` takes
+    // it and the durability readback reports it. (The engine's `JournalMode` is
+    // crate-private upstream, so that one is bedrock's — see `durability`.)
+    pub use turso_core::SyncMode;
+}
 
 // Engine surface (this crate).
-pub use config::Config;
-pub use database::Database;
-pub use durability::{DurabilityFault, DurabilityState, ENGINE_VERSION, FlushMode, JournalMode};
-pub use error::BedrockError;
-pub use explain::QueryPlan;
-pub use migrate::MigrationError;
-pub use tx::{ReadTx, Savepoint, WriteTx};
-
-// The synchronous level is the engine's own type, re-exported: `Config` takes
-// it and the durability readback reports it. (The engine's `JournalMode` is
-// crate-private upstream, so that one is bedrock's — see `durability`.)
-pub use turso_core::SyncMode;
+#[cfg(feature = "engine")]
+pub use engine::{
+    SyncMode,
+    config::Config,
+    database::Database,
+    durability::{DurabilityFault, DurabilityState, ENGINE_VERSION, FlushMode, JournalMode},
+    error::BedrockError,
+    explain::QueryPlan,
+    migrate::MigrationError,
+    tx::{ReadTx, Savepoint, WriteTx},
+};
 
 pub(crate) use bedrock_core as core;
 

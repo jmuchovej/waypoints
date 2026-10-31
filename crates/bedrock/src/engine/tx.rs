@@ -6,11 +6,12 @@
 //! connection mid-transaction, and the pool rolls it back on next acquisition
 //! (see [`crate::pool`]).
 
-use crate::{
-    BedrockError, Collection, WriteOp, ddl,
+use super::{
+    ddl,
     pool::{ReadGuard, WriteGuard},
     value,
 };
+use crate::{BedrockError, Collection, WriteOp};
 use std::sync::atomic::{AtomicU64, Ordering};
 use turso::{IntoParams, Rows};
 

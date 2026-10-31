@@ -11,10 +11,11 @@
 //! dropped, uncommitted [`WriteTx`](crate::WriteTx)) is cleaned with a
 //! `ROLLBACK` on its *next* acquisition rather than on release.
 
-use crate::{
-    BedrockError, Config, SyncMode,
+use super::{
+    SyncMode,
     durability::{self, DurabilityFault, JournalMode},
 };
+use crate::{BedrockError, Config};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicUsize, Ordering},
