@@ -125,7 +125,10 @@
     tracing-subscriber = { version = "0.3.23", features = [ "env-filter" ] }
     trybuild           = "1"
     typed-builder      = "0.23.2"
-    uuid               = { version = "1.23.4", features = [ "js", "serde", "v4" ] }
+    # `serde` only. Minting (`v4`) is enabled by the crates that mint, off
+    # wasm32 — a plugin build never gets it, and `js` (a JavaScript host for
+    # randomness and timestamps) is nothing this workspace targets.
+    uuid               = { version = "1.23.4", features = [ "serde" ] }
     validator          = { version = "0.20.0", features = [ "indexmap" ] }
     zeroize            = { version = "1", features = [ "zeroize_derive" ] }
 

@@ -11,7 +11,10 @@ use typed_builder::TypedBuilder;
 #[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize, Type)]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct SelectOption {
-    #[builder(default, setter(skip))]
+    // Minted on construction off wasm32; a wasm32 build (an importer plugin)
+    // must supply one, since it cannot mint.
+    #[cfg_attr(not(target_arch = "wasm32"), builder(default, setter(skip)))]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub id: GlyphID,
     #[builder(
       via_mutators,
@@ -32,7 +35,8 @@ pub struct SelectOption {
 #[derive(Debug, Clone, TypedBuilder, PartialEq, Serialize, Deserialize, Type)]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct SelectGroup {
-    #[builder(default, setter(skip))]
+    #[cfg_attr(not(target_arch = "wasm32"), builder(default, setter(skip)))]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub id: GlyphID,
     #[builder(
       via_mutators,
@@ -121,6 +125,8 @@ impl SelectGroup {
     }
 }
 
+// Mints the option's id; off wasm32 only, like every minting path.
+#[cfg(not(target_arch = "wasm32"))]
 impl From<String> for SelectOption {
     fn from(name: String) -> Self {
         SelectOption::builder()

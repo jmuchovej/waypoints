@@ -16,7 +16,8 @@ pub struct Chart {
     /// Waypoints to reference [`Charts`][Chart] in a way that's not contingent names
     /// (which a user could arbitrarily change).
     #[bedrock(id)]
-    #[builder(setter(skip))]
+    #[cfg_attr(not(target_arch = "wasm32"), builder(setter(skip)))]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub id: ChartID,
 
     /// A human-readable name for the [`Chart`].
