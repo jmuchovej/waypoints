@@ -1,11 +1,9 @@
+use super::{ddl, durability, explain, migrate, pool::Pool, query, value};
 use crate::{
     BedrockError, Config, FlushMode, QueryPlan, ReadTx, WriteTx,
     core::{
         Collection, CollectionSpec, Field, Filter, Query, StoredValue, Update, ViewSpec, WriteOp,
     },
-    ddl, durability, explain, migrate,
-    pool::Pool,
-    value,
 };
 use turso::Connection;
 
@@ -270,7 +268,7 @@ impl Database {
                 Some(_) => {}
             }
         }
-        let (sql, params) = crate::query::update_statement(&spec.name, filter, update);
+        let (sql, params) = query::update_statement(&spec.name, filter, update);
         let conn = self.pool.write().await?;
         Ok(conn.execute(sql, params).await?)
     }
@@ -412,7 +410,7 @@ impl Database {
     pub async fn query<C: Collection>(&self, query: &Query) -> Result<Vec<C>, BedrockError> {
         let spec = C::spec();
         let is_document: Vec<bool> = spec.fields.iter().map(|f| f.is_document()).collect();
-        let (suffix, params) = crate::query::suffix(query);
+        let (suffix, params) = query::suffix(query);
         let sql = format!("{}{}", ddl::select_all(&spec), suffix);
         let conn = self.pool.read().await?;
         let mut rows = conn.query(sql, params).await?;
@@ -442,7 +440,7 @@ impl Database {
         query: &Query,
     ) -> Result<QueryPlan, BedrockError> {
         let spec = C::spec();
-        let (suffix, params) = crate::query::suffix(query);
+        let (suffix, params) = query::suffix(query);
         let sql = format!("{}{}", ddl::select_all(&spec), suffix);
         let conn = self.pool.read().await?;
         explain::plan(&conn, sql, params).await
@@ -455,7 +453,7 @@ impl Database {
         name: &str,
         query: &Query,
     ) -> Result<QueryPlan, BedrockError> {
-        let (suffix, params) = crate::query::suffix(query);
+        let (suffix, params) = query::suffix(query);
         let sql = format!("{}{}", ddl::select_view(name), suffix);
         let conn = self.pool.read().await?;
         explain::plan(&conn, sql, params).await
@@ -470,7 +468,7 @@ impl Database {
         update: &Update,
     ) -> Result<QueryPlan, BedrockError> {
         let spec = C::spec();
-        let (sql, params) = crate::query::update_statement(&spec.name, filter, update);
+        let (sql, params) = query::update_statement(&spec.name, filter, update);
         let conn = self.pool.read().await?;
         explain::plan(&conn, sql, params).await
     }
@@ -481,7 +479,7 @@ impl Database {
         head: String,
         query: &Query,
     ) -> Result<Vec<Vec<StoredValue>>, BedrockError> {
-        let (suffix, params) = crate::query::suffix(query);
+        let (suffix, params) = query::suffix(query);
         let conn = self.pool.read().await?;
         let mut rows = conn.query(format!("{head}{suffix}"), params).await?;
         let mut out = Vec::new();

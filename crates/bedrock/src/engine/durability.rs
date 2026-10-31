@@ -4,9 +4,9 @@
 //! crash sentinels, shutdown hooks — is runtime policy that belongs to the
 //! caller.
 
+use super::SyncMode;
 use crate::BedrockError;
 use turso::Connection;
-use turso_core::SyncMode;
 
 /// The engine version bedrock was built against: the `turso_core` release
 /// resolved in the workspace lockfile, recorded at build time (see

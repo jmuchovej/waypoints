@@ -1,7 +1,7 @@
 //! How a database is opened: read-pool size, per-connection pragmas, and the
 //! enforced schema version.
 
-use crate::SyncMode;
+use super::SyncMode;
 use std::collections::BTreeMap;
 
 /// Options for [`Database::open_with`](crate::Database::open_with).

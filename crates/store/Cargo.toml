@@ -11,7 +11,7 @@
   publish.workspace       = true
 
 [dependencies]
-  bedrock.workspace          = true
+  bedrock                    = { workspace = true, features = [ "engine" ] }
   domain.workspace           = true
   # Scoped to the sync-owned tables in `query::sync` — see that module's doc.
   outpost-protocol.workspace = true

@@ -7,7 +7,8 @@
 //! Use it in tests to pin down how the Mongo-style operators translate and to
 //! catch a filter that should seek an index but plans as a scan.
 
-use crate::{BedrockError, core::StoredValue, value};
+use super::value;
+use crate::{BedrockError, core::StoredValue};
 use turso::Connection;
 
 /// A lowered bedrock operation: the SQL, its bound parameters, and the engine's
