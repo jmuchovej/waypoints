@@ -23,7 +23,9 @@ use typed_builder::TypedBuilder;
 #[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
 #[builder(field_defaults(setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Feature {
-    #[builder(default, setter(skip))]
+    // Minted on construction off wasm32; a wasm32 build (an importer plugin)
+    // must supply one, since it cannot mint.
+    #[cfg_attr(not(target_arch = "wasm32"), builder(default, setter(skip)))]
     pub id: FeatureID,
 
     #[builder(

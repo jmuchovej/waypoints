@@ -353,7 +353,9 @@ impl Content {
 #[derive(Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type)]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
 pub struct Landmark {
-    /// The schema this landmark conforms to
+    /// The schema this landmark conforms to. Defaults to a freshly minted
+    /// `ChartID` off wasm32; a wasm32 build (an importer plugin) must name one.
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub chart: ChartID,
 
     /// Title (always present, rich text capable)

@@ -21,15 +21,18 @@ pub struct Terrain {
     /// updating a single edge among several of the same kind between the
     /// same endpoints).
     #[bedrock(id)]
-    #[builder(default, setter(skip))]
+    #[cfg_attr(not(target_arch = "wasm32"), builder(default, setter(skip)))]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub id: TerrainID,
 
     /// The directed edge this block is coming from
     #[bedrock(index)]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub src_id: MarkID,
 
     /// The directed edge this block is going to
     #[bedrock(index)]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub dst_id: MarkID,
 
     /// What kind of edge is this? Stored as an indexed flattened string.

@@ -11,6 +11,8 @@
   publish.workspace       = true
 
 [dependencies]
+  # The façade only: the vocabulary the derives resolve against. The engine is
+  # a feature the crates that open databases enable for themselves.
   bedrock.workspace = true
 
   chrono.workspace            = true
@@ -28,7 +30,6 @@
   }
   indexmap.workspace          = true
   pulldown-cmark              = { workspace = true, optional = true }
-  rand.workspace              = true
   serde.workspace             = true
   serde_json.workspace        = true
   sha2.workspace              = true
@@ -38,6 +39,14 @@
   typed-builder.workspace     = true
   uuid.workspace              = true
   validator.workspace         = true
+
+# Minting and the clock are the core's. A wasm32 build (an importer plugin)
+# gets the types and none of this: no entropy, no `now`, so nothing in its
+# graph can ask a host for either.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+  chrono         = { workspace = true, features = [ "now" ] }
+  rand.workspace = true
+  uuid           = { workspace = true, features = [ "v4" ] }
 
 [features]
   default     = []

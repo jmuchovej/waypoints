@@ -75,7 +75,9 @@ pub(crate) mod mark {
     pub(crate) mod rich_reference;
     pub(crate) mod rich_text;
 
-    pub use mark::{Mark, MarkID, now_ms};
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use mark::now_ms;
+    pub use mark::{Mark, MarkID};
     pub use mark_data::{BlockTheme, Content, Landmark, MarkData, MathEngine, Size};
     pub use reading::Reading;
     pub use rich_reference::{ReferenceDisplayMode, RichReference};
@@ -89,9 +91,11 @@ pub(crate) mod mark {
     }
     pub use builders::MarkBuilder;
 }
+#[cfg(not(target_arch = "wasm32"))]
+pub use mark::now_ms;
 pub use mark::{
     BlockTheme, Content, InlineMark, Landmark, Mark, MarkBuilder, MarkData, MarkID, MathEngine,
-    Reading, ReferenceDisplayMode, RichText, Size, TextMarkKind, TextSegment, now_ms,
+    Reading, ReferenceDisplayMode, RichText, Size, TextMarkKind, TextSegment,
 };
 
 /// The markdown dialect `Content` and `RichText` project into, documented at

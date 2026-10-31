@@ -2,6 +2,7 @@ use super::{Content, Landmark, MarkData};
 use crate::{DomainError, DomainResult, Json};
 use chrono::NaiveDateTime;
 use derive_more::{Debug, Display, FromStr};
+#[cfg(not(target_arch = "wasm32"))]
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -10,6 +11,7 @@ use uuid::Uuid;
 
 /// The current UTC time, truncated to milliseconds — the engine's `timestamp`
 /// columns store millisecond precision and reject anything finer.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn now_ms() -> NaiveDateTime {
     chrono::DateTime::from_timestamp_millis(chrono::Utc::now().timestamp_millis())
         .expect("current time is a valid millisecond timestamp")
@@ -20,6 +22,7 @@ pub fn now_ms() -> NaiveDateTime {
 ///
 /// Insert-class writes (`insert`, `insert_all`, `upsert`) preserve the caller's
 /// timestamps so Bundle ingest can restore them; `update` stamps.
+#[cfg(not(target_arch = "wasm32"))]
 fn touch(mut mark: Mark, op: bedrock::WriteOp) -> Mark {
     match op {
         bedrock::WriteOp::Update => mark.updated_at = now_ms(),
@@ -51,6 +54,7 @@ pub struct MarkID(pub Uuid);
 
 impl MarkID {
     /// Create a new, random, [`Mark`] id (which is a [`Uuid::new_v4`]).
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
@@ -67,6 +71,7 @@ impl From<Uuid> for MarkID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for MarkID {
     fn default() -> Self {
         Self::new()
@@ -77,14 +82,15 @@ impl Default for MarkID {
     Debug, Clone, PartialEq, TypedBuilder, Serialize, Deserialize, Type, bedrock::Collection,
 )]
 #[builder(field_defaults(default, setter(strip_option(ignore_invalid), prefix = "with_")))]
-#[bedrock(before_save = touch)]
+#[cfg_attr(not(target_arch = "wasm32"), bedrock(before_save = touch))]
 pub struct Mark {
     /// A unique identifier for the [`Mark`]. This is more thoroughly detailed in
     /// [`MarkID`], but the aim here is to have a high-capacity, unique identifier that
     /// allows Waypoints to reference [`Marks`][Mark] in a way that's not contingent the
     /// data held by the [`Mark`] (which a user could arbitrarily change).
     #[bedrock(id)]
-    #[builder(default, setter(skip))]
+    #[cfg_attr(not(target_arch = "wasm32"), builder(default, setter(skip)))]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub id: MarkID,
 
     /// The actual data held by the [`Mark`]. This will take the form of either
@@ -118,13 +124,15 @@ pub struct Mark {
     pub extra: Option<Json>,
 
     /// When the [`Mark`] was created. Defaults to now; a caller (e.g. an import)
-    /// may set it explicitly.
-    #[builder(default = now_ms())]
+    /// may set it explicitly. A wasm32 build has no clock and must set it.
+    #[cfg_attr(not(target_arch = "wasm32"), builder(default = now_ms()))]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub created_at: NaiveDateTime,
 
     /// When the [`Mark`] was last written. Stamped by the before-save hook on
     /// update-class writes; insert-class writes keep the caller's value.
-    #[builder(default = now_ms())]
+    #[cfg_attr(not(target_arch = "wasm32"), builder(default = now_ms()))]
+    #[cfg_attr(target_arch = "wasm32", builder(!default))]
     pub updated_at: NaiveDateTime,
 
     /// Soft-delete tombstone: set when the [`Mark`] is removed; live reads
