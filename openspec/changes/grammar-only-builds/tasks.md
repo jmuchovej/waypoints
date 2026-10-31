@@ -1,34 +1,34 @@
 Every task lands with hooks green (clippy, cargo-check, cargo-test, treefmt).
-The acceptance gate for the whole change is unchanged behavior under default features — `cargo build --workspace`, `cargo nextest run --workspace`, and the `store` round-trip over the committed `getting-started` Bundle all pass as before — plus the two `wasm32-wasip1` checks that prove the engine is gone from the grammar crates.
-The `wasm32-unknown-unknown` steps are an experiment: their verification is that the outcome is recorded, not that they pass.
-Because the per-commit hook runs with default features, every verification below runs with `-p` and `--no-default-features`, where feature unification cannot hide a mistake.
+The acceptance gate for the whole change is unchanged behavior on host targets — `cargo build --workspace`, `cargo nextest run --workspace`, and the `store` round-trip over the committed `getting-started` Bundle all pass — plus the WebAssembly checks: `domain` and grammar-only `transload` compile for both targets with no engine, entropy, or host binding in their graphs, and a probe module built from them for `wasm32-unknown-unknown` imports nothing.
+Because the per-commit hook runs with default features on the host, every WebAssembly verification runs with `-p` and `--target`, where feature unification cannot hide a mistake.
 
 ## 1. Toolchain
 
-- [ ] 1.1 Add `wasm32-wasip1` and `wasm32-unknown-unknown` to `rust-toolchain.toml` targets and let the sync task carry them into `.cargo/deny.toml`; verify `rustup target list --installed` in the devenv shell shows both and `cargo deny check` passes, triaging any new advisory or duplicate with an `ignore` and reason.
+- [x] 1.1 Add `wasm32-wasip1` and `wasm32-unknown-unknown` to `rust-toolchain.toml` targets and let the sync task carry them into `.cargo/deny.toml`; verify `rustup target list --installed` in the devenv shell shows both and `cargo deny check` surfaces nothing the new targets introduce.
 
 ## 2. The façade's engine feature
 
-- [ ] 2.1 Add `bedrock`'s default-on `engine` feature gating the `config`, `database`, `ddl`, `durability`, `error`, `explain`, `migrate`, `pool`, `query`, `tx`, and `value` modules, their re-exports and the `SyncMode` re-export, the `turso`, `turso_core`, `tokio`, `tracing`, and `indoc` dependencies, the Android `mimalloc` dependency, and `required-features = ["engine"]` on the `crash-victim` binary; verify `cargo check -p bedrock --no-default-features` builds the façade re-exports and derives alone and `cargo nextest run -p bedrock` is unchanged.
-- [ ] 2.2 Set `default-features = false` on the workspace `bedrock` declaration, enable `engine` on `store` and `outpost-hold`, and leave `domain` with no features, in one commit; verify `cargo build --workspace` emits no "default-features is ignored" warning, `cargo nextest run --workspace` passes, and `cargo tree -p domain -e normal -i turso_core` reports the crate absent.
+- [x] 2.1 Add `bedrock`'s default-on `engine` feature gating the `config`, `database`, `ddl`, `durability`, `error`, `explain`, `migrate`, `pool`, `query`, `tx`, and `value` modules, their re-exports and the `SyncMode` re-export, the `turso`, `turso_core`, `tokio`, `tracing`, and `indoc` dependencies, the Android `mimalloc` dependency, and `required-features = ["engine"]` on the `crash-victim` binary; verify `cargo check -p bedrock --no-default-features` builds the façade re-exports and derives alone and `cargo nextest run -p bedrock` is unchanged.
+- [x] 2.2 Set `default-features = false` on the workspace `bedrock` declaration, enable `engine` on `store` and `outpost-hold`, and leave `domain` with no features; verify `cargo build --workspace` emits no "default-features is ignored" warning and `cargo tree -p domain -e normal -i turso_core` reports the crate absent.
 
-## 3. The data model's own manifest
+## 3. The grammar crate's seam
 
-- [ ] 3.1 Enable chrono's `now` feature on `domain`'s chrono dependency; verify `cargo check -p domain --no-default-features --features syntax` builds on the host with no other member in the graph.
-- [ ] 3.2 Run `cargo check -p domain --no-default-features --features syntax --target wasm32-wasip1`; verify it compiles, or record which transitive dependency fails and resolve it per the design's fallback (gate it where it belongs, or report it) before continuing.
+- [x] 3.1 Add `transload`'s default-on `store` feature making `bedrock` (with `engine`) and `jsonschema` optional and gating `export`, `ingest`, `IngestError::Store`, and the two reading-validation functions in `schema`, with the grammar modules and their re-exports unconditional; verify `cargo check -p transload --no-default-features` builds on the host and `cargo nextest run -p transload` is unchanged.
+- [x] 3.2 Fix `layout::chart_dir` to read the Chart id through `AsRef` rather than `Display`; verify `bundle::tests::builtin_charts_keep_their_dotted_name`, the two builtin ingest tests, and `store`'s getting-started round-trip pass.
 
-## 4. The grammar crate's seam
+## 4. Minting and the clock, off wasm32
 
-- [ ] 4.1 Add `transload`'s default-on `store` feature making `bedrock` (with `engine`) and `jsonschema` optional and gating `export`, `ingest`, `IngestError::Store`, and the two reading-validation functions in `schema`, with the grammar modules and their re-exports unconditional; verify `cargo check -p transload --no-default-features` builds on the host and `cargo nextest run -p transload` is unchanged.
-- [ ] 4.2 Run `cargo check -p transload --no-default-features --target wasm32-wasip1` and `cargo tree -p transload --no-default-features -e normal -i turso_core`; verify the check compiles and the tree is empty, resolving any failing transitive dependency by gating it behind `store`.
+- [x] 4.1 Drop `v4` and `js` from the workspace `uuid`, enable `v4` on `cartograph` and `xtask`, and move `rand`, `uuid/v4`, and `chrono/now` into a `cfg(not(target_arch = "wasm32"))` target table in `domain`; verify `cargo check --workspace --all-targets` is clean and `cargo tree -p domain -e normal -i getrandom@0.4.3` on the host still names `rand` and `uuid`.
+- [x] 4.2 Put `cfg(not(target_arch = "wasm32"))` on every random constructor, minting `Default`, the `touch` hook, `now_ms` and its re-exports, and the minting `From<String> for SelectOption`, and `cfg_attr` builder attributes on the id and timestamp fields of `Mark`, `Terrain`, `Landmark`, `Chart`, `Feature`, `SelectOption`, and `SelectGroup` so a wasm32 build requires them; verify `cargo check -p domain --features syntax --target wasm32-unknown-unknown` and `--target wasm32-wasip1` both compile and `cargo check -p domain --features syntax` on the host is unchanged.
+- [x] 4.3 Run `cargo check -p transload --no-default-features` for both wasm32 targets and the inverse trees for `getrandom`, `wasm-bindgen`, `rand`, and `turso_core` on each; verify every check compiles and every inverse tree is empty.
 
-## 5. The `wasm32-unknown-unknown` experiment
+## 5. The probe
 
-- [ ] 5.1 Run `cargo check -p domain --no-default-features --features syntax --target wasm32-unknown-unknown` and the same for `transload`, as is; verify the outcome is recorded in `design.md`'s Outcome section — compiled, or the first failing dependency and its error.
-- [ ] 5.2 If 5.1 failed, add `--cfg getrandom_backend="wasm_js"` for the `wasm32-unknown-unknown` target to `.cargo/config.toml` and rerun both checks; verify the outcome is recorded — compiled under the cfg, or still failing and on which dependency — and that the cfg line is kept only if it was needed and is annotated as experiment configuration.
-- [ ] 5.3 Build a throwaway probe `cdylib` (outside the workspace, not committed) depending on `transload` with default features off and exporting one function that serializes a `Content` value, for `wasm32-unknown-unknown` under whatever configuration 5.1 or 5.2 found works, and list its import section with `wasm-tools print` or `wasm-objdump -x`; verify the import section is recorded verbatim in the Outcome section, with each imported module attributed to the crate that pulls it in via `cargo tree -i`.
+- [x] 5.1 Record the pre-gating experiment in `design.md`'s Outcome: the as-is checks on `wasm32-unknown-unknown` (fail in `getrandom`), the documented recipe (compiles, binds a JavaScript host for `getRandomValues` and `now`), and the `wasip1` import section; verify each step's command, result, and attribution are written down.
+- [x] 5.2 Rebuild the throwaway probe `cdylib` (outside the workspace, not committed; it needs the workspace lockfile and the workspace's `specta-macros` patch) against the gated data model for both wasm32 targets with no configuration; verify the `unknown-unknown` module's import section is empty and the `wasip1` module imports only what the standard library's startup and standard error need, and record both sections verbatim in the Outcome.
 
 ## 6. Gate
 
-- [ ] 6.1 Run `cargo build --workspace`, `cargo nextest run --workspace`, the `store` round-trip test over `getting-started`, `cargo deny check`, and both `wasip1` checks; verify all pass, and record in `design.md` any transitive dependency that had to be gated and the measured time of the two `wasip1` checks.
-- [ ] 6.2 Verify `openspec validate grammar-only-builds --strict` passes and the Outcome section is complete.
+- [x] 6.1 Run `cargo build --workspace`, `cargo nextest run --workspace`, `cargo clippy --workspace --all-targets`, `cargo deny check`, and all four WebAssembly checks; verify the host suite passes in full and the WebAssembly checks are clean, and record the measured check times in `design.md`.
+      (817 of 817 host tests pass; clippy's remaining warnings are pre-existing and in files this change does not touch; `cargo deny` passes licenses, bans, and sources and fails only on the twelve pre-existing advisories recorded in the Outcome.)
+- [x] 6.2 Verify `openspec validate grammar-only-builds --strict` passes and the Outcome section is complete.

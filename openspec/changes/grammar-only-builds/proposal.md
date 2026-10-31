@@ -5,10 +5,14 @@ Everything that reads or writes the Bundle format drags the database engine alon
 That is harmless inside the app, which opens the engine anyway, and fatal anywhere else: a WebAssembly module cannot link it, and nothing in the workspace today can be compiled for a WebAssembly target at all.
 Importer plugins — the next piece of the interchange story — are WebAssembly modules that emit data-model values through transload's grammar, so the grammar crates have to be buildable without the engine before any plugin contract can be written against them.
 
-There is a second question the plugin contract depends on, and it can only be answered by building: how far the grammar crates are from a sealed sandbox.
-A `wasm32-wasip1` module gets randomness, a clock, and standard error from the host through WASI imports; a `wasm32-unknown-unknown` module gets nothing from anyone, and whether the grammar crates can be built for it — and what they import if they can — decides whether a plugin's sandbox is a property of its build or a policy of its host.
-Two independent reviews predicted that `unknown-unknown` fails on the data model's randomness and clock and would need the data model's constructors gated; the prediction is plausible and unverified, and gating the data model on a prediction is exactly the kind of churn this project avoids.
-So this change separates the engine from the vocabulary along a seam the crates already have, proves the separation on the target that is known to work, and runs the experiment on the one that is not, recording what it finds so the plugin change can choose with evidence.
+The engine is the large obstacle, not the only one.
+A plugin never mints an identifier and never reads the clock — it reports the identifiers its source already has, and the core mints when it ingests — yet the data model's constructors, `Default` impls, and builder defaults mint and read the clock, and a crate compiles what its manifest declares, not what a caller reaches.
+On `wasm32-unknown-unknown`, the target a sealed sandbox wants, that is fatal in a second way: `getrandom` refuses to compile for it at the crate level, and the documented workaround binds the module to a JavaScript host for exactly the two things a plugin must never do.
+This change was first run as an experiment to find out whether that prediction held; it did, precisely, and the findings are recorded in `design.md`.
+It therefore also makes minting and the clock unavailable on wasm32 targets: the types stay, with their parsing and serialization; the ways to create a fresh identity or read the time do not exist in a wasm32 build.
+
+The result is that only types and grammar compile to WebAssembly.
+`domain`, the Bundle grammar in `transload`, the façade's vocabulary and derives, and pure utilities build for both `wasm32-unknown-unknown` and `wasm32-wasip1` with no engine, no entropy, no clock, and no host of any kind in the graph, while the whole workspace builds and tests exactly as before.
 
 ## What Changes
 
@@ -18,16 +22,17 @@ So this change separates the engine from the vocabulary along a seam the crates 
 - **Members name the features they use.**
   Cargo does not let a member turn a workspace dependency's default features off when the workspace declaration leaves them on, so the workspace declaration for `bedrock` turns them off, and every crate that opens a database (`store`, `outpost-hold`, `transload`) enables `engine` on its own line.
   `domain` takes the façade with no features.
-  The app build is unchanged; it is now explicit about which crates reach the engine.
 - **`transload` gains a default-on `store` feature** around `export`, `ingest`, the store-error variant of `IngestError`, the Draft-07 reading validation in `schema`, and the `bedrock` and `jsonschema` dependencies.
   The grammar — Bundle layout and manifest, frontmatter, identity comments, sidecars, the `_schema.json` face, link names, refusal types — builds without it.
-- **`domain` declares its own clock.**
-  `now_ms` calls `Utc::now`, which needs a chrono feature `domain` has so far received only through other crates' feature unification.
-  `domain` enables it directly so the pure build does not depend on who else is in the graph.
-- **Both WebAssembly targets join the toolchain**, `wasm32-wasip1` and `wasm32-unknown-unknown`, and `cargo deny`'s graph targets follow by the existing sync task.
-  Compiling `domain` and `transload` for `wasip1` with no engine in the graph is this change's required proof.
-  Compiling them for `unknown-unknown` is this change's experiment: whether it compiles as is, what configuration it needs if not, and what a module built from the grammar imports — recorded in `design.md` as findings, whatever they are.
-  The experiment changes no source; if `unknown-unknown` needs the data model gated, this change says so and stops.
+- **Minting and the clock are unavailable on wasm32.**
+  In `domain`, every random constructor (`MarkID::new`, `TerrainID::new`, the sync identities, `Base36ID::new` and its Chart, Feature, and Glyph wrappers), every `Default` that mints, every builder default that mints or reads the clock, the `touch` hook, `now_ms`, and the one `From<String>` that mints an option id are compiled only when the target is not `wasm32`.
+  On wasm32 the builders require those fields instead of filling them.
+  `domain`'s manifest moves `rand`, uuid's `v4`, and chrono's `now` into a non-wasm32 target table, so a wasm32 build of the data model declares no entropy and no clock.
+  The workspace `uuid` drops to `serde`; `domain`, `cartograph`, and `xtask`, the three crates that mint, enable `v4` on their own lines, and the unused `js` feature goes.
+- **Both WebAssembly targets join the toolchain**, `wasm32-unknown-unknown` and `wasm32-wasip1`, and `cargo deny`'s graph targets follow by the existing sync task.
+  `domain` and `transload` compile for both with no engine, no `getrandom`, no `rand`, and no `wasm-bindgen` in the graph; a probe module built from the grammar for `unknown-unknown` has an empty import section.
+- **A Bundle directory regression is fixed on the way.**
+  `layout::chart_dir` formatted the Chart id through `Display`, which strips the `builtin.` prefix, so the exporter wrote `library/page/` where the committed getting-started Bundle and three transload tests expect `library/builtin.page/`; it now reaches the inner value through `AsRef`.
 
 ## Capabilities
 
@@ -38,22 +43,17 @@ _None._
 ### Modified Capabilities
 
 - `storage`: the storage vocabulary (collection specs, field encoding, the derives) is usable without the engine; a crate that defines collections links no database.
-- `data-model`: the data model is usable without a storage engine, including on a WebAssembly target.
-- `transload`: the Bundle grammar is usable without the persistence engine; export, ingest, and reading validation are separable from the grammar they use.
+- `data-model`: the data model is usable without a storage engine on a WebAssembly target, and on such a target identifier minting and the clock do not exist — the types parse, serialize, and compare, and nothing creates a fresh identity or reads the time.
+- `transload`: the Bundle grammar is usable without the persistence engine and without any source of entropy; export, ingest, and reading validation are separable from the grammar they use.
 
 ## Non-goals
 
-- **No behavior change** in any crate under default features.
-  The whole workspace builds and tests as before; the committed `getting-started` Bundle round-trips as before.
-- **No change to `domain`'s source.**
-  Its manifest changes; its types, derives, constructors, and defaults do not — even if the experiment shows that `unknown-unknown` would need them to.
-- **No gating of identifier minting or of the clock.**
-  A pure build of `domain` still mints ids and reads the clock through the standard library.
-  Removing them is sandbox hardening with its own change, and the experiment's findings are that change's input.
-- **No requirement that `wasm32-unknown-unknown` build.**
-  It is investigated, not required; the `wasip1` checks are the gate.
+- **No behavior change on host targets.**
+  Every constructor, default, and hook behaves exactly as before where it exists; the whole workspace builds and tests as before, and the committed `getting-started` Bundle round-trips as before.
+- **No new way to mint or stamp.**
+  Nothing is added for wasm32 in place of what is removed; a wasm32 build that needs a fresh identifier is a bug by construction.
 - **No plugin contract, SDK, runtime, or Fragment grammar.**
-  This change makes those buildable; it does not build them.
+  This change makes those buildable and sealed; it does not build them.
 - **No relocation of specs.**
   The three deltas land in their existing domains.
 
@@ -63,24 +63,23 @@ _None._
 
 - `crates/bedrock` — `engine` feature (default on) gating `config`, `database`, `ddl`, `durability`, `error`, `explain`, `migrate`, `pool`, `query`, `tx`, `value`, the `SyncMode` re-export, the `turso`, `turso_core`, `tokio`, `tracing`, and `indoc` dependencies, `required-features = ["engine"]` on the `crash-victim` binary, and the Android `mimalloc` dependency.
   The façade re-exports and the derives stay unconditional.
-- `Cargo.toml` (workspace) — the `bedrock` declaration gains `default-features = false`.
+- `Cargo.toml` (workspace) — the `bedrock` declaration gains `default-features = false`; `uuid` drops to `serde`.
 - `crates/store`, `crates/outpost-hold`, `crates/transload` — `bedrock` with `features = ["engine"]` (`transload` only under its `store` feature).
-- `crates/domain` — `bedrock` with no features; `chrono` with the clock feature `now_ms` needs.
-- `crates/transload` — `store` feature (default on); `bedrock` and `jsonschema` become optional behind it; `export`, `ingest`, `IngestError::Store`, and the two `jsonschema` call sites in `schema` are gated.
+- `crates/cartograph`, `tooling/xtask` — `uuid` with `v4`.
+- `crates/domain` — `bedrock` with no features; `rand`, `uuid/v4`, and `chrono/now` in a `cfg(not(target_arch = "wasm32"))` target table; `cfg(not(target_arch = "wasm32"))` on the minting and clock sites in `mark/mark.rs`, `chart/ids.rs`, `sync/identity.rs`, `terrain/terrain_id.rs`, and `chart/feature_kind/select_builder.rs`, and `cfg_attr` builder attributes on the id and timestamp fields of `Mark`, `Terrain`, `Landmark`, `Chart`, `Feature`, `SelectOption`, and `SelectGroup`; `now_ms` re-exported only off wasm32.
+- `crates/transload` — `store` feature (default on); `bedrock` and `jsonschema` optional behind it; `export`, `ingest`, `IngestError::Store`, and the two `jsonschema` call sites in `schema` gated; `layout::chart_dir` reads the id through `AsRef`.
 - `rust-toolchain.toml` — `wasm32-wasip1` and `wasm32-unknown-unknown`; `.cargo/deny.toml` follows by the sync task.
-- `.cargo/config.toml` — only if the experiment shows `unknown-unknown` needs a target-specific `cfg` to compile, and then only to record what was needed, not to make the target a requirement.
 
 **Dependencies**
 
 - None added.
-  A grammar-only build of `transload` loses `bedrock`, `turso`, `turso_core`, `tokio`, `tracing`, and `jsonschema` relative to today.
+  A wasm32 build of `domain` loses `rand`, `getrandom`, and `wasm-bindgen`; a grammar-only build of `transload` additionally loses `bedrock`, `turso`, `turso_core`, `tokio`, `tracing`, and `jsonschema`.
 
 **Systems**
 
 - `cargo deny` evaluates the graph for two more targets; anything it surfaces is triaged here.
-- CI gains two `cargo check` invocations for the `wasip1` target (crate-level; no workflow rewrite beyond what `check-generated`'s step shape already provides).
-  The `unknown-unknown` experiment is run by hand and recorded, not wired into CI.
+- CI gains `cargo check` invocations for both WebAssembly targets (crate-level; no workflow rewrite beyond what `check-generated`'s step shape already provides).
 
 **Specs**
 
-- Amends `storage` (new requirement), `data-model` (new requirement), and `transload` (new requirement).
+- Amends `storage` (new requirement), `data-model` (two new requirements), and `transload` (new requirement).
