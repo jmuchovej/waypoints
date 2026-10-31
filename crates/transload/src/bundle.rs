@@ -47,9 +47,13 @@ pub mod layout {
         format!("{}/{SCHEMA}", chart_dir(chart))
     }
 
-    /// `library/<ChartID>`
+    /// `library/<ChartID>` — the id as the Bundle spells it, `builtin.` prefix
+    /// included. `AsRef` reaches the inner value; `Display` is the name, which
+    /// strips the prefix and would collapse `builtin.page` onto a custom
+    /// Chart named `page`.
     pub fn chart_dir(chart: &ChartID) -> String {
-        format!("{LIBRARY}/{}", &chart)
+        let id: &String = chart.as_ref();
+        format!("{LIBRARY}/{id}")
     }
 }
 
