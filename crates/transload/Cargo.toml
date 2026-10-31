@@ -11,14 +11,14 @@
   publish.workspace       = true
 
 [dependencies]
-  bedrock = { workspace = true, features = [ "engine" ] }
+  bedrock = { workspace = true, features = [ "engine" ], optional = true }
   domain  = { workspace = true, features = [ "syntax" ] }
 
   chrono.workspace     = true
   derive_more          = { workspace = true, features = [ "display" ] }
   indexmap.workspace   = true
   itertools.workspace  = true
-  jsonschema.workspace = true
+  jsonschema           = { workspace = true, optional = true }
   saphyr.workspace     = true
   serde.workspace      = true
   serde_json.workspace = true
@@ -30,6 +30,13 @@
   tempfile.workspace = true
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
   trybuild.workspace = true
+
+[features]
+  default = [ "store" ]
+  # Export and ingest, which open a store, and reading validation, which needs
+  # the schema validator. Off, the crate is the Bundle grammar alone — what a
+  # grammar-only consumer (a WebAssembly module) links.
+  store   = [ "dep:bedrock", "dep:jsonschema" ]
 
 [lints]
   workspace = true
