@@ -20,7 +20,6 @@ use domain::{
 
 use crate::{
     bundle::{BUNDLE_FORMAT, Bundle, Manifest, layout},
-    export::{Tier, tier},
     frontmatter,
     identity::{self, Identity, Marker},
     names::{Lenient, Names},
@@ -29,6 +28,7 @@ use crate::{
     },
     schema,
     sidecar::{self, MarkLine, TerrainLine},
+    store::export::{Tier, tier},
 };
 
 /// What an ingest wrote, and anything worth telling a person about it.

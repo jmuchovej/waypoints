@@ -173,6 +173,7 @@ pub enum IngestError {
     #[error("reading the bundle: {0}")]
     Io(#[from] std::io::Error),
     /// A write failed while applying the Bundle, so nothing was applied.
+    #[cfg(feature = "store")]
     #[error("applying the bundle: {0}")]
     Store(#[from] bedrock::BedrockError),
 }

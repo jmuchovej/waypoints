@@ -231,6 +231,7 @@ pub fn check_consistent(document: &Json) -> Result<(), MalformedKind> {
 ///
 /// `readings` is the frontmatter's `readings` object as JSON. Errors come back
 /// per feature, so a refusal can name the file *and* the feature.
+#[cfg(feature = "store")]
 pub fn validate_readings(document: &Json, readings: &Json) -> Result<(), Vec<(FeatureID, String)>> {
     let validator = match jsonschema::draft7::new(document) {
         Ok(validator) => validator,
@@ -262,6 +263,7 @@ pub fn validate_readings(document: &Json, readings: &Json) -> Result<(), Vec<(Fe
 }
 
 /// Does this document satisfy the Draft-07 meta-schema?
+#[cfg(feature = "store")]
 pub fn check_meta_schema(document: &Json) -> Result<(), MalformedKind> {
     jsonschema::draft7::meta::validate(document).map_err(|error| MalformedKind::Grammar {
         detail: format!("not a valid Draft-07 schema: {error}"),

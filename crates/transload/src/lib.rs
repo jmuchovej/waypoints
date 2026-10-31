@@ -12,23 +12,31 @@
 //! identity comments, manifest) lives here. A Bundle is never partially
 //! ingested: see [`Refusal`].
 
+// The grammar builds with no features; `export` and `ingest` need a store.
 pub(crate) mod bundle;
-pub(crate) mod export;
 pub(crate) mod frontmatter;
 pub(crate) mod identity;
-pub(crate) mod ingest;
 pub(crate) mod names;
 pub(crate) mod refusal;
 pub(crate) mod schema;
 pub(crate) mod sidecar;
+#[cfg(feature = "store")]
+pub(crate) mod store {
+    pub(crate) mod export;
+    pub(crate) mod ingest;
+}
 
 pub use bundle::{
     BUNDLE_FORMAT, Bundle, Census, Counts, ExportMeta, Manifest, SUPPORTED_FORMATS, layout,
 };
-pub use export::{ExportError, Exported, Tier, export, tier};
 pub use frontmatter::{Advisory, Frontmatter};
 pub use identity::{Identity, Marker};
-pub use ingest::{Ingested, ingest};
 pub use refusal::{
     ChartConflict, DuplicateConflict, IngestError, Location, Malformed, MalformedKind, Refusal,
+};
+
+#[cfg(feature = "store")]
+pub use store::{
+    export::{ExportError, Exported, Tier, export, tier},
+    ingest::{Ingested, ingest},
 };
