@@ -14,6 +14,7 @@
   bedrock.workspace = true
 
   chrono.workspace            = true
+  chumsky                     = { workspace = true, optional = true }
   derive_more                 = {
     workspace = true,
     features  = [
@@ -27,7 +28,6 @@
     ]
   }
   indexmap.workspace          = true
-  pulldown-cmark              = { workspace = true, optional = true }
   rand.workspace              = true
   serde.workspace             = true
   serde_json.workspace        = true
@@ -46,8 +46,8 @@
   stable      = []
   # The markdown dialect `Content` and `TextMarkKind` project into: one module,
   # both directions. Only `transload` needs it, so every other dependent pays
-  # neither the module nor `pulldown-cmark`.
-  syntax      = [ "dep:pulldown-cmark" ]
+  # neither the module nor `chumsky`.
+  syntax      = [ "dep:chumsky" ]
 
 [lints]
   workspace = true

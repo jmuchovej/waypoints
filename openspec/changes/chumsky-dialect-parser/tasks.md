@@ -7,7 +7,7 @@ every commit from 2.1 onward.
 
 ## 1. Dependency
 
-- [ ] 1.1 `build(domain/dialect): take chumsky behind the syntax feature — pulldown-cmark was declared and never used` —
+- [x] 1.1 `build(domain/dialect): take chumsky behind the syntax feature — pulldown-cmark was declared and never used` —
       add `chumsky = { version = "0.13", default-features = false, features = ["std"] }`
       to the workspace table, set `syntax = ["dep:chumsky"]`, remove
       `pulldown-cmark` from `domain`'s manifest and the workspace table;
