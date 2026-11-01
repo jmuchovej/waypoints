@@ -639,6 +639,10 @@ the same machine; the `domain` and `transload` unit times are what is
 recorded in this file. The budget is ten seconds of debug build; exceeding it
 is a prompt to box one more boundary, not to abandon the port.
 
+| measured (2026-11-02, aarch64-darwin) | `domain`               | `transload`            |
+| ------------------------------------- | ---------------------- | ---------------------- |
+| before task 1.1 (hand parsers)        | 2.17 s, 2.12 s, 2.13 s | 2.15 s, 2.13 s, 2.14 s |
+
 ### D13 — The `syntax` feature gates `chumsky`; nothing else changes (2026-11-01)
 
 `domain`'s `syntax` feature exists so that every dependent except
