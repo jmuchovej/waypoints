@@ -26,6 +26,47 @@ pub(crate) mod store {
     pub(crate) mod ingest;
 }
 
+/// The Fragment grammar: what an importer emits. The data model's entities
+/// with a source key wherever the core would mint an identifier, and nothing
+/// the core owns. Builds for wasm32 with no engine and no entropy.
+pub mod fragment {
+    mod census;
+    mod key;
+    mod landmark;
+    mod protochart;
+    mod reading;
+    mod terrain;
+    pub(crate) mod timestamp;
+
+    pub use census::Fragments;
+    pub use key::{EmptySourceKey, SourceKey};
+    pub use landmark::{ContentFragment, LandmarkFragment};
+    pub use protochart::{
+        FeatureFragment, FeatureKindFragment, Protochart, SelectGroupFragment, SelectOptionFragment,
+    };
+    pub use reading::ReadingFragment;
+    pub use terrain::{TerrainFragment, TerrainKindFragment};
+
+    /// The Fragment envelope's version: additive minor, breaking major, `0.x`
+    /// while pre-freeze. Independent of the ABI major and of `bundle_format`.
+    pub const FRAGMENT_FORMAT: &str = "0.1.0";
+}
+
+/// The importer ABI's payloads: what crosses the boundary between a host and
+/// a plugin module, in both directions. The exports themselves are the SDK's.
+pub mod abi {
+    mod diagnostic;
+    mod manifest;
+    mod output;
+
+    pub use diagnostic::{At, Diagnostic, Level};
+    pub use manifest::{Authored, Manifest, Source, SourceKind};
+    pub use output::{Envelope, FinalizeOutput, Init, Output, Summary};
+
+    /// The ABI major: exports, signatures, and the buffer convention. Frozen.
+    pub const ABI: u32 = 1;
+}
+
 pub use bundle::{
     BUNDLE_FORMAT, Bundle, Census, Counts, ExportMeta, Manifest, SUPPORTED_FORMATS, layout,
 };

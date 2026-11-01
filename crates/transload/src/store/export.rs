@@ -158,17 +158,7 @@ fn pretty(value: &serde_json::Value) -> String {
 }
 
 /// A value's serde tag — the spelling the Bundle itself uses.
-pub(crate) fn variant_name<T: serde::Serialize>(value: &T) -> String {
-    match serde_json::to_value(value) {
-        Ok(serde_json::Value::Object(map)) => map
-            .get("type")
-            .and_then(|tag| tag.as_str())
-            .unwrap_or("unknown")
-            .to_string(),
-        Ok(serde_json::Value::String(tag)) => tag,
-        _ => "unknown".into(),
-    }
-}
+pub(crate) use crate::bundle::variant_name;
 
 /// Everything live, indexed the ways the exporter walks it.
 struct Live {

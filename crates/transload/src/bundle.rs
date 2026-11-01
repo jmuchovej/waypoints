@@ -226,6 +226,20 @@ pub(crate) fn render_timestamp(at: NaiveDateTime) -> String {
     at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
 }
 
+/// A variant's serde tag — the name a census records. Grammar, not export:
+/// Fragment censuses count the same way.
+pub(crate) fn variant_name<T: serde::Serialize>(value: &T) -> String {
+    match serde_json::to_value(value) {
+        Ok(serde_json::Value::Object(map)) => map
+            .get("type")
+            .and_then(|tag| tag.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        Ok(serde_json::Value::String(tag)) => tag,
+        _ => "unknown".into(),
+    }
+}
+
 /// The inverse of [`render_timestamp`].
 pub(crate) fn parse_timestamp(text: &str) -> Result<NaiveDateTime, String> {
     NaiveDateTime::parse_from_str(text.trim(), "%Y-%m-%dT%H:%M:%S%.3fZ")
