@@ -99,6 +99,8 @@ pub use mark::{
 #[cfg(feature = "syntax")]
 pub mod syntax {
     pub mod block;
+    #[cfg(test)]
+    mod corpus;
     pub mod inline;
 }
 

@@ -167,16 +167,30 @@ prefix) as an ordinary function parameter and refuses past a fixed ceiling:
 
 | layer       | parameter                    | ceiling | refusal                                                  |
 | ----------- | ---------------------------- | ------- | -------------------------------------------------------- |
-| inline      | `depth: usize`               | 64      | `inline marks nest deeper than 64 levels`                |
+| inline      | `depth: usize`               | 16      | `inline marks nest deeper than 16 levels`                |
 | document    | `prefix: String` (per level) | 256     | `the body nests deeper than 256 levels`                  |
 | frontmatter | `depth: usize`               | 4       | `frontmatter nests deeper than a Landmark's readings do` |
 
-For the inline layer `run(depth)` builds `run(depth + 1)` once, boxes it, and
-hands clones of the `Boxed` (an `Rc`) to every construct at that depth, so
-construction is linear in the ceiling — sixty-four boxed levels per
-`parse_with` call, a handful of microseconds. A recursive function returning
-`impl Parser` is a recursive opaque type the compiler rejects, so the return
-type is `Boxed`; this is also where monomorphisation stops (D12).
+_Amended 2026-11-02, while implementing task 3.1._ The inline layer does not
+build a parser per depth. A run's depth and the closer that ends it ride in
+chumsky's parse context (`extra::Full<_, _, Nest>`): a construct computes
+`Nest { depth + 1, closer }` with `map_with` and runs the one `recursive` run
+parser under it with `ignore_with_ctx`. Context is a value handed down, not
+state, so backtracking cannot corrupt it, and construction is one recursive
+declaration per `parse_with` call instead of one boxed parser per depth and
+closer (65 × 9). The run checks its depth before reading anything and, past
+the ceiling, consumes the rest of the input without descending, so the
+recursion is bounded by the ceiling. Nine mutually recursive
+`Recursive::declare` runs were rejected: a declared `Recursive` clones as a
+strong `Rc`, so mutual references leak a cycle on every call.
+
+The inline ceiling is 16, not 64. Measured on aarch64-darwin, a debug build
+spends 32–64 KiB of stack per nesting level (chumsky's `#[inline(always)]`
+combinators collapse into large unoptimised frames): depth 16 needs 0.5–1 MiB
+and depth 25 needs 1–1.5 MiB, so 64 cannot fit a two-megabyte thread. A
+release build parses past the ceiling in under 256 KiB. Sixteen keeps a debug
+parse at the ceiling within half of a two-megabyte thread and still sits far
+above anything the emitter or a person writes.
 
 Depth here is syntactic: how many openers are unclosed at one point in the
 _source_ (`^{^{^{…`, `[[[…`, `> > > …`, callouts inside callouts), not how
@@ -625,12 +639,14 @@ _Rejected:_ vendoring or forking — nothing here needs a change to chumsky.
 ### D12 — Where `.boxed()` goes, and how compile time is measured (2026-11-01)
 
 `Boxed` is used exactly where a type must be named or recursion must stop:
-`inline::run(depth)` (one box per depth level), `block::parser()` (one box;
-the per-variant parsers inside `choice` stay unboxed), `document::region`
-(one box per prefix instance, plus `recursive`'s own), `frontmatter::map` and
-`seq` (one box per depth). Nothing else is boxed. The public entries build the
-parser, call `parse`, map the result, and return — chumsky types never appear
-in a public signature.
+the inline layer's construct choice and its suffix list (cloned into every
+construct, so one box each, inside the one `recursive` run; see D4's
+amendment), `document::region` (one box per prefix instance, plus
+`recursive`'s own), `frontmatter::map` and `seq` (one box per depth). The
+block layer needs none: its opener grammar is a single `choice` built per
+call. Nothing else is boxed. The public entries build the parser, call
+`parse`, map the result, and return — chumsky types never appear in a public
+signature.
 
 Compile time is measured with the toolchain's `cargo` (not the `mbx` shim,
 which skews `--timings`): `cargo clean -p domain -p transload && cargo build
@@ -700,8 +716,9 @@ fixture so that it cannot be lost by accident:
   → the refusal names the line and what the subset expected; the subset is
   exactly the emitter's output so an exported Bundle is unaffected; and a
   Bundle is a snapshot format, not a hand-authoring one (D9).
-- [Nesting ceilings are a new refusal] → set at 64/256/4, far past any
-  document and far below the stack; the alternative was an abort (D4).
+- [Nesting ceilings are a new refusal] → set at 16/256/4, far past any
+  document and within a two-megabyte stack even in a debug build; the
+  alternative was an abort (D4).
 - [The `validate`-everywhere pattern (D3) is unusual chumsky] → it is the
   documented purpose of `validate` and `MapExtra::emit`; the refusal fixtures
   pin every sentence and position so a misuse is a failing test, not a
@@ -740,9 +757,10 @@ suite is the only one it has to satisfy.
   a one-liner over `document::parse`.
 - `frontmatter::Node` and `Entry` are `pub(crate)`. No other crate reads
   frontmatter.
-- The ceilings are 64 (inline), 256 (document) and 4 (frontmatter). D4 says
-  what they guard; the values only need to sit well above any document and
-  well below the stack, and these do. `dialect.md` states the inline one.
+- The ceilings are 16 (inline), 256 (document) and 4 (frontmatter). D4 says
+  what they guard and why the inline one came down from 64 when measured;
+  the values only need to sit well above any document and well below the
+  stack. `dialect.md` states the inline one.
 - The walker keeps reading exactly two spaces per level, as `ingest.rs` does
   today. The `dialect.md` sentence about relative indentation describes
   behaviour the code never had; matching the code wins over fixing the

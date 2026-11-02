@@ -5,9 +5,17 @@
 //! Maps one block to its own lines and back; it does not walk the tree.
 //! [`Rendered::children`] says how children attach.
 
+use chumsky::{input::MapExtra, prelude::*};
+
 use crate::{BlockTheme, Color, Content, MathEngine, RichText, Size, syntax::inline};
 
-use inline::{GrammarError, Links, Verbatim};
+use inline::{Extra, GrammarError, Links, Verbatim};
+
+#[cfg(test)]
+pub(crate) mod legacy;
+
+/// What a `map_with` sees: where in the source its output came from.
+type Span<'a, 'b> = MapExtra<'a, 'b, &'a str, Extra<'a>>;
 
 /// A block's own lines, plus how its children attach beneath it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -370,81 +378,94 @@ pub fn parse(source: &str) -> Result<Content, GrammarError> {
 }
 
 /// [`parse`], reading mention targets back through `links`.
+///
+/// Only the first line says what the block is; a fenced or tabular block
+/// reads its body from the lines after it.
 pub fn parse_with(source: &str, links: &dyn Links) -> Result<Content, GrammarError> {
-    let lines: Vec<&str> = source.lines().collect();
-    let first = lines.first().copied().unwrap_or_default();
+    let lines = lines().parse(source).into_output().unwrap_or_default();
+    let (first, _) = lines.first().copied().unwrap_or_default();
+    let (opener, errors) = opener().parse(first).into_output_errors();
+    if let Some(error) = errors.first() {
+        return Err(inline::refusal(source, error));
+    }
+    let Some(opener) = opener else {
+        return Err(GrammarError::new(source, 0, "not a block in this dialect"));
+    };
+    let rest = lines.get(1..).unwrap_or_default();
+    let until = |closer: &'static str| {
+        rest.iter()
+            .copied()
+            .take_while(move |(line, _)| line.trim_end() != closer)
+    };
+    let read = |text: &str, at: usize| {
+        inline::parse_with(text, links).map_err(|error| error.shifted(source, at))
+    };
 
-    if first.starts_with("```") {
-        let fence = &first[..first.len() - first.trim_start_matches('`').len()];
-        return parse_code(fence, &first[fence.len()..], &lines[1..]);
-    }
-    if let Some(rest) = first.strip_prefix("$$") {
-        return parse_math(rest, &lines[1..]);
-    }
-    if let Some(rest) = first.strip_prefix("::") {
-        return parse_component(rest, &lines[1..], links);
-    }
-    if first.starts_with(TABLE_ROW) {
-        return parse_gfm_table(&lines, None, links);
-    }
-    if let Some(rest) = first.strip_prefix('>') {
-        let (_, attributes) = split_attrs(rest)?;
-        return Ok(Content::Blockquote {
+    Ok(match opener {
+        Opener::Code {
+            fence,
+            language,
+            attributes,
+        } => Content::Code {
+            language: language.trim().to_string(),
+            lines: rest
+                .iter()
+                .take_while(|(line, _)| line.trim_end() != fence)
+                .map(|(line, _)| (*line).to_string())
+                .collect(),
+            filename: attributes.get("filename").map(str::to_string),
+            highlights: attributes.get("highlights").map(|value| {
+                value
+                    .split(',')
+                    .filter_map(|number| number.trim().parse().ok())
+                    .collect()
+            }),
             theme: attributes.theme,
-        });
-    }
-    for (prefix, build) in HEADINGS {
-        if let Some(rest) = first.strip_prefix(prefix) {
-            let (text, attributes) = split_attrs(rest)?;
-            return Ok(build(inline::parse_with(&text, links)?, attributes.theme));
+        },
+        Opener::Math(attributes) => Content::Math {
+            expression: until("$$")
+                .map(|(line, _)| line)
+                .collect::<Vec<_>>()
+                .join("\n"),
+            engine: match attributes.get("engine") {
+                Some("latex") => MathEngine::LaTeX,
+                _ => MathEngine::Typst,
+            },
+            theme: attributes.theme,
+        },
+        Opener::Component(TABLE_COMPONENT, attributes) => {
+            table(source, until("::"), Some(attributes), links)?
         }
-    }
-    if let Some(rest) = first.strip_prefix("- ") {
-        let (text, attributes) = split_attrs(rest)?;
-        return Ok(Content::ListItem {
-            rich_text: inline::parse_with(&text, links)?,
+        Opener::Component(_, attributes) => Content::Callout {
+            icon: attributes.get("icon").unwrap_or_default().to_string(),
             theme: attributes.theme,
-        });
-    }
-    if let Some(rest) = first.strip_prefix("+ ") {
-        let (text, attributes) = split_attrs(rest)?;
-        return Ok(Content::EnumItem {
-            rich_text: inline::parse_with(&text, links)?,
+        },
+        Opener::Table => table(source, lines.iter().copied(), None, links)?,
+        Opener::Quote(attributes) => Content::Blockquote {
             theme: attributes.theme,
-        });
-    }
-
-    let (text, attributes) = split_attrs(first)?;
-    if text.trim() == "---" {
-        return Ok(Content::Divider {
-            theme: attributes.theme,
-        });
-    }
-    Ok(Content::Paragraph {
-        rich_text: inline::parse_with(&text, links)?,
-        theme: attributes.theme,
+        },
+        Opener::Text(Text::Paragraph, text, _, attributes) if text.trim() == "---" => {
+            Content::Divider {
+                theme: attributes.theme,
+            }
+        }
+        Opener::Text(kind, text, at, attributes) => {
+            let rich_text = read(text, at)?;
+            let theme = attributes.theme;
+            match kind {
+                Text::Paragraph => Content::Paragraph { rich_text, theme },
+                Text::Heading1 => Content::Heading1 { rich_text, theme },
+                Text::Heading2 => Content::Heading2 { rich_text, theme },
+                Text::Heading3 => Content::Heading3 { rich_text, theme },
+                Text::ListItem => Content::ListItem { rich_text, theme },
+                Text::EnumItem => Content::EnumItem { rich_text, theme },
+            }
+        }
     })
 }
 
-/// Heading prefixes, longest first so `###` wins over `#`.
-#[allow(clippy::type_complexity)]
-const HEADINGS: [(&str, fn(RichText, Option<BlockTheme>) -> Content); 3] = [
-    ("### ", |rich_text, theme| Content::Heading3 {
-        rich_text,
-        theme,
-    }),
-    ("## ", |rich_text, theme| Content::Heading2 {
-        rich_text,
-        theme,
-    }),
-    ("# ", |rich_text, theme| Content::Heading1 {
-        rich_text,
-        theme,
-    }),
-];
-
 /// What an attribute list said.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct Attributes {
     theme: Option<BlockTheme>,
     pairs: Vec<(String, String)>,
@@ -463,192 +484,215 @@ impl Attributes {
     }
 }
 
-/// Split a trailing `{…}` off a line. The emitter escapes a brace that is text,
-/// so an unescaped trailing one is a real list and an unparsable one an error.
-fn split_attrs(line: &str) -> Result<(String, Attributes), GrammarError> {
-    let trimmed = line.trim_end();
-    let bytes = trimmed.as_bytes();
-    // Escaped when preceded by an odd run of backslashes.
-    let escaped = |index: usize| {
-        bytes[..index]
-            .iter()
-            .rev()
-            .take_while(|byte| **byte == b'\\')
-            .count()
-            % 2
-            == 1
-    };
-    if !trimmed.ends_with('}') || escaped(bytes.len() - 1) {
-        return Ok((line.to_string(), Attributes::default()));
-    }
-    let mut open = None;
-    let mut quoted = false;
-    for index in (0..bytes.len() - 1).rev() {
-        match bytes[index] {
-            b'"' if !escaped(index) => quoted = !quoted,
-            b'{' if !quoted && !escaped(index) => {
-                open = Some(index);
-                break;
-            }
-            _ => {}
-        }
-    }
-    let Some(open) = open else {
-        return Ok((line.to_string(), Attributes::default()));
-    };
-    let interior = &trimmed[open + 1..trimmed.len() - 1];
-    Ok((trimmed[..open].to_string(), parse_attrs(interior, open)?))
+#[derive(Clone, Copy, Debug)]
+enum Text {
+    Paragraph,
+    Heading1,
+    Heading2,
+    Heading3,
+    ListItem,
+    EnumItem,
 }
 
-/// `theme-blue key="value"` — bare tokens and quoted pairs.
-fn parse_attrs(interior: &str, at: usize) -> Result<Attributes, GrammarError> {
-    let mut out = Attributes::default();
-    for token in split_tokens(interior) {
-        if let Some((key, value)) = token.split_once('=') {
-            let value = value.trim().trim_matches('"').replace("\\\"", "\"");
-            out.pairs.push((key.trim().to_string(), value));
-            continue;
-        }
-        if let Some(color) = token.strip_prefix("theme-") {
-            let Some(color) = color_from(color) else {
-                return Err(GrammarError {
-                    detail: format!("`{color}` is not a block theme colour"),
-                    at,
-                });
-            };
-            out.theme = Some(BlockTheme { color });
-            continue;
-        }
-        return Err(GrammarError {
-            detail: format!("`{token}` is not a block attribute in this dialect"),
-            at,
-        });
-    }
-    Ok(out)
+/// What a block's first line opens.
+#[derive(Clone, Debug)]
+enum Opener<'a> {
+    Code {
+        fence: &'a str,
+        language: &'a str,
+        attributes: Attributes,
+    },
+    Math(Attributes),
+    /// A component's name, already known to be one the dialect has.
+    Component(&'a str, Attributes),
+    Table,
+    Quote(Attributes),
+    /// Inline text, the byte it starts at, and its block's attributes.
+    Text(Text, &'a str, usize, Attributes),
 }
 
-/// Whitespace-separated tokens, except inside quotes.
-fn split_tokens(interior: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut current = String::new();
-    let mut quoted = false;
-    let mut escaped = false;
-    for character in interior.chars() {
-        match character {
-            '\\' if quoted && !escaped => {
-                escaped = true;
-                current.push(character);
-            }
-            '"' if !escaped => {
-                quoted = !quoted;
-                current.push(character);
-            }
-            character if character.is_whitespace() && !quoted => {
-                if !current.is_empty() {
-                    out.push(std::mem::take(&mut current));
+/// The lines `str::lines` would give, each with the byte it starts at.
+fn lines<'a>() -> impl Parser<'a, &'a str, Vec<(&'a str, usize)>, Extra<'a>> {
+    let terminated = none_of('\n')
+        .repeated()
+        .to_slice()
+        .map_with(|line: &str, extra: &mut Span<'a, '_>| {
+            (line.strip_suffix('\r').unwrap_or(line), extra.span().start)
+        })
+        .then_ignore(just('\n'));
+    let last = none_of('\n')
+        .repeated()
+        .at_least(1)
+        .to_slice()
+        .map_with(|line, extra: &mut Span<'a, '_>| (line, extra.span().start));
+    terminated
+        .repeated()
+        .collect::<Vec<_>>()
+        .then(last.or_not())
+        .map(|(mut lines, last)| {
+            lines.extend(last);
+            lines
+        })
+}
+
+/// A block's first line, by the prefix that opens it.
+fn opener<'a>() -> impl Parser<'a, &'a str, Opener<'a>, Extra<'a>> {
+    let text = |prefix: &'static str, kind: Text| {
+        just(prefix)
+            .ignore_then(attributed())
+            .map(move |((text, at), attributes)| Opener::Text(kind, text, at, attributes))
+    };
+    choice((
+        just('`')
+            .repeated()
+            .at_least(3)
+            .to_slice()
+            .then(attributed())
+            .map(|(fence, ((language, _), attributes))| Opener::Code {
+                fence,
+                language,
+                attributes,
+            }),
+        just("$$")
+            .ignore_then(attributed())
+            .map(|(_, attributes)| Opener::Math(attributes)),
+        just("::")
+            .ignore_then(attributed())
+            .validate(|((name, at), attributes), _, emitter| {
+                let trimmed = name.trim();
+                if !["callout", TABLE_COMPONENT].contains(&trimmed) {
+                    let start = at + name.len() - name.trim_start().len();
+                    emitter.emit(Rich::custom(
+                        SimpleSpan::from(start..start + trimmed.len()),
+                        format!("`::{trimmed}` is not a block component in this dialect"),
+                    ));
                 }
-                escaped = false;
+                Opener::Component(trimmed, attributes)
+            }),
+        just(TABLE_ROW)
+            .rewind()
+            .ignore_then(any().repeated())
+            .map(|()| Opener::Table),
+        just('>')
+            .ignore_then(attributed())
+            .map(|(_, attributes)| Opener::Quote(attributes)),
+        text("### ", Text::Heading3),
+        text("## ", Text::Heading2),
+        text("# ", Text::Heading1),
+        text("- ", Text::ListItem),
+        text("+ ", Text::EnumItem),
+        attributed()
+            .map(|((text, at), attributes)| Opener::Text(Text::Paragraph, text, at, attributes)),
+    ))
+}
+
+/// The rest of a line: its text, the byte that text starts at, and the
+/// attribute list that ends the line, if one does.
+fn attributed<'a>() -> impl Parser<'a, &'a str, ((&'a str, usize), Attributes), Extra<'a>> + Clone {
+    any()
+        .and_is(attribute_list().not())
+        .repeated()
+        .to_slice()
+        .map_with(|text, extra| (text, extra.span().start))
+        .then(attribute_list().or_not().map(Option::unwrap_or_default))
+}
+
+/// `{…}` reaching the end of the line, trailing whitespace aside. A `\` escapes
+/// the character after it, and a `{` or `}` inside quotes is the value's; so
+/// the list is the last brace group no quote or backslash claims.
+fn attribute_list<'a>() -> impl Parser<'a, &'a str, Attributes, Extra<'a>> + Clone {
+    let escaped = just('\\').then(any()).ignored();
+    let quoted = just('"')
+        .then(choice((escaped, none_of("\"\\").ignored())).repeated())
+        .then(just('"'))
+        .ignored();
+    let close = just('}')
+        .then(any().filter(|c: &char| c.is_whitespace()).repeated())
+        .then(end());
+    let inner_brace = close.not().ignore_then(just('}')).ignored();
+    just('{')
+        .ignore_then(
+            choice((escaped, quoted, inner_brace, none_of("{}\"\\").ignored()))
+                .repeated()
+                .to_slice()
+                .map_with(|interior, extra: &mut Span<'a, '_>| (interior, extra.span().start)),
+        )
+        .then_ignore(close)
+        .validate(|(interior, at), _, emitter| {
+            let mut out = Attributes::default();
+            let words = words().parse(interior).into_output().unwrap_or_default();
+            for (word, span) in words {
+                let span = SimpleSpan::from(at + span.start..at + span.end);
+                if let Some((key, value)) = word.split_once('=') {
+                    let value = value.trim().trim_matches('"').replace("\\\"", "\"");
+                    out.pairs.push((key.trim().to_string(), value));
+                } else if let Some(color) = word.strip_prefix("theme-") {
+                    match color_from(color) {
+                        Some(color) => out.theme = Some(BlockTheme { color }),
+                        None => emitter.emit(Rich::custom(
+                            SimpleSpan::from(span.start + "theme-".len()..span.end),
+                            format!("`{color}` is not a block theme colour"),
+                        )),
+                    }
+                } else {
+                    emitter.emit(Rich::custom(
+                        span,
+                        format!("`{word}` is not a block attribute in this dialect"),
+                    ));
+                }
             }
-            character => {
-                current.push(character);
-                escaped = false;
-            }
-        }
-    }
-    if !current.is_empty() {
-        out.push(current);
-    }
-    out
+            out
+        })
 }
 
-fn parse_code(fence: &str, opener: &str, rest: &[&str]) -> Result<Content, GrammarError> {
-    let (language, attributes) = split_attrs(opener)?;
-    let body: Vec<String> = rest
-        .iter()
-        .take_while(|line| line.trim_end() != fence)
-        .map(|line| (*line).to_string())
-        .collect();
-    Ok(Content::Code {
-        language: language.trim().to_string(),
-        lines: body,
-        filename: attributes.get("filename").map(str::to_string),
-        highlights: attributes.get("highlights").map(|value| {
-            value
-                .split(',')
-                .filter_map(|number| number.trim().parse().ok())
-                .collect()
-        }),
-        theme: attributes.theme,
-    })
-}
-
-fn parse_math(fence: &str, rest: &[&str]) -> Result<Content, GrammarError> {
-    let (_, attributes) = split_attrs(fence)?;
-    let body: Vec<&str> = rest
-        .iter()
-        .take_while(|line| line.trim_end() != "$$")
-        .copied()
-        .collect();
-    let engine = match attributes.get("engine") {
-        Some("latex") => MathEngine::LaTeX,
-        _ => MathEngine::Typst,
-    };
-    Ok(Content::Math {
-        expression: body.join("\n"),
-        engine,
-        theme: attributes.theme,
-    })
-}
-
-fn parse_component(
-    opener: &str,
-    rest: &[&str],
-    links: &dyn Links,
-) -> Result<Content, GrammarError> {
-    let (name, attributes) = split_attrs(opener)?;
-    let name = name.trim();
-    match name {
-        "callout" => Ok(Content::Callout {
-            icon: attributes.get("icon").unwrap_or_default().to_string(),
-            theme: attributes.theme,
-        }),
-        TABLE_COMPONENT => {
-            let rows: Vec<&str> = rest
-                .iter()
-                .take_while(|line| line.trim_end() != "::")
-                .copied()
-                .collect();
-            parse_gfm_table(&rows, Some(attributes), links)
-        }
-        other => Err(GrammarError {
-            detail: format!("`::{other}` is not a block component in this dialect"),
-            at: 0,
-        }),
-    }
+/// An attribute list's words: whitespace separates them except inside quotes,
+/// where a `\` keeps the character after it from closing the quote.
+fn words<'a>() -> impl Parser<'a, &'a str, Vec<(&'a str, SimpleSpan)>, Extra<'a>> {
+    let space = any().filter(|c: &char| c.is_whitespace());
+    let inside = choice((
+        just('\\').then(any()).ignored(),
+        just('\\').ignored(),
+        none_of("\"\\").ignored(),
+    ));
+    let quoted = just('"')
+        .then(inside.repeated())
+        .then(just('"').ignored().or(end()));
+    let bare = any().filter(|c: &char| !c.is_whitespace() && *c != '"');
+    let word = choice((quoted.ignored(), bare.ignored()))
+        .repeated()
+        .at_least(1)
+        .to_slice()
+        .map_with(|word, extra| (word, extra.span()));
+    space
+        .repeated()
+        .ignore_then(word.then_ignore(space.repeated()).repeated().collect())
 }
 
 /// GFM pipe rows into cells, with any wrapper attributes applied over the top.
-fn parse_gfm_table(
-    lines: &[&str],
+fn table<'a>(
+    source: &str,
+    lines: impl Iterator<Item = (&'a str, usize)>,
     attributes: Option<Attributes>,
     links: &dyn Links,
 ) -> Result<Content, GrammarError> {
     let mut cells: Vec<Vec<RichText>> = Vec::new();
     let mut saw_delimiter = false;
-    for line in lines {
+    for (line, at) in lines {
         let trimmed = line.trim();
-        if trimmed.is_empty() || !trimmed.starts_with('|') {
-            continue;
+        let at = at + line.len() - line.trim_start().len();
+        match row().parse(trimmed).into_output() {
+            Some(Row::Delimiter) => saw_delimiter = true,
+            Some(Row::Cells(row)) => cells.push(
+                row.into_iter()
+                    .map(|(cell, start)| {
+                        let start = at + start + cell.len() - cell.trim_start().len();
+                        inline::parse_with(&cell_text(&cell), links)
+                            .map_err(|error| error.shifted(source, start))
+                    })
+                    .collect::<Result<_, _>>()?,
+            ),
+            Some(Row::Other) | None => {}
         }
-        if is_delimiter_row(trimmed) {
-            saw_delimiter = true;
-            continue;
-        }
-        let mut row = Vec::new();
-        for cell in split_cells(trimmed) {
-            row.push(inline::parse_with(&cell, links)?);
-        }
-        cells.push(row);
     }
 
     let attributes = attributes.unwrap_or_default();
@@ -670,42 +714,58 @@ fn parse_gfm_table(
     })
 }
 
-fn is_delimiter_row(line: &str) -> bool {
-    line.trim_matches('|')
-        .split('|')
-        .all(|cell| !cell.trim().is_empty() && cell.trim().chars().all(|c| c == '-' || c == ':'))
+/// One trimmed line of a table.
+#[derive(Clone, Debug)]
+enum Row {
+    /// `| --- | :-: |`: every cell dashes and colons.
+    Delimiter,
+    /// Each cell's text with `\|` read as `|`, and the byte it starts at.
+    Cells(Vec<(String, usize)>),
+    /// Not a row at all.
+    Other,
 }
 
-/// A row's cells, honouring `\|` inside one.
-fn split_cells(line: &str) -> Vec<String> {
-    let inner = line.trim().trim_start_matches('|').trim_end_matches('|');
-    let mut out = Vec::new();
-    let mut current = String::new();
-    // `\|` is content and loses its backslash before inline parsing; a bare `|`
-    // ends the cell. Inverts `escape_cell`, which escapes every pipe.
-    for character in inner.chars() {
-        match character {
-            '|' if current.ends_with('\\') => {
-                current.pop();
-                current.push('|');
-            }
-            '|' => out.push(std::mem::take(&mut current)),
-            character => current.push(character),
-        }
+/// A trimmed line as a table row. The run of pipes that ends the line closes
+/// the row, so a `\` before it escapes nothing.
+fn row<'a>() -> impl Parser<'a, &'a str, Row, Extra<'a>> {
+    let edge = just('|').repeated().at_least(1).then(end());
+    let space = any().filter(|c: &char| c.is_whitespace()).repeated();
+    let dashes = space.then(one_of("-:").repeated().at_least(1)).then(space);
+    let delimiter = just('|')
+        .repeated()
+        .at_least(1)
+        .ignore_then(dashes.separated_by(just('|')).at_least(1))
+        .then_ignore(just('|').repeated())
+        .then_ignore(end())
+        .map(|()| Row::Delimiter);
+
+    let pipe = just('\\').ignore_then(edge.not().ignore_then(just('|')));
+    let cell = choice((pipe, none_of('|')))
+        .repeated()
+        .collect::<String>()
+        .map_with(|cell, extra: &mut Span<'a, '_>| (cell, extra.span().start));
+    let cells = just('|')
+        .repeated()
+        .at_least(1)
+        .ignore_then(
+            cell.separated_by(edge.not().ignore_then(just('|')))
+                .collect(),
+        )
+        .then_ignore(edge.or_not())
+        .then_ignore(end())
+        .map(Row::Cells);
+
+    choice((delimiter, cells, any().repeated().map(|()| Row::Other)))
+}
+
+/// A cell's inline source. Content never ends in an odd run of backslashes,
+/// so one here escapes a trailing space the row's spacing trimmed away.
+fn cell_text(cell: &str) -> String {
+    let mut text = cell.trim().to_string();
+    if text.chars().rev().take_while(|c| *c == '\\').count() % 2 == 1 {
+        text.push(' ');
     }
-    out.push(current);
-    out.into_iter()
-        .map(|cell| {
-            let mut trimmed = cell.trim().to_string();
-            // Content never ends in an odd run of backslashes, so one here is
-            // the escape of a trailing space the trim just removed.
-            let run = trimmed.chars().rev().take_while(|c| *c == '\\').count();
-            if run % 2 == 1 {
-                trimmed.push(' ');
-            }
-            trimmed
-        })
-        .collect()
+    text
 }
 
 #[cfg(test)]
@@ -1140,6 +1200,36 @@ mod tests {
         assert!(parse("::nonsense{}").is_err());
         assert!(parse("# hi{theme-chartreuse}").is_err());
         assert!(parse("# hi{nonsense}").is_err());
+    }
+
+    /// The grammar reads every corpus input as the hand parser did: the same
+    /// inputs refused, and the same block wherever both accept.
+    #[test]
+    fn the_grammar_reads_as_the_hand_parser_did() {
+        use crate::syntax::corpus::{self, AnyName, Gen};
+
+        let mut inputs = corpus::bundle_lines();
+        inputs.extend(corpus::MALFORMED.iter().map(|input| input.to_string()));
+        for seed in corpus::seeds() {
+            let mut g = Gen::new(seed);
+            inputs.push(corpus::block_source(&g.content()));
+            inputs.push(g.noise());
+        }
+        let agree = |input: &str, links: &dyn Links| {
+            let (new, old) = (parse_with(input, links), legacy::parse_with(input, links));
+            assert_eq!(
+                new.is_ok(),
+                old.is_ok(),
+                "{input:?}: {new:?} against {old:?}"
+            );
+            if let (Ok(new), Ok(old)) = (new, old) {
+                assert_eq!(new, old, "{input:?}");
+            }
+        };
+        for input in &inputs {
+            agree(input, &Verbatim);
+            agree(input, &AnyName);
+        }
     }
 
     #[test]
