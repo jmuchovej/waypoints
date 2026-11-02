@@ -372,6 +372,26 @@ entry's grammar; line arithmetic in the walker is two additions.
 
 ### D8 — The document walker: prefix as the parameter, child regions parsed in place (2026-11-01)
 
+_Amended 2026-11-02, while implementing task 4.2._ Nesting in the body is
+plain Rust recursion, not chumsky recursion. Inline nesting is what a person
+types; body nesting is what a store holds, and the exporter writes it at any
+depth, so the 256 ceiling has to hold for real outlines. Measured on the
+inline layer, chumsky recursion costs 32–64 KiB of stack per level in a debug
+build; 256 levels would need several megabytes. The walker therefore keeps a
+recursion of its own (`region` → `node` → `region`), with the heavy reading in
+a non-recursive `plan` step so each level costs only a small frame: a body
+nested 256 levels parses on a two-megabyte thread in a debug build, and one
+nested 257 refuses. What D8 asked of it otherwise holds. Every level reads the
+file's lines through a `View` (the line past its prefixes, with the prefix
+width kept for columns) instead of copying them; the lines, identity comments
+(`identity::marker`), and each block's opener shape are grammars; and a block
+refusal cites the file line of the construct and a column that counts its
+prefixes. `matching_closer` survives as `closer`, unchanged, because a
+component's extent must match the hand walker's depth count exactly (the
+differential holds it to that). Identity refusals stay `MalformedKind` values
+rather than emitted errors, since `SourceKeyedIdentity` is a kind, not a
+sentence.
+
 The body of a Landmark file is a sequence of nodes at a _prefix_ — `""` at
 the root, `"  "` under an indented parent, `"> "` under a blockquote, and
 concatenations of those under nested parents. A node is an identity comment,

@@ -234,8 +234,32 @@ const BODY: &[Body] = &[
     Body {
         template: "`{word}` is not a block attribute in this dialect",
         source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n# hi{nonsense}\n",
-        detail: "`nonsense` is not a block attribute in this dialect (line 1, column 6)",
+        detail: "`nonsense` is not a block attribute in this dialect (column 6)",
         line: 1,
+    },
+    Body {
+        template: "`{token}` is not a mark token in this dialect",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\nfirst\n\n\
+                 <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->\n\
+                 > <!-- wp:mark 00000000-0000-0000-0000-00000000000c -->\n\
+                 > - item\n\
+                 >   <!-- wp:mark 00000000-0000-0000-0000-00000000000d -->\n\
+                 >   text [x]{nonsense} and more\n\
+                 > <!-- /wp:mark -->\n\
+                 <!-- /wp:mark -->\n",
+        detail: "`nonsense` is not a mark token in this dialect (column 14)",
+        line: 7,
+    },
+    Body {
+        template: "`{color}` is not a block theme colour",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\nparent\n\
+                 \x20 <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->\n\
+                 \x20 > <!-- wp:mark 00000000-0000-0000-0000-00000000000c -->\n\
+                 \x20 > - item{theme-chartreuse}\n\
+                 \x20 <!-- /wp:mark -->\n\
+                 <!-- /wp:mark -->\n",
+        detail: "`chartreuse` is not a block theme colour (column 18)",
+        line: 4,
     },
     Body {
         template: "a container's comment is never closed",
@@ -258,6 +282,7 @@ const EDGE_KIND: &str = "`{raw_kind}` is not an edge kind";
 const SOURCES: &[&str] = &[
     "../domain/src/syntax/inline.rs",
     "../domain/src/syntax/block.rs",
+    "src/document.rs",
     "src/ingest.rs",
     "src/identity.rs",
 ];

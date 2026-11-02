@@ -13,11 +13,14 @@
 //! A comment carries the id and nothing else; timestamps and `extra` ride in
 //! `marks.jsonl`.
 
+use chumsky::prelude::*;
 use domain::{Json, MarkID};
 
 use crate::refusal::MalformedKind;
 
 const MARKER: &str = "wp:mark";
+
+type Extra<'a> = extra::Err<Rich<'a, char>>;
 
 /// What a `wp:mark` comment says.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,36 +49,46 @@ pub fn emit_close() -> String {
     format!("<!-- /{MARKER} -->")
 }
 
-/// `Ok(None)` when the comment is not an identity marker.
+/// `Ok(None)` when the line is not an identity marker.
 pub fn parse(raw: &str) -> Result<Option<Marker>, MalformedKind> {
-    let grammar = |detail: String| MalformedKind::Grammar { detail };
-    let Some(body) = raw
-        .trim()
-        .strip_prefix("<!--")
-        .and_then(|rest| rest.strip_suffix("-->"))
-    else {
-        return Ok(None);
-    };
-    let body = body.trim();
+    marker().parse(raw).into_output().unwrap_or(Ok(None))
+}
 
-    if let Some(rest) = body.strip_prefix('/') {
-        return Ok((rest.trim() == MARKER).then_some(Marker::Close));
-    }
-    let Some(payload) = body.strip_prefix(MARKER) else {
-        return Ok(None);
-    };
-    let payload = payload.trim();
+/// A line as an identity comment: `<!-- wp:mark … -->` opens, `<!-- /wp:mark
+/// -->` closes, and any other line, comment or not, is no marker. A payload
+/// that is not a Mark id refuses; one keyed by `src` is Fragment grammar,
+/// refused rather than resolved.
+pub(crate) fn marker<'a>()
+-> impl Parser<'a, &'a str, Result<Option<Marker>, MalformedKind>, Extra<'a>> {
+    let space = any().filter(|c: &char| c.is_whitespace()).repeated();
+    let closing = just("-->").then(space).then(end());
+    let rest = any().and_is(closing.not()).repeated().to_slice();
+    let close = just('/')
+        .then(space)
+        .then(just(MARKER))
+        .then(space)
+        .then(closing.rewind())
+        .to(Ok(Some(Marker::Close)));
+    let open = space
+        .ignore_then(just(MARKER))
+        .ignore_then(rest)
+        .map(|payload: &str| open(payload.trim()));
+    let comment = space
+        .ignore_then(just("<!--"))
+        .ignore_then(space)
+        .ignore_then(choice((close, open, rest.to(Ok(None)))))
+        .then_ignore(closing);
+    choice((comment, any().repeated().to(Ok(None))))
+}
 
-    // `src` is Fragment grammar: refused, never resolved.
+fn open(payload: &str) -> Result<Option<Marker>, MalformedKind> {
     if let Ok(Json::Object(fields)) = serde_json::from_str::<Json>(payload)
         && fields.contains_key("src")
     {
         return Err(MalformedKind::SourceKeyedIdentity);
     }
-    let id: uuid::Uuid = payload.parse().map_err(|_| {
-        grammar(format!(
-            "a `{MARKER}` comment takes a Mark id, not `{payload}`"
-        ))
+    let id: uuid::Uuid = payload.parse().map_err(|_| MalformedKind::Grammar {
+        detail: format!("a `{MARKER}` comment takes a Mark id, not `{payload}`"),
     })?;
     Ok(Some(Marker::Open(Identity::new(MarkID(id)))))
 }
