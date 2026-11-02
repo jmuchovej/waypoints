@@ -1,13 +1,11 @@
 //! A Landmark's YAML frontmatter — the flattened root Mark.
 //!
-//! Emit is hand-rolled: no serde YAML library writes the advisory `#` comments,
-//! and bytes must be stable. Parse uses `saphyr` (keys are dynamic
-//! `FeatureID`s), which stays confined to this module.
-//!
-//! YAML cannot tell a `Select` from a one-element `MultiSelect`, so [`parse`]
-//! is given the `FeatureKind` per `FeatureID`; Charts must be resolved first.
+//! [`yaml`] is the subset of YAML it is written in, one `Node` tree both ways;
+//! this module says what each entry means. YAML cannot tell a `Select` from a
+//! one-element `MultiSelect`, so [`parse`] is given the `FeatureKind` per
+//! `FeatureID`; Charts must be resolved first.
 
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 use chrono::NaiveDateTime;
 use domain::{
@@ -15,15 +13,17 @@ use domain::{
     syntax::inline::{self, Links},
 };
 use indexmap::IndexMap;
-use saphyr::{LoadableYamlNode, Mapping, Scalar, Yaml};
 
 use crate::{bundle::render_timestamp, names::KeepLabels, refusal::MalformedKind};
 
+#[cfg(test)]
+pub(crate) mod legacy;
+mod yaml;
+
+use yaml::{Entry, Node};
+
 /// The frontmatter fence.
 const FENCE: &str = "---";
-
-/// One indentation step. YAML, so spaces.
-const STEP: &str = "  ";
 
 /// A Landmark's frontmatter: the root Mark, flattened.
 #[derive(Clone, Debug, PartialEq)]
@@ -45,7 +45,7 @@ pub struct Frontmatter {
 /// Text the emitter writes as comments and labels, and the parser ignores.
 #[derive(Clone, Debug, Default)]
 pub struct Advisory {
-    /// Human names for features, written as `# Attendees` above their key.
+    /// Human names for features, written as `# Attendees` after their key.
     pub feature_names: HashMap<FeatureID, String>,
     /// Human names for referenced Marks, written as each ref's `label`.
     pub mark_titles: HashMap<MarkID, String>,
@@ -55,198 +55,93 @@ pub struct Advisory {
 
 /// Render frontmatter, fences included.
 pub fn emit(front: &Frontmatter, advisory: &Advisory, links: &dyn Links) -> String {
-    let mut out = String::new();
-    out.push_str(FENCE);
-    out.push('\n');
-
-    push_block_scalar(
-        &mut out,
-        "title",
-        &inline::emit_with(&front.title, &KeepLabels(links)),
-        0,
-    );
-    push_line(
-        &mut out,
-        0,
-        &format!("chart: {}", plain(crate::layout::chart_id(&front.chart))),
-    );
+    let title = inline::emit_with(&front.title, &KeepLabels(links));
+    let mut entries = vec![
+        Entry::new("title", Node::text(title)),
+        Entry::new("chart", Node::id(crate::layout::chart_id(&front.chart))),
+    ];
     if let Some(icon) = &front.icon {
-        // JSON is a subset of YAML, so a compact flow mapping is valid and
-        // deterministic without a recursive YAML writer.
-        push_line(&mut out, 0, &format!("icon: {}", compact_json(icon)));
+        let icon = serde_json::to_value(icon).unwrap_or_default();
+        entries.push(Entry::new("icon", Node::Json(icon)));
     }
     // `marks.jsonl` is normative for timestamps; these are for the reader.
-    push_line(
-        &mut out,
-        0,
-        &format!("created: {} # advisory", render_timestamp(front.created)),
-    );
-    push_line(
-        &mut out,
-        0,
-        &format!("updated: {} # advisory", render_timestamp(front.updated)),
-    );
-
+    for (key, at) in [("created", front.created), ("updated", front.updated)] {
+        entries.push(
+            Entry::new(key, Node::Plain(render_timestamp(at))).noted(Some("advisory".into())),
+        );
+    }
     if !front.readings.is_empty() {
-        push_line(&mut out, 0, "readings:");
-        for (feature, reading) in &front.readings {
-            let mut lines = String::new();
-            push_reading(&mut lines, feature, reading, advisory, links);
-            // The feature's name trails the reading's key line.
-            let (first, rest) = lines.split_once('\n').unwrap_or((&lines, ""));
-            out.push_str(first);
-            if let Some(name) = advisory.feature_names.get(feature) {
-                out.push_str(" # ");
-                out.push_str(&one_line(name));
-            }
-            out.push('\n');
-            out.push_str(rest);
-        }
+        let readings = front
+            .readings
+            .iter()
+            .map(|(feature, reading)| {
+                let name = advisory
+                    .feature_names
+                    .get(feature)
+                    .map(|name| one_line(name));
+                Entry::new(feature.to_string(), value(reading, advisory, links)).noted(name)
+            })
+            .collect();
+        entries.push(Entry::new("readings", Node::Map(readings)));
     }
-
-    out.push_str(FENCE);
-    out.push('\n');
-    out
+    format!("{FENCE}\n{}{FENCE}\n", yaml::write(&entries))
 }
 
-fn push_line(out: &mut String, depth: usize, line: &str) {
-    for _ in 0..depth {
-        out.push_str(STEP);
-    }
-    out.push_str(line);
-    out.push('\n');
-}
-
-/// `key: |-` plus the indented body — the one spelling rich text takes.
-///
-/// A value opening with a space gets an explicit indentation indicator, or
-/// YAML would read the space as indentation and drop it.
-fn push_block_scalar(out: &mut String, key: &str, value: &str, depth: usize) {
-    if value.is_empty() {
-        push_line(out, depth, &format!("{key}: \"\""));
-        return;
-    }
-    let indicator = if value.starts_with(' ') {
-        STEP.len().to_string()
-    } else {
-        String::new()
-    };
-    push_line(out, depth, &format!("{key}: |{indicator}-"));
-    for line in value.split('\n') {
-        push_line(out, depth + 1, line);
-    }
-}
-
-/// A base-36 id as a YAML scalar, quoted where YAML would re-type it:
-/// `0001` reads as an integer, `12e3` as a float, `null` and `true` as such.
-fn plain(id: &str) -> String {
-    let retyped = id.starts_with(|c: char| c.is_ascii_digit())
-        || matches!(id, "null" | "true" | "false" | "~");
-    if retyped {
-        format!("\"{id}\"")
-    } else {
-        id.to_string()
-    }
-}
-
-fn push_reading(
-    out: &mut String,
-    feature: &FeatureID,
-    reading: &Reading,
-    advisory: &Advisory,
-    links: &dyn Links,
-) {
-    let key = plain(&feature.to_string());
+fn value(reading: &Reading, advisory: &Advisory, links: &dyn Links) -> Node {
+    let ids = |ids: &[GlyphID]| Node::Seq(ids.iter().map(|id| Node::id(&id.to_string())).collect());
     match reading {
-        Reading::Null => push_line(out, 1, &format!("{key}: null")),
-        Reading::Text(rich) => push_block_scalar(out, &key, &inline::emit_with(rich, links), 1),
-        Reading::Number(number) => push_line(out, 1, &format!("{key}: {}", compact_json(number))),
-        Reading::Bool(flag) => push_line(out, 1, &format!("{key}: {flag}")),
-        Reading::Date(at) => push_line(out, 1, &format!("{key}: {}", render_timestamp(*at))),
-        Reading::DateRange(from, to) => {
-            push_line(out, 1, &format!("{key}:"));
-            push_line(out, 2, &format!("from: {}", render_timestamp(*from)));
-            push_line(out, 2, &format!("to: {}", render_timestamp(*to)));
+        Reading::Null => Node::Plain("null".into()),
+        Reading::Text(rich) => Node::text(inline::emit_with(rich, links)),
+        Reading::Number(number) => {
+            Node::Plain(serde_json::to_string(number).unwrap_or_else(|_| "null".into()))
         }
-        Reading::Select(glyph) => {
-            push_line(out, 1, &format!("{key}: {}", plain(&glyph.to_string())))
-        }
-        // An empty collection is written in flow form: `key:` alone reads as null.
-        Reading::MultiSelect(glyphs) if glyphs.is_empty() => {
-            push_line(out, 1, &format!("{key}: []"))
-        }
-        Reading::GroupedSelect(groups) if groups.is_empty() => {
-            push_line(out, 1, &format!("{key}: {{}}"))
-        }
-        Reading::References(targets) if targets.is_empty() => {
-            push_line(out, 1, &format!("{key}: []"))
-        }
-        Reading::MultiSelect(glyphs) => {
-            push_line(out, 1, &format!("{key}:"));
-            for glyph in glyphs {
-                push_line(out, 2, &format!("- {}", plain(&glyph.to_string())));
-            }
-        }
+        Reading::Bool(flag) => Node::Plain(flag.to_string()),
+        Reading::Date(at) => Node::Plain(render_timestamp(*at)),
+        Reading::DateRange(from, to) => Node::Map(vec![
+            Entry::new("from", Node::Plain(render_timestamp(*from))),
+            Entry::new("to", Node::Plain(render_timestamp(*to))),
+        ]),
+        Reading::Select(glyph) => Node::id(&glyph.to_string()),
+        Reading::MultiSelect(glyphs) => ids(glyphs),
         Reading::GroupedSelect(groups) => {
-            push_line(out, 1, &format!("{key}:"));
             // A `HashMap`: sorted here, so bytes do not depend on the hash seed.
             let mut sorted: Vec<_> = groups.iter().collect();
             sorted.sort_by_key(|(group, _)| group.to_string());
-            for (group, members) in sorted {
-                if members.is_empty() {
-                    push_line(out, 2, &format!("{}: []", plain(&group.to_string())));
-                    continue;
-                }
-                push_line(out, 2, &format!("{}:", plain(&group.to_string())));
-                for member in members {
-                    push_line(out, 3, &format!("- {}", plain(&member.to_string())));
-                }
-            }
+            Node::Map(
+                sorted
+                    .into_iter()
+                    .map(|(group, members)| Entry::new(group.to_string(), ids(members)))
+                    .collect(),
+            )
         }
-        Reading::References(targets) => {
-            push_line(out, 1, &format!("{key}:"));
-            for target in targets {
-                push_line(out, 2, &format!("- ref: {target}"));
-                if let Some(title) = advisory.mark_titles.get(target) {
-                    push_line(out, 3, &format!("label: {}", quote(&one_line(title))));
-                }
-            }
-        }
+        Reading::References(targets) => Node::Seq(
+            targets
+                .iter()
+                .map(|target| {
+                    let mut entries = vec![Entry::new("ref", Node::Plain(target.to_string()))];
+                    if let Some(title) = advisory.mark_titles.get(target) {
+                        entries.push(Entry::new("label", Node::Quoted(one_line(title))));
+                    }
+                    Node::Map(entries)
+                })
+                .collect(),
+        ),
         Reading::URL(value)
         | Reading::Email(value)
         | Reading::File(value)
-        | Reading::Formula(value) => {
-            push_line(out, 1, &format!("{key}: {}", quote(value)));
-        }
+        | Reading::Formula(value) => Node::Quoted(value.clone()),
         // The two strings' meaning is undefined in `FeatureKind::Phone`, so they
         // are carried positionally.
-        Reading::Phone(first, second) => {
-            push_line(
-                out,
-                1,
-                &format!("{key}: [{}, {}]", quote(first), quote(second)),
-            );
-        }
+        Reading::Phone(first, second) => Node::Flow(vec![
+            Node::Quoted(first.clone()),
+            Node::Quoted(second.clone()),
+        ]),
     }
-}
-
-/// A double-quoted YAML scalar — the one spelling that never needs the emitter
-/// to reason about whether a value looks like something else.
-fn quote(value: &str) -> String {
-    let escaped = value
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n");
-    format!("\"{escaped}\"")
 }
 
 /// Advisory text is one line by construction: a newline would break the comment.
 fn one_line(value: &str) -> String {
     value.replace(['\n', '\r'], " ")
-}
-
-fn compact_json<T: serde::Serialize>(value: &T) -> String {
-    serde_json::to_string(value).unwrap_or_else(|_| "null".to_string())
 }
 
 // ── Parse ────────────────────────────────────────────────────────────────────
@@ -266,51 +161,73 @@ pub fn split(file: &str) -> Option<(&str, &str)> {
     Some((front, body))
 }
 
+/// A refusal of frontmatter: its 1-indexed line within the frontmatter source,
+/// and what is wrong there.
+pub type Refused = (usize, MalformedKind);
+
 /// Read frontmatter, interpreting each reading as its feature's kind.
 pub fn parse(
     source: &str,
     kinds: &HashMap<FeatureID, FeatureKind>,
     links: &dyn Links,
-) -> Result<Frontmatter, MalformedKind> {
-    let documents = Yaml::load_from_str(source).map_err(|error| MalformedKind::Grammar {
-        detail: format!("frontmatter is not YAML: {error}"),
-    })?;
-    let Some(Yaml::Mapping(root)) = documents.into_iter().next() else {
-        return Err(MalformedKind::Grammar {
-            detail: "frontmatter is not a mapping".to_string(),
-        });
+) -> Result<Frontmatter, Refused> {
+    let line = |at: usize| source[..at.min(source.len())].matches('\n').count() + 1;
+    let entries =
+        yaml::read(source).map_err(|(at, detail)| (line(at), MalformedKind::Grammar { detail }))?;
+    let get = |key: &str| entries.iter().find(|entry| entry.key == key);
+    let at = |entry: &Entry| {
+        let at = line(entry.at);
+        move |detail: String| (at, MalformedKind::Grammar { detail })
     };
+    let missing = |key: &str| (1, grammar(format!("frontmatter with no `{key}`")));
 
-    let title = match get(&root, "title") {
-        Some(node) => inline::parse_with(&as_text(node)?, &KeepLabels(links)).map_err(grammar)?,
+    let title = match get("title") {
+        Some(entry) => inline::parse_with(
+            scalar(&entry.value, "title").map_err(at(entry))?,
+            &KeepLabels(links),
+        )
+        .map_err(|error| at(entry)(error.to_string()))?,
         None => RichText::default(),
     };
-    let chart = match get(&root, "chart") {
-        Some(node) => ChartID(as_text(node)?),
-        None => {
-            return Err(MalformedKind::Grammar {
-                detail: "frontmatter with no `chart`".to_string(),
-            });
-        }
+    let chart = match get("chart") {
+        Some(entry) => ChartID(
+            scalar(&entry.value, "chart")
+                .map_err(at(entry))?
+                .to_string(),
+        ),
+        None => return Err(missing("chart")),
     };
-    let icon = match get(&root, "icon") {
-        Some(node) => Some(from_json_node(node)?),
+    let icon = match get("icon") {
+        Some(entry) => match &entry.value {
+            Node::Json(icon) => Some(
+                serde_json::from_value(icon.clone())
+                    .map_err(|error| at(entry)(format!("not a valid encoded value: {error}")))?,
+            ),
+            _ => return Err(at(entry)("an icon is one line of JSON".into())),
+        },
         None => None,
     };
-    let created = timestamp(&root, "created")?;
-    let updated = timestamp(&root, "updated")?;
+    let mut stamp = |key: &str| match get(key) {
+        Some(entry) => scalar(&entry.value, key)
+            .and_then(timestamp)
+            .map_err(at(entry)),
+        None => Err(missing(key)),
+    };
+    let created = stamp("created")?;
+    let updated = stamp("updated")?;
 
     let mut readings = IndexMap::new();
-    if let Some(Yaml::Mapping(entries)) = get(&root, "readings") {
-        for (key, value) in entries {
-            let key = as_text(key)?;
-            let feature = FeatureID(Base36ID(key.clone()));
+    if let Some(Node::Map(entries)) = get("readings").map(|entry| &entry.value) {
+        for entry in entries {
+            let feature = FeatureID(Base36ID(entry.key.clone()));
             let Some(kind) = kinds.get(&feature) else {
-                return Err(MalformedKind::Grammar {
-                    detail: format!("reading `{key}` names no feature of this Chart"),
-                });
+                return Err(at(entry)(format!(
+                    "reading `{}` names no feature of this Chart",
+                    entry.key
+                )));
             };
-            readings.insert(feature, reading(value, kind, &key, links)?);
+            let read = reading(&entry.value, kind, &entry.key, links).map_err(at(entry))?;
+            readings.insert(feature, read);
         }
     }
 
@@ -324,200 +241,122 @@ pub fn parse(
     })
 }
 
-fn grammar(error: inline::GrammarError) -> MalformedKind {
-    MalformedKind::Grammar {
-        detail: error.to_string(),
-    }
+fn grammar(detail: String) -> MalformedKind {
+    MalformedKind::Grammar { detail }
 }
 
-fn get<'a, 'i>(mapping: &'a Mapping<'i>, key: &str) -> Option<&'a Yaml<'i>> {
-    // Owned, so the probe key does not borrow from the caller's `&str`.
-    mapping.get(&Yaml::Value(Scalar::String(Cow::Owned(key.to_string()))))
+fn scalar<'a>(node: &'a Node, what: &str) -> Result<&'a str, String> {
+    node.scalar()
+        .ok_or_else(|| format!("expected a scalar for `{what}`"))
 }
 
-/// A node's text; scalars arrive as a parsed [`Scalar`] or an unparsed
-/// [`Yaml::Representation`] depending on style.
-fn as_text(node: &Yaml<'_>) -> Result<String, MalformedKind> {
-    match node {
-        Yaml::Value(Scalar::String(text)) => Ok(text.to_string()),
-        Yaml::Value(Scalar::Integer(number)) => Ok(number.to_string()),
-        Yaml::Value(Scalar::FloatingPoint(number)) => Ok(number.to_string()),
-        Yaml::Value(Scalar::Boolean(flag)) => Ok(flag.to_string()),
-        Yaml::Value(Scalar::Null) => Ok(String::new()),
-        Yaml::Representation(text, _, _) => Ok(text.to_string()),
-        other => Err(MalformedKind::Grammar {
-            detail: format!("expected a scalar, got {other:?}"),
-        }),
-    }
+fn items<'a>(node: &'a Node, what: &str) -> Result<&'a [Node], String> {
+    node.items()
+        .ok_or_else(|| format!("expected a list for {what}"))
 }
 
-/// A `saphyr` node as a JSON value. Compact JSON written by the emitter comes
-/// back as real mappings and sequences, so it is walked rather than re-parsed.
-fn to_json(node: &Yaml<'_>) -> Result<domain::Json, MalformedKind> {
-    Ok(match node {
-        Yaml::Value(Scalar::Null) => domain::Json::Null,
-        Yaml::Value(Scalar::Boolean(flag)) => domain::Json::Bool(*flag),
-        Yaml::Value(Scalar::Integer(number)) => domain::Json::from(*number),
-        Yaml::Value(Scalar::FloatingPoint(number)) => {
-            serde_json::Number::from_f64(number.into_inner())
-                .map(domain::Json::Number)
-                .unwrap_or(domain::Json::Null)
-        }
-        Yaml::Value(Scalar::String(text)) => domain::Json::String(text.to_string()),
-        Yaml::Representation(text, _, _) => domain::Json::String(text.to_string()),
-        Yaml::Sequence(items) => {
-            domain::Json::Array(items.iter().map(to_json).collect::<Result<Vec<_>, _>>()?)
-        }
-        Yaml::Mapping(entries) => {
-            let mut object = serde_json::Map::new();
-            for (key, value) in entries {
-                object.insert(as_text(key)?, to_json(value)?);
-            }
-            domain::Json::Object(object)
-        }
-        other => {
-            return Err(MalformedKind::Grammar {
-                detail: format!("cannot read {other:?} as a value"),
-            });
-        }
-    })
+fn timestamp(text: &str) -> Result<NaiveDateTime, String> {
+    crate::bundle::parse_timestamp(text)
 }
 
-fn from_json_node<T: serde::de::DeserializeOwned>(node: &Yaml<'_>) -> Result<T, MalformedKind> {
-    serde_json::from_value(to_json(node)?).map_err(|error| MalformedKind::Grammar {
-        detail: format!("not a valid encoded value: {error}"),
-    })
+fn glyph(text: &str) -> GlyphID {
+    GlyphID(Base36ID(text.to_string()))
 }
 
-fn timestamp(root: &Mapping<'_>, key: &str) -> Result<NaiveDateTime, MalformedKind> {
-    let Some(node) = get(root, key) else {
-        return Err(MalformedKind::Grammar {
-            detail: format!("frontmatter with no `{key}`"),
-        });
-    };
-    parse_timestamp(&as_text(node)?)
+fn glyphs(node: &Node, what: &str) -> Result<Vec<GlyphID>, String> {
+    items(node, what)?
+        .iter()
+        .map(|item| scalar(item, what).map(glyph))
+        .collect()
 }
 
-fn parse_timestamp(text: &str) -> Result<NaiveDateTime, MalformedKind> {
-    crate::bundle::parse_timestamp(text).map_err(|detail| MalformedKind::Grammar { detail })
-}
-
-fn glyph(node: &Yaml<'_>) -> Result<GlyphID, MalformedKind> {
-    Ok(GlyphID(Base36ID(as_text(node)?)))
-}
-
-fn sequence<'a, 'b>(node: &'a Yaml<'b>, what: &str) -> Result<&'a [Yaml<'b>], MalformedKind> {
-    match node {
-        Yaml::Sequence(items) => Ok(items),
-        other => Err(MalformedKind::Grammar {
-            detail: format!("expected a list for {what}, got {other:?}"),
-        }),
-    }
-}
-
-/// One YAML value read as the kind its feature declares.
+/// One value read as the kind its feature declares.
 fn reading(
-    node: &Yaml<'_>,
+    node: &Node,
     kind: &FeatureKind,
     key: &str,
     links: &dyn Links,
-) -> Result<Reading, MalformedKind> {
-    if matches!(node, Yaml::Value(Scalar::Null)) {
+) -> Result<Reading, String> {
+    if matches!(node, Node::Plain(text) if matches!(text.as_str(), "null" | "Null" | "NULL" | "~"))
+    {
         return Ok(Reading::Null);
     }
+    let text = || scalar(node, &format!("reading `{key}`"));
+    let what = format!("reading `{key}`");
 
     match kind {
-        FeatureKind::Text => Ok(Reading::Text(
-            inline::parse_with(&as_text(node)?, links).map_err(grammar)?,
-        )),
+        FeatureKind::Text => inline::parse_with(text()?, links)
+            .map(Reading::Text)
+            .map_err(|error| error.to_string()),
         FeatureKind::Number { .. } => {
-            let text = as_text(node)?;
+            let text = text()?;
             text.trim()
                 .parse()
                 .map(Reading::Number)
-                .map_err(|_| MalformedKind::Grammar {
-                    detail: format!("reading `{key}` is not a number: {text}"),
-                })
+                .map_err(|_| format!("reading `{key}` is not a number: {text}"))
         }
-        FeatureKind::Checkbox => {
-            let text = as_text(node)?;
-            match text.trim() {
-                "true" => Ok(Reading::Bool(true)),
-                "false" => Ok(Reading::Bool(false)),
-                other => Err(MalformedKind::Grammar {
-                    detail: format!("reading `{key}` is not a boolean: {other}"),
-                }),
-            }
-        }
-        FeatureKind::Date { .. } => match node {
-            Yaml::Mapping(range) => {
-                let from = get(range, "from").ok_or_else(|| MalformedKind::Grammar {
-                    detail: format!("reading `{key}` is a date range with no `from`"),
-                })?;
-                let to = get(range, "to").ok_or_else(|| MalformedKind::Grammar {
-                    detail: format!("reading `{key}` is a date range with no `to`"),
-                })?;
-                Ok(Reading::DateRange(
-                    parse_timestamp(&as_text(from)?)?,
-                    parse_timestamp(&as_text(to)?)?,
-                ))
-            }
-            scalar => Ok(Reading::Date(parse_timestamp(&as_text(scalar)?)?)),
+        FeatureKind::Checkbox => match text()?.trim() {
+            "true" => Ok(Reading::Bool(true)),
+            "false" => Ok(Reading::Bool(false)),
+            other => Err(format!("reading `{key}` is not a boolean: {other}")),
         },
-        FeatureKind::URL => Ok(Reading::URL(as_text(node)?)),
-        FeatureKind::Email => Ok(Reading::Email(as_text(node)?)),
-        FeatureKind::Formula => Ok(Reading::Formula(as_text(node)?)),
-        FeatureKind::Phone => {
-            let items = sequence(node, &format!("reading `{key}`"))?;
-            if items.len() != 2 {
-                return Err(MalformedKind::Grammar {
-                    detail: format!("reading `{key}` is a phone number of {} parts", items.len()),
-                });
+        FeatureKind::Date { .. } => match node {
+            Node::Map(range) => {
+                let end = |name: &str| {
+                    range
+                        .iter()
+                        .find(|entry| entry.key == name)
+                        .ok_or_else(|| format!("reading `{key}` is a date range with no `{name}`"))
+                        .and_then(|entry| scalar(&entry.value, name).and_then(timestamp))
+                };
+                Ok(Reading::DateRange(end("from")?, end("to")?))
             }
-            Ok(Reading::Phone(as_text(&items[0])?, as_text(&items[1])?))
-        }
-        FeatureKind::Select { .. } => Ok(Reading::Select(glyph(node)?)),
-        FeatureKind::MultiSelect { .. } => {
-            let items = sequence(node, &format!("reading `{key}`"))?;
-            Ok(Reading::MultiSelect(
-                items.iter().map(glyph).collect::<Result<_, _>>()?,
-            ))
-        }
+            _ => Ok(Reading::Date(timestamp(text()?)?)),
+        },
+        FeatureKind::URL => Ok(Reading::URL(text()?.to_string())),
+        FeatureKind::Email => Ok(Reading::Email(text()?.to_string())),
+        FeatureKind::Formula => Ok(Reading::Formula(text()?.to_string())),
+        FeatureKind::Phone => match items(node, &what)? {
+            [first, second] => Ok(Reading::Phone(
+                scalar(first, &what)?.to_string(),
+                scalar(second, &what)?.to_string(),
+            )),
+            parts => Err(format!(
+                "reading `{key}` is a phone number of {} parts",
+                parts.len()
+            )),
+        },
+        FeatureKind::Select { .. } => Ok(Reading::Select(glyph(text()?))),
+        FeatureKind::MultiSelect { .. } => Ok(Reading::MultiSelect(glyphs(node, &what)?)),
         FeatureKind::GroupedSelect { .. } | FeatureKind::GroupedMultiSelect { .. } => {
-            let Yaml::Mapping(groups) = node else {
-                return Err(MalformedKind::Grammar {
-                    detail: format!("reading `{key}` is not a mapping of groups"),
-                });
+            let Node::Map(groups) = node else {
+                return Err(format!("reading `{key}` is not a mapping of groups"));
             };
-            let mut out = std::collections::HashMap::new();
-            for (group, members) in groups {
-                let members = sequence(members, &format!("group in reading `{key}`"))?;
-                out.insert(
-                    glyph(group)?,
-                    members.iter().map(glyph).collect::<Result<_, _>>()?,
-                );
+            let mut out = HashMap::new();
+            for group in groups {
+                let what = format!("group in reading `{key}`");
+                out.insert(glyph(&group.key), glyphs(&group.value, &what)?);
             }
             Ok(Reading::GroupedSelect(out))
         }
         FeatureKind::Reference { .. } => {
-            let items = sequence(node, &format!("reading `{key}`"))?;
             let mut targets = Vec::new();
-            for item in items {
+            for item in items(node, &what)? {
                 // `label` is advisory and deliberately not read: a Bundle whose
                 // labels were hand-edited must ingest identically to one with
                 // them stripped.
                 let text = match item {
-                    Yaml::Mapping(entry) => {
-                        let node = get(entry, "ref").ok_or_else(|| MalformedKind::Grammar {
-                            detail: format!("a reference in `{key}` has no `ref`"),
-                        })?;
-                        as_text(node)?
-                    }
-                    scalar => as_text(scalar)?,
+                    Node::Map(entries) => entries
+                        .iter()
+                        .find(|entry| entry.key == "ref")
+                        .ok_or_else(|| format!("a reference in `{key}` has no `ref`"))
+                        .and_then(|entry| scalar(&entry.value, "ref"))?,
+                    scalar => self::scalar(scalar, &what)?,
                 };
-                let id: uuid::Uuid = text.trim().parse().map_err(|_| MalformedKind::Grammar {
-                    detail: format!("`{text}` is not a Mark id"),
-                })?;
+                let id: uuid::Uuid = text
+                    .trim()
+                    .parse()
+                    .map_err(|_| format!("`{text}` is not a Mark id"))?;
                 targets.push(MarkID(id));
             }
             Ok(Reading::References(targets))
@@ -536,7 +375,7 @@ mod tests {
         source: &str,
         kinds: &HashMap<FeatureID, FeatureKind>,
     ) -> Result<Frontmatter, MalformedKind> {
-        super::parse(source, kinds, &Verbatim)
+        super::parse(source, kinds, &Verbatim).map_err(|(_, kind)| kind)
     }
 
     /// The constraint-free shapes of the struct variants, so a fixture can name
@@ -824,11 +663,7 @@ mod tests {
         );
     }
 
-    /// The emitter's branches as a checklist — every reading kind empty and
-    /// not, every re-typed id, the icon, the `|2-` indicator, with and without
-    /// advisory notes — each read back to the frontmatter it came from.
-    #[test]
-    fn every_frontmatter_the_emitter_writes_reads_back() {
+    fn parity_cases() -> Vec<(FeatureKind, Reading)> {
         let multi_kind = FeatureKind::MultiSelect {
             options: IndexMap::new(),
             max_selections: None,
@@ -840,7 +675,7 @@ mod tests {
         };
         let text = |text: &str| Reading::Text(inline::parse(text).expect("dialect"));
         let ids = |ids: &[&str]| ids.iter().map(|id| glyph_id(id)).collect::<Vec<_>>();
-        let cases: Vec<(FeatureKind, Reading)> = vec![
+        vec![
             (FeatureKind::Text, text("some *bold* text")),
             (FeatureKind::Text, Reading::Text(RichText::default())),
             (FeatureKind::Text, text("line one\nline two")),
@@ -899,37 +734,54 @@ mod tests {
                 FeatureKind::Phone,
                 Reading::Phone(String::new(), String::new()),
             ),
-        ];
+        ]
+    }
 
-        let noted = Advisory {
+    fn noted() -> Advisory {
+        Advisory {
             feature_names: HashMap::from([
                 (feature("a1b2"), "Attendees\nand # guests".to_string()),
                 (feature("0001"), "Retyped".to_string()),
             ]),
             mark_titles: HashMap::from([(mark(1), "A \"quoted\"\ntitle".to_string())]),
-        };
-        for advisory in [Advisory::default(), noted] {
-            for (kind, reading) in &cases {
-                for key in ["a1b2", "0001"] {
-                    let mut readings = IndexMap::new();
-                    readings.insert(feature(key), reading.clone());
-                    survives_with(
-                        base(readings),
-                        &advisory,
-                        HashMap::from([(feature(key), kind.clone())]),
-                    );
-                }
+        }
+    }
+
+    /// Every frontmatter of the parity table, with the kinds to read it with.
+    fn parity_fronts() -> Vec<(Frontmatter, HashMap<FeatureID, FeatureKind>)> {
+        let mut out = Vec::new();
+        for (kind, reading) in parity_cases() {
+            for key in ["a1b2", "0001"] {
+                let mut readings = IndexMap::new();
+                readings.insert(feature(key), reading.clone());
+                out.push((
+                    base(readings),
+                    HashMap::from([(feature(key), kind.clone())]),
+                ));
             }
-            for title in ["", " leading", "two\nlines", "the *weekly* sync"] {
-                let mut front = base(IndexMap::new());
-                front.title = inline::parse(title).expect("dialect");
-                front.icon = Some(Icon {
-                    identifier: "iconify:mdi:home".into(),
-                    alt_text: Some("a \"home\"".into()),
-                    colorable: Some(true),
-                    metadata: None,
-                });
-                survives_with(front, &advisory, HashMap::new());
+        }
+        for title in ["", " leading", "two\nlines", "the *weekly* sync"] {
+            let mut front = base(IndexMap::new());
+            front.title = inline::parse(title).expect("dialect");
+            front.icon = Some(Icon {
+                identifier: "iconify:mdi:home".into(),
+                alt_text: Some("a \"home\"".into()),
+                colorable: Some(true),
+                metadata: None,
+            });
+            out.push((front, HashMap::new()));
+        }
+        out
+    }
+
+    /// The emitter's branches as a checklist — every reading kind empty and
+    /// not, every re-typed id, the icon, the `|2-` indicator, with and without
+    /// advisory notes — each read back to the frontmatter it came from.
+    #[test]
+    fn every_frontmatter_the_emitter_writes_reads_back() {
+        for advisory in [Advisory::default(), noted()] {
+            for (front, kinds) in parity_fronts() {
+                survives_with(front, &advisory, kinds);
             }
         }
     }
@@ -970,5 +822,169 @@ mod tests {
             as_text.readings[&feature("a1b2")],
             Reading::Text(_)
         ));
+    }
+
+    /// The committed Bundle's frontmatters, each with its Chart's kinds.
+    fn committed() -> Vec<(String, HashMap<FeatureID, FeatureKind>)> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../store/src/collections/getting-started");
+        let bundle = crate::Bundle::read_dir(&root).expect("the committed Bundle");
+        let mut out = Vec::new();
+        for (path, file) in bundle.iter().filter(|(path, _)| path.ends_with(".md")) {
+            let dir = path.rsplit_once('/').expect("filed").0;
+            let schema = bundle
+                .get(&format!("{dir}/{}", crate::layout::SCHEMA))
+                .expect("schema");
+            let chart =
+                crate::schema::read(&serde_json::from_str(schema).expect("JSON")).expect("schema");
+            let kinds = chart
+                .features
+                .iter()
+                .map(|(id, feature)| (id.clone(), feature.kind.clone()))
+                .collect();
+            out.push((split(file).expect("fences").0.to_string(), kinds));
+        }
+        assert!(!out.is_empty());
+        out
+    }
+
+    #[test]
+    fn emit_writes_the_bytes_the_hand_emitter_did() {
+        for advisory in [Advisory::default(), noted()] {
+            for (front, _) in parity_fronts() {
+                assert_eq!(
+                    emit(&front, &advisory, &Verbatim),
+                    legacy::emit(&front, &advisory, &Verbatim)
+                );
+            }
+        }
+        for (source, kinds) in committed() {
+            let front = parse(&source, &kinds).expect("the committed Bundle parses");
+            assert_eq!(
+                emit(&front, &noted(), &Verbatim),
+                legacy::emit(&front, &noted(), &Verbatim)
+            );
+        }
+    }
+
+    #[test]
+    fn the_subset_reads_what_saphyr_read() {
+        let mut sources = committed();
+        for advisory in [Advisory::default(), noted()] {
+            for (front, kinds) in parity_fronts() {
+                let source = emit(&front, &advisory, &Verbatim);
+                sources.push((split(&source).expect("fences").0.to_string(), kinds));
+            }
+        }
+        for (source, kinds) in sources {
+            assert_eq!(
+                parse(&source, &kinds).expect("the subset"),
+                legacy::parse(&source, &kinds, &Verbatim).expect("saphyr"),
+                "{source}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn generated_frontmatters_read_as_saphyr_read_them() {
+        for seed in crate::common::generate::seeds() {
+            let db = crate::common::open().await;
+            crate::common::generate::generate(&db, seed).await;
+            let bundle = crate::export(&db, &crate::common::meta())
+                .await
+                .expect("export")
+                .bundle;
+            let chart = crate::common::generate::wide_chart();
+            let kinds: HashMap<_, _> = chart
+                .features
+                .iter()
+                .map(|(id, feature)| (id.clone(), feature.kind.clone()))
+                .collect();
+            let names = crate::names::Lenient;
+            for (_, file) in bundle.iter().filter(|(path, _)| path.ends_with(".md")) {
+                let (source, _) = split(file).expect("fences");
+                assert_eq!(
+                    super::parse(source, &kinds, &names).expect("the subset"),
+                    legacy::parse(source, &kinds, &names).expect("saphyr"),
+                    "seed {seed}:\n{source}"
+                );
+            }
+        }
+    }
+
+    /// A frontmatter outside the subset is refused at the line of the construct.
+    #[test]
+    fn constructs_outside_the_subset_refuse_naming_their_line() {
+        let head = "title: |-\n  Hi\nchart: builtin.page\ncreated: 2026-08-02T09:41:00.000Z\n\
+                    updated: 2026-08-02T09:41:00.000Z\nreadings:\n";
+        let kinds = HashMap::from([
+            (feature("a1b2"), FeatureKind::Text),
+            (feature("c3d4"), select_kind()),
+        ]);
+        for (tail, line, says) in [
+            ("  a1b2: !!str x\n", 7, "tag"),
+            ("  a1b2: &anchor x\n", 7, "anchor"),
+            ("  a1b2: *alias\n", 7, "alias"),
+            ("  a1b2: 'single'\n", 7, "single-quoted"),
+            ("  a1b2: [a,\n    b]\n", 7, "flow sequence"),
+            ("  a1b2: \"no close\n", 7, "quoted"),
+            ("  a1b2: >-\n    folded\n", 7, "folded"),
+            ("  c3d4: x\n   a1b2: y\n", 8, "expected"),
+            ("\ta1b2: x\n", 7, "expected"),
+            (
+                "  a1b2:\n    x:\n      y:\n        z:\n          w:\n            v: 1\n",
+                11,
+                "nests deeper",
+            ),
+        ] {
+            let source = format!("{head}{tail}");
+            let (at, kind) = super::parse(&source, &kinds, &Verbatim).expect_err(&source);
+            let MalformedKind::Grammar { detail } = kind else {
+                panic!("{source}: {kind:?}");
+            };
+            assert_eq!(at, line, "{source}: {detail}");
+            assert!(detail.contains(says), "{source}: {detail}");
+        }
+    }
+
+    #[test]
+    fn interpretation_refusals_cite_their_entry() {
+        let source = "title: |-\n  Hi\nchart: builtin.page\ncreated: 2026-08-02T09:41:00.000Z\n\
+                      updated: 2026-08-02T09:41:00.000Z\nreadings:\n  zzzz: true\n";
+        let (line, _) = super::parse(source, &HashMap::new(), &Verbatim).expect_err("no feature");
+        assert_eq!(line, 7);
+    }
+
+    /// CRLF, trailing whitespace, blank lines and own-line comments change
+    /// nothing the subset reads.
+    #[test]
+    fn tolerances_read_to_the_same_frontmatter() {
+        for (source, kinds) in committed() {
+            let untouched = parse(&source, &kinds).expect("untouched");
+            // Trailing whitespace inside a literal block is its text's, so only
+            // the lines outside one carry it here.
+            let trailing: String = source
+                .lines()
+                .map(|line| match line.starts_with(' ') {
+                    true => format!("{line}\n"),
+                    false => format!("{line}  \t\n"),
+                })
+                .collect();
+            let tolerated = [
+                source.replace('\n', "\r\n"),
+                trailing,
+                source.replace("\nchart:", "\n\nchart:"),
+                source.replacen("readings:\n", "readings:\n\n", 1),
+                source.replace("readings:", "# what it says\nreadings:"),
+                source.replace("chart: ", "chart:   "),
+            ];
+            for variant in tolerated {
+                assert_eq!(
+                    parse(&variant, &kinds).unwrap_or_else(|e| panic!("{variant}\n{e}")),
+                    untouched,
+                    "{variant}"
+                );
+            }
+        }
     }
 }

@@ -18,7 +18,6 @@
   chumsky.workspace    = true
   indexmap.workspace   = true
   jsonschema.workspace = true
-  saphyr.workspace     = true
   serde.workspace      = true
   serde_json.workspace = true
   thiserror.workspace  = true
@@ -26,6 +25,8 @@
 
 [dev-dependencies]
   rand.workspace     = true
+  # The reader `frontmatter::legacy` keeps as the subset grammar's oracle.
+  saphyr.workspace   = true
   tempfile.workspace = true
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
   trybuild.workspace = true

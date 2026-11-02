@@ -38,10 +38,10 @@ every commit from 2.1 onward.
       `quote`.
 
       _Coverage for 2.1–2.3 was not measured: `cargo llvm-cov` and the
-                  `llvm-tools` component are absent from the toolchain, and installing
-                  them needs the network. The rows were derived by walking each emitter
-                  branch by hand. `Reading::File` has no `FeatureKind` to read it back
-                  with, so it has no row._
+                      `llvm-tools` component are absent from the toolchain, and installing
+                      them needs the network. The rows were derived by walking each emitter
+                      branch by hand. `Reading::File` has no `FeatureKind` to read it back
+                      with, so it has no row._
 
 - [x] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
       one fixture per `GrammarError`/`grammar(…)` site in `inline.rs`,
@@ -105,14 +105,14 @@ comment with no block after it`, `unclosed block, expected`, `unclosed
 
 ## 5. Frontmatter
 
-- [ ] 5.1 `refactor(transload/dialect): frontmatter emit through a Node pivot — byte-identical` —
+- [x] 5.1 `refactor(transload/dialect): frontmatter emit through a Node pivot — byte-identical` —
       `Node`, `Entry`, `Node::id`, and a writer; `emit` builds a `Node` and
       writes it; verify `emit`'s output is byte-equal to the pre-change
       emitter over the parity table, `frontmatter.rs` fixtures and every
       Landmark file of the committed Bundle (the old emitter kept as
       `legacy::emit` for the comparison), and that `the_shape_is_fenced_and_ordered`
       passes unchanged.
-- [ ] 5.2 `feat(transload/dialect): parse frontmatter as the strict subset the emitter writes — saphyr dropped, refusals name the line` —
+- [x] 5.2 `feat(transload/dialect): parse frontmatter as the strict subset the emitter writes — saphyr dropped, refusals name the line` —
       `map(depth)`, `seq(depth)`, scalars, flow, JSON, notes and tolerances
       per D9; interpretation transcribed from `reading`; `frontmatter::parse`
       returns a located error and `ingest` cites `Location::line`; `saphyr`
@@ -122,10 +122,14 @@ comment with no block after it`, `unclosed block, expected`, `unclosed
       property (`parse(write(n)) == n` over a generator of writer-domain
       nodes) passes at 1 000 cases, and fixtures for each refused construct
       (tag, anchor, single quote, three-space step, depth 5, multi-line flow)
-      refuse naming the line.
-- [ ] 5.3 `test(transload/dialect): frontmatter tolerances — CRLF, trailing whitespace, blank lines and own-line comments parse to the same Frontmatter` —
+      refuse naming the line. (`saphyr` leaves `[dependencies]` here and
+      stays a dev-dependency for `frontmatter::legacy::parse`, the oracle the
+      differential holds the subset to, until 6.2 retires it.)
+- [x] 5.3 `test(transload/dialect): frontmatter tolerances — CRLF, trailing whitespace, blank lines and own-line comments parse to the same Frontmatter` —
       verify each tolerance applied to the committed Bundle's frontmatter
-      yields a `Frontmatter` equal to the untouched file's.
+      yields a `Frontmatter` equal to the untouched file's. (Trailing
+      whitespace is applied outside literal blocks only: inside one it is the
+      text's, in YAML as here.)
 
 ## 6. Retire the oracles
 
