@@ -297,7 +297,8 @@ impl<'a> Stager<'a> {
         };
         let front = match frontmatter::parse(front, &kinds(&chart), &self.names) {
             Ok(front) => front,
-            Err(kind) => return self.malformed(at(), kind),
+            // The opening fence is the file's first line.
+            Err((line, kind)) => return self.malformed(Location::line(path, 1 + line), kind),
         };
         if layout::chart_id(&front.chart) != dir {
             return self.malformed(

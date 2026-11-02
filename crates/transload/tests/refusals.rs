@@ -392,6 +392,45 @@ async fn body_refusals_cite_their_line() {
 }
 
 #[tokio::test]
+async fn frontmatter_refusals_cite_their_file_line() {
+    let refusal_at = |refusal: &transload::Refusal, path: &str, line: usize, says: &str| {
+        refusal.malformed.iter().any(|malformed| {
+            malformed.at == Location::line(path, line)
+                && matches!(&malformed.kind, MalformedKind::Grammar { detail } if detail.contains(says))
+        })
+    };
+
+    let (mut bundle, path, _) = with_body("").await;
+    let file = bundle.get(&path).expect("landmark").to_string();
+    let chart = file
+        .lines()
+        .position(|line| line.starts_with("chart:"))
+        .expect("a chart line")
+        + 1;
+    bundle.insert(&path, file.replacen("chart: ", "chart: !!str ", 1));
+    let refusal = refused(&bundle).await;
+    assert!(refusal_at(&refusal, &path, chart, "tag"), "{refusal}");
+
+    let (mut bundle, path, _) = with_body("").await;
+    let file = bundle.get(&path).expect("landmark").to_string();
+    let fence = file.rfind("---\n").expect("closing fence");
+    let reading = file[..fence].lines().count() + 2;
+    bundle.insert(
+        &path,
+        format!(
+            "{}readings:\n  zzzz: true\n{}",
+            &file[..fence],
+            &file[fence..]
+        ),
+    );
+    let refusal = refused(&bundle).await;
+    assert!(
+        refusal_at(&refusal, &path, reading, "names no feature"),
+        "{refusal}"
+    );
+}
+
+#[tokio::test]
 async fn an_unknown_edge_kind_cites_its_sidecar_line() {
     let (mut bundle, _, _) = with_body("").await;
     let id = MarkID::new();
