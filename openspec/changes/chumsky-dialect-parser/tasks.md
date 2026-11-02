@@ -38,10 +38,10 @@ every commit from 2.1 onward.
       `quote`.
 
       _Coverage for 2.1–2.3 was not measured: `cargo llvm-cov` and the
-          `llvm-tools` component are absent from the toolchain, and installing
-          them needs the network. The rows were derived by walking each emitter
-          branch by hand. `Reading::File` has no `FeatureKind` to read it back
-          with, so it has no row._
+              `llvm-tools` component are absent from the toolchain, and installing
+              them needs the network. The rows were derived by walking each emitter
+              branch by hand. `Reading::File` has no `FeatureKind` to read it back
+              with, so it has no row._
 
 - [x] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
       one fixture per `GrammarError`/`grammar(…)` site in `inline.rs`,
@@ -53,7 +53,7 @@ every commit from 2.1 onward.
 
 ## 3. Inline and block layers
 
-- [ ] 3.1 `refactor(domain/dialect): inline grammar on chumsky — depth-bounded runs, committed openers, refusals with line and column` —
+- [x] 3.1 `refactor(domain/dialect): inline grammar on chumsky — depth-bounded runs, committed openers, refusals with line and column` —
       `inline::parser(links)` per design.md D3–D6, `GrammarError` gains
       `line`/`column`, `parse_with` builds and runs the parser; the hand
       parser moves to `inline::legacy` under `cfg(test)` with a differential
@@ -63,17 +63,18 @@ every commit from 2.1 onward.
       differential reports no disagreement, and the refusal fixtures pass with
       their offsets updated to line/column where the new position is more
       specific (never less).
-- [ ] 3.2 `refactor(domain/dialect): block grammar on chumsky — the trailing attribute list as a forward grammar anchored at the line end` —
+- [x] 3.2 `refactor(domain/dialect): block grammar on chumsky — the trailing attribute list as a forward grammar anchored at the line end` —
       `attrs_at_end`, `attributed_line`, cells and rows per D7, `block::parse`
       standalone and prefix-free; `block::legacy` and its differential; verify
       `block.rs` tests, the parity table, the differential, the refusal
       fixtures, and that `survives` cases with trailing-space and dash-only
       cells still round-trip.
-- [ ] 3.3 `test(domain/dialect): nesting ceiling — the deepest inline run refuses, one shallower parses` —
-      fixtures at depth 64 and 65 for every nestable construct, and a
+- [x] 3.3 `test(domain/dialect): nesting ceiling — the deepest inline run refuses, one shallower parses` —
+      fixtures at depth 16 and 17 for every nestable construct, and a
       1 MiB string of `^{` that must refuse without exhausting a 2 MiB stack
       (run on a spawned thread with that stack size); verify the refusal reads
-      `inline marks nest deeper than 64 levels` at line 1, column 1 + 2·64.
+      `inline marks nest deeper than 16 levels` at line 1, column 1 + 2·16.
+      (The ceiling was 64 in the draft; see design.md D4's amendment.)
 
 ## 4. Document layer
 

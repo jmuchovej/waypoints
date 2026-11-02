@@ -9,93 +9,143 @@ use domain::{
     MarkID,
     syntax::{
         block,
-        inline::{self, LinkName, Links, Verbatim},
+        inline::{self, GrammarError, LinkName, Links, Verbatim},
     },
 };
 use transload::{Bundle, IngestError, Location, MalformedKind, export, ingest, layout};
 
-/// A refusal as the readers' sources spell it and as it renders.
+/// A refusal of inline or block source, and where in that source it points.
 struct Fixture {
     /// The string literal in the source, placeholders and all.
     template: &'static str,
     source: &'static str,
     detail: &'static str,
-    /// The byte offset the hand parser reports.
     at: usize,
+    line: usize,
+    column: usize,
+}
+
+/// A refusal of a Landmark body.
+struct Body {
+    template: &'static str,
+    source: &'static str,
+    detail: &'static str,
+    /// The offending line, counted from the body's first.
+    line: usize,
 }
 
 const INLINE: &[Fixture] = &[
     Fixture {
-        template: "unclosed `{closer}`",
+        template: "unclosed `{close}`",
         source: "*unclosed",
         detail: "unclosed `*`",
-        at: 9,
+        at: 0,
+        line: 1,
+        column: 1,
     },
     Fixture {
-        template: "unclosed `{closer}`",
+        template: "unclosed `{close}`",
+        source: "a\n*b",
+        detail: "unclosed `*`",
+        at: 2,
+        line: 2,
+        column: 1,
+    },
+    Fixture {
+        template: "unclosed `]`",
         source: "[a",
         detail: "unclosed `]`",
-        at: 2,
+        at: 0,
+        line: 1,
+        column: 1,
     },
     Fixture {
-        template: "unclosed `{closer}`",
-        source: "^{x",
+        template: "unclosed `{close}`",
+        source: "x^{y",
         detail: "unclosed `}`",
-        at: 3,
+        at: 1,
+        line: 1,
+        column: 2,
     },
     Fixture {
         template: "unclosed `[[`",
         source: "[[",
         detail: "unclosed `[[`",
         at: 0,
+        line: 1,
+        column: 1,
     },
     Fixture {
         template: "a mention with no target",
         source: "[[|label]]",
         detail: "a mention with no target",
         at: 0,
+        line: 1,
+        column: 1,
     },
     Fixture {
         template: "a bracketed run needs a `(url)` or `{tokens}` suffix; a literal bracket is escaped",
-        source: "[bare bracketed]",
+        source: "see [bare bracketed]",
         detail: "a bracketed run needs a `(url)` or `{tokens}` suffix; a literal bracket is escaped",
-        at: 0,
+        at: 4,
+        line: 1,
+        column: 5,
     },
     Fixture {
         template: "`{token}` is not a mark token in this dialect",
         source: "[hi]{bold nonsense}",
         detail: "`nonsense` is not a mark token in this dialect",
-        at: 19,
+        at: 10,
+        line: 1,
+        column: 11,
     },
     Fixture {
-        template: "unclosed `{open}`",
+        template: "unclosed `(`",
         source: "[a](unclosed",
         detail: "unclosed `(`",
         at: 3,
+        line: 1,
+        column: 4,
     },
     Fixture {
-        template: "unclosed `{open}`",
+        template: "unclosed `{`",
         source: "[a]{bold",
         detail: "unclosed `{`",
         at: 3,
+        line: 1,
+        column: 4,
     },
     Fixture {
         template: "unclosed `{delim}`",
         source: "`unclosed",
         detail: "unclosed ```",
         at: 0,
+        line: 1,
+        column: 1,
     },
     Fixture {
         template: "unclosed `{delim}`",
         source: "$x",
         detail: "unclosed `$`",
         at: 0,
+        line: 1,
+        column: 1,
     },
     Fixture {
         template: "a block link needs names to resolve against",
         source: "[[page#4f2a]]",
         detail: "a block link needs names to resolve against",
         at: 0,
+        line: 1,
+        column: 1,
+    },
+    Fixture {
+        template: "inline marks nest deeper than {MAX_DEPTH} levels",
+        source: "^{^{^{^{^{^{^{^{^{^{^{^{^{^{^{^{^{x",
+        detail: "inline marks nest deeper than 16 levels",
+        at: 32,
+        line: 1,
+        column: 33,
     },
 ];
 
@@ -104,83 +154,105 @@ const BLOCK: &[Fixture] = &[
         template: "`{color}` is not a block theme colour",
         source: "# hi{theme-chartreuse}",
         detail: "`chartreuse` is not a block theme colour",
-        at: 2,
+        at: 11,
+        line: 1,
+        column: 12,
     },
     Fixture {
-        template: "`{token}` is not a block attribute in this dialect",
+        template: "`{word}` is not a block attribute in this dialect",
         source: "# hi{nonsense}",
         detail: "`nonsense` is not a block attribute in this dialect",
-        at: 2,
+        at: 5,
+        line: 1,
+        column: 6,
     },
     Fixture {
-        template: "`::{other}` is not a block component in this dialect",
+        template: "`::{trimmed}` is not a block component in this dialect",
         source: "::nonsense{}",
         detail: "`::nonsense` is not a block component in this dialect",
-        at: 0,
+        at: 2,
+        line: 1,
+        column: 3,
     },
     Fixture {
-        template: "unclosed `{closer}`",
+        template: "unclosed `{close}`",
         source: "- *x",
         detail: "unclosed `*`",
         at: 2,
+        line: 1,
+        column: 3,
+    },
+    Fixture {
+        template: "unclosed `{close}`",
+        source: "| a | *b |",
+        detail: "unclosed `*`",
+        at: 6,
+        line: 1,
+        column: 7,
+    },
+    Fixture {
+        template: "unclosed `{close}`",
+        source: "::table\n| *b |",
+        detail: "unclosed `*`",
+        at: 10,
+        line: 2,
+        column: 3,
     },
 ];
 
-/// A body refusal: `at` is the offending line, counted from the body's first.
-const BODY: &[Fixture] = &[
-    Fixture {
+const BODY: &[Body] = &[
+    Body {
         template: "expected a `wp:mark` comment",
         source: "<!-- just a note -->\nhello\n",
         detail: "expected a `wp:mark` comment",
-        at: 0,
+        line: 0,
     },
-    Fixture {
+    Body {
         template: "a `wp:mark` comment with no block after it",
         source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n",
         detail: "a `wp:mark` comment with no block after it",
-        at: 0,
+        line: 0,
     },
-    Fixture {
+    Body {
         template: "unclosed block, expected `{end}`",
         source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n```rust\nfn x\n",
         detail: "unclosed block, expected `````",
-        at: 1,
+        line: 1,
     },
-    Fixture {
+    Body {
         template: "unclosed block, expected `{end}`",
         source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n$$\nx\n",
         detail: "unclosed block, expected `$$`",
-        at: 1,
+        line: 1,
     },
-    Fixture {
+    Body {
         template: "unclosed `::` component",
         source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n::callout{icon=\"x\"}\n",
         detail: "unclosed `::` component",
-        at: 1,
+        line: 1,
     },
-    Fixture {
-        template: "`{token}` is not a block attribute in this dialect",
+    Body {
+        template: "`{word}` is not a block attribute in this dialect",
         source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n# hi{nonsense}\n",
-        detail: "`nonsense` is not a block attribute in this dialect (at byte 2)",
-        at: 1,
+        detail: "`nonsense` is not a block attribute in this dialect (line 1, column 6)",
+        line: 1,
     },
-    Fixture {
+    Body {
         template: "a container's comment is never closed",
         source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n- item\n  \
                  <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->\n  child\n",
         detail: "a container's comment is never closed",
-        at: 0,
+        line: 0,
     },
-    Fixture {
+    Body {
         template: "a `{MARKER}` comment takes a Mark id, not `{payload}`",
         source: "<!-- wp:mark not-a-uuid -->\nhello\n",
         detail: "a `wp:mark` comment takes a Mark id, not `not-a-uuid`",
-        at: 0,
+        line: 0,
     },
 ];
 
-/// Sentences no input can reach: an inner reader always refuses first.
-const UNREACHABLE: &[&str] = &["unclosed `[`"];
+const EDGE_KIND: &str = "`{raw_kind}` is not an edge kind";
 
 /// The readers whose sentences must each have a fixture, relative to this crate.
 const SOURCES: &[&str] = &[
@@ -210,16 +282,27 @@ impl Links for Pages {
     }
 }
 
+fn located(fixture: &Fixture, error: &GrammarError) {
+    assert_eq!(error.detail, fixture.detail, "{:?}", fixture.source);
+    assert_eq!(
+        (error.at, error.line, error.column),
+        (fixture.at, fixture.line, fixture.column),
+        "{:?}",
+        fixture.source
+    );
+    assert!(
+        renders(fixture.template, &error.detail),
+        "{:?}",
+        fixture.source
+    );
+}
+
 #[test]
 fn inline_refusals_name_their_sentence_and_position() {
     for fixture in INLINE {
-        let error = inline::parse(fixture.source).expect_err(fixture.source);
-        assert_eq!(error.detail, fixture.detail, "{}", fixture.source);
-        assert_eq!(error.at, fixture.at, "{}", fixture.source);
-        assert!(
-            renders(fixture.template, &error.detail),
-            "{}",
-            fixture.source
+        located(
+            fixture,
+            &inline::parse(fixture.source).expect_err(fixture.source),
         );
     }
 }
@@ -228,20 +311,32 @@ fn inline_refusals_name_their_sentence_and_position() {
 fn a_callers_sentence_passes_through_unchanged() {
     let error = inline::parse_with("[[Nowhere]]", &Pages).expect_err("unresolvable");
     assert_eq!(error.detail, "no page `Nowhere`");
-    assert_eq!(error.at, 0);
+    assert_eq!((error.at, error.line, error.column), (0, 1, 1));
 }
 
 #[test]
 fn block_refusals_name_their_sentence_and_position() {
     for fixture in BLOCK {
-        let error = block::parse_with(fixture.source, &Verbatim).expect_err(fixture.source);
-        assert_eq!(error.detail, fixture.detail, "{}", fixture.source);
-        assert_eq!(error.at, fixture.at, "{}", fixture.source);
-        assert!(
-            renders(fixture.template, &error.detail),
-            "{}",
-            fixture.source
+        located(
+            fixture,
+            &block::parse_with(fixture.source, &Verbatim).expect_err(fixture.source),
         );
+    }
+}
+
+#[test]
+fn no_refusal_names_the_machinery() {
+    let inline = INLINE
+        .iter()
+        .map(|fixture| inline::parse(fixture.source).expect_err(fixture.source));
+    let block = BLOCK
+        .iter()
+        .map(|fixture| block::parse_with(fixture.source, &Verbatim).expect_err(fixture.source));
+    for error in inline.chain(block) {
+        let rendered = error.to_string();
+        for word in ["chumsky", "Rich", "Span", "parser", "Parser", "syntax::"] {
+            assert!(!rendered.contains(word), "{rendered}");
+        }
     }
 }
 
@@ -250,7 +345,7 @@ async fn body_refusals_cite_their_line() {
     for fixture in BODY {
         let (bundle, path, first) = with_body(fixture.source).await;
         let refusal = refused(&bundle).await;
-        let expected = Location::line(&path, first + fixture.at);
+        let expected = Location::line(&path, first + fixture.line);
         assert!(
             refusal.malformed.iter().any(|malformed| {
                 malformed.at == expected
@@ -291,7 +386,7 @@ async fn an_unknown_edge_kind_cites_its_sidecar_line() {
         }),
         "{refusal}"
     );
-    assert!(renders("`{raw_kind}` is not an edge kind", detail));
+    assert!(renders(EDGE_KIND, detail));
 }
 
 #[test]
@@ -299,10 +394,9 @@ fn every_refusal_sentence_has_a_fixture() {
     let covered: Vec<&str> = INLINE
         .iter()
         .chain(BLOCK)
-        .chain(BODY)
         .map(|fixture| fixture.template)
-        .chain(["`{raw_kind}` is not an edge kind"])
-        .chain(UNREACHABLE.iter().copied())
+        .chain(BODY.iter().map(|fixture| fixture.template))
+        .chain([EDGE_KIND])
         .collect();
     let root = env!("CARGO_MANIFEST_DIR");
     let mut written = Vec::new();
@@ -391,9 +485,13 @@ fn renders(template: &str, detail: &str) -> bool {
     tail.ends_with(last)
 }
 
-/// The string literals of a source file's non-test code.
+/// The string literals of a source file's non-test code, with Rust's `\`
+/// line continuations joined.
 fn literals(source: &str) -> Vec<String> {
-    let code = source.split("#[cfg(test)]").next().unwrap_or(source);
+    let code = source
+        .split("#[cfg(test)]\nmod tests")
+        .next()
+        .unwrap_or(source);
     let chars: Vec<char> = code.chars().collect();
     let mut out = Vec::new();
     let mut i = 0;
@@ -416,6 +514,13 @@ fn literals(source: &str) -> Vec<String> {
                 let mut literal = String::new();
                 i += 1;
                 while i < chars.len() && chars[i] != '"' {
+                    if chars[i] == '\\' && chars.get(i + 1) == Some(&'\n') {
+                        i += 1;
+                        while chars.get(i).is_some_and(|c| c.is_whitespace()) {
+                            i += 1;
+                        }
+                        continue;
+                    }
                     if chars[i] == '\\' {
                         i += 1;
                     }

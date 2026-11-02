@@ -7,7 +7,16 @@
 //! runs with identical marks coalesce and marks are emitted in one order. A
 //! mention's label survives verbatim; only a bare `[[name]]` has none.
 
+use chumsky::{
+    error::{RichPattern, RichReason},
+    input::{InputRef, MapExtra},
+    prelude::*,
+};
+
 use crate::{Color, InlineMark, RichText, TextMarkKind, TextSegment};
+
+#[cfg(test)]
+pub(crate) mod legacy;
 
 /// A span's attribute tokens, in the one order the emitter writes them.
 /// Links and mentions have no token and are absent.
@@ -41,18 +50,45 @@ const PAIRED: [(&str, TextMarkKind); 6] = [
 /// those are handled contextually in [`escape_text`] and prose keeps them bare.
 const ALWAYS_ESCAPED: [char; 7] = ['\\', '[', ']', '*', '_', '`', '$'];
 
-/// Why some inline source is not in the dialect.
+/// Why some dialect source is not in the dialect.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GrammarError {
     /// What went wrong, in a sentence.
     pub detail: String,
-    /// Byte offset into the inline source.
+    /// Byte offset into the source handed to `parse`.
     pub at: usize,
+    /// 1-indexed line within that source.
+    pub line: usize,
+    /// 1-indexed column within `line`, in characters.
+    pub column: usize,
+}
+
+impl GrammarError {
+    /// A refusal at byte `at` of `src`.
+    pub(crate) fn new(src: &str, at: usize, detail: impl Into<String>) -> Self {
+        let before = &src[..at.min(src.len())];
+        Self {
+            detail: detail.into(),
+            at,
+            line: before.matches('\n').count() + 1,
+            column: before.rsplit('\n').next().unwrap_or("").chars().count() + 1,
+        }
+    }
+
+    /// The same refusal, moved `by` bytes into `src`, which encloses the source
+    /// it was found in.
+    pub(crate) fn shifted(self, src: &str, by: usize) -> Self {
+        Self::new(src, self.at + by, self.detail)
+    }
 }
 
 impl std::fmt::Display for GrammarError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} (at byte {})", self.detail, self.at)
+        write!(
+            f,
+            "{} (line {}, column {})",
+            self.detail, self.line, self.column
+        )
     }
 }
 
@@ -341,55 +377,63 @@ pub fn parse(src: &str) -> Result<RichText, GrammarError> {
 
 /// [`parse`], reading mention targets back through `links`.
 pub fn parse_with(src: &str, links: &dyn Links) -> Result<RichText, GrammarError> {
-    let mut parser = Parser {
-        src,
-        links,
-        at: 0,
-        segments: Vec::new(),
-        pending: String::new(),
-    };
-    parser.run(None)?;
-    parser.flush();
-    Ok(RichText::new(coalesce(&parser.segments)))
+    let (pieces, errors) = grammar(links).parse(src).into_output_errors();
+    if let Some(error) = errors.first() {
+        return Err(refusal(src, error));
+    }
+    let mut built = Built::default();
+    built.add(pieces.and_then(Result::ok).unwrap_or_default());
+    built.flush();
+    Ok(RichText::new(coalesce(&built.segments)))
 }
 
-struct Parser<'a> {
-    src: &'a str,
-    links: &'a dyn Links,
-    at: usize,
+/// How many inline constructs may enclose one another in the source. A debug
+/// build spends tens of kilobytes of stack per level, so this keeps a parse at
+/// the ceiling within half of a two-megabyte thread.
+pub const MAX_DEPTH: usize = 16;
+
+pub(crate) type Extra<'a, C = ()> = extra::Full<Rich<'a, char>, (), C>;
+
+/// Where a run sits: how many constructs enclose it, and what closes it.
+#[derive(Clone, Copy, Debug, Default)]
+struct Nest {
+    depth: usize,
+    closer: Option<&'static str>,
+}
+
+/// A run nested past [`MAX_DEPTH`], refused rather than descended into.
+#[derive(Clone, Debug)]
+struct TooDeep;
+
+#[derive(Clone, Debug)]
+enum Piece {
+    Text(String),
+    /// A segment of its own — a mention, code, or math — and its suffix tokens.
+    Leaf(TextSegment, Vec<InlineMark>),
+    /// A run and the marks laid over all of it, in the order they apply.
+    Group(Vec<Piece>, Vec<InlineMark>),
+}
+
+/// Segments as the source builds them: literal text accumulates, and each
+/// construct closes the text before it.
+#[derive(Default)]
+struct Built {
     segments: Vec<TextSegment>,
     pending: String,
 }
 
-impl Parser<'_> {
-    fn rest(&self) -> &str {
-        &self.src[self.at..]
-    }
-
-    fn starts(&self, token: &str) -> bool {
-        self.rest().starts_with(token)
-    }
-
-    fn error(&self, detail: impl Into<String>) -> GrammarError {
-        GrammarError {
-            detail: detail.into(),
-            at: self.at,
-        }
-    }
-
-    /// Close the run of literal text built up so far.
+impl Built {
     fn flush(&mut self) {
-        if self.pending.is_empty() {
-            return;
+        if !self.pending.is_empty() {
+            self.segments.push(TextSegment {
+                text: std::mem::take(&mut self.pending),
+                marks: Vec::new(),
+            });
         }
-        self.segments.push(TextSegment {
-            text: std::mem::take(&mut self.pending),
-            marks: Vec::new(),
-        });
     }
 
-    /// Apply a mark to every segment produced since `from`.
-    fn wrap(&mut self, from: usize, mark: InlineMark) {
+    /// A mark over every segment from `from` that does not already carry its kind.
+    fn wrap(&mut self, from: usize, mark: &InlineMark) {
         for segment in &mut self.segments[from..] {
             if !has(&segment.marks, mark.kind.clone()) {
                 segment.marks.push(mark.clone());
@@ -397,272 +441,344 @@ impl Parser<'_> {
         }
     }
 
-    /// Consume until the end of input, or until `closer` is next.
-    fn run(&mut self, closer: Option<&str>) -> Result<(), GrammarError> {
-        while self.at < self.src.len() {
-            if let Some(closer) = closer
-                && self.starts(closer)
-            {
+    fn add(&mut self, pieces: Vec<Piece>) {
+        for piece in pieces {
+            match piece {
+                Piece::Text(text) => self.pending.push_str(&text),
+                Piece::Leaf(segment, suffix) => {
+                    self.flush();
+                    self.segments.push(segment);
+                    let from = self.segments.len() - 1;
+                    for mark in &suffix {
+                        self.wrap(from, mark);
+                    }
+                }
+                Piece::Group(inner, marks) => {
+                    self.flush();
+                    let from = self.segments.len();
+                    self.add(inner);
+                    self.flush();
+                    for mark in &marks {
+                        self.wrap(from, mark);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn too_deep() -> String {
+    format!("inline marks nest deeper than {MAX_DEPTH} levels")
+}
+
+/// `\x` is `x`; a lone trailing `\` is itself.
+pub(crate) fn escape<'a, C: 'a>() -> impl Parser<'a, &'a str, char, Extra<'a, C>> + Clone {
+    just('\\')
+        .ignore_then(any().or_not())
+        .map(|escaped: Option<char>| escaped.unwrap_or('\\'))
+}
+
+/// The inline grammar. An opener commits: a construct that has read its
+/// opener always succeeds as a parser and reports what it lacks as an emitted
+/// refusal, so nothing falls through to literal text.
+fn grammar<'a>(
+    links: &'a dyn Links,
+) -> impl Parser<'a, &'a str, Result<Vec<Piece>, TooDeep>, Extra<'a, Nest>> {
+    recursive(move |run| {
+        let closer = custom(|input: &mut InputRef<'a, '_, &'a str, Extra<'a, Nest>>| {
+            let before = input.save();
+            let matched = match input.ctx().closer {
+                Some(closer) => closer
+                    .chars()
+                    .all(|expected| input.next() == Some(expected)),
+                None => false,
+            };
+            if matched {
                 return Ok(());
             }
-            if self.atom()? {
-                continue;
-            }
-            self.literal_char();
-        }
-        match closer {
-            Some(closer) => Err(self.error(format!("unclosed `{closer}`"))),
-            None => Ok(()),
-        }
-    }
-
-    /// One literal character, honouring backslash escapes.
-    fn literal_char(&mut self) {
-        let mut chars = self.rest().chars();
-        let Some(first) = chars.next() else {
-            self.at = self.src.len();
-            return;
-        };
-        if first == '\\'
-            && let Some(escaped) = chars.next()
-        {
-            self.pending.push(escaped);
-            self.at += first.len_utf8() + escaped.len_utf8();
-            return;
-        }
-        self.pending.push(first);
-        self.at += first.len_utf8();
-    }
-
-    /// Try to read one construct. `false` means the next character is literal.
-    fn atom(&mut self) -> Result<bool, GrammarError> {
-        if self.starts("[[") {
-            self.mention()?;
-            return Ok(true);
-        }
-        if self.starts("[") {
-            self.bracketed()?;
-            return Ok(true);
-        }
-        if self.starts("`") {
-            self.verbatim('`', TextMarkKind::Code)?;
-            return Ok(true);
-        }
-        if self.starts("$") {
-            self.verbatim('$', TextMarkKind::Math)?;
-            return Ok(true);
-        }
-        for (open, kind) in [
-            ("^{", TextMarkKind::Superscript),
-            ("_{", TextMarkKind::Subscript),
-        ] {
-            if self.starts(open) {
-                self.braced(open, kind)?;
-                return Ok(true);
-            }
-        }
-        for (delim, kind) in PAIRED {
-            if self.starts(delim) {
-                self.paired(delim, kind)?;
-                return Ok(true);
-            }
-        }
-        // No bare `^c`: superscript is braced, so a lone caret is ordinary text.
-        Ok(false)
-    }
-
-    /// `[[page#block|label]]` — the target is normative, the label advisory.
-    fn mention(&mut self) -> Result<(), GrammarError> {
-        self.flush();
-        let opened = self.at;
-        self.at += 2;
-
-        let mut page = String::new();
-        let mut block: Option<String> = None;
-        let mut label = String::new();
-        let mut in_label = false;
-        loop {
-            if self.at >= self.src.len() {
-                self.at = opened;
-                return Err(self.error("unclosed `[[`"));
-            }
-            if self.starts("]]") {
-                self.at += 2;
-                break;
-            }
-            let mut chars = self.rest().chars();
-            let current = chars.next().expect("not at end");
-            let (character, width) = match (current, chars.next()) {
-                ('\\', Some(escaped)) => (escaped, current.len_utf8() + escaped.len_utf8()),
-                ('|', _) if !in_label => {
-                    in_label = true;
-                    self.at += 1;
-                    continue;
-                }
-                ('#', _) if !in_label && block.is_none() => {
-                    block = Some(String::new());
-                    self.at += 1;
-                    continue;
-                }
-                _ => (current, current.len_utf8()),
-            };
-            let sink = match (in_label, &mut block) {
-                (true, _) => &mut label,
-                (false, Some(block)) => block,
-                (false, None) => &mut page,
-            };
-            sink.push(character);
-            self.at += width;
-        }
-
-        if page.is_empty() && block.is_none() {
-            self.at = opened;
-            return Err(self.error("a mention with no target"));
-        }
-        let target = self
-            .links
-            .resolve(&page, block.as_deref())
-            .map_err(|detail| GrammarError { detail, at: opened })?;
-        self.segments.push(TextSegment {
-            text: label,
-            marks: vec![InlineMark {
-                kind: TextMarkKind::Mention,
-                data: Some(serde_json::Value::String(target)),
-            }],
+            let span = input.span_since(before.cursor());
+            input.rewind(before);
+            Err(Rich::custom(span, "the run's closer"))
         });
-        self.suffix_attrs(self.segments.len() - 1)
-    }
+        let deeper = move |close: &'static str| {
+            empty()
+                .map_with(
+                    move |_, extra: &mut MapExtra<'a, '_, &'a str, Extra<'a, Nest>>| Nest {
+                        depth: extra.ctx().depth + 1,
+                        closer: Some(close),
+                    },
+                )
+                .ignore_with_ctx(run.clone())
+        };
 
-    /// `[inline](url)` or `[inline]{tokens}` — a bare `[inline]` is not in the
-    /// dialect, since literal brackets are escaped.
-    fn bracketed(&mut self) -> Result<(), GrammarError> {
-        self.flush();
-        let opened = self.at;
-        self.at += 1;
-        let from = self.segments.len();
-        self.run(Some("]"))?;
-        self.flush();
-        if !self.starts("]") {
-            self.at = opened;
-            return Err(self.error("unclosed `[`"));
-        }
-        self.at += 1;
+        let token = choice((escape(), none_of('}'))).map_with(|c, extra| (c, extra.span()));
+        let suffix = just('{')
+            .map_with(|_, extra| extra.span())
+            .then(token.repeated().collect::<Vec<(char, SimpleSpan)>>())
+            .then(just('}').or_not())
+            .validate(|((opened, chars), closed), _, emitter| {
+                if closed.is_none() {
+                    emitter.emit(Rich::custom(opened, "unclosed `{`"));
+                    return Vec::new();
+                }
+                let mut marks = Vec::new();
+                for (token, span) in words(&chars) {
+                    match parse_token(&token) {
+                        Some(mark) => marks.push(mark),
+                        None => emitter.emit(Rich::custom(
+                            span,
+                            format!("`{token}` is not a mark token in this dialect"),
+                        )),
+                    }
+                }
+                marks
+            })
+            .or_not()
+            .map(Option::unwrap_or_default)
+            .boxed();
 
-        if self.starts("(") {
-            let href = self.delimited('(', ')')?;
-            self.wrap(
-                from,
-                InlineMark {
+        let mention_text = |stops: &'static str| {
+            choice((escape(), none_of(stops).and_is(just("]]").not())))
+                .repeated()
+                .collect::<String>()
+        };
+        let mention = just("[[")
+            .map_with(|_, extra| extra.span())
+            .then(mention_text("\\|#"))
+            .then(just('#').ignore_then(mention_text("\\|")).or_not())
+            .then(just('|').ignore_then(mention_text("\\")).or_not())
+            .then(just("]]").or_not())
+            .validate(
+                move |((((opened, page), block), label), closed), _, emitter| {
+                    if closed.is_none() {
+                        emitter.emit(Rich::custom(opened, "unclosed `[[`"));
+                        return None;
+                    }
+                    if page.is_empty() && block.is_none() {
+                        emitter.emit(Rich::custom(opened, "a mention with no target"));
+                        return None;
+                    }
+                    match links.resolve(&page, block.as_deref()) {
+                        Ok(target) => Some(TextSegment {
+                            text: label.unwrap_or_default(),
+                            marks: vec![InlineMark {
+                                kind: TextMarkKind::Mention,
+                                data: Some(serde_json::Value::String(target)),
+                            }],
+                        }),
+                        Err(detail) => {
+                            emitter.emit(Rich::custom(opened, detail));
+                            None
+                        }
+                    }
+                },
+            )
+            .then(suffix.clone())
+            .map(leaf);
+
+        let href = just('(')
+            .map_with(|_, extra| extra.span())
+            .then(
+                choice((escape(), none_of(')')))
+                    .repeated()
+                    .collect::<String>(),
+            )
+            .then(just(')').or_not())
+            .validate(|((opened, href), closed), _, emitter| {
+                if closed.is_none() {
+                    emitter.emit(Rich::custom(opened, "unclosed `(`"));
+                }
+                href
+            });
+        let bracketed = just('[')
+            .map_with(|_, extra| extra.span())
+            .then(deeper("]"))
+            .then(just(']').or_not())
+            .validate(|((opened, inner), closed), _, emitter| {
+                let inner = match inner {
+                    Err(TooDeep) => {
+                        emitter.emit(Rich::custom(opened, too_deep()));
+                        None
+                    }
+                    Ok(_) if closed.is_none() => {
+                        emitter.emit(Rich::custom(opened, "unclosed `]`"));
+                        None
+                    }
+                    Ok(inner) => Some(inner),
+                };
+                (opened, inner)
+            })
+            .then(href.or_not())
+            .then(just('{').rewind().or_not())
+            .validate(|(((opened, inner), href), brace), _, emitter| {
+                if inner.is_some() && href.is_none() && brace.is_none() {
+                    emitter.emit(Rich::custom(
+                        opened,
+                        "a bracketed run needs a `(url)` or `{tokens}` suffix; a literal \
+                         bracket is escaped",
+                    ));
+                }
+                let link = href.map(|href| InlineMark {
                     kind: TextMarkKind::Link,
                     data: Some(serde_json::Value::String(href)),
-                },
-            );
-            return self.suffix_attrs(from);
-        }
-        if self.starts("{") {
-            return self.suffix_attrs(from);
-        }
-        self.at = opened;
-        Err(self.error(
-            "a bracketed run needs a `(url)` or `{tokens}` suffix; a literal bracket is escaped",
-        ))
-    }
+                });
+                (inner.unwrap_or_default(), link)
+            })
+            .then(suffix.clone())
+            .map(|((inner, link), suffix)| {
+                let mut marks: Vec<InlineMark> = link.into_iter().collect();
+                marks.extend(suffix);
+                Piece::Group(inner, marks)
+            });
 
-    /// An optional `{tokens}` suffix applied to everything from `from`.
-    fn suffix_attrs(&mut self, from: usize) -> Result<(), GrammarError> {
-        if !self.starts("{") {
-            return Ok(());
-        }
-        let tokens = self.delimited('{', '}')?;
-        for token in tokens.split_whitespace() {
-            self.wrap(
-                from,
-                parse_token(token).ok_or_else(|| {
-                    self.error(format!("`{token}` is not a mark token in this dialect"))
-                })?,
-            );
-        }
-        Ok(())
-    }
-
-    /// The text between one `open` and its matching `close`.
-    fn delimited(&mut self, open: char, close: char) -> Result<String, GrammarError> {
-        let opened = self.at;
-        self.at += open.len_utf8();
-        let mut out = String::new();
-        loop {
-            let mut chars = self.rest().chars();
-            let Some(current) = chars.next() else {
-                self.at = opened;
-                return Err(self.error(format!("unclosed `{open}`")));
-            };
-            if current == close {
-                self.at += close.len_utf8();
-                return Ok(out);
-            }
-            if current == '\\'
-                && let Some(escaped) = chars.next()
-            {
-                out.push(escaped);
-                self.at += current.len_utf8() + escaped.len_utf8();
-                continue;
-            }
-            out.push(current);
-            self.at += current.len_utf8();
-        }
-    }
-
-    /// A literal-interior atom: code and math take their text verbatim.
-    fn verbatim(&mut self, delim: char, kind: TextMarkKind) -> Result<(), GrammarError> {
-        self.flush();
-        let opened = self.at;
-        self.at += delim.len_utf8();
-        let Some(end) = self.rest().find(delim) else {
-            self.at = opened;
-            return Err(self.error(format!("unclosed `{delim}`")));
+        let verbatim = |delim: &'static str, kind: TextMarkKind| {
+            just(delim)
+                .map_with(|_, extra| extra.span())
+                .then(none_of(delim).repeated().to_slice())
+                .then(just(delim).or_not())
+                .validate(move |((opened, text), closed), _, emitter| {
+                    if closed.is_none() {
+                        emitter.emit(Rich::custom(opened, format!("unclosed `{delim}`")));
+                        return None;
+                    }
+                    Some(TextSegment {
+                        text: String::from(text),
+                        marks: vec![InlineMark {
+                            kind: kind.clone(),
+                            data: None,
+                        }],
+                    })
+                })
+                .then(suffix.clone())
+                .map(leaf)
         };
-        let text = self.rest()[..end].to_string();
-        self.at += end + delim.len_utf8();
-        self.segments.push(TextSegment {
-            text,
-            marks: vec![InlineMark { kind, data: None }],
+
+        let group = |open: &'static str, close: &'static str, kind: TextMarkKind| {
+            just(open)
+                .map_with(|_, extra| extra.span())
+                .then(deeper(close))
+                .then(just(close).or_not())
+                .validate(move |((opened, inner), closed), _, emitter| match inner {
+                    Err(TooDeep) => {
+                        emitter.emit(Rich::custom(opened, too_deep()));
+                        Vec::new()
+                    }
+                    Ok(inner) => {
+                        if closed.is_none() {
+                            emitter.emit(Rich::custom(opened, format!("unclosed `{close}`")));
+                        }
+                        inner
+                    }
+                })
+                .then(suffix.clone())
+                .map(move |(inner, suffix)| {
+                    let mut marks = vec![InlineMark {
+                        kind: kind.clone(),
+                        data: None,
+                    }];
+                    marks.extend(suffix);
+                    Piece::Group(inner, marks)
+                })
+        };
+
+        let atom = choice((
+            mention,
+            bracketed,
+            verbatim("`", TextMarkKind::Code),
+            verbatim("$", TextMarkKind::Math),
+            group("^{", "}", TextMarkKind::Superscript),
+            group("_{", "}", TextMarkKind::Subscript),
+            choice(PAIRED.map(|(delim, kind)| group(delim, delim, kind))),
+        ))
+        .boxed();
+
+        // `~`, `=` and `|` open only doubled, `^` only before `{`.
+        let plain = none_of("\\[`$*_")
+            .and_is(choice((just("^{"), just("~~"), just("=="), just("||"))).not());
+        let text = closer
+            .not()
+            .ignore_then(choice((escape(), plain)))
+            .repeated()
+            .at_least(1)
+            .collect::<String>()
+            .map(Piece::Text);
+
+        let ceiling = custom(|input: &mut InputRef<'a, '_, &'a str, Extra<'a, Nest>>| {
+            let before = input.save();
+            if input.ctx().depth > MAX_DEPTH {
+                while input.next().is_some() {}
+                return Ok(Err(TooDeep));
+            }
+            Err(Rich::custom(
+                input.span_since(before.cursor()),
+                "within the nesting ceiling",
+            ))
         });
-        self.suffix_attrs(self.segments.len() - 1)
-    }
+        choice((
+            ceiling,
+            closer
+                .not()
+                .ignore_then(choice((atom, text)))
+                .repeated()
+                .collect::<Vec<Piece>>()
+                .map(Ok),
+        ))
+    })
+}
 
-    /// `^{…}` / `_{…}` — super- and subscript over a braced run.
-    fn braced(&mut self, open: &str, kind: TextMarkKind) -> Result<(), GrammarError> {
-        self.flush();
-        let opened = self.at;
-        self.at += open.len() - 1; // leave the `{` for `run`'s closer
-        self.at += 1;
-        let from = self.segments.len();
-        self.run(Some("}"))?;
-        self.flush();
-        if !self.starts("}") {
-            self.at = opened;
-            return Err(self.error(format!("unclosed `{open}`")));
-        }
-        self.at += 1;
-        self.wrap(from, InlineMark { kind, data: None });
-        self.suffix_attrs(from)
+fn leaf((segment, suffix): (Option<TextSegment>, Vec<InlineMark>)) -> Piece {
+    match segment {
+        Some(segment) => Piece::Leaf(segment, suffix),
+        None => Piece::Text(String::new()),
     }
+}
 
-    /// A paired character shortcut: `*…*`, `_…_`, `__…__`, and the rest.
-    fn paired(&mut self, delim: &str, kind: TextMarkKind) -> Result<(), GrammarError> {
-        self.flush();
-        let opened = self.at;
-        self.at += delim.len();
-        let from = self.segments.len();
-        self.run(Some(delim))?;
-        self.flush();
-        if !self.starts(delim) {
-            self.at = opened;
-            return Err(self.error(format!("unclosed `{delim}`")));
+/// Whitespace-separated words of an unescaped token list, each with the span
+/// of its source.
+fn words(chars: &[(char, SimpleSpan)]) -> Vec<(String, SimpleSpan)> {
+    let mut out: Vec<(String, SimpleSpan)> = Vec::new();
+    let mut open = false;
+    for (c, span) in chars {
+        if c.is_whitespace() {
+            open = false;
+            continue;
         }
-        self.at += delim.len();
-        self.wrap(from, InlineMark { kind, data: None });
-        self.suffix_attrs(from)
+        match out.last_mut() {
+            Some((word, at)) if open => {
+                word.push(*c);
+                *at = SimpleSpan::from(at.start..span.end);
+            }
+            _ => {
+                out.push((c.to_string(), *span));
+                open = true;
+            }
+        }
+    }
+    out
+}
+
+/// A parse error as the dialect says it: a sentence at a position.
+pub(crate) fn refusal(src: &str, error: &Rich<'_, char>) -> GrammarError {
+    let detail = match error.reason() {
+        RichReason::Custom(sentence) => sentence.clone(),
+        RichReason::ExpectedFound { expected, found } => {
+            let expected: Vec<String> = expected.iter().map(pattern).collect();
+            let found = match found {
+                Some(found) => format!("`{}`", **found),
+                None => "the end of the text".to_string(),
+            };
+            format!("expected {}, found {found}", expected.join(" or "))
+        }
+    };
+    GrammarError::new(src, error.span().start, detail)
+}
+
+fn pattern(pattern: &RichPattern<'_, char>) -> String {
+    match pattern {
+        RichPattern::Token(token) => format!("`{}`", **token),
+        RichPattern::Label(label) => label.to_string(),
+        RichPattern::EndOfInput => "the end of the text".to_string(),
+        _ => "something else".to_string(),
     }
 }
 
@@ -1117,17 +1233,20 @@ mod tests {
         assert_eq!(unknown.detail, "no page `Nowhere`");
     }
 
+    fn parity_names() -> Names {
+        Names(vec![("A#b|c]d\\e", "p1"), ("Cosmos", "p2")])
+    }
+
+    fn with(text: &str, kind: TextMarkKind, data: &str) -> TextSegment {
+        seg(text, vec![mark_with(kind, serde_json::json!(data))])
+    }
+
     /// The emitter's branches as a checklist — every token, shortcut, prefix,
-    /// mention spelling and escape — each read back to the value it came from.
-    #[test]
-    fn every_spelling_the_emitter_writes_reads_back() {
+    /// mention spelling and escape — each a row of segments.
+    fn spellings() -> Vec<(String, Vec<TextSegment>)> {
         use TextMarkKind::*;
-        let names = Names(vec![("A#b|c]d\\e", "p1"), ("Cosmos", "p2")]);
         let plain = |text: &str| seg(text, vec![]);
         let one = |text: &str, kind: TextMarkKind| seg(text, vec![mark(kind)]);
-        let with = |text: &str, kind: TextMarkKind, data: &str| {
-            seg(text, vec![mark_with(kind, serde_json::json!(data))])
-        };
 
         let mut rows: Vec<(String, Vec<TextSegment>)> = Vec::new();
         for (kind, _) in TOKEN_ORDER {
@@ -1242,8 +1361,13 @@ mod tests {
         ] {
             rows.push((format!("prose {text:?}"), vec![plain(text)]));
         }
+        rows
+    }
 
-        for (name, segments) in rows {
+    #[test]
+    fn every_spelling_the_emitter_writes_reads_back() {
+        let names = parity_names();
+        for (name, segments) in spellings() {
             let original = rich(coalesce(&segments));
             let source = emit_with(&original, &names);
             let parsed = parse_with(&source, &names)
@@ -1257,10 +1381,116 @@ mod tests {
         }
 
         // A label equal to the title is elided; the target is what survives.
-        let titled = rich(vec![with("Cosmos", Mention, "p2")]);
+        let titled = rich(vec![with("Cosmos", TextMarkKind::Mention, "p2")]);
         let source = emit_with(&titled, &names);
         assert_eq!(source, "[[Cosmos]]");
         let parsed = parse_with(&source, &names).expect("parse");
-        assert_eq!(parsed.segments(), [with("", Mention, "p2")]);
+        assert_eq!(parsed.segments(), [with("", TextMarkKind::Mention, "p2")]);
+    }
+
+    /// The grammar reads every corpus input as the hand parser did: the same
+    /// inputs refused, and the same value wherever both accept.
+    #[test]
+    fn the_grammar_reads_as_the_hand_parser_did() {
+        use crate::syntax::corpus::{self, AnyName, Gen};
+
+        let names = parity_names();
+        let mut named: Vec<String> = spellings()
+            .into_iter()
+            .map(|(_, segments)| emit_with(&rich(coalesce(&segments)), &names))
+            .collect();
+        named.push("[[Nowhere]]".into());
+
+        let mut inputs = corpus::bundle_lines();
+        inputs.extend(corpus::MALFORMED.iter().map(|input| input.to_string()));
+        inputs.extend(named.iter().cloned());
+        for seed in corpus::seeds() {
+            let mut g = Gen::new(seed);
+            inputs.push(emit_with(&g.rich(), &AnyName));
+            inputs.push(g.noise());
+        }
+
+        let agree = |input: &str, links: &dyn Links| {
+            let (new, old) = (parse_with(input, links), legacy::parse_with(input, links));
+            assert_eq!(
+                new.is_ok(),
+                old.is_ok(),
+                "{input:?}: {new:?} against {old:?}"
+            );
+            if let (Ok(new), Ok(old)) = (new, old) {
+                assert_eq!(new, old, "{input:?}");
+            }
+        };
+        for input in &inputs {
+            agree(input, &Verbatim);
+            agree(input, &AnyName);
+        }
+        for input in &named {
+            agree(input, &names);
+        }
+    }
+
+    /// `^{x}` nested `depth` deep, with `opener` innermost.
+    fn nested(depth: usize, opener: &str, closer: &str) -> String {
+        format!(
+            "{}{opener}x{closer}{}",
+            "^{".repeat(depth - 1),
+            "}".repeat(depth - 1)
+        )
+    }
+
+    #[test]
+    fn every_nestable_construct_parses_at_the_ceiling_and_refuses_past_it() {
+        let constructs = [
+            ("^{", "}"),
+            ("_{", "}"),
+            ("[", "]{bold}"),
+            ("__", "__"),
+            ("~~", "~~"),
+            ("==", "=="),
+            ("||", "||"),
+            ("*", "*"),
+            ("_", "_"),
+        ];
+        for (opener, closer) in constructs {
+            let at_ceiling = nested(MAX_DEPTH, opener, closer);
+            parse(&at_ceiling).unwrap_or_else(|e| panic!("{opener} at the ceiling: {e}"));
+
+            let past = nested(MAX_DEPTH + 1, opener, closer);
+            let error = parse(&past).expect_err(opener);
+            assert_eq!(error.detail, too_deep(), "{opener}");
+            assert_eq!(
+                (error.at, error.line, error.column),
+                (2 * MAX_DEPTH, 1, 2 * MAX_DEPTH + 1),
+                "{opener}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_mebibyte_of_openers_refuses_on_a_small_stack() {
+        let openers = "^{".repeat(512 * 1024);
+        let error = std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn(move || parse(&openers).expect_err("past the ceiling"))
+            .expect("thread")
+            .join()
+            .expect("the parse completes on a two-megabyte stack");
+        assert_eq!(error.detail, "inline marks nest deeper than 16 levels");
+        assert_eq!((error.line, error.column), (1, 2 * MAX_DEPTH + 1));
+    }
+
+    #[test]
+    fn the_ceiling_parse_fits_a_two_megabyte_stack() {
+        std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn(|| {
+                for (opener, closer) in [("*", "*"), ("[", "]{bold}"), ("^{", "}")] {
+                    parse(&nested(MAX_DEPTH, opener, closer)).expect("at the ceiling");
+                }
+            })
+            .expect("thread")
+            .join()
+            .expect("the parse completes on a two-megabyte stack");
     }
 }
