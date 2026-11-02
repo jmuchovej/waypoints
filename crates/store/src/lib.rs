@@ -61,3 +61,31 @@ pub mod builtin {
     pub mod page;
     pub mod person;
 }
+
+/// The flavor staircase's proof: a nightly build compiles nightly- and
+/// preview-gated code, a preview build the preview-gated code alone, and a
+/// stable build neither — and each suite exercises what its flavor compiles.
+#[cfg(test)]
+mod flavor_gates {
+    #[cfg(feature = "nightly")]
+    fn nightly_gated() -> bool {
+        true
+    }
+
+    #[cfg(any(feature = "preview", feature = "nightly"))]
+    fn preview_gated() -> bool {
+        true
+    }
+
+    #[cfg(feature = "nightly")]
+    #[test]
+    fn a_nightly_build_compiles_nightly_gated_code() {
+        assert!(nightly_gated());
+    }
+
+    #[cfg(any(feature = "preview", feature = "nightly"))]
+    #[test]
+    fn a_preview_build_compiles_preview_gated_code() {
+        assert!(preview_gated());
+    }
+}
