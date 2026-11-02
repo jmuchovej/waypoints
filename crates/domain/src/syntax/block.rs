@@ -1150,4 +1150,143 @@ mod tests {
             "a table's rows are its own content, not child Marks"
         );
     }
+
+    /// The emitter's branches as a checklist — every variant themed and
+    /// unthemed, every attribute key, the `{}` suffix, every line opener and
+    /// every cell escape — each read back to the value it came from.
+    #[test]
+    fn every_block_form_the_emitter_writes_reads_back() {
+        type Text = fn(RichText, Option<BlockTheme>) -> Content;
+        let text_kinds: [Text; 6] = [
+            |rich_text, theme| Content::Paragraph { rich_text, theme },
+            |rich_text, theme| Content::Heading1 { rich_text, theme },
+            |rich_text, theme| Content::Heading2 { rich_text, theme },
+            |rich_text, theme| Content::Heading3 { rich_text, theme },
+            |rich_text, theme| Content::ListItem { rich_text, theme },
+            |rich_text, theme| Content::EnumItem { rich_text, theme },
+        ];
+        let spanned = RichText::new(vec![TextSegment {
+            text: "hi".into(),
+            marks: vec![
+                InlineMark {
+                    kind: TextMarkKind::Bold,
+                    data: None,
+                },
+                InlineMark {
+                    kind: TextMarkKind::Italic,
+                    data: None,
+                },
+            ],
+        }]);
+        let table = |cells: Vec<Vec<RichText>>, col_header, theme| Content::Table {
+            cells,
+            col_size: None,
+            row_size: None,
+            col_header,
+            row_header: None,
+            fill_width: None,
+            col_colors: None,
+            row_colors: None,
+            theme,
+        };
+
+        for theme in [None, themed(Color::Orange)] {
+            for build in text_kinds {
+                survives(build(rich("hello"), theme.clone()));
+                survives(build(rich("set x = {1}"), theme.clone()));
+                survives(build(rich("set x = {1} "), theme.clone()));
+                survives(build(spanned.clone(), theme.clone()));
+                survives(build(rich("# - > + : < not openers here"), theme.clone()));
+            }
+            survives(Content::Divider {
+                theme: theme.clone(),
+            });
+            survives(Content::Blockquote {
+                theme: theme.clone(),
+            });
+            survives(Content::Callout {
+                icon: "a \"quoted\" icon".into(),
+                theme: theme.clone(),
+            });
+            survives(Content::Callout {
+                icon: String::new(),
+                theme: theme.clone(),
+            });
+            survives(Content::Code {
+                language: "rust".into(),
+                lines: vec!["let s = \"```\";".into(), "".into(), "}".into()],
+                filename: Some("src/main \"x\".rs".into()),
+                highlights: Some(vec![1, 3]),
+                theme: theme.clone(),
+            });
+            survives(Content::Code {
+                language: String::new(),
+                lines: Vec::new(),
+                filename: None,
+                highlights: Some(Vec::new()),
+                theme: theme.clone(),
+            });
+            for engine in [MathEngine::Typst, MathEngine::LaTeX] {
+                survives(Content::Math {
+                    expression: "\\frac{1}{2}\n+ 3".into(),
+                    engine,
+                    theme: theme.clone(),
+                });
+            }
+            survives(table(
+                vec![vec![rich("a"), rich("b")], vec![rich("1"), rich("2")]],
+                Some(true),
+                theme.clone(),
+            ));
+            survives(table(vec![vec![rich("a")]], None, theme.clone()));
+            survives(table(vec![vec![rich("a")]], Some(false), theme.clone()));
+            survives(Content::Table {
+                cells: vec![vec![rich("a"), rich("b"), rich("c")]],
+                col_size: Some(vec![
+                    Some(Size::Fixed(200)),
+                    Some(Size::Ratio(1.5)),
+                    Some(Size::Min),
+                ]),
+                row_size: Some(vec![Some(Size::Max), None, Some(Size::Auto)]),
+                col_header: Some(true),
+                row_header: Some(true),
+                fill_width: Some(false),
+                col_colors: Some(vec![Some(Color::Blue), None, Some(Color::Pink)]),
+                row_colors: Some(vec![None]),
+                theme: theme.clone(),
+            });
+        }
+
+        for opener in LINE_OPENERS {
+            survives(Content::Paragraph {
+                rich_text: rich(&format!("{opener} x")),
+                theme: None,
+            });
+            survives(Content::Paragraph {
+                rich_text: rich(&format!("{opener}{opener}{opener}")),
+                theme: None,
+            });
+        }
+        for text in ["---", "| a", "``` x", "$$ x", "::x", "::"] {
+            survives(Content::Paragraph {
+                rich_text: rich(text),
+                theme: None,
+            });
+        }
+
+        let cells = [
+            "a|b", "|", "-", "---", ":-:", "--:", " a", "b ", " ", "b\\ ", "\\", "*x*",
+        ];
+        let mut row: Vec<RichText> = cells.iter().map(|cell| rich(cell)).collect();
+        row.push(RichText::default());
+        survives(table(vec![row], Some(false), None));
+        survives(table(
+            vec![
+                vec![rich("h")],
+                cells.iter().take(1).map(|cell| rich(cell)).collect(),
+            ],
+            Some(true),
+            None,
+        ));
+    }
 }
