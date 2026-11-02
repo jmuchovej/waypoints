@@ -5,6 +5,20 @@
 //! network, no storage engine. Everything here is testable with byte
 //! vectors, and the crate boundary keeps it that way.
 
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "outpost-protocol: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "outpost-protocol: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "outpost-protocol: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 pub(crate) mod acl;
 pub(crate) mod auth;
 pub(crate) mod crypto;

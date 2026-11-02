@@ -8,6 +8,20 @@
 //! QUIC stream in production), and only the endpoint layer knows about iroh.
 //! A `quinn`+static-address fallback would replace that layer alone.
 
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "outpost-fabric: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "outpost-fabric: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "outpost-fabric: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 pub(crate) mod endpoint;
 pub mod fleet;
 pub(crate) mod framing;

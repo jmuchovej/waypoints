@@ -1,3 +1,17 @@
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "store: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "store: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "store: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 pub(crate) mod error;
 pub use error::{StoreError, StoreResult};
 
