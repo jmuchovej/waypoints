@@ -10947,6 +10947,7 @@ version = "0.1.0"
 dependencies = [
  "bedrock",
  "chrono",
+ "chumsky",
  "domain",
  "indexmap 2.14.2",
  "jsonschema",

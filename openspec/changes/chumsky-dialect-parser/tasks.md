@@ -38,10 +38,10 @@ every commit from 2.1 onward.
       `quote`.
 
       _Coverage for 2.1–2.3 was not measured: `cargo llvm-cov` and the
-              `llvm-tools` component are absent from the toolchain, and installing
-              them needs the network. The rows were derived by walking each emitter
-              branch by hand. `Reading::File` has no `FeatureKind` to read it back
-              with, so it has no row._
+                  `llvm-tools` component are absent from the toolchain, and installing
+                  them needs the network. The rows were derived by walking each emitter
+                  branch by hand. `Reading::File` has no `FeatureKind` to read it back
+                  with, so it has no row._
 
 - [x] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
       one fixture per `GrammarError`/`grammar(…)` site in `inline.rs`,
@@ -78,11 +78,13 @@ every commit from 2.1 onward.
 
 ## 4. Document layer
 
-- [ ] 4.1 `refactor(transload/dialect): identity comments as a parser — the walker composes it, parse stays a wrapper` —
+- [x] 4.1 `refactor(transload/dialect): identity comments as a parser — the walker composes it, parse stays a wrapper` —
       `identity::marker()` returning `Marker` with `SourceKeyedIdentity` and
       the `takes a Mark id, not` refusal as emitted errors; verify
       `identity.rs` tests pass unchanged through the wrapper.
-- [ ] 4.2 `refactor(transload/dialect): the body walker as a prefix-parameterised grammar — child regions parsed in place, spans into the file` —
+      (The refusals are `MalformedKind` values, not emitted errors; see
+      design.md D8's amendment.)
+- [x] 4.2 `refactor(transload/dialect): the body walker as a prefix-parameterised grammar — child regions parsed in place, spans into the file` —
       `document.rs` per D8 replacing `parse_region`/`parse_node`/`join`/
       `matching_closer`/`body_lines`; block refusals map to the real file line
       and a column; `document::legacy` and a differential over every Landmark
@@ -92,8 +94,9 @@ every commit from 2.1 onward.
       refusal fixtures for `expected a `wp:mark` comment`, `a `wp:mark`
 comment with no block after it`, `unclosed block, expected`, `unclosed
 `::` component` and `a container's comment is never closed` pass with
-      file lines.
-- [ ] 4.3 `test(transload/dialect): document refusals cite the construct's own line` —
+      file lines. (Nesting is a Rust recursion over line views and
+      `matching_closer` survives as `closer`; see design.md D8's amendment.)
+- [x] 4.3 `test(transload/dialect): document refusals cite the construct's own line` —
       a Bundle whose fourth block, nested two levels down inside a blockquote,
       has an unknown mark token; verify the refusal's `Location` is that
       block's text line (not its identity comment, not its parent's) and the

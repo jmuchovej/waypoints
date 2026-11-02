@@ -9,6 +9,8 @@ use domain::{
 use indexmap::IndexMap;
 use transload::ExportMeta;
 
+pub mod generate;
+
 pub const CHART: &str = "c4d8";
 
 pub fn at(milli: u32) -> NaiveDateTime {
