@@ -1116,4 +1116,151 @@ mod tests {
         let unknown = parse_with("[[Nowhere]]", &names).expect_err("unresolvable");
         assert_eq!(unknown.detail, "no page `Nowhere`");
     }
+
+    /// The emitter's branches as a checklist — every token, shortcut, prefix,
+    /// mention spelling and escape — each read back to the value it came from.
+    #[test]
+    fn every_spelling_the_emitter_writes_reads_back() {
+        use TextMarkKind::*;
+        let names = Names(vec![("A#b|c]d\\e", "p1"), ("Cosmos", "p2")]);
+        let plain = |text: &str| seg(text, vec![]);
+        let one = |text: &str, kind: TextMarkKind| seg(text, vec![mark(kind)]);
+        let with = |text: &str, kind: TextMarkKind, data: &str| {
+            seg(text, vec![mark_with(kind, serde_json::json!(data))])
+        };
+
+        let mut rows: Vec<(String, Vec<TextSegment>)> = Vec::new();
+        for (kind, _) in TOKEN_ORDER {
+            rows.push((format!("{kind:?} shortcut"), vec![one("hi", kind.clone())]));
+            let partner = if kind == Bold { Italic } else { Bold };
+            rows.push((
+                format!("{kind:?} token"),
+                vec![seg("hi", vec![mark(kind), mark(partner)])],
+            ));
+        }
+        for (delim, kind) in PAIRED {
+            rows.push((
+                format!("`{delim}` in prose"),
+                vec![plain("a "), one("b", kind), plain(" c")],
+            ));
+        }
+        for (text, kind) in [
+            ("{a}", Italic),
+            ("a`b", Code),
+            ("a$b", Math),
+            ("~", Strikethrough),
+            ("=", Highlight),
+            ("|", Spoiler),
+            ("a}b", Superscript),
+            ("a}b", Subscript),
+            ("*a* _b_", Superscript),
+        ] {
+            rows.push((format!("{kind:?} over {text:?}"), vec![one(text, kind)]));
+        }
+        rows.extend([
+            ("bg-".into(), vec![with("hi", Highlight, "yellow")]),
+            ("text- colour".into(), vec![with("hi", Color, "blue")]),
+            ("text- size".into(), vec![with("hi", FontSize, "sm")]),
+            ("font-".into(), vec![with("hi", FontFamily, "mono")]),
+            (
+                "every token at once".into(),
+                vec![seg(
+                    "hi",
+                    vec![
+                        mark(Bold),
+                        mark_with(Highlight, serde_json::json!("yellow")),
+                        mark_with(Color, serde_json::json!("red")),
+                        mark_with(FontSize, serde_json::json!("lg")),
+                        mark_with(FontFamily, serde_json::json!("serif")),
+                    ],
+                )],
+            ),
+            ("bare mention".into(), vec![with("", Mention, "p2")]),
+            (
+                "labelled mention".into(),
+                vec![with("the book", Mention, "p2")],
+            ),
+            ("block mention".into(), vec![with("", Mention, "p2:4f2a")]),
+            (
+                "labelled block mention".into(),
+                vec![with("that bit", Mention, "p2:4f2a")],
+            ),
+            ("escaped page".into(), vec![with("", Mention, "p1")]),
+            (
+                "escaped label".into(),
+                vec![with("a|b]c\\d#e", Mention, "p2")],
+            ),
+            (
+                "mention with a suffix".into(),
+                vec![seg(
+                    "x",
+                    vec![mark(Bold), mark_with(Mention, serde_json::json!("p2"))],
+                )],
+            ),
+            (
+                "link".into(),
+                vec![with("docs", Link, "https://waypoints.so")],
+            ),
+            (
+                "link escaping its text and href".into(),
+                vec![with("a*b]", Link, "https://x.so/(a)\\b")],
+            ),
+            (
+                "link with a suffix".into(),
+                vec![seg(
+                    "docs",
+                    vec![
+                        mark(Italic),
+                        mark_with(Link, serde_json::json!("https://waypoints.so")),
+                    ],
+                )],
+            ),
+            ("a brace-opening run".into(), vec![plain("{x}")]),
+            (
+                "a brace-opening run after a shortcut".into(),
+                vec![one("a", Bold), plain("{b}")],
+            ),
+            (
+                "a brace-opening run after a span".into(),
+                vec![seg("a", vec![mark(Bold), mark(Italic)]), plain("{b}")],
+            ),
+            (
+                "a tilde at a segment's edge".into(),
+                vec![plain("a~"), one("b", Strikethrough)],
+            ),
+            (
+                "a caret at a segment's edge".into(),
+                vec![plain("x^"), one("{2}", Bold)],
+            ),
+        ]);
+        for c in ALWAYS_ESCAPED {
+            rows.push((format!("literal `{c}`"), vec![plain(&format!("a{c}b"))]));
+        }
+        for text in [
+            "a~~b", "~a", "a~", "a==b", "=a", "a=", "a||b", "|a", "a|", "a~b=c|d", "x^{2}", "x^",
+            "2^10", "^",
+        ] {
+            rows.push((format!("prose {text:?}"), vec![plain(text)]));
+        }
+
+        for (name, segments) in rows {
+            let original = rich(coalesce(&segments));
+            let source = emit_with(&original, &names);
+            let parsed = parse_with(&source, &names)
+                .unwrap_or_else(|e| panic!("{name}: parse {source:?}: {e}"));
+            assert_eq!(
+                parsed.segments(),
+                original.segments(),
+                "{name}: via {source:?}"
+            );
+            assert_eq!(emit_with(&parsed, &names), source, "{name}: not canonical");
+        }
+
+        // A label equal to the title is elided; the target is what survives.
+        let titled = rich(vec![with("Cosmos", Mention, "p2")]);
+        let source = emit_with(&titled, &names);
+        assert_eq!(source, "[[Cosmos]]");
+        let parsed = parse_with(&source, &names).expect("parse");
+        assert_eq!(parsed.segments(), [with("", Mention, "p2")]);
+    }
 }

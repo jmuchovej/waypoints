@@ -17,7 +17,7 @@ every commit from 2.1 onward.
 
 ## 2. Parity tables on the hand parsers
 
-- [ ] 2.1 `test(domain/dialect): inline parity table — every token, shortcut and escape the emitter writes reads back` —
+- [x] 2.1 `test(domain/dialect): inline parity table — every token, shortcut and escape the emitter writes reads back` —
       a table-driven test built from `TOKEN_ORDER`, `PAIRED`, every `shortcut`
       arm, the parameterised prefixes, every mention spelling, the link, the
       `{`-opening plain run, every `ALWAYS_ESCAPED` character and the
@@ -25,18 +25,25 @@ every commit from 2.1 onward.
       `cargo llvm-cov` shows every line of `emit_segment`, `shortcut`,
       `emit_attrs`, `escape_text`, `escape_script`, `escape_href`,
       `escape_page` and `escape_label` covered by it.
-- [ ] 2.2 `test(domain/dialect): block parity table — every variant, attribute key and cell escape reads back` —
+- [x] 2.2 `test(domain/dialect): block parity table — every variant, attribute key and cell escape reads back` —
       every `Content` variant themed and unthemed, every attribute key, the
       `{}` suffix, every `LINE_OPENERS` escape, both table spellings, every
       `escape_cell` rule; verify the same coverage bar over `emit_with`,
       `text_line`, `attrs`, `emit_table`, `escape_cell`, `join_sizes`,
       `join_colors`.
-- [ ] 2.3 `test(transload/dialect): frontmatter parity table — every reading kind, retyped id and note reads back` —
+- [x] 2.3 `test(transload/dialect): frontmatter parity table — every reading kind, retyped id and note reads back` —
       every `Reading` variant empty and non-empty, every `plain` re-typing
       case, the icon, the `|2-` indicator, notes present and absent; verify the
       coverage bar over `emit`, `push_reading`, `push_block_scalar`, `plain`,
       `quote`.
-- [ ] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
+
+      _Coverage for 2.1–2.3 was not measured: `cargo llvm-cov` and the
+          `llvm-tools` component are absent from the toolchain, and installing
+          them needs the network. The rows were derived by walking each emitter
+          branch by hand. `Reading::File` has no `FeatureKind` to read it back
+          with, so it has no row._
+
+- [x] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
       one fixture per `GrammarError`/`grammar(…)` site in `inline.rs`,
       `block.rs`, `ingest.rs` and `identity.rs`, asserting the sentence and,
       for now, the byte offset the hand parser reports; verify every sentence

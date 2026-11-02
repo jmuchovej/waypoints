@@ -1,0 +1,434 @@
+//! Every refusal sentence the dialect's readers write, at the position it
+//! names. A refusal sentence in the readers' sources with no fixture here fails
+//! `every_refusal_sentence_has_a_fixture`.
+
+mod common;
+
+use common::*;
+use domain::{
+    MarkID,
+    syntax::{
+        block,
+        inline::{self, LinkName, Links, Verbatim},
+    },
+};
+use transload::{Bundle, IngestError, Location, MalformedKind, export, ingest, layout};
+
+/// A refusal as the readers' sources spell it and as it renders.
+struct Fixture {
+    /// The string literal in the source, placeholders and all.
+    template: &'static str,
+    source: &'static str,
+    detail: &'static str,
+    /// The byte offset the hand parser reports.
+    at: usize,
+}
+
+const INLINE: &[Fixture] = &[
+    Fixture {
+        template: "unclosed `{closer}`",
+        source: "*unclosed",
+        detail: "unclosed `*`",
+        at: 9,
+    },
+    Fixture {
+        template: "unclosed `{closer}`",
+        source: "[a",
+        detail: "unclosed `]`",
+        at: 2,
+    },
+    Fixture {
+        template: "unclosed `{closer}`",
+        source: "^{x",
+        detail: "unclosed `}`",
+        at: 3,
+    },
+    Fixture {
+        template: "unclosed `[[`",
+        source: "[[",
+        detail: "unclosed `[[`",
+        at: 0,
+    },
+    Fixture {
+        template: "a mention with no target",
+        source: "[[|label]]",
+        detail: "a mention with no target",
+        at: 0,
+    },
+    Fixture {
+        template: "a bracketed run needs a `(url)` or `{tokens}` suffix; a literal bracket is escaped",
+        source: "[bare bracketed]",
+        detail: "a bracketed run needs a `(url)` or `{tokens}` suffix; a literal bracket is escaped",
+        at: 0,
+    },
+    Fixture {
+        template: "`{token}` is not a mark token in this dialect",
+        source: "[hi]{bold nonsense}",
+        detail: "`nonsense` is not a mark token in this dialect",
+        at: 19,
+    },
+    Fixture {
+        template: "unclosed `{open}`",
+        source: "[a](unclosed",
+        detail: "unclosed `(`",
+        at: 3,
+    },
+    Fixture {
+        template: "unclosed `{open}`",
+        source: "[a]{bold",
+        detail: "unclosed `{`",
+        at: 3,
+    },
+    Fixture {
+        template: "unclosed `{delim}`",
+        source: "`unclosed",
+        detail: "unclosed ```",
+        at: 0,
+    },
+    Fixture {
+        template: "unclosed `{delim}`",
+        source: "$x",
+        detail: "unclosed `$`",
+        at: 0,
+    },
+    Fixture {
+        template: "a block link needs names to resolve against",
+        source: "[[page#4f2a]]",
+        detail: "a block link needs names to resolve against",
+        at: 0,
+    },
+];
+
+const BLOCK: &[Fixture] = &[
+    Fixture {
+        template: "`{color}` is not a block theme colour",
+        source: "# hi{theme-chartreuse}",
+        detail: "`chartreuse` is not a block theme colour",
+        at: 2,
+    },
+    Fixture {
+        template: "`{token}` is not a block attribute in this dialect",
+        source: "# hi{nonsense}",
+        detail: "`nonsense` is not a block attribute in this dialect",
+        at: 2,
+    },
+    Fixture {
+        template: "`::{other}` is not a block component in this dialect",
+        source: "::nonsense{}",
+        detail: "`::nonsense` is not a block component in this dialect",
+        at: 0,
+    },
+    Fixture {
+        template: "unclosed `{closer}`",
+        source: "- *x",
+        detail: "unclosed `*`",
+        at: 2,
+    },
+];
+
+/// A body refusal: `at` is the offending line, counted from the body's first.
+const BODY: &[Fixture] = &[
+    Fixture {
+        template: "expected a `wp:mark` comment",
+        source: "<!-- just a note -->\nhello\n",
+        detail: "expected a `wp:mark` comment",
+        at: 0,
+    },
+    Fixture {
+        template: "a `wp:mark` comment with no block after it",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n",
+        detail: "a `wp:mark` comment with no block after it",
+        at: 0,
+    },
+    Fixture {
+        template: "unclosed block, expected `{end}`",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n```rust\nfn x\n",
+        detail: "unclosed block, expected `````",
+        at: 1,
+    },
+    Fixture {
+        template: "unclosed block, expected `{end}`",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n$$\nx\n",
+        detail: "unclosed block, expected `$$`",
+        at: 1,
+    },
+    Fixture {
+        template: "unclosed `::` component",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n::callout{icon=\"x\"}\n",
+        detail: "unclosed `::` component",
+        at: 1,
+    },
+    Fixture {
+        template: "`{token}` is not a block attribute in this dialect",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n# hi{nonsense}\n",
+        detail: "`nonsense` is not a block attribute in this dialect (at byte 2)",
+        at: 1,
+    },
+    Fixture {
+        template: "a container's comment is never closed",
+        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n- item\n  \
+                 <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->\n  child\n",
+        detail: "a container's comment is never closed",
+        at: 0,
+    },
+    Fixture {
+        template: "a `{MARKER}` comment takes a Mark id, not `{payload}`",
+        source: "<!-- wp:mark not-a-uuid -->\nhello\n",
+        detail: "a `wp:mark` comment takes a Mark id, not `not-a-uuid`",
+        at: 0,
+    },
+];
+
+/// Sentences no input can reach: an inner reader always refuses first.
+const UNREACHABLE: &[&str] = &["unclosed `[`"];
+
+/// The readers whose sentences must each have a fixture, relative to this crate.
+const SOURCES: &[&str] = &[
+    "../domain/src/syntax/inline.rs",
+    "../domain/src/syntax/block.rs",
+    "src/ingest.rs",
+    "src/identity.rs",
+];
+
+/// Resolves every page by name, except `Nowhere`.
+struct Pages;
+
+impl Links for Pages {
+    fn name(&self, target: &str) -> LinkName {
+        LinkName {
+            page: target.into(),
+            block: None,
+            title: None,
+        }
+    }
+
+    fn resolve(&self, page: &str, _: Option<&str>) -> Result<String, String> {
+        match page {
+            "Nowhere" => Err("no page `Nowhere`".into()),
+            page => Ok(page.into()),
+        }
+    }
+}
+
+#[test]
+fn inline_refusals_name_their_sentence_and_position() {
+    for fixture in INLINE {
+        let error = inline::parse(fixture.source).expect_err(fixture.source);
+        assert_eq!(error.detail, fixture.detail, "{}", fixture.source);
+        assert_eq!(error.at, fixture.at, "{}", fixture.source);
+        assert!(
+            renders(fixture.template, &error.detail),
+            "{}",
+            fixture.source
+        );
+    }
+}
+
+#[test]
+fn a_callers_sentence_passes_through_unchanged() {
+    let error = inline::parse_with("[[Nowhere]]", &Pages).expect_err("unresolvable");
+    assert_eq!(error.detail, "no page `Nowhere`");
+    assert_eq!(error.at, 0);
+}
+
+#[test]
+fn block_refusals_name_their_sentence_and_position() {
+    for fixture in BLOCK {
+        let error = block::parse_with(fixture.source, &Verbatim).expect_err(fixture.source);
+        assert_eq!(error.detail, fixture.detail, "{}", fixture.source);
+        assert_eq!(error.at, fixture.at, "{}", fixture.source);
+        assert!(
+            renders(fixture.template, &error.detail),
+            "{}",
+            fixture.source
+        );
+    }
+}
+
+#[tokio::test]
+async fn body_refusals_cite_their_line() {
+    for fixture in BODY {
+        let (bundle, path, first) = with_body(fixture.source).await;
+        let refusal = refused(&bundle).await;
+        let expected = Location::line(&path, first + fixture.at);
+        assert!(
+            refusal.malformed.iter().any(|malformed| {
+                malformed.at == expected
+                    && malformed.kind
+                        == MalformedKind::Grammar {
+                            detail: fixture.detail.into(),
+                        }
+            }),
+            "{:?}: expected `{}` at {expected}, got {refusal}",
+            fixture.source,
+            fixture.detail
+        );
+        assert!(
+            renders(fixture.template, fixture.detail),
+            "{}",
+            fixture.source
+        );
+    }
+}
+
+#[tokio::test]
+async fn an_unknown_edge_kind_cites_its_sidecar_line() {
+    let (mut bundle, _, _) = with_body("").await;
+    let id = MarkID::new();
+    bundle.insert(
+        layout::TERRAIN,
+        format!("{{\"src\":\"{id}\",\"dst\":\"{id}\",\"kind\":\"nonsense\"}}\n"),
+    );
+    let refusal = refused(&bundle).await;
+    let detail = "`nonsense` is not an edge kind";
+    assert!(
+        refusal.malformed.iter().any(|malformed| {
+            malformed.at == Location::line(layout::TERRAIN, 1)
+                && malformed.kind
+                    == MalformedKind::Grammar {
+                        detail: detail.into(),
+                    }
+        }),
+        "{refusal}"
+    );
+    assert!(renders("`{raw_kind}` is not an edge kind", detail));
+}
+
+#[test]
+fn every_refusal_sentence_has_a_fixture() {
+    let covered: Vec<&str> = INLINE
+        .iter()
+        .chain(BLOCK)
+        .chain(BODY)
+        .map(|fixture| fixture.template)
+        .chain(["`{raw_kind}` is not an edge kind"])
+        .chain(UNREACHABLE.iter().copied())
+        .collect();
+    let root = env!("CARGO_MANIFEST_DIR");
+    let mut written = Vec::new();
+    for file in SOURCES {
+        let text = std::fs::read_to_string(format!("{root}/{file}")).expect(file);
+        for literal in literals(&text) {
+            let refuses = literal.starts_with("unclosed")
+                || literal.contains("is not a")
+                || literal.contains("expected a");
+            assert!(
+                !refuses || covered.contains(&literal.as_str()),
+                "{file}: `{literal}` has no fixture"
+            );
+            written.push(literal);
+        }
+    }
+    for template in covered {
+        assert!(
+            written.iter().any(|literal| literal == template),
+            "`{template}` is no longer written by any reader"
+        );
+    }
+}
+
+/// A Bundle holding one Landmark whose body is `body`, its path, and the file
+/// line the body opens on.
+async fn with_body(body: &str) -> (Bundle, String, usize) {
+    let db = open().await;
+    db.insert(chart()).await.expect("chart");
+    let root = MarkID::new();
+    db.insert(landmark(root, "Fixture")).await.expect("root");
+    let mut bundle = export(&db, &meta()).await.expect("export").bundle;
+    let path = layout::landmark(&chart_id(), &root);
+    let front = bundle.get(&path).expect("landmark").to_string();
+    let first = front.lines().count() + 2;
+    bundle.insert(&path, format!("{front}\n{body}"));
+    (bundle, path, first)
+}
+
+async fn refused(bundle: &Bundle) -> transload::Refusal {
+    match ingest(&open().await, bundle).await {
+        Err(IngestError::Refused(refusal)) => *refusal,
+        Err(other) => panic!("expected a refusal, got {other}"),
+        Ok(_) => panic!("expected a refusal"),
+    }
+}
+
+/// Does `detail` read as `template` with each `{…}` filled in? A trailing
+/// position, as a block refusal carries through the body, is not the sentence.
+fn renders(template: &str, detail: &str) -> bool {
+    let detail = match detail.rsplit_once(" (") {
+        Some((sentence, position))
+            if position.ends_with(')')
+                && ["at ", "line ", "column "]
+                    .iter()
+                    .any(|lead| position.starts_with(lead)) =>
+        {
+            sentence
+        }
+        _ => detail,
+    };
+    let mut pieces = Vec::new();
+    let mut rest = template;
+    while let Some(open) = rest.find('{') {
+        let Some(close) = rest[open..].find('}') else {
+            break;
+        };
+        pieces.push(&rest[..open]);
+        rest = &rest[open + close + 1..];
+    }
+    pieces.push(rest);
+
+    let (first, last) = (pieces[0], pieces[pieces.len() - 1]);
+    if pieces.len() == 1 {
+        return detail == first;
+    }
+    let Some(mut tail) = detail.strip_prefix(first) else {
+        return false;
+    };
+    for piece in &pieces[1..pieces.len() - 1] {
+        match tail.find(piece) {
+            Some(at) => tail = &tail[at + piece.len()..],
+            None => return false,
+        }
+    }
+    tail.ends_with(last)
+}
+
+/// The string literals of a source file's non-test code.
+fn literals(source: &str) -> Vec<String> {
+    let code = source.split("#[cfg(test)]").next().unwrap_or(source);
+    let chars: Vec<char> = code.chars().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        match chars[i] {
+            '/' if chars.get(i + 1) == Some(&'/') => {
+                while i < chars.len() && chars[i] != '\n' {
+                    i += 1;
+                }
+            }
+            '\'' if chars.get(i + 1) == Some(&'\\') => {
+                i += 2;
+                while i < chars.len() && chars[i] != '\'' {
+                    i += 1;
+                }
+                i += 1;
+            }
+            '\'' if chars.get(i + 2) == Some(&'\'') => i += 3,
+            '"' => {
+                let mut literal = String::new();
+                i += 1;
+                while i < chars.len() && chars[i] != '"' {
+                    if chars[i] == '\\' {
+                        i += 1;
+                    }
+                    if let Some(&c) = chars.get(i) {
+                        literal.push(c);
+                    }
+                    i += 1;
+                }
+                i += 1;
+                out.push(literal);
+            }
+            _ => i += 1,
+        }
+    }
+    out
+}

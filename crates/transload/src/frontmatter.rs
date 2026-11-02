@@ -824,6 +824,127 @@ mod tests {
         );
     }
 
+    /// The emitter's branches as a checklist — every reading kind empty and
+    /// not, every re-typed id, the icon, the `|2-` indicator, with and without
+    /// advisory notes — each read back to the frontmatter it came from.
+    #[test]
+    fn every_frontmatter_the_emitter_writes_reads_back() {
+        let multi_kind = FeatureKind::MultiSelect {
+            options: IndexMap::new(),
+            max_selections: None,
+            default_options: vec![],
+        };
+        let grouped_kind = FeatureKind::GroupedSelect {
+            groups: IndexMap::new(),
+            default_option: None,
+        };
+        let text = |text: &str| Reading::Text(inline::parse(text).expect("dialect"));
+        let ids = |ids: &[&str]| ids.iter().map(|id| glyph_id(id)).collect::<Vec<_>>();
+        let cases: Vec<(FeatureKind, Reading)> = vec![
+            (FeatureKind::Text, text("some *bold* text")),
+            (FeatureKind::Text, Reading::Text(RichText::default())),
+            (FeatureKind::Text, text("line one\nline two")),
+            (FeatureKind::Text, text(" opens with a space")),
+            (FeatureKind::Text, text("true")),
+            (FeatureKind::Text, Reading::Null),
+            (number_kind(), Reading::Number(42.5)),
+            (number_kind(), Reading::Number(-3.0)),
+            (number_kind(), Reading::Number(0.0)),
+            (FeatureKind::Checkbox, Reading::Bool(true)),
+            (FeatureKind::Checkbox, Reading::Bool(false)),
+            (date_kind(), Reading::Date(at(0))),
+            (date_kind(), Reading::DateRange(at(0), at(500))),
+            (select_kind(), Reading::Select(glyph_id("abcd"))),
+            (select_kind(), Reading::Select(glyph_id("0001"))),
+            (select_kind(), Reading::Select(glyph_id("12e3"))),
+            (select_kind(), Reading::Select(glyph_id("null"))),
+            (select_kind(), Reading::Select(glyph_id("true"))),
+            (select_kind(), Reading::Select(glyph_id("false"))),
+            (multi_kind.clone(), Reading::MultiSelect(Vec::new())),
+            (
+                multi_kind,
+                Reading::MultiSelect(ids(&["0001", "true", "abcd"])),
+            ),
+            (
+                grouped_kind.clone(),
+                Reading::GroupedSelect(std::collections::HashMap::new()),
+            ),
+            (
+                grouped_kind,
+                Reading::GroupedSelect(std::collections::HashMap::from([
+                    (glyph_id("g1"), ids(&["o1", "0002"])),
+                    (glyph_id("0003"), Vec::new()),
+                ])),
+            ),
+            (reference_kind(), Reading::References(Vec::new())),
+            (
+                reference_kind(),
+                Reading::References(vec![mark(1), mark(2)]),
+            ),
+            (
+                FeatureKind::URL,
+                Reading::URL("https://waypoints.so".into()),
+            ),
+            (FeatureKind::URL, Reading::URL(String::new())),
+            (FeatureKind::Email, Reading::Email("a@b.co".into())),
+            (
+                FeatureKind::Formula,
+                Reading::Formula("a \"b\" \\ c\nd: # e".into()),
+            ),
+            (
+                FeatureKind::Phone,
+                Reading::Phone("+1".into(), "555-0100".into()),
+            ),
+            (
+                FeatureKind::Phone,
+                Reading::Phone(String::new(), String::new()),
+            ),
+        ];
+
+        let noted = Advisory {
+            feature_names: HashMap::from([
+                (feature("a1b2"), "Attendees\nand # guests".to_string()),
+                (feature("0001"), "Retyped".to_string()),
+            ]),
+            mark_titles: HashMap::from([(mark(1), "A \"quoted\"\ntitle".to_string())]),
+        };
+        for advisory in [Advisory::default(), noted] {
+            for (kind, reading) in &cases {
+                for key in ["a1b2", "0001"] {
+                    let mut readings = IndexMap::new();
+                    readings.insert(feature(key), reading.clone());
+                    survives_with(
+                        base(readings),
+                        &advisory,
+                        HashMap::from([(feature(key), kind.clone())]),
+                    );
+                }
+            }
+            for title in ["", " leading", "two\nlines", "the *weekly* sync"] {
+                let mut front = base(IndexMap::new());
+                front.title = inline::parse(title).expect("dialect");
+                front.icon = Some(Icon {
+                    identifier: "iconify:mdi:home".into(),
+                    alt_text: Some("a \"home\"".into()),
+                    colorable: Some(true),
+                    metadata: None,
+                });
+                survives_with(front, &advisory, HashMap::new());
+            }
+        }
+    }
+
+    fn survives_with(
+        front: Frontmatter,
+        advisory: &Advisory,
+        kinds: HashMap<FeatureID, FeatureKind>,
+    ) {
+        let source = emit(&front, advisory, &Verbatim);
+        let (inner, _) = split(&source).expect("fences");
+        let parsed = parse(inner, &kinds).unwrap_or_else(|e| panic!("parse {source}: {e}"));
+        assert_eq!(parsed, front, "via\n{source}");
+    }
+
     /// A Feature exists only to carry a kind here; the schema module owns the
     /// rest of it.
     #[test]
