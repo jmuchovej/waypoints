@@ -61,9 +61,10 @@ jobs:
       - id: nextest
         name: Run release tests
         if: steps.test-plan.outputs.filterset != ''
-        run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        run: cargo nextest run --workspace --no-fail-fast --features "${FLAVOR}" -E "${FILTER_EXPR}"
         shell: bash
         env:
+          FLAVOR: ${{ steps.test-plan.outputs.flavor }}
           CARGO_INCREMENTAL: "0"
           CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
@@ -98,9 +99,10 @@ jobs:
       - id: nextest
         name: Run release tests
         if: steps.test-plan.outputs.filterset != ''
-        run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        run: cargo nextest run --workspace --no-fail-fast --features "${FLAVOR}" -E "${FILTER_EXPR}"
         shell: bash
         env:
+          FLAVOR: ${{ steps.test-plan.outputs.flavor }}
           CARGO_INCREMENTAL: "0"
           CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
@@ -152,9 +154,10 @@ jobs:
       - id: nextest
         name: Run release tests
         if: steps.test-plan.outputs.filterset != ''
-        run: cargo nextest run --workspace --no-fail-fast -E "${FILTER_EXPR}"
+        run: cargo nextest run --workspace --no-fail-fast --features "${FLAVOR}" -E "${FILTER_EXPR}"
         shell: bash
         env:
+          FLAVOR: ${{ steps.test-plan.outputs.flavor }}
           CARGO_INCREMENTAL: "0"
           CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
