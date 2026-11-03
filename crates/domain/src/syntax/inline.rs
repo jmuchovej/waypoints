@@ -12,6 +12,7 @@ use chumsky::{
     input::{InputRef, MapExtra},
     prelude::*,
 };
+use derive_more::Display;
 
 use crate::{Color, InlineMark, RichText, TextMarkKind, TextSegment};
 
@@ -48,7 +49,8 @@ const PAIRED: [(&str, TextMarkKind); 6] = [
 const ALWAYS_ESCAPED: [char; 7] = ['\\', '[', ']', '*', '_', '`', '$'];
 
 /// Why some dialect source is not in the dialect.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Display)]
+#[display("{detail} (line {line}, column {column})")]
 pub struct GrammarError {
     /// What went wrong, in a sentence.
     pub detail: String,
@@ -76,16 +78,6 @@ impl GrammarError {
     /// it was found in.
     pub(crate) fn shifted(self, src: &str, by: usize) -> Self {
         Self::new(src, self.at + by, self.detail)
-    }
-}
-
-impl std::fmt::Display for GrammarError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} (line {}, column {})",
-            self.detail, self.line, self.column
-        )
     }
 }
 
