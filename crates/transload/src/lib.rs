@@ -12,14 +12,6 @@
 //! identity comments, manifest) lives here. A Bundle is never partially
 //! ingested: see [`Refusal`].
 
-// The integration tests' store helpers and generator, for the differential
-// harnesses that need a crate-private oracle beside them.
-#[cfg(test)]
-extern crate self as transload;
-#[cfg(test)]
-#[path = "../tests/common/mod.rs"]
-mod common;
-
 pub(crate) mod bundle;
 pub(crate) mod document;
 pub(crate) mod export;

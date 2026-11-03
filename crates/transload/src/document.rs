@@ -20,9 +20,6 @@ use crate::{
     refusal::MalformedKind,
 };
 
-#[cfg(test)]
-pub(crate) mod legacy;
-
 /// How many nodes may enclose one another in a body.
 pub(crate) const MAX_DEPTH: usize = 256;
 
@@ -428,92 +425,8 @@ fn grammar(line: usize, detail: impl Into<String>) -> Refused {
 
 #[cfg(test)]
 mod tests {
-    use domain::syntax::inline::LinkName;
-
     use super::*;
-    use crate::{bundle::Bundle, common, export::export, names::Lenient};
-
-    /// Resolves every target to itself.
-    struct Pages;
-
-    impl Links for Pages {
-        fn name(&self, target: &str) -> LinkName {
-            LinkName {
-                page: target.to_string(),
-                block: None,
-                title: None,
-            }
-        }
-
-        fn resolve(&self, page: &str, block: Option<&str>) -> Result<String, String> {
-            Ok(match block {
-                Some(block) => format!("{page}#{block}"),
-                None => page.to_string(),
-            })
-        }
-    }
-
-    /// The walker reads `file` as the hand walker did: refused by both, or
-    /// read by both to the same nodes.
-    fn agree(file: &str) {
-        for links in [&Lenient as &dyn Links, &Pages] {
-            let (new, old) = (parse(file, links), legacy::parse(file, links));
-            assert_eq!(new.is_ok(), old.is_ok(), "{file}\n{new:?}\nagainst {old:?}");
-            if let (Ok(new), Ok(old)) = (new, old) {
-                assert_eq!(new, old, "{file}");
-            }
-        }
-    }
-
-    /// `file`, and files one edit away from it: a line dropped, doubled, or
-    /// given an indent or a quote marker it did not have.
-    fn mutations(file: &str) -> Vec<String> {
-        let lines: Vec<&str> = file.lines().collect();
-        let mut out = vec![file.to_string()];
-        for at in (0..lines.len()).step_by((lines.len() / 6).max(1)) {
-            let mut dropped = lines.clone();
-            dropped.remove(at);
-            let mut doubled = lines.clone();
-            doubled.insert(at, lines[at]);
-            let (indented, quoted) = (format!("  {}", lines[at]), format!("> {}", lines[at]));
-            let mut shifted = lines.clone();
-            shifted[at] = &indented;
-            let mut marked = lines.clone();
-            marked[at] = &quoted;
-            out.extend([dropped, doubled, shifted, marked].map(|lines| lines.join("\n")));
-        }
-        out
-    }
-
-    #[test]
-    fn the_walker_reads_the_committed_bundle_as_the_hand_walker_did() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../store/src/collections/getting-started");
-        let bundle = Bundle::read_dir(&root).expect("the committed Bundle");
-        for (_, file) in bundle.iter().filter(|(path, _)| path.ends_with(".md")) {
-            for file in mutations(file) {
-                agree(&file);
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn the_walker_reads_generated_exports_as_the_hand_walker_did() {
-        for seed in common::generate::seeds() {
-            let db = common::open().await;
-            common::generate::generate(&db, seed).await;
-            let bundle = export(&db, &common::meta()).await.expect("export").bundle;
-            for (_, file) in bundle.iter().filter(|(path, _)| path.ends_with(".md")) {
-                let files = match seed % 8 {
-                    0 => mutations(file),
-                    _ => vec![file.to_string()],
-                };
-                for file in &files {
-                    agree(file);
-                }
-            }
-        }
-    }
+    use crate::names::Lenient;
 
     /// `nodes` paragraphs, each the only child of the one before.
     fn chain(nodes: usize) -> String {

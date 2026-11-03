@@ -38,10 +38,10 @@ every commit from 2.1 onward.
       `quote`.
 
       _Coverage for 2.1–2.3 was not measured: `cargo llvm-cov` and the
-                      `llvm-tools` component are absent from the toolchain, and installing
-                      them needs the network. The rows were derived by walking each emitter
-                      branch by hand. `Reading::File` has no `FeatureKind` to read it back
-                      with, so it has no row._
+                          `llvm-tools` component are absent from the toolchain, and installing
+                          them needs the network. The rows were derived by walking each emitter
+                          branch by hand. `Reading::File` has no `FeatureKind` to read it back
+                          with, so it has no row._
 
 - [x] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
       one fixture per `GrammarError`/`grammar(…)` site in `inline.rs`,
@@ -133,12 +133,14 @@ comment with no block after it`, `unclosed block, expected`, `unclosed
 
 ## 6. Retire the oracles
 
-- [ ] 6.1 `chore(domain/dialect): retire the hand-written inline and block parsers` —
+- [x] 6.1 `chore(domain/dialect): retire the hand-written inline and block parsers` —
       delete `inline::legacy`, `block::legacy` and their differentials; verify
       the conformance suite passes at its default count and at 10 000 cases
       in release (`TRANSLOAD_SEEDS`) first, and that `rg legacy crates/domain`
-      finds nothing.
-- [ ] 6.2 `chore(transload/dialect): retire the hand-written walker and frontmatter reader` —
+      finds nothing. (Checked as `rg legacy crates/domain/src/syntax`: the
+      word also names an icon-spelling doctest and a table fixture elsewhere
+      in `domain`, neither of them a parser.)
+- [x] 6.2 `chore(transload/dialect): retire the hand-written walker and frontmatter reader` —
       delete `document::legacy`, `frontmatter::legacy`, their differentials
       and the `legacy::emit` comparison; verify the same conformance bar, that
       `rg "saphyr|legacy" crates/transload Cargo.toml Cargo.lock` finds
