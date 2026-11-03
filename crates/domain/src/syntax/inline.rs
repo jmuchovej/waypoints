@@ -15,9 +15,6 @@ use chumsky::{
 
 use crate::{Color, InlineMark, RichText, TextMarkKind, TextSegment};
 
-#[cfg(test)]
-pub(crate) mod legacy;
-
 /// A span's attribute tokens, in the one order the emitter writes them.
 /// Links and mentions have no token and are absent.
 const TOKEN_ORDER: [(TextMarkKind, &str); 10] = [
@@ -1386,48 +1383,6 @@ mod tests {
         assert_eq!(source, "[[Cosmos]]");
         let parsed = parse_with(&source, &names).expect("parse");
         assert_eq!(parsed.segments(), [with("", TextMarkKind::Mention, "p2")]);
-    }
-
-    /// The grammar reads every corpus input as the hand parser did: the same
-    /// inputs refused, and the same value wherever both accept.
-    #[test]
-    fn the_grammar_reads_as_the_hand_parser_did() {
-        use crate::syntax::corpus::{self, AnyName, Gen};
-
-        let names = parity_names();
-        let mut named: Vec<String> = spellings()
-            .into_iter()
-            .map(|(_, segments)| emit_with(&rich(coalesce(&segments)), &names))
-            .collect();
-        named.push("[[Nowhere]]".into());
-
-        let mut inputs = corpus::bundle_lines();
-        inputs.extend(corpus::MALFORMED.iter().map(|input| input.to_string()));
-        inputs.extend(named.iter().cloned());
-        for seed in corpus::seeds() {
-            let mut g = Gen::new(seed);
-            inputs.push(emit_with(&g.rich(), &AnyName));
-            inputs.push(g.noise());
-        }
-
-        let agree = |input: &str, links: &dyn Links| {
-            let (new, old) = (parse_with(input, links), legacy::parse_with(input, links));
-            assert_eq!(
-                new.is_ok(),
-                old.is_ok(),
-                "{input:?}: {new:?} against {old:?}"
-            );
-            if let (Ok(new), Ok(old)) = (new, old) {
-                assert_eq!(new, old, "{input:?}");
-            }
-        };
-        for input in &inputs {
-            agree(input, &Verbatim);
-            agree(input, &AnyName);
-        }
-        for input in &named {
-            agree(input, &names);
-        }
     }
 
     /// `^{x}` nested `depth` deep, with `opener` innermost.

@@ -104,8 +104,6 @@
     rustls             = { version = "0.23", default-features = false, features = [
       "ring"
     ] }
-    # Bundles are UTF-8 by definition, so the `encoding` default is dead weight.
-    saphyr             = { version = "0.2.2", default-features = false }
     serde              = { version = "1.0.228", features = [ "derive" ] }
     serde_json         = { version = "1.0.150", features = [
       "arbitrary_precision",

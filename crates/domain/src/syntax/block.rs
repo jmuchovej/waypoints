@@ -11,9 +11,6 @@ use crate::{BlockTheme, Color, Content, MathEngine, RichText, Size, syntax::inli
 
 use inline::{Extra, GrammarError, Links, Verbatim};
 
-#[cfg(test)]
-pub(crate) mod legacy;
-
 /// What a `map_with` sees: where in the source its output came from.
 type Span<'a, 'b> = MapExtra<'a, 'b, &'a str, Extra<'a>>;
 
@@ -1200,36 +1197,6 @@ mod tests {
         assert!(parse("::nonsense{}").is_err());
         assert!(parse("# hi{theme-chartreuse}").is_err());
         assert!(parse("# hi{nonsense}").is_err());
-    }
-
-    /// The grammar reads every corpus input as the hand parser did: the same
-    /// inputs refused, and the same block wherever both accept.
-    #[test]
-    fn the_grammar_reads_as_the_hand_parser_did() {
-        use crate::syntax::corpus::{self, AnyName, Gen};
-
-        let mut inputs = corpus::bundle_lines();
-        inputs.extend(corpus::MALFORMED.iter().map(|input| input.to_string()));
-        for seed in corpus::seeds() {
-            let mut g = Gen::new(seed);
-            inputs.push(corpus::block_source(&g.content()));
-            inputs.push(g.noise());
-        }
-        let agree = |input: &str, links: &dyn Links| {
-            let (new, old) = (parse_with(input, links), legacy::parse_with(input, links));
-            assert_eq!(
-                new.is_ok(),
-                old.is_ok(),
-                "{input:?}: {new:?} against {old:?}"
-            );
-            if let (Ok(new), Ok(old)) = (new, old) {
-                assert_eq!(new, old, "{input:?}");
-            }
-        };
-        for input in &inputs {
-            agree(input, &Verbatim);
-            agree(input, &AnyName);
-        }
     }
 
     #[test]

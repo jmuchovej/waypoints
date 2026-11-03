@@ -16,8 +16,6 @@ use indexmap::IndexMap;
 
 use crate::{bundle::render_timestamp, names::KeepLabels, refusal::MalformedKind};
 
-#[cfg(test)]
-pub(crate) mod legacy;
 mod yaml;
 
 use yaml::{Entry, Node};
@@ -846,70 +844,6 @@ mod tests {
         }
         assert!(!out.is_empty());
         out
-    }
-
-    #[test]
-    fn emit_writes_the_bytes_the_hand_emitter_did() {
-        for advisory in [Advisory::default(), noted()] {
-            for (front, _) in parity_fronts() {
-                assert_eq!(
-                    emit(&front, &advisory, &Verbatim),
-                    legacy::emit(&front, &advisory, &Verbatim)
-                );
-            }
-        }
-        for (source, kinds) in committed() {
-            let front = parse(&source, &kinds).expect("the committed Bundle parses");
-            assert_eq!(
-                emit(&front, &noted(), &Verbatim),
-                legacy::emit(&front, &noted(), &Verbatim)
-            );
-        }
-    }
-
-    #[test]
-    fn the_subset_reads_what_saphyr_read() {
-        let mut sources = committed();
-        for advisory in [Advisory::default(), noted()] {
-            for (front, kinds) in parity_fronts() {
-                let source = emit(&front, &advisory, &Verbatim);
-                sources.push((split(&source).expect("fences").0.to_string(), kinds));
-            }
-        }
-        for (source, kinds) in sources {
-            assert_eq!(
-                parse(&source, &kinds).expect("the subset"),
-                legacy::parse(&source, &kinds, &Verbatim).expect("saphyr"),
-                "{source}"
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn generated_frontmatters_read_as_saphyr_read_them() {
-        for seed in crate::common::generate::seeds() {
-            let db = crate::common::open().await;
-            crate::common::generate::generate(&db, seed).await;
-            let bundle = crate::export(&db, &crate::common::meta())
-                .await
-                .expect("export")
-                .bundle;
-            let chart = crate::common::generate::wide_chart();
-            let kinds: HashMap<_, _> = chart
-                .features
-                .iter()
-                .map(|(id, feature)| (id.clone(), feature.kind.clone()))
-                .collect();
-            let names = crate::names::Lenient;
-            for (_, file) in bundle.iter().filter(|(path, _)| path.ends_with(".md")) {
-                let (source, _) = split(file).expect("fences");
-                assert_eq!(
-                    super::parse(source, &kinds, &names).expect("the subset"),
-                    legacy::parse(source, &kinds, &names).expect("saphyr"),
-                    "seed {seed}:\n{source}"
-                );
-            }
-        }
     }
 
     /// A frontmatter outside the subset is refused at the line of the construct.

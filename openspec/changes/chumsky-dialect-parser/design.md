@@ -678,6 +678,7 @@ is a prompt to box one more boundary, not to abandon the port.
 | measured (2026-11-02, aarch64-darwin) | `domain`               | `transload`            |
 | ------------------------------------- | ---------------------- | ---------------------- |
 | before task 1.1 (hand parsers)        | 2.17 s, 2.12 s, 2.13 s | 2.15 s, 2.13 s, 2.14 s |
+| after task 6.2 (chumsky grammars)     | 5.68 s, 4.34 s, 3.69 s | 6.80 s, 4.34 s, 3.64 s |
 
 ### D13 — The `syntax` feature gates `chumsky`; nothing else changes (2026-11-01)
 
