@@ -157,20 +157,23 @@ That list stays recorded in the archived Outcome in case a runtime ever wants `w
 - **Rejected — losing the panic message:** a bare trap is a worse report than the draft already promised, and the hook costs one static buffer and one export.
 - **Rejected — writing the panic into the last output's diagnostics instead:** the output a panic interrupts is never returned, so the message needs its own channel.
 
-### D7 — `macro_rules!`, `extern "C"`, JSON, and a boxed state handle (2026-10-29, `wp_panic` 2026-11-02)
+### D7 — `macro_rules!`, `extern "C"`, JSON, and a slot-index state handle (2026-10-29, `wp_panic` 2026-11-02, as built 2026-11-02)
 
-`transload::importer!(MyImporter, manifest = "importer.toml")` expands to the eight `#[unsafe(no_mangle)] pub extern "C"` exports.
+`transload::importer!(MyImporter, manifest = "importer.toml")` expands to the eight `#[unsafe(no_mangle)] pub extern "C"` exports, on wasm32 only, and to the `Manifested` impl that carries the embedded TOML and the crate version on every target.
 `no_mangle` keeps each symbol spelled as the ABI names it (`wp_abi`, not a mangled Rust path), so a host can look it up by name; `extern "C"` pins the calling convention to the target's C ABI, since Rust's own is unstable and a WebAssembly export is typed only in integers.
-The buffer convention exists because linear memory belongs to the guest: the host cannot call the guest's allocator, so the guest exports one (`wp_alloc`/`wp_free` over `Vec<u8>` with the capacity handed across) and every byte crosses through it.
-`wp_init` boxes the importer and returns `Box::into_raw` as the `u32` state inside the `ok` payload (`{"ok": {"state": <u32>}}`); `wp_entry` borrows it; `wp_finalize` takes it back.
+The buffer convention exists because linear memory belongs to the guest: the host cannot call the guest's allocator, so the guest exports one (`wp_alloc`/`wp_free` over boxed slices, exact length, no capacity to hand across) and every byte crosses through it.
+The exports are thin wrappers over `sdk::Runtime<T>`, which does everything over bytes — parse the configuration, call the trait, serialize the envelope, run the finalize-time checks, keep the census — and is what a host-side test drives: the exports' `u32` pointers are wasm32's, so compiling them on a 64-bit host would truncate addresses, and two test binaries in one crate could not both export `wp_init`.
+`wp_init` stores the importer in a slot of a thread-local `Runtime` and returns the slot's index plus one as the `u32` state inside the `ok` payload (`{"ok": {"state": <u32>}}`); `wp_entry` borrows the slot; `wp_finalize` takes it, after which the handle names nothing and a call with it is an `err` envelope rather than a use-after-free.
 Results serialize through `serde_json` into a fresh guest buffer whose `(ptr, len)` pack into the `u64`.
 A `Diagnostic` returned by the trait is the `err` payload, so the envelope and the diagnostic have one shape; a panic is a trap, and `wp_panic` returns its message afterwards (D6).
-The panic hook is installed once, on the first export call, through a `Once`; the stored message lives in a `static` the hook writes and `wp_panic` reads, and on wasm32 there is one thread, so no synchronization beyond the `Once` is needed.
+The panic hook is installed once, on the first export call, through a `Once`; the stored message lives in a `static` the hook writes and `wp_panic` reads, behind a `Mutex` so the same code is sound in a host-side test, where it costs nothing contended.
 The macro is `macro_rules!` — the surface is eight functions with fixed shapes and needs no syntax tree — so the SDK itself adds no proc-macro crate to a plugin's build (the schema derive of D8 is the one proc macro a plugin compiles).
 
 - **Rejected — a proc-macro for the exports:** nothing to derive from.
 - **Rejected — the trait carrying `&mut self` through `finalize`:** consuming `self` makes "the instance lives for the whole run and then does not" a type-level fact.
 - **Rejected — exporting the panic buffer's address as a global instead of a function:** reading a global and then memory is two steps where one call suffices, and the function keeps every output on the same packed-return convention.
+- **Rejected — `Box::into_raw` as the state handle (the previous design):** a host that passes a stale or invented handle reaches arbitrary memory; a slot index makes the same mistake an `err` envelope that names it.
+- **Rejected — the exports on every target, called through their symbols by `transload`'s own tests (the previous design):** pointer truncation on a 64-bit host and duplicate symbols across test binaries; the `Runtime` is the same code minus the boundary, and the fixture's module tests cover the boundary itself.
 
 ### D8 — The manifest is authored in TOML and served as JSON; the options schema is generated (2026-10-30)
 
@@ -200,6 +203,10 @@ A test asserting that a panic in `wp_entry` becomes a trap, and that `wp_panic` 
 The harness is behind `harness` so a plugin build never links `jsonschema` or `wasmi`.
 It is in `transload` rather than the fixture crate so the next plugin reuses it.
 It provides no host functions and needs no random source or clock; there is nothing for it to serve.
+
+`wasmi` is built with `auto-dispatch` on top of `std` and `validate`.
+Its default executor dispatches instructions by tail call and relies on LLVM's sibling-call optimization, which an unoptimized build does not perform; the test profile is unoptimized, and without the fallback the first run of the fixture module overflowed the native stack at any thread stack size.
+`auto-dispatch` keys the choice off the build's optimization level, so the test profile gets the loop executor and a release build keeps the fast one.
 
 - **Rejected — inspecting the module with `wasmparser` only (an earlier design):** proved the export and import sets and nothing about whether the exports work; `wasmi` proves both and reads the sections itself.
 - **Rejected — driving the module through `wasmtime` in tests:** a heavier runtime than a test needs, and the one the application will embed is the host change's choice to make; nothing here depends on which.
@@ -256,7 +263,8 @@ It is not claimed that equal values serialize identically, since `IndexMap` equa
 
 ## Risks / Trade-offs
 
-- [The nested wasm build in the fixture's tests is slow] → it compiles `domain`, the grammar, `toml`, `schemars`, and their dependencies for a second target, incrementally, in its own target directory; the comparable probe took about thirteen seconds warm, and the task records the fixture's figure, with a lighter profile if the number warrants.
+- [The nested wasm build in the fixture's tests is slow] → it compiles `domain`, the grammar, `toml`, `schemars`, and their dependencies for a second target, incrementally, in its own target directory; measured at about 23 s cold and 0.3 s warm under the workspace release profile, paid once per fresh target directory, so the test profile stays as it is.
+- [The fixture module is larger than the probe's] → 597 413 bytes against the probe's 268 092, the difference being `toml`, `schemars`, the manifest and schema code paths, and the SDK runtime; a size ceiling is still an open question below, and nothing in the module is a host import, which is the property that matters.
 - [A dependency added to the grammar, the data model, or the SDK later needs a host] → the fixture's instantiation under an empty `Linker` fails and names the import; it runs on every hook.
 - [A runtime refuses to call exports after a trap, so `wp_panic` is unreachable] → wasmi and wasmtime both leave the instance usable after a trap; if a future runtime does not, the panic buffer's address can additionally be exposed as a global so the host reads memory directly, an additive change within the ABI major.
 - [`schemars` output is richer than a simple form renderer expects (`$ref`, `definitions`, `oneOf`-with-`const` enums)] → a constraint on the host change's form renderer, recorded here; the fixture's two-field configuration keeps this change's schema simple.
@@ -281,5 +289,9 @@ Deferrable here; each belongs to the change named.
   (Fragment ingestion.)
 - Whether reading-kind terrain edges are ever materialized from reference readings.
   (Data model.)
-- Whether the harness should also assert a maximum module size for the fixture, as an early guard against a dependency quietly bloating plugins; the probe measured 268 092 bytes with `opt-level = "s"` and LTO.
-  (This change, once the fixture's own number is measured.)
+- Whether the harness should also assert a maximum module size for the fixture, as an early guard against a dependency quietly bloating plugins; the probe measured 268 092 bytes and the fixture measures 597 413, both with `opt-level = "s"` and LTO.
+  (The host change, which will know what a plugin costs to ship.)
+- Whether the module backend's protocol layer (export shape, buffer convention, lifecycle, configuration gate, entry order, `wp_panic` after a trap) splits out of `harness` into a `host` module over a small runtime trait, with `wasmi` as one implementation and the harness's goldens and parity checks layered on top.
+  `harness` is the only host in the tree today and the feature name says "tests"; a feature rather than `#[cfg(test)]` is forced regardless, since the fixture crate is a separate package.
+  Ruled 2026-11-03 to keep the harness as built until a real importer exists: the split earns its keep when there are two consumers to show — a developer loop that runs a plugin outside the application, and the application's own runtime — and the Logseq importer is where both appear.
+  (The Logseq importer or the host change, whichever lands first.)
