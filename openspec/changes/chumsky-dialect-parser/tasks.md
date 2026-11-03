@@ -14,6 +14,9 @@ every commit from 2.1 onward.
       verify `rg pulldown` finds nothing outside the lockfile, `just deny`
       passes with no new allowance, and record the cold `cargo build --timings
 -p transload` baseline (three runs, toolchain cargo) in design.md D12.
+      (Bans, licenses and sources pass with no new allowance. Advisories
+      fail on eleven advisories already on `main`; none names a crate this
+      change adds, removes, or moves in the lockfile.)
 
 ## 2. Parity tables on the hand parsers
 
@@ -37,11 +40,18 @@ every commit from 2.1 onward.
       coverage bar over `emit`, `push_reading`, `push_block_scalar`, `plain`,
       `quote`.
 
-      _Coverage for 2.1–2.3 was not measured: `cargo llvm-cov` and the
-                              `llvm-tools` component are absent from the toolchain, and installing
-                              them needs the network. The rows were derived by walking each emitter
-                              branch by hand. `Reading::File` has no `FeatureKind` to read it back
-                              with, so it has no row._
+      _Coverage measured 2026-11-02, after the port, with `cargo llvm-cov`
+          0.9.1 and nixpkgs LLVM 22.1.8 (the toolchain's own LLVM), running only
+          the parity tests. Every line of every named emitter function is
+          reached except: `emit_attrs`' two `skip` branches and `emit_table`'s
+          `unreachable!`, which no input can reach; `write_item`'s multi-line
+          first entry, which the frontmatter never writes; and the
+          `Reading::File` arm, since `File` has no `FeatureKind` to read it back
+          with. The measurement found `coalesce`'s merge and drop paths
+          unexercised, so the inline table now emits its rows uncoalesced and
+          has two rows that need normalising. `push_reading`,
+          `push_block_scalar` and `plain` became `frontmatter::value` and
+          `yaml::write`, `write_entry`, `write_item` and `inline` in 5.1._
 
 - [x] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
       one fixture per `GrammarError`/`grammar(…)` site in `inline.rs`,
@@ -153,9 +163,12 @@ comment with no block after it`, `unclosed block, expected`, `unclosed
       a `packageRules` entry in `.github/renovate.json5` with the description
       and `dependencyDashboardApproval: true`, in the shape of the `turso`
       rule; verify `just renovate-plan extract` lists `chumsky` under the new
-      rule. (Not verified: `renovate` and `renovate-config-validator` are not
-      in the devenv shell, so `just renovate-plan extract` stops at its first
-      step; the rule is in place and the formatter parses the file.)
+      rule. (`renovate` is not in the devenv shell, so the recipe's steps ran
+      under `nix shell nixpkgs#renovate` 44.181.0: the config validates, and
+      extract lists `chumsky` at `0.13`, locked `0.13.0`, inherited by
+      `domain` and `transload`. Extract applies no package rules, and a
+      cargo lookup finds no newer stable release, so the rule has nothing to
+      act on until `0.14` ships.)
 - [x] 7.2 `docs(domain/dialect): dialect.md records the nesting ceiling and drops the pulldown-cmark remark` —
       one sentence under "Inlines" for the ceiling; the "Character shortcuts"
       paragraph about `pulldown-cmark` events removed; verify `openspec

@@ -1348,6 +1348,14 @@ mod tests {
                 "a caret at a segment's edge".into(),
                 vec![plain("x^"), one("{2}", Bold)],
             ),
+            (
+                "adjacent runs with the same marks".into(),
+                vec![one("a", Bold), one("b", Bold)],
+            ),
+            (
+                "an empty run between marked ones".into(),
+                vec![one("a", Bold), plain(""), one("b", Italic)],
+            ),
         ]);
         for c in ALWAYS_ESCAPED {
             rows.push((format!("literal `{c}`"), vec![plain(&format!("a{c}b"))]));
@@ -1365,8 +1373,9 @@ mod tests {
     fn every_spelling_the_emitter_writes_reads_back() {
         let names = parity_names();
         for (name, segments) in spellings() {
+            // Emitted as given, so the emitter's own coalescing is exercised.
             let original = rich(coalesce(&segments));
-            let source = emit_with(&original, &names);
+            let source = emit_with(&rich(segments), &names);
             let parsed = parse_with(&source, &names)
                 .unwrap_or_else(|e| panic!("{name}: parse {source:?}: {e}"));
             assert_eq!(
