@@ -12,6 +12,7 @@ use domain::{
         inline::{self, GrammarError, LinkName, Links, Verbatim},
     },
 };
+use indoc::{formatdoc, indoc};
 use transload::{Bundle, IngestError, Location, MalformedKind, export, ingest, layout};
 
 /// A refusal of inline or block source, and where in that source it points.
@@ -203,7 +204,10 @@ const BLOCK: &[Fixture] = &[
 const BODY: &[Body] = &[
     Body {
         template: "expected a `wp:mark` comment",
-        source: "<!-- just a note -->\nhello\n",
+        source: indoc! {"
+            <!-- just a note -->
+            hello
+        "},
         detail: "expected a `wp:mark` comment",
         line: 0,
     },
@@ -215,62 +219,90 @@ const BODY: &[Body] = &[
     },
     Body {
         template: "unclosed block, expected `{end}`",
-        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n```rust\nfn x\n",
+        source: indoc! {"
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000a -->
+            ```rust
+            fn x
+        "},
         detail: "unclosed block, expected `````",
         line: 1,
     },
     Body {
         template: "unclosed block, expected `{end}`",
-        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n$$\nx\n",
+        source: indoc! {"
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000a -->
+            $$
+            x
+        "},
         detail: "unclosed block, expected `$$`",
         line: 1,
     },
     Body {
         template: "unclosed `::` component",
-        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n::callout{icon=\"x\"}\n",
+        source: indoc! {r#"
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000a -->
+            ::callout{icon="x"}
+        "#},
         detail: "unclosed `::` component",
         line: 1,
     },
     Body {
         template: "`{word}` is not a block attribute in this dialect",
-        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n# hi{nonsense}\n",
+        source: indoc! {"
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000a -->
+            # hi{nonsense}
+        "},
         detail: "`nonsense` is not a block attribute in this dialect (column 6)",
         line: 1,
     },
     Body {
         template: "`{token}` is not a mark token in this dialect",
-        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\nfirst\n\n\
-                 <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->\n\
-                 > <!-- wp:mark 00000000-0000-0000-0000-00000000000c -->\n\
-                 > - item\n\
-                 >   <!-- wp:mark 00000000-0000-0000-0000-00000000000d -->\n\
-                 >   text [x]{nonsense} and more\n\
-                 > <!-- /wp:mark -->\n\
-                 <!-- /wp:mark -->\n",
+        source: indoc! {"
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000a -->
+            first
+
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->
+            > <!-- wp:mark 00000000-0000-0000-0000-00000000000c -->
+            > - item
+            >   <!-- wp:mark 00000000-0000-0000-0000-00000000000d -->
+            >   text [x]{nonsense} and more
+            > <!-- /wp:mark -->
+            <!-- /wp:mark -->
+        "},
         detail: "`nonsense` is not a mark token in this dialect (column 14)",
         line: 7,
     },
     Body {
         template: "`{color}` is not a block theme colour",
-        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\nparent\n\
-                 \x20 <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->\n\
-                 \x20 > <!-- wp:mark 00000000-0000-0000-0000-00000000000c -->\n\
-                 \x20 > - item{theme-chartreuse}\n\
-                 \x20 <!-- /wp:mark -->\n\
-                 <!-- /wp:mark -->\n",
+        source: indoc! {"
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000a -->
+            parent
+              <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->
+              > <!-- wp:mark 00000000-0000-0000-0000-00000000000c -->
+              > - item{theme-chartreuse}
+              <!-- /wp:mark -->
+            <!-- /wp:mark -->
+        "},
         detail: "`chartreuse` is not a block theme colour (column 18)",
         line: 4,
     },
     Body {
         template: "a container's comment is never closed",
-        source: "<!-- wp:mark 00000000-0000-0000-0000-00000000000a -->\n- item\n  \
-                 <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->\n  child\n",
+        source: indoc! {"
+            <!-- wp:mark 00000000-0000-0000-0000-00000000000a -->
+            - item
+              <!-- wp:mark 00000000-0000-0000-0000-00000000000b -->
+              child
+        "},
         detail: "a container's comment is never closed",
         line: 0,
     },
     Body {
         template: "a `{MARKER}` comment takes a Mark id, not `{payload}`",
-        source: "<!-- wp:mark not-a-uuid -->\nhello\n",
+        source: indoc! {"
+            <!-- wp:mark not-a-uuid -->
+            hello
+        "},
         detail: "a `wp:mark` comment takes a Mark id, not `not-a-uuid`",
         line: 0,
     },
@@ -417,11 +449,13 @@ async fn frontmatter_refusals_cite_their_file_line() {
     let reading = file[..fence].lines().count() + 2;
     bundle.insert(
         &path,
-        format!(
-            "{}readings:\n  zzzz: true\n{}",
-            &file[..fence],
-            &file[fence..]
-        ),
+        formatdoc! {"
+            {head}readings:
+              zzzz: true
+            {tail}",
+            head = &file[..fence],
+            tail = &file[fence..],
+        },
     );
     let refusal = refused(&bundle).await;
     assert!(

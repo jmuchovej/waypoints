@@ -21,8 +21,6 @@ pub const X_WAYPOINTS: &str = "x-waypoints";
 /// The Draft-07 meta-schema's identifier.
 const DRAFT_07: &str = "http://json-schema.org/draft-07/schema#";
 
-// ── Emit ─────────────────────────────────────────────────────────────────────
-
 /// The `_schema.json` document for one Chart.
 pub fn emit(chart: &Chart) -> Json {
     let mut document = Map::new();
@@ -200,8 +198,6 @@ fn glyph_names<'a>(keys: impl Iterator<Item = &'a domain::GlyphID>) -> Vec<Strin
 fn canonical(chart: &Chart) -> Json {
     serde_json::to_value(chart).unwrap_or(Json::Null)
 }
-
-// ── Read ─────────────────────────────────────────────────────────────────────
 
 /// The canonical Chart a `_schema.json` carries.
 pub fn read(document: &Json) -> Result<Chart, MalformedKind> {
