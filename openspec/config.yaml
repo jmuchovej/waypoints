@@ -40,18 +40,15 @@ context: |
         code: domain · seed: waypoints-architecture skill
     - editor: block mutation, undo/redo, projection, selection.
         code: cartograph, app
-    - transload: the Bundle format — export, ingest, dialect grammar, and
-        the Fragment grammar importers emit. Relocates to
-        `interchange/transload` when `transload-sdk` archives (a directory
-        move plus this entry; archiving does not move capabilities).
-        code: transload, domain (syntax)
-    - interchange: how data enters and leaves Waypoints through plugins. A
-        tree, not a leaf: deltas land under `interchange/<area>` —
-        `abi` (the WebAssembly contract between a host and an importer
-        plugin, and what the SDK and conformance harness guarantee), and
-        `importer/<source>` (one spec per supported source, each with its
-        own fidelity matrix; none yet).
-        code: transload (sdk, harness), crates/transload/fixtures
+    - interchange: how data enters and leaves Waypoints. A tree, not a
+        leaf: deltas land under `interchange/<area>` —
+        `transload` (the Bundle format — export, ingest, dialect grammar —
+        and the Fragment grammar importers emit; code: transload, domain
+        (syntax)), `abi` (the WebAssembly contract between a host and an
+        importer plugin, and what the SDK and conformance harness
+        guarantee; code: transload (sdk, harness),
+        crates/transload/fixtures), and `importer/<source>` (one spec per
+        supported source, each with its own fidelity matrix; none yet).
     - app-shell: Tauri command surface, typed IPC, runtime lifecycle.
         code: src-tauri, cartograph
     - storage: collection specs, migrations, query semantics.
