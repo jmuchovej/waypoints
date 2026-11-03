@@ -28,6 +28,10 @@ pub struct Options {
     /// omitting it.
     #[arg(long, num_args = 0.., conflicts_with = "base")]
     files: Option<Vec<String>>,
+
+    /// Print only the flavor the tree ships as, for the hooks' `--features`.
+    #[arg(long, conflicts_with_all = ["release", "base", "files"])]
+    flavor: bool,
 }
 
 /// The step outputs the test job reads: `filterset` for its `if:` guard, and
@@ -45,6 +49,10 @@ pub fn run(args: Options) -> Result<()> {
     let flavor = test_plan::flavor(
         &fs::read_to_string(&manifest).with_context(|| format!("Failed to read {manifest}"))?,
     )?;
+    if args.flavor {
+        println!("{flavor}");
+        return Ok(());
+    }
 
     let filterset = if args.release {
         test_plan::release_plan()
@@ -106,5 +114,22 @@ mod tests {
         assert!(
             Options::try_parse_from(["test-plan", "--base", "HEAD~1", "--files", "a.rs"]).is_err()
         );
+    }
+
+    /// The hooks read `--flavor`'s stdout as one feature name, so it plans
+    /// nothing else.
+    #[test]
+    fn flavor_stands_alone() {
+        assert!(parse(&["--flavor"]).flavor);
+        for other in [
+            &["--release"][..],
+            &["--base", "HEAD~1"],
+            &["--files", "a.rs"],
+        ] {
+            let args = std::iter::once("test-plan")
+                .chain(other.iter().copied())
+                .chain(["--flavor"]);
+            assert!(Options::try_parse_from(args).is_err(), "{other:?}");
+        }
     }
 }
