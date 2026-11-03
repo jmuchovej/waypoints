@@ -172,13 +172,18 @@ pub fn parse(
 ) -> Result<Frontmatter, Refused> {
     let line = |at: usize| source[..at.min(source.len())].matches('\n').count() + 1;
     let entries =
-        yaml::read(source).map_err(|(at, detail)| (line(at), MalformedKind::Grammar { detail }))?;
+        yaml::read(source).map_err(|(at, detail)| (line(at), MalformedKind::grammar(detail)))?;
     let get = |key: &str| entries.iter().find(|entry| entry.key == key);
     let at = |entry: &Entry| {
         let at = line(entry.at);
-        move |detail: String| (at, MalformedKind::Grammar { detail })
+        move |detail: String| (at, MalformedKind::grammar(detail))
     };
-    let missing = |key: &str| (1, grammar(format!("frontmatter with no `{key}`")));
+    let missing = |key: &str| {
+        (
+            1,
+            MalformedKind::grammar(format!("frontmatter with no `{key}`")),
+        )
+    };
 
     let title = match get("title") {
         Some(entry) => inline::parse_with(
@@ -238,10 +243,6 @@ pub fn parse(
         updated,
         readings,
     })
-}
-
-fn grammar(detail: String) -> MalformedKind {
-    MalformedKind::Grammar { detail }
 }
 
 fn scalar<'a>(node: &'a Node, what: &str) -> Result<&'a str, String> {

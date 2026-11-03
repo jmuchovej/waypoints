@@ -10911,6 +10911,7 @@ dependencies = [
  "bedrock",
  "chrono",
  "chumsky",
+ "derive_more",
  "domain",
  "indexmap 2.14.2",
  "indoc",

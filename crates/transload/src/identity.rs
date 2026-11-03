@@ -87,8 +87,10 @@ fn open(payload: &str) -> Result<Option<Marker>, MalformedKind> {
     {
         return Err(MalformedKind::SourceKeyedIdentity);
     }
-    let id: uuid::Uuid = payload.parse().map_err(|_| MalformedKind::Grammar {
-        detail: format!("a `{MARKER}` comment takes a Mark id, not `{payload}`"),
+    let id: uuid::Uuid = payload.parse().map_err(|_| {
+        MalformedKind::grammar(format!(
+            "a `{MARKER}` comment takes a Mark id, not `{payload}`"
+        ))
     })?;
     Ok(Some(Marker::Open(Identity::new(MarkID(id)))))
 }

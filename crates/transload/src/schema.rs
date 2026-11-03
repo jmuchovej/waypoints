@@ -202,13 +202,12 @@ fn canonical(chart: &Chart) -> Json {
 /// The canonical Chart a `_schema.json` carries.
 pub fn read(document: &Json) -> Result<Chart, MalformedKind> {
     let Some(member) = document.get(X_WAYPOINTS) else {
-        return Err(MalformedKind::Grammar {
-            detail: format!("a schema document with no `{X_WAYPOINTS}` member"),
-        });
+        return Err(MalformedKind::grammar(format!(
+            "a schema document with no `{X_WAYPOINTS}` member"
+        )));
     };
-    serde_json::from_value(member.clone()).map_err(|error| MalformedKind::Grammar {
-        detail: format!("`{X_WAYPOINTS}` is not a Chart: {error}"),
-    })
+    serde_json::from_value(member.clone())
+        .map_err(|error| MalformedKind::grammar(format!("`{X_WAYPOINTS}` is not a Chart: {error}")))
 }
 
 /// Refuse a document whose Draft-07 face disagrees with the Chart it carries.
@@ -218,9 +217,9 @@ pub fn check_consistent(document: &Json) -> Result<(), MalformedKind> {
     if &regenerated == document {
         return Ok(());
     }
-    Err(MalformedKind::Grammar {
-        detail: format!("the Draft-07 face disagrees with the `{X_WAYPOINTS}` Chart it carries",),
-    })
+    Err(MalformedKind::grammar(format!(
+        "the Draft-07 face disagrees with the `{X_WAYPOINTS}` Chart it carries",
+    )))
 }
 
 /// Check a Landmark's readings against the Chart's Draft-07 face.
@@ -259,9 +258,8 @@ pub fn validate_readings(document: &Json, readings: &Json) -> Result<(), Vec<(Fe
 
 /// Does this document satisfy the Draft-07 meta-schema?
 pub fn check_meta_schema(document: &Json) -> Result<(), MalformedKind> {
-    jsonschema::draft7::meta::validate(document).map_err(|error| MalformedKind::Grammar {
-        detail: format!("not a valid Draft-07 schema: {error}"),
-    })
+    jsonschema::draft7::meta::validate(document)
+        .map_err(|error| MalformedKind::grammar(format!("not a valid Draft-07 schema: {error}")))
 }
 
 /// Readings as the instance the face validates — the shape frontmatter writes,
