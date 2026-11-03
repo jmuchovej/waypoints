@@ -106,6 +106,8 @@
     ] }
     # Bundles are UTF-8 by definition, so the `encoding` default is dead weight.
     saphyr             = { version = "0.2.2", default-features = false }
+    # JSON Schema Draft-07 from a plugin's configuration type (transload `sdk`).
+    schemars           = "1"
     serde              = { version = "1.0.228", features = [ "derive" ] }
     serde_json         = { version = "1.0.150", features = [
       "arbitrary_precision",

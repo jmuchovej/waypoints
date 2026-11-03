@@ -1,0 +1,11 @@
+id        = "echo"
+name      = "Echo"
+namespace = "so.waypoints.importer.echo"
+
+[icon]
+  identifier = "system:emoji:loudspeaker"
+
+[source]
+  kinds      = [ "directory", "file" ]
+  markers    = [ "echo.toml" ]
+  extensions = [ ".txt" ]

@@ -8,6 +8,8 @@
   homepage.workspace      = true
   repository.workspace    = true
   license.workspace       = true
+  # The fixture plugin is its own package beneath this one.
+  exclude                 = [ "fixtures" ]
   publish.workspace       = true
 
 [dependencies]
@@ -20,9 +22,11 @@
   itertools.workspace  = true
   jsonschema           = { workspace = true, optional = true }
   saphyr.workspace     = true
+  schemars             = { workspace = true, optional = true }
   serde.workspace      = true
   serde_json.workspace = true
   thiserror.workspace  = true
+  toml                 = { workspace = true, optional = true }
   uuid.workspace       = true
 
 [dev-dependencies]
@@ -33,6 +37,11 @@
 
 [features]
   default = [ "store" ]
+  # The conformance harness: native and module backends. Never in a plugin.
+  harness = [ "dep:jsonschema", "sdk" ]
+  # The plugin side: the `Importer` trait, the `importer!` macro, the TOML
+  # manifest loader, and the options-schema generator. What a plugin links.
+  sdk     = [ "dep:schemars", "dep:toml" ]
   # Export and ingest, which open a store, and reading validation, which needs
   # the schema validator. Off, the crate is the Bundle grammar alone — what a
   # grammar-only consumer (a WebAssembly module) links.
