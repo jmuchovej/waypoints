@@ -122,6 +122,13 @@
       dependencyDashboardApproval: true,
     },
     {
+      description: "The dialect's inline and block grammars and the Bundle's body and frontmatter readers are written against chumsky, and every 0.x minor of it is a breaking release, arriving roughly every six months. Accept on the dashboard, then hold the bump to the parity tables, the refusal fixtures in crates/transload/tests/refusals.rs, and the conformance suite at TRANSLOAD_SEEDS=10000 in release.",
+      matchManagers: ["cargo"],
+      matchPackageNames: ["chumsky"],
+      groupName: "chumsky",
+      dependencyDashboardApproval: true,
+    },
+    {
       matchUpdateTypes: ["major"],
       matchDepTypes: ["pnpm.catalog.website"],
       matchPackageNames: ["nuxt", "@nuxt/kit"],

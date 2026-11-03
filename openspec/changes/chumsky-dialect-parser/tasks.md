@@ -38,10 +38,10 @@ every commit from 2.1 onward.
       `quote`.
 
       _Coverage for 2.1–2.3 was not measured: `cargo llvm-cov` and the
-                          `llvm-tools` component are absent from the toolchain, and installing
-                          them needs the network. The rows were derived by walking each emitter
-                          branch by hand. `Reading::File` has no `FeatureKind` to read it back
-                          with, so it has no row._
+                              `llvm-tools` component are absent from the toolchain, and installing
+                              them needs the network. The rows were derived by walking each emitter
+                              branch by hand. `Reading::File` has no `FeatureKind` to read it back
+                              with, so it has no row._
 
 - [x] 2.4 `test(transload/dialect): refusal fixtures — every hand-written sentence at its line and column` —
       one fixture per `GrammarError`/`grammar(…)` site in `inline.rs`,
@@ -149,12 +149,14 @@ comment with no block after it`, `unclosed block, expected`, `unclosed
 
 ## 7. Policy and documentation
 
-- [ ] 7.1 `chore(deps): gate chumsky bumps on the dependency dashboard — every 0.x minor is a breaking release` —
+- [x] 7.1 `chore(deps): gate chumsky bumps on the dependency dashboard — every 0.x minor is a breaking release` —
       a `packageRules` entry in `.github/renovate.json5` with the description
       and `dependencyDashboardApproval: true`, in the shape of the `turso`
       rule; verify `just renovate-plan extract` lists `chumsky` under the new
-      rule.
-- [ ] 7.2 `docs(domain/dialect): dialect.md records the nesting ceiling and drops the pulldown-cmark remark` —
+      rule. (Not verified: `renovate` and `renovate-config-validator` are not
+      in the devenv shell, so `just renovate-plan extract` stops at its first
+      step; the rule is in place and the formatter parses the file.)
+- [x] 7.2 `docs(domain/dialect): dialect.md records the nesting ceiling and drops the pulldown-cmark remark` —
       one sentence under "Inlines" for the ceiling; the "Character shortcuts"
       paragraph about `pulldown-cmark` events removed; verify `openspec
 validate chumsky-dialect-parser --strict` passes and `lychee` is clean.
