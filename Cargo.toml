@@ -14,6 +14,7 @@
     "crates/outpost-protocol",
     "crates/store",
     "crates/transload",
+    "crates/transload/fixtures/plain-markdown",
     "src-tauri",
     "tooling/gh-workflow",
     "tooling/xtask",
@@ -132,6 +133,16 @@
     # randomness and timestamps) is nothing this workspace targets.
     uuid               = { version = "1.23.4", features = [ "serde" ] }
     validator          = { version = "0.20.0", features = [ "indexmap" ] }
+    # The conformance harness's module backend (transload `harness`): an
+    # interpreter, so a plugin module runs under the test gate with no JIT.
+    # `auto-dispatch` falls back from tail-call dispatch to a loop in
+    # unoptimized builds, where LLVM makes no sibling calls and the tail-call
+    # executor overflows the native stack.
+    wasmi              = { version = "2", default-features = false, features = [
+      "auto-dispatch",
+      "std",
+      "validate"
+    ] }
     zeroize            = { version = "1", features = [ "zeroize_derive" ] }
 
     # The storage engine is pre-v1 and deliberately pinned — both halves of it.

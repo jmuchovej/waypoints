@@ -1,0 +1,10 @@
+id        = "plain-markdown"
+name      = "Plain Markdown"
+namespace = "so.waypoints.importer.plain-markdown"
+
+[icon]
+  identifier = "system:emoji:page_facing_up"
+
+[source]
+  kinds      = [ "directory" ]
+  extensions = [ ".md" ]

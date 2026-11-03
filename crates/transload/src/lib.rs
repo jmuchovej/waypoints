@@ -86,6 +86,23 @@ pub mod sdk {
     pub use schema::{DRAFT_07, options as options_schema};
 }
 
+/// The conformance harness: a plugin driven natively through the trait and
+/// again from its compiled module, over a fixture directory in the ABI's
+/// entry order, against committed goldens. Never in a plugin.
+#[cfg(feature = "harness")]
+pub mod harness {
+    mod error;
+    mod fixture;
+    pub mod golden;
+    pub mod module;
+    pub mod native;
+    mod run;
+
+    pub use error::HarnessError;
+    pub use fixture::entries;
+    pub use run::{Difference, Entry, Run};
+}
+
 pub use bundle::{
     BUNDLE_FORMAT, Bundle, Census, Counts, ExportMeta, Manifest, SUPPORTED_FORMATS, layout,
 };
