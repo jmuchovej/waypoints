@@ -78,7 +78,7 @@ fn gate(bundle: &Bundle) -> Result<Manifest, IngestError> {
         Refusal {
             malformed: vec![Malformed {
                 at: Location::file(layout::MANIFEST),
-                kind: MalformedKind::Grammar { detail },
+                kind: MalformedKind::grammar(detail),
             }],
             ..Refusal::default()
         }
@@ -157,9 +157,7 @@ impl<'a> Stager<'a> {
                 Some(Kind::Schema(_) | Kind::Sidecar) => {}
                 None => self.malformed(
                     Location::file(path),
-                    MalformedKind::UnknownContent {
-                        detail: format!("`{path}` has no place in a Bundle"),
-                    },
+                    MalformedKind::unknown_content(format!("`{path}` has no place in a Bundle")),
                 ),
             }
         }
@@ -198,9 +196,7 @@ impl<'a> Stager<'a> {
         for id in unstamped {
             self.malformed(
                 Location::file(layout::MARKS),
-                MalformedKind::Grammar {
-                    detail: format!("Content Mark {id} has no `marks.jsonl` line"),
-                },
+                MalformedKind::grammar(format!("Content Mark {id} has no `marks.jsonl` line")),
             );
         }
         self.terrain_sidecar(&mut edges);
@@ -221,21 +217,14 @@ impl<'a> Stager<'a> {
         let Some(text) = self.bundle.get(&path) else {
             self.malformed(
                 at,
-                MalformedKind::Grammar {
-                    detail: format!("Chart directory `{dir}` has no schema"),
-                },
+                MalformedKind::grammar(format!("Chart directory `{dir}` has no schema")),
             );
             return Ok(());
         };
         let document = match serde_json::from_str(text) {
             Ok(document) => document,
             Err(error) => {
-                self.malformed(
-                    at,
-                    MalformedKind::Grammar {
-                        detail: format!("not JSON: {error}"),
-                    },
-                );
+                self.malformed(at, MalformedKind::grammar(format!("not JSON: {error}")));
                 return Ok(());
             }
         };
@@ -247,9 +236,10 @@ impl<'a> Stager<'a> {
         if layout::chart_id(&chart.id) != dir {
             self.malformed(
                 at,
-                MalformedKind::Grammar {
-                    detail: format!("the schema in `{dir}` describes Chart `{}`", chart.id.0),
-                },
+                MalformedKind::grammar(format!(
+                    "the schema in `{dir}` describes Chart `{}`",
+                    chart.id.0
+                )),
             );
             return Ok(());
         }
@@ -289,9 +279,7 @@ impl<'a> Stager<'a> {
         let Some((front, _)) = frontmatter::split(file) else {
             self.malformed(
                 at(),
-                MalformedKind::Grammar {
-                    detail: "a Landmark file must open with frontmatter".into(),
-                },
+                MalformedKind::grammar("a Landmark file must open with frontmatter"),
             );
             return;
         };
@@ -303,16 +291,17 @@ impl<'a> Stager<'a> {
         if layout::chart_id(&front.chart) != dir {
             return self.malformed(
                 at(),
-                MalformedKind::Grammar {
-                    detail: format!("filed under `{dir}` but names Chart `{}`", front.chart.0),
-                },
+                MalformedKind::grammar(format!(
+                    "filed under `{dir}` but names Chart `{}`",
+                    front.chart.0
+                )),
             );
         }
         if let Err(problems) =
             schema::validate_readings(&schema::emit(&chart), &schema::instance(&front.readings))
         {
             for (feature, detail) in problems {
-                self.malformed(at(), MalformedKind::SchemaViolation { feature, detail });
+                self.malformed(at(), MalformedKind::schema_violation(feature, detail));
             }
         }
         if self.marks.contains_key(&id) {
@@ -377,9 +366,9 @@ impl<'a> Stager<'a> {
                 if !self.landmarks.contains(&id) {
                     self.malformed(
                         Location::line(path, node.line),
-                        MalformedKind::Grammar {
-                            detail: format!("names Landmark {id}, which the Bundle does not carry"),
-                        },
+                        MalformedKind::grammar(format!(
+                            "names Landmark {id}, which the Bundle does not carry"
+                        )),
                     );
                 }
                 continue;
@@ -457,7 +446,7 @@ impl<'a> Stager<'a> {
             let row = match row {
                 Ok(row) => row,
                 Err(detail) => {
-                    self.malformed(at, MalformedKind::Grammar { detail });
+                    self.malformed(at, MalformedKind::grammar(detail));
                     continue;
                 }
             };
@@ -470,9 +459,7 @@ impl<'a> Stager<'a> {
                 }
                 None => self.malformed(
                     at,
-                    MalformedKind::Grammar {
-                        detail: "a `marks.jsonl` line names no Mark in the Bundle".into(),
-                    },
+                    MalformedKind::grammar("a `marks.jsonl` line names no Mark in the Bundle"),
                 ),
             }
         }
@@ -493,7 +480,6 @@ impl<'a> Stager<'a> {
 
         for (line, row) in sidecar::lines::<TerrainLine>(text) {
             let at = Location::line(layout::TERRAIN, line);
-            let grammar = |detail: String| MalformedKind::Grammar { detail };
             let TerrainLine {
                 src,
                 dst,
@@ -503,18 +489,21 @@ impl<'a> Stager<'a> {
             } = match row {
                 Ok(row) => row,
                 Err(detail) => {
-                    self.malformed(at, grammar(detail));
+                    self.malformed(at, MalformedKind::grammar(detail));
                     continue;
                 }
             };
             let Some(kind) = strict_kind(&raw_kind) else {
-                self.malformed(at, grammar(format!("`{raw_kind}` is not an edge kind")));
+                self.malformed(
+                    at,
+                    MalformedKind::grammar(format!("`{raw_kind}` is not an edge kind")),
+                );
                 continue;
             };
             if !self.marks.contains_key(&src) || !self.marks.contains_key(&dst) {
                 self.malformed(
                     at,
-                    grammar("a terrain line names a Mark the Bundle does not carry".into()),
+                    MalformedKind::grammar("a terrain line names a Mark the Bundle does not carry"),
                 );
                 continue;
             }
@@ -523,12 +512,7 @@ impl<'a> Stager<'a> {
                     Some(&slot) => edges[slot].extra = extra,
                     None => self.malformed(
                         at,
-                        MalformedKind::OrphanAnnotativeEdge {
-                            src,
-                            dst,
-                            kind: raw_kind,
-                            order,
-                        },
+                        MalformedKind::orphan_annotative_edge(src, dst, raw_kind, order),
                     ),
                 },
                 Tier::Constitutive => self.extra_edges.push(Terrain {

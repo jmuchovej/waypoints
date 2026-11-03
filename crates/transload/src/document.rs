@@ -415,12 +415,7 @@ fn is_self_link(line: &str, id: MarkID, links: &dyn Links) -> bool {
 }
 
 fn grammar(line: usize, detail: impl Into<String>) -> Refused {
-    (
-        line,
-        MalformedKind::Grammar {
-            detail: detail.into(),
-        },
-    )
+    (line, MalformedKind::grammar(detail))
 }
 
 #[cfg(test)]

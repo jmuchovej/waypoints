@@ -405,11 +405,7 @@ async fn body_refusals_cite_their_line() {
         let expected = Location::line(&path, first + fixture.line);
         assert!(
             refusal.malformed.iter().any(|malformed| {
-                malformed.at == expected
-                    && malformed.kind
-                        == MalformedKind::Grammar {
-                            detail: fixture.detail.into(),
-                        }
+                malformed.at == expected && malformed.kind == MalformedKind::grammar(fixture.detail)
             }),
             "{:?}: expected `{}` at {expected}, got {refusal}",
             fixture.source,
@@ -477,10 +473,7 @@ async fn an_unknown_edge_kind_cites_its_sidecar_line() {
     assert!(
         refusal.malformed.iter().any(|malformed| {
             malformed.at == Location::line(layout::TERRAIN, 1)
-                && malformed.kind
-                    == MalformedKind::Grammar {
-                        detail: detail.into(),
-                    }
+                && malformed.kind == MalformedKind::grammar(detail)
         }),
         "{refusal}"
     );
