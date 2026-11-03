@@ -198,7 +198,7 @@ fn attrs(theme: &Option<BlockTheme>, pairs: &[(&str, String)]) -> String {
     if tokens.is_empty() {
         return String::new();
     }
-    format!("{{{}}}", tokens.join(" "))
+    format!("{{{attrs}}}", attrs = tokens.join(" "))
 }
 
 /// A colour's token spelling, via serde so this cannot drift from [`Color`].
