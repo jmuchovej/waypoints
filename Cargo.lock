@@ -10913,6 +10913,7 @@ dependencies = [
  "chumsky",
  "domain",
  "indexmap 2.14.2",
+ "indoc",
  "jsonschema",
  "rand 0.10.3",
  "serde",

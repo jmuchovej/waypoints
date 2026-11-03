@@ -13,6 +13,7 @@ use domain::{
     syntax::inline::{self, Links},
 };
 use indexmap::IndexMap;
+use indoc::formatdoc;
 
 use crate::{bundle::render_timestamp, names::KeepLabels, refusal::MalformedKind};
 
@@ -49,8 +50,6 @@ pub struct Advisory {
     pub mark_titles: HashMap<MarkID, String>,
 }
 
-// ── Emit ─────────────────────────────────────────────────────────────────────
-
 /// Render frontmatter, fences included.
 pub fn emit(front: &Frontmatter, advisory: &Advisory, links: &dyn Links) -> String {
     let title = inline::emit_with(&front.title, &KeepLabels(links));
@@ -82,7 +81,11 @@ pub fn emit(front: &Frontmatter, advisory: &Advisory, links: &dyn Links) -> Stri
             .collect();
         entries.push(Entry::new("readings", Node::Map(readings)));
     }
-    format!("{FENCE}\n{}{FENCE}\n", yaml::write(&entries))
+    formatdoc! {"
+      {FENCE}
+      {fm}
+      {FENCE}
+    ", fm = yaml::write(&entries).trim_end_matches('\n') }
 }
 
 fn value(reading: &Reading, advisory: &Advisory, links: &dyn Links) -> Node {
@@ -141,8 +144,6 @@ fn value(reading: &Reading, advisory: &Advisory, links: &dyn Links) -> Node {
 fn one_line(value: &str) -> String {
     value.replace(['\n', '\r'], " ")
 }
-
-// ── Parse ────────────────────────────────────────────────────────────────────
 
 /// Split a Landmark file into its frontmatter source and its body.
 ///
@@ -368,6 +369,7 @@ mod tests {
     use chrono::NaiveDate;
     use domain::ReferenceDisplayMode;
     use domain::syntax::inline::Verbatim;
+    use indoc::indoc;
 
     fn parse(
         source: &str,
@@ -459,9 +461,15 @@ mod tests {
         let source = emit(&base(IndexMap::new()), &Advisory::default(), &Verbatim);
         assert_eq!(
             source,
-            "---\ntitle: |-\n  Weekly sync\nchart: builtin.meeting\n\
-             created: 2026-08-02T09:41:00.000Z # advisory\n\
-             updated: 2026-08-02T09:41:00.000Z # advisory\n---\n"
+            indoc! {"
+              ---
+              title: |-
+                Weekly sync
+              chart: builtin.meeting
+              created: 2026-08-02T09:41:00.000Z # advisory
+              updated: 2026-08-02T09:41:00.000Z # advisory
+              ---
+            "}
         );
     }
 
@@ -596,9 +604,16 @@ mod tests {
 
     #[test]
     fn splitting_finds_the_body() {
-        let file = "---\ntitle: |-\n  Hi\nchart: builtin.page\n\
-                    created: 2026-08-02T09:41:00.000Z\n\
-                    updated: 2026-08-02T09:41:00.000Z\n---\nthe body\n";
+        let file = indoc! { "
+          ---
+          title: |-
+            Hi
+          chart: builtin.page
+          created: 2026-08-02T09:41:00.000Z
+          updated: 2026-08-02T09:41:00.000Z
+          ---
+          the body
+        " };
         let (front, body) = split(file).expect("fences");
         assert!(front.contains("chart: builtin.page"));
         assert_eq!(body, "the body\n");
@@ -607,17 +622,33 @@ mod tests {
     #[test]
     fn a_file_with_no_frontmatter_does_not_split() {
         assert!(split("just a body\n").is_none());
-        assert!(split("---\nunterminated\n").is_none());
+        let unterminated = indoc! { "
+          ---
+          unterminated
+        " };
+        assert!(split(unterminated).is_none());
     }
 
     #[test]
     fn malformed_frontmatter_is_refused() {
         let kinds = HashMap::new();
         for source in [
-            "title: |-\n  Hi\n",     // no chart
+            // no chart
+            indoc! { "
+              title: |-
+                Hi
+            " },
             "chart: builtin.page\n", // no created
-            "chart: builtin.page\ncreated: yesterday\nupdated: yesterday\n",
-            "- not\n- a\n- mapping\n",
+            indoc! { "
+              chart: builtin.page
+              created: yesterday
+              updated: yesterday
+            " },
+            indoc! { "
+              - not
+              - a
+              - mapping
+            " },
         ] {
             assert!(parse(source, &kinds).is_err(), "{source} should be refused");
         }
@@ -625,21 +656,33 @@ mod tests {
 
     #[test]
     fn a_reading_naming_no_feature_is_refused() {
-        let source = "title: |-\n  Hi\nchart: builtin.page\n\
-                      created: 2026-08-02T09:41:00.000Z\n\
-                      updated: 2026-08-02T09:41:00.000Z\nreadings:\n  zzzz: true\n";
+        let source = indoc! { "
+          title: |-
+            Hi
+          chart: builtin.page
+          created: 2026-08-02T09:41:00.000Z
+          updated: 2026-08-02T09:41:00.000Z
+          readings:
+            zzzz: true
+        " };
         assert!(parse(source, &HashMap::new()).is_err());
     }
 
     #[test]
     fn a_reference_list_ignores_its_labels() {
         let kinds = HashMap::from([(feature("a1b2"), reference_kind())]);
-        let with_label = format!(
-            "title: |-\n  Hi\nchart: builtin.page\n\
-             created: 2026-08-02T09:41:00.000Z\nupdated: 2026-08-02T09:41:00.000Z\n\
-             readings:\n  a1b2:\n    - ref: {}\n      label: \"whatever\"\n",
-            mark(7)
-        );
+        let with_label = indoc::formatdoc! { "
+          title: |-
+            Hi
+          chart: builtin.page
+          created: 2026-08-02T09:41:00.000Z
+          updated: 2026-08-02T09:41:00.000Z
+          readings:
+            a1b2:
+              - ref: {id}
+                label: \"whatever\"
+        ", id = mark(7)
+        };
         let parsed = parse(&with_label, &kinds).expect("parse");
         assert_eq!(
             parsed.readings[&feature("a1b2")],
@@ -801,9 +844,15 @@ mod tests {
     fn feature_kinds_come_from_the_chart_not_the_yaml() {
         // The same YAML scalar reads as a Select or as Text depending on kind,
         // which is exactly why `parse` is given the kinds.
-        let source = "title: |-\n  Hi\nchart: builtin.page\n\
-                      created: 2026-08-02T09:41:00.000Z\n\
-                      updated: 2026-08-02T09:41:00.000Z\nreadings:\n  a1b2: abcd\n";
+        let source = indoc! { "
+          title: |-
+            Hi
+          chart: builtin.page
+          created: 2026-08-02T09:41:00.000Z
+          updated: 2026-08-02T09:41:00.000Z
+          readings:
+            a1b2: abcd
+        " };
         let as_select =
             parse(source, &HashMap::from([(feature("a1b2"), select_kind())])).expect("as select");
         assert!(matches!(
@@ -849,8 +898,14 @@ mod tests {
     /// A frontmatter outside the subset is refused at the line of the construct.
     #[test]
     fn constructs_outside_the_subset_refuse_naming_their_line() {
-        let head = "title: |-\n  Hi\nchart: builtin.page\ncreated: 2026-08-02T09:41:00.000Z\n\
-                    updated: 2026-08-02T09:41:00.000Z\nreadings:\n";
+        let head = indoc! { "
+          title: |-
+            Hi
+          chart: builtin.page
+          created: 2026-08-02T09:41:00.000Z
+          updated: 2026-08-02T09:41:00.000Z
+          readings:
+        " };
         let kinds = HashMap::from([
             (feature("a1b2"), FeatureKind::Text),
             (feature("c3d4"), select_kind()),
@@ -883,8 +938,15 @@ mod tests {
 
     #[test]
     fn interpretation_refusals_cite_their_entry() {
-        let source = "title: |-\n  Hi\nchart: builtin.page\ncreated: 2026-08-02T09:41:00.000Z\n\
-                      updated: 2026-08-02T09:41:00.000Z\nreadings:\n  zzzz: true\n";
+        let source = indoc! { "
+          title: |-
+            Hi
+          chart: builtin.page
+          created: 2026-08-02T09:41:00.000Z
+          updated: 2026-08-02T09:41:00.000Z
+          readings:
+            zzzz: true
+        " };
         let (line, _) = super::parse(source, &HashMap::new(), &Verbatim).expect_err("no feature");
         assert_eq!(line, 7);
     }

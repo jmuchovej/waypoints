@@ -10,6 +10,7 @@ use domain::{
     MarkID, Reading, RichText, Terrain, TerrainID, TerrainKind,
 };
 use indexmap::IndexMap;
+use indoc::formatdoc;
 use transload::{ExportMeta, export, layout};
 
 fn at(milli: u32) -> NaiveDateTime {
@@ -168,9 +169,13 @@ async fn a_body_carries_identity_comments_and_its_blocks() {
         .expect("landmark file");
 
     assert!(
-        file.contains(&format!(
-            "<!-- wp:mark {first} -->\nfirst\n\n<!-- wp:mark {second} -->\nsecond\n"
-        )),
+        file.contains(&formatdoc! {"
+            <!-- wp:mark {first} -->
+            first
+
+            <!-- wp:mark {second} -->
+            second
+        "}),
         "a comment carries only the id, and siblings stand a blank line apart:\n{file}"
     );
     let marks = exported.bundle.get(layout::MARKS).expect("marks.jsonl");
