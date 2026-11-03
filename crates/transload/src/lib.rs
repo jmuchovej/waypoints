@@ -67,6 +67,25 @@ pub mod abi {
     pub const ABI: u32 = 1;
 }
 
+/// The plugin side: the [`Importer`](sdk::Importer) trait, the `importer!`
+/// macro that turns an implementation into the ABI's exports, the manifest
+/// loader, and the options-schema generator. What a plugin links.
+#[cfg(feature = "sdk")]
+pub mod sdk {
+    pub mod buffer;
+    mod importer;
+    mod macros;
+    mod manifest;
+    pub mod panic;
+    mod run;
+    mod schema;
+
+    pub use importer::{Importer, Manifested};
+    pub use manifest::{ManifestError, build as manifest, parse as parse_manifest};
+    pub use run::Runtime;
+    pub use schema::{DRAFT_07, options as options_schema};
+}
+
 pub use bundle::{
     BUNDLE_FORMAT, Bundle, Census, Counts, ExportMeta, Manifest, SUPPORTED_FORMATS, layout,
 };
