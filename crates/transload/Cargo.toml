@@ -28,6 +28,7 @@
   thiserror.workspace  = true
   toml                 = { workspace = true, optional = true }
   uuid.workspace       = true
+  wasmi                = { workspace = true, optional = true }
 
 [dev-dependencies]
   rand.workspace     = true
@@ -38,7 +39,7 @@
 [features]
   default = [ "store" ]
   # The conformance harness: native and module backends. Never in a plugin.
-  harness = [ "dep:jsonschema", "sdk" ]
+  harness = [ "dep:jsonschema", "dep:wasmi", "sdk" ]
   # The plugin side: the `Importer` trait, the `importer!` macro, the TOML
   # manifest loader, and the options-schema generator. What a plugin links.
   sdk     = [ "dep:schemars", "dep:toml" ]

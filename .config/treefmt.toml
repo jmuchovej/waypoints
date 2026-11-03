@@ -22,6 +22,8 @@ excludes                = [
   "*/libs.versions.toml",
   # an exported Bundle; its bytes are the exporter's, checked by a test.
   "crates/store/src/collections/getting-started/**",
+  # a plugin's goldens; their bytes are the SDK's, checked byte for byte.
+  "crates/transload/fixtures/*/goldens/**",
 ]
 on-unmatched            = "info"
 verbose                 = 1
