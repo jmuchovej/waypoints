@@ -422,13 +422,14 @@ fn grammar(line: usize, detail: impl Into<String>) -> Refused {
 mod tests {
     use super::*;
     use crate::names::Lenient;
+    use domain::fixtures::mark_id;
 
     /// `nodes` paragraphs, each the only child of the one before.
     fn chain(nodes: usize) -> String {
         let mut out = String::new();
         for depth in 0..nodes {
             let indent = "  ".repeat(depth);
-            let id = MarkID(uuid::Uuid::from_u128(depth as u128 + 1));
+            let id = mark_id(depth as u128 + 1);
             out.push_str(&format!("{indent}<!-- wp:mark {id} -->\n{indent}p\n"));
         }
         for depth in (0..nodes.saturating_sub(1)).rev() {

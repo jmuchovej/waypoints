@@ -367,8 +367,9 @@ fn reading(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::NaiveDate;
-    use domain::ReferenceDisplayMode;
+    use domain::fixtures::{
+        at, date_kind, feature_id, glyph_id, mark_id, number_kind, reference_kind, select_kind,
+    };
     use domain::syntax::inline::Verbatim;
     use indoc::indoc;
 
@@ -377,65 +378,6 @@ mod tests {
         kinds: &HashMap<FeatureID, FeatureKind>,
     ) -> Result<Frontmatter, MalformedKind> {
         super::parse(source, kinds, &Verbatim).map_err(|(_, kind)| kind)
-    }
-
-    /// The constraint-free shapes of the struct variants, so a fixture can name
-    /// a kind without restating five fields it does not care about.
-    fn number_kind() -> FeatureKind {
-        FeatureKind::Number {
-            min: None,
-            max: None,
-            step: None,
-            precision: None,
-            format: None,
-        }
-    }
-
-    fn date_kind() -> FeatureKind {
-        FeatureKind::Date {
-            min_date: None,
-            min_time: None,
-            max_date: None,
-            max_time: None,
-            timezone: None,
-            granularity: Default::default(),
-        }
-    }
-
-    fn reference_kind() -> FeatureKind {
-        FeatureKind::Reference {
-            allowed_types: None,
-            max_references: None,
-            display_field: "title".to_string(),
-            display_mode: ReferenceDisplayMode::default(),
-            filter_criteria: None,
-        }
-    }
-
-    fn select_kind() -> FeatureKind {
-        FeatureKind::Select {
-            options: IndexMap::new(),
-            default_option: None,
-        }
-    }
-
-    fn at(milli: u32) -> NaiveDateTime {
-        NaiveDate::from_ymd_opt(2026, 8, 2)
-            .unwrap()
-            .and_hms_milli_opt(9, 41, 0, milli)
-            .unwrap()
-    }
-
-    fn feature(id: &str) -> FeatureID {
-        FeatureID(Base36ID(id.to_string()))
-    }
-
-    fn glyph_id(id: &str) -> GlyphID {
-        GlyphID(Base36ID(id.to_string()))
-    }
-
-    fn mark(n: u128) -> MarkID {
-        MarkID(uuid::Uuid::from_u128(n))
     }
 
     fn base(readings: IndexMap<FeatureID, Reading>) -> Frontmatter {
@@ -483,9 +425,9 @@ mod tests {
     #[test]
     fn a_feature_name_rides_only_as_a_comment() {
         let mut readings = IndexMap::new();
-        readings.insert(feature("a1b2"), Reading::Bool(true));
+        readings.insert(feature_id("a1b2"), Reading::Bool(true));
         let advisory = Advisory {
-            feature_names: HashMap::from([(feature("a1b2"), "Attendees".to_string())]),
+            feature_names: HashMap::from([(feature_id("a1b2"), "Attendees".to_string())]),
             ..Advisory::default()
         };
         let source = emit(&base(readings), &advisory, &Verbatim);
@@ -496,14 +438,14 @@ mod tests {
     #[test]
     fn hand_mangled_advisory_content_changes_nothing() {
         let mut readings = IndexMap::new();
-        readings.insert(feature("a1b2"), Reading::References(vec![mark(7)]));
-        let kinds = HashMap::from([(feature("a1b2"), reference_kind())]);
+        readings.insert(feature_id("a1b2"), Reading::References(vec![mark_id(7)]));
+        let kinds = HashMap::from([(feature_id("a1b2"), reference_kind())]);
 
         let with_advice = emit(
             &base(readings.clone()),
             &Advisory {
-                feature_names: HashMap::from([(feature("a1b2"), "NONSENSE".to_string())]),
-                mark_titles: HashMap::from([(mark(7), "also nonsense".to_string())]),
+                feature_names: HashMap::from([(feature_id("a1b2"), "NONSENSE".to_string())]),
+                mark_titles: HashMap::from([(mark_id(7), "also nonsense".to_string())]),
             },
             &Verbatim,
         );
@@ -535,7 +477,7 @@ mod tests {
         groups.insert(glyph_id("zzzz"), vec![glyph_id("0001")]);
         groups.insert(glyph_id("aaaa"), vec![glyph_id("0002")]);
         let mut readings = IndexMap::new();
-        readings.insert(feature("a1b2"), Reading::GroupedSelect(groups));
+        readings.insert(feature_id("a1b2"), Reading::GroupedSelect(groups));
 
         let first = emit(&base(readings.clone()), &Advisory::default(), &Verbatim);
         let second = emit(&base(readings), &Advisory::default(), &Verbatim);
@@ -569,17 +511,17 @@ mod tests {
             (FeatureKind::Formula, Reading::Formula("1 + 1".into())),
             (
                 reference_kind(),
-                Reading::References(vec![mark(1), mark(2)]),
+                Reading::References(vec![mark_id(1), mark_id(2)]),
             ),
             (FeatureKind::Text, Reading::Null),
         ];
 
         for (kind, reading) in cases {
             let mut readings = IndexMap::new();
-            readings.insert(feature("a1b2"), reading.clone());
+            readings.insert(feature_id("a1b2"), reading.clone());
             survives(
                 base(readings),
-                HashMap::from([(feature("a1b2"), kind.clone())]),
+                HashMap::from([(feature_id("a1b2"), kind.clone())]),
             );
         }
     }
@@ -671,7 +613,7 @@ mod tests {
 
     #[test]
     fn a_reference_list_ignores_its_labels() {
-        let kinds = HashMap::from([(feature("a1b2"), reference_kind())]);
+        let kinds = HashMap::from([(feature_id("a1b2"), reference_kind())]);
         let with_label = indoc::formatdoc! { "
           title: |-
             Hi
@@ -682,12 +624,12 @@ mod tests {
             a1b2:
               - ref: {id}
                 label: \"whatever\"
-        ", id = mark(7)
+        ", id = mark_id(7)
         };
         let parsed = parse(&with_label, &kinds).expect("parse");
         assert_eq!(
-            parsed.readings[&feature("a1b2")],
-            Reading::References(vec![mark(7)])
+            parsed.readings[&feature_id("a1b2")],
+            Reading::References(vec![mark_id(7)])
         );
     }
 
@@ -695,7 +637,7 @@ mod tests {
     fn emitting_twice_is_byte_identical() {
         let mut readings = IndexMap::new();
         readings.insert(
-            feature("a1b2"),
+            feature_id("a1b2"),
             Reading::MultiSelect(vec![glyph_id("0001"), glyph_id("0002")]),
         );
         let front = base(readings);
@@ -756,7 +698,7 @@ mod tests {
             (reference_kind(), Reading::References(Vec::new())),
             (
                 reference_kind(),
-                Reading::References(vec![mark(1), mark(2)]),
+                Reading::References(vec![mark_id(1), mark_id(2)]),
             ),
             (
                 FeatureKind::URL,
@@ -782,10 +724,10 @@ mod tests {
     fn noted() -> Advisory {
         Advisory {
             feature_names: HashMap::from([
-                (feature("a1b2"), "Attendees\nand # guests".to_string()),
-                (feature("0001"), "Retyped".to_string()),
+                (feature_id("a1b2"), "Attendees\nand # guests".to_string()),
+                (feature_id("0001"), "Retyped".to_string()),
             ]),
-            mark_titles: HashMap::from([(mark(1), "A \"quoted\"\ntitle".to_string())]),
+            mark_titles: HashMap::from([(mark_id(1), "A \"quoted\"\ntitle".to_string())]),
         }
     }
 
@@ -795,10 +737,10 @@ mod tests {
         for (kind, reading) in parity_cases() {
             for key in ["a1b2", "0001"] {
                 let mut readings = IndexMap::new();
-                readings.insert(feature(key), reading.clone());
+                readings.insert(feature_id(key), reading.clone());
                 out.push((
                     base(readings),
-                    HashMap::from([(feature(key), kind.clone())]),
+                    HashMap::from([(feature_id(key), kind.clone())]),
                 ));
             }
         }
@@ -854,20 +796,23 @@ mod tests {
           readings:
             a1b2: abcd
         " };
-        let as_select =
-            parse(source, &HashMap::from([(feature("a1b2"), select_kind())])).expect("as select");
+        let as_select = parse(
+            source,
+            &HashMap::from([(feature_id("a1b2"), select_kind())]),
+        )
+        .expect("as select");
         assert!(matches!(
-            as_select.readings[&feature("a1b2")],
+            as_select.readings[&feature_id("a1b2")],
             Reading::Select(_)
         ));
 
         let as_text = parse(
             source,
-            &HashMap::from([(feature("a1b2"), FeatureKind::Text)]),
+            &HashMap::from([(feature_id("a1b2"), FeatureKind::Text)]),
         )
         .expect("as text");
         assert!(matches!(
-            as_text.readings[&feature("a1b2")],
+            as_text.readings[&feature_id("a1b2")],
             Reading::Text(_)
         ));
     }
@@ -908,8 +853,8 @@ mod tests {
           readings:
         " };
         let kinds = HashMap::from([
-            (feature("a1b2"), FeatureKind::Text),
-            (feature("c3d4"), select_kind()),
+            (feature_id("a1b2"), FeatureKind::Text),
+            (feature_id("c3d4"), select_kind()),
         ]);
         for (tail, line, says) in [
             ("  a1b2: !!str x\n", 7, "tag"),

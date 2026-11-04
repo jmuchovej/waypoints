@@ -98,10 +98,7 @@ fn open(payload: &str) -> Result<Option<Marker>, MalformedKind> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn id(n: u128) -> MarkID {
-        MarkID(uuid::Uuid::from_u128(n))
-    }
+    use domain::fixtures::mark_id as id;
 
     #[test]
     fn a_leaf_carries_one_comment_and_no_closer() {

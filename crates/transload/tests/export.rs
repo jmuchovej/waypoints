@@ -3,42 +3,17 @@
 //! Charts are self-contained fixtures: `transload` sits below `store`, so the
 //! builtin seed is out of reach.
 
-use bedrock::Database;
-use chrono::{NaiveDate, NaiveDateTime};
+mod common;
+
+use common::{at, child, meta, open};
+use domain::fixtures::feature_id;
 use domain::{
-    Base36ID, Chart, ChartID, Content, Feature, FeatureID, FeatureKind, Landmark, Mark, MarkData,
-    MarkID, Reading, RichText, Terrain, TerrainID, TerrainKind,
+    Chart, ChartID, Content, Feature, FeatureID, FeatureKind, Landmark, Mark, MarkData, MarkID,
+    Reading, RichText, Terrain, TerrainID, TerrainKind,
 };
 use indexmap::IndexMap;
 use indoc::formatdoc;
-use transload::{ExportMeta, export, layout};
-
-fn at(milli: u32) -> NaiveDateTime {
-    NaiveDate::from_ymd_opt(2026, 8, 2)
-        .unwrap()
-        .and_hms_milli_opt(9, 41, 0, milli)
-        .unwrap()
-}
-
-fn meta() -> ExportMeta {
-    ExportMeta {
-        app_version: "0.3.1".into(),
-        exported_at: at(0),
-        territory: None,
-    }
-}
-
-fn feature_id(id: &str) -> FeatureID {
-    FeatureID(Base36ID(id.to_string()))
-}
-
-async fn open() -> Database {
-    let db = Database::open(":memory:").await.expect("open");
-    db.ensure_collection::<Mark>().await.expect("marks");
-    db.ensure_collection::<Terrain>().await.expect("terrains");
-    db.ensure_collection::<Chart>().await.expect("charts");
-    db
-}
+use transload::{export, layout};
 
 fn chart() -> Chart {
     let notes = Feature {
@@ -86,18 +61,6 @@ fn paragraph(id: MarkID, text: &str) -> Mark {
         extra: None,
         created_at: at(0),
         updated_at: at(0),
-        deleted_at: None,
-    }
-}
-
-fn child(src: MarkID, dst: MarkID, order: &str) -> Terrain {
-    Terrain {
-        id: TerrainID::new(),
-        src_id: src,
-        dst_id: dst,
-        kind: TerrainKind::Child,
-        order: Some(order.to_string()),
-        extra: None,
         deleted_at: None,
     }
 }

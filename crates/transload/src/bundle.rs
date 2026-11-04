@@ -286,20 +286,12 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::NaiveDate;
-    use uuid::Uuid;
-
-    fn at() -> NaiveDateTime {
-        NaiveDate::from_ymd_opt(2026, 8, 2)
-            .unwrap()
-            .and_hms_milli_opt(9, 41, 0, 0)
-            .unwrap()
-    }
+    use domain::fixtures::{at, mark_id};
 
     #[test]
     fn landmark_paths_group_by_chart() {
         let chart = ChartID("c4d8".into());
-        let mark = MarkID(Uuid::from_u128(0x018f));
+        let mark = mark_id(0x018f);
         assert_eq!(
             layout::landmark(&chart, &mark),
             format!("library/c4d8/{mark}.md")
@@ -315,7 +307,7 @@ mod tests {
 
     #[test]
     fn timestamps_render_with_an_explicit_z_and_milliseconds() {
-        assert_eq!(render_timestamp(at()), "2026-08-02T09:41:00.000Z");
+        assert_eq!(render_timestamp(at(0)), "2026-08-02T09:41:00.000Z");
     }
 
     #[test]
@@ -344,14 +336,14 @@ mod tests {
 
     #[test]
     fn timestamps_parse_back_to_the_same_instant() {
-        assert_eq!(parse_timestamp(&render_timestamp(at())), Ok(at()));
+        assert_eq!(parse_timestamp(&render_timestamp(at(0))), Ok(at(0)));
         assert!(parse_timestamp("2026-08-02").is_err());
     }
 
     fn meta() -> ExportMeta {
         ExportMeta {
             app_version: "0.3.1".into(),
-            exported_at: at(),
+            exported_at: at(0),
             territory: None,
         }
     }
