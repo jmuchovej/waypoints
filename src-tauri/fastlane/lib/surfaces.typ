@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #import "screen.typ": screen
 
 // A surface is one store's output slot: where its files land and how big they

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A Landmark's YAML frontmatter — the flattened root Mark.
 //!
 //! Emit is hand-rolled: no serde YAML library writes the advisory `#` comments,

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Attribute parsing shared by the derives: enough of serde's `rename` grammar
 //! to keep stored names in sync with the virtual document, plus bedrock's own
 //! `#[bedrock(id)]`.

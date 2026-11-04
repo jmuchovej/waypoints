@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { mount, type VueWrapper } from "@vue/test-utils";
 import type { RichText } from "@waypoints/domain";
 import { emptyRichText, toRichText } from "@waypoints/domain";

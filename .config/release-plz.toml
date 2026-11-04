@@ -1,4 +1,6 @@
 #:schema https://github.com/MarcoIeni/release-plz/raw/main/.schema/latest.json
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [workspace]
   git_release_enable = true

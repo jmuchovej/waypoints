@@ -1,4 +1,7 @@
 #!/usr/bin/env nu
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Restores and saves directory snapshots in the ci-cache bucket, so each
 # generated workflow step is one line and the store protocol lives here.
 #

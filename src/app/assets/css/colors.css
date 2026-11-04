@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 John Muchovej
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
 /* ── Block theme colors ─────────────────────────────────────────────────
    Applied via `data-theme="color"` attribute. Sets CSS custom properties
    for foreground, background, and border. Consumers reference these via

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The ingester, against a live engine. Every refusal asserts the target store
 //! is untouched afterwards.
 

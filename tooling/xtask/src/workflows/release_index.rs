@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Records a published tag in the release index.
 //!
 //! Runs on a tag's push, or by hand for a tag that already exists, so an

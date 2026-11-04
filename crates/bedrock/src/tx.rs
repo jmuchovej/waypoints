@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Explicit read and write transactions over pooled connections.
 //!
 //! A [`ReadTx`] wraps `BEGIN`; a [`WriteTx`] wraps `BEGIN IMMEDIATE` and can

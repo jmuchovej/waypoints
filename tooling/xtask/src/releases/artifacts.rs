@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Where a build's artifacts go between the bundler and the store.
 //!
 //! Every build renames its published and updater artifacts out of the

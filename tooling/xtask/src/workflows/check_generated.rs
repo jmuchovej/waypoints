@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Asserts that everything we generate is in lockstep with the source it is
 //! generated from — devenv's `files."..."`/`tasks."mise:lock"` outputs, the
 //! TypeScript bindings `cargo xtask typegen` exports from `domain` and

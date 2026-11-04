@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The release index: one committed file per channel under `nix/releases/`,
 //! recording the tag that channel last published and what a Nix build needs
 //! to fetch exactly that tree. See `distribution/release-index`.

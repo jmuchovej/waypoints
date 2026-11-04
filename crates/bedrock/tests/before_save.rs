@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The `#[bedrock(before_save = …)]` hook: a Rust function run just before a
 //! whole-entity write, transforming the value the engine stores. Verified
 //! against a live database — the returned entity AND the row read back both

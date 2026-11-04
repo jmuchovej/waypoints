@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockRenderToString = vi.fn((...args: any[]) => `<span class="katex">${args[0]}</span>`);

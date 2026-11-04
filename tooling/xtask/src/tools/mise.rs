@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! mise: the config environments it composes, and the projection devenv
 //! writes to `.config/mise/conf.d/tools.toml`.
 //!

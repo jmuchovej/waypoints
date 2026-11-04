@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { markInputRule, markPasteRule, mergeAttributes } from "@tiptap/core";
 import TipTapBold from "@tiptap/extension-bold";
 import TipTapCode from "@tiptap/extension-code";

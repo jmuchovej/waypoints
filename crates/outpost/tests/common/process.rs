@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Driving the `outpost` binary the way a supervisor does: spawn a Station
 //! in a temp directory on an ephemeral port, read its JSON log line by
 //! line, send it a signal by pid, and wait for it to exit within a bound.

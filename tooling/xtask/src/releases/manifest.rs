@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A channel's manifest — `{channel}.json` at the bucket root — written once
 //! every required target has uploaded successfully. The single commit point
 //! a channel advertises through: nothing reads the artifacts this run

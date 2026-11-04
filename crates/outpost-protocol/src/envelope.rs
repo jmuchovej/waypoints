@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The Notice wire structure and the raw-bytes discipline.
 //!
 //! Three nested layers, and the nesting order is what makes IDs and

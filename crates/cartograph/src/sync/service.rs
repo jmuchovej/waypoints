@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The app-side driver of outpost's Vessel role (outpost design §12): this
 //! device's identity, its sync Territory, and its relationship to a Station.
 //! Outpost offers the capability; this service orchestrates it for the UI —

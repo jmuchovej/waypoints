@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Every job the workflows are assembled from. A workflow module names jobs
 //! and wires their `needs:`.
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! HTTP command handlers, organized to mirror `src-tauri/src/commands/`.
 //!
 //! Each handler is an explicit, typed axum route that hands off to

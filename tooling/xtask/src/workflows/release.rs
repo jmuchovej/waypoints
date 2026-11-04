@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Builds a channel's release workflow — one shape for all three, differing
 //! only in flavor strings, tag pattern, and whether iOS is in scope.
 

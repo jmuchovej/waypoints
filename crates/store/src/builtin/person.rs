@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Person built-in type - A person with contact information.
 use super::tags_feature;
 use domain::icon_presets;

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # macOS linker wrapper: link exactly as `cc` would, then code-sign the
 # resulting executable with a *stable* identity.
 #

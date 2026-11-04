@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use chrono::NaiveDateTime;
 use domain::{Json, MarkID, Terrain, TerrainID, TerrainKind};
 

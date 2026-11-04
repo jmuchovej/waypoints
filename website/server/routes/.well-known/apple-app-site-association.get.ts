@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Apple Universal Links association: tells iOS/macOS which app IDs may
 // handle https://waypoints.so/pair links. Served as a route (not a static
 // asset) so the team ID rides runtimeConfig and per-environment conditions

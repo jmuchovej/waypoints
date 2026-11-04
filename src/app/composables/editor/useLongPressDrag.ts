@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { onLongPress, useMediaQuery } from "@vueuse/core";
 import { type Ref, ref, readonly, watchEffect } from "vue";
 

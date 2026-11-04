@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #import "@preview/typewind:0.2.0" as tw
 #import "/res/palettes/stable.typ" as brand
 
