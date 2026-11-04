@@ -40,11 +40,6 @@ Bedrock — the database engine for Waypoints, built on Turso.
   # (`SyncMode`).
   turso_core.workspace = true
 
-# bionic refuses initial-exec TLS in a dlopened library; turso's mimalloc
-# defaults to it.
-[target.'cfg(target_os = "android")'.dependencies]
-  mimalloc = { workspace = true, features = [ "local_dynamic_tls" ] }
-
 [dev-dependencies]
   chrono.workspace   = true
   serde.workspace    = true
@@ -55,6 +50,11 @@ Bedrock — the database engine for Waypoints, built on Turso.
 [build-dependencies]
   # Reads the resolved turso_core version out of Cargo.lock (see build.rs).
   cargo-lock.workspace = true
+
+# bionic refuses initial-exec TLS in a dlopened library; turso's mimalloc
+# defaults to it.
+[target.'cfg(target_os = "android")'.dependencies]
+  mimalloc = { workspace = true, features = [ "local_dynamic_tls" ] }
 
 [lints]
   workspace = true
