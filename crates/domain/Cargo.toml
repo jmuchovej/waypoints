@@ -42,6 +42,8 @@
 [features]
   default     = []
   development = []
+  # terse test builders. only enable from a dependent's `[dev-dependencies]`.
+  fixtures    = []
   preview     = []
   stable      = []
   # parsing/emitting for `Content` and `TextMarkKind`. kept as a feature so
