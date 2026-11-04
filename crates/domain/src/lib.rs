@@ -63,6 +63,20 @@
 
 //! Shared utilities and types for the waypoints domain.
 
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "domain: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "domain: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "domain: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 /// This crate's version — the grammar signal a Bundle records.
 ///
 /// Any new `Content`, `Reading`, `FeatureKind`, or `TerrainKind` variant bumps

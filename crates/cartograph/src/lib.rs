@@ -23,6 +23,20 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "cartograph: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "cartograph: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "cartograph: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 /// Shared store handle, swapped by territory lifecycle.
 pub type Database = Arc<Mutex<Option<store::Store>>>;
 

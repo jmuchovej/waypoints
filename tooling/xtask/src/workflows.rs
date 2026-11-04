@@ -789,4 +789,119 @@ mod tests {
             }
         }
     }
+
+    /// Every suite runs under the flavor `test-plan` reads from the tree, so
+    /// the combination it tests is the one the tree ships as.
+    #[test]
+    fn every_suite_runs_under_the_tree_s_flavor() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            let suites = assert_suites_take_the_flavor(&name, &value);
+            if name == "pull_request" || name.starts_with("release-") {
+                assert!(suites > 0, "{name}: no test suite");
+            }
+        }
+    }
+
+    /// Asserts every nextest step's flavor binding; returns how many there are.
+    fn assert_suites_take_the_flavor(name: &str, value: &Value) -> usize {
+        let mut suites = 0;
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            for step in job["steps"].as_array().into_iter().flatten() {
+                if step["id"] != "nextest" {
+                    continue;
+                }
+                suites += 1;
+                let run = step["run"].as_str().unwrap_or("");
+                assert!(
+                    run.contains(r#"--features "${FLAVOR}""#),
+                    "{name}/{job_name}: the suite names no flavor: {run}"
+                );
+                assert_eq!(
+                    step["env"]["FLAVOR"], "${{ steps.test-plan.outputs.flavor }}",
+                    "{name}/{job_name}: the suite's flavor is not test-plan's"
+                );
+            }
+        }
+        suites
+    }
+
+    #[test]
+    #[should_panic(expected = "the suite names no flavor")]
+    fn a_suite_without_a_flavor_is_refused() {
+        assert_suites_take_the_flavor(
+            "synthetic",
+            &json!({ "jobs": { "test-linux": { "steps": [{
+                "id": "nextest",
+                "run": "cargo nextest run --workspace --no-fail-fast -E \"${FILTER_EXPR}\""
+            }]}}}),
+        );
+    }
+
+    /// Each channel is its own build: every platform builds under the
+    /// channel's flavor and the publish job merges only that channel's
+    /// artifacts, so a promotion is a fresh stable build, never a relabelled
+    /// preview.
+    #[test]
+    fn every_channel_builds_and_publishes_its_own_flavor() {
+        let context = WorkflowContext::fixture();
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let value = serde_json::to_value(release::workflow(channel, &context)).unwrap();
+            assert_channel_builds_its_own_flavor(channel, &value);
+        }
+    }
+
+    fn assert_channel_builds_its_own_flavor(channel: Channel, value: &Value) {
+        use crate::Platform;
+
+        let flavor = channel.flavor();
+        let mut built = Vec::new();
+        let mut published = false;
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            for step in job["steps"].as_array().into_iter().flatten() {
+                match step["id"].as_str() {
+                    Some("build-recipe") => {
+                        let run = step["run"].as_str().unwrap_or("");
+                        let platform = Platform::iter().find(|platform| {
+                            run == format!("just tauri::build {} {flavor}", platform.slug())
+                        });
+                        assert!(
+                            platform.is_some(),
+                            "{flavor}/{job_name}: builds `{run}`, not this channel's flavor"
+                        );
+                        built.extend(platform);
+                    }
+                    Some("download-staged") => {
+                        assert_eq!(
+                            step["with"]["pattern"],
+                            format!("waypoints-*-{flavor}"),
+                            "{flavor}/{job_name}: merges another channel's artifacts"
+                        );
+                        published = true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for platform in Platform::iter() {
+            assert!(
+                built.contains(&platform),
+                "{flavor}: no build for {platform}"
+            );
+        }
+        assert!(published, "{flavor}: no job merges the staged artifacts");
+    }
+
+    #[test]
+    #[should_panic(expected = "not this channel's flavor")]
+    fn a_build_under_another_channel_s_flavor_is_refused() {
+        assert_channel_builds_its_own_flavor(
+            Channel::Stable,
+            &json!({ "jobs": { "build-macos": { "steps": [{
+                "id": "build-recipe",
+                "run": "just tauri::build macos preview"
+            }]}}}),
+        );
+    }
 }

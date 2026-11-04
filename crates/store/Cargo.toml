@@ -42,11 +42,35 @@
 
 [features]
   default     = []
-  development = [ "mock" ]
+  # The app's flavors, forwarded to every workspace dependency that declares
+  # them — weakly to `transload`, so a flavor does not pull it in. Exactly one
+  # shipped flavor per build.
+  development = [
+    "bedrock/development",
+    "domain/development",
+    "mock",
+    "outpost-protocol/development",
+    "transload?/development",
+  ]
   mock        = [ "dep:transload" ]
-  nightly     = []
-  preview     = []
-  stable      = []
+  nightly     = [
+    "bedrock/nightly",
+    "domain/nightly",
+    "outpost-protocol/nightly",
+    "transload?/nightly",
+  ]
+  preview     = [
+    "bedrock/preview",
+    "domain/preview",
+    "outpost-protocol/preview",
+    "transload?/preview",
+  ]
+  stable      = [
+    "bedrock/stable",
+    "domain/stable",
+    "outpost-protocol/stable",
+    "transload?/stable",
+  ]
   test-utils  = [ "dep:tempfile" ]
 
 [lints]

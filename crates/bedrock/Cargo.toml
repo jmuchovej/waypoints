@@ -56,5 +56,13 @@ Bedrock — the database engine for Waypoints, built on Turso.
 [target.'cfg(target_os = "android")'.dependencies]
   mimalloc = { workspace = true, features = [ "local_dynamic_tls" ] }
 
+# The app's flavors, forwarded to every workspace dependency that declares
+# them. Exactly one shipped flavor per build.
+[features]
+  development = [ "bedrock-core/development", "bedrock-derive/development" ]
+  nightly     = [ "bedrock-core/nightly", "bedrock-derive/nightly" ]
+  preview     = [ "bedrock-core/preview", "bedrock-derive/preview" ]
+  stable      = [ "bedrock-core/stable", "bedrock-derive/stable" ]
+
 [lints]
   workspace = true

@@ -44,9 +44,12 @@
 
 [features]
   default     = []
-  development = []
-  preview     = []
-  stable      = []
+  # The app's flavors, forwarded to every workspace dependency that declares
+  # them. Exactly one shipped flavor per build.
+  development = [ "bedrock/development" ]
+  nightly     = [ "bedrock/nightly" ]
+  preview     = [ "bedrock/preview" ]
+  stable      = [ "bedrock/stable" ]
   # The markdown dialect `Content` and `TextMarkKind` project into: one module,
   # both directions. Only `transload` needs it, so every other dependent pays
   # neither the module nor `pulldown-cmark`.

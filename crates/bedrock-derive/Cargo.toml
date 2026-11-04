@@ -24,5 +24,13 @@ Bedrock's `#[derive(...)]` macros.
   quote.workspace       = true
   syn.workspace         = true
 
+# The app's flavors, so a gate can reach this crate. Exactly one shipped
+# flavor per build.
+[features]
+  development = []
+  nightly     = []
+  preview     = []
+  stable      = []
+
 [lints]
   workspace = true

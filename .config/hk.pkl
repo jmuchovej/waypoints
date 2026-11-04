@@ -99,7 +99,8 @@ local checks = new Mapping<String, Step> {
       "rust-toolchain.toml",
       ".config/cargo.toml"
     )
-    check = "cargo clippy --workspace --all-targets"
+    // under the tree's channel flavor, as the pull-request suite compiles it
+    check = #"cargo clippy --workspace --all-targets --features "$(cargo xtask test-plan --flavor)""#
   }
 
   ["nextest"] {
@@ -115,8 +116,9 @@ local checks = new Mapping<String, Step> {
         echo "no Rust crate affected by this range; skipping tests"
         exit 0
       fi
-      echo "testing: $filterset"
-      exec cargo nextest run --workspace --no-fail-fast -E "$filterset"
+      flavor="$(cargo xtask test-plan --flavor)"
+      echo "testing: $filterset (flavor: $flavor)"
+      exec cargo nextest run --workspace --no-fail-fast --features "$flavor" -E "$filterset"
       """#
   }
 
@@ -125,7 +127,8 @@ local checks = new Mapping<String, Step> {
     depends = "clippy"
     check = #"""
       filterset="$(cargo xtask test-plan --release)"
-      exec cargo nextest run --workspace --no-fail-fast -E "$filterset"
+      flavor="$(cargo xtask test-plan --flavor)"
+      exec cargo nextest run --workspace --no-fail-fast --features "$flavor" -E "$filterset"
       """#
   }
 

@@ -150,6 +150,7 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
     // nothing spelled differently for PowerShell on Windows.
     let plan = steps::cargo_xtask("test-plan", &[(suite.flag(), None)]).id("test-plan");
     let filterset = StepOutput::new_trusted(&plan, "filterset");
+    let flavor = StepOutput::new_trusted(&plan, "flavor");
 
     // Both suites run the same two commands, so both want the same environment
     // — unlike the deny-list this replaced, where the changed-suite job was
@@ -184,7 +185,10 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
             job.add_step(steps::install_linux_deps())
         })
         .add_step(plan)
-        .add_step(steps::cargo_nextest(suite).with_filter_expr(&filterset.to_string()));
+        .add_step(
+            steps::cargo_nextest(suite, &flavor.to_string())
+                .with_filter_expr(&filterset.to_string()),
+        );
 
     NamedJob::new(format!("test-{}", platform.slug()), job)
 }

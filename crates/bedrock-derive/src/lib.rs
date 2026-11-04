@@ -33,6 +33,20 @@
 //! - [`Collection`](macro@Collection) — an entity mapped to a whole collection
 //!   (table), producing its `CollectionSpec` and row split/merge.
 
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "bedrock-derive: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "bedrock-derive: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "bedrock-derive: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 use proc_macro::TokenStream;
 use syn::{DeriveInput, parse_macro_input};
 
