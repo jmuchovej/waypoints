@@ -117,6 +117,10 @@ check-generated:
     icons='src-tauri/assets/icons/app src-tauri/gen/apple/Assets.xcassets/*.appiconset src-tauri/gen/android/app/src/*/res/mipmap-*/ic_launcher* src-tauri/gen/android/app/src/*/res/values/ic_launcher_background.xml'
     devenv shell cargo xtask icongen
     files="$files $icons"
+
+    # The notices are regenerated from the lockfiles and the third-party registry.
+    devenv shell cargo xtask license notices
+    files="$files src-tauri/resources/THIRD-PARTY-NOTICES.md"
     set -f
 
     rc=0
@@ -182,6 +186,13 @@ renovate-plan mode="full":
 [doc("Runs the cargo-deny supply-chain checks, verifying its target list first.")]
 deny: deny-targets
     cargo-deny check
+
+[doc("Checks manifests, headers, layering, license texts, the third-party registry, the published agreement, and dependency licenses.")]
+[script]
+license:
+    export SECRETSPEC_REASON="just license checks license declarations against the tree; no secret values are read"
+    devenv shell cargo xtask license check
+    devenv shell cargo deny check licenses
 
 [doc("Fails if .cargo/deny.toml graph.targets drifted from rust-toolchain.toml's targets.")]
 [script("nu")]

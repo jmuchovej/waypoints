@@ -17,6 +17,10 @@
     "*.png",
     "*.icns",
     "*.ico",
+    # third parties' license texts, verbatim
+    "src-tauri/resources/THIRD-PARTY-NOTICES.md",
+    "tooling/gh-workflow/LICENSE",
+    "tooling/patches/*/LICENSE-MIT",
   ]
 
 [default]

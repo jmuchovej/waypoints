@@ -235,6 +235,12 @@
         spec = "aqua:EmbarkStudios/cargo-deny";
         envs = [ "devtools" ];
       };
+      # Shell-only: the notices regenerate under devenv, locally and in the
+      # lockstep job, and no mise lane needs them.
+      cargo-about = {
+        package = pkgs.cargo-about;
+        envs = null;
+      };
       mbx = {
         package = inputs.mbx.packages.${pkgs.stdenv.hostPlatform.system}.mbx;
         spec = "github:jdx/mr-boxington";

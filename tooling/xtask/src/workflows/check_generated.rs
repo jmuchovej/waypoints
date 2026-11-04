@@ -20,12 +20,18 @@ const SOURCES: &[&str] = &[
     "crates/domain/**",
     "crates/cartograph/**",
     "src-tauri/res/**",
+    "Cargo.lock",
+    "pnpm-lock.yaml",
+    ".config/third-party.toml",
+    ".config/about.toml",
+    ".config/about.hbs",
 ];
 
 /// Generated outputs, listed so that hand-editing one is caught. devenv's own
 /// come from the context at generation time.
 const OUTPUTS: &[&str] = &[
     ".github/workflows/**",
+    "src-tauri/resources/THIRD-PARTY-NOTICES.md",
     "crates/domain/typescript/**",
     "crates/cartograph/typescript/**",
     "src-tauri/assets/icons/app/**",
