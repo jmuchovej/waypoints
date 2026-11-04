@@ -19,4 +19,4 @@
 
 ## 4. Validation against the specs
 
-- [ ] 4.1 Run `openspec validate channel-flavors --strict --no-interactive` and `prek run` (or every `.config/hk.pkl` step by hand in a jj workspace) and verify clippy, cargo-check, cargo-test, and treefmt are green across the change; verify the next nightly's test jobs log `--features nightly` and its build jobs still run `just tauri::build <slug> nightly`. **AUDIT:** John signs off on D2's scoping of the no-flavor refusal to `WAYPOINTS_BUILD` and on D5's flavored pull-request suite
+- [x] 4.1 Run `openspec validate channel-flavors --strict --no-interactive` and `prek run` (or every `.config/hk.pkl` step by hand in a jj workspace) and verify clippy, cargo-check, cargo-test, and treefmt are green across the change; verify the next nightly's test jobs log `--features nightly` and its build jobs still run `just tauri::build <slug> nightly`. **AUDIT:** John signs off on D2's scoping of the no-flavor refusal to `WAYPOINTS_BUILD` and on D5's flavored pull-request suite
