@@ -160,7 +160,7 @@ Code generated from first-party sources SHALL carry the license of the work it i
 #### Scenario: A separately deployed surface
 
 - **WHEN** a directory in the repository is deployed independently of the application
-- **THEN** it falls under the root `LICENSE` by default, is listed for the Steward's decision, and no header asserts terms for it until that decision is made
+- **THEN** its code is first-party and carries the project license like any other; only its non-code content and brand material await the Steward's decision, sitting under the root `LICENSE` meanwhile
 
 #### Scenario: First-party developer tooling
 
@@ -184,4 +184,4 @@ Every place the tree states a license outside the manifests — the Nix package 
 #### Scenario: The bundle's copyright field
 
 - **WHEN** the application bundle is inspected
-- **THEN** its copyright field names the copyright holder and the project license, consistent with the file headers
+- **THEN** its copyright field reads `Copyright © 2026 John Muchovej`, naming the holder the file headers name

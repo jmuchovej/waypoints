@@ -94,7 +94,7 @@ The year in a file's `SPDX-FileCopyrightText` line SHALL be the single four-digi
 
 ### Requirement: Header-bearing files are defined by type and ownership
 
-The header check SHALL apply to first-party files with these extensions: `rs`, `ts`, `vue`, `js`, `mjs`, `css`, `toml`, `nix`, `typ`, `nu`, `sh`, plus the extensionless scripts under `tooling/bin/`. It SHALL NOT apply to lockfiles, `.d.ts` declarations, data and asset formats, platform project files under `src-tauri/gen/`, third-party code in the tree, or directories whose license is not yet decided. Exemption SHALL be by path, never by weakening the check.
+The header check SHALL apply to first-party files with these extensions: `rs`, `ts`, `vue`, `js`, `mjs`, `css`, `toml`, `nix`, `typ`, `nu`, `sh`, plus the extensionless scripts under `tooling/bin/`. It SHALL NOT apply to lockfiles, `.d.ts` declarations, data and asset formats, platform project files under `src-tauri/gen/`, configuration devenv writes on shell entry, or third-party code in the tree. Exemption SHALL be by path, never by weakening the check.
 
 #### Scenario: A first-party source file without a header
 
@@ -111,10 +111,10 @@ The header check SHALL apply to first-party files with these extensions: `rs`, `
 - **WHEN** a file under `src-tauri/gen/` is examined
 - **THEN** it is skipped as platform scaffolding
 
-#### Scenario: A pending surface
+#### Scenario: Configuration devenv generates
 
-- **WHEN** a file under a directory listed as awaiting the Steward's license decision is examined
-- **THEN** it is skipped, and the directory remains listed until decided
+- **WHEN** a mise fragment under `.config/mise/conf.d/`, which devenv rewrites on shell entry, is examined
+- **THEN** it is skipped: a tag added by hand would fail the generated-file lockstep check, and the fragment is configuration, not source
 
 ### Requirement: Generated files get their header from the generator
 

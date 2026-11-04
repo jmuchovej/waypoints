@@ -55,7 +55,7 @@ Code copied into the repository — a vendored crate, a `[patch.crates-io]` fork
 #### Scenario: The vendored workflow generator
 
 - **WHEN** the manifest of the vendored GitHub Actions workflow crate is read
-- **THEN** it declares `license = "Apache-2.0"` directly, and its directory holds the upstream `LICENSE` and `NOTICE`
+- **THEN** it declares `license = "Apache-2.0"` directly, and its directory holds the upstream `LICENSE`; upstream ships no `NOTICE`, so there is none to carry
 
 #### Scenario: A patched registry crate
 
