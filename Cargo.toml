@@ -23,7 +23,7 @@
     edition       = "2024"
     description   = "Oh the places we'll go on this non-linear thought journey!"
     documentation = "https://docs.waypoints.so"
-    readme        = ".github/README.md"
+    readme        = "docs/README.md"
     homepage      = "https://waypoints.so"
     repository    = "https://dev.waypoints.so/"
     license       = "Apache-2.0"

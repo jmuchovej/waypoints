@@ -8,6 +8,8 @@ excludes                = [
   "*.patch",
   ".git{attributes,ignore,modules}",
   "LICENSE",
+  # the FSF's own Markdown edition; hash-checked, so no formatter may touch it.
+  "docs/licensing/LICENSE.md",
   "tooling/patches/*",
   "*.{gif,ico}",
   "*.{properties,gradle}",

@@ -1,0 +1,24 @@
+{
+  "name": {
+    "title": "Full name",
+    "type": "string",
+    "githubKey": "name",
+    "required": true
+  },
+  "email": {
+    "title": "Email",
+    "type": "string",
+    "githubKey": "email",
+    "required": true
+  },
+  "adult": {
+    "title": "I am at least eighteen years old",
+    "type": "boolean",
+    "required": true
+  },
+  "agreement": {
+    "title": "I have read the Waypoints Individual Contributor License Agreement and agree to it",
+    "type": "boolean",
+    "required": true
+  }
+}
