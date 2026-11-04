@@ -17,6 +17,10 @@
     "*.png",
     "*.icns",
     "*.ico",
+    # third parties' license texts, verbatim
+    "docs/licensing/THIRD-PARTY-NOTICES.md",
+    "tooling/gh-workflow/LICENSE",
+    "tooling/patches/*/LICENSE-MIT",
   ]
 
 [default]

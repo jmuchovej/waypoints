@@ -203,6 +203,23 @@ pub fn zizmor(context: &WorkflowContext) -> NamedJob {
     NamedJob::new("zizmor", job)
 }
 
+/// Holds the tree to the licensing policy, and runs the dependency license check
+/// that otherwise runs only before a push. It shares `check-generated`'s devenv
+/// shape: nothing here needs the mise lanes the release builds exist for.
+pub fn license() -> NamedJob {
+    let job = Job::new("Check licensing")
+        .permissions(Permissions::default().contents(Level::Read))
+        .runs_on(runners::LINUX)
+        .add_step(steps::checkout())
+        .add_step(steps::free_disk_space(true))
+        .add_step(steps::install_nix())
+        .add_step(steps::cachix("devenv"))
+        .add_step(steps::nix_profile_install(&["devenv", "just"]))
+        .add_step(steps::just("license").name("Check licensing"));
+
+    NamedJob::new("license", job)
+}
+
 /// Drafts the release every build uploads into, with git-cliff notes.
 ///
 /// The tag guards sit on the steps, not the job: the builds `need` this job,

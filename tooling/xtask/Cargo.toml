@@ -49,6 +49,7 @@
   hmac.workspace                 = true
   icns.workspace                 = true
   ico.workspace                  = true
+  ignore.workspace               = true
   image.workspace                = true
   indexmap.workspace             = true
   indoc.workspace                = true
@@ -68,6 +69,7 @@
   serde.workspace                = true
   serde_json.workspace           = true
   sha2.workspace                 = true
+  spdx.workspace                 = true
   specta.workspace               = true
   specta-serde.workspace         = true
   specta-typescript.workspace    = true

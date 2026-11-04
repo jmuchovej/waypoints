@@ -35,6 +35,7 @@ pub mod tasks {
     pub mod dev_server;
     pub mod devenv_files;
     pub mod icongen;
+    pub mod license;
     pub mod nightly_plan;
     pub mod release_index;
     pub mod release_manifest;
@@ -83,6 +84,8 @@ enum Command {
     Icongen(tasks::icongen::Options),
     /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
     DevServer(tasks::dev_server::Options),
+    /// Holds the tree to the licensing policy; publishes the contributor agreement.
+    License(tasks::license::Options),
 }
 
 fn main() -> Result<()> {
@@ -102,5 +105,6 @@ fn main() -> Result<()> {
         Command::Typegen(args) => tasks::typegen::run(args),
         Command::Icongen(args) => tasks::icongen::run(args),
         Command::DevServer(args) => tasks::dev_server::run(args),
+        Command::License(args) => tasks::license::run(args),
     }
 }

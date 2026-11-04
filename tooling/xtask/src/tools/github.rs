@@ -15,6 +15,7 @@
 //! `user.email`, and no push credentials on the checkout.
 
 use anyhow::{Context as _, Result, bail};
+use axum::http::header::ACCEPT;
 use octocrab::{Octocrab, params::repos::Reference};
 use serde::Serialize;
 use serde_json::Value;
@@ -127,6 +128,87 @@ fn create_ref(reference: &Reference, sha: &str) -> Result<()> {
             .await
             .with_context(|| format!("Failed to create {}", reference.full_ref_url()))?;
         Ok(())
+    })
+}
+
+// ── Gists ────────────────────────────────────────────────────────────────────
+
+/// One file of a Gist, from the raw host. It needs no token, and unlike the REST
+/// API has no unauthenticated limit for shared CI runners to exhaust.
+pub fn raw_gist_file(owner: &str, id: &str, file: &str) -> Result<String> {
+    let url = format!("https://gist.githubusercontent.com/{owner}/{id}/raw/{file}");
+    block_on(async {
+        let client = Octocrab::builder()
+            .build()
+            .context("Failed to build the GitHub client")?;
+        let response = client
+            ._get(url.as_str())
+            .await
+            .with_context(|| format!("Failed to reach {url}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            bail!("{url} answered {status}");
+        }
+        client
+            .body_to_string(response)
+            .await
+            .with_context(|| format!("Failed to read {url}"))
+    })
+}
+
+/// Replaces two files of a Gist, returning the revision created.
+///
+/// Gists is a GitHub App account permission, exercised only with a user access
+/// token, so the installation token [`client`] holds cannot reach it. This runs
+/// the device flow instead: it prints a code, someone approves it in a browser,
+/// and the App receives a short-lived token that is never stored.
+pub fn update_gist_as_user(client_id: &str, id: &str, files: [(&str, &str); 2]) -> Result<String> {
+    let [(first, first_content), (second, second_content)] = files;
+    block_on(async {
+        let login = Octocrab::builder()
+            .base_uri("https://github.com")
+            .context("Failed to address GitHub's login host")?
+            .add_header(ACCEPT, "application/json".to_owned())
+            .build()
+            .context("Failed to build the GitHub client")?;
+        let codes = login
+            .authenticate_as_device(&client_id.to_owned().into(), Vec::<&str>::new())
+            .await
+            .context("Failed to start the device flow; is it enabled on the App?")?;
+        println!(
+            "Open {} and enter {}",
+            codes.verification_uri, codes.user_code
+        );
+        let authorized = codes
+            .poll_until_available(&login, &client_id.to_owned().into())
+            .await
+            .context("The device flow did not complete")?;
+
+        let user = Octocrab::builder()
+            .oauth(authorized)
+            .build()
+            .context("Failed to build the GitHub client")?;
+        user.gists()
+            .update(id)
+            .file(first)
+            .with_content(first_content)
+            .file(second)
+            .with_content(second_content)
+            .send()
+            .await
+            .context("Failed to update the Gist; does the App hold the Gists permission?")?;
+        let commits = user
+            .gists()
+            .list_commits(id)
+            .per_page(1)
+            .send()
+            .await
+            .context("Failed to read the Gist's revisions")?;
+        commits
+            .items
+            .first()
+            .map(|commit| commit.version.clone())
+            .context("The Gist reports no revisions")
     })
 }
 

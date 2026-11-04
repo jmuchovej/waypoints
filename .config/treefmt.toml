@@ -12,6 +12,10 @@ excludes                = [
   "LICENSE",
   # the FSF's own Markdown edition; hash-checked, so no formatter may touch it.
   "docs/licensing/LICENSE.md",
+  # generated from third parties' license texts; check-generated would never converge.
+  "docs/licensing/THIRD-PARTY-NOTICES.md",
+  # a Markdown template; oxfmt reads Handlebars as HTML and breaks its line structure.
+  ".config/about.hbs",
   "tooling/patches/*",
   "*.{gif,ico}",
   "*.{properties,gradle}",

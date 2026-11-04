@@ -141,6 +141,28 @@ local checks = new Mapping<String, Step> {
     check = "just deny"
   }
 
+  ["license"] {
+    glob = List(
+      "**/*.rs",
+      "**/*.ts",
+      "**/*.vue",
+      "**/*.js",
+      "**/*.mjs",
+      "**/*.css",
+      "**/*.toml",
+      "**/*.nix",
+      "**/*.typ",
+      "**/*.nu",
+      "**/*.sh",
+      "tooling/bin/*",
+      "Cargo.lock",
+      "pnpm-lock.yaml",
+      "LICENSE",
+      "docs/licensing/**"
+    )
+    check = "just license"
+  }
+
   ["check-generated"] {
     // no globs since `check-generated` already tracks these via `devenv`
     check = "just check-generated"
@@ -153,6 +175,8 @@ local checks = new Mapping<String, Step> {
 
   ["lychee"]  = (Builtins.lychee) {
     glob = List("**/*.md", "**/*.mdx", "**/*.html")
+    // third parties' license texts: thousands of URLs that aren't ours to keep alive.
+    exclude = List("docs/licensing/THIRD-PARTY-NOTICES.md")
     check = "lychee --no-progress --config .config/lychee.toml {{files}}"
   }
 
