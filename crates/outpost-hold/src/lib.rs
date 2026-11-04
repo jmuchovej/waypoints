@@ -40,6 +40,20 @@
 //!   that implements those traits, and validation runs against the
 //!   snapshot. Persistence is async; validation stays pure.
 
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "outpost-hold: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "outpost-hold: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "outpost-hold: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 mod acl_index;
 mod error;
 mod hold;

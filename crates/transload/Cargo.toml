@@ -32,5 +32,13 @@
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
   trybuild.workspace = true
 
+# The app's flavors, forwarded to every workspace dependency that declares
+# them. Exactly one shipped flavor per build.
+[features]
+  development = [ "bedrock/development", "domain/development" ]
+  nightly     = [ "bedrock/nightly", "domain/nightly" ]
+  preview     = [ "bedrock/preview", "domain/preview" ]
+  stable      = [ "bedrock/stable", "domain/stable" ]
+
 [lints]
   workspace = true

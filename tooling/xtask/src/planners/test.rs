@@ -17,7 +17,10 @@
 //!
 //! [nextest filterset]: https://nexte.st/docs/filtersets/
 
-use crate::tools::{git, github};
+use crate::{
+    releases::index,
+    tools::{git, github},
+};
 use anyhow::Result;
 use cargo_metadata::Metadata;
 use std::collections::BTreeSet;
@@ -37,6 +40,12 @@ const GLOBAL_PATHS: [&str; 4] = [
     "rust-toolchain.toml",
     ".config/cargo.toml",
 ];
+
+/// The flavor a suite runs under: the channel the app manifest's version
+/// names, so the combination tested is the one the tree ships as.
+pub fn flavor(manifest: &str) -> Result<String> {
+    Ok(index::manifest_version(manifest)?.channel().flavor())
+}
 
 /// The pre-release suite: the roots and everything they pull in.
 pub fn release_plan() -> String {
@@ -218,5 +227,15 @@ mod tests {
     #[test]
     fn a_sibling_directory_is_not_a_match() {
         assert!(planned(&["crates/domain-other/src/lib.rs"]).is_empty());
+    }
+
+    /// A suite runs under the flavor its tree ships as.
+    #[test]
+    fn the_suite_takes_the_manifest_s_channel_flavor() {
+        let manifest =
+            |version: &str| format!("[package]\nname = \"Waypoints\"\nversion = \"{version}\"\n");
+        assert_eq!(flavor(&manifest("0.3.0-nightly")).unwrap(), "nightly");
+        assert_eq!(flavor(&manifest("0.3.0-pre.2")).unwrap(), "preview");
+        assert_eq!(flavor(&manifest("0.3.0")).unwrap(), "stable");
     }
 }

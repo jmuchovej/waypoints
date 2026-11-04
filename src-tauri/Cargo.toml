@@ -79,11 +79,14 @@
 [features]
   default     = [ "desktop", "self-update" ]
   desktop     = [ "tauri/tray-icon" ]
-  development = [ "store/development" ]
-  nightly     = [ "store/nightly" ]
-  preview     = [ "store/preview" ]
+  # The flavors reach every group crate by forwarding along the dependency
+  # graph. Exactly one shipped flavor per build; `build.rs` checks it agrees
+  # with the version's channel.
+  development = [ "cartograph/development", "domain/development", "store/development" ]
+  nightly     = [ "cartograph/nightly", "domain/nightly", "store/nightly" ]
+  preview     = [ "cartograph/preview", "domain/preview", "store/preview" ]
   self-update = []
-  stable      = [ "store/stable" ]
+  stable      = [ "cartograph/stable", "domain/stable", "store/stable" ]
 
 [lints]
   workspace = true

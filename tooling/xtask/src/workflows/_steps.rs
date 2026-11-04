@@ -979,10 +979,13 @@ pub fn delete_minted_tag(tag: &JobOutput, tag_minted: &JobOutput) -> Step<Run> {
 
 pub(crate) struct Nextest(Step<Run>);
 
-pub(crate) fn cargo_nextest(suite: TestSuite) -> Nextest {
+/// The suite, under `flavor`: the channel flavor `test-plan` reads from the
+/// tree, so what is tested is what the tree ships as.
+pub(crate) fn cargo_nextest(suite: TestSuite, flavor: &str) -> Nextest {
     let step = Step::new(format!("Run {} tests", suite.describe()))
-        .run("cargo nextest run --workspace --no-fail-fast")
+        .run(r#"cargo nextest run --workspace --no-fail-fast --features "${FLAVOR}""#)
         .shell("bash")
+        .add_env(("FLAVOR", flavor))
         // The release suite compiles the whole workspace cold, and the hosted
         // Linux runner has run out of disk doing it. Debuginfo and incremental
         // artifacts are most of `target/`, and neither is worth anything here.
