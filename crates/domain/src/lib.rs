@@ -102,6 +102,11 @@ pub mod syntax {
     pub mod inline;
 }
 
+/// Test builders. Behind the `fixtures` feature, which dependents enable only
+/// from `[dev-dependencies]`.
+#[cfg(feature = "fixtures")]
+pub mod fixtures;
+
 pub(crate) mod chart {
     pub(crate) mod ids;
     pub use ids::{Base36ID, ChartID, FeatureID, GlyphID};

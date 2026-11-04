@@ -42,6 +42,8 @@
 [features]
   default     = []
   development = []
+  # Terse test builders. Enable only from a dependent's `[dev-dependencies]`.
+  fixtures    = []
   preview     = []
   stable      = []
   # The markdown dialect `Content` and `TextMarkKind` project into: one module,
