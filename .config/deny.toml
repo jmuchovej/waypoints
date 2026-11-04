@@ -86,6 +86,12 @@
     "CDLA-Permissive-2.0",
   ]
 
+  # The app crate is first-party but has no `publish = false`, because release-plz
+  # releases it, so `private.ignore` does not cover it. The allowlist stays dependencies'.
+  [[licenses.exceptions]]
+    crate = "Waypoints"
+    allow = [ "AGPL-3.0-or-later" ]
+
   [[licenses.clarify]]
     crate         = "cfg_block"
     expression    = "Apache-2.0"

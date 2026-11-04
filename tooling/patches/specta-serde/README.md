@@ -2,6 +2,8 @@
 
 [Serde](https://serde.rs) support for [Specta](https://github.com/specta-rs/specta).
 
+This patched copy keeps upstream's MIT license; see `LICENSE-MIT`.
+
 This applies Serde macro attributes on your types to the Specta generated types.
 
 ## Using with Specta TypeScript

@@ -212,9 +212,12 @@ gh-workflow-sync rev:
     git -C "$scratch" fetch --quiet --depth 1 https://github.com/tailcallhq/gh-workflow {{ rev }}
     git -C "$scratch" checkout --quiet FETCH_HEAD
 
-    # README.md is ours; upstream's crate has none, and its CHANGELOG is not carried.
-    rsync -a --delete --exclude README.md --exclude CHANGELOG.md \
+    # README.md and Cargo.toml are ours; upstream's crate has no README, its manifest
+    # would relabel the crate with this workspace's license, and its CHANGELOG is not
+    # carried. Upstream keeps LICENSE at its repository root, so it is copied separately.
+    rsync -a --delete --exclude README.md --exclude Cargo.toml --exclude LICENSE --exclude CHANGELOG.md \
       "$scratch/crates/gh-workflow/" tooling/gh-workflow/
+    cp "$scratch/LICENSE" tooling/gh-workflow/LICENSE
 
     echo "tooling/gh-workflow now holds upstream $(git -C "$scratch" rev-parse --short HEAD)."
     echo "Re-apply the local delta from tooling/gh-workflow/README.md, update its revision, then format the crate (upstream's rustfmt style differs from the workspace's)."

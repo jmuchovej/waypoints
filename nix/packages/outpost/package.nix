@@ -85,6 +85,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
   meta = {
     description = "Waypoints sync Station — the outpost command-line binary";
     homepage = "https://waypoints.so";
+    license = lib.licenses.agpl3Plus;
     platforms = [
       "aarch64-darwin"
       "x86_64-linux"

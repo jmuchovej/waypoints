@@ -231,6 +231,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
   meta = {
     description = "Local-first Markdown knowledge management (${flavor-config.productName})";
     homepage = "https://waypoints.so";
+    license = lib.licenses.agpl3Plus;
     platforms = [
       "aarch64-darwin"
       "x86_64-linux"

@@ -26,7 +26,7 @@
     readme        = "docs/README.md"
     homepage      = "https://waypoints.so"
     repository    = "https://dev.waypoints.so/"
-    license       = "Apache-2.0"
+    license       = "AGPL-3.0-or-later"
     publish       = false
 
   [workspace.dependencies]
