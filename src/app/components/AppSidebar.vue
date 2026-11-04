@@ -31,7 +31,6 @@
       },
       children: [
         // TODO: dynamically populate with first 5–10 recently visited landmarks
-
       ],
     },
     {
@@ -43,7 +42,6 @@
       defaultOpen: true,
       children: [
         // TODO: dynamically populate with first 5–10 pinned landmarks
-
       ],
     },
     {
