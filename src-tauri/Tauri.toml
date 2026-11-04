@@ -36,6 +36,11 @@ identifier  = "so.waypoints"
     "assets/icons/app/stable.ico",
   ]
 
+  [bundle.resources]
+    "../LICENSE"                               = "licenses/LICENSE"
+    "../docs/licensing/COPYING.exceptions"     = "licenses/COPYING.exceptions"
+    "../docs/licensing/THIRD-PARTY-NOTICES.md" = "licenses/THIRD-PARTY-NOTICES.md"
+
   [bundle.macOS]
     minimumSystemVersion = "15"
 

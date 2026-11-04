@@ -34,6 +34,11 @@
         icon: "i-lucide-radio-tower",
         to: "/settings/sync",
       },
+      {
+        label: "Licenses",
+        icon: "i-lucide-scale",
+        to: "/settings/app/licenses",
+      },
     ],
   ];
 
