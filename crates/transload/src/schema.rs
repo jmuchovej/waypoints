@@ -315,16 +315,9 @@ fn reading_instance(reading: &Reading) -> Json {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::{Base36ID, ChartID, GlyphID, Icon, ReferenceDisplayMode, SelectOption};
+    use domain::fixtures::{feature_id, glyph_id, reference_kind};
+    use domain::{ChartID, Icon, SelectOption};
     use indexmap::IndexMap;
-
-    fn feature_id(id: &str) -> FeatureID {
-        FeatureID(Base36ID(id.to_string()))
-    }
-
-    fn glyph(id: &str) -> GlyphID {
-        GlyphID(Base36ID(id.to_string()))
-    }
 
     fn feature(id: &str, name: &str, kind: FeatureKind) -> Feature {
         Feature {
@@ -353,28 +346,18 @@ mod tests {
 
     fn option(id: &str, name: &str) -> SelectOption {
         SelectOption {
-            id: glyph(id),
+            id: glyph_id(id),
             ..SelectOption::builder().with_name(name).build()
         }
     }
 
     fn select_kind() -> FeatureKind {
         let mut options = IndexMap::new();
-        options.insert(glyph("0001"), option("0001", "Open"));
-        options.insert(glyph("0002"), option("0002", "Done"));
+        options.insert(glyph_id("0001"), option("0001", "Open"));
+        options.insert(glyph_id("0002"), option("0002", "Done"));
         FeatureKind::Select {
             options,
             default_option: None,
-        }
-    }
-
-    fn reference_kind() -> FeatureKind {
-        FeatureKind::Reference {
-            allowed_types: None,
-            max_references: None,
-            display_field: "title".into(),
-            display_mode: ReferenceDisplayMode::default(),
-            filter_criteria: None,
         }
     }
 

@@ -229,13 +229,8 @@ pub enum IngestError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::Base36ID;
+    use domain::fixtures::{feature_id, mark_id};
     use indoc::indoc;
-    use uuid::Uuid;
-
-    fn mark(n: u128) -> MarkID {
-        MarkID(Uuid::from_u128(n))
-    }
 
     #[test]
     fn an_empty_refusal_is_not_an_error() {
@@ -246,7 +241,7 @@ mod tests {
     fn a_duplicate_names_every_file_that_carried_it() {
         let refusal = Refusal {
             duplicates: vec![DuplicateConflict {
-                id: mark(7),
+                id: mark_id(7),
                 files: vec!["library/c4d8/a.md".into(), "library/c4d8/b.md".into()],
             }],
             ..Refusal::default()
@@ -261,7 +256,7 @@ mod tests {
     fn a_located_line_reads_as_file_and_line() {
         let malformed = Malformed {
             at: Location::line(crate::layout::TERRAIN, 12),
-            kind: MalformedKind::orphan_annotative_edge(mark(1), mark(2), "child", Some(0)),
+            kind: MalformedKind::orphan_annotative_edge(mark_id(1), mark_id(2), "child", Some(0)),
         };
         let message = Refusal {
             malformed: vec![malformed],
@@ -275,15 +270,12 @@ mod tests {
     fn every_refusal_class_is_reported_together() {
         let refusal = Refusal {
             duplicates: vec![DuplicateConflict {
-                id: mark(1),
+                id: mark_id(1),
                 files: vec!["a.md".into(), "b.md".into()],
             }],
             charts: vec![ChartConflict {
                 chart: ChartID::builtin("meeting"),
-                missing_features: vec![
-                    FeatureID(Base36ID("a1b2".into())),
-                    FeatureID(Base36ID("c3d4".into())),
-                ],
+                missing_features: vec![feature_id("a1b2"), feature_id("c3d4")],
             }],
             malformed: vec![Malformed {
                 at: Location::file("library/c4d8/x.md"),

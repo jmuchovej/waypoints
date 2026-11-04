@@ -201,10 +201,7 @@ impl Links for KeepLabels<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn id(n: u128) -> MarkID {
-        MarkID(uuid::Uuid::from_u128(n))
-    }
+    use domain::fixtures::mark_id as id;
 
     fn names(titles: &[(u128, &str)], files: &[(u128, &[u128])]) -> Names {
         Names::new(
