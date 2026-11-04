@@ -204,6 +204,11 @@ No contribution SHALL be merged unless the contributor's assent to the agreement
 - **WHEN** the published copy is edited anywhere other than the repository
 - **THEN** the licensing check fails, and the next publication overwrites it from the repository
 
+#### Scenario: A draft that cannot be published yet
+
+- **WHEN** `docs/licensing/CLA.md` still holds a bracketed blank
+- **THEN** the licensing check reports it as an unpublished draft and passes, and publication is refused until the blank is filled
+
 #### Scenario: What a signer is asked
 
 - **WHEN** a contributor signs
