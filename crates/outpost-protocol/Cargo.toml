@@ -36,5 +36,13 @@ Outpost Protocol — the sync protocol for Outpost.
   pretty_assertions.workspace = true
   rand.workspace              = true
 
+# The app's flavors, so a gate can reach this crate. Exactly one shipped
+# flavor per build.
+[features]
+  development = []
+  nightly     = []
+  preview     = []
+  stable      = []
+
 [lints]
   workspace = true

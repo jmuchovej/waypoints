@@ -1,9 +1,12 @@
 //! Prints the nextest filterset a CI run should use. See
 //! [`xtask::planners::test`].
 
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use clap::Parser;
-use xtask::{planners::test as test_plan, tools::github, workspace};
+use std::fs;
+use xtask::{
+    planners::test as test_plan, releases::version::APP_MANIFEST, tools::github, workspace,
+};
 
 #[derive(Parser)]
 pub struct Options {
@@ -25,16 +28,32 @@ pub struct Options {
     /// omitting it.
     #[arg(long, num_args = 0.., conflicts_with = "base")]
     files: Option<Vec<String>>,
+
+    /// Print only the flavor the tree ships as, for the hooks' `--features`.
+    #[arg(long, conflicts_with_all = ["release", "base", "files"])]
+    flavor: bool,
 }
 
-/// The step output the test job reads, named for the key its `if:` guard
-/// checks. Serialized field-for-field into `$GITHUB_OUTPUT`.
+/// The step outputs the test job reads: `filterset` for its `if:` guard, and
+/// `flavor` for the suite's `--features`. Serialized field-for-field into
+/// `$GITHUB_OUTPUT`.
 #[derive(serde::Serialize)]
 struct TestPlan {
     filterset: String,
+    flavor: String,
 }
 
 pub fn run(args: Options) -> Result<()> {
+    let metadata = workspace::load()?;
+    let manifest = metadata.workspace_root.join(APP_MANIFEST);
+    let flavor = test_plan::flavor(
+        &fs::read_to_string(&manifest).with_context(|| format!("Failed to read {manifest}"))?,
+    )?;
+    if args.flavor {
+        println!("{flavor}");
+        return Ok(());
+    }
+
     let filterset = if args.release {
         test_plan::release_plan()
     } else {
@@ -49,14 +68,14 @@ pub fn run(args: Options) -> Result<()> {
             }
         };
 
-        let metadata = workspace::load()?;
         test_plan::plan(&changed, &test_plan::package_directories(&metadata))
     };
 
     // Printed as well as published, so a manual run and the job log both show
-    // the filterset.
+    // the plan. Only the filterset goes to stdout: hk reads it from there.
     println!("{filterset}");
-    github::set_outputs_if_available(&TestPlan { filterset })
+    eprintln!("flavor: {flavor}");
+    github::set_outputs_if_available(&TestPlan { filterset, flavor })
 }
 
 #[cfg(test)]
@@ -95,5 +114,22 @@ mod tests {
         assert!(
             Options::try_parse_from(["test-plan", "--base", "HEAD~1", "--files", "a.rs"]).is_err()
         );
+    }
+
+    /// The hooks read `--flavor`'s stdout as one feature name, so it plans
+    /// nothing else.
+    #[test]
+    fn flavor_stands_alone() {
+        assert!(parse(&["--flavor"]).flavor);
+        for other in [
+            &["--release"][..],
+            &["--base", "HEAD~1"],
+            &["--files", "a.rs"],
+        ] {
+            let args = std::iter::once("test-plan")
+                .chain(other.iter().copied())
+                .chain(["--flavor"]);
+            assert!(Options::try_parse_from(args).is_err(), "{other:?}");
+        }
     }
 }

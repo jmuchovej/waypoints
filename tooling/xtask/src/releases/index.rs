@@ -80,7 +80,7 @@ pub fn classify(tag: &str, version: &Version, manifest: &str) -> Result<Channel>
 }
 
 /// The `[package] version` of an app manifest's text.
-fn manifest_version(manifest: &str) -> Result<Version> {
+pub(crate) fn manifest_version(manifest: &str) -> Result<Version> {
     let table: toml::Table = manifest
         .parse()
         .with_context(|| format!("{APP_MANIFEST} is not TOML"))?;

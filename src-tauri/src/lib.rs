@@ -1,5 +1,20 @@
 use tauri::{App, Builder as TauriBuilder};
 
+// Features are additive and flavors are not: one shipped flavor per build.
+// `build.rs` also checks the one enabled agrees with the version's channel.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "Waypoints: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "Waypoints: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "Waypoints: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
+
 mod registry_store;
 mod settings;
 
