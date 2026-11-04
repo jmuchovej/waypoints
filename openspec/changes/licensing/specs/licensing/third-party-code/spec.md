@@ -108,7 +108,7 @@ The tree SHALL hold one registry of third-party code — vendored crates, copied
 
 ### Requirement: A third-party notices file is generated and committed
 
-The repository SHALL commit a `THIRD-PARTY-NOTICES.md` listing every Rust dependency of the distributed build targets and every production dependency of the frontend, with each package's name, version, license expression and license text. The file SHALL be produced by one command from the two lockfiles, and the generated-file lockstep check SHALL fail when the committed file differs from regeneration.
+The repository SHALL commit a `THIRD-PARTY-NOTICES.md` listing every Rust dependency of the distributed build targets and every dependency of the frontend package, dev included since the bundler reads them, with each package's name, version, license expression and license text. One command SHALL produce it, and the generated-file lockstep check SHALL fail when the committed file differs from regeneration.
 
 #### Scenario: A dependency changes
 
@@ -127,17 +127,17 @@ The repository SHALL commit a `THIRD-PARTY-NOTICES.md` listing every Rust depend
 
 ### Requirement: The notices ship with the application
 
-The notices file SHALL be bundled as an application resource, reachable from the application's settings, and SHALL be included in every release archive together with the root `LICENSE` and `COPYING.exceptions`.
+The notices file SHALL be bundled as an application resource together with the root `LICENSE` and `COPYING.exceptions`, so every installer carries all three, and SHALL be reachable from the application's settings.
 
 #### Scenario: A user looks for the licenses of what they installed
 
 - **WHEN** a user opens the licenses entry under the application's settings
 - **THEN** they see the committed notices file for the version they are running
 
-#### Scenario: A release archive
+#### Scenario: An installer
 
-- **WHEN** a release archive for any platform is inspected
-- **THEN** it contains `THIRD-PARTY-NOTICES.md` alongside `LICENSE` and `COPYING.exceptions`
+- **WHEN** an installer for any platform is inspected
+- **THEN** its resources contain `THIRD-PARTY-NOTICES.md` alongside `LICENSE` and `COPYING.exceptions`
 
 ### Requirement: The dependency license check runs on every pull request
 
