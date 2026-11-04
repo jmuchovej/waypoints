@@ -36,6 +36,12 @@ identifier  = "so.waypoints"
     "assets/icons/app/stable.ico",
   ]
 
+  # Every installer carries these, on every platform.
+  [bundle.resources]
+    "resources/THIRD-PARTY-NOTICES.md"     = "licenses/THIRD-PARTY-NOTICES.md"
+    "../LICENSE"                           = "licenses/LICENSE"
+    "../docs/licensing/COPYING.exceptions" = "licenses/COPYING.exceptions"
+
   [bundle.macOS]
     minimumSystemVersion = "15"
 

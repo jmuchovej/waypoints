@@ -155,6 +155,9 @@ rust-platform.buildRustPackage (_finalAttrs: {
         (workingTree + "/crates")
         (workingTree + "/tooling")
         (workingTree + "/vendor")
+        # Bundled beside the notices; every distribution carries the license.
+        (workingTree + "/LICENSE")
+        (workingTree + "/docs/licensing/COPYING.exceptions")
         # Desktop build only — the generated mobile projects stay out.
         (difference (workingTree + "/src-tauri") (workingTree + "/src-tauri/gen"))
       ];
