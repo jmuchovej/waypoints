@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Tests on every pull request and every push to `main`, scoped to the crates
 //! `cargo xtask test-plan` resolves from the diff.
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The Bundle: its path layout, its manifest, and the in-memory form both
 //! directions pass through.
 

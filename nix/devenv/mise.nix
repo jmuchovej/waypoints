@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # handles projecting devenv into `mise` (all written to `.config/mise/conf.d/`).
 # each tool's version is synchronized with devenv. the base toolchain is stored
 # in `tools.toml` and supplemental environments are written to

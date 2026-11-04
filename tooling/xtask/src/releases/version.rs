@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! One reading of a version for every release task.
 //!
 //! A version names its own channel (a `nightly` prerelease is nightly, any

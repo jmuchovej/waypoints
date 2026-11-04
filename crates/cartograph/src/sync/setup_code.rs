@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The setup-code engine: one classifier for everything a paste, scan, or
 //! deep link hands the setup flow, plus the pairing URL envelope and QR
 //! rendering. Lives here — not in the frontend — so every platform

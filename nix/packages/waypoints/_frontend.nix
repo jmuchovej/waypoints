@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Flavor-parameterized frontend build: `nuxi generate` over `src/`, with
 # `VITE_WAYPOINTS_FLAVOR` taken from the flavor's Tauri config identifier
 # (mirroring `src/justfile`). Build-graph intermediate only — consumed by

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `Filter::json_eq` reaches a discriminant INSIDE a jsonb document column,
 //! filtered on the base table (no view), alongside ordinary column filters —
 //! the shape `store::query::mark::list` uses to query marks by kind.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `export(store) → Bundle`: a freeze-frame of live knowledge. Soft-deleted
 //! Marks and edges are absent.
 //!

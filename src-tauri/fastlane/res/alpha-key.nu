@@ -1,4 +1,7 @@
 #!/usr/bin/env nu
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Keys the screen out of a Mockuuups device-frame export.
 #
 #   alpha-key.nu exports/<device>.png [--out <path>] [--ring 3]

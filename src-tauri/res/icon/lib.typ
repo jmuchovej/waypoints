@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Paints the authored logo and masks with a palette. Nothing here edits the
 // artwork: colours arrive as a stylesheet, and the logo is spliced into the
 // mask's `#inner` as a tree. Paths are absolute from the app directory.

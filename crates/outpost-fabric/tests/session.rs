@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Session convergence over a framed stream, with an in-memory
 //! [`SyncPeer`] stub. Proves the exchange drives two peers to
 //! agreement independently of any transport — run over a split tokio

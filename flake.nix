@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Packaging-only flake (see openspec distribution/nix-overlay): exposes the
 # desktop app and the outpost Station through nix/overlay.nix. The dev shell
 # stays on devenv.yaml — `nix develop` is not a supported entry point, and

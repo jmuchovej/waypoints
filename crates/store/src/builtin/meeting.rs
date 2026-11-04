@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Meeting built-in type - A meeting with attendees and notes.
 use super::{objective, person, status_multi_select, tags_feature};
 use domain::{

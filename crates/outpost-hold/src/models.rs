@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Bedrock collections backing a Territory. Each row keeps the
 //! canonical raw bytes plus denormalized header columns for indexing. The
 //! `id` columns are native binary keys (the [`u8; 32]` `Field` impl) — no

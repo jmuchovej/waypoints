@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use cartograph::BuildInfo;
 
 /// The compiled build's identity — version, channel, commit, build time, and

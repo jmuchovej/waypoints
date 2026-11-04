@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Identifier newtypes. Each is distinct at the type level so a
 //! Notice can never be confused with an ACL record (or a blob, a member, …)
 //! no matter how similar the underlying bytes look.

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # The Station as a container image, built by Nix from the `outpost` package
 # — no Dockerfile. Exposed by the flake for Linux systems only, never by
 # the overlay (the underscore marks a file that is not an overlay package).

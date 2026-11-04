@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Note built-in type - A simple note with rich content.
 use super::tags_feature;
 use domain::icon_presets;

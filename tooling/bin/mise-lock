@@ -1,4 +1,6 @@
 #!/usr/bin/env nu
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Refresh `.config/mise/mise.lock`, or with `--check` report whether it still
 # agrees with the config fragments. Hand-invoked — see nix/AGENTS.md for why no

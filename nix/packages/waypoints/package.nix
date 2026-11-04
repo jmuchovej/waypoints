@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # The desktop app, one flavor per package (stable/preview/nightly — never
 # development). Reuses the existing pipeline's config layering
 # (Tauri.toml + flavor toml) via nixpkgs' cargo-tauri.hook, which builds

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! devenv: what it manages, and what it evaluates to.
 
 use anyhow::{Context as _, Result, bail};

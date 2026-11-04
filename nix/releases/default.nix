@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # The only reader of the release index. One file per channel sits beside this
 # expression — `stable.json`, `preview.json`, `nightly.json` — each the record
 # of that channel's most recent publish:

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Crash recovery against the real engine: a victim process (`src/bin/
 //! crash_victim.rs`) writes to a file-backed database and is SIGKILLed at a
 //! marker-chosen point; the test reopens the database and asserts integrity

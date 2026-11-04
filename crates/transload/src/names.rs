@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! What a mention's `[[…]]` holds: a Landmark's title, and for a block, an id
 //! prefix within the file it is written in.
 //!

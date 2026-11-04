@@ -1,4 +1,6 @@
 #!/usr/bin/env nu
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Refresh the hashes nix cannot derive from the tree, or with `--dry-run`
 # report what they would become. Hand-invoked after a lockfile change.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { createHighlighter, type Highlighter, type BundledLanguage } from "shiki";
 import { ref, watch, type Ref } from "vue";
 

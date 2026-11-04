@@ -1,5 +1,7 @@
 #:tombi toml-version = "v1.1.0"
 #:schema https://raw.githubusercontent.com/crate-ci/typos/master/config.schema.json
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [files]
   ignore-files   = true

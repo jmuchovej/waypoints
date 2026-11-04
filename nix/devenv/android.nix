@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Owns Android toolchain assembly: the SDK composed from android-nixpkgs,
 # system-image expansion per platform version, the ANDROID_*/LD_LIBRARY_PATH/
 # PATH environment, and the gradle-facing generated files (`local.properties`,

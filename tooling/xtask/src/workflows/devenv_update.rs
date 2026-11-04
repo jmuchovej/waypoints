@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Weekly refresh of the Nix inputs pinned in `devenv.lock`, and of everything
 //! generated downstream of them.
 //!

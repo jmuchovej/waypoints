@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Objective built-in type - A todo item with completion tracking.
 use super::{person, status_multi_select, tags_feature};
 use domain::{

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Fleets — the deployment and trust boundary. A Fleet is a
 //! cryptographic identity (the fleet key) plus a **signed, revision-numbered
 //! Station roster**, distributed as an untrusted file: the signature makes

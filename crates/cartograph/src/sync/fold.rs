@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The territory-wide fold: the one consumer that turns `waypoints.page.v1`
 //! Notices back into the Mark/Terrain graph.
 //!

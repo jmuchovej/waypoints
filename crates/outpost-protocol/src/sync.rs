@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The two-tier sync protocol: a **Tally** finds divergence, a
 //! **Resupply** closes it. This module is the *pure* half — message types
 //! and the reconciliation computations over head sets and id sets. The

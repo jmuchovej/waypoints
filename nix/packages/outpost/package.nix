@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # The `outpost` command-line binary: a Station over QUIC — storage, and the
 # fleet orderer when handed a fleet key — built from the tree with the `cli`
 # feature. Headless: none of the desktop app's GUI toolkit, JavaScript

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use super::{MarkID, RichText, reading_validators as validators};
 use crate::{Feature, FeatureKind, GlyphID};
 use chrono::NaiveDateTime;
