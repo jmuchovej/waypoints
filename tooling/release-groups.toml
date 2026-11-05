@@ -1,0 +1,86 @@
+#:tombi toml-version = "v1.1.0"
+#:schema ./schemas/release-groups.schema.json
+
+# Every workspace crate outside tooling/ is named: as a member or an internal.
+# tooling/ builds the repository, not the product, and must not appear.
+#
+# `anchor` is the member whose version is the group's: every member == anchor.
+# `breaking = "header"` is `!` in the group's own header. `minted = [ "cut" ]`
+# mints on main only; a series pins a library, never builds it in-tree.
+
+# Never product work, for any group or planner.
+[bookkeeping]
+  paths        = [ "nix/releases/" ]
+  ignore-revs  = ".git-blame-ignore-revs"
+  # Reserved to botswain.
+  bot-subjects = [ "chore(release):" ]
+
+# bedrock-derive's floor is declared-only.
+[group.bedrock]
+  members  = [ "crates/bedrock", "crates/bedrock-core", "crates/bedrock-derive" ]
+  anchor   = "crates/bedrock"
+  tag      = "bedrock-v{version}"
+  breaking = "header"
+  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
+  fixtures = "covenant/fixtures/bedrock/"
+  minted   = [ "cut" ]
+
+# The wire (ALPN outpost/sync/v1 + session negotiation) is not this number.
+# A wire break is an interop break: it needs the covenant trailer.
+[group.outpost]
+  members  = [
+    "crates/outpost",
+    "crates/outpost-fabric",
+    "crates/outpost-hold",
+    "crates/outpost-protocol",
+  ]
+  anchor   = "crates/outpost"
+  tag      = "outpost-v{version}"
+  breaking = "header"
+  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
+  fixtures = "covenant/fixtures/outpost/"
+  minted   = [ "cut" ]
+
+# Core of the data covenant.
+[group.domain]
+  members  = [ "crates/domain" ]
+  anchor   = "crates/domain"
+  tag      = "domain-v{version}"
+  breaking = "header"
+  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
+  fixtures = "covenant/fixtures/domain/"
+  minted   = [ "cut" ]
+
+[group.transload]
+  members  = [ "crates/transload" ]
+  anchor   = "crates/transload"
+  tag      = "transload-v{version}"
+  breaking = "header"
+  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
+  fixtures = "covenant/fixtures/transload/"
+  minted   = [ "cut" ]
+
+# cartograph is the API surface, so it moves with the app. store is an internal:
+# owned and counted, never versioned.
+[group.waypoints]
+  members                         = [ "src-tauri", "crates/cartograph" ]
+  internals                       = [ "crates/store" ]
+  anchor                          = "src-tauri"
+  tag                             = "v{version}"
+  owns                            = "remainder"
+  counts                          = "closure"
+  breaking                        = "trailer:Covenant: break"
+  features-always-increment-minor = true
+  floors                          = [ "covenant-fixtures" ]
+  fixtures                        = "covenant/fixtures/waypoints/"
+  minted                          = [ "cut", "advance", "promote", "patch" ]
+  channels                        = [ "nightly", "preview", "stable" ]
+  flavors                         = [ "nightly", "preview", "stable", "development" ]
+
+# The pull-request checks `version-integrity` carries.
+[enforce]
+  commits        = "conventional"
+  summary-type   = "summary"
+  version-writes = "botswain"
+  fixtures       = "append-only"
+  schema         = "current"

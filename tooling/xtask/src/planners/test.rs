@@ -85,7 +85,10 @@ pub fn package_directories(metadata: &Metadata) -> Vec<(String, String)> {
 /// The workspace package a repo-relative path belongs to, if any.
 ///
 /// Longest prefix wins, so a nested crate is not shadowed by an ancestor.
-fn owning_package<'a>(path: &str, directories: &'a [(String, String)]) -> Option<&'a str> {
+pub(crate) fn owning_package<'a>(
+    path: &str,
+    directories: &'a [(String, String)],
+) -> Option<&'a str> {
     directories
         .iter()
         .filter(|(_, dir)| path.starts_with(&format!("{dir}/")))

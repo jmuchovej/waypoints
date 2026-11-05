@@ -14,6 +14,7 @@ pub mod tasks {
     pub mod devenv_files;
     pub mod icongen;
     pub mod nightly_plan;
+    pub mod release_groups;
     pub mod release_index;
     pub mod release_manifest;
     pub mod release_plan;
@@ -22,6 +23,7 @@ pub mod tasks {
     pub mod release_withdraw;
     pub mod test_plan;
     pub mod typegen;
+    pub mod version_integrity;
     pub mod workflows;
 }
 
@@ -50,6 +52,10 @@ enum Command {
     ReleasePlan(tasks::release_plan::Options),
     /// Records a published tag in the release index on `main`.
     ReleaseIndex(tasks::release_index::Options),
+    /// Maintains the group file's generated schema.
+    ReleaseGroups(tasks::release_groups::Options),
+    /// Checks what a pull request claims about versions.
+    VersionIntegrity(tasks::version_integrity::Options),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::devenv_files::Options),
     /// Regenerates every checked-in GitHub Actions workflow.
@@ -75,6 +81,8 @@ fn main() -> Result<()> {
         Command::ReleaseWithdraw(args) => tasks::release_withdraw::run(args),
         Command::ReleasePlan(args) => tasks::release_plan::run(args),
         Command::ReleaseIndex(args) => tasks::release_index::run(args),
+        Command::ReleaseGroups(args) => tasks::release_groups::run(args),
+        Command::VersionIntegrity(args) => tasks::version_integrity::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
         Command::Typegen(args) => tasks::typegen::run(args),

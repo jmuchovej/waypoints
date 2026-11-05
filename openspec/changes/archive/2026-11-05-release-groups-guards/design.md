@@ -72,6 +72,8 @@ Monolith D5, the format half. How each group reads its own header for severity i
 - **Where it lives:** the merge commit. The decided merge policy makes its message the pull request's title and description, so the title is the subject and the description carries the per-group headers and any `Covenant: break` trailer. Branch commits underneath are never checked by the gate; they stay conventional all the same, for the reason D7 gives.
 - **What the check reads today:** the pull request's title and body from the event payload, and its diff against the merge base, as `planners/test.rs::default_base` already computes. That is the message the merge commit _will_ carry once `protected-branches` sets `merge_commit_message` to the pull request body; until then a landed merge commit carries no body, which nothing reads yet.
 - **Completeness is checked against the diff:** a pull request changing more than one group's own paths must be a summary with exactly one header per touched group, and a header for a group the diff does not touch is refused too. The group of a path is the group file's, through the longest-prefix rule `planners/test.rs::owning_package` already applies to crates.
+- **A summary's subject is exactly `summary: …`:** a scope or `!` would slip past the `^summary:` skip (D7), and a `!` over the whole subject is the rejected form below. Each header is scoped by exactly one group's name.
+- **Parser:** `git-conventional`, already in the lockfile through `next_version` and the parser git-cliff uses, so the check, the planners, and the notes agree on what is conventional. It joins `xtask`'s direct dependencies. The accepted types are the ones CONTRIBUTING lists.
 - **Single-group commits** keep free-form scopes; the path decides the group. CONTRIBUTING's comma-joined regions stay legal only while every region falls in one group — `refactor(app,store): …` is one `waypoints` commit; `refactor(domain,cartograph): …` must be a summary.
 - **Rejected:** multi-scope subjects such as `feat(bedrock,outpost)!:`; an unscoped `!` applying to every touched group.
 - **Gate:** tests for a two-header summary, a summary missing a touched group (refused), a summary naming an untouched group (refused), and a single-group commit with a free-form scope.
@@ -83,6 +85,8 @@ Monolith D8, the directories and the append-only rule. The floors a fixture chan
 - **Layout:** `covenant/fixtures/<group>/`: `domain` (data structures), `outpost` (envelope and ACL records), `bedrock` (storage format), `transload` (import corpora), `waypoints` (migrations).
 - **Why append-only:** modifying, deleting, or renaming a fixture changes what old data means. A path rule cannot be defeated by a message-format change, the same reasoning that put the index exclusion in the planners' walk.
 - **Fixtures are data, not tests.** `covenant/fixtures/` is a repo-root corpus of frozen inputs; the tests that read them are ordinary `cargo test` cases in the owning crate. What a test cannot do is notice its own fixture being rewritten; the path rule covers that at pull-request time: append-only unless the message carries `Covenant: break`.
+- **A group's README is not a fixture** (revised 2026-11-05). `covenant/fixtures/<group>/README.md` describes the directory, so editing it needs no trailer and, in `library-minting`, sets no floor. The exemption is that exact path: `transload`'s import corpora are Markdown, so a `README.md` any deeper is data and stays frozen. The README still counts as its group's path for completeness (D3).
+- **A rename is a removal.** The diff is read with `--no-renames`, so a renamed fixture fails naming its old path, and a file moved in from elsewhere is an addition.
 - **Formatting never stands alone.** A formatter's changes amend the commit they belong to. Treewide passes are listed in `.git-blame-ignore-revs`, created empty here so the planners' exclusion in `library-minting` has a file to read. Fixtures are excluded from treefmt, since an amended reformat would trip the append-only check.
 - **Scope here:** the directories, the rule, the trailer, the exclusion, and the ignore-revs file. Coverage is a follow-up.
 - **Gate:** check tests for add (pass), modify without trailer (fail), and modify with trailer (pass); treefmt leaves a fixture untouched.
@@ -104,6 +108,7 @@ Monolith D11.
 - **Shape:** the config types derive `schemars::JsonSchema`; `cargo xtask release-groups schema` writes `tooling/schemas/release-groups.schema.json`. Doc comments become hover text, and enums become closed sets.
 - **Binding:** an in-file directive, `#:schema ./schemas/release-groups.schema.json`, the Tauri-config precedent. Tombi resolves a relative path against the TOML file's own directory, so the path is stable wherever the lint runs from. The file is hand-maintained, so the binding belongs with it rather than in `.config/tombi.toml`, which binds schemas only to hand-edited mise configs.
 - **Split of duties:** the schema checks shape; `xtask` checks semantics (every crate named, paths disjoint, paths exist). The `version-integrity` check regenerates the schema and compares it with the committed file, so a parser change cannot land without its schema.
+- **Its bytes are the generator's:** `tooling/schemas/*.json` is excluded from treefmt, since oxfmt would collapse the short arrays the generator writes and the comparison is byte-for-byte.
 - **Gate:** a test regenerates the schema and compares it with the committed file; `tombi lint` fails on a misspelled key.
 
 ### D7 (2026-10-17, proposed — AUDIT): Release notes keep reading branch commits; summary-aware notes are a follow-up
@@ -121,6 +126,8 @@ No monolith number; this decision is the split's.
 
 - **Why:** a ruleset can name only a check that exists and reports on every pull request, and a required check that fails to report leaves a pull request waiting forever. So the check lands first, with no ruleset naming it, and `protected-branches` requires it in the same change that protects the branches. Nothing about the check changes when it is flipped; the design here is for the required state.
 - **Shape:** `cargo xtask version-integrity`, one Linux job in a generated `version-integrity` workflow triggered on `pull_request` for every branch with no path filter, running under the `xtask` mise lane as the planners do, checking out full history so the merge base its diff needs resolves — the `Tests` job's shape in `_jobs.rs::test`. Its inputs are the event payload (`GITHUB_EVENT_PATH`: title, body, author) and `git diff` against the merge base; it needs no token and no API call.
+- **It also runs on `edited`:** the check reads the title and description, so correcting one has to rerun it. Otherwise a required check stays red over a message that is already fixed.
+- **Mise, for now** (revised 2026-11-05). Devenv is the goal for jobs that publish no binaries, but until the project has a working cachix, entering it costs about 30 minutes of Nix building from source (measured on `check-generated`, against 5m06s to compile `xtask`). A check on every pull request cannot carry that, so the move is separate work.
 - **What it checks here:** the five clauses the Appendix's `[enforce]` table names — conventional message, complete summary, bot-only `chore(release):`, bot-only version writes, append-only fixtures — and the schema's currency (D6). Lockstep is `protected-branches`'s; series pins, single pins, and the API break are `library-minting`'s; each adds its clause and its `[enforce]` key.
 - **Advisory means ignorable, briefly.** Until the ruleset names it a failed check blocks nothing, so a hand-edited version could still land by someone merging over red. Accepted: the window closes with `protected-branches`, and the alternative — landing the check and the rulesets together — is what the earlier proposal's own review found to be the wrong order.
 - **Rejected:** a `commit-msg` hook in `hk` (checks the branch commits, which D3 and D7 deliberately leave unchecked, and runs only on machines that installed it); landing the check already required (nothing to require it with).
@@ -136,13 +143,14 @@ No monolith number; this decision is the split's.
 - [The group file's keys outrun this change] → keys whose semantics belong to later changes are parsed and schema-checked so the shape is settled once; the semantic checks here act only on members, internals, anchors, and paths. A later change that reads a key changes no file layout.
 - [The importer SDK and plugins block every planner run the day they land] → intended; the planners name the crates, and the Open Questions record the choice to make.
 - [Pre-existing history does not meet the check] → the check applies to pull requests from its landing; the 7 local `merge: … into main` commits and 4 non-conventional subjects in first-parent history are not re-linted, and the planners read older commits as `next_version` does today.
-- [`tombi lint` runs somewhere the job does not] → the schema-currency test in `xtask` holds regardless; whether the job also runs `tombi lint` is an open question that changes no spec.
+- [`tombi lint` runs somewhere the job does not] → the schema-currency test in `xtask` holds regardless, and the parser refuses an unknown key, so a misspelled key still fails the check; whether the job also runs `tombi lint` is an open question that changes no spec.
+- [The check compiles `xtask` cold on every pull request] → accepted, at about five minutes. It holds no credential, so it has no route to the R2 compile cache, and a pull-request-only workflow never saves to GitHub's cache from `main`.
 
 ## Migration Plan
 
-1. **Group file, parser, schema, and the planners' load** (D1, D6): landable with no change to any planner decision; from here on a workspace member the file does not name refuses every planner run, dry runs included.
-2. **The check and its workflow** (D3, D5, D8, D4's check): advisory; it reports on every pull request from the first run.
-3. **Fixture directories, the treefmt exclusion, and `.git-blame-ignore-revs`** (D4).
+1. **Fixture directories, the treefmt exclusion, and `.git-blame-ignore-revs`** (D4): first, because the group file names these paths and refuses any that are missing.
+2. **Group file, parser, schema, and the planners' load** (D1, D6): landable with no change to any planner decision; from here on a workspace member the file does not name refuses every planner run, dry runs included.
+3. **The check and its workflow** (D3, D5, D8, D4's check): advisory; it reports on every pull request from the first run.
 4. **CONTRIBUTING, the cliff skip, and the release-plz removal** (D2, D7).
 5. `protected-branches` then names the check as required; `library-minting` then adds its clauses.
 
@@ -155,7 +163,7 @@ Rollback: every step is additive. Removing the workflow generator and regenerati
 
 ## Appendix: `tooling/release-groups.toml` sketch
 
-The shape the parser in task 1.1 reads. Field names are proposals; the generated schema (D6) is what tombi enforces. Keys this change does not act on — `breaking`, `floors`, `minted`, `owns`, `counts`, `features-always-increment-minor`, `channels`, `flavors` — are parsed and shape-checked here so the file is settled once; `channel-flavors` and `library-minting` give them their meaning, and `protected-branches` and `library-minting` add their own `[enforce]` keys.
+The shape the parser in task 2.1 reads. Field names are proposals; the generated schema (D6) is what tombi enforces. Keys this change does not act on — `breaking`, `floors`, `minted`, `owns`, `counts`, `features-always-increment-minor`, `channels`, `flavors` — are parsed and shape-checked here so the file is settled once; `channel-flavors` and `library-minting` give them their meaning, and `protected-branches` and `library-minting` add their own `[enforce]` keys.
 
 ```toml
 #:tombi toml-version = "v1.1.0"
@@ -177,7 +185,7 @@ The shape the parser in task 1.1 reads. Field names are proposals; the generated
   breaking = "header"                   # `!` in this group's own header
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]  # bedrock-derive: declared-only
   fixtures = "covenant/fixtures/bedrock/"
-  minted   = "cut"                      # on main only; a series pins, never builds in-tree
+  minted   = [ "cut" ]                      # on main only; a series pins, never builds in-tree
 
 [group.outpost]
   members  = [ "crates/outpost", "crates/outpost-fabric", "crates/outpost-hold", "crates/outpost-protocol" ]
@@ -186,7 +194,7 @@ The shape the parser in task 1.1 reads. Field names are proposals; the generated
   breaking = "header"
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/outpost/"   # envelope, ACL records
-  minted   = "cut"
+  minted   = [ "cut" ]
   # The wire (ALPN outpost/sync/v1 + session negotiation) is not this number.
   # A wire break is an interop break: it needs the covenant trailer.
 
@@ -197,7 +205,7 @@ The shape the parser in task 1.1 reads. Field names are proposals; the generated
   breaking = "header"
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/domain/"
-  minted   = "cut"
+  minted   = [ "cut" ]
 
 [group.transload]
   members  = [ "crates/transload" ]
@@ -206,7 +214,7 @@ The shape the parser in task 1.1 reads. Field names are proposals; the generated
   breaking = "header"
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/transload/"   # import corpora
-  minted   = "cut"
+  minted   = [ "cut" ]
 
 [group.waypoints]
   members   = [ "src-tauri", "crates/cartograph" ]   # lockstep; cartograph is the API surface

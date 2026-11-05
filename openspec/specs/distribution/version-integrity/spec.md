@@ -1,8 +1,10 @@
+# distribution/version-integrity Specification
+
 ## Purpose
 
 Defines the pull-request checks that make every version claim verifiable before it reaches `main` or a series branch — who may write a version, how a landing message must be shaped, and what evidence a declared severity must agree with — so that the planners' output is the record of what shipped rather than a reading of whatever was typed.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: The group file's schema is current and enforced
 
@@ -58,7 +60,7 @@ Every pull request SHALL land on `main` or a series branch as a merge commit who
 
 ### Requirement: Covenant fixtures are append-only unless declared
 
-A pull request that modifies, deletes, or renames a file under `covenant/fixtures/` SHALL fail unless it carries `Covenant: break`. Adding fixtures SHALL pass. Fixtures SHALL be excluded from the formatting pipeline, so a formatter cannot rewrite one.
+A pull request that modifies, deletes, or renames a file under `covenant/fixtures/` SHALL fail unless it carries `Covenant: break`. Adding fixtures SHALL pass. A group's own `covenant/fixtures/<group>/README.md` describes the directory and SHALL NOT count as a fixture; a file named `README.md` any deeper is data and SHALL. Fixtures SHALL be excluded from the formatting pipeline, so a formatter cannot rewrite one.
 
 #### Scenario: New fixture
 
@@ -74,6 +76,16 @@ A pull request that modifies, deletes, or renames a file under `covenant/fixture
 
 - **WHEN** a pull request modifies an existing fixture and carries `Covenant: break`
 - **THEN** the check passes
+
+#### Scenario: A group's README is edited
+
+- **WHEN** a pull request modifies `covenant/fixtures/domain/README.md` without `Covenant: break`
+- **THEN** the check passes
+
+#### Scenario: A README inside a corpus is edited
+
+- **WHEN** a pull request modifies `covenant/fixtures/transload/vault/README.md` without `Covenant: break`
+- **THEN** the check fails and names the file
 
 #### Scenario: Formatter leaves fixtures alone
 

@@ -5,8 +5,20 @@ use crate::Platform;
 use derive_more::{Display, IsVariant};
 use strum::EnumIter;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, IsVariant, clap::ValueEnum)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Display,
+    IsVariant,
+    clap::ValueEnum,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 #[display(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum Channel {
     Stable,
     Preview,
@@ -56,8 +68,20 @@ impl Channel {
 /// a release ships through, and nothing that iterates channels — required
 /// targets, tag patterns, the publish gate — should ever meet the
 /// development build. Convert a channel with `Flavor::from`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, EnumIter, clap::ValueEnum)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Display,
+    EnumIter,
+    clap::ValueEnum,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
 #[display(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum Flavor {
     Development,
     Nightly,
