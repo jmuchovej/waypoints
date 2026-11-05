@@ -84,7 +84,7 @@ enum Command {
     Icongen(tasks::icongen::Options),
     /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
     DevServer(tasks::dev_server::Options),
-    /// Holds the tree to the licensing policy; publishes the contributor agreement.
+    /// Holds the tree to the licensing policy; regenerates the third-party notices.
     License(tasks::license::Options),
 }
 

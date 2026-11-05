@@ -43,7 +43,7 @@ pub fn stamp(generated: &str, existing: Option<&str>, current_year: i32) -> Stri
         .unwrap_or_else(|| current_year.to_string());
     let tags = format!(
         "// {} {year} {}\n// SPDX-License-Identifier: {}\n",
-        license::COPYRIGHT_TAG,
+        license::SPDX_COPYRIGHT_TAG,
         license::HOLDER,
         license::POLICY,
     );

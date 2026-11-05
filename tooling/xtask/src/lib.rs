@@ -68,7 +68,50 @@ pub mod releases {
 }
 
 pub mod icongen;
-pub mod license;
+pub mod license {
+    struct FrozenDocument {
+        path: &'static str,
+        checksum: &'static str,
+    }
+
+    impl FrozenDocument {
+        const fn new(path: &'static str, checksum: &'static str) -> Self {
+            Self { path, checksum }
+        }
+    }
+
+    /// The license of every first-party crate and source file.
+    pub const POLICY: &str = "AGPL-3.0-or-later";
+    /// The copyright holder a first-party source file names.
+    pub const HOLDER: &str = "John Muchovej";
+
+    /// The tag a copyright line opens with, comment syntax aside.
+    pub const SPDX_COPYRIGHT_TAG: &str = "SPDX-FileCopyrightText:";
+    /// The tag a license line opens with, comment syntax aside.
+    const SPDX_IDENTIFIER_TAG: &str = "SPDX-License-Identifier:";
+
+    const LICENSE: FrozenDocument = FrozenDocument::new(
+        "LICENSE",
+        "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+    );
+    const LICENSE_MD: FrozenDocument = FrozenDocument::new(
+        "docs/licensing/LICENSE.md",
+        "00352ab19865e23bb0ab7e0f45332206aba6a66d75b3f3cc962fdd6508d63ea4",
+    );
+
+    #[cfg(test)]
+    const CLA_PATH: &str = "docs/licensing/CLA.md";
+
+    /// Where the notices are committed, relative to the workspace root.
+    pub const NOTICES_PATH: &str = "docs/licensing/THIRD-PARTY-NOTICES.md";
+
+    mod headers;
+    mod notices;
+
+    pub use headers::{Entry, Kind, Registry};
+    pub use headers::{check as check_headers, copyright_year};
+    pub use notices::generate as generate_notices;
+}
 pub mod tools;
 pub mod typegen;
 pub mod workflows;

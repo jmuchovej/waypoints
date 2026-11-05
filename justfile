@@ -187,7 +187,7 @@ renovate-plan mode="full":
 deny: deny-targets
     cargo-deny check
 
-[doc("Checks manifests, headers, layering, license texts, the third-party registry, the published agreement, and dependency licenses.")]
+[doc("Checks manifests, headers, layering, license texts, the third-party registry, and dependency licenses.")]
 [script]
 license:
     export SECRETSPEC_REASON="just license checks license declarations against the tree; no secret values are read"

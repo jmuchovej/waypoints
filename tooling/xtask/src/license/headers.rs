@@ -5,14 +5,11 @@
 //!
 //! `cargo-deny` owns dependency allowlisting. This checks what it does not:
 //! manifests against the policy, headers against manifests, layering, the
-//! license texts against the FSF's, the third-party registry's consistency, and
-//! the agreement CLA assistant displays against the repository's. Every check
-//! reports all it finds, so one run names every failure.
+//! license texts against the FSF's, and the third-party registry's consistency.
+//! Every check reports all it finds, so one run names every failure.
 
-pub mod notices;
-
-use crate::tools::github;
-use anyhow::{Context as _, Result, bail};
+use super::{LICENSE, LICENSE_MD, POLICY, SPDX_COPYRIGHT_TAG, SPDX_IDENTIFIER_TAG};
+use anyhow::{Context as _, Result};
 use cargo_metadata::{DependencyKind, Metadata, MetadataCommand};
 use serde::Deserialize;
 use sha2::{Digest as _, Sha256};
@@ -22,18 +19,6 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-
-/// The license of every first-party crate and source file.
-pub const POLICY: &str = "AGPL-3.0-or-later";
-
-/// The copyright holder a first-party source file names.
-pub const HOLDER: &str = "John Muchovej";
-
-/// The tag a copyright line opens with, comment syntax aside.
-pub const COPYRIGHT_TAG: &str = "SPDX-FileCopyrightText:";
-
-/// The tag a license line opens with, comment syntax aside.
-const IDENTIFIER_TAG: &str = "SPDX-License-Identifier:";
 
 /// The only expression a crate may be born permissive under.
 const PERMISSIVE: &str = "MIT OR Apache-2.0";
@@ -62,47 +47,12 @@ const NUXT_CONFIG: &str = "src/nuxt.config.ts";
 /// The constant in [`NUXT_CONFIG`] that names the allowlist.
 const NUXT_ALLOWLIST: &str = "LICENSE_ALLOWLIST";
 
-/// The FSF's plain-text AGPLv3, the only license file at the root.
-const ROOT_LICENSE: (&str, &str) = (
-    "LICENSE",
-    "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
-);
-
-/// The FSF's Markdown edition of the same text.
-const MARKDOWN_LICENSE: (&str, &str) = (
-    "docs/licensing/LICENSE.md",
-    "00352ab19865e23bb0ab7e0f45332206aba6a66d75b3f3cc962fdd6508d63ea4",
-);
-
-/// The contributor agreement contributors sign.
-const AGREEMENT: &str = "docs/licensing/CLA.md";
-
-/// The signing form's custom-fields schema.
-const AGREEMENT_METADATA: &str = "docs/licensing/cla-metadata.json";
-
-/// The Gist CLA assistant displays. It is secret, not private: its id is public here.
-pub const GIST_OWNER: &str = "jmuchovej";
-
-/// See [`GIST_OWNER`].
-pub const GIST_ID: &str = "f2903ad9aa3c2eb374faa28ebadab7f6";
-
-/// The agreement's file name in the Gist.
-pub const GIST_AGREEMENT: &str = "CLA.md";
-
-/// The signing form's file name in the Gist.
-pub const GIST_METADATA: &str = "metadata";
-
-/// The public client id of the `wp-botswain` App, for the device flow.
-pub const CLIENT_ID: &str = "Iv23liNfm1Q9EIKSExlK";
-
 /// The year of the first copyright line in `text`, which a file keeps for life.
 pub fn copyright_year(text: &str) -> Option<&str> {
     text.lines()
-        .find_map(|line| line.split_once(COPYRIGHT_TAG))
+        .find_map(|line| line.split_once(SPDX_COPYRIGHT_TAG))
         .and_then(|(_, rest)| rest.split_whitespace().next())
 }
-
-// ── The registry ─────────────────────────────────────────────────────────────
 
 /// `.config/third-party.toml`: code in the tree this project did not write.
 #[derive(Debug, Default, Deserialize)]
@@ -164,8 +114,6 @@ impl Registry {
     }
 }
 
-// ── Licenses ─────────────────────────────────────────────────────────────────
-
 /// The canonical allowlist from `.config/deny.toml`.
 fn deny_allowlist(root: &Path) -> Result<Vec<String>> {
     let path = root.join(DENY);
@@ -211,8 +159,6 @@ fn is_copyleft(expression: &Expression) -> bool {
             .is_some_and(|license| !license.is_copyleft())
     })
 }
-
-// ── Manifests ────────────────────────────────────────────────────────────────
 
 /// A workspace crate, as the checks need it.
 #[derive(Clone, Debug)]
@@ -302,8 +248,6 @@ fn check_manifests(
     }
     Ok(findings)
 }
-
-// ── Headers ──────────────────────────────────────────────────────────────────
 
 /// How a file type writes comments.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -408,12 +352,12 @@ fn check_header(relative: &Path, syntax: Syntax, text: &str, expected: &str) -> 
 
     let copyrights: Vec<&str> = block
         .iter()
-        .filter_map(|line| line.strip_prefix(COPYRIGHT_TAG))
+        .filter_map(|line| line.strip_prefix(SPDX_COPYRIGHT_TAG))
         .map(str::trim)
         .collect();
     if copyrights.is_empty() {
         findings.push(format!(
-            "{path}: no {COPYRIGHT_TAG} line in its initial comment block"
+            "{path}: no {SPDX_COPYRIGHT_TAG} line in its initial comment block"
         ));
     }
     for copyright in copyrights {
@@ -436,12 +380,12 @@ fn check_header(relative: &Path, syntax: Syntax, text: &str, expected: &str) -> 
 
     let identifiers: Vec<&str> = block
         .iter()
-        .filter_map(|line| line.strip_prefix(IDENTIFIER_TAG))
+        .filter_map(|line| line.strip_prefix(SPDX_IDENTIFIER_TAG))
         .map(str::trim)
         .collect();
     match identifiers.as_slice() {
         [] => findings.push(format!(
-            "{path}: no {IDENTIFIER_TAG} line in its initial comment block"
+            "{path}: no {SPDX_IDENTIFIER_TAG} line in its initial comment block"
         )),
         [identifier] => match Expression::parse(identifier) {
             Ok(expression) if expression.to_string() == expected => {}
@@ -451,7 +395,7 @@ fn check_header(relative: &Path, syntax: Syntax, text: &str, expected: &str) -> 
             Err(error) => findings.push(format!("{path}: `{identifier}` does not parse: {error}")),
         },
         _ => findings.push(format!(
-            "{path}: more than one {IDENTIFIER_TAG} line in its initial comment block"
+            "{path}: more than one {SPDX_IDENTIFIER_TAG} line in its initial comment block"
         )),
     }
     findings
@@ -513,8 +457,6 @@ fn check_headers(root: &Path, crates: &[Crate], registry: &Registry) -> Result<V
     Ok(findings)
 }
 
-// ── Layering ─────────────────────────────────────────────────────────────────
-
 /// Each package's normal-kind dependencies, by package id, from the resolve graph.
 fn normal_edges(metadata: &Metadata) -> BTreeMap<String, Vec<String>> {
     metadata
@@ -525,12 +467,7 @@ fn normal_edges(metadata: &Metadata) -> BTreeMap<String, Vec<String>> {
             let dependencies = node
                 .deps
                 .iter()
-                .filter(|dependency| {
-                    dependency
-                        .dep_kinds
-                        .iter()
-                        .any(|kind| kind.kind == DependencyKind::Normal)
-                })
+                .filter(|d| d.dep_kinds.iter().any(|k| k.kind == DependencyKind::Normal))
                 .map(|dependency| dependency.pkg.repr.clone())
                 .collect();
             (node.id.repr.clone(), dependencies)
@@ -579,12 +516,11 @@ fn check_layering(crates: &[Crate], edges: &BTreeMap<String, Vec<String>>) -> Ve
     findings
 }
 
-// ── License texts and the registry ───────────────────────────────────────────
-
 /// Both editions hash to the FSF's files, and the root holds no other license file.
 fn check_texts(root: &Path) -> Result<Vec<String>> {
     let mut findings = Vec::new();
-    for (path, digest) in [ROOT_LICENSE, MARKDOWN_LICENSE] {
+    for document in [LICENSE, LICENSE_MD] {
+        let path = document.path;
         let full = root.join(path);
         match fs::symlink_metadata(&full) {
             Err(_) => findings.push(format!("{path}: missing")),
@@ -594,7 +530,7 @@ fn check_texts(root: &Path) -> Result<Vec<String>> {
             Ok(_) => {
                 let bytes = fs::read(&full)
                     .with_context(|| format!("Failed to read {}", full.display()))?;
-                if hex::encode(Sha256::digest(&bytes)) != digest {
+                if hex::encode(Sha256::digest(&bytes)) != document.checksum {
                     findings.push(format!(
                         "{path}: differs from the FSF's published text; it may only be replaced with that text, verbatim"
                     ));
@@ -608,7 +544,7 @@ fn check_texts(root: &Path) -> Result<Vec<String>> {
         let name = entry.file_name();
         let name = name.to_string_lossy();
         let upper = name.to_ascii_uppercase();
-        if name != ROOT_LICENSE.0
+        if name != LICENSE.path
             && (upper.starts_with("LICENSE") || upper.starts_with("COPYING"))
             && entry.file_type()?.is_file()
         {
@@ -654,8 +590,6 @@ fn check_registry(root: &Path, registry: &Registry, allowlist: &[String]) -> Res
     Ok(findings)
 }
 
-// ── Allowlists ───────────────────────────────────────────────────────────────
-
 /// The string literals of the array assigned to `name` in TypeScript source.
 fn typescript_string_array(source: &str, name: &str) -> Option<Vec<String>> {
     let after_name = &source[source.find(&format!("const {name}"))? + name.len()..];
@@ -696,185 +630,17 @@ fn compare_allowlists(frontend: &[String], deny: &[String]) -> Vec<String> {
         .collect()
 }
 
-// ── The published agreement ──────────────────────────────────────────────────
-
-/// The agreement and its signing form, in the repository or in the Gist.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Agreement {
-    pub text: String,
-    pub metadata: String,
-}
-
-impl Agreement {
-    /// The repository's copy.
-    pub fn from_repository(root: &Path) -> Result<Self> {
-        let read = |path: &str| {
-            fs::read_to_string(root.join(path)).with_context(|| format!("Failed to read {path}"))
-        };
-        Ok(Self {
-            text: read(AGREEMENT)?,
-            metadata: read(AGREEMENT_METADATA)?,
-        })
-    }
-
-    /// The first line naming a version. A text change must change this line.
-    fn version_line(&self) -> Option<&str> {
-        self.text.lines().find(|line| line.contains(" version "))
-    }
-
-    /// Whether the text still holds a blank such as `[SUCCESSION_WINDOW]`.
-    fn has_blank(&self) -> bool {
-        self.text.split('[').skip(1).any(|rest| {
-            rest.split_once(']').is_some_and(|(inner, _)| {
-                !inner.is_empty()
-                    && inner
-                        .chars()
-                        .all(|c| c.is_ascii_uppercase() || c == '_' || c.is_ascii_digit())
-            })
-        })
-    }
-}
-
-/// How the repository's agreement stands against the Gist's.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Publication {
-    /// The two are identical.
-    Current,
-    /// The repository's text holds a blank, so it cannot be published yet.
-    UnpublishedDraft,
-    /// The repository carries a version the Gist has not received.
-    Pending,
-    /// The text differs under the same version line, in one copy or the other.
-    TextWithoutBump,
-    /// The agreement is identical but the signing form is not.
-    MetadataDrift,
-}
-
-/// Where the check runs, which decides how a pending publication is judged.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Branch {
-    /// A pull request or a local run: publication follows the merge.
-    PullRequest,
-    /// A push to `main`: the merge has happened, so publication is due.
-    Main,
-}
-
-impl Branch {
-    /// The runner's ref decides; anything but `main`, or no runner, is a pull request.
-    pub fn from_environment() -> Self {
-        match std::env::var("GITHUB_REF").as_deref() {
-            Ok("refs/heads/main") => Self::Main,
-            _ => Self::PullRequest,
-        }
-    }
-}
-
-/// Compares the two copies.
-pub fn compare(repository: &Agreement, gist: &Agreement) -> Publication {
-    if repository.has_blank() {
-        Publication::UnpublishedDraft
-    } else if repository == gist {
-        Publication::Current
-    } else if repository.text == gist.text {
-        Publication::MetadataDrift
-    } else if repository.version_line() == gist.version_line() {
-        Publication::TextWithoutBump
-    } else {
-        Publication::Pending
-    }
-}
-
-/// A finding, if `publication` should fail a run on `branch`.
-fn judge(publication: Publication, branch: Branch) -> Option<String> {
-    match publication {
-        Publication::Current | Publication::UnpublishedDraft => None,
-        Publication::Pending => (branch == Branch::Main).then(|| {
-            format!(
-                "{AGREEMENT}: its version has not been published; run `cargo xtask license publish`"
-            )
-        }),
-        Publication::TextWithoutBump => Some(format!(
-            "{AGREEMENT}: differs from the published copy under the same version line; bump the version, or restore whichever copy was edited"
-        )),
-        Publication::MetadataDrift => Some(format!(
-            "{AGREEMENT_METADATA}: differs from the published signing form; run `cargo xtask license publish`"
-        )),
-    }
-}
-
-/// Reads and writes the Gist CLA assistant displays.
-pub trait Gist {
-    /// The published copy.
-    fn read(&self) -> Result<Agreement>;
-    /// Replaces the published copy, returning the revision created.
-    fn write(&self, agreement: &Agreement) -> Result<String>;
-}
-
-/// The Gist as GitHub holds it. Reading needs nothing; writing runs the device flow.
-pub struct GitHubGist;
-
-impl Gist for GitHubGist {
-    fn read(&self) -> Result<Agreement> {
-        Ok(Agreement {
-            text: github::raw_gist_file(GIST_OWNER, GIST_ID, GIST_AGREEMENT)?,
-            metadata: github::raw_gist_file(GIST_OWNER, GIST_ID, GIST_METADATA)?,
-        })
-    }
-
-    fn write(&self, agreement: &Agreement) -> Result<String> {
-        github::update_gist_as_user(
-            CLIENT_ID,
-            GIST_ID,
-            [
-                (GIST_AGREEMENT, agreement.text.as_str()),
-                (GIST_METADATA, agreement.metadata.as_str()),
-            ],
-        )
-    }
-}
-
-/// What [`publish`] did.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Published {
-    /// The Gist already held this agreement.
-    AlreadyCurrent,
-    /// A new Gist revision, which is what makes CLA assistant ask signers again.
-    Revision(String),
-}
-
-/// Writes the repository's agreement to the Gist, refusing anything a signer
-/// should not be asked to sign.
-pub fn publish(repository: &Agreement, gist: &impl Gist) -> Result<Published> {
-    if repository.has_blank() {
-        bail!("{AGREEMENT} still holds a bracketed blank; fill it before publishing");
-    }
-    let published = gist.read()?;
-    match compare(repository, &published) {
-        Publication::Current => Ok(Published::AlreadyCurrent),
-        Publication::TextWithoutBump => bail!(
-            "{AGREEMENT} differs from the published copy under the same version line; every signer would be asked again for a change nobody can name, so bump the version first"
-        ),
-        Publication::UnpublishedDraft | Publication::Pending | Publication::MetadataDrift => {
-            gist.write(repository).map(Published::Revision)
-        }
-    }
-}
-
-// ── The check ────────────────────────────────────────────────────────────────
-
 /// The outcome of [`check`].
 #[derive(Debug, Default)]
 pub struct Report {
     /// Everything that must be fixed. Empty means the run passes.
     pub findings: Vec<String>,
-    /// What a reader should know without failing the run.
-    pub notes: Vec<String>,
     /// How many workspace crates were judged.
     pub crates: usize,
 }
 
 /// Runs every check against the workspace at `root`, reporting them all.
-pub fn check(root: &Path, branch: Branch, gist: &impl Gist) -> Result<Report> {
+pub fn check(root: &Path) -> Result<Report> {
     let metadata = MetadataCommand::new()
         .current_dir(root)
         .exec()
@@ -901,33 +667,14 @@ pub fn check(root: &Path, branch: Branch, gist: &impl Gist) -> Result<Report> {
         .findings
         .extend(check_registry(root, &registry, &allowlist)?);
     report.findings.extend(check_allowlists(root, &allowlist)?);
-
-    let repository = Agreement::from_repository(root)?;
-    match gist.read() {
-        Ok(published) => {
-            let publication = compare(&repository, &published);
-            report.findings.extend(judge(publication, branch));
-            match publication {
-                Publication::UnpublishedDraft => report.notes.push(format!(
-                    "{AGREEMENT} is a draft with blanks; it cannot be published until they are filled"
-                )),
-                Publication::Pending if branch == Branch::PullRequest => report.notes.push(format!(
-                    "{AGREEMENT} carries a version not yet published; publish it after this merges"
-                )),
-                _ => {}
-            }
-        }
-        Err(error) => report.notes.push(format!(
-            "could not compare {AGREEMENT} with the published copy, so it was not checked: {error:#}"
-        )),
-    }
     Ok(report)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::CLA_PATH as AGREEMENT;
     use super::*;
-    use std::cell::RefCell;
+    use indoc::{formatdoc, indoc};
 
     fn allowlist() -> Vec<String> {
         ["MIT", "Apache-2.0", "MPL-2.0"].map(str::to_owned).to_vec()
@@ -950,29 +697,29 @@ mod tests {
         Registry::parse(text).unwrap()
     }
 
-    const REGISTERED: &str = r#"
-        [[entry]]
-        path = "tooling/vendored"
-        kind = "crate"
-        project = "someone/vendored"
-        holder = "Someone"
-        license = "Apache-2.0"
-        texts = ["LICENSE"]
+    const REGISTERED: &str = indoc! { r#"
+      [[entry]]
+      path = "tooling/vendored"
+      kind = "crate"
+      project = "someone/vendored"
+      holder = "Someone"
+      license = "Apache-2.0"
+      texts = ["LICENSE"]
 
-        [[entry]]
-        path = "src/icons"
-        kind = "files"
-        project = "someone/icons"
-        holder = "Someone"
-        license = "MIT"
+      [[entry]]
+      path = "src/icons"
+      kind = "files"
+      project = "someone/icons"
+      holder = "Someone"
+      license = "MIT"
 
-        [[entry]]
-        path = "src/app/ported.rs"
-        kind = "portion"
-        project = "someone/routine"
-        holder = "Someone"
-        license = "MIT"
-    "#;
+      [[entry]]
+      path = "src/app/ported.rs"
+      kind = "portion"
+      project = "someone/routine"
+      holder = "Someone"
+      license = "MIT"
+    "# };
 
     fn manifests(krate: &Crate) -> Vec<String> {
         let root = tempfile::tempdir().unwrap();
@@ -984,8 +731,6 @@ mod tests {
         )
         .unwrap()
     }
-
-    // ── Registry ─────────────────────────────────────────────────────────────
 
     #[test]
     fn the_registry_yields_crates_and_exempt_paths() {
@@ -1004,24 +749,20 @@ mod tests {
     #[test]
     fn a_missing_text_and_an_unlisted_license_are_named() {
         let root = tempfile::tempdir().unwrap();
-        let registry = registry(
-            r#"
-            [[entry]]
-            path = "tooling/vendored"
-            kind = "crate"
-            project = "someone/vendored"
-            holder = "Someone"
-            license = "GPL-3.0-only"
-            texts = ["LICENSE"]
-            "#,
-        );
+        let registry = registry(indoc! { r#"
+          [[entry]]
+          path = "tooling/vendored"
+          kind = "crate"
+          project = "someone/vendored"
+          holder = "Someone"
+          license = "GPL-3.0-only"
+          texts = ["LICENSE"]
+        "# });
         let findings = check_registry(root.path(), &registry, &allowlist()).unwrap();
         assert_eq!(findings.len(), 2, "{findings:?}");
         assert!(findings[0].contains("GPL-3.0-only"), "{findings:?}");
         assert!(findings[1].contains("LICENSE"), "{findings:?}");
     }
-
-    // ── Manifests ────────────────────────────────────────────────────────────
 
     #[test]
     fn a_crate_at_the_policy_passes() {
@@ -1062,10 +803,10 @@ mod tests {
         assert!(findings[0].contains("declares no license"), "{findings:?}");
     }
 
-    // ── Headers ──────────────────────────────────────────────────────────────
-
-    const TAGS: &str =
-        "SPDX-FileCopyrightText: 2026 John Muchovej\nSPDX-License-Identifier: AGPL-3.0-or-later";
+    const TAGS: &str = indoc! { "
+      SPDX-FileCopyrightText: 2026 John Muchovej
+      SPDX-License-Identifier: AGPL-3.0-or-later
+    " };
 
     fn commented(prefix: &str) -> String {
         TAGS.lines()
@@ -1080,74 +821,112 @@ mod tests {
 
     #[test]
     fn a_shebang_script_passes() {
-        let text = format!("#!/usr/bin/env nu\n{}\ndef main [] {{}}\n", commented("# "));
+        let text = formatdoc! { "
+          #!/usr/bin/env nu
+          {comments}
+          def main [] {{}}
+        ", comments = commented("# ")
+        };
         assert_eq!(header("tooling/bin/xtauri", &text), [""; 0]);
     }
 
     #[test]
     fn a_tombi_directive_may_come_first() {
-        let text = format!(
-            "#:tombi toml-version = \"v1.1.0\"\n#:schema https://example.com\n{}\n[a]\n",
-            commented("# ")
-        );
+        let text = formatdoc! { r#"
+          #:tombi toml-version = "v1.1.0"
+          #:schema https://example.com
+          {comments}
+          [a]
+        "#, comments = commented("# ")
+        };
         assert_eq!(header("Cargo.toml", &text), [""; 0]);
     }
 
     #[test]
     fn a_vue_file_carries_an_html_comment() {
-        let text = format!("<!--\n{}-->\n\n<template></template>\n", commented("  "));
+        let text = formatdoc! { "
+          <!--
+          {comments}
+          -->
+
+          <template></template>
+        ", comments = commented("  ")
+        };
         assert_eq!(header("src/app/app.vue", &text), [""; 0]);
     }
 
     #[test]
     fn a_css_file_carries_a_block_comment() {
-        let text = format!("/*\n{} */\n\nbody {{}}\n", commented(" * "));
+        let text = formatdoc! { "
+          /*
+          {comments} */
+
+          body {{}}
+        ", comments = commented(" * ")
+        };
         assert_eq!(header("src/app/main.css", &text), [""; 0]);
     }
 
     #[test]
     fn a_generated_marker_may_come_first() {
-        let text = format!(
-            "// DO NOT EDIT.\n{}\nexport type A = 1;\n",
-            commented("// ")
-        );
+        let text = formatdoc! { "
+          // DO NOT EDIT.
+          {comments}
+          export type A = 1;
+        ", comments = commented("// ")
+        };
         assert_eq!(header("crates/a/types.g.ts", &text), [""; 0]);
     }
 
     /// `#![…]` is an inner attribute, not a shebang, and comes after the header.
     #[test]
     fn an_inner_attribute_is_not_a_shebang() {
-        let text = format!("{}\n#![allow(unused)]\n", commented("// "));
+        let text = formatdoc! { "
+          {comments}
+          #![allow(unused)]
+        ", comments = commented("// ")
+        };
         assert_eq!(header("crates/a/src/lib.rs", &text), [""; 0]);
     }
 
     #[test]
     fn a_missing_tag_is_named() {
-        let text = "// SPDX-FileCopyrightText: 2026 John Muchovej\nfn main() {}\n";
+        let text = indoc! { "
+          // SPDX-FileCopyrightText: 2026 John Muchovej
+          fn main() {}
+        " };
         let findings = header("crates/a/src/lib.rs", text);
         assert_eq!(findings.len(), 1, "{findings:?}");
-        assert!(findings[0].contains(IDENTIFIER_TAG), "{findings:?}");
+        assert!(findings[0].contains(SPDX_IDENTIFIER_TAG), "{findings:?}");
         assert!(findings[0].contains("crates/a/src/lib.rs"), "{findings:?}");
     }
 
     #[test]
     fn a_tag_after_the_code_does_not_count() {
-        let text = format!("fn main() {{}}\n{}", commented("// "));
+        let text = formatdoc! { "
+          fn main() {{}}
+          {comments}", comments = commented("// ")
+        };
         assert_eq!(header("crates/a/src/lib.rs", &text).len(), 2);
     }
 
     #[test]
     fn a_second_holder_is_accepted() {
-        let text = format!(
-            "// SPDX-FileCopyrightText: 2028 A Contributor\n{}\nfn main() {{}}\n",
-            commented("// ")
-        );
+        let text = formatdoc! { "
+          // SPDX-FileCopyrightText: 2028 A Contributor
+          {comments}
+          fn main() {{}}
+        ", comments = commented("// ")
+        };
         assert_eq!(header("crates/a/src/lib.rs", &text), [""; 0]);
     }
 
     #[test]
     fn a_year_range_is_rejected() {
-        let text = "// SPDX-FileCopyrightText: 2026-2029 John Muchovej\n// SPDX-License-Identifier: AGPL-3.0-or-later\n";
+        let text = indoc! { "
+          // SPDX-FileCopyrightText: 2026-2029 John Muchovej
+          // SPDX-License-Identifier: AGPL-3.0-or-later
+        " };
         let findings = header("crates/a/src/lib.rs", text);
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(
@@ -1158,8 +937,10 @@ mod tests {
 
     #[test]
     fn a_header_disagreeing_with_its_crate_names_both() {
-        let text =
-            "// SPDX-FileCopyrightText: 2026 John Muchovej\n// SPDX-License-Identifier: MIT\n";
+        let text = indoc! { "
+          // SPDX-FileCopyrightText: 2026 John Muchovej
+          // SPDX-License-Identifier: MIT
+        " };
         let findings = header("crates/a/src/lib.rs", text);
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(findings[0].contains("MIT"), "{findings:?}");
@@ -1168,7 +949,10 @@ mod tests {
 
     #[test]
     fn an_unparsable_expression_is_named() {
-        let text = "// SPDX-FileCopyrightText: 2026 John Muchovej\n// SPDX-License-Identifier: not a license\n";
+        let text = indoc! { "
+          // SPDX-FileCopyrightText: 2026 John Muchovej
+          // SPDX-License-Identifier: not a license
+        " };
         let findings = header("crates/a/src/lib.rs", text);
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(findings[0].contains("does not parse"), "{findings:?}");
@@ -1176,7 +960,10 @@ mod tests {
 
     #[test]
     fn a_placeholder_holder_is_named() {
-        let text = "// SPDX-FileCopyrightText: 2026 [HOLDER]\n// SPDX-License-Identifier: AGPL-3.0-or-later\n";
+        let text = indoc! { "
+          // SPDX-FileCopyrightText: 2026 [HOLDER]
+          // SPDX-License-Identifier: AGPL-3.0-or-later
+        " };
         let findings = header("crates/a/src/lib.rs", text);
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(findings[0].contains("placeholder"), "{findings:?}");
@@ -1184,7 +971,10 @@ mod tests {
 
     #[test]
     fn two_identifiers_are_rejected() {
-        let text = format!("{}// SPDX-License-Identifier: MIT\n", commented("// "));
+        let text = formatdoc! { "
+          {comments}// SPDX-License-Identifier: MIT
+        ", comments = commented("// ")
+        };
         let findings = header("crates/a/src/lib.rs", &text);
         assert!(findings[0].contains("more than one"), "{findings:?}");
     }
@@ -1325,7 +1115,7 @@ mod tests {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let root = tempfile::tempdir().unwrap();
         fs::create_dir_all(root.path().join("docs/licensing")).unwrap();
-        for (path, _) in [ROOT_LICENSE, MARKDOWN_LICENSE] {
+        for path in [LICENSE.path, LICENSE_MD.path] {
             fs::copy(repo.join(path), root.path().join(path)).unwrap();
         }
         root
@@ -1339,7 +1129,7 @@ mod tests {
 
     #[test]
     fn a_one_byte_edit_to_either_text_fails() {
-        for (path, _) in [ROOT_LICENSE, MARKDOWN_LICENSE] {
+        for path in [LICENSE.path, LICENSE_MD.path] {
             let root = texts_root();
             let mut bytes = fs::read(root.path().join(path)).unwrap();
             bytes[0] ^= 1;
@@ -1420,7 +1210,13 @@ mod tests {
 
     #[test]
     fn the_frontend_list_is_read_from_its_constant() {
-        let source = "const OTHER = [\"x\"];\nconst LICENSE_ALLOWLIST = [\n  \"MIT\",\n  \"Apache-2.0 WITH LLVM-exception\",\n];\n";
+        let source = indoc! { r#"
+          const OTHER = ["x"];
+          const LICENSE_ALLOWLIST = [
+            "MIT",
+            "Apache-2.0 WITH LLVM-exception",
+          ];
+        "# };
         assert_eq!(
             typescript_string_array(source, NUXT_ALLOWLIST).unwrap(),
             ["MIT", "Apache-2.0 WITH LLVM-exception"]
@@ -1448,153 +1244,5 @@ mod tests {
     fn identical_lists_pass() {
         let list = allowlist();
         assert!(compare_allowlists(&list, &list).is_empty());
-    }
-
-    // ── Publication ──────────────────────────────────────────────────────────
-
-    fn agreement(text: &str, metadata: &str) -> Agreement {
-        Agreement {
-            text: text.to_owned(),
-            metadata: metadata.to_owned(),
-        }
-    }
-
-    const V1: &str = "**Agreement — version 1.0**\n\nThe text.\n";
-    const V1_EDITED: &str = "**Agreement — version 1.0**\n\nThe edited text.\n";
-    const V2: &str = "**Agreement — version 2.0**\n\nThe text.\n";
-    const DRAFT: &str = "**Agreement — version 1.0-draft**\n\nWithin [SUCCESSION_WINDOW].\n";
-
-    #[test]
-    fn identical_copies_are_current_everywhere() {
-        let publication = compare(&agreement(V1, "{}"), &agreement(V1, "{}"));
-        assert_eq!(publication, Publication::Current);
-        assert_eq!(judge(publication, Branch::PullRequest), None);
-        assert_eq!(judge(publication, Branch::Main), None);
-    }
-
-    #[test]
-    fn a_newer_version_is_pending_until_the_merge() {
-        let publication = compare(&agreement(V2, "{}"), &agreement(V1, "{}"));
-        assert_eq!(publication, Publication::Pending);
-        assert_eq!(judge(publication, Branch::PullRequest), None);
-        assert!(
-            judge(publication, Branch::Main)
-                .unwrap()
-                .contains("publish")
-        );
-    }
-
-    #[test]
-    fn a_text_change_without_a_bump_fails_everywhere() {
-        let publication = compare(&agreement(V1_EDITED, "{}"), &agreement(V1, "{}"));
-        assert_eq!(publication, Publication::TextWithoutBump);
-        assert!(judge(publication, Branch::PullRequest).is_some());
-        assert!(judge(publication, Branch::Main).is_some());
-    }
-
-    #[test]
-    fn metadata_drift_beside_an_identical_text_fails_everywhere() {
-        let publication = compare(&agreement(V1, "{\"a\":1}"), &agreement(V1, "{}"));
-        assert_eq!(publication, Publication::MetadataDrift);
-        assert!(judge(publication, Branch::PullRequest).is_some());
-        assert!(judge(publication, Branch::Main).is_some());
-    }
-
-    /// A publication writes both files, so a new form beside a new version is pending.
-    #[test]
-    fn a_pending_publication_covers_the_form_too() {
-        let publication = compare(&agreement(V2, "{\"a\":1}"), &agreement(V1, "{}"));
-        assert_eq!(publication, Publication::Pending);
-    }
-
-    /// The state from the merge until the first publication: the Gist holds a
-    /// placeholder and an older form, and the repository's draft cannot go there.
-    #[test]
-    fn a_draft_with_blanks_passes_everywhere() {
-        let placeholder = agreement("Placeholder until the CLA's written.", "{\"old\":1}");
-        let publication = compare(&agreement(DRAFT, "{}"), &placeholder);
-        assert_eq!(publication, Publication::UnpublishedDraft);
-        assert_eq!(judge(publication, Branch::PullRequest), None);
-        assert_eq!(judge(publication, Branch::Main), None);
-    }
-
-    #[test]
-    fn a_markdown_link_is_not_a_blank() {
-        assert!(!agreement("See [the page](x) and [Lowercase].", "").has_blank());
-        assert!(agreement("Within [FALLBACK_ORGANIZATION].", "").has_blank());
-    }
-
-    /// The Gist, in memory.
-    struct FakeGist {
-        published: RefCell<Agreement>,
-        writes: RefCell<usize>,
-    }
-
-    impl FakeGist {
-        fn holding(agreement: Agreement) -> Self {
-            Self {
-                published: RefCell::new(agreement),
-                writes: RefCell::new(0),
-            }
-        }
-    }
-
-    impl Gist for FakeGist {
-        fn read(&self) -> Result<Agreement> {
-            Ok(self.published.borrow().clone())
-        }
-
-        fn write(&self, agreement: &Agreement) -> Result<String> {
-            *self.published.borrow_mut() = agreement.clone();
-            *self.writes.borrow_mut() += 1;
-            Ok("revision-sha".to_owned())
-        }
-    }
-
-    #[test]
-    fn publishing_a_new_version_writes_both_files() {
-        let gist = FakeGist::holding(agreement(V1, "{}"));
-        let repository = agreement(V2, "{\"a\":1}");
-        assert_eq!(
-            publish(&repository, &gist).unwrap(),
-            Published::Revision("revision-sha".to_owned())
-        );
-        assert_eq!(*gist.published.borrow(), repository);
-    }
-
-    #[test]
-    fn publishing_what_is_there_writes_nothing() {
-        let gist = FakeGist::holding(agreement(V1, "{}"));
-        assert_eq!(
-            publish(&agreement(V1, "{}"), &gist).unwrap(),
-            Published::AlreadyCurrent
-        );
-        assert_eq!(*gist.writes.borrow(), 0);
-    }
-
-    #[test]
-    fn publishing_refuses_a_blank() {
-        let gist = FakeGist::holding(agreement(V1, "{}"));
-        let error = publish(&agreement(DRAFT, "{}"), &gist).unwrap_err();
-        assert!(error.to_string().contains("bracketed blank"), "{error}");
-        assert_eq!(*gist.writes.borrow(), 0);
-    }
-
-    #[test]
-    fn publishing_refuses_a_text_change_without_a_bump() {
-        let gist = FakeGist::holding(agreement(V1, "{}"));
-        let error = publish(&agreement(V1_EDITED, "{}"), &gist).unwrap_err();
-        assert!(error.to_string().contains("bump the version"), "{error}");
-        assert_eq!(*gist.writes.borrow(), 0);
-    }
-
-    /// A signing form edited in the Gist is restored from the repository.
-    #[test]
-    fn publishing_restores_a_drifted_form() {
-        let gist = FakeGist::holding(agreement(V1, "{\"hand\":1}"));
-        assert_eq!(
-            publish(&agreement(V1, "{}"), &gist).unwrap(),
-            Published::Revision("revision-sha".to_owned())
-        );
     }
 }

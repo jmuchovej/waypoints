@@ -1,17 +1,13 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Holds the tree to the licensing policy, and publishes the contributor
-//! agreement. The checks are [`xtask::license`]'s; this picks what to run and
-//! prints what it found.
+//! Holds the tree to the licensing policy. The checks are [`xtask::license`]'s;
+//! this picks what to run and prints what it found.
 
 use anyhow::{Context as _, Result, bail};
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 use std::fs;
-use xtask::{
-    license::{self, Agreement, Branch, GitHubGist, Published},
-    workspace,
-};
+use xtask::{license, workspace};
 
 #[derive(Parser)]
 pub struct Options {
@@ -21,51 +17,24 @@ pub struct Options {
 
 #[derive(Subcommand)]
 enum Action {
-    /// Checks manifests, headers, layering, license texts, the third-party
-    /// registry, and the published agreement. The default.
-    Check(CheckOptions),
+    /// Checks manifests, headers, layering, license texts, and the third-party
+    /// registry. The default.
+    Check,
     /// Regenerates `THIRD-PARTY-NOTICES.md` from the registry and the lockfiles.
     Notices,
-    /// Writes the repository's agreement to the Gist CLA assistant displays.
-    /// Approve the code it prints in a browser; nothing is stored.
-    Publish,
-}
-
-#[derive(Default, Parser)]
-struct CheckOptions {
-    /// Judge an unpublished agreement version as this branch would. Defaults
-    /// to what `$GITHUB_REF` says, and to a pull request off a runner.
-    #[arg(long, value_enum)]
-    branch: Option<BranchArg>,
-}
-
-#[derive(Clone, Copy, ValueEnum)]
-enum BranchArg {
-    PullRequest,
-    Main,
 }
 
 pub fn run(args: Options) -> Result<()> {
     let root = workspace::load()?.workspace_root.into_std_path_buf();
     match args.action {
-        None => check(&root, CheckOptions::default()),
-        Some(Action::Check(options)) => check(&root, options),
+        None | Some(Action::Check) => check(&root),
         Some(Action::Notices) => notices(&root),
-        Some(Action::Publish) => publish(&root),
     }
 }
 
-fn check(root: &std::path::Path, options: CheckOptions) -> Result<()> {
-    let branch = match options.branch {
-        Some(BranchArg::PullRequest) => Branch::PullRequest,
-        Some(BranchArg::Main) => Branch::Main,
-        None => Branch::from_environment(),
-    };
-    let report = license::check(root, branch, &GitHubGist)?;
+fn check(root: &std::path::Path) -> Result<()> {
+    let report = license::check_headers(root)?;
 
-    for note in &report.notes {
-        println!("note: {note}");
-    }
     for finding in &report.findings {
         eprintln!("{finding}");
     }
@@ -82,22 +51,13 @@ fn check(root: &std::path::Path, options: CheckOptions) -> Result<()> {
 }
 
 fn notices(root: &std::path::Path) -> Result<()> {
-    let contents = license::notices::generate(root)?;
-    let path = root.join(license::notices::NOTICES);
+    let contents = license::generate_notices(root)?;
+    let path = root.join(license::NOTICES_PATH);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create {}", parent.display()))?;
     }
     fs::write(&path, contents).with_context(|| format!("Failed to write {}", path.display()))?;
     println!("wrote {}", path.display());
-    Ok(())
-}
-
-fn publish(root: &std::path::Path) -> Result<()> {
-    let repository = Agreement::from_repository(root)?;
-    match license::publish(&repository, &GitHubGist)? {
-        Published::AlreadyCurrent => println!("the published agreement is already current"),
-        Published::Revision(revision) => println!("published as revision {revision}"),
-    }
     Ok(())
 }
