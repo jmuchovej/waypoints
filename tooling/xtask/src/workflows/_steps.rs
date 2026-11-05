@@ -1180,6 +1180,19 @@ mod tests {
         "SCCACHE_ENDPOINT",
     ];
 
+    /// This runs under `GITHUB_TOKEN`, which is no bypass actor on the tag
+    /// ruleset, so the flag is what stops `gh` trying to create a missing tag.
+    #[test]
+    fn the_draft_never_creates_its_tag() {
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let step = rendered(create_release(channel, None));
+            let run = step["run"].as_str().expect("run");
+            assert!(run.contains("gh release create"), "{run}");
+            assert!(run.contains("--verify-tag"), "{run}");
+            assert_eq!(step["env"]["GH_TOKEN"], GITHUB_TOKEN);
+        }
+    }
+
     /// Profile and scope travel as one value, so every rendering carries both.
     #[test]
     fn a_resolution_renders_its_profile_and_scope_together() {

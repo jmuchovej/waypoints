@@ -12,6 +12,9 @@ via-tofu reason cmd *ARGS:
     export PGSSLMODE="require"
     secretspec run --scope tofu-backend tofu {{ cmd }} {{ ARGS }}
 
+console:
+    @{{ just }} via-tofu "running the console" console
+
 apply *ARGS:
     @{{ just }} via-tofu "applying tofu deployment" apply {{ ARGS }}
 
@@ -23,3 +26,6 @@ state *ARGS:
 
 init *ARGS:
     @{{ just }} via-tofu "initializing tofu" init {{ ARGS }}
+
+import *ARGS:
+    @{{ just }} via-tofu "importing existing infrastructure into tofu state" import {{ ARGS }}

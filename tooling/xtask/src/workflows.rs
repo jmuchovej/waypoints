@@ -796,6 +796,75 @@ mod tests {
         }
     }
 
+    /// The App holds `administration: write` for OpenTofu, and CI mints tokens
+    /// from it. A token inherits the whole grant unless it names what it needs,
+    /// so every one must name something, and none may name this.
+    #[test]
+    fn no_minted_token_reaches_administration() {
+        let context = WorkflowContext::fixture();
+        let mut tokens = 0;
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            tokens += assert_tokens_stay_narrow(&name, &value);
+        }
+        assert!(tokens > 0, "no workflow mints a token");
+    }
+
+    /// Asserts every minted token's scopes; returns how many there are.
+    fn assert_tokens_stay_narrow(name: &str, value: &Value) -> usize {
+        let mut tokens = 0;
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            for step in job["steps"].as_array().into_iter().flatten() {
+                let uses = step["uses"].as_str().unwrap_or("");
+                if !uses.starts_with("actions/create-github-app-token@") {
+                    continue;
+                }
+                tokens += 1;
+                let scopes: Vec<&String> = step["with"]
+                    .as_object()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|(key, _)| key.starts_with("permission-").then_some(key))
+                    .collect();
+                assert!(
+                    !scopes.is_empty(),
+                    "{name}/{job_name}: an unnarrowed token inherits the whole grant"
+                );
+                assert!(
+                    !scopes
+                        .iter()
+                        .any(|scope| *scope == "permission-administration"),
+                    "{name}/{job_name}: names administration"
+                );
+            }
+        }
+        tokens
+    }
+
+    #[test]
+    #[should_panic(expected = "names administration")]
+    fn a_token_naming_administration_is_refused() {
+        assert_tokens_stay_narrow(
+            "synthetic",
+            &json!({ "jobs": { "plan": { "steps": [{
+                "uses": "actions/create-github-app-token@abc",
+                "with": { "permission-administration": "write" }
+            }]}}}),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "inherits the whole grant")]
+    fn an_unnarrowed_token_is_refused() {
+        assert_tokens_stay_narrow(
+            "synthetic",
+            &json!({ "jobs": { "plan": { "steps": [{
+                "uses": "actions/create-github-app-token@abc",
+                "with": { "app-id": "1" }
+            }]}}}),
+        );
+    }
+
     /// A ruleset will require this check, and a required check that does not
     /// report leaves a pull request waiting forever. It reads the title and
     /// description, so editing them must rerun it, and it diffs from the merge

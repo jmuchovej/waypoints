@@ -1,6 +1,7 @@
 terraform {
   required_providers {
     cloudflare  = { source = "cloudflare/cloudflare", version = "~> 5.27.0" }
+    github      = { source = "integrations/github", version = "~> 6.13" }
     onepassword = { source = "1password/onepassword", version = "~> 3.3.1" }
   }
 
@@ -41,6 +42,10 @@ provider "onepassword" {
 
 data "onepassword_vault" "waypoints" {
   name = "waypoints.so"
+}
+
+data "onepassword_vault" "wp-prod" {
+  name = "wp-prod"
 }
 
 data "onepassword_environment" "waypoints" {
