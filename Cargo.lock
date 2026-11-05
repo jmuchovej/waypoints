@@ -12583,6 +12583,7 @@ dependencies = [
  "opendal",
  "opendal-http-transport-reqwest",
  "rustls",
+ "schemars 1.2.2",
  "secretspec",
  "serde",
  "serde_json",

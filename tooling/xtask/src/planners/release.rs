@@ -86,8 +86,11 @@ pub fn next_main_message(next: &Version) -> String {
 }
 
 /// Plans `transition` from the checkout: the app's current version, or for
-/// a cut the stable tags and the commits since the last one.
+/// a cut the stable tags and the commits since the last one. Refuses a tree
+/// the group file does not describe.
 pub fn plan(transition: Transition) -> Result<Plan> {
+    crate::release_groups::load(&crate::workspace::load()?)?;
+
     let (from, commits) = match transition {
         Transition::Cut => {
             let tags = stable_tags()?;
