@@ -116,6 +116,13 @@ pub fn zizmor() -> Step<Run> {
         .add_env(("GH_TOKEN", "${{ github.token }}"))
 }
 
+pub fn cargo_deny_licenses() -> Step<Run> {
+    Step::new("Check dependency licenses")
+        .run("cargo deny check licenses")
+        .shell("bash")
+        .id("cargo-deny-licenses")
+}
+
 /// Runs an `xtask` subcommand via the `cargo xtask` alias in
 /// `.cargo/config.toml`.
 ///
