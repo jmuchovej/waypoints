@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Generates every checked-in GitHub Actions workflow.
+//! Generates every checked-in GitHub Actions workflow, and the checks OpenTofu
+//! requires of them.
 //!
 //! The YAML under `.github/workflows` is an artifact, not a source file. Edit
 //! the module named in each file's header, then run `cargo xtask workflows`.
@@ -137,17 +138,46 @@ pub fn workflows() -> Vec<WorkflowFile> {
     ]
 }
 
-/// Renders every workflow and either writes it or reports drift.
+/// Where OpenTofu auto-loads `var.github`.
+const TFVARS: &str = "tooling/infra/github.auto.tfvars.json";
+
+/// `var.github`, whose required checks are the display name of every job in the
+/// workflows that report on every pull request. A renamed job takes effect on
+/// GitHub at the next `tofu apply`.
+fn render_tfvars(context: &WorkflowContext) -> Result<RenderedFile> {
+    let mut checks = Vec::new();
+    for workflow in [
+        pull_request::workflow(context),
+        version_integrity::workflow(context),
+    ] {
+        let workflow = serde_json::to_value(&workflow).context("Failed to read a workflow")?;
+        for (id, job) in workflow["jobs"].as_object().into_iter().flatten() {
+            let name = job["name"].as_str();
+            let name = name.with_context(|| format!("Job `{id}` has no display name"))?;
+            checks.push(name.to_owned());
+        }
+    }
+
+    let vars = serde_json::json!({ "github": { "required-pr-checks": checks } });
+    Ok(RenderedFile {
+        path: PathBuf::from(TFVARS),
+        content: serde_json::to_string_pretty(&vars).context("Failed to render var.github")? + "\n",
+    })
+}
+
+/// Renders every workflow and `var.github`, and either writes them or reports
+/// drift.
 pub fn generate(check: bool) -> Result<()> {
     if !Path::new("src-tauri/").is_dir() || !Path::new("crates/domain/").is_dir() {
         anyhow::bail!("xtask workflows must be run from the project root");
     }
 
     let context = WorkflowContext::load()?;
-    let rendered = workflows()
+    let mut rendered = workflows()
         .iter()
         .map(|workflow| workflow.render(&context))
         .collect::<Result<Vec<_>>>()?;
+    rendered.push(render_tfvars(&context)?);
 
     if check {
         self::check(&rendered)
@@ -156,19 +186,22 @@ pub fn generate(check: bool) -> Result<()> {
     }
 }
 
-/// Writes every workflow, first clearing generated files so a renamed or
-/// dropped workflow leaves nothing behind.
-fn write(rendered: &[RenderedWorkflow]) -> Result<()> {
+/// Writes every file, first clearing generated workflows so a renamed or dropped
+/// one leaves nothing behind.
+fn write(rendered: &[RenderedFile]) -> Result<()> {
     for path in WorkflowFamily::all_generated_files()? {
         fs::remove_file(&path).with_context(|| format!("Failed to remove {}", path.display()))?;
     }
 
-    for workflow in rendered {
-        let folder = workflow.path.parent().expect("workflows live in a folder");
+    for file in rendered {
+        let folder = file
+            .path
+            .parent()
+            .expect("generated files live in a folder");
         fs::create_dir_all(folder)
             .with_context(|| format!("Failed to create directory: {}", folder.display()))?;
-        fs::write(&workflow.path, &workflow.content)
-            .with_context(|| format!("Failed to write {}", workflow.path.display()))?;
+        fs::write(&file.path, &file.content)
+            .with_context(|| format!("Failed to write {}", file.path.display()))?;
     }
 
     Ok(())
@@ -176,13 +209,13 @@ fn write(rendered: &[RenderedWorkflow]) -> Result<()> {
 
 /// Reports drift without touching the working tree, so it is safe against a
 /// dirty checkout.
-fn check(rendered: &[RenderedWorkflow]) -> Result<()> {
+fn check(rendered: &[RenderedFile]) -> Result<()> {
     let mut drift = Vec::new();
 
-    for workflow in rendered {
-        let path = workflow.path.display();
-        match fs::read_to_string(&workflow.path) {
-            Ok(on_disk) if on_disk == workflow.content => {}
+    for file in rendered {
+        let path = file.path.display();
+        match fs::read_to_string(&file.path) {
+            Ok(on_disk) if on_disk == file.content => {}
             Ok(_) => drift.push(format!("  {path} differs from what xtask would generate")),
             Err(error) if error.kind() == ErrorKind::NotFound => {
                 drift.push(format!("  {path} is missing"));
@@ -191,7 +224,7 @@ fn check(rendered: &[RenderedWorkflow]) -> Result<()> {
         }
     }
 
-    let expected: Vec<_> = rendered.iter().map(|workflow| &workflow.path).collect();
+    let expected: Vec<_> = rendered.iter().map(|file| &file.path).collect();
     for path in WorkflowFamily::all_generated_files()? {
         if !expected.contains(&&path) {
             drift.push(format!(
@@ -202,12 +235,12 @@ fn check(rendered: &[RenderedWorkflow]) -> Result<()> {
     }
 
     if drift.is_empty() {
-        println!("Workflows are in sync with tooling/xtask.");
+        println!("Workflows and var.github are in sync with tooling/xtask.");
         return Ok(());
     }
 
     anyhow::bail!(
-        "{count} generated workflow(s) are stale:\n{drift}\n\nRun `cargo xtask workflows` and commit the result.",
+        "{count} generated file(s) are stale:\n{drift}\n\nRun `cargo xtask workflows` and commit the result.",
         count = drift.len(),
         drift = drift.join("\n"),
     )
@@ -304,7 +337,7 @@ impl WorkflowFile {
         }
     }
 
-    fn render(&self, context: &WorkflowContext) -> Result<RenderedWorkflow> {
+    fn render(&self, context: &WorkflowContext) -> Result<RenderedFile> {
         let workflow = (self.source)(context);
 
         let path = self.family.path().join(format!("{}.yaml", self.stem));
@@ -321,12 +354,12 @@ impl WorkflowFile {
             .collect();
         content.truncate(content.trim_end().len());
         content.push('\n');
-        Ok(RenderedWorkflow { path, content })
+        Ok(RenderedFile { path, content })
     }
 }
 
-/// A workflow rendered to its final bytes, not yet committed to disk.
-struct RenderedWorkflow {
+/// A generated file rendered to its final bytes, not yet committed to disk.
+struct RenderedFile {
     path: PathBuf,
     content: String,
 }
@@ -902,6 +935,33 @@ mod tests {
             }
         }
         assert_eq!(opened, 4, "devenv-update, the index, and a cut's two");
+    }
+
+    /// `check-generated` is path-filtered and not required, so this is what catches
+    /// a renamed or added job on the pull request that makes the change.
+    #[test]
+    fn the_committed_tfvars_are_the_generated_ones() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let committed = fs::read_to_string(root.join(TFVARS)).expect(TFVARS);
+        let generated = render_tfvars(&WorkflowContext::fixture()).unwrap();
+        assert_eq!(committed, generated.content);
+    }
+
+    /// `render_tfvars` requires every job in these, and a required check that does
+    /// not report leaves a pull request waiting forever.
+    #[test]
+    fn the_workflows_that_supply_required_checks_report_on_every_pull_request() {
+        let context = WorkflowContext::fixture();
+        for workflow in [
+            pull_request::workflow(&context),
+            version_integrity::workflow(&context),
+        ] {
+            let value = serde_json::to_value(&workflow).unwrap();
+            let trigger = &value["on"]["pull_request"];
+            assert_eq!(trigger["branches"], json!(["**"]), "{trigger}");
+            assert!(trigger.get("paths").is_none(), "{trigger}");
+            assert!(trigger.get("paths-ignore").is_none(), "{trigger}");
+        }
     }
 
     /// GitHub wraps a merge commit's body at 72 columns, and these land unread.

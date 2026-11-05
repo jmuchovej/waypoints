@@ -84,7 +84,7 @@ enum Command {
     VersionIntegrity(tasks::version_integrity::Options),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::devenv_files::Options),
-    /// Regenerates every checked-in GitHub Actions workflow.
+    /// Regenerates every checked-in GitHub Actions workflow, and the checks OpenTofu requires of them.
     #[command(alias = "gen-workflows")]
     Workflows(tasks::workflows::Options),
     /// Regenerates the TypeScript bindings from the Rust data model.

@@ -59,11 +59,93 @@ resource "github_repository" "waypoints" {
   }
 }
 
-# Stops anyone hand-minting a tag the release pipelines would act on. Only the
-# planners create these, so the App is exempt and nothing else is.
+# `cargo xtask workflows` writes this to `github.auto.tfvars.json`.
+variable "github" {
+  type = object({
+    required-pr-checks = list(string)
+  })
+}
+
+# every change lands as merge through a PR. `0` approvals permits `wp-botswain`'s merges
+# to proceed unattended (instead of a bypass, which would skip the checks _before_ landing
+# on `main`).
+resource "github_repository_ruleset" "protected-main" {
+  name        = "protected-main"
+  repository  = github_repository.waypoints.name
+  target      = "branch"
+  enforcement = "active"
+
+  conditions {
+    ref_name {
+      include = ["~DEFAULT_BRANCH"]
+      exclude = []
+    }
+  }
+
+  rules {
+    deletion            = true
+    non_fast_forward    = true
+    required_signatures = true
+
+    pull_request {
+      required_approving_review_count = 0
+      allowed_merge_methods           = ["merge"]
+    }
+
+    required_status_checks {
+      do_not_enforce_on_create = true
+
+      dynamic "required_check" {
+        for_each = var.github.required-pr-checks
+        content {
+          context = required_check.value
+        }
+      }
+    }
+  }
+}
+
+# apply the same `main` protections to series branches. don't supply a creation rule since
+# cuts are made through the API with `xtask`.
+resource "github_repository_ruleset" "protected-versions" {
+  name        = "protected-versions"
+  repository  = github_repository.waypoints.name
+  target      = "branch"
+  enforcement = "active"
+
+  conditions {
+    ref_name {
+      include = ["refs/heads/v*.x"]
+      exclude = []
+    }
+  }
+
+  rules {
+    deletion            = true
+    non_fast_forward    = true
+    required_signatures = true
+
+    pull_request {
+      required_approving_review_count = 0
+      allowed_merge_methods           = ["merge"]
+    }
+
+    required_status_checks {
+      do_not_enforce_on_create = true
+
+      dynamic "required_check" {
+        for_each = var.github.required-pr-checks
+        content {
+          context = required_check.value
+        }
+      }
+    }
+  }
+}
+
+# prevent hand-minting release tags by anyone _except_ `wp-botswain`.
 #
-# No `deletion` rule: a nightly shortfall deletes the tag it minted under
-# GITHUB_TOKEN, which cannot be a bypass actor.
+# there's no `deletion` rule b/c a failed nightly deletes the tag it minted.
 resource "github_repository_ruleset" "protected-releases" {
   name        = "protected-releases"
   repository  = github_repository.waypoints.name
