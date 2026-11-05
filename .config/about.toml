@@ -38,12 +38,8 @@ targets                 = [
 ignore-dev-dependencies = true
 private                 = { ignore = true }
 
-# The app crate is first-party but has no `publish = false`; see `.config/deny.toml`.
-[Waypoints]
-  accepted = [ "AGPL-3.0-or-later" ]
-
-  # Crates shipping several files of one license: left to its scan, cargo-about's
-  # pick differs between macOS and Linux, so the notices do too.
+# Crates shipping several files of one license: left to its scan, cargo-about's
+# pick differs between macOS and Linux, so the notices do too.
 
 # The crate's notice, and Microsoft's for the mimalloc C source it bundles.
 [libmimalloc-sys.clarify]

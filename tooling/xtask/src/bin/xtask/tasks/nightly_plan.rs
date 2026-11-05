@@ -10,6 +10,7 @@ use chrono::Utc;
 use clap::Parser;
 use xtask::{
     planners::nightly::{self, Decision, Plan},
+    release_groups,
     releases::version::Version,
     tools::{git, github},
     workspace,
@@ -29,6 +30,8 @@ pub struct Options {
 }
 
 pub fn run(args: Options) -> Result<()> {
+    release_groups::load(&workspace::load()?)?;
+
     let target = Version::from(workspace::version()?).target();
     let tags = nightly::nightly_tags()?;
     let latest = nightly::latest_nightly(&target, &tags);

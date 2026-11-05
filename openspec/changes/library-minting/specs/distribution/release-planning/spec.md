@@ -130,7 +130,7 @@ A commit SHALL be breaking for the app if and only if it carries the trailer `Co
 
 ### Requirement: Evidence sets a floor on each group's bump
 
-A group's bump SHALL be the greater of the bump its commits declare and the bump its evidence requires. The evidence SHALL be the API-compatibility check of each inspectable library member against the group's last tag, and any modified, deleted, or renamed file under `covenant/fixtures/<group>/` since the last stable tag, which is breaking for that group and for the app.
+A group's bump SHALL be the greater of the bump its commits declare and the bump its evidence requires. The evidence SHALL be the API-compatibility check of each inspectable library member against the group's last tag, and any modified, deleted, or renamed file under `covenant/fixtures/<group>/` since the last stable tag, which is breaking for that group and for the app. A group's own `covenant/fixtures/<group>/README.md` is not a fixture and SHALL NOT count as evidence.
 
 #### Scenario: Undeclared API break reaches a cut
 
@@ -141,6 +141,11 @@ A group's bump SHALL be the greater of the bump its commits declare and the bump
 
 - **WHEN** a file under `covenant/fixtures/domain/` was modified since the last stable tag
 - **THEN** the cut computes a breaking bump for `domain` and for `waypoints`
+
+#### Scenario: A group's README is edited
+
+- **WHEN** `covenant/fixtures/domain/README.md` is the only file under `covenant/fixtures/` modified since the last stable tag
+- **THEN** the fixture floor raises no bump for `domain` or for `waypoints`
 
 #### Scenario: Declared break with no evidence
 

@@ -43,9 +43,13 @@ _types_ — map them below. (`dev` survives as a _region_ — see Scope.)
 | `build`    | build system, dependencies, or codegen tooling (was `dev` typegen, `deps`) | (internal)           |
 | `ci`       | CI / workflow configuration                                                | (internal)           |
 | `chore`    | maintenance not covered above (was `init`, `parked`)                       | (internal)           |
+| `summary`  | a pull request's merge message when it spans release groups                | (skipped)            |
 
 Add `!` after the scope for a breaking change: `feat(bedrock)!: …`, and include
 a `BREAKING CHANGE:` footer.
+
+`summary` is for merge messages only; see [Landing a pull
+request](#landing-a-pull-request).
 
 ## Scope — `region[/subscope]`
 
@@ -101,8 +105,9 @@ directory paths — don't mirror the file tree.
 
 - **Cross-cutting work:** prefer one commit per region sharing a subscope (above)
   over a single sprawling commit.
-- **Genuinely atomic multi-region change:** comma-join regions —
-  `refactor(domain,cartograph): …`. Rare.
+- **Genuinely atomic multi-region change:** comma-join regions, only while every
+  region falls in one release group — `refactor(app,store): …` is one `waypoints`
+  commit. Rare. Across groups, the pull request lands as a `summary`.
 - **Repo-wide change:** omit the scope — `chore: bump toolchain to rust 1.94`.
 
 ## Subject line
@@ -124,6 +129,49 @@ The bar the best existing commits already set:
 > decoding it with a real reader (rqrr), not by string assertions.
 
 State the problem, the approach, the trade-offs, and how you proved it works.
+
+## Landing a pull request
+
+Every pull request lands as a merge commit whose message is the pull request's
+title and description. The `version-integrity` check reads those two on every
+pull request:
+
+- **The title is a conventional commit**, with a type from the table above.
+- **One release group:** the scope stays free-form. The changed paths decide the
+  group, not the scope. `tooling/release-groups.toml` names the groups.
+- **More than one release group:** the title is `summary: …`, with no scope and
+  no `!`, and the description carries exactly one header per touched group,
+  scoped by the group's name:
+
+  ```
+  summary: rename the filter API
+
+  Why these moved together.
+
+  feat(bedrock)!: rename Filter::eq
+  refactor(outpost): follow the rename
+  ```
+
+- **`chore(release):` and version writes belong to the release bot.** A subject
+  starting `chore(release):`, or a change to a versioned crate's
+  `[package].version`, fails unless `wp-botswain[bot]` authored the pull request.
+
+Branch commits are not checked, but they stay conventional: the release notes are
+rendered from them, and one unconventional commit fails the notes.
+
+### `Covenant: break`
+
+Files under `covenant/fixtures/` are append-only, because changing one changes
+what old data means. A pull request that modifies, deletes, or renames one fails
+unless its description ends with this trailer, in a paragraph of its own:
+
+```
+Covenant: break
+```
+
+Adding a fixture needs no trailer, and neither does editing a group's own
+`covenant/fixtures/<group>/README.md`, which describes the directory. A
+`README.md` any deeper is data, and frozen like the rest.
 
 ## Signing
 
