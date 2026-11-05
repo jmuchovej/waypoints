@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Plans the four ref-minting transitions of a release cycle.
 //!
 //! The arithmetic of each transition is [`Version::transition`]'s; this module

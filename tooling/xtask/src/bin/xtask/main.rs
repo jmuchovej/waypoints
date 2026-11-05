@@ -1,3 +1,25 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This file is part of Waypoints.
+//
+// Waypoints is free software: you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Waypoints is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with Waypoints. If not, see <https://www.gnu.org/licenses/>.
+//
+// Additional permission under GNU AGPL version 3 section 7: this Program
+// may be conveyed through application stores on the terms set out in
+// docs/licensing/COPYING.exceptions.
+
 //! `cargo xtask` — the CLI over the `xtask` library.
 //!
 //! Each task under `tasks/` is a clap argument struct and a `run`: it parses,
@@ -13,6 +35,7 @@ pub mod tasks {
     pub mod dev_server;
     pub mod devenv_files;
     pub mod icongen;
+    pub mod license;
     pub mod nightly_plan;
     pub mod release_groups;
     pub mod release_index;
@@ -67,6 +90,8 @@ enum Command {
     Icongen(tasks::icongen::Options),
     /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
     DevServer(tasks::dev_server::Options),
+    /// Holds the tree to the licensing policy; regenerates the third-party notices.
+    License(tasks::license::Options),
 }
 
 fn main() -> Result<()> {
@@ -88,5 +113,6 @@ fn main() -> Result<()> {
         Command::Typegen(args) => tasks::typegen::run(args),
         Command::Icongen(args) => tasks::icongen::run(args),
         Command::DevServer(args) => tasks::dev_server::run(args),
+        Command::License(args) => tasks::license::run(args),
     }
 }

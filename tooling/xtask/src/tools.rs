@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The tools xtask talks to, one module each. A module owns every call to
 //! its tool, so what it is asked and how its answers are read live in one
 //! place.

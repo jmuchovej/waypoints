@@ -1,4 +1,7 @@
 #!/usr/bin/env nu
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Stores a freshly downloaded App Store provisioning profile on the 1Password
 # item the release profile reads, so a regenerated profile reaches CI without a
 # commit.

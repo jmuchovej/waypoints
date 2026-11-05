@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use crate::{ColumnType, StoredValue};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use core::fmt::Display;

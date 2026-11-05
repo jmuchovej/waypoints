@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import { ContentConverters, ContentType, type Content, type ContentKind } from "@waypoints/domain";

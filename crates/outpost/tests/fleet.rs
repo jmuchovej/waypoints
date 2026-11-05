@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Fleet enforcement + territory registration over real QUIC.
 //! A Vessel holding a signed FleetConfig registers its Territory with a
 //! rostered Station and syncs; a Station not in the roster is refused; the

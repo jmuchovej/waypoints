@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Records the resolved `turso_core` version as `BEDROCK_ENGINE_VERSION`, so
 //! a durability fault can report which engine it was built against.
 //!

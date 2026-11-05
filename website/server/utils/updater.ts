@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { H3Event } from "h3";
 
 import { TAURI_UPDATER_TARGETS, objectKey, type Channel } from "#shared/utils/releases";

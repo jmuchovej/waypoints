@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Serde roundtrip tests — guards the Rust↔TS boundary.
 //!
 //! Every MarkData variant must survive serialize→deserialize through JSON,

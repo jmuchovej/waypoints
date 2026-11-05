@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Connection identity. A device key binds the transport
 //! connection (the `VesselID`); a [`DeviceCert`] is the identity's signed
 //! statement that the device key is one of its own. On connect, a peer

@@ -1,5 +1,7 @@
 #:tombi toml-version = "v1.1.0"
 #:schema ./schemas/release-groups.schema.json
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Every workspace crate outside tooling/ is named: as a member or an internal.
 # tooling/ builds the repository, not the product, and must not appear.

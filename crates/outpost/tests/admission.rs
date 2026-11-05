@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Admission policy over real
 //! QUIC. Registration: only an identity holding **Owner in the presented
 //! log's fold** may home a new Territory (a later-promoted Owner passes

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Owns `.env` — the one file describing this repo's environment — and the two
 # substituters that read it.
 #

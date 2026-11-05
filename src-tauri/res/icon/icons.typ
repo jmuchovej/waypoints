@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Bundle entry point: renders every icon for the selected flavors into a
 // staging tree that mirrors `src-tauri/`, plus `manifest.json` telling
 // `cargo xtask icongen` what to pack and where it may prune. Run from the app

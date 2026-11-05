@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { isChannel, TAURI_UPDATER_TARGETS } from "#shared/utils/releases";
 
 import { readObject, sendR2Object } from "../../../../../../utils/store";

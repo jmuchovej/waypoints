@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # The channel a tree ships as, read from its app manifest's version — the
 # one reading shared by the overlay and the flake, and the same one the
 # release planner applies to tags (`release_plan::channel_of`):

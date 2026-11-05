@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Every job the workflows are assembled from. A workflow module names jobs
 //! and wires their `needs:`.
 
@@ -202,6 +205,23 @@ pub fn zizmor(context: &WorkflowContext) -> NamedJob {
         .add_step(steps::zizmor());
 
     NamedJob::new("zizmor", job)
+}
+
+/// Holds the tree to the licensing policy, and runs the dependency license check
+/// that otherwise runs only before a push. It shares `check-generated`'s devenv
+/// shape: nothing here needs the mise lanes the release builds exist for.
+pub fn license() -> NamedJob {
+    let job = Job::new("Check licensing")
+        .permissions(Permissions::default().contents(Level::Read))
+        .runs_on(runners::LINUX)
+        .add_step(steps::checkout())
+        .add_step(steps::free_disk_space(true))
+        .add_step(steps::install_nix())
+        .add_step(steps::cachix("devenv"))
+        .add_step(steps::nix_profile_install(&["devenv", "just"]))
+        .add_step(steps::just("license").name("Check licensing"));
+
+    NamedJob::new("license", job)
 }
 
 /// Drafts the release every build uploads into, with git-cliff notes.

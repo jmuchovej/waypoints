@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use crate::core::{CollectionSpec, ColumnType, FieldKind, FieldSpec, IndexSpec, ViewSpec};
 
 /// The engine storage type for a field.

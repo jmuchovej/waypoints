@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The group file: `tooling/release-groups.toml` names every workspace crate
 //! outside `tooling/` as a versioned member or an unversioned internal of one
 //! group. Versions stay in the manifests, so the file takes no bookkeeping

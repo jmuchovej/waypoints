@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Mark, mergeAttributes, getMarkRange } from "@tiptap/core";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import { InlineKind } from "@waypoints/domain";

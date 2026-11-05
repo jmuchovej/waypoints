@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use crate::attr;
 use heck::ToSnakeCase;
 use proc_macro2::TokenStream;

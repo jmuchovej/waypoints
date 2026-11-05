@@ -1,5 +1,7 @@
 #:tombi toml-version = "v1.1.0"
 #:schema https://www.schemastore.org/treefmt.json
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 allow-missing-formatter = true
 excludes                = [
@@ -8,6 +10,12 @@ excludes                = [
   "*.patch",
   ".git{attributes,ignore,modules}",
   "LICENSE",
+  # the FSF's own Markdown edition; hash-checked, so no formatter may touch it.
+  "docs/licensing/LICENSE.md",
+  # generated from third parties' license texts; check-generated would never converge.
+  "docs/licensing/THIRD-PARTY-NOTICES.md",
+  # a Markdown template; oxfmt reads Handlebars as HTML and breaks its line structure.
+  ".config/about.hbs",
   "tooling/patches/*",
   "*.{gif,ico}",
   "*.{properties,gradle}",

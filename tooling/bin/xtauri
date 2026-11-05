@@ -1,4 +1,7 @@
 #!/usr/bin/env nu
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Launches Tauri dev servers and release builds for every platform from one
 # place, so the environment a build sees is decided once rather than per
 # justfile.

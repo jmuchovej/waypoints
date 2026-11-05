@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 {
   pkgs,
   lib,
@@ -231,6 +234,12 @@
         package = pkgs.cargo-deny;
         spec = "aqua:EmbarkStudios/cargo-deny";
         envs = [ "devtools" ];
+      };
+      # Shell-only: the notices regenerate under devenv, locally and in the
+      # lockstep job, and no mise lane needs them.
+      cargo-about = {
+        package = pkgs.cargo-about;
+        envs = null;
       };
       mbx = {
         package = inputs.mbx.packages.${pkgs.stdenv.hostPlatform.system}.mbx;

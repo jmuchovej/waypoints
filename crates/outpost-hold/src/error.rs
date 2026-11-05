@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /// Failures in the storage layer. Bedrock and protocol wire errors surface
 /// through here; storage never invents its own validation verdicts.
 #[derive(Debug, thiserror::Error)]

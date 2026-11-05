@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Validation functions for [`Reading`] based on the [`FeatureKind`].
 //!
 //! Contains all validation logic for different [`Feature`][F] kinds.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { DOWNLOADABLE_TARGETS, isChannel, targetSlug, versionedUrl } from "#shared/utils/releases";
 
 import { readManifest } from "../../../../../../../../utils/store";

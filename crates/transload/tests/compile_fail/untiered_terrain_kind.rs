@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A new `TerrainKind` must not be able to ship without a tier assignment.
 //!
 //! The exporter's `tier` is a non-wildcard match, so adding a variant breaks

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The channels a release ships through, and the flavors the app is built
 //! as — the same set plus a development flavor that never ships.
 

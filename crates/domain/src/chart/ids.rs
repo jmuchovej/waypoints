@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! IDs used for [`Charts`][C], and [`Features`][F] (and [`Glyphs` (Select Options)][S]).
 //!
 //! [C]: super::Chart

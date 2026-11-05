@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Both planners refuse a workspace the group file does not describe, before
 //! they read any history: the fixture workspace has no git at all, so reaching
 //! a `git` call would report that failure instead of naming the crate.

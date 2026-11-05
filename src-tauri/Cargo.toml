@@ -1,5 +1,7 @@
 # Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
 #:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [package]
   name                  = "Waypoints"
@@ -10,6 +12,7 @@
   homepage.workspace    = true
   repository            = "https://dev.waypoints.so/lib"
   license.workspace     = true
+  publish.workspace     = true
 
 [lib]
   crate-type = [ "cdylib", "rlib", "staticlib" ]

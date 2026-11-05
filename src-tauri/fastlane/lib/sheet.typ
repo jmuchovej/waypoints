@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #import "palette.typ": *
 
 // Tailwind v4 ships its palette as oklch and typewind keeps it that way, so the

@@ -1,3 +1,8 @@
+<!--
+  SPDX-FileCopyrightText: 2026 John Muchovej
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 <script setup lang="ts">
   import type { NavigationMenuItem } from "@nuxt/ui";
   import { createReusableTemplate } from "@vueuse/core";
@@ -26,7 +31,6 @@
       },
       children: [
         // TODO: dynamically populate with first 5–10 recently visited landmarks
-
       ],
     },
     {
@@ -38,7 +42,6 @@
       defaultOpen: true,
       children: [
         // TODO: dynamically populate with first 5–10 pinned landmarks
-
       ],
     },
     {

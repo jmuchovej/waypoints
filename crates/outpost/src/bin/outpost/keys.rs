@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Key files: 32 raw bytes, an Ed25519 seed, for a Station's identity and a
 //! Fleet's signing key alike. The role is decided by which flag a file is
 //! handed to, never by its contents.

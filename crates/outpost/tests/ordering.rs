@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! ACL records are ordered by a fleet orderer and carry a fleet-key proof
 //! that peers verify (full ordering). A vessel submits a membership
 //! record to the orderer Station over real QUIC, receives the countersigned

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Step constructors shared across workflows. Each returns a labelled step
 //! ready to drop into a job.
 

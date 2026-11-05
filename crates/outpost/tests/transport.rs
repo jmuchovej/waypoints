@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Routable transport posture: a Station reachable at an *advertised*
 //! address, and a dial-only Vessel that needs no inbound reachability —
 //! live `NoticePush` travels back over the session the Vessel opened.

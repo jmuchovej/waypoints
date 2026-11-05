@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Fractional indexing for ordered collections.
 //!
 //! Generates lexicographically sortable strings that support arbitrary

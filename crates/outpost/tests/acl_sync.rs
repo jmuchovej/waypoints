@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! ACL propagation over sync, and the read-key auto-refresh it triggers.
 //! A Vessel that joins a Territory knowing only its root ACL
 //! record syncs *once* with a Station and comes fully current: it receives

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Content-blindness of the Station, proven two ways.
 //!
 //! The **behavioral** test is the real one: it hands a Station the encrypted

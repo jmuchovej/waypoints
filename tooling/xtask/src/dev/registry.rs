@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! File-backed [`RegistryStore`] for the dev server.
 //!
 //! Reads and writes the SAME `settings.json` that the Tauri app's

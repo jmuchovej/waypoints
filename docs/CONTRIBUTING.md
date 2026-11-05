@@ -179,6 +179,12 @@ Every commit is signed. This is the repo default; do not disable it. (If you
 must push while signing is unavailable, push unsigned and re-sign later rather
 than committing an unsigned history you intend to keep.)
 
+## Licensing
+
+Waypoints is licensed under the AGPL, version 3 or any later version ([plain text](../LICENSE), [Markdown](licensing/LICENSE.md)), with an [additional permission](licensing/COPYING.exceptions) for application stores. **Outside contributions are closed for now:** they will be accepted under the [contributor license agreement](licensing/CLA.md), and the portal for signing it isn't live yet, so please open an issue instead of a pull request. Every source file carries an SPDX header, and a pull request without one fails its checks.
+
+The [licensing overview](licensing/README.md) has the header text, what the agreement promises you, and what to do with material you do not own. [`STEWARD.md`](licensing/STEWARD.md) records who the Steward is.
+
 ## Examples
 
 ```

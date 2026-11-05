@@ -1,3 +1,8 @@
+<!--
+  SPDX-FileCopyrightText: 2026 John Muchovej
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 <script setup lang="ts">
   // The landing half of a pairing link: https://waypoints.so/pair#<payload>.
   // On a device with Waypoints installed the OS opens the app directly and

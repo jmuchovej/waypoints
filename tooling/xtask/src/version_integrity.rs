@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The pull-request check in front of every version claim: who wrote a
 //! version, whether the landing message is conventional and, for a multi-group
 //! change, complete, and whether a frozen fixture was rewritten undeclared.
