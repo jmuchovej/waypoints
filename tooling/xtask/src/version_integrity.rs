@@ -359,6 +359,7 @@ pub fn run(metadata: &Metadata, payload: &str, base: &str) -> Result<Vec<String>
 mod tests {
     use super::*;
     use crate::releases::index::fixture::Repo;
+    use std::path::Path;
 
     const GROUPS: &str = r#"
         [bookkeeping]
@@ -816,5 +817,44 @@ mod tests {
             modified("covenant/fixtures/domain/a.json"),
         ];
         assert_eq!(by_a_person("Fix sync bug", "", &changes).len(), 3);
+    }
+
+    fn repository_file(path: &str) -> String {
+        fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join(path),
+        )
+        .unwrap_or_else(|error| panic!("{path}: {error}"))
+    }
+
+    /// CONTRIBUTING is the contract: what it lists is what the check accepts.
+    #[test]
+    fn the_accepted_types_are_the_ones_contributing_lists() {
+        let contributing = repository_file("docs/CONTRIBUTING.md");
+        let table = contributing
+            .split("\n## Types\n")
+            .nth(1)
+            .and_then(|section| section.split("\n## ").next())
+            .expect("CONTRIBUTING has a Types section");
+        let listed: Vec<&str> = table
+            .lines()
+            .filter_map(|line| line.strip_prefix("| `")?.split('`').next())
+            .collect();
+        assert_eq!(listed, TYPES);
+        assert!(contributing.contains("Covenant: break"));
+    }
+
+    /// A summary's per-group headers live in a body cliff does not parse as
+    /// subjects, so the subject is the only line it would render.
+    #[test]
+    fn release_notes_skip_a_summary() {
+        let cliff = repository_file(".config/cliff.toml");
+        assert!(
+            cliff
+                .lines()
+                .any(|line| line.contains("^summary:") && line.contains("skip = true")),
+            "cliff.toml no longer skips a summary"
+        );
     }
 }
