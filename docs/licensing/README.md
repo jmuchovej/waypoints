@@ -33,7 +33,7 @@ The statement of enforcement intent, in the Steward's voice, is still to be writ
 
 ## What we promise contributors
 
-Contributions are accepted under the [Waypoints Individual Contributor License Agreement](CLA.md). The promise below is section 2.3 of that agreement, quoted rather than paraphrased, because the agreement is what binds:
+Contributions will be accepted under the [Waypoints Individual Contributor License Agreement](CLA.md). The promise below is section 2.3 of that agreement, quoted rather than paraphrased, because the agreement is what binds:
 
 > (a) **Availability obligation.** For so long as We exercise any of the rights granted in Sections 2.1 and 2.2 with respect to Your Contribution, We agree to license the Contribution, as part of the Material, under the terms of the Project License. For the avoidance of doubt: (i) additional permissions forming part of the Project License (including any application store permission) are within this obligation; and (ii) Our ceasing to exercise the granted rights does not revoke any license already granted to any third party.
 >
@@ -47,11 +47,11 @@ This binds the Steward's handling of contributions. It does not bind code the St
 
 The current Steward, and whether a successor has been designated, is recorded in [`STEWARD.md`](STEWARD.md).
 
-## How assent works
+## Contributions are closed for now
 
-CLA assistant checks every pull request. If you have not signed the current agreement, its status check stays pending and a comment tells you where to sign. You give your name and email, confirm you are at least eighteen, and confirm you agree. Once you have signed, nothing further is asked of you until the agreement's text changes and its version is bumped, when you are asked again before your next contribution merges.
+Pull requests from outside the project can't be merged yet. The agreement above has to be signed before a contribution is accepted, and the portal for signing it isn't live, so a pull request opened today has no way to be accepted. Please open an issue instead: bug reports and ideas are welcome.
 
-The text you sign is [`CLA.md`](CLA.md) in this repository. The copy CLA assistant displays is written from it, and a check fails if the two ever differ.
+When the portal opens, you will sign in with GitHub, give your name and email, confirm you are at least eighteen, and confirm you agree. The text you sign will be [`CLA.md`](CLA.md) in this repository, which is still a draft. Once you have signed, nothing further is asked of you until the agreement's text changes and its version is bumped.
 
 ## Source file headers
 

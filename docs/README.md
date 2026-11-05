@@ -17,4 +17,4 @@ You should have received a copy of the GNU Affero General Public License along w
 
 Additional permission under GNU AGPL version 3 section 7: this Program may be conveyed through application stores on the terms set out in [`licensing/COPYING.exceptions`](licensing/COPYING.exceptions).
 
-Contributions are accepted under the [contributor license agreement](licensing/CLA.md). See the [licensing overview](licensing/README.md) and the [contributing guide](CONTRIBUTING.md).
+Contributions will be accepted under the [contributor license agreement](licensing/CLA.md), and are closed until the portal for signing it is live. See the [licensing overview](licensing/README.md) and the [contributing guide](CONTRIBUTING.md).
