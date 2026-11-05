@@ -56,7 +56,7 @@ All work lands on one branch and reaches `main` as a single merge commit (design
 
 ## 7. Landing
 
-- [ ] 7.1 Merge the branch into `main` as one merge commit whose message states that the former `Apache-2.0` field never reflected the project's license, that no root `LICENSE` existed in history before this merge, and that no release was conveyed under the old field; verify the Tests workflow's `license` job is green on the branch head before merging and that GitHub's license detection reports AGPL-3.0 on `main` afterwards (scenario _The root is scanned for a license_)
+- [x] 7.1 Merge the branch into `main` as one merge commit whose message states that the former `Apache-2.0` field never reflected the project's license, that no root `LICENSE` existed in history before this merge, and that no release was conveyed under the old field; verify the Tests workflow's `license` job is green on the branch head before merging and that GitHub's license detection reports AGPL-3.0 on `main` afterwards (scenario _The root is scanned for a license_)
 
 ## Workflow follow-up
 
