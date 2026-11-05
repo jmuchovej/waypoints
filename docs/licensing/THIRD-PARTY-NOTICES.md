@@ -11876,7 +11876,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #### MIT License
 
-Used by mimalloc 0.1.52.
+Used by libmimalloc-sys 0.1.49, mimalloc 0.1.52.
 
 ~~~~text
 Copyright 2019 Octavian Oncescu

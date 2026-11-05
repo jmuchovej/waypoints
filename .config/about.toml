@@ -41,3 +41,38 @@ private                 = { ignore = true }
 # The app crate is first-party but has no `publish = false`; see `.config/deny.toml`.
 [Waypoints]
   accepted = [ "AGPL-3.0-or-later" ]
+
+  # Crates shipping several files of one license: left to its scan, cargo-about's
+  # pick differs between macOS and Linux, so the notices do too.
+
+# The crate's notice, and Microsoft's for the mimalloc C source it bundles.
+[libmimalloc-sys.clarify]
+  license = "MIT"
+
+  [[libmimalloc-sys.clarify.files]]
+    path     = "LICENSE.txt"
+    license  = "MIT"
+    checksum = "a08554fab028af3af047e8588d32d019662c1b1bf07959a195a2f75fe340726b"
+
+  [[libmimalloc-sys.clarify.files]]
+    path     = "c_src/mimalloc/v3/LICENSE"
+    license  = "MIT"
+    checksum = "82ade5d7d9b029044b5fbbc326207fc47c2d44ee4dd71e8a559c36d728217de9"
+
+[miniz_oxide.clarify]
+  license = "MIT OR Zlib OR Apache-2.0"
+
+  [[miniz_oxide.clarify.files]]
+    path     = "LICENSE-MIT.md"
+    license  = "MIT"
+    checksum = "799e9ca9d179295ef372f25d3769cdda7d25bb2668add6a6a1e22d1e4c678b8d"
+
+  [[miniz_oxide.clarify.files]]
+    path     = "LICENSE-ZLIB.md"
+    license  = "Zlib"
+    checksum = "0a54e647fe54104658b5e563c04c6f9edf251710e47bce692e0bd990a4ddaa39"
+
+  [[miniz_oxide.clarify.files]]
+    path     = "LICENSE-APACHE.md"
+    license  = "Apache-2.0"
+    checksum = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
