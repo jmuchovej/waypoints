@@ -29,5 +29,5 @@ Requires `release-groups-guards` to have landed `cargo xtask version-integrity` 
 
 ## 5. Validation against the specs
 
-- [ ] 5.1 Run `openspec validate protected-branches --strict` and `prek run` (or every `.config/hk.pkl` step by hand in a jj workspace) and verify clippy, cargo-check, cargo-test, and treefmt are green across the change; verify the two `MODIFIED` requirements in the `release-planning` delta still quote the published text in full, so archiving cannot drop a scenario
+- [x] 5.1 Run `openspec validate protected-branches --strict` and `prek run` (or every `.config/hk.pkl` step by hand in a jj workspace) and verify clippy, cargo-check, cargo-test, and treefmt are green across the change; verify the two `MODIFIED` requirements in the `release-planning` delta still quote the published text in full, so archiving cannot drop a scenario
 - [ ] 5.2 After landing, verify the first nightly records its index entry through a pull request that merged itself, the next quiet day still skips, and `just plan` in `tooling/infra` is clean. **AUDIT:** John dispatches the first cut and confirms the series branch is created under `protected-versions` and its version write lands as a merge commit tagged by the planner
