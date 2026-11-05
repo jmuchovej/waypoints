@@ -62,6 +62,7 @@ pub mod planners {
 pub mod releases {
     pub mod artifacts;
     pub mod index;
+    pub mod landing;
     pub mod manifest;
     pub mod store;
     pub mod version;

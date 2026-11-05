@@ -865,6 +865,53 @@ mod tests {
         );
     }
 
+    /// A bot's pull request has to run its checks and pass `required_signatures`:
+    /// a `GITHUB_TOKEN` raises no `pull_request` event, and an unsigned commit can
+    /// never merge.
+    #[test]
+    fn every_bot_pull_request_is_opened_by_the_app_and_signed() {
+        let context = WorkflowContext::fixture();
+        let mut opened = 0;
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+                let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
+                for step in &steps {
+                    let uses = step["uses"].as_str().unwrap_or("");
+                    if !uses.starts_with("peter-evans/create-pull-request@") {
+                        continue;
+                    }
+                    opened += 1;
+                    let label = format!("{name}/{job_name}");
+                    assert_eq!(step["with"]["sign-commits"], "true", "{label}");
+                    let token = steps
+                        .iter()
+                        .find(|candidate| {
+                            step["with"]["token"]
+                                == format!(
+                                    "${{{{ steps.{}.outputs.token }}}}",
+                                    candidate["id"].as_str().unwrap_or("")
+                                )
+                        })
+                        .unwrap_or_else(|| panic!("{label}: not opened with a minted token"));
+                    assert_eq!(
+                        token["with"]["permission-pull-requests"], "write",
+                        "{label}"
+                    );
+                }
+            }
+        }
+        assert_eq!(opened, 4, "devenv-update, the index, and a cut's two");
+    }
+
+    /// GitHub wraps a merge commit's body at 72 columns, and these land unread.
+    #[test]
+    fn the_bots_merge_messages_land_unwrapped() {
+        for body in [release_plan::BODY, release_index::BODY] {
+            assert!(body.len() <= 72, "{}: {body}", body.len());
+        }
+    }
+
     /// A ruleset will require this check, and a required check that does not
     /// report leaves a pull request waiting forever. It reads the title and
     /// description, so editing them must rerun it, and it diffs from the merge

@@ -132,9 +132,14 @@ State the problem, the approach, the trade-offs, and how you proved it works.
 
 ## Landing a pull request
 
-Every pull request lands as a merge commit whose message is the pull request's
-title and description. The `version-integrity` check reads those two on every
-pull request:
+`main` and the `v{major}.{minor}.x` series branches are protected. Nothing is
+pushed to them directly: every pull request lands on them as a merge commit whose
+message is the pull request's title and description, once its required checks
+pass. No approval is required, so the release bot's own pull requests merge
+themselves when their checks pass.
+
+The `version-integrity` check reads the title and description on every pull
+request:
 
 - **The title is a conventional commit**, with a type from the table above.
 - **One release group:** the scope stays free-form. The changed paths decide the
@@ -151,6 +156,9 @@ pull request:
   feat(bedrock)!: rename Filter::eq
   refactor(outpost): follow the rename
   ```
+
+  GitHub wraps the merge commit's body at 72 columns, so keep each header under
+  that or it lands split across two lines.
 
 - **`chore(release):` and version writes belong to the release bot.** A subject
   starting `chore(release):`, or a change to a versioned crate's

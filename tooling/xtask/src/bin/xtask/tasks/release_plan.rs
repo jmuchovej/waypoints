@@ -1,24 +1,29 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Plans a release-cycle transition and mints its refs. See
-//! [`xtask::planners::release`].
+//! Plans a release-cycle transition and leaves its version write in the tree
+//! for the pull-request step. See [`xtask::planners::release`].
 
 use anyhow::Result;
 use clap::Parser;
-use xtask::{planners::release as planner, releases::version::Transition, tools::github};
+use xtask::{
+    planners::release as planner, release_groups, releases::version::Transition, tools::github,
+    workspace,
+};
 
 #[derive(Parser)]
 pub struct Options {
     #[arg(value_enum)]
     transition: Transition,
-    /// Plan and print without creating any ref.
+    /// Plan and print without creating a ref or writing a file.
     #[arg(long)]
     dry_run: bool,
 }
 
 pub fn run(args: Options) -> Result<()> {
     let plan = planner::plan(args.transition)?;
+    let groups = release_groups::load(&workspace::load()?)?;
+    let landing = plan.landing(&groups)?;
 
     println!(
         "{transition:?}: {version} on {branch} ({channel}); tag {tag}",
@@ -28,8 +33,10 @@ pub fn run(args: Options) -> Result<()> {
         channel = plan.channel,
         tag = plan.tag,
     );
-    if !plan.next_main_version.is_empty() {
+    println!("  {}", landing.describe(&plan.branch));
+    if let Some(main) = plan.main_landing(&groups)? {
         println!("  main moves to {}", plan.next_main_version);
+        println!("  {}", main.describe("main"));
     }
 
     if args.dry_run {
@@ -37,17 +44,11 @@ pub fn run(args: Options) -> Result<()> {
         return github::set_outputs_if_available(&plan);
     }
 
-    let executed = planner::execute(args.transition, &plan)?;
-    println!(
-        "  tagged {tag} at {commit}",
-        tag = plan.tag,
-        commit = executed.commit
-    );
-    if let Some((next, bumped)) = executed.main_bump {
-        println!("  main bumped to {next} at {bumped}");
-    }
+    planner::execute(args.transition, &plan)?;
+    println!("  wrote {} on {}", plan.version, plan.branch);
 
-    github::set_outputs_if_available(&plan)
+    github::set_outputs_if_available(&plan)?;
+    github::set_outputs_if_available(&landing)
 }
 
 #[cfg(test)]

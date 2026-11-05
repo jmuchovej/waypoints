@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     environment:
       name: CI
     env:
@@ -76,6 +77,7 @@ jobs:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
           private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
           permission-contents: write
+          permission-pull-requests: write
       - id: release-plan
         name: cargo xtask release-plan
         run: cargo xtask release-plan ${{ inputs.transition }}
@@ -100,6 +102,73 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: series-pull-request
+        name: Open a pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ steps.release-plan.outputs.head }}
+          delete-branch: "true"
+          sign-commits: "true"
+          title: ${{ steps.release-plan.outputs.title }}
+          body: Written by `cargo xtask release-plan`; merges when its checks pass.
+          commit-message: ${{ steps.release-plan.outputs.title }}
+          add-paths: ${{ steps.release-plan.outputs.paths }}
+      - name: cargo xtask release-land auto-merge
+        if: steps.series-pull-request.outputs.pull-request-number != ''
+        run: cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
+        shell: bash
+        env:
+          PULL_REQUEST: ${{ steps.series-pull-request.outputs.pull-request-number }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      - id: bump-main
+        name: cargo xtask release-land bump-main
+        if: steps.release-plan.outputs.next_main_version != ''
+        run: cargo xtask release-land bump-main --version "${VERSION}"
+        shell: bash
+        env:
+          VERSION: ${{ steps.release-plan.outputs.next_main_version }}
+      - id: main-pull-request
+        name: Open a pull request
+        if: steps.release-plan.outputs.next_main_version != ''
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ steps.bump-main.outputs.head }}
+          delete-branch: "true"
+          sign-commits: "true"
+          title: ${{ steps.bump-main.outputs.title }}
+          body: Written by `cargo xtask release-plan`; merges when its checks pass.
+          commit-message: ${{ steps.bump-main.outputs.title }}
+          add-paths: ${{ steps.bump-main.outputs.paths }}
+      - name: cargo xtask release-land auto-merge
+        if: steps.main-pull-request.outputs.pull-request-number != ''
+        run: cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
+        shell: bash
+        env:
+          PULL_REQUEST: ${{ steps.main-pull-request.outputs.pull-request-number }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      - id: wait-for-merge
+        name: cargo xtask release-land wait
+        run: cargo xtask release-land wait --pull-request "${PULL_REQUEST}"
+        shell: bash
+        env:
+          PULL_REQUEST: ${{ steps.series-pull-request.outputs.pull-request-number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - id: tag-token
+        name: Mint a wp-botswain token for the tag
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
+          private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
+          permission-contents: write
+      - name: cargo xtask release-land tag
+        run: cargo xtask release-land tag --tag "${TAG}" --commit "${COMMIT}"
+        shell: bash
+        env:
+          TAG: ${{ steps.release-plan.outputs.tag }}
+          COMMIT: ${{ steps.wait-for-merge.outputs.merge_commit }}
+          GH_TOKEN: ${{ steps.tag-token.outputs.token }}
 concurrency:
   group: release-plan
   cancel-in-progress: false

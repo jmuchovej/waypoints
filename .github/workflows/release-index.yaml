@@ -25,7 +25,7 @@ jobs:
     name: record the release in the index
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     environment:
       name: CI
     steps:
@@ -34,6 +34,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
+          ref: main
           fetch-tags: "true"
       - id: free-disk
         name: Free runner disk space
@@ -85,7 +86,6 @@ jobs:
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SECRETSPEC_REASON: release-index records a published tag in nix/releases; no secret values are read
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
@@ -104,6 +104,43 @@ jobs:
           CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - name: Resolve the botswain secrets
+        if: steps.release-index.outputs.title != ''
+        run: devenv shell -- secretspec export --profile ci --provider op --scope botswain --format gha
+        shell: bash
+        env:
+          SECRETSPEC_REASON: CI resolves the ci profile's botswain scope to authenticate as the App it names
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: app-token
+        name: Mint a wp-botswain token
+        if: steps.release-index.outputs.title != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
+          private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - id: index-pull-request
+        name: Open a pull request
+        if: steps.release-index.outputs.title != ''
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ steps.release-index.outputs.head }}
+          delete-branch: "true"
+          sign-commits: "true"
+          title: ${{ steps.release-index.outputs.title }}
+          body: Written by `cargo xtask release-index`; merges when its checks pass.
+          commit-message: ${{ steps.release-index.outputs.title }}
+          add-paths: ${{ steps.release-index.outputs.paths }}
+      - name: cargo xtask release-land auto-merge
+        if: steps.index-pull-request.outputs.pull-request-number != ''
+        run: devenv shell -- cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
+        shell: bash
+        env:
+          SECRETSPEC_REASON: release-land drives a pull request through the GitHub API; no secret values are read
+          PULL_REQUEST: ${{ steps.index-pull-request.outputs.pull-request-number }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 concurrency:
   group: release-index
   cancel-in-progress: false
