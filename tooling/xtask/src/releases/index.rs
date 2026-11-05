@@ -193,7 +193,7 @@ pub(crate) mod fixture {
             String::from_utf8(output.stdout).unwrap().trim().to_owned()
         }
 
-        fn commit(&self, path: &str, subject: &str) {
+        pub(crate) fn commit(&self, path: &str, subject: &str) {
             let file = self.dir.join(path);
             fs::create_dir_all(file.parent().unwrap()).unwrap();
             fs::write(&file, subject).unwrap();

@@ -49,5 +49,6 @@ pub mod icongen;
 pub mod release_groups;
 pub mod tools;
 pub mod typegen;
+pub mod version_integrity;
 pub mod workflows;
 pub mod workspace;

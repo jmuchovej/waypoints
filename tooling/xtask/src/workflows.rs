@@ -22,6 +22,7 @@ mod pull_request;
 mod release;
 mod release_index;
 mod release_plan;
+mod version_integrity;
 
 pub(crate) mod _helpers;
 pub(crate) use _helpers as helpers;
@@ -126,6 +127,7 @@ pub fn workflows() -> Vec<WorkflowFile> {
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
         WorkflowFile::waypoints("release_index", release_index::workflow),
         WorkflowFile::waypoints("release_plan", release_plan::workflow),
+        WorkflowFile::waypoints("version_integrity", version_integrity::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
         release_file(Channel::Stable),
@@ -342,6 +344,10 @@ mod tests {
             ("pull_request".to_owned(), pull_request::workflow(context)),
             ("release_index".to_owned(), release_index::workflow(context)),
             ("release_plan".to_owned(), release_plan::workflow(context)),
+            (
+                "version_integrity".to_owned(),
+                version_integrity::workflow(context),
+            ),
         ];
         for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
             workflows.push((
@@ -785,6 +791,42 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// A ruleset will require this check, and a required check that does not
+    /// report leaves a pull request waiting forever. It reads the title and
+    /// description, so editing them must rerun it, and it diffs from the merge
+    /// base, which a shallow clone does not contain.
+    #[test]
+    fn version_integrity_reports_on_every_pull_request() {
+        let workflow = version_integrity::workflow(&WorkflowContext::fixture());
+        let value = serde_json::to_value(&workflow).unwrap();
+
+        let trigger = &value["on"]["pull_request"];
+        assert_eq!(trigger["branches"], json!(["**"]));
+        assert!(trigger.get("paths").is_none(), "{trigger}");
+        assert!(trigger.get("paths-ignore").is_none(), "{trigger}");
+        for kind in ["opened", "synchronize", "reopened", "edited"] {
+            assert!(
+                trigger["types"].as_array().unwrap().contains(&json!(kind)),
+                "{kind}: {trigger}"
+            );
+        }
+
+        let jobs = value["jobs"].as_object().unwrap();
+        assert_eq!(jobs.len(), 1);
+        let job = &jobs["version-integrity"];
+        assert_eq!(job["name"], "version-integrity");
+        assert!(job.get("environment").is_none(), "needs no credential");
+
+        let steps = job["steps"].as_array().unwrap();
+        let checkout = steps.iter().find(|step| step["id"] == "checkout").unwrap();
+        assert_eq!(checkout["with"]["fetch-depth"], "0");
+        assert!(
+            steps
+                .iter()
+                .any(|step| step["run"] == "cargo xtask version-integrity")
+        );
     }
 
     /// Every suite runs under the flavor `test-plan` reads from the tree, so
