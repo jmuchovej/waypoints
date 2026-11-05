@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! The pull-request check in front of every version claim: who wrote a
-//! version, whether the landing message is conventional and, for a multi-group
-//! change, complete, and whether a frozen fixture was rewritten undeclared.
+//! version, whether a group's members agree with its anchor, whether the
+//! landing message is conventional and, for a multi-group change, complete, and
+//! whether a frozen fixture was rewritten undeclared.
 //!
 //! It reads the event payload and the diff from the merge base, so it needs no
 //! token. The title and description are what the merge commit carries; branch
@@ -170,6 +171,43 @@ pub fn version_writes(groups: &GroupFile, changes: &[Change], base: &str) -> Res
     })
 }
 
+/// Every workspace crate's declared version, by its directory.
+fn declared_versions(metadata: &Metadata) -> BTreeMap<String, String> {
+    let root = metadata.workspace_root.as_std_path();
+    metadata
+        .workspace_packages()
+        .iter()
+        .filter_map(|package| {
+            let dir = package.manifest_path.as_std_path().parent()?;
+            let relative = dir.strip_prefix(root).ok()?;
+            Some((
+                relative.to_string_lossy().into_owned(),
+                package.version.to_string(),
+            ))
+        })
+        .collect()
+}
+
+/// Every member declaring anything but its anchor's exact version, prerelease
+/// included.
+fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
+    let mut found = Vec::new();
+    for group in groups.group.values() {
+        let Some(expected) = versions.get(&group.anchor) else {
+            continue;
+        };
+        for member in &group.members {
+            if let Some(declared) = versions.get(member).filter(|v| *v != expected) {
+                found.push(format!(
+                    "`{member}/Cargo.toml` declares {declared}, but its group's anchor `{anchor}/Cargo.toml` declares {expected}",
+                    anchor = group.anchor,
+                ));
+            }
+        }
+    }
+    found
+}
+
 /// Whether `path` is frozen. A group's own README describes its directory, so
 /// it is not; a `README.md` any deeper is data, since import corpora are
 /// Markdown.
@@ -250,6 +288,8 @@ pub struct Evidence<'a> {
     pub changes: &'a [Change],
     /// Versioned manifests whose `[package].version` moved.
     pub version_writes: &'a [String],
+    /// Every workspace crate's declared version, by its directory.
+    pub versions: &'a BTreeMap<String, String>,
     pub schema_is_current: bool,
 }
 
@@ -260,6 +300,7 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
         groups,
         changes,
         version_writes,
+        versions,
         schema_is_current,
     } = evidence;
     let title = pull_request.title.trim();
@@ -316,6 +357,8 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
         }
     }
 
+    found.extend(lockstep_violations(groups, versions));
+
     if !commit.as_ref().is_ok_and(declares_covenant_break) {
         let rewritten = changes
             .iter()
@@ -354,6 +397,7 @@ pub fn run(metadata: &Metadata, payload: &str, base: &str) -> Result<Vec<String>
         groups: &groups,
         changes: &changes,
         version_writes: &version_writes,
+        versions: &declared_versions(metadata),
         schema_is_current,
     }))
 }
@@ -398,7 +442,7 @@ mod tests {
         minted = [ "cut" ]
 
         [group.waypoints]
-        members = [ "src-tauri" ]
+        members = [ "src-tauri", "crates/cartograph" ]
         internals = [ "crates/store" ]
         anchor = "src-tauri"
         tag = "v{version}"
@@ -449,6 +493,7 @@ mod tests {
             groups: &groups(),
             changes,
             version_writes: &[],
+            versions: &BTreeMap::new(),
             schema_is_current: true,
         })
     }
@@ -635,6 +680,7 @@ mod tests {
             groups: &groups(),
             changes: &[modified("crates/domain/Cargo.toml")],
             version_writes: writes,
+            versions: &BTreeMap::new(),
             schema_is_current: true,
         })
     }
@@ -806,9 +852,106 @@ mod tests {
             groups: &groups(),
             changes: &[],
             version_writes: &[],
+            versions: &BTreeMap::new(),
             schema_is_current: false,
         });
         assert_names(&found, &[SCHEMA_FILE, "release-groups schema"]);
+    }
+
+    fn versions(declared: &[(&str, &str)]) -> BTreeMap<String, String> {
+        declared
+            .iter()
+            .map(|(dir, version)| ((*dir).to_owned(), (*version).to_owned()))
+            .collect()
+    }
+
+    #[test]
+    fn a_drifted_member_fails_naming_both_manifests() {
+        let declared = versions(&[("src-tauri", "0.2.0"), ("crates/cartograph", "0.1.9")]);
+        assert_names(
+            &lockstep_violations(&groups(), &declared),
+            &["crates/cartograph/Cargo.toml", "src-tauri/Cargo.toml"],
+        );
+    }
+
+    /// The prerelease is part of the version: `main`'s `-nightly` is mirrored.
+    #[test]
+    fn a_member_missing_the_anchor_s_prerelease_has_drifted() {
+        let declared = versions(&[
+            ("src-tauri", "0.1.0-nightly"),
+            ("crates/cartograph", "0.1.0"),
+        ]);
+        assert_names(
+            &lockstep_violations(&groups(), &declared),
+            &["crates/cartograph/Cargo.toml", "0.1.0-nightly"],
+        );
+    }
+
+    /// Being the release bot's does not excuse drift, so the planner has to
+    /// write every member in one commit.
+    #[test]
+    fn the_release_bot_setting_every_member_passes_and_setting_one_fails() {
+        let writes = [
+            "src-tauri/Cargo.toml".to_owned(),
+            "crates/cartograph/Cargo.toml".to_owned(),
+        ];
+        let check_bot_write = |declared: &BTreeMap<String, String>| {
+            violations(&Evidence {
+                pull_request: &pull_request(
+                    "chore(release): v0.2.x preview 0.2.0-pre.2",
+                    "",
+                    RELEASE_BOT,
+                ),
+                groups: &groups(),
+                changes: &[
+                    modified("src-tauri/Cargo.toml"),
+                    modified("crates/cartograph/Cargo.toml"),
+                ],
+                version_writes: &writes,
+                versions: declared,
+                schema_is_current: true,
+            })
+        };
+
+        let both = versions(&[
+            ("src-tauri", "0.2.0-pre.2"),
+            ("crates/cartograph", "0.2.0-pre.2"),
+        ]);
+        assert_eq!(check_bot_write(&both), Vec::<String>::new());
+
+        let one = versions(&[
+            ("src-tauri", "0.2.0-pre.2"),
+            ("crates/cartograph", "0.2.0-pre.1"),
+        ]);
+        assert_names(
+            &check_bot_write(&one),
+            &["crates/cartograph/Cargo.toml", "src-tauri/Cargo.toml"],
+        );
+    }
+
+    /// `store` is an internal, so it carries nothing to compare.
+    #[test]
+    fn an_internal_is_not_held_to_its_anchor() {
+        let declared = versions(&[
+            ("src-tauri", "0.2.0"),
+            ("crates/cartograph", "0.2.0"),
+            ("crates/store", "0.0.0"),
+        ]);
+        assert_eq!(
+            lockstep_violations(&groups(), &declared),
+            Vec::<String>::new()
+        );
+    }
+
+    /// The tree this check runs on has to pass it.
+    #[test]
+    fn this_workspace_is_in_lockstep() {
+        let metadata = crate::workspace::load().unwrap();
+        let groups = release_groups::load(&metadata).unwrap();
+        assert_eq!(
+            lockstep_violations(&groups, &declared_versions(&metadata)),
+            Vec::<String>::new()
+        );
     }
 
     /// Reports every clause, so one push fixes them all.

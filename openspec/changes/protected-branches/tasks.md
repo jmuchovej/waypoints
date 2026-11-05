@@ -4,8 +4,8 @@ Requires `release-groups-guards` to have landed `cargo xtask version-integrity` 
 
 ## 1. Lockstep manifests and the check
 
-- [ ] 1.1 Drop the `version` field from `crates/store/Cargo.toml`, set `crates/cartograph/Cargo.toml` to whatever `src-tauri/Cargo.toml` declares on the branch being worked (prerelease included, `0.1.0-nightly` on `main`), and give `src-tauri` `publish.workspace = true` so `publish = false` holds workspace-wide; verify `cargo metadata --no-deps` resolves and `cargo nextest run -p xtask` passes including `the_app_declares_its_own_version`
-- [ ] 1.2 Add the lockstep comparison to `cargo xtask version-integrity`: every versioned member of a group declares its anchor's exact version, naming both manifests on drift; verify unit tests cover both scenarios of _Group members declare their anchor's version_ (a drifted `cartograph` fails naming both files; a bot write setting both passes) and the check passes on the tree after 1.1
+- [x] 1.1 Drop the `version` field from `crates/store/Cargo.toml`, set `crates/cartograph/Cargo.toml` to whatever `src-tauri/Cargo.toml` declares on the branch being worked (prerelease included, `0.1.0-nightly` on `main`), and give `src-tauri` `publish.workspace = true` so `publish = false` holds workspace-wide; verify `cargo metadata --no-deps` resolves and `cargo nextest run -p xtask` passes including `the_app_declares_its_own_version`
+- [x] 1.2 Add the lockstep comparison to `cargo xtask version-integrity`: every versioned member of a group declares its anchor's exact version, naming both manifests on drift; verify unit tests cover both scenarios of _Group members declare their anchor's version_ (a drifted `cartograph` fails naming both files; a bot write setting both passes) and the check passes on the tree after 1.1
 
 ## 2. OpenTofu: the pieces that break nothing
 
