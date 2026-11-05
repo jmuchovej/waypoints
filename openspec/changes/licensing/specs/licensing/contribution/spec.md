@@ -24,7 +24,7 @@ Every contribution SHALL be accepted under the Waypoints Individual Contributor 
 
 For the agreement, the Project License SHALL mean the license or licenses under which the Material is made available on the Submission Date, together with any additional permissions forming part of their terms, and including any right to adopt a later version where the license so permits. The availability obligation therefore covers the application-store permission.
 
-`[⚖ Confirm this definition cleanly captures the COPYING + COPYING.exceptions bundle.]`
+`[⚖ Confirm this definition cleanly captures the LICENSE + COPYING.exceptions bundle.]`
 
 #### Scenario: A future Steward drops the store permission for new code
 
@@ -121,6 +121,27 @@ The agreement SHALL name the Steward and SHALL provide for succession: designati
 - **WHEN** a contributor opens `docs/licensing/STEWARD.md`
 - **THEN** they find the current Steward, the governing law, and whether a succession designation is in effect and since when, without its private terms
 
+### Requirement: The Steward signs as a contributor
+
+The individual who is Steward SHALL sign the agreement in their individual capacity, as a contributor, with the Steward as the other party, covering the work they authored before signing. Theirs SHALL be the portal's first record, and `docs/licensing/STEWARD.md` SHALL say whether it exists. They keep ownership of their work, as any contributor does.
+
+`[⚖ One person on both sides may form no contract. Confirm it reaches successors and earlier work.]`
+
+#### Scenario: The Steward transfers to an incorporated entity
+
+- **WHEN** a Legal Entity succeeds as Steward
+- **THEN** the former Steward's work is already within the grant, and they sign nothing new
+
+#### Scenario: The Steward dies with a successor named by the estate
+
+- **WHEN** a successor accepts under the agreement's chain
+- **THEN** the former Steward's work is within the grant to the same extent as any contributor's
+
+#### Scenario: While both roles are one person
+
+- **WHEN** the Steward licenses their own work while they remain Steward
+- **THEN** the signature restricts nothing they could otherwise do with it, because the grant is non-exclusive and they keep ownership
+
 ### Requirement: Material the contributor does not own is registered or refused
 
 A contribution MAY carry material the contributor does not own only if each such portion is identified in the pull request and at its site, is under a license on the compatible allowlist, keeps its own notice, and is recorded in the third-party registry. Material with no acceptable license, or no human authorship the contributor can warrant, SHALL NOT be accepted as a Contribution.
@@ -162,7 +183,7 @@ The licensing overview at `docs/licensing/README.md` SHALL carry the public pled
 #### Scenario: A contributor starts from CONTRIBUTING
 
 - **WHEN** a contributor reads `CONTRIBUTING.md`
-- **THEN** its licensing section is one or two paragraphs naming the license and the agreement and linking to the license texts, the additional permission, the agreement and the overview, with no further licensing prose of its own
+- **THEN** its licensing section is one or two paragraphs naming the license and the agreement, saying whether outside contributions are open, and linking to the license texts, the additional permission, the agreement and the overview, with no further licensing prose of its own
 
 ### Requirement: The enforcement-intent statement is published
 
@@ -173,41 +194,50 @@ The licensing overview at `docs/licensing/README.md` SHALL carry an enforcement-
 - **WHEN** someone considering hosting Waypoints reads the statement
 - **THEN** they can tell, without legal advice, that unmodified hosting and self-hosting carry no obligation beyond the license's ordinary terms and that modifying a hosted Station obliges them to offer the modified source
 
+### Requirement: External contributions are closed until the CLA portal is live
+
+Contributions from anyone other than the Steward SHALL NOT be merged until the project's own CLA portal is deployed on the live website and records assent. `CONTRIBUTING.md` and the licensing overview SHALL say so. No third-party assent service SHALL stand in for the portal: the agreement is a legal record, and CLA assistant proved too unreliable to hold one.
+
+#### Scenario: A pull request from an outside contributor
+
+- **WHEN** someone other than the Steward opens a pull request while the portal is not live
+- **THEN** it is not merged, whatever its merit, and the contributing guide has already told them why and invited an issue instead
+
+#### Scenario: The Steward's own work
+
+- **WHEN** the Steward opens a pull request while the portal is not live
+- **THEN** the restriction does not apply
+
+#### Scenario: The portal goes live
+
+- **WHEN** the portal is deployed and records assent
+- **THEN** the change that opens contributions updates `CONTRIBUTING.md`, the overview and this requirement together
+
 ### Requirement: Every contribution lands with recorded assent to a CLA version
 
-No contribution SHALL be merged unless the contributor's assent to the agreement, identified by its version, is recorded and verifiable from the pull request. The agreement SHALL carry a version, and a text change SHALL bump it. The text signed SHALL be the repository's `docs/licensing/CLA.md`, published to the assent service from the repository on each bump and never edited elsewhere.
+Once the portal is live, no contribution SHALL be merged unless the contributor's assent to the agreement is recorded and verifiable from the pull request. The agreement SHALL carry a version, and a text change SHALL bump it. The text signed SHALL be the repository's `docs/licensing/CLA.md`, and each record SHALL identify it by version and by a hash of the text.
 
 `[⚖ Confirm assent-mechanism validity and record-keeping requirements under Connecticut law.]`
 
 #### Scenario: A first-time contributor
 
 - **WHEN** a pull request arrives from an author with no recorded assent
-- **THEN** the pull request's status check stays pending and a comment tells the author where to sign; the check passes once they have
+- **THEN** the pull request's status check stays pending and tells the author where to sign; the check passes once they have
 
 #### Scenario: The agreement changes
 
 - **WHEN** the agreement's text changes and its version is bumped
-- **THEN** the published copy is updated from the repository, and a contributor whose recorded assent names an earlier version is asked to assent again before their next contribution merges
+- **THEN** a contributor whose recorded assent names an earlier version is asked to assent again before their next contribution merges
 
 #### Scenario: A returning contributor
 
 - **WHEN** a pull request arrives from an author whose recorded assent names the current version
 - **THEN** nothing further is asked of them
 
-#### Scenario: A text change without a version bump
-
-- **WHEN** `docs/licensing/CLA.md` differs from the published copy but its version line does not
-- **THEN** the licensing check fails naming the file, and the published copy is not updated
-
-#### Scenario: The published copy drifts
-
-- **WHEN** the published copy is edited anywhere other than the repository
-- **THEN** the licensing check fails, and the next publication overwrites it from the repository
-
-#### Scenario: A draft that cannot be published yet
+#### Scenario: A draft with blanks
 
 - **WHEN** `docs/licensing/CLA.md` still holds a bracketed blank
-- **THEN** the licensing check reports it as an unpublished draft and passes, and publication is refused until the blank is filled
+- **THEN** it is not offered for signing
 
 #### Scenario: What a signer is asked
 

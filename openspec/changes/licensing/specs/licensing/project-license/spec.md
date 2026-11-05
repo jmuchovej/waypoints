@@ -46,7 +46,7 @@ The repository root SHALL hold one license file, `LICENSE`, containing the text 
 
 ### Requirement: docs/licensing is the home of the licensing material
 
-`docs/licensing/` SHALL hold every licensing document other than the root license text: `LICENSE.md`, the Free Software Foundation's own Markdown edition of AGPLv3 exactly as published, with no edits; `COPYING.exceptions`; and the contributor agreement `CLA.md`. No license text or agreement SHALL live anywhere else in the tree except third-party license files beside the third-party code they cover.
+`docs/licensing/` SHALL hold every licensing document other than the root license text: `LICENSE.md`, the Free Software Foundation's own Markdown edition of AGPLv3 exactly as published, with no edits; `COPYING.exceptions`; the contributor agreement `CLA.md`; and the generated `THIRD-PARTY-NOTICES.md`. No license text or agreement SHALL live anywhere else in the tree except third-party license files beside the third-party code they cover.
 
 #### Scenario: A reader browses the directory
 

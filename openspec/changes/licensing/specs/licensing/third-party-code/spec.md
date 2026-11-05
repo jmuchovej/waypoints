@@ -75,7 +75,7 @@ Code copied into the repository — a vendored crate, a `[patch.crates-io]` fork
 #### Scenario: Attribution lives beside the code
 
 - **WHEN** a third-party license text is added for code in the tree
-- **THEN** it sits in that code's own directory, not under `docs/licensing/`, which holds only the project's own licensing material
+- **THEN** it sits in that code's own directory, not under `docs/licensing/`, which holds the project's own licensing material and the notices generated from these texts
 
 ### Requirement: One registry records every piece of third-party code
 
