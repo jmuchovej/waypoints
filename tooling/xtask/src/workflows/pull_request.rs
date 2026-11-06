@@ -12,7 +12,7 @@ use gh_workflow::{Event, PullRequest, Push, Workflow};
 pub(crate) fn workflow(context: &WorkflowContext) -> Workflow {
     let job = jobs::test(TestSuite::Changed, Platform::Linux, context);
     let audit = jobs::zizmor(context);
-    let license = jobs::license();
+    let license = jobs::license(context);
 
     helpers::named_workflow("Tests")
         .on(Event::default()

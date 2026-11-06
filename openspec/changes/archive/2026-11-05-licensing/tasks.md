@@ -37,7 +37,7 @@ All work lands on one branch and reaches `main` as a single merge commit (design
 - [x] 4.6 Implement the license-text and registry checks: the root `LICENSE` and `docs/licensing/LICENSE.md` are regular files with the digests from 1.1, no other `LICENSE*`/`COPYING*` regular file sits at the root, every registry entry's license is on the allowlist and every text file it names exists; verify tests cover a one-byte edit to either text, a root symlink, a missing file, a second root license file, a registry entry with an unlisted license, and a missing text (scenarios of _The root LICENSE is the verbatim AGPLv3 text_, _docs/licensing is the home of the licensing material_ and _One registry records every piece of third-party code_)
 - [x] 4.7 Add a `license` recipe to the `justfile` running `cargo xtask license check` and `cargo deny check licenses`, beside the existing `deny` recipe; verify `just license` passes on the tree and its exit code follows the two commands, and that the summary line names the crate count and `spdx::identifiers::VERSION` (scenario _Everything agrees_)
 - [x] 4.10 Add a `license` step to `.config/hk.pkl` globbed on the header-bearing types, `**/Cargo.toml`, `Cargo.lock`, `pnpm-lock.yaml`, `.config/deny.toml`, `.config/third-party.toml`, `src/nuxt.config.ts`, `LICENSE`, `docs/licensing/**`, running `just license`; verify `hk check` runs it and a deliberately broken header fails the push locally
-- [x] 4.11 Add a `license` job to `tooling/xtask/src/workflows/pull_request.rs` via a new `jobs::license` built from the devenv step shape `check_generated.rs` uses — checkout, install Nix, the devenv cachix cache, `nix profile install` of devenv and just, then `devenv shell -- just license` — not the mise setup the test job uses; run `cargo xtask workflows`; verify `.github/workflows/pull-request.yaml` gains exactly that job and zizmor is clean (scenario _The dependency license check runs on every pull request_)
+- [x] 4.11 Add a `license` job to `tooling/xtask/src/workflows/pull_request.rs` via a new `jobs::license` on the mise `devtools` lane — checkout, mise, the Rust cache, then `cargo xtask license check` and `cargo deny check licenses` (design.md D7 records why it left the devenv shape); run `cargo xtask workflows`; verify `.github/workflows/pull-request.yaml` gains exactly that job and zizmor is clean (scenario _The dependency license check runs on every pull request_)
 
 ## 5. Dependency gates and notices
 
@@ -56,7 +56,7 @@ All work lands on one branch and reaches `main` as a single merge commit (design
 
 ## 7. Landing
 
-- [ ] 7.1 Merge the branch into `main` as one merge commit whose message states that the former `Apache-2.0` field never reflected the project's license, that no root `LICENSE` existed in history before this merge, and that no release was conveyed under the old field; verify the Tests workflow's `license` job is green on the branch head before merging and that GitHub's license detection reports AGPL-3.0 on `main` afterwards (scenario _The root is scanned for a license_)
+- [x] 7.1 Merge the branch into `main` as one merge commit whose message states that the former `Apache-2.0` field never reflected the project's license, that no root `LICENSE` existed in history before this merge, and that no release was conveyed under the old field; verify the Tests workflow's `license` job is green on the branch head before merging and that GitHub's license detection reports AGPL-3.0 on `main` afterwards (scenario _The root is scanned for a license_)
 
 ## Workflow follow-up
 

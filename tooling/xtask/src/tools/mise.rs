@@ -32,8 +32,8 @@ pub enum MiseEnv {
     Test,
     /// Every formatter and every check — treefmt and the rest of the `hk`
     /// suite. Belongs on a job that runs a formatting or lint pass; the
-    /// workflow audit is the one that does through mise, since
-    /// `check-generated` reaches its tooling through nix.
+    /// workflow audit and the license check are the ones that do through mise,
+    /// since `check-generated` reaches its tooling through nix.
     Devtools,
     BuildDesktop,
     BuildMobile,

@@ -208,18 +208,18 @@ pub fn zizmor(context: &WorkflowContext) -> NamedJob {
 }
 
 /// Holds the tree to the licensing policy, and runs the dependency license check
-/// that otherwise runs only before a push. It shares `check-generated`'s devenv
-/// shape: nothing here needs the mise lanes the release builds exist for.
-pub fn license() -> NamedJob {
-    let job = Job::new("Check licensing")
+/// that otherwise runs only before a push. On mise until the project has a
+/// cachix: entering devenv costs far more than the check itself.
+pub fn license(context: &WorkflowContext) -> NamedJob {
+    let job = mise_env(Job::default(), &[MiseEnv::Devtools])
+        .name("Check licensing")
         .permissions(Permissions::default().contents(Level::Read))
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
-        .add_step(steps::free_disk_space(true))
-        .add_step(steps::install_nix())
-        .add_step(steps::cachix("devenv"))
-        .add_step(steps::nix_profile_install(&["devenv", "just"]))
-        .add_step(steps::just("license").name("Check licensing"));
+        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(steps::rust_cache())
+        .add_step(steps::cargo_xtask("license check", &[]))
+        .add_step(steps::cargo_deny_licenses());
 
     NamedJob::new("license", job)
 }

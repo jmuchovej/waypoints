@@ -69,6 +69,12 @@ context: |
         not a leaf: deltas land under `toolchain/<area>` — lockfile-integrity,
         tool-projection.
         code: nix/devenv, tooling/xtask workflows and devenv/mise utils
+    - licensing: what license the project is under and how the tree holds to
+        it — the license texts, source notices, third-party code, and the terms
+        contributions arrive under. A tree, not a leaf: deltas land under
+        `licensing/<area>` — project-license, source-notices, third-party-code,
+        contribution.
+        code: docs/licensing/, tooling/xtask license checks, .config/third-party.toml
 
   Seed sources are read-only donors. Once a domain spec covers a topic, the spec
   is authoritative — pull invariants from seeds into deltas; never edit a seed.
