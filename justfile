@@ -29,6 +29,9 @@ mod store "crates/store/justfile"
 # Recipes for `xtask` dev tooling
 mod xtask "tooling/xtask/justfile"
 
+# Recipes for `infra` dev tooling
+mod infra "tooling/infra/justfile"
+
 # Recipes for the `website`
 mod website "website/justfile"
 

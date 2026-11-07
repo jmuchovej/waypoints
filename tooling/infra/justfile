@@ -1,9 +1,7 @@
+set default-list
 set script-interpreter := ["bash", "-euo", "pipefail"]
 
-just := just_executable() + " --justfile " + justfile()
-
-_default:
-    @just --list
+just := just_executable() + " --justfile " + source_file()
 
 [private]
 [script]
