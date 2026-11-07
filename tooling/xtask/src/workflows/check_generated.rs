@@ -31,6 +31,7 @@ const SOURCES: &[&str] = &[
 /// come from the context at generation time.
 const OUTPUTS: &[&str] = &[
     ".github/workflows/**",
+    super::TFVARS,
     "docs/licensing/THIRD-PARTY-NOTICES.md",
     "crates/domain/typescript/**",
     "crates/cartograph/typescript/**",

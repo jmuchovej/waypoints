@@ -21,6 +21,7 @@ on:
       - .config/about.toml
       - .config/about.hbs
       - .github/workflows/**
+      - tooling/infra/github.auto.tfvars.json
       - docs/licensing/THIRD-PARTY-NOTICES.md
       - crates/domain/typescript/**
       - crates/cartograph/typescript/**
@@ -55,6 +56,7 @@ on:
       - .config/about.toml
       - .config/about.hbs
       - .github/workflows/**
+      - tooling/infra/github.auto.tfvars.json
       - docs/licensing/THIRD-PARTY-NOTICES.md
       - crates/domain/typescript/**
       - crates/cartograph/typescript/**

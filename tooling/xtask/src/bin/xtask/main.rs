@@ -39,6 +39,7 @@ pub mod tasks {
     pub mod nightly_plan;
     pub mod release_groups;
     pub mod release_index;
+    pub mod release_land;
     pub mod release_manifest;
     pub mod release_plan;
     pub mod release_stage;
@@ -73,15 +74,17 @@ enum Command {
     ReleaseWithdraw(tasks::release_withdraw::Options),
     /// Plans a release-cycle transition: cut, advance, promote, or patch.
     ReleasePlan(tasks::release_plan::Options),
-    /// Records a published tag in the release index on `main`.
+    /// Writes a published tag's release-index entry for its pull request to land.
     ReleaseIndex(tasks::release_index::Options),
+    /// Takes a bot's pull request from opened to landed, one step at a time.
+    ReleaseLand(tasks::release_land::Options),
     /// Maintains the group file's generated schema.
     ReleaseGroups(tasks::release_groups::Options),
     /// Checks what a pull request claims about versions.
     VersionIntegrity(tasks::version_integrity::Options),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::devenv_files::Options),
-    /// Regenerates every checked-in GitHub Actions workflow.
+    /// Regenerates every checked-in GitHub Actions workflow, and the checks OpenTofu requires of them.
     #[command(alias = "gen-workflows")]
     Workflows(tasks::workflows::Options),
     /// Regenerates the TypeScript bindings from the Rust data model.
@@ -106,6 +109,7 @@ fn main() -> Result<()> {
         Command::ReleaseWithdraw(args) => tasks::release_withdraw::run(args),
         Command::ReleasePlan(args) => tasks::release_plan::run(args),
         Command::ReleaseIndex(args) => tasks::release_index::run(args),
+        Command::ReleaseLand(args) => tasks::release_land::run(args),
         Command::ReleaseGroups(args) => tasks::release_groups::run(args),
         Command::VersionIntegrity(args) => tasks::version_integrity::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),

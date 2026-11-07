@@ -7,11 +7,10 @@
 //!
 //! `cargo xtask release-index --tag v…` records a tag that already exists.
 //! It classifies the channel from the version, checks that the tagged tree's
-//! manifest names the same channel, prefetches the tree's hash, and commits the
-//! channel's file to `main` through the Contents API — the cross-branch
-//! write a cut already performs. The write is a blind replace of one file,
-//! so it needs no checkout of `main` and no committer identity. Nothing is
-//! built: the tree carries its own recipe and dependency pins.
+//! manifest names the same channel, prefetches the tree's hash, and writes the
+//! channel's file to the working tree, for a pull request to land on `main`.
+//! The write is a blind replace of one file. Nothing is built: the tree carries
+//! its own recipe and dependency pins.
 //!
 //! An entry lands on `main` strictly after the tag it describes, so to the
 //! planners it looks like work that landed. [`product_commits`] is the one
@@ -19,7 +18,10 @@
 
 use crate::{
     Channel,
-    releases::version::{APP_MANIFEST, Version},
+    releases::{
+        landing::Landing,
+        version::{APP_MANIFEST, Version},
+    },
     tools::{git, github, nix},
 };
 use anyhow::{Context as _, Result, bail};
@@ -60,6 +62,16 @@ impl Entry {
         format!(
             "chore(release): record {tag} as the published {channel}",
             tag = self.tag
+        )
+    }
+
+    /// The pull request that lands this entry. One branch per channel, so two
+    /// channels publishing at once never overwrite each other's write.
+    pub fn landing(&self, channel: Channel) -> Landing {
+        Landing::new(
+            format!("botswain/release-index/{channel}"),
+            self.commit_message(channel),
+            &[Self::path(channel)],
         )
     }
 }
@@ -376,6 +388,69 @@ mod tests {
             repo.product_commits("v0.1.0..HEAD"),
             ["fix: a bug", "feat: landmarks"]
         );
+    }
+
+    /// Lands `branch` on `main` the way a pull request does.
+    fn land(repo: &Repo, branch: &str, title: &str) {
+        repo.git(&["checkout", "-q", "main"]);
+        repo.git(&["merge", "-q", "--no-ff", "-m", title, branch]);
+    }
+
+    /// An entry now lands as a merge commit over a branch commit. Neither may
+    /// read as work, or the quiet-repository skip never fires again.
+    #[test]
+    fn a_merged_index_pull_request_is_not_product_work() {
+        let repo = Repo::new();
+        repo.product("feat: the nightly's work");
+        repo.tag("v0.2.0-nightly.1+2026.08.29");
+
+        repo.git(&["checkout", "-q", "-b", "botswain/release-index/nightly"]);
+        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        land(
+            &repo,
+            "botswain/release-index/nightly",
+            "feat(release): record v0.2.0-nightly.1+2026.08.29 as the published nightly (#7)",
+        );
+
+        assert_eq!(
+            repo.product_commits("v0.2.0-nightly.1+2026.08.29..HEAD"),
+            Vec::<String>::new()
+        );
+    }
+
+    /// Work that lands while the entry's pull request waits on its checks still
+    /// counts, and the entry still does not.
+    #[test]
+    fn work_landing_beside_a_merged_entry_still_counts() {
+        let repo = Repo::new();
+        repo.product("feat: the nightly's work");
+        repo.tag("v0.2.0-nightly.1+2026.08.29");
+
+        repo.git(&["checkout", "-q", "-b", "botswain/release-index/nightly"]);
+        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.git(&["checkout", "-q", "main"]);
+        repo.commit("crates/domain/src/other.rs", "fix: landed meanwhile");
+        land(
+            &repo,
+            "botswain/release-index/nightly",
+            "feat(release): record v0.2.0-nightly.1+2026.08.29 as the published nightly (#7)",
+        );
+
+        assert_eq!(
+            repo.product_commits("v0.2.0-nightly.1+2026.08.29..HEAD"),
+            ["fix: landed meanwhile"]
+        );
+    }
+
+    /// One pull request per channel, so one channel's stalled entry cannot be
+    /// overwritten by another's.
+    #[test]
+    fn each_channel_lands_from_its_own_branch() {
+        let landing = entry().landing(Channel::Nightly);
+        assert_eq!(landing.head, "botswain/release-index/nightly");
+        assert_eq!(landing.paths, "nix/releases/nightly.json");
+        assert_eq!(landing.title, entry().commit_message(Channel::Nightly));
+        assert_ne!(landing.head, entry().landing(Channel::Stable).head,);
     }
 
     /// Before the first tag the range is the whole history, and the

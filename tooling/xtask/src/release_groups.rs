@@ -180,6 +180,15 @@ impl GroupFile {
             .map(String::as_str)
     }
 
+    /// The members of the group anchored at `anchor`, the crates one version
+    /// write has to set together.
+    pub fn members_anchored_at(&self, anchor: &str) -> Option<&[String]> {
+        self.group
+            .values()
+            .find(|group| group.anchor == anchor)
+            .map(|group| group.members.as_slice())
+    }
+
     /// The groups owning any of `paths`.
     pub fn touched<'a>(&self, paths: impl Iterator<Item = &'a str>) -> BTreeSet<String> {
         let owned = self.owned_paths();

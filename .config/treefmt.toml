@@ -120,3 +120,8 @@ verbose                 = 1
     "*.storyboard",
     "*.xc{scheme,settings,workspacedata}"
   ]
+
+[formatter.tofu]
+  command  = "tofu"
+  options  = [ "fmt" ]
+  includes = [ "*.tofu", "*.tf" ]

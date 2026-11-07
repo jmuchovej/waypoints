@@ -20,6 +20,9 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 
+# Written by `cargo xtask workflows`, and holds no secrets.
+!github.auto.tfvars.json
+
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
 override.tf

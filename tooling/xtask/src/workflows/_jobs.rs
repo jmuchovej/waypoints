@@ -117,7 +117,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
             // keys, so the compile is mostly hits.
             .add_step(steps::cache_restore(&registry, Tools::Mise))
             .add_step(steps::sccache_start(Tools::Mise))
-            .add_step(steps::botswain_credentials())
+            .add_step(steps::botswain_credentials(Tools::Mise))
             .add_step(app_token)
             .add_step(steps::with_sccache(planner))
             .add_step(steps::sccache_stats(Tools::Mise))
