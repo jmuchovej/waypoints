@@ -471,8 +471,8 @@ pub fn build(
         None => helpers::tag(None),
     };
 
-    // The mobile lanes need `fastlane`, `xcodegen` and the nushell the `_build`
-    // recipes are written in; the desktop ones do not.
+    // The mobile lanes need `xcodegen` and the nushell the `_build` recipes are
+    // written in; the desktop ones do not.
     let envs: &[MiseEnv] = if platform.is_mobile() {
         &[MiseEnv::BuildMobile]
     } else {
