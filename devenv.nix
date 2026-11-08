@@ -171,15 +171,11 @@
         spec = "aqua:cachix/secretspec";
       };
 
+      # Shell-only: the store submissions run it through devenv, and no build
+      # lane calls it.
       fastlane = {
         package = pkgs.fastlane;
-        spec = "gem:fastlane";
-        depends = [ config.waypoints.mise.tools.ruby.spec ];
-        os = [
-          "linux"
-          "macos"
-        ];
-        envs = [ "build-mobile" ];
+        envs = null;
       };
       xcodegen = {
         package = pkgs.xcodegen;
@@ -266,14 +262,11 @@
         spec = "core:deno";
         envs = [ "website" ];
       };
-      # since only `rufo` and `fastlane` need ruby, we don't need it in the base env.
+      # since only `rufo` needs ruby, we don't need it in the base env.
       ruby = {
         package = config.languages.ruby.package;
         spec = "core:ruby";
-        envs = [
-          "devtools"
-          "build-mobile"
-        ];
+        envs = [ "devtools" ];
       };
       # LOAD-BEARING, despite `envs = null`: nix/devenv/android.nix reads this
       # package's version into the generated `libs.versions.toml`, which is what

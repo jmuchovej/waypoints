@@ -1190,11 +1190,6 @@ url = "https://dl.deno.land/release/v2.9.7/deno-x86_64-apple-darwin.zip"
 checksum = "sha256:a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238"
 url = "https://dl.deno.land/release/v2.9.7/deno-x86_64-pc-windows-msvc.zip"
 
-[[tools."gem:fastlane"]]
-version = "2.240.1"
-backend = "gem:fastlane"
-specifiers = ["2.240.1"]
-
 [[tools."gem:rufo"]]
 version = "0.18.1"
 backend = "gem:rufo"
