@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! HTTP-facing error for command handlers.
 //!
 //! cartograph's domain errors (`EditorError` / `MarkError` / `TerritoryError`)

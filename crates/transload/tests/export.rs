@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The exporter, against a live engine.
 //!
 //! Charts are self-contained fixtures: `transload` sits below `store`, so the

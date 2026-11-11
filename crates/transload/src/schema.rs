@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `_schema.json` — a real Draft-07 document that also carries its Chart whole.
 //!
 //! The Draft-07 face serves tooling and validates a Landmark's readings. The

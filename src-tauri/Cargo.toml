@@ -1,5 +1,7 @@
 # Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
 #:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [package]
   name                  = "Waypoints"
@@ -10,6 +12,7 @@
   homepage.workspace    = true
   repository            = "https://dev.waypoints.so/lib"
   license.workspace     = true
+  publish.workspace     = true
 
 [lib]
   crate-type = [ "cdylib", "rlib", "staticlib" ]
@@ -77,11 +80,14 @@
 [features]
   default     = [ "desktop", "self-update" ]
   desktop     = [ "tauri/tray-icon" ]
-  development = [ "store/development" ]
-  nightly     = [ "store/nightly" ]
-  preview     = [ "store/preview" ]
+  # The flavors reach every group crate by forwarding along the dependency
+  # graph. Exactly one shipped flavor per build; `build.rs` checks it agrees
+  # with the version's channel.
+  development = [ "cartograph/development", "domain/development", "store/development" ]
+  nightly     = [ "cartograph/nightly", "domain/nightly", "store/nightly" ]
+  preview     = [ "cartograph/preview", "domain/preview", "store/preview" ]
   self-update = []
-  stable      = [ "store/stable" ]
+  stable      = [ "cartograph/stable", "domain/stable", "store/stable" ]
 
 [lints]
   workspace = true

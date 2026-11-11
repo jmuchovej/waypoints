@@ -1,4 +1,7 @@
 #:tombi toml-version = "v1.1.0"
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # mise configuration that should be hand-maintained rather than projected from devenv.
 
 [env]

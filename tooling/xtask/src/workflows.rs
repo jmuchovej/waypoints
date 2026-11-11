@@ -1,4 +1,8 @@
-//! Generates every checked-in GitHub Actions workflow.
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+//! Generates every checked-in GitHub Actions workflow, and the checks OpenTofu
+//! requires of them.
 //!
 //! The YAML under `.github/workflows` is an artifact, not a source file. Edit
 //! the module named in each file's header, then run `cargo xtask workflows`.
@@ -22,6 +26,7 @@ mod pull_request;
 mod release;
 mod release_index;
 mod release_plan;
+mod version_integrity;
 
 pub(crate) mod _helpers;
 pub(crate) use _helpers as helpers;
@@ -126,23 +131,53 @@ pub fn workflows() -> Vec<WorkflowFile> {
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
         WorkflowFile::waypoints("release_index", release_index::workflow),
         WorkflowFile::waypoints("release_plan", release_plan::workflow),
+        WorkflowFile::waypoints("version_integrity", version_integrity::workflow),
         release_file(Channel::Nightly),
         release_file(Channel::Preview),
         release_file(Channel::Stable),
     ]
 }
 
-/// Renders every workflow and either writes it or reports drift.
+/// Where OpenTofu auto-loads `var.github`.
+const TFVARS: &str = "tooling/infra/github.auto.tfvars.json";
+
+/// `var.github`, whose required checks are the display name of every job in the
+/// workflows that report on every pull request. A renamed job takes effect on
+/// GitHub at the next `tofu apply`.
+fn render_tfvars(context: &WorkflowContext) -> Result<RenderedFile> {
+    let mut checks = Vec::new();
+    for workflow in [
+        pull_request::workflow(context),
+        version_integrity::workflow(context),
+    ] {
+        let workflow = serde_json::to_value(&workflow).context("Failed to read a workflow")?;
+        for (id, job) in workflow["jobs"].as_object().into_iter().flatten() {
+            let name = job["name"].as_str();
+            let name = name.with_context(|| format!("Job `{id}` has no display name"))?;
+            checks.push(name.to_owned());
+        }
+    }
+
+    let vars = serde_json::json!({ "github": { "required-pr-checks": checks } });
+    Ok(RenderedFile {
+        path: PathBuf::from(TFVARS),
+        content: serde_json::to_string_pretty(&vars).context("Failed to render var.github")? + "\n",
+    })
+}
+
+/// Renders every workflow and `var.github`, and either writes them or reports
+/// drift.
 pub fn generate(check: bool) -> Result<()> {
     if !Path::new("src-tauri/").is_dir() || !Path::new("crates/domain/").is_dir() {
         anyhow::bail!("xtask workflows must be run from the project root");
     }
 
     let context = WorkflowContext::load()?;
-    let rendered = workflows()
+    let mut rendered = workflows()
         .iter()
         .map(|workflow| workflow.render(&context))
         .collect::<Result<Vec<_>>>()?;
+    rendered.push(render_tfvars(&context)?);
 
     if check {
         self::check(&rendered)
@@ -151,19 +186,22 @@ pub fn generate(check: bool) -> Result<()> {
     }
 }
 
-/// Writes every workflow, first clearing generated files so a renamed or
-/// dropped workflow leaves nothing behind.
-fn write(rendered: &[RenderedWorkflow]) -> Result<()> {
+/// Writes every file, first clearing generated workflows so a renamed or dropped
+/// one leaves nothing behind.
+fn write(rendered: &[RenderedFile]) -> Result<()> {
     for path in WorkflowFamily::all_generated_files()? {
         fs::remove_file(&path).with_context(|| format!("Failed to remove {}", path.display()))?;
     }
 
-    for workflow in rendered {
-        let folder = workflow.path.parent().expect("workflows live in a folder");
+    for file in rendered {
+        let folder = file
+            .path
+            .parent()
+            .expect("generated files live in a folder");
         fs::create_dir_all(folder)
             .with_context(|| format!("Failed to create directory: {}", folder.display()))?;
-        fs::write(&workflow.path, &workflow.content)
-            .with_context(|| format!("Failed to write {}", workflow.path.display()))?;
+        fs::write(&file.path, &file.content)
+            .with_context(|| format!("Failed to write {}", file.path.display()))?;
     }
 
     Ok(())
@@ -171,13 +209,13 @@ fn write(rendered: &[RenderedWorkflow]) -> Result<()> {
 
 /// Reports drift without touching the working tree, so it is safe against a
 /// dirty checkout.
-fn check(rendered: &[RenderedWorkflow]) -> Result<()> {
+fn check(rendered: &[RenderedFile]) -> Result<()> {
     let mut drift = Vec::new();
 
-    for workflow in rendered {
-        let path = workflow.path.display();
-        match fs::read_to_string(&workflow.path) {
-            Ok(on_disk) if on_disk == workflow.content => {}
+    for file in rendered {
+        let path = file.path.display();
+        match fs::read_to_string(&file.path) {
+            Ok(on_disk) if on_disk == file.content => {}
             Ok(_) => drift.push(format!("  {path} differs from what xtask would generate")),
             Err(error) if error.kind() == ErrorKind::NotFound => {
                 drift.push(format!("  {path} is missing"));
@@ -186,7 +224,7 @@ fn check(rendered: &[RenderedWorkflow]) -> Result<()> {
         }
     }
 
-    let expected: Vec<_> = rendered.iter().map(|workflow| &workflow.path).collect();
+    let expected: Vec<_> = rendered.iter().map(|file| &file.path).collect();
     for path in WorkflowFamily::all_generated_files()? {
         if !expected.contains(&&path) {
             drift.push(format!(
@@ -197,12 +235,12 @@ fn check(rendered: &[RenderedWorkflow]) -> Result<()> {
     }
 
     if drift.is_empty() {
-        println!("Workflows are in sync with tooling/xtask.");
+        println!("Workflows and var.github are in sync with tooling/xtask.");
         return Ok(());
     }
 
     anyhow::bail!(
-        "{count} generated workflow(s) are stale:\n{drift}\n\nRun `cargo xtask workflows` and commit the result.",
+        "{count} generated file(s) are stale:\n{drift}\n\nRun `cargo xtask workflows` and commit the result.",
         count = drift.len(),
         drift = drift.join("\n"),
     )
@@ -299,7 +337,7 @@ impl WorkflowFile {
         }
     }
 
-    fn render(&self, context: &WorkflowContext) -> Result<RenderedWorkflow> {
+    fn render(&self, context: &WorkflowContext) -> Result<RenderedFile> {
         let workflow = (self.source)(context);
 
         let path = self.family.path().join(format!("{}.yaml", self.stem));
@@ -316,12 +354,12 @@ impl WorkflowFile {
             .collect();
         content.truncate(content.trim_end().len());
         content.push('\n');
-        Ok(RenderedWorkflow { path, content })
+        Ok(RenderedFile { path, content })
     }
 }
 
-/// A workflow rendered to its final bytes, not yet committed to disk.
-struct RenderedWorkflow {
+/// A generated file rendered to its final bytes, not yet committed to disk.
+struct RenderedFile {
     path: PathBuf,
     content: String,
 }
@@ -342,6 +380,10 @@ mod tests {
             ("pull_request".to_owned(), pull_request::workflow(context)),
             ("release_index".to_owned(), release_index::workflow(context)),
             ("release_plan".to_owned(), release_plan::workflow(context)),
+            (
+                "version_integrity".to_owned(),
+                version_integrity::workflow(context),
+            ),
         ];
         for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
             workflows.push((
@@ -785,5 +827,299 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// The App holds `administration: write` for OpenTofu, and CI mints tokens
+    /// from it. A token inherits the whole grant unless it names what it needs,
+    /// so every one must name something, and none may name this.
+    #[test]
+    fn no_minted_token_reaches_administration() {
+        let context = WorkflowContext::fixture();
+        let mut tokens = 0;
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            tokens += assert_tokens_stay_narrow(&name, &value);
+        }
+        assert!(tokens > 0, "no workflow mints a token");
+    }
+
+    /// Asserts every minted token's scopes; returns how many there are.
+    fn assert_tokens_stay_narrow(name: &str, value: &Value) -> usize {
+        let mut tokens = 0;
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            for step in job["steps"].as_array().into_iter().flatten() {
+                let uses = step["uses"].as_str().unwrap_or("");
+                if !uses.starts_with("actions/create-github-app-token@") {
+                    continue;
+                }
+                tokens += 1;
+                let scopes: Vec<&String> = step["with"]
+                    .as_object()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|(key, _)| key.starts_with("permission-").then_some(key))
+                    .collect();
+                assert!(
+                    !scopes.is_empty(),
+                    "{name}/{job_name}: an unnarrowed token inherits the whole grant"
+                );
+                assert!(
+                    !scopes
+                        .iter()
+                        .any(|scope| *scope == "permission-administration"),
+                    "{name}/{job_name}: names administration"
+                );
+            }
+        }
+        tokens
+    }
+
+    #[test]
+    #[should_panic(expected = "names administration")]
+    fn a_token_naming_administration_is_refused() {
+        assert_tokens_stay_narrow(
+            "synthetic",
+            &json!({ "jobs": { "plan": { "steps": [{
+                "uses": "actions/create-github-app-token@abc",
+                "with": { "permission-administration": "write" }
+            }]}}}),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "inherits the whole grant")]
+    fn an_unnarrowed_token_is_refused() {
+        assert_tokens_stay_narrow(
+            "synthetic",
+            &json!({ "jobs": { "plan": { "steps": [{
+                "uses": "actions/create-github-app-token@abc",
+                "with": { "app-id": "1" }
+            }]}}}),
+        );
+    }
+
+    /// A bot's pull request has to run its checks and pass `required_signatures`:
+    /// a `GITHUB_TOKEN` raises no `pull_request` event, and an unsigned commit can
+    /// never merge.
+    #[test]
+    fn every_bot_pull_request_is_opened_by_the_app_and_signed() {
+        let context = WorkflowContext::fixture();
+        let mut opened = 0;
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+                let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
+                for step in &steps {
+                    let uses = step["uses"].as_str().unwrap_or("");
+                    if !uses.starts_with("peter-evans/create-pull-request@") {
+                        continue;
+                    }
+                    opened += 1;
+                    let label = format!("{name}/{job_name}");
+                    assert_eq!(step["with"]["sign-commits"], "true", "{label}");
+                    let token = steps
+                        .iter()
+                        .find(|candidate| {
+                            step["with"]["token"]
+                                == format!(
+                                    "${{{{ steps.{}.outputs.token }}}}",
+                                    candidate["id"].as_str().unwrap_or("")
+                                )
+                        })
+                        .unwrap_or_else(|| panic!("{label}: not opened with a minted token"));
+                    assert_eq!(
+                        token["with"]["permission-pull-requests"], "write",
+                        "{label}"
+                    );
+                }
+            }
+        }
+        assert_eq!(opened, 4, "devenv-update, the index, and a cut's two");
+    }
+
+    /// `check-generated` is path-filtered and not required, so this is what catches
+    /// a renamed or added job on the pull request that makes the change.
+    #[test]
+    fn the_committed_tfvars_are_the_generated_ones() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let committed = fs::read_to_string(root.join(TFVARS)).expect(TFVARS);
+        let generated = render_tfvars(&WorkflowContext::fixture()).unwrap();
+        assert_eq!(committed, generated.content);
+    }
+
+    /// `render_tfvars` requires every job in these, and a required check that does
+    /// not report leaves a pull request waiting forever.
+    #[test]
+    fn the_workflows_that_supply_required_checks_report_on_every_pull_request() {
+        let context = WorkflowContext::fixture();
+        for workflow in [
+            pull_request::workflow(&context),
+            version_integrity::workflow(&context),
+        ] {
+            let value = serde_json::to_value(&workflow).unwrap();
+            let trigger = &value["on"]["pull_request"];
+            assert_eq!(trigger["branches"], json!(["**"]), "{trigger}");
+            assert!(trigger.get("paths").is_none(), "{trigger}");
+            assert!(trigger.get("paths-ignore").is_none(), "{trigger}");
+        }
+    }
+
+    /// GitHub wraps a merge commit's body at 72 columns, and these land unread.
+    #[test]
+    fn the_bots_merge_messages_land_unwrapped() {
+        for body in [release_plan::BODY, release_index::BODY] {
+            assert!(body.len() <= 72, "{}: {body}", body.len());
+        }
+    }
+
+    /// A ruleset will require this check, and a required check that does not
+    /// report leaves a pull request waiting forever. It reads the title and
+    /// description, so editing them must rerun it, and it diffs from the merge
+    /// base, which a shallow clone does not contain.
+    #[test]
+    fn version_integrity_reports_on_every_pull_request() {
+        let workflow = version_integrity::workflow(&WorkflowContext::fixture());
+        let value = serde_json::to_value(&workflow).unwrap();
+
+        let trigger = &value["on"]["pull_request"];
+        assert_eq!(trigger["branches"], json!(["**"]));
+        assert!(trigger.get("paths").is_none(), "{trigger}");
+        assert!(trigger.get("paths-ignore").is_none(), "{trigger}");
+        for kind in ["opened", "synchronize", "reopened", "edited"] {
+            assert!(
+                trigger["types"].as_array().unwrap().contains(&json!(kind)),
+                "{kind}: {trigger}"
+            );
+        }
+
+        let jobs = value["jobs"].as_object().unwrap();
+        assert_eq!(jobs.len(), 1);
+        let job = &jobs["version-integrity"];
+        assert_eq!(job["name"], "version-integrity");
+        assert!(job.get("environment").is_none(), "needs no credential");
+
+        let steps = job["steps"].as_array().unwrap();
+        let checkout = steps.iter().find(|step| step["id"] == "checkout").unwrap();
+        assert_eq!(checkout["with"]["fetch-depth"], "0");
+        assert!(
+            steps
+                .iter()
+                .any(|step| step["run"] == "cargo xtask version-integrity")
+        );
+    }
+
+    /// Every suite runs under the flavor `test-plan` reads from the tree, so
+    /// the combination it tests is the one the tree ships as.
+    #[test]
+    fn every_suite_runs_under_the_tree_s_flavor() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            let suites = assert_suites_take_the_flavor(&name, &value);
+            if name == "pull_request" || name.starts_with("release-") {
+                assert!(suites > 0, "{name}: no test suite");
+            }
+        }
+    }
+
+    /// Asserts every nextest step's flavor binding; returns how many there are.
+    fn assert_suites_take_the_flavor(name: &str, value: &Value) -> usize {
+        let mut suites = 0;
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            for step in job["steps"].as_array().into_iter().flatten() {
+                if step["id"] != "nextest" {
+                    continue;
+                }
+                suites += 1;
+                let run = step["run"].as_str().unwrap_or("");
+                assert!(
+                    run.contains(r#"--features "${FLAVOR}""#),
+                    "{name}/{job_name}: the suite names no flavor: {run}"
+                );
+                assert_eq!(
+                    step["env"]["FLAVOR"], "${{ steps.test-plan.outputs.flavor }}",
+                    "{name}/{job_name}: the suite's flavor is not test-plan's"
+                );
+            }
+        }
+        suites
+    }
+
+    #[test]
+    #[should_panic(expected = "the suite names no flavor")]
+    fn a_suite_without_a_flavor_is_refused() {
+        assert_suites_take_the_flavor(
+            "synthetic",
+            &json!({ "jobs": { "test-linux": { "steps": [{
+                "id": "nextest",
+                "run": "cargo nextest run --workspace --no-fail-fast -E \"${FILTER_EXPR}\""
+            }]}}}),
+        );
+    }
+
+    /// Each channel is its own build: every platform builds under the
+    /// channel's flavor and the publish job merges only that channel's
+    /// artifacts, so a promotion is a fresh stable build, never a relabelled
+    /// preview.
+    #[test]
+    fn every_channel_builds_and_publishes_its_own_flavor() {
+        let context = WorkflowContext::fixture();
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let value = serde_json::to_value(release::workflow(channel, &context)).unwrap();
+            assert_channel_builds_its_own_flavor(channel, &value);
+        }
+    }
+
+    fn assert_channel_builds_its_own_flavor(channel: Channel, value: &Value) {
+        use crate::Platform;
+
+        let flavor = channel.flavor();
+        let mut built = Vec::new();
+        let mut published = false;
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            for step in job["steps"].as_array().into_iter().flatten() {
+                match step["id"].as_str() {
+                    Some("build-recipe") => {
+                        let run = step["run"].as_str().unwrap_or("");
+                        let platform = Platform::iter().find(|platform| {
+                            run == format!("just tauri::build {} {flavor}", platform.slug())
+                        });
+                        assert!(
+                            platform.is_some(),
+                            "{flavor}/{job_name}: builds `{run}`, not this channel's flavor"
+                        );
+                        built.extend(platform);
+                    }
+                    Some("download-staged") => {
+                        assert_eq!(
+                            step["with"]["pattern"],
+                            format!("waypoints-*-{flavor}"),
+                            "{flavor}/{job_name}: merges another channel's artifacts"
+                        );
+                        published = true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for platform in Platform::iter() {
+            assert!(
+                built.contains(&platform),
+                "{flavor}: no build for {platform}"
+            );
+        }
+        assert!(published, "{flavor}: no job merges the staged artifacts");
+    }
+
+    #[test]
+    #[should_panic(expected = "not this channel's flavor")]
+    fn a_build_under_another_channel_s_flavor_is_refused() {
+        assert_channel_builds_its_own_flavor(
+            Channel::Stable,
+            &json!({ "jobs": { "build-macos": { "steps": [{
+                "id": "build-recipe",
+                "run": "just tauri::build macos preview"
+            }]}}}),
+        );
     }
 }

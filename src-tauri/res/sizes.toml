@@ -1,4 +1,6 @@
 #:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Read by Typst, whose TOML parser is 1.0: no multi-line inline tables.
 #

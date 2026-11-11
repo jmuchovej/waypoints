@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name               = "outpost-hold"
   version            = "0.1.0"
@@ -25,6 +28,14 @@ Outpost Hold — the storage interface for Outpost records.
 [dev-dependencies]
   tempfile.workspace = true
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
+
+# The app's flavors, forwarded to every workspace dependency that declares
+# them. Exactly one shipped flavor per build.
+[features]
+  development = [ "bedrock/development", "outpost-protocol/development" ]
+  nightly     = [ "bedrock/nightly", "outpost-protocol/nightly" ]
+  preview     = [ "bedrock/preview", "outpost-protocol/preview" ]
+  stable      = [ "bedrock/stable", "outpost-protocol/stable" ]
 
 [lints]
   workspace = true

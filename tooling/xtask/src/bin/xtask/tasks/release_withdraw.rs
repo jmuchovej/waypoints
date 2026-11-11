@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Best-effort cleanup of the artifacts a shortfall run uploaded. Atomicity
 //! never depends on this succeeding — no manifest ever named these keys,
 //! so they are unreferenced and unadvertised either way — which is what

@@ -1,14 +1,13 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Weekly refresh of the Nix inputs pinned in `devenv.lock`, and of everything
 //! generated downstream of them.
 //!
 //! Renovate covers the language ecosystems on the same Monday cadence but has
 //! no manager for `devenv.lock`, so nothing else moves these inputs.
 
-use super::{
-    WorkflowContext, helpers,
-    helpers::{CiScope, Environment, Resolution},
-    runners, steps,
-};
+use super::{WorkflowContext, helpers, helpers::Environment, runners, steps, steps::Tools};
 use gh_workflow::{
     Environment as GhEnvironment, Event, Job, Level, Permissions, Schedule, StepOutput, Workflow,
     WorkflowDispatch,
@@ -60,15 +59,6 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let app_token = steps::app_token(TOKEN_SCOPES);
     let token = StepOutput::new_trusted(&app_token, "token");
 
-    // Through the shell, like the step before it: `secretspec` and `op` are
-    // both devenv's here, and nothing installs them any other way.
-    let export = steps::SecretSpec::export()
-        .resolving(Resolution::Ci(CiScope::Botswain))
-        .inside_devenv()
-        .with_reason(
-            "CI resolves the ci profile's botswain scope to authenticate as the App it names",
-        );
-
     let update = Job::new("refresh devenv.lock and everything generated from it")
         // Only what `checkout` needs. The branch and the pull request are
         // pushed with the App token, which carries its own write scopes.
@@ -88,7 +78,9 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         // devenv provides us with secretspec already.
         .add_step(steps::nix_profile_install(&["devenv"]))
         .add_step(steps::devenv_update())
-        .add_step(export)
+        // Through the shell: `secretspec` and `op` are both devenv's here, and
+        // nothing installs them any other way.
+        .add_step(steps::botswain_credentials(Tools::Devenv))
         .add_step(app_token)
         .add_step(steps::create_pull_request(
             &token,

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Durability state: the verified pragma pair, readback, and explicit flushing.
 //!
 //! Flushing is the *primitive* only. Deciding when to flush — idle timers,

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Generates every app icon from the authored artwork in `src-tauri/res/`.
 //!
 //! Typst renders: `res/icon/icons.typ` writes a staging tree mirroring

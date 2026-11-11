@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Renames one platform's published and updater artifacts out of the
 //! bundler's nested output into the flat staged directory. See
 //! [`xtask::releases::artifacts`]. Touches nothing outside the working tree

@@ -1,0 +1,35 @@
+#:tombi toml-version = "v1.1.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Code in this tree that this project did not write. The manifest check, the
+# header check's exemptions and THIRD-PARTY-NOTICES.md all read this file.
+#
+# kind:
+#   crate    a whole crate carrying its own license and texts
+#   files    whole files copied in, carrying their own license and texts
+#   portion  a routine inside a first-party file, which keeps the project license
+
+[[entry]]
+  path    = "tooling/gh-workflow"
+  kind    = "crate"
+  project = "tailcallhq/gh-workflow"
+  holder  = "Tailcall"
+  license = "Apache-2.0"
+  texts   = [ "LICENSE" ]
+
+[[entry]]
+  path    = "tooling/patches/specta-macros"
+  kind    = "crate"
+  project = "specta-rs/specta"
+  holder  = "Oscar Beaumont"
+  license = "MIT"
+  texts   = [ "LICENSE-MIT" ]
+
+[[entry]]
+  path    = "tooling/patches/specta-serde"
+  kind    = "crate"
+  project = "specta-rs/specta"
+  holder  = "Oscar Beaumont"
+  license = "MIT"
+  texts   = [ "LICENSE-MIT" ]

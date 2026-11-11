@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Pure, flake-independent overlay: every dependency resolves through
 # `final`/`prev`, so consumers apply it to their own nixpkgs with no extra
 # inputs. Importable without flakes: `import ./nix/overlay.nix {}`.

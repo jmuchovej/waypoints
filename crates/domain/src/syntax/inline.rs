@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The inline layer: [`RichText`] segments ↔ the dialect's inline syntax.
 //!
 //! See `docs/dialect.md`, which is normative for everything here.

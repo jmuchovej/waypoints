@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Shared test scaffolding: build Territories whose ACL records carry
 //! *real* sealed boxes, so tests exercise the actual key-acquisition path
 //! ([`Vessel::refresh_keys`](outpost::vessel::Vessel::refresh_keys)) rather

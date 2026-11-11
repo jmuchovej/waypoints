@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! IDs used for [`Charts`][C], and [`Features`][F] (and [`Glyphs` (Select Options)][S]).
 //!
 //! [C]: super::Chart
@@ -11,6 +14,7 @@ use specta::Type;
 use uuid::Uuid;
 
 const BASE36ID_LEN: usize = 4;
+const PREFIX: &str = "builtin";
 
 /// Base-36 encoded identifier newtype. (Currently 4-character limit.)
 ///
@@ -59,7 +63,7 @@ impl Base36ID {
     pub fn parse(s: &str) -> DomainResult<Base36ID> {
         use DomainError::{Base36IDInvalidCharacters, Base36IDLengthMismatch};
 
-        if s.starts_with("builtin.") {
+        if s.starts_with(&format!("{PREFIX}.")) {
             return Ok(Self(s.to_lowercase()));
         }
 
@@ -120,17 +124,19 @@ impl ChartID {
 
     /// Create a builtin [`ChartID`] with `"builtin.{name}"` prefix.
     pub fn builtin(name: &str) -> Self {
-        Self(format!("builtin.{name}"))
+        Self(format!("{PREFIX}.{name}"))
     }
 
     /// Check if this [`ChartID`] represents a builtin type.
     pub fn is_builtin(&self) -> bool {
-        self.0.starts_with("builtin.")
+        self.0.starts_with(&format!("{PREFIX}."))
     }
 
     /// Get the display name (without `"builtin.{name}"` prefix).
     pub fn name(&self) -> &str {
-        self.0.strip_prefix("builtin.").unwrap_or(self.0.as_str())
+        self.0
+            .strip_prefix(&format!("{PREFIX}."))
+            .unwrap_or(self.0.as_str())
     }
 }
 

@@ -12,6 +12,11 @@ builds every file under `.github/workflows` with it.
 | Upstream base        | `3793c170f1ead17fff767ad2369fe63802398117`                                     |
 | Source taken from    | the fork's `e4f0289`: that base plus the delta, less lint suppressions         |
 | `gh-workflow-macros` | 0.9.0 from crates.io (it keeps `syn` 3 privately; the workspace is on `syn` 2) |
+| License              | `Apache-2.0`, Copyright 2023 Tailcall; `LICENSE` is upstream's, unmodified     |
+| Notice               | none; upstream ships no `NOTICE` file                                          |
+
+The manifest declares `Apache-2.0` itself rather than inheriting the workspace's license, because
+this is another project's code. `.config/third-party.toml` records it as third-party.
 
 `waypoints-hq/gh-workflow` is an archive. Nothing reads it any more; upstream is what
 `just gh-workflow-sync <rev>` fetches. Pass a full SHA or a ref, since GitHub will not resolve an

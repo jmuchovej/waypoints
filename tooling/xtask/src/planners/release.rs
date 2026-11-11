@@ -1,9 +1,13 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Plans the four ref-minting transitions of a release cycle.
 //!
 //! The arithmetic of each transition is [`Version::transition`]'s; this module
 //! supplies what it is applied to (the app's version, or for a cut the last
 //! stable tag and the commits since it), shapes the answer as the outputs the
-//! workflow reads back, and mints the refs.
+//! workflow reads back, and leaves the version write in the working tree for the
+//! pull-request step to land on the protected branch.
 //!
 //! Only `cut` consults commit history, because `main` is the only ref whose
 //! history describes the work honestly. A release branch carries cherry-picks
@@ -14,13 +18,28 @@
 //! claim about content. See [`super::nightly`].
 
 use crate::{
+    planners::test,
+    release_groups::{self, GroupFile},
     releases::{
         index,
+        landing::Landing,
         version::{APP_MANIFEST, Transition, Version},
     },
     tools::{git, github},
+    workspace,
 };
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
+use std::{fs, path::Path};
+
+/// The branch a cut's bump lands on.
+const MAIN: &str = "main";
+
+/// Records every workspace crate's version, so a version write moves it too.
+const LOCKFILE: &str = "Cargo.lock";
+
+/// A transition's pull requests come from here, one branch per target, since a
+/// cut opens one against the series and one against `main` in a single run.
+const HEAD_PREFIX: &str = "botswain/release-plan/";
 
 /// What the planner decided, and what the workflow reads back as job outputs.
 ///
@@ -68,6 +87,51 @@ impl Plan {
             version = self.version,
         )
     }
+
+    /// The pull request that lands this plan's version write on its series.
+    pub fn landing(&self, groups: &GroupFile) -> Result<Landing> {
+        landing(&self.branch, self.commit_message(), groups)
+    }
+
+    /// The pull request that lands `main`'s bump. Only a cut has one.
+    pub fn main_landing(&self, groups: &GroupFile) -> Result<Option<Landing>> {
+        if self.next_main_version.is_empty() {
+            return Ok(None);
+        }
+        let next = Version::parse(&self.next_main_version)?;
+        main_landing(&next, groups).map(Some)
+    }
+}
+
+fn landing(target: &str, title: String, groups: &GroupFile) -> Result<Landing> {
+    Ok(Landing::new(
+        format!("{HEAD_PREFIX}{target}"),
+        title,
+        &written_paths(groups)?,
+    ))
+}
+
+fn main_landing(next: &Version, groups: &GroupFile) -> Result<Landing> {
+    landing(MAIN, next_main_message(next), groups)
+}
+
+/// The crates an app version write sets together: the app's group, which the
+/// pull-request check holds to one version.
+fn app_members(groups: &GroupFile) -> Result<&[String]> {
+    let anchor = APP_MANIFEST.trim_end_matches("/Cargo.toml");
+    groups
+        .members_anchored_at(anchor)
+        .with_context(|| format!("no group is anchored at `{anchor}`"))
+}
+
+/// What a version write changes: every member's manifest, and the lockfile
+/// entries that repeat their versions.
+fn written_paths(groups: &GroupFile) -> Result<Vec<String>> {
+    Ok(app_members(groups)?
+        .iter()
+        .map(|member| format!("{member}/Cargo.toml"))
+        .chain([LOCKFILE.to_owned()])
+        .collect())
 }
 
 /// What every commit the planner writes is prefixed with. Release bookkeeping
@@ -86,8 +150,11 @@ pub fn next_main_message(next: &Version) -> String {
 }
 
 /// Plans `transition` from the checkout: the app's current version, or for
-/// a cut the stable tags and the commits since the last one.
+/// a cut the stable tags and the commits since the last one. Refuses a tree
+/// the group file does not describe.
 pub fn plan(transition: Transition) -> Result<Plan> {
+    crate::release_groups::load(&crate::workspace::load()?)?;
+
     let (from, commits) = match transition {
         Transition::Cut => {
             let tags = stable_tags()?;
@@ -102,47 +169,61 @@ pub fn plan(transition: Transition) -> Result<Plan> {
     Plan::new(transition, &from, &commits)
 }
 
-/// The refs [`execute`] created.
-pub struct Executed {
-    /// The version commit the tag points at.
-    pub commit: String,
-    /// `main`'s post-cut bump, as `(version, commit)`. Only on a cut.
-    pub main_bump: Option<(Version, String)>,
-}
-
-/// Mints the refs `plan` names: on a cut the branch first, then the version
-/// commit, the tag pointing at it, and `main`'s bump.
-pub fn execute(transition: Transition, plan: &Plan) -> Result<Executed> {
-    // A cut opens the branch before anything can be written to it.
+/// Leaves `plan`'s version write in the working tree on its series, for the
+/// pull-request step to commit. A cut opens the series first.
+pub fn execute(transition: Transition, plan: &Plan) -> Result<()> {
     if transition == Transition::Cut {
         github::create_branch(&plan.branch, &git::run(&["rev-parse", "HEAD"])?)?;
     }
+    git::check_out_latest(&plan.branch)?;
+    write_version(&Version::parse(&plan.version)?)
+}
 
-    // Write the version, then tag *that* commit. Tagging the branch head
-    // instead would point the tag at the commit before the bump, leaving the
-    // tag and the manifest it names disagreeing.
-    let version = Version::parse(&plan.version)?;
-    let commit = write_version(&plan.branch, &version, &plan.commit_message())?;
-    github::create_tag(&plan.tag, &commit)?;
+/// Leaves `main`'s post-cut bump in the working tree, for the pull-request step
+/// to commit.
+pub fn bump_main(next: &Version) -> Result<Landing> {
+    git::check_out_latest(MAIN)?;
+    write_version(next)?;
+    main_landing(next, &release_groups::load(&workspace::load()?)?)
+}
 
-    // TODO: if `main` ever becomes a protected branch, botswain will only be
-    // able to commit through a PR — adjust accordingly.
-    let main_bump = if plan.next_main_version.is_empty() {
-        None
-    } else {
-        let next = Version::parse(&plan.next_main_version)?;
-        let bumped = write_version("main", &next, &next_main_message(&next))?;
-        Some((next, bumped))
-    };
+/// Writes `version` to every member of the app's group, in the tree checked out
+/// now: their manifests and their lockfile entries.
+fn write_version(version: &Version) -> Result<()> {
+    let metadata = workspace::load()?;
+    let groups = release_groups::load(&metadata)?;
+    let packages = test::package_directories(&metadata);
+    let root = metadata.workspace_root.as_std_path();
 
-    Ok(Executed { commit, main_bump })
+    let lockfile = root.join(LOCKFILE);
+    let mut lock = read(&lockfile)?;
+    for member in app_members(&groups)? {
+        let manifest = root.join(member).join("Cargo.toml");
+        write(&manifest, &set_package_version(&read(&manifest)?, version)?)?;
+
+        let (package, _) = packages
+            .iter()
+            .find(|(_, directory)| directory == member)
+            .with_context(|| format!("`{member}` is not a workspace member"))?;
+        lock = set_locked_version(&lock, package, version)?;
+    }
+    write(&lockfile, &lock)
+}
+
+fn read(path: &Path) -> Result<String> {
+    fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))
+}
+
+fn write(path: &Path, text: &str) -> Result<()> {
+    fs::write(path, text).with_context(|| format!("Failed to write {}", path.display()))
 }
 
 /// Rewrites the `[package]` version, leaving every other `version =` alone.
 ///
 /// Dependencies carry `version` too, so this walks to the `[package]` table
 /// first and edits the first assignment inside it rather than pattern-matching
-/// the file.
+/// the file. The key keeps its indent and alignment, so the write never also
+/// reads as a reformat.
 fn set_package_version(manifest: &str, version: &Version) -> Result<String> {
     let mut in_package = false;
     let mut edited = false;
@@ -153,9 +234,13 @@ fn set_package_version(manifest: &str, version: &Version) -> Result<String> {
             let trimmed = line.trim_start();
             if trimmed.starts_with('[') {
                 in_package = trimmed.starts_with("[package]");
-            } else if in_package && !edited && trimmed.starts_with("version") {
+            } else if in_package
+                && !edited
+                && let Some((key, _)) = line.split_once('=')
+                && key.trim() == "version"
+            {
                 edited = true;
-                return format!("version = \"{version}\"");
+                return format!("{key}= \"{version}\"");
             }
             line.to_owned()
         })
@@ -165,6 +250,28 @@ fn set_package_version(manifest: &str, version: &Version) -> Result<String> {
         bail!("no `[package]` version to rewrite");
     }
     Ok(out.join("\n") + "\n")
+}
+
+/// Rewrites a workspace crate's `Cargo.lock` entry. A registry crate sharing its
+/// name carries a `source` line, and a workspace crate never does.
+fn set_locked_version(lock: &str, package: &str, version: &Version) -> Result<String> {
+    let name = format!("name = \"{package}\"");
+    let mut lines: Vec<String> = lock.lines().map(str::to_owned).collect();
+
+    let entry = (0..lines.len()).find(|&index| {
+        lines[index] == name
+            && lines
+                .get(index + 1)
+                .is_some_and(|line| line.starts_with("version = "))
+            && !lines
+                .get(index + 2)
+                .is_some_and(|line| line.starts_with("source = "))
+    });
+    let Some(entry) = entry else {
+        bail!("{LOCKFILE} has no workspace entry for `{package}`");
+    };
+    lines[entry + 1] = format!("version = \"{version}\"");
+    Ok(lines.join("\n") + "\n")
 }
 
 /// The newest stable tag, which is what a cut measures its work against.
@@ -203,18 +310,6 @@ fn log_range(since: Option<&Version>) -> String {
 /// reading them as work would nudge the target a cut is heading toward.
 fn commits_since(since: Option<&Version>) -> Result<Vec<String>> {
     index::product_commits(&log_range(since))
-}
-
-/// Reads the app manifest from `branch`, sets its version, and commits it
-/// through the Contents API, as the token's identity.
-fn write_version(branch: &str, version: &Version, message: &str) -> Result<String> {
-    let (_, manifest) = github::file(APP_MANIFEST, branch)?;
-    github::update_file(
-        APP_MANIFEST,
-        branch,
-        &set_package_version(&manifest, version)?,
-        message,
-    )
 }
 
 #[cfg(test)]
@@ -391,6 +486,117 @@ version = \"ignored\"
     #[test]
     fn rewriting_a_manifest_without_a_package_version_is_an_error() {
         assert!(set_package_version("[dependencies]\nserde = \"1\"\n", &v("0.2.0")).is_err());
+    }
+
+    /// The bot's commit has to carry the version write and nothing else, and
+    /// these manifests are aligned by tombi.
+    #[test]
+    fn the_rewrite_keeps_the_line_s_indent_and_alignment() {
+        let manifest = "[package]\n  name              = \"cartograph\"\n  version           = \"0.1.0\"\n  edition.workspace = true\n";
+        assert_eq!(
+            set_package_version(manifest, &v("0.2.0-pre.1")).unwrap(),
+            "[package]\n  name              = \"cartograph\"\n  version           = \"0.2.0-pre.1\"\n  edition.workspace = true\n"
+        );
+    }
+
+    /// A crate inheriting its version has nothing of its own to rewrite.
+    #[test]
+    fn an_inherited_version_is_not_rewritten() {
+        let manifest = "[package]\nversion.workspace = true\n";
+        assert!(set_package_version(manifest, &v("0.2.0")).is_err());
+    }
+
+    fn workspace_groups() -> GroupFile {
+        release_groups::load(&workspace::load().unwrap()).unwrap()
+    }
+
+    /// The pull-request check holds the whole group to one version, so every
+    /// transition has to write all of it in one commit.
+    #[test]
+    fn every_transition_writes_the_whole_group_and_its_lockfile() {
+        let groups = workspace_groups();
+        for (transition, from, commits) in [
+            (Transition::Cut, "0.1.0", &["feat: charts"][..]),
+            (Transition::Advance, "0.2.0-pre.1", &[]),
+            (Transition::Promote, "0.2.0-pre.7", &[]),
+            (Transition::Patch, "0.2.0", &[]),
+        ] {
+            let plan = plan(transition, from, commits);
+            let landing = plan.landing(&groups).unwrap();
+            assert_eq!(
+                landing.paths, "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
+                "{transition:?}"
+            );
+            assert_eq!(
+                landing.head,
+                format!("botswain/release-plan/{}", plan.branch)
+            );
+            assert_eq!(landing.title, plan.commit_message());
+        }
+    }
+
+    /// Two pull requests in one run, so they cannot share a branch: the step
+    /// refreshes its branch in place, and the second would overwrite the first.
+    #[test]
+    fn only_a_cut_lands_on_main_and_from_its_own_branch() {
+        let groups = workspace_groups();
+
+        let cut = plan(Transition::Cut, "0.1.0", &["feat: charts"]);
+        let series = cut.landing(&groups).unwrap();
+        let main = cut
+            .main_landing(&groups)
+            .unwrap()
+            .expect("a cut bumps main");
+        assert_ne!(series.head, main.head);
+        assert_eq!(main.head, "botswain/release-plan/main");
+        assert_eq!(main.title, next_main_message(&v("0.3.0-nightly")));
+        assert_eq!(main.paths, series.paths);
+
+        let advance = plan(Transition::Advance, "0.2.0-pre.1", &[]);
+        assert_eq!(advance.main_landing(&groups).unwrap(), None);
+    }
+
+    const LOCK: &str = "\
+[[package]]
+name = \"cartograph\"
+version = \"0.1.0\"
+dependencies = [
+ \"domain\",
+]
+
+[[package]]
+name = \"serde\"
+version = \"0.1.0\"
+source = \"registry+https://github.com/rust-lang/crates.io-index\"
+";
+
+    #[test]
+    fn a_lock_entry_moves_alone() {
+        let out = set_locked_version(LOCK, "cartograph", &v("0.2.0-pre.1")).unwrap();
+        assert_eq!(out, LOCK.replacen("0.1.0", "0.2.0-pre.1", 1));
+    }
+
+    /// A workspace crate never has a `source`, so one that does is someone
+    /// else's crate of the same name.
+    #[test]
+    fn a_registry_crate_is_never_a_workspace_entry() {
+        assert!(set_locked_version(LOCK, "serde", &v("9.9.9")).is_err());
+        assert!(set_locked_version(LOCK, "absent", &v("9.9.9")).is_err());
+    }
+
+    #[test]
+    fn this_lockfile_records_every_member_of_the_app_s_group() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let lock = fs::read_to_string(root.join(LOCKFILE)).unwrap();
+        for package in ["Waypoints", "cartograph"] {
+            let out = set_locked_version(&lock, package, &v("99.0.0")).unwrap();
+            let changed = lock
+                .lines()
+                .zip(out.lines())
+                .filter(|(before, after)| before != after)
+                .count();
+            assert_eq!(changed, 1, "{package}");
+        }
     }
 
     /// The manifest the tag names must be the one the tag points at.

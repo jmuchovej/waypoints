@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name               = "bedrock-core"
   version            = "0.1.0"
@@ -19,6 +22,14 @@ Bedrock's core schema vocabulary.
   serde_json.workspace = true
   thiserror.workspace  = true
   uuid.workspace       = true
+
+# The app's flavors, so a gate can reach this crate. Exactly one shipped
+# flavor per build.
+[features]
+  development = []
+  nightly     = []
+  preview     = []
+  stable      = []
 
 [lints]
   workspace = true

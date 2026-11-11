@@ -1,4 +1,6 @@
 #!/usr/bin/env -S nu --stdin
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # OpenTofu external key provider: hands the state passphrase to the chained
 # `pbkdf2` key provider. Protocol: header line, then read stored meta from

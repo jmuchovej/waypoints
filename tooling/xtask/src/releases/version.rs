@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! One reading of a version for every release task.
 //!
 //! A version names its own channel (a `nightly` prerelease is nightly, any
@@ -38,7 +41,10 @@ pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
 /// `main` as a preview, advances through `-pre.N` while it stabilises, is
 /// promoted in place to stable, and then takes patches until the next minor
 /// supersedes it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumIter, ValueEnum)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, EnumIter, ValueEnum, serde::Deserialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum Transition {
     /// Branch `main` into a new preview line.
     Cut,

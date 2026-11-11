@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Asserts that everything we generate is in lockstep with the source it is
 //! generated from — devenv's `files."..."`/`tasks."mise:lock"` outputs, the
 //! TypeScript bindings `cargo xtask typegen` exports from `domain` and
@@ -17,12 +20,19 @@ const SOURCES: &[&str] = &[
     "crates/domain/**",
     "crates/cartograph/**",
     "src-tauri/res/**",
+    "Cargo.lock",
+    "pnpm-lock.yaml",
+    ".config/third-party.toml",
+    ".config/about.toml",
+    ".config/about.hbs",
 ];
 
 /// Generated outputs, listed so that hand-editing one is caught. devenv's own
 /// come from the context at generation time.
 const OUTPUTS: &[&str] = &[
     ".github/workflows/**",
+    super::TFVARS,
+    "docs/licensing/THIRD-PARTY-NOTICES.md",
     "crates/domain/typescript/**",
     "crates/cartograph/typescript/**",
     "src-tauri/assets/icons/app/**",

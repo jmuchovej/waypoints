@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A Landmark's YAML frontmatter — the flattened root Mark.
 //!
 //! [`yaml`] is the subset of YAML it is written in, one `Node` tree both ways;

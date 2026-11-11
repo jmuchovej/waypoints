@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! An in-memory fold of a Territory's ACL log that implements the
 //! synchronous [`ACLStateProvider`] seam. A hold materializes
 //! one of these from its persisted `ACLRow`s so validation — which is pure

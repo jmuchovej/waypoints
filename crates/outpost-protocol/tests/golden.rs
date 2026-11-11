@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Golden byte vectors pinning the wire format. Ed25519 signing is
 //! deterministic (RFC 8032) and postcard is canonical for a given value, so
 //! every byte below is reproducible. If one of these assertions breaks, the

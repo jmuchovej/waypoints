@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Step constructors shared across workflows. Each returns a labelled step
 //! ready to drop into a job.
 
@@ -113,6 +116,13 @@ pub fn zizmor() -> Step<Run> {
         .add_env(("GH_TOKEN", "${{ github.token }}"))
 }
 
+pub fn cargo_deny_licenses() -> Step<Run> {
+    Step::new("Check dependency licenses")
+        .run("cargo deny check licenses")
+        .shell("bash")
+        .id("cargo-deny-licenses")
+}
+
 /// Runs an `xtask` subcommand via the `cargo xtask` alias in
 /// `.cargo/config.toml`.
 ///
@@ -184,16 +194,18 @@ pub fn app_token(permissions: &[(&str, &str)]) -> Step<Use> {
 
 /// Publishes the wp-botswain App credentials into the job environment, for
 /// [`app_token`] to read. Resolves the `ci` profile's `botswain` scope and
-/// nothing else. For jobs whose `secretspec` and `op` come from mise; one
-/// entered through devenv runs the same export `inside_devenv`, as
-/// `devenv_update` does.
-pub fn botswain_credentials() -> Step<Run> {
-    SecretSpec::export()
+/// nothing else.
+pub(crate) fn botswain_credentials(tools: Tools) -> Step<Run> {
+    let spec = SecretSpec::export()
         .resolving(Resolution::Ci(CiScope::Botswain))
         .with_reason(
             "CI resolves the ci profile's botswain scope to authenticate as the App it names",
-        )
-        .into()
+        );
+    match tools {
+        Tools::Mise => spec,
+        Tools::Devenv => spec.inside_devenv(),
+    }
+    .into()
 }
 
 /// Opens a pull request from whatever the preceding steps left in the tree,
@@ -225,6 +237,79 @@ pub fn create_pull_request(
     .add_with(("body", body))
     .add_with(("commit-message", title))
     .add_with(("add-paths", paths.join("\n")))
+}
+
+/// The pull request a bot write left for [`create_pull_request`], as the outputs
+/// `xtask` publishes for it: `head`, `title`, and `paths`.
+pub(crate) fn land_write<T>(
+    writer: &Step<T>,
+    token: &StepOutput,
+    id: &str,
+    body: &str,
+) -> Step<Use> {
+    let output = |name| StepOutput::new_trusted(writer, name).to_string();
+    create_pull_request(
+        token,
+        &output("head"),
+        &output("title"),
+        body,
+        &[output("paths")],
+    )
+    .id(id)
+}
+
+/// One step of a bot pull request's landing. Its values travel through the
+/// environment rather than the command line.
+fn release_land(action: &str, flags: &str, tools: Tools) -> Step<Run> {
+    let step = Step::new(format!("cargo xtask release-land {action}"))
+        .run(tools.command(&format!("cargo xtask release-land {action} {flags}")))
+        .shell("bash");
+    match tools {
+        Tools::Mise => step,
+        Tools::Devenv => step.add_env((
+            "SECRETSPEC_REASON",
+            "release-land drives a pull request through the GitHub API; no secret values are read",
+        )),
+    }
+}
+
+/// Has GitHub merge the pull request once its required checks pass. The number
+/// is empty when the pull-request step had nothing to commit or did not run.
+pub(crate) fn auto_merge(pull_request: &StepOutput, token: &StepOutput, tools: Tools) -> Step<Run> {
+    release_land("auto-merge", r#"--pull-request "${PULL_REQUEST}""#, tools)
+        .if_condition(Expression::new(format!("{} != ''", pull_request.expr())))
+        .add_env(("PULL_REQUEST", pull_request.to_string()))
+        .add_env(("GH_TOKEN", token.to_string()))
+}
+
+/// Blocks until the pull request merges, under `GITHUB_TOKEN`: the required
+/// checks can outlast an App token, and looking needs no more than this.
+pub(crate) fn wait_for_merge(pull_request: &StepOutput) -> Step<Run> {
+    release_land("wait", r#"--pull-request "${PULL_REQUEST}""#, Tools::Mise)
+        .id("wait-for-merge")
+        .add_env(("PULL_REQUEST", pull_request.to_string()))
+        .add_env(("GH_TOKEN", GITHUB_TOKEN))
+}
+
+/// Tags the merge commit [`wait_for_merge`] found. The App token is what raises
+/// the tag's `push` event, and it must be one minted after the wait.
+pub(crate) fn tag_merge_commit(
+    tag: &StepOutput,
+    commit: &StepOutput,
+    token: &StepOutput,
+) -> Step<Run> {
+    release_land("tag", r#"--tag "${TAG}" --commit "${COMMIT}""#, Tools::Mise)
+        .add_env(("TAG", tag.to_string()))
+        .add_env(("COMMIT", commit.to_string()))
+        .add_env(("GH_TOKEN", token.to_string()))
+}
+
+/// Leaves `main`'s post-cut bump in the tree. Only a cut names a next version.
+pub(crate) fn bump_main(version: &StepOutput) -> Step<Run> {
+    release_land("bump-main", r#"--version "${VERSION}""#, Tools::Mise)
+        .id("bump-main")
+        .if_condition(Expression::new(format!("{} != ''", version.expr())))
+        .add_env(("VERSION", version.to_string()))
 }
 
 /// Installs the whole toolchain — node, pnpm, just, sops, age, yq, nu, and
@@ -976,10 +1061,13 @@ pub fn delete_minted_tag(tag: &JobOutput, tag_minted: &JobOutput) -> Step<Run> {
 
 pub(crate) struct Nextest(Step<Run>);
 
-pub(crate) fn cargo_nextest(suite: TestSuite) -> Nextest {
+/// The suite, under `flavor`: the channel flavor `test-plan` reads from the
+/// tree, so what is tested is what the tree ships as.
+pub(crate) fn cargo_nextest(suite: TestSuite, flavor: &str) -> Nextest {
     let step = Step::new(format!("Run {} tests", suite.describe()))
-        .run("cargo nextest run --workspace --no-fail-fast")
+        .run(r#"cargo nextest run --workspace --no-fail-fast --features "${FLAVOR}""#)
         .shell("bash")
+        .add_env(("FLAVOR", flavor))
         // The release suite compiles the whole workspace cold, and the hosted
         // Linux runner has run out of disk doing it. Debuginfo and incremental
         // artifacts are most of `target/`, and neither is worth anything here.
@@ -1166,6 +1254,19 @@ mod tests {
         "AWS_SECRET_ACCESS_KEY",
         "SCCACHE_ENDPOINT",
     ];
+
+    /// This runs under `GITHUB_TOKEN`, which is no bypass actor on the tag
+    /// ruleset, so the flag is what stops `gh` trying to create a missing tag.
+    #[test]
+    fn the_draft_never_creates_its_tag() {
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let step = rendered(create_release(channel, None));
+            let run = step["run"].as_str().expect("run");
+            assert!(run.contains("gh release create"), "{run}");
+            assert!(run.contains("--verify-tag"), "{run}");
+            assert_eq!(step["env"]["GH_TOKEN"], GITHUB_TOKEN);
+        }
+    }
 
     /// Profile and scope travel as one value, so every rendering carries both.
     #[test]

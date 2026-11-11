@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `serde_json::Value` as a document column, round-tripped through a live turso
 //! database — including the distinction between a JSON `null` value and an
 //! absent (`Option::None` → SQL NULL) column.

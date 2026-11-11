@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Refusals as data.
 //!
 //! Ingest collects every problem it finds — per UUID, per Chart, per line — and

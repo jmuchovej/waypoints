@@ -1,3 +1,25 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This file is part of Waypoints.
+//
+// Waypoints is free software: you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Waypoints is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with Waypoints. If not, see <https://www.gnu.org/licenses/>.
+//
+// Additional permission under GNU AGPL version 3 section 7: this Program
+// may be conveyed through application stores on the terms set out in
+// docs/licensing/COPYING.exceptions.
+
 //! `cargo xtask` — the CLI over the `xtask` library.
 //!
 //! Each task under `tasks/` is a clap argument struct and a `run`: it parses,
@@ -13,8 +35,11 @@ pub mod tasks {
     pub mod dev_server;
     pub mod devenv_files;
     pub mod icongen;
+    pub mod license;
     pub mod nightly_plan;
+    pub mod release_groups;
     pub mod release_index;
+    pub mod release_land;
     pub mod release_manifest;
     pub mod release_plan;
     pub mod release_stage;
@@ -22,6 +47,7 @@ pub mod tasks {
     pub mod release_withdraw;
     pub mod test_plan;
     pub mod typegen;
+    pub mod version_integrity;
     pub mod workflows;
 }
 
@@ -48,11 +74,17 @@ enum Command {
     ReleaseWithdraw(tasks::release_withdraw::Options),
     /// Plans a release-cycle transition: cut, advance, promote, or patch.
     ReleasePlan(tasks::release_plan::Options),
-    /// Records a published tag in the release index on `main`.
+    /// Writes a published tag's release-index entry for its pull request to land.
     ReleaseIndex(tasks::release_index::Options),
+    /// Takes a bot's pull request from opened to landed, one step at a time.
+    ReleaseLand(tasks::release_land::Options),
+    /// Maintains the group file's generated schema.
+    ReleaseGroups(tasks::release_groups::Options),
+    /// Checks what a pull request claims about versions.
+    VersionIntegrity(tasks::version_integrity::Options),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::devenv_files::Options),
-    /// Regenerates every checked-in GitHub Actions workflow.
+    /// Regenerates every checked-in GitHub Actions workflow, and the checks OpenTofu requires of them.
     #[command(alias = "gen-workflows")]
     Workflows(tasks::workflows::Options),
     /// Regenerates the TypeScript bindings from the Rust data model.
@@ -61,6 +93,8 @@ enum Command {
     Icongen(tasks::icongen::Options),
     /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
     DevServer(tasks::dev_server::Options),
+    /// Holds the tree to the licensing policy; regenerates the third-party notices.
+    License(tasks::license::Options),
 }
 
 fn main() -> Result<()> {
@@ -75,10 +109,14 @@ fn main() -> Result<()> {
         Command::ReleaseWithdraw(args) => tasks::release_withdraw::run(args),
         Command::ReleasePlan(args) => tasks::release_plan::run(args),
         Command::ReleaseIndex(args) => tasks::release_index::run(args),
+        Command::ReleaseLand(args) => tasks::release_land::run(args),
+        Command::ReleaseGroups(args) => tasks::release_groups::run(args),
+        Command::VersionIntegrity(args) => tasks::version_integrity::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
         Command::Typegen(args) => tasks::typegen::run(args),
         Command::Icongen(args) => tasks::icongen::run(args),
         Command::DevServer(args) => tasks::dev_server::run(args),
+        Command::License(args) => tasks::license::run(args),
     }
 }

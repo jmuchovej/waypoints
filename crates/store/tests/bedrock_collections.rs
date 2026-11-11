@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Round-trip tests for the bedrock-backed collections.
 //!
 //! Each test opens a `Store` on a tempdir path, writes domain types via the

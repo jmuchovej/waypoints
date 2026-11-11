@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Sync-owned persistence: the winning arbitration key per fold target and
 //! the incremental fold cursor.
 //!

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Decides which tests a CI run needs.
 //!
 //! Two questions, one answer shape — a [nextest filterset]:
@@ -14,7 +17,10 @@
 //!
 //! [nextest filterset]: https://nexte.st/docs/filtersets/
 
-use crate::tools::{git, github};
+use crate::{
+    releases::index,
+    tools::{git, github},
+};
 use anyhow::Result;
 use cargo_metadata::Metadata;
 use std::collections::BTreeSet;
@@ -34,6 +40,12 @@ const GLOBAL_PATHS: [&str; 4] = [
     "rust-toolchain.toml",
     ".config/cargo.toml",
 ];
+
+/// The flavor a suite runs under: the channel the app manifest's version
+/// names, so the combination tested is the one the tree ships as.
+pub fn flavor(manifest: &str) -> Result<String> {
+    Ok(index::manifest_version(manifest)?.channel().flavor())
+}
 
 /// The pre-release suite: the roots and everything they pull in.
 pub fn release_plan() -> String {
@@ -76,7 +88,10 @@ pub fn package_directories(metadata: &Metadata) -> Vec<(String, String)> {
 /// The workspace package a repo-relative path belongs to, if any.
 ///
 /// Longest prefix wins, so a nested crate is not shadowed by an ancestor.
-fn owning_package<'a>(path: &str, directories: &'a [(String, String)]) -> Option<&'a str> {
+pub(crate) fn owning_package<'a>(
+    path: &str,
+    directories: &'a [(String, String)],
+) -> Option<&'a str> {
     directories
         .iter()
         .filter(|(_, dir)| path.starts_with(&format!("{dir}/")))
@@ -215,5 +230,15 @@ mod tests {
     #[test]
     fn a_sibling_directory_is_not_a_match() {
         assert!(planned(&["crates/domain-other/src/lib.rs"]).is_empty());
+    }
+
+    /// A suite runs under the flavor its tree ships as.
+    #[test]
+    fn the_suite_takes_the_manifest_s_channel_flavor() {
+        let manifest =
+            |version: &str| format!("[package]\nname = \"Waypoints\"\nversion = \"{version}\"\n");
+        assert_eq!(flavor(&manifest("0.3.0-nightly")).unwrap(), "nightly");
+        assert_eq!(flavor(&manifest("0.3.0-pre.2")).unwrap(), "preview");
+        assert_eq!(flavor(&manifest("0.3.0")).unwrap(), "stable");
     }
 }

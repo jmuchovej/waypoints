@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The build matrix: the platforms a release is built for, the host
 //! architecture each build targets, and where each files its artifacts.
 

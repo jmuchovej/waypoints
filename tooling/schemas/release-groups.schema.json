@@ -1,0 +1,320 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GroupFile",
+  "description": "Which workspace crates version together, and what a pull request may claim\nabout them.",
+  "type": "object",
+  "properties": {
+    "bookkeeping": {
+      "$ref": "#/definitions/Bookkeeping"
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Group"
+      }
+    },
+    "enforce": {
+      "$ref": "#/definitions/Enforce"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "bookkeeping",
+    "group",
+    "enforce"
+  ],
+  "definitions": {
+    "Bookkeeping": {
+      "description": "What is never product work, for any group or planner.",
+      "type": "object",
+      "properties": {
+        "paths": {
+          "description": "Commits touching only these paths count for nothing.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ignore-revs": {
+          "description": "The file listing treewide formatting passes.",
+          "type": "string"
+        },
+        "bot-subjects": {
+          "description": "Subject prefixes reserved to the release bot.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "paths",
+        "ignore-revs",
+        "bot-subjects"
+      ]
+    },
+    "Group": {
+      "description": "One versioned line of crates.",
+      "type": "object",
+      "properties": {
+        "members": {
+          "description": "Crates carrying the group's version.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "internals": {
+          "description": "Crates the group owns and never versions.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "anchor": {
+          "description": "The member whose `[package].version` is the group's version.",
+          "type": "string"
+        },
+        "tag": {
+          "description": "The group's tag, with `{version}` standing in for its version.",
+          "type": "string"
+        },
+        "breaking": {
+          "description": "What marks a breaking change for this group.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Breaking"
+            }
+          ]
+        },
+        "floors": {
+          "description": "What can force a cut above what the commits declare.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Floor"
+          }
+        },
+        "fixtures": {
+          "description": "The group's append-only corpus.",
+          "type": "string"
+        },
+        "minted": {
+          "description": "The transitions that mint this group's versions.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Transition"
+          }
+        },
+        "owns": {
+          "description": "Paths the group owns beyond its crates and fixtures.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Owns"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "counts": {
+          "description": "Which paths count as work for this group.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Counts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "features-always-increment-minor": {
+          "description": "Whether a `feat` always moves the minor, even before `v1`.",
+          "type": "boolean",
+          "default": false
+        },
+        "channels": {
+          "description": "The channels the group ships through.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Channel"
+          }
+        },
+        "flavors": {
+          "description": "The flavors every crate in the group declares.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Flavor"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "members",
+        "anchor",
+        "tag",
+        "breaking",
+        "floors",
+        "fixtures",
+        "minted"
+      ]
+    },
+    "Breaking": {
+      "oneOf": [
+        {
+          "description": "`!` in the group's own header.",
+          "type": "string",
+          "const": "header"
+        },
+        {
+          "description": "The `Covenant: break` trailer.",
+          "type": "string",
+          "const": "trailer:Covenant: break"
+        }
+      ]
+    },
+    "Floor": {
+      "type": "string",
+      "enum": [
+        "cargo-semver-checks",
+        "covenant-fixtures"
+      ]
+    },
+    "Transition": {
+      "description": "The four ref-minting transitions of a release cycle, in the order a\nversion meets them.\n\nOne branch exists per minor version, `v{major}.{minor}.x`. It is cut from\n`main` as a preview, advances through `-pre.N` while it stabilises, is\npromoted in place to stable, and then takes patches until the next minor\nsupersedes it.",
+      "oneOf": [
+        {
+          "description": "Branch `main` into a new preview line.",
+          "type": "string",
+          "const": "cut"
+        },
+        {
+          "description": "Take the next `-pre.N` on the current preview branch.",
+          "type": "string",
+          "const": "advance"
+        },
+        {
+          "description": "Drop the prerelease suffix, making this branch stable.",
+          "type": "string",
+          "const": "promote"
+        },
+        {
+          "description": "Take the next patch on a stable branch.",
+          "type": "string",
+          "const": "patch"
+        }
+      ]
+    },
+    "Owns": {
+      "oneOf": [
+        {
+          "description": "Everything no other group owns, minus `tooling/` and bookkeeping.",
+          "type": "string",
+          "const": "remainder"
+        }
+      ]
+    },
+    "Counts": {
+      "oneOf": [
+        {
+          "description": "Its own paths plus every group's: the binary ships them.",
+          "type": "string",
+          "const": "closure"
+        }
+      ]
+    },
+    "Channel": {
+      "type": "string",
+      "enum": [
+        "stable",
+        "preview",
+        "nightly"
+      ]
+    },
+    "Flavor": {
+      "description": "Every flavor the app is built as: each release [`Channel`], plus the\ndevelopment build. One name per flavor, shared by the `just\nicons::<flavor>` recipe, the cargo feature, the Typst icon render, and\nthe release workflow.\n\nA superset type rather than a `Channel` variant: a channel is something\na release ships through, and nothing that iterates channels — required\ntargets, tag patterns, the publish gate — should ever meet the\ndevelopment build. Convert a channel with `Flavor::from`.",
+      "type": "string",
+      "enum": [
+        "development",
+        "nightly",
+        "preview",
+        "stable"
+      ]
+    },
+    "Enforce": {
+      "description": "The pull-request checks `version-integrity` carries.",
+      "type": "object",
+      "properties": {
+        "commits": {
+          "$ref": "#/definitions/Commits"
+        },
+        "summary-type": {
+          "$ref": "#/definitions/SummaryType"
+        },
+        "version-writes": {
+          "$ref": "#/definitions/VersionWrites"
+        },
+        "fixtures": {
+          "$ref": "#/definitions/Fixtures"
+        },
+        "schema": {
+          "$ref": "#/definitions/SchemaRule"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "commits",
+        "summary-type",
+        "version-writes",
+        "fixtures",
+        "schema"
+      ]
+    },
+    "Commits": {
+      "oneOf": [
+        {
+          "description": "A landing message is a conventional commit.",
+          "type": "string",
+          "const": "conventional"
+        }
+      ]
+    },
+    "SummaryType": {
+      "oneOf": [
+        {
+          "description": "A multi-group change lands as `summary`, one body header per group.",
+          "type": "string",
+          "const": "summary"
+        }
+      ]
+    },
+    "VersionWrites": {
+      "oneOf": [
+        {
+          "description": "Only `wp-botswain[bot]` changes a member's `[package].version`.",
+          "type": "string",
+          "const": "botswain"
+        }
+      ]
+    },
+    "Fixtures": {
+      "oneOf": [
+        {
+          "description": "A fixture changes only under the `Covenant: break` trailer.",
+          "type": "string",
+          "const": "append-only"
+        }
+      ]
+    },
+    "SchemaRule": {
+      "oneOf": [
+        {
+          "description": "The committed schema equals the regenerated one.",
+          "type": "string",
+          "const": "current"
+        }
+      ]
+    }
+  }
+}

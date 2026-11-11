@@ -1,4 +1,6 @@
 #:schema https://www.schemastore.org/git-cliff.json
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [changelog]
   header = """
@@ -78,6 +80,7 @@
     { message = "^style", group = "<!-- 5 -->🎨 Styling" },
     { message = "^test", group = "<!-- 6 -->🧪 Testing" },
     { message = "^chore\\(release\\):", skip = true },
+    { message = "^summary:", skip = true },
     { message = "^chore: release", skip = true },
     { message = "^chore\\(deps.*\\)", skip = true },
     { message = "^chore\\(pr\\)", skip = true },

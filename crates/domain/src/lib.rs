@@ -1,3 +1,25 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This file is part of Waypoints.
+//
+// Waypoints is free software: you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Waypoints is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with Waypoints. If not, see <https://www.gnu.org/licenses/>.
+//
+// Additional permission under GNU AGPL version 3 section 7: this Program
+// may be conveyed through application stores on the terms set out in
+// docs/licensing/COPYING.exceptions.
+
 //! Waypoints' core architecture for block-based thought tools.
 //!
 //! At it's core, any "document" in Waypoints is an ordered list of [`Marks`][M]. [`Marks`][M] come
@@ -40,6 +62,20 @@
 //! [R]: crate::mark::Reading
 
 //! Shared utilities and types for the waypoints domain.
+
+// Features are additive and flavors are not: one shipped flavor per build.
+#[cfg(all(feature = "nightly", feature = "preview"))]
+compile_error!(
+    "domain: the `nightly` and `preview` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "nightly", feature = "stable"))]
+compile_error!(
+    "domain: the `nightly` and `stable` flavors are both enabled; a build takes exactly one"
+);
+#[cfg(all(feature = "preview", feature = "stable"))]
+compile_error!(
+    "domain: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
+);
 
 /// This crate's version — the grammar signal a Bundle records.
 ///

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Façade proof: this test defines and stores types using ONLY `bedrock::…`
 //! paths — no `bedrock_core` / `bedrock_derive` imports — exercising that the
 //! derives' generated `::bedrock::…` code resolves through the single façade.

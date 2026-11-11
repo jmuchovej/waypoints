@@ -1,4 +1,69 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { defineNuxtConfig } from "nuxt/config";
+import { createViteLicensePlugin } from "rollup-license-plugin";
+
+// The licenses a bundled package may carry. `cargo xtask license` holds this
+// equal to `[licenses].allow` in `.config/deny.toml`: one list, two ecosystems.
+const LICENSE_ALLOWLIST = [
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unicode-3.0",
+  "CC0-1.0",
+  "MPL-2.0",
+  "Unlicense",
+  "0BSD",
+  "BSL-1.0",
+  "NCSA",
+  "CDLA-Permissive-2.0",
+];
+
+// A package may declare an expression, and passes if some way of satisfying it
+// stays on the list: `MIT OR EUPL-1.2` passes, `MIT AND EUPL-1.2` does not.
+const licenseAllowed = (expression: string): boolean => {
+  const flat = (text: string) =>
+    text
+      .split(" OR ")
+      .some((alternative) =>
+        alternative
+          .split(" AND ")
+          .every((term) => term === "true" || LICENSE_ALLOWLIST.includes(term)),
+      );
+  let reduced = expression;
+  while (reduced.includes("(")) {
+    reduced = reduced.replace(/\(([^()]*)\)/g, (_, inner: string) => String(flat(inner)));
+  }
+  return flat(reduced);
+};
+
+const licenseGate = createViteLicensePlugin({
+  unacceptableLicenseTest: (expression) => !licenseAllowed(expression),
+  licenseOverrides: {
+    // Declares no license; upstream's LICENSE (unovue/vaul-vue) is MIT.
+    "vaul-vue@0.4.1": "MIT",
+  },
+  outputFilename: false,
+});
+
+const licenseGatePlugin = {
+  ...licenseGate,
+  // The gate reads any module id containing `node_modules` as a package, and
+  // Nuxt's virtual modules have such ids.
+  renderChunk: (code: string, chunk: Parameters<typeof licenseGate.renderChunk>[1]) =>
+    licenseGate.renderChunk(code, {
+      ...chunk,
+      modules: Object.fromEntries(
+        Object.entries(chunk.modules).filter(([id]) => !id.startsWith("virtual:")),
+      ),
+    }),
+};
 
 const env = import.meta.env; // sugar
 const host = env.NUXT_HMR_HOST || env.TAURI_DEV_HOST || undefined;
@@ -79,6 +144,7 @@ export default defineNuxtConfig({
   vite: {
     clearScreen: false,
     envPrefix: ["VITE_", "TAURI_"],
+    plugins: [licenseGatePlugin],
     optimizeDeps: {
       include: [
         "@tiptap/core",

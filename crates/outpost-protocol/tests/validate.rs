@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Adversarial suite for the validation function. The scenarios a
 //! removed member (or a lying peer) would actually try, each pinned as a
 //! promised verdict.

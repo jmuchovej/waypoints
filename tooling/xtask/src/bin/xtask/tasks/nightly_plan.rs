@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Mints the release tag for a Nightly workflow run. The planning itself is
 //! [`xtask::planners::nightly`]; this reads the checkout, decides, and
 //! publishes the plan as the step's outputs.
@@ -7,6 +10,7 @@ use chrono::Utc;
 use clap::Parser;
 use xtask::{
     planners::nightly::{self, Decision, Plan},
+    release_groups,
     releases::version::Version,
     tools::{git, github},
     workspace,
@@ -26,6 +30,8 @@ pub struct Options {
 }
 
 pub fn run(args: Options) -> Result<()> {
+    release_groups::load(&workspace::load()?)?;
+
     let target = Version::from(workspace::version()?).target();
     let tags = nightly::nightly_tags()?;
     let latest = nightly::latest_nightly(&target, &tags);

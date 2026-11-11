@@ -1,3 +1,8 @@
+<!--
+  SPDX-FileCopyrightText: 2026 John Muchovej
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 <script setup lang="ts">
   import type { NavigationMenuItem } from "@nuxt/ui";
   import { toRichText } from "@waypoints/domain";
@@ -28,6 +33,11 @@
         label: "Sync",
         icon: "i-lucide-radio-tower",
         to: "/settings/sync",
+      },
+      {
+        label: "Licenses",
+        icon: "i-lucide-scale",
+        to: "/settings/app/licenses",
       },
     ],
   ];

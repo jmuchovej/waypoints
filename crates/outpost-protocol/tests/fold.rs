@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The ACL fold, exercised as scenarios: a happy membership
 //! lifecycle, then one test per rejection — every `ACLReject` variant is a
 //! promised behavior, not an incidental one.

@@ -1,4 +1,6 @@
 #:schema https://schema.tauri.app/config/2
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 productName = "Waypoints Nightly"
 identifier  = "so.waypoints.nightly"

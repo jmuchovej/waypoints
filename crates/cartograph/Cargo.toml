@@ -1,6 +1,9 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name                    = "cartograph"
-  version                 = "0.1.0"
+  version                 = "0.1.0-nightly"
   edition.workspace       = true
   description.workspace   = true
   documentation.workspace = true
@@ -48,7 +51,12 @@
 
 [features]
   default     = []
-  development = [ "store/development" ]
+  # The app's flavors, forwarded to every workspace dependency that declares
+  # them. Exactly one shipped flavor per build.
+  development = [ "domain/development", "outpost/development", "store/development" ]
+  nightly     = [ "domain/nightly", "outpost/nightly", "store/nightly" ]
+  preview     = [ "domain/preview", "outpost/preview", "store/preview" ]
+  stable      = [ "domain/stable", "outpost/stable", "store/stable" ]
 
 [lints]
   workspace = true

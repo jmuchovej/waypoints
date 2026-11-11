@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 export const HANDLE_HEIGHT = 24; // h-6 = 1.5rem
 export const GUTTER_PX = 64; // 4rem — how far left of the block the handle stays visible
 

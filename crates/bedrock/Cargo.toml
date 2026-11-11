@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name               = "bedrock"
   version            = "0.1.0"
@@ -37,11 +40,6 @@ Bedrock — the database engine for Waypoints, built on Turso.
   # (`SyncMode`).
   turso_core.workspace = true
 
-# bionic refuses initial-exec TLS in a dlopened library; turso's mimalloc
-# defaults to it.
-[target.'cfg(target_os = "android")'.dependencies]
-  mimalloc = { workspace = true, features = [ "local_dynamic_tls" ] }
-
 [dev-dependencies]
   chrono.workspace   = true
   serde.workspace    = true
@@ -52,6 +50,19 @@ Bedrock — the database engine for Waypoints, built on Turso.
 [build-dependencies]
   # Reads the resolved turso_core version out of Cargo.lock (see build.rs).
   cargo-lock.workspace = true
+
+# bionic refuses initial-exec TLS in a dlopened library; turso's mimalloc
+# defaults to it.
+[target.'cfg(target_os = "android")'.dependencies]
+  mimalloc = { workspace = true, features = [ "local_dynamic_tls" ] }
+
+# The app's flavors, forwarded to every workspace dependency that declares
+# them. Exactly one shipped flavor per build.
+[features]
+  development = [ "bedrock-core/development", "bedrock-derive/development" ]
+  nightly     = [ "bedrock-core/nightly", "bedrock-derive/nightly" ]
+  preview     = [ "bedrock-core/preview", "bedrock-derive/preview" ]
+  stable      = [ "bedrock-core/stable", "bedrock-derive/stable" ]
 
 [lints]
   workspace = true

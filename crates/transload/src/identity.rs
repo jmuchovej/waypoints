@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `wp:mark` identity comments — the only place machine residue is allowed, so
 //! stripping comments leaves plain text. Containers pair; leaves do not.
 //!

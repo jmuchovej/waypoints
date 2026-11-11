@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use crate::{
     CommandHistory, CreateResult, CursorState, EditorError, EditorResult, Maneuver, MutationResult,
     SplitResult, TextPayload, editor::projection,

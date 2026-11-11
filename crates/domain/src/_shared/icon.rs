@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Flexible Icon system with hierarchical prefixes and dynamic colorability detection.
 //!
 //! This module provides a lightweight Icon system that uses hierarchical identifier

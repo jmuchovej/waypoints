@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Every job the workflows are assembled from. A workflow module names jobs
 //! and wires their `needs:`.
 
@@ -114,7 +117,7 @@ pub fn prepare(context: &WorkflowContext) -> PrepareJob {
             // keys, so the compile is mostly hits.
             .add_step(steps::cache_restore(&registry, Tools::Mise))
             .add_step(steps::sccache_start(Tools::Mise))
-            .add_step(steps::botswain_credentials())
+            .add_step(steps::botswain_credentials(Tools::Mise))
             .add_step(app_token)
             .add_step(steps::with_sccache(planner))
             .add_step(steps::sccache_stats(Tools::Mise))
@@ -147,6 +150,7 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
     // nothing spelled differently for PowerShell on Windows.
     let plan = steps::cargo_xtask("test-plan", &[(suite.flag(), None)]).id("test-plan");
     let filterset = StepOutput::new_trusted(&plan, "filterset");
+    let flavor = StepOutput::new_trusted(&plan, "flavor");
 
     // Both suites run the same two commands, so both want the same environment
     // — unlike the deny-list this replaced, where the changed-suite job was
@@ -181,7 +185,10 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
             job.add_step(steps::install_linux_deps())
         })
         .add_step(plan)
-        .add_step(steps::cargo_nextest(suite).with_filter_expr(&filterset.to_string()));
+        .add_step(
+            steps::cargo_nextest(suite, &flavor.to_string())
+                .with_filter_expr(&filterset.to_string()),
+        );
 
     NamedJob::new(format!("test-{}", platform.slug()), job)
 }
@@ -198,6 +205,23 @@ pub fn zizmor(context: &WorkflowContext) -> NamedJob {
         .add_step(steps::zizmor());
 
     NamedJob::new("zizmor", job)
+}
+
+/// Holds the tree to the licensing policy, and runs the dependency license check
+/// that otherwise runs only before a push. On mise until the project has a
+/// cachix: entering devenv costs far more than the check itself.
+pub fn license(context: &WorkflowContext) -> NamedJob {
+    let job = mise_env(Job::default(), &[MiseEnv::Devtools])
+        .name("Check licensing")
+        .permissions(Permissions::default().contents(Level::Read))
+        .runs_on(runners::LINUX)
+        .add_step(steps::checkout())
+        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(steps::rust_cache())
+        .add_step(steps::cargo_xtask("license check", &[]))
+        .add_step(steps::cargo_deny_licenses());
+
+    NamedJob::new("license", job)
 }
 
 /// Drafts the release every build uploads into, with git-cliff notes.
@@ -447,8 +471,8 @@ pub fn build(
         None => helpers::tag(None),
     };
 
-    // The mobile lanes need `fastlane`, `xcodegen` and the nushell the `_build`
-    // recipes are written in; the desktop ones do not.
+    // The mobile lanes need `xcodegen` and the nushell the `_build` recipes are
+    // written in; the desktop ones do not.
     let envs: &[MiseEnv] = if platform.is_mobile() {
         &[MiseEnv::BuildMobile]
     } else {

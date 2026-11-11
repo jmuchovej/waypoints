@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name                    = "domain"
   version                 = "0.1.0"
@@ -40,15 +43,18 @@
   validator.workspace         = true
 
 [features]
-  default     = []
-  development = []
+  default = []
+
+  development = [ "bedrock/development" ]
+  nightly     = [ "bedrock/nightly" ]
+  preview     = [ "bedrock/preview" ]
+  stable      = [ "bedrock/stable" ]
+
   # terse test builders. only enable from a dependent's `[dev-dependencies]`.
-  fixtures    = []
-  preview     = []
-  stable      = []
+  fixtures = []
   # parsing/emitting for `Content` and `TextMarkKind`. kept as a feature so
   # dependents don't need to pay for chumsky/etc.
-  syntax      = [ "dep:chumsky" ]
+  syntax   = [ "dep:chumsky" ]
 
 [lints]
   workspace = true

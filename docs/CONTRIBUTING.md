@@ -43,9 +43,13 @@ _types_ — map them below. (`dev` survives as a _region_ — see Scope.)
 | `build`    | build system, dependencies, or codegen tooling (was `dev` typegen, `deps`) | (internal)           |
 | `ci`       | CI / workflow configuration                                                | (internal)           |
 | `chore`    | maintenance not covered above (was `init`, `parked`)                       | (internal)           |
+| `summary`  | a pull request's merge message when it spans release groups                | (skipped)            |
 
 Add `!` after the scope for a breaking change: `feat(bedrock)!: …`, and include
 a `BREAKING CHANGE:` footer.
+
+`summary` is for merge messages only; see [Landing a pull
+request](#landing-a-pull-request).
 
 ## Scope — `region[/subscope]`
 
@@ -101,8 +105,9 @@ directory paths — don't mirror the file tree.
 
 - **Cross-cutting work:** prefer one commit per region sharing a subscope (above)
   over a single sprawling commit.
-- **Genuinely atomic multi-region change:** comma-join regions —
-  `refactor(domain,cartograph): …`. Rare.
+- **Genuinely atomic multi-region change:** comma-join regions, only while every
+  region falls in one release group — `refactor(app,store): …` is one `waypoints`
+  commit. Rare. Across groups, the pull request lands as a `summary`.
 - **Repo-wide change:** omit the scope — `chore: bump toolchain to rust 1.94`.
 
 ## Subject line
@@ -125,11 +130,68 @@ The bar the best existing commits already set:
 
 State the problem, the approach, the trade-offs, and how you proved it works.
 
+## Landing a pull request
+
+`main` and the `v{major}.{minor}.x` series branches are protected. Nothing is
+pushed to them directly: every pull request lands on them as a merge commit whose
+message is the pull request's title and description, once its required checks
+pass. No approval is required, so the release bot's own pull requests merge
+themselves when their checks pass.
+
+The `version-integrity` check reads the title and description on every pull
+request:
+
+- **The title is a conventional commit**, with a type from the table above.
+- **One release group:** the scope stays free-form. The changed paths decide the
+  group, not the scope. `tooling/release-groups.toml` names the groups.
+- **More than one release group:** the title is `summary: …`, with no scope and
+  no `!`, and the description carries exactly one header per touched group,
+  scoped by the group's name:
+
+  ```
+  summary: rename the filter API
+
+  Why these moved together.
+
+  feat(bedrock)!: rename Filter::eq
+  refactor(outpost): follow the rename
+  ```
+
+  GitHub wraps the merge commit's body at 72 columns, so keep each header under
+  that or it lands split across two lines.
+
+- **`chore(release):` and version writes belong to the release bot.** A subject
+  starting `chore(release):`, or a change to a versioned crate's
+  `[package].version`, fails unless `wp-botswain[bot]` authored the pull request.
+
+Branch commits are not checked, but they stay conventional: the release notes are
+rendered from them, and one unconventional commit fails the notes.
+
+### `Covenant: break`
+
+Files under `covenant/fixtures/` are append-only, because changing one changes
+what old data means. A pull request that modifies, deletes, or renames one fails
+unless its description ends with this trailer, in a paragraph of its own:
+
+```
+Covenant: break
+```
+
+Adding a fixture needs no trailer, and neither does editing a group's own
+`covenant/fixtures/<group>/README.md`, which describes the directory. A
+`README.md` any deeper is data, and frozen like the rest.
+
 ## Signing
 
 Every commit is signed. This is the repo default; do not disable it. (If you
 must push while signing is unavailable, push unsigned and re-sign later rather
 than committing an unsigned history you intend to keep.)
+
+## Licensing
+
+Waypoints is licensed under the AGPL, version 3 or any later version ([plain text](../LICENSE), [Markdown](licensing/LICENSE.md)), with an [additional permission](licensing/COPYING.exceptions) for application stores. **Outside contributions are closed for now:** they will be accepted under the [contributor license agreement](licensing/CLA.md), and the portal for signing it isn't live yet, so please open an issue instead of a pull request. Every source file carries an SPDX header, and a pull request without one fails its checks.
+
+The [licensing overview](licensing/README.md) has the header text, what the agreement promises you, and what to do with material you do not own. [`STEWARD.md`](licensing/STEWARD.md) records who the Steward is.
 
 ## Examples
 

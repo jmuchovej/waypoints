@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name               = "outpost-fabric"
   version            = "0.1.0"
@@ -31,6 +34,14 @@ Outpost Fabric — the network layer for Outpost.
     workspace = true,
     features  = [ "io-util", "macros", "rt-multi-thread", "sync" ]
   }
+
+# The app's flavors, forwarded to every workspace dependency that declares
+# them. Exactly one shipped flavor per build.
+[features]
+  development = [ "outpost-protocol/development" ]
+  nightly     = [ "outpost-protocol/nightly" ]
+  preview     = [ "outpost-protocol/preview" ]
+  stable      = [ "outpost-protocol/stable" ]
 
 [lints]
   workspace = true

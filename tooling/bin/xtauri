@@ -1,4 +1,7 @@
 #!/usr/bin/env nu
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Launches Tauri dev servers and release builds for every platform from one
 # place, so the environment a build sees is decided once rather than per
 # justfile.
@@ -6,7 +9,8 @@
 #   xtauri dev   <target> [--flavor development] [tauri args…]
 #   xtauri build <target> [--flavor stable]      [tauri args…]
 #
-# `target` is macos, linux, windows, ios, android, or desktop (the host OS).
+# `target` is macos, linux, windows, ios, or android; a dev server also takes
+# desktop (the host OS).
 # `flavor` accepts the aliases people actually type: dev, alpha, beta, pre,
 # prod, release, … — see `normalize-flavor`.
 #
@@ -385,6 +389,10 @@ def "main build" [
   --flavor (-f): string = "stable",
   ...rest: string,
 ]: nothing -> nothing {
+  # A release build names its platform; `desktop` is the dev server's alias.
+  if $target == desktop {
+    error make { msg: $"desktop is not a build target; name one of ($TARGETS | str join ', ')" }
+  }
   let target = resolve-target $target
   let flavor = normalize-flavor $flavor
   match $target {

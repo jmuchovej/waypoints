@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name                    = "xtask"
   edition.workspace       = true
@@ -40,12 +43,14 @@
   }
   directories.workspace          = true
   gh-workflow.workspace          = true
+  git-conventional               = "0.12.9"
   glob                           = "0.3.4"
   heck.workspace                 = true
   hex.workspace                  = true
   hmac.workspace                 = true
   icns.workspace                 = true
   ico.workspace                  = true
+  ignore.workspace               = true
   image.workspace                = true
   indexmap.workspace             = true
   indoc.workspace                = true
@@ -61,10 +66,12 @@
   }
   opendal-http-transport-reqwest = { version = "0.59.5", default-features = false }
   rustls.workspace               = true
+  schemars                       = "1.2.2"
   secretspec                     = { version = "0.21.1", default-features = false }
   serde.workspace                = true
   serde_json.workspace           = true
   sha2.workspace                 = true
+  spdx.workspace                 = true
   specta.workspace               = true
   specta-serde.workspace         = true
   specta-typescript.workspace    = true

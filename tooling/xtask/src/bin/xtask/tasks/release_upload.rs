@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Uploads the staged artifacts to the `releases` bucket through the shared
 //! client in [`xtask::releases::store`]. The channel is derived from the
 //! tag's version rather than accepted as an argument, and every staged file

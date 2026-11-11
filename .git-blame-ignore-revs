@@ -1,0 +1,3 @@
+# Treewide formatting passes, one full commit id per line.
+# A formatter's change amends the commit it belongs to; only a pass that stands
+# alone across the tree goes here.

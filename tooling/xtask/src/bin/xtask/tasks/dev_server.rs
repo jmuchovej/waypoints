@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `dev-server` — an HTTP backend for the Waypoints web UI.
 //!
 //! It wraps the same `cartograph::WaypointsRuntime` the Tauri app uses and

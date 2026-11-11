@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The session convergence flow over **real iroh QUIC on loopback**
 //! — the same exchange `session.rs` proves over an in-memory duplex, now
 //! across two bound endpoints with an authenticated handshake. This is the

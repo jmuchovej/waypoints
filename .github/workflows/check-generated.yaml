@@ -15,7 +15,14 @@ on:
       - crates/domain/**
       - crates/cartograph/**
       - src-tauri/res/**
+      - Cargo.lock
+      - pnpm-lock.yaml
+      - .config/third-party.toml
+      - .config/about.toml
+      - .config/about.hbs
       - .github/workflows/**
+      - tooling/infra/github.auto.tfvars.json
+      - docs/licensing/THIRD-PARTY-NOTICES.md
       - crates/domain/typescript/**
       - crates/cartograph/typescript/**
       - src-tauri/assets/icons/app/**
@@ -43,7 +50,14 @@ on:
       - crates/domain/**
       - crates/cartograph/**
       - src-tauri/res/**
+      - Cargo.lock
+      - pnpm-lock.yaml
+      - .config/third-party.toml
+      - .config/about.toml
+      - .config/about.hbs
       - .github/workflows/**
+      - tooling/infra/github.auto.tfvars.json
+      - docs/licensing/THIRD-PARTY-NOTICES.md
       - crates/domain/typescript/**
       - crates/cartograph/typescript/**
       - src-tauri/assets/icons/app/**

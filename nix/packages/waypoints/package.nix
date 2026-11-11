@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # The desktop app, one flavor per package (stable/preview/nightly — never
 # development). Reuses the existing pipeline's config layering
 # (Tauri.toml + flavor toml) via nixpkgs' cargo-tauri.hook, which builds
@@ -152,6 +155,10 @@ rust-platform.buildRustPackage (_finalAttrs: {
         (workingTree + "/crates")
         (workingTree + "/tooling")
         (workingTree + "/vendor")
+        # Bundled beside the notices; every distribution carries the license.
+        (workingTree + "/LICENSE")
+        (workingTree + "/docs/licensing/COPYING.exceptions")
+        (workingTree + "/docs/licensing/THIRD-PARTY-NOTICES.md")
         # Desktop build only — the generated mobile projects stay out.
         (difference (workingTree + "/src-tauri") (workingTree + "/src-tauri/gen"))
       ];
@@ -231,6 +238,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
   meta = {
     description = "Local-first Markdown knowledge management (${flavor-config.productName})";
     homepage = "https://waypoints.so";
+    license = lib.licenses.agpl3Plus;
     platforms = [
       "aarch64-darwin"
       "x86_64-linux"

@@ -1,9 +1,13 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Regenerates the TypeScript bindings from the Rust data model. The exports
 //! are [`xtask::typegen`]'s; this decides which crates' files to write, writes
 //! them, and runs `treefmt` over them last so the tree matches what a commit
 //! holds. `just check-generated` regenerates these and diffs them.
 
 use anyhow::{Context as _, Result, bail};
+use chrono::{Datelike as _, Utc};
 use clap::{Parser, ValueEnum};
 use std::{fs, path::PathBuf, process::Command};
 use xtask::{typegen, workspace};
@@ -55,6 +59,8 @@ pub fn run(args: Options) -> Result<()> {
 }
 
 fn write(path: PathBuf, contents: &str) -> Result<PathBuf> {
+    let existing = fs::read_to_string(&path).ok();
+    let contents = typegen::stamp(contents, existing.as_deref(), Utc::now().year());
     fs::write(&path, contents).with_context(|| format!("Failed to write {}", path.display()))?;
     Ok(path)
 }

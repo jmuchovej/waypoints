@@ -1,4 +1,6 @@
 #:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [workspace]
   resolver = "3"
@@ -23,10 +25,10 @@
     edition       = "2024"
     description   = "Oh the places we'll go on this non-linear thought journey!"
     documentation = "https://docs.waypoints.so"
-    readme        = ".github/README.md"
+    readme        = "docs/README.md"
     homepage      = "https://waypoints.so"
     repository    = "https://dev.waypoints.so/"
-    license       = "Apache-2.0"
+    license       = "AGPL-3.0-or-later"
     publish       = false
 
   [workspace.dependencies]
@@ -73,6 +75,7 @@
       "pngio"
     ] }
     ico                = "0.5.0"
+    ignore             = "0.4"
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
@@ -112,6 +115,7 @@
       "raw_value",
     ] }
     sha2               = "0.11"
+    spdx               = "0.13"
     strum              = { version = "0.28.0", features = [ "derive" ] }
     syn                = { version = "2", features = [ "full" ] }
     tempfile           = "3"

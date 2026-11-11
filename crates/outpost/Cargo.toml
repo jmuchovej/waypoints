@@ -1,5 +1,7 @@
 # Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
 #:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [package]
   name               = "outpost"
@@ -56,13 +58,13 @@ Outpost — the sync layer for Waypoints.
   libc = { workspace = true }
 
 [features]
-  default = [ "vessel" ]
+  default     = [ "vessel" ]
   # Private: the deps and shared `replica` module both roles pull in. Not a
   # public knob — enable `vessel` and/or `station`. tokio is here for the
   # live-push machinery (spawned session tasks, mpsc/broadcast channels,
   # select!); the runtime itself stays the embedder's (the cli feature adds
   # one).
-  _role   = [
+  _role       = [
     "dep:async-trait",
     "dep:ed25519-dalek",
     "dep:hex",
@@ -77,7 +79,7 @@ Outpost — the sync layer for Waypoints.
   # The `outpost` binary (self-host CLI): both roles + a runtime, arg
   # parsing, and the probe listener (axum — a server binary, so its closure
   # is not the app's concern). Enable to build `bin/outpost`.
-  cli     = [
+  cli         = [
     "dep:anyhow",
     "dep:axum",
     "dep:clap",
@@ -91,13 +93,36 @@ Outpost — the sync layer for Waypoints.
     "tokio/time",
     "vessel",
   ]
+  # The app's flavors, forwarded to every workspace dependency that declares
+  # them — weakly to the optional ones, so a flavor enables no role. Exactly
+  # one shipped flavor per build.
+  development = [
+    "outpost-fabric?/development",
+    "outpost-hold?/development",
+    "outpost-protocol/development",
+  ]
+  nightly     = [
+    "outpost-fabric?/nightly",
+    "outpost-hold?/nightly",
+    "outpost-protocol/nightly"
+  ]
+  preview     = [
+    "outpost-fabric?/preview",
+    "outpost-hold?/preview",
+    "outpost-protocol/preview"
+  ]
+  stable      = [
+    "outpost-fabric?/stable",
+    "outpost-hold?/stable",
+    "outpost-protocol/stable"
+  ]
   # The two roles. Each is pure dependency selection: enabling it compiles in
   # that role's module (and, transitively, the shared replica engine + the
   # fabric/hold deps the roles need). The app enables `vessel`; a self-host
   # binary enables both. The role modules are thin — the shared half lives in
   # the `replica` module, itself gated on either role being on.
-  station = [ "_role" ]
-  vessel  = [ "_role" ]
+  station     = [ "_role" ]
+  vessel      = [ "_role" ]
 
 [lints]
   workspace = true

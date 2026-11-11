@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Every test here runs `EXPLAIN QUERY PLAN` (which makes turso parse and plan
 //! the lowered SQL) AND executes the same operation for real, checking the rows.
 //! So each case proves three things at once: the SQL is valid turso SQL, it

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use bedrock::{BedrockError, Config, Database, FlushMode};
 use bedrock_core::{Filter, Query};
 use bedrock_derive::{Collection, Scalar};

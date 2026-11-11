@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! One shared constructor for reaching the `releases` bucket: resolves the
 //! long-lived parent through secretspec's Rust API, derives a short-lived,
 //! channel-scoped session credential by local JWT signing, drops the
