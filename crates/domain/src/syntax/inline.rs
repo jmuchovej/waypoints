@@ -31,8 +31,10 @@ const TOKEN_ORDER: [(TextMarkKind, &str); 10] = [
     (TextMarkKind::Math, "math"),
 ];
 
-/// Paired character shortcuts, longest delimiter first so `__` wins over `_`.
-const PAIRED: [(&str, TextMarkKind); 6] = [
+/// Paired character shortcuts that also need their interiors parsed, unlike
+/// code and math, which `verbatim` reads raw. Longest delimiter first, so `__`
+/// wins over `_`.
+const SHORTCUTS_WITH_INTERIOR_PARSING: [(&str, TextMarkKind); 6] = [
     ("__", TextMarkKind::Underline),
     ("~~", TextMarkKind::Strikethrough),
     ("==", TextMarkKind::Highlight),
@@ -677,7 +679,7 @@ fn grammar<'a>(
             verbatim("$", TextMarkKind::Math),
             group("^{", "}", TextMarkKind::Superscript),
             group("_{", "}", TextMarkKind::Subscript),
-            choice(PAIRED.map(|(delim, kind)| group(delim, delim, kind))),
+            choice(SHORTCUTS_WITH_INTERIOR_PARSING.map(|(delim, kind)| group(delim, delim, kind))),
         ))
         .boxed();
 
@@ -1246,7 +1248,7 @@ mod tests {
                 vec![seg("hi", vec![mark(kind), mark(partner)])],
             ));
         }
-        for (delim, kind) in PAIRED {
+        for (delim, kind) in SHORTCUTS_WITH_INTERIOR_PARSING {
             rows.push((
                 format!("`{delim}` in prose"),
                 vec![plain("a "), one("b", kind), plain(" c")],

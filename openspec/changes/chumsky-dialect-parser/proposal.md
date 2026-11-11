@@ -149,8 +149,9 @@ ingest, dialect grammar · code: transload, domain (syntax)").
 ## Impact
 
 - `crates/domain`: `syntax/inline.rs` and `syntax/block.rs` parse paths
-  rewritten; emitters, token tables (`TOKEN_ORDER`, `PAIRED`,
-  `ALWAYS_ESCAPED`), `coalesce` and tests untouched except for new tests.
+  rewritten; emitters, token tables (`TOKEN_ORDER`,
+  `SHORTCUTS_WITH_INTERIOR_PARSING`, `ALWAYS_ESCAPED`), `coalesce` and tests
+  untouched except for new tests.
   `GrammarError` gains two public fields (`line`, `column`) and its `Display`
   reads `… (line L, column C)`; only `domain` constructs it, `transload` only
   formats it. `Cargo.toml`: `syntax = ["dep:chumsky"]`, `pulldown-cmark`

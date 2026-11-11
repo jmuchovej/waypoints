@@ -603,12 +603,12 @@ YAML, so the subset need only be valid YAML, not all of it.
 source as a checklist, lands before the port and must pass on the hand
 parser:
 
-- inline: every `TOKEN_ORDER` token, every `PAIRED` delimiter, every arm of
-  `shortcut` including the four that fall to the span form (parameterised
-  highlight, italic opening with `{`, code containing `` ` ``, math containing
-  `$`), the `bg-`/`text-`(colour)/`text-`(size)/`font-` prefixes, every
-  mention spelling `emit_segment` writes (bare, labelled, block, elided title,
-  escaped page), the link, the plain run opening with `{`, every
+- inline: every `TOKEN_ORDER` token, every `SHORTCUTS_WITH_INTERIOR_PARSING`
+  delimiter, every arm of `shortcut` including the four that fall to the span
+  form (parameterised highlight, italic opening with `{`, code containing
+  `` ` ``, math containing `$`), the `bg-`/`text-`(colour)/`text-`(size)/`font-`
+  prefixes, every mention spelling `emit_segment` writes (bare, labelled, block,
+  elided title, escaped page), the link, the plain run opening with `{`, every
   `ALWAYS_ESCAPED` character, the doubled and edge cases of `~`/`=`/`|`, `^`
   before `{` and at a run's end, `}` in a script, `)` and `\` in an href;
 - block: every `Content` variant themed and unthemed, every attribute key

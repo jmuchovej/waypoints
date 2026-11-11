@@ -21,8 +21,9 @@ every commit from 2.1 onward.
 ## 2. Parity tables on the hand parsers
 
 - [x] 2.1 `test(domain/dialect): inline parity table — every token, shortcut and escape the emitter writes reads back` —
-      a table-driven test built from `TOKEN_ORDER`, `PAIRED`, every `shortcut`
-      arm, the parameterised prefixes, every mention spelling, the link, the
+      a table-driven test built from `TOKEN_ORDER`,
+      `SHORTCUTS_WITH_INTERIOR_PARSING`, every `shortcut` arm, the
+      parameterised prefixes, every mention spelling, the link, the
       `{`-opening plain run, every `ALWAYS_ESCAPED` character and the
       contextual escapes; verify it passes on the hand parser and that
       `cargo llvm-cov` shows every line of `emit_segment`, `shortcut`,
