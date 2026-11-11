@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Every refusal sentence the dialect's readers write, at the position it
 //! names. A refusal sentence in the readers' sources with no fixture here fails
 //! `every_refusal_sentence_has_a_fixture`.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A Landmark file's body: the tree of nodes its identity comments open.
 //!
 //! Each level reads the file's lines through its prefix — two spaces under an

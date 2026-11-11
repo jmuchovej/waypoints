@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The YAML a Landmark's frontmatter is written in: the subset the emitter
 //! writes, and nothing beyond it.
 //!

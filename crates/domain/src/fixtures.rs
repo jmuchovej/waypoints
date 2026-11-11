@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Terse builders for tests in the crates that know the domain.
 //!
 //! Nothing here validates: fixtures use ids the parsers would refuse.
