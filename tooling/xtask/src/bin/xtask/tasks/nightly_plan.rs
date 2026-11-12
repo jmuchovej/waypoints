@@ -34,21 +34,27 @@ pub fn run(args: Options) -> Result<()> {
 
     let target = Version::from(workspace::version()?).target();
     let tags = nightly::nightly_tags()?;
-    let latest = nightly::latest_nightly(&target, &tags);
+    let latest = nightly::latest_nightly(&target, &tags)?;
     let commits = nightly::commits_since(latest.as_ref())?;
-    let stamp = nightly::date_stamp(Utc::now());
+    let today = Utc::now().date_naive();
 
-    let decision = nightly::decide(latest.as_ref(), &commits, &target, &stamp)?;
+    let decision = nightly::decide(latest.as_ref(), &commits, &target, today)?;
 
     if args.build_only {
-        let version = decision.version();
+        let version = target.nightly(today)?;
         println!("Manual dispatch: building {version} without publishing.");
-        return github::set_outputs(&Plan::build_only(version)?);
+        return github::set_outputs(&Plan::build_only(&version)?);
     }
 
     let plan = match decision {
         Decision::Current(_) => {
             println!("Nothing landed since the last nightly; nothing new to publish.");
+            Plan::SKIP
+        }
+        Decision::Taken(version) => {
+            println!(
+                "Today's nightly {version} already exists; the work since it ships with the next scheduled nightly."
+            );
             Plan::SKIP
         }
         Decision::New(version) => {

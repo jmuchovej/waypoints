@@ -17,7 +17,7 @@ import {
 
 describe("channelOf", () => {
   it("classifies a tag's channel by its suffix", () => {
-    expect(channelOf("v0.2.0-nightly.3+2026.10.19")).toBe("nightly");
+    expect(channelOf("v0.2.0-nightly.20261019")).toBe("nightly");
     expect(channelOf("v0.2.0-pre.1")).toBe("preview");
     expect(channelOf("v0.1.1")).toBe("stable");
   });
@@ -26,7 +26,7 @@ describe("channelOf", () => {
 describe("seriesOf", () => {
   it("names the minor series a version belongs to", () => {
     expect(seriesOf("v0.1.1")).toBe("v0.1.x");
-    expect(seriesOf("v0.2.0-nightly.3+2026.10.19")).toBe("v0.2.x");
+    expect(seriesOf("v0.2.0-nightly.20261019")).toBe("v0.2.x");
   });
 });
 
@@ -46,7 +46,7 @@ describe("objectKey", () => {
 
 describe("versionFromKey", () => {
   it("round-trips every downloadable target's key back to its version", () => {
-    const version = "v0.2.0-nightly.3+2026.10.19";
+    const version = "v0.2.0-nightly.20261019";
     for (const target of DOWNLOADABLE_TARGETS) {
       for (const extension of target.extensions) {
         const key = objectKey("nightly", version, target.os, target.arch, extension);
@@ -64,7 +64,7 @@ describe("versionFromKey", () => {
   });
 
   it("round-trips every updater payload and signature", () => {
-    const version = "v0.2.0-nightly.3+2026.10.19";
+    const version = "v0.2.0-nightly.20261019";
     for (const target of Object.values(TAURI_UPDATER_TARGETS)) {
       for (const extension of [target.payload, target.signature]) {
         const key = objectKey("nightly", version, target.os, target.arch, extension);
