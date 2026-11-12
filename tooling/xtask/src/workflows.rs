@@ -776,14 +776,17 @@ mod tests {
                 // vault — so the step carries neither spelling, and needs
                 // neither. The same holds for a release-store `xtask` entered
                 // that way: it resolves the `release` profile in-process, and
-                // that profile's default provider is the vault too.
+                // that profile's default provider is the vault too — except
+                // on a dry run, which builds no store client and resolves
+                // nothing.
                 let run = step["run"].as_str().unwrap_or("");
+                let store_task = ["upload", "manifest", "withdraw"].iter().any(|task| {
+                    run.starts_with(&format!("devenv shell -- cargo xtask release-{task} "))
+                });
                 let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some()
                     || run.contains("--provider op")
                     || run.starts_with("devenv shell -- xcache ")
-                    || ["upload", "manifest", "withdraw"].iter().any(|task| {
-                        run.starts_with(&format!("devenv shell -- cargo xtask release-{task} "))
-                    });
+                    || (store_task && !run.contains("--dry-run"));
                 let credential = step["env"].get("OP_SERVICE_ACCOUNT_TOKEN").is_some();
                 assert_eq!(provider, credential, "{name}: {}", step["name"]);
             }
@@ -804,7 +807,7 @@ mod tests {
                 let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
                 let plans = steps.iter().any(|step| {
                     step["run"].as_str().is_some_and(|run| {
-                        run.contains("cargo xtask nightly-plan")
+                        run.contains("cargo xtask publish-plan")
                             || run.contains("cargo xtask release-plan")
                     })
                 });

@@ -24,13 +24,99 @@ on:
           - Mobile
           - Android
           - iOS
+      build:
+        description: Run the test and build stages; off, the run only decides and reports
+        type: boolean
+        default: "true"
       tag:
-        description: Release tag (leave empty for build-only, no release)
+        description: The existing tag to publish; a dry run left blank uses the manifest's version
         type: string
         default: ""
+      dry_run:
+        description: "Rehearse: decide and build as asked, write only to the run's artifacts, publish nothing"
+        type: boolean
+        default: "true"
 permissions: {}
 jobs:
+  prepare:
+    name: Plan the preview release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment:
+      name: CI
+    outputs:
+      tag: ${{ steps.publish-plan.outputs.tag }}
+      tag_minted: ${{ steps.publish-plan.outputs.tag_minted }}
+      dry_run: ${{ steps.publish-plan.outputs.dry_run }}
+      should_build: ${{ steps.publish-plan.outputs.should_build }}
+      version: ${{ steps.publish-plan.outputs.version }}
+      version_code: ${{ steps.publish-plan.outputs.version_code }}
+      bundle_version: ${{ steps.publish-plan.outputs.bundle_version }}
+    env:
+      MISE_ENV: xtask
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: "false"
+          fetch-depth: "0"
+          fetch-tags: "true"
+      - name: Setup mise
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        with:
+          version: 2026.10.3
+          cache: "false"
+      - id: cache-restore-cargo-registry
+        name: Restore cargo-registry
+        run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: restoring the cargo-registry snapshot from the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: sccache-start
+        name: Start the compiler cache
+        run: secretspec run --profile ci --scope cache -- sccache --start-server || echo '::warning::sccache server failed to start; this build compiles without the remote cache'
+        shell: bash
+        env:
+          SECRETSPEC_REASON: the compiler cache server reads and writes the ci-cache bucket for the length of the job; it alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SCCACHE_BUCKET: ci-cache
+          SCCACHE_S3_KEY_PREFIX: sccache/
+          SCCACHE_REGION: auto
+          SCCACHE_IDLE_TIMEOUT: "0"
+      - id: publish-plan
+        name: cargo xtask publish-plan
+        run: cargo xtask publish-plan preview --tag "$TAG" ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }} ${{ github.event_name == 'workflow_dispatch' && !inputs.build && '--no-build' || '' }}
+        shell: bash
+        env:
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: sccache-stats
+        name: Report the compiler cache
+        if: always()
+        run: |-
+          sccache --show-stats
+          sccache --stop-server
+        shell: bash
+      - id: cache-save-cargo-registry
+        name: Save cargo-registry
+        if: "!cancelled() && steps.cache-restore-cargo-registry.outputs.hit != 'true'"
+        run: xcache save "${CACHE_KEY}" "${CARGO_HOME}/registry"
+        shell: bash
+        env:
+          CACHE_KEY: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
+          SECRETSPEC_PROVIDER: op
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
   test-macos:
+    needs:
+      - prepare
+    if: needs.prepare.outputs.should_build == 'true'
     name: Test macOS
     runs-on: macos-26
     permissions:
@@ -69,6 +155,9 @@ jobs:
           CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-windows:
+    needs:
+      - prepare
+    if: needs.prepare.outputs.should_build == 'true'
     name: Test Windows
     runs-on: windows-latest
     permissions:
@@ -107,6 +196,9 @@ jobs:
           CARGO_PROFILE_DEV_DEBUG: "0"
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   test-linux:
+    needs:
+      - prepare
+    if: needs.prepare.outputs.should_build == 'true'
     name: Test Linux
     runs-on: ubuntu-22.04
     permissions:
@@ -163,9 +255,11 @@ jobs:
           FILTER_EXPR: ${{ steps.test-plan.outputs.filterset }}
   create-release:
     needs:
+      - prepare
       - test-macos
       - test-windows
       - test-linux
+    if: needs.prepare.outputs.should_build == 'true'
     name: Draft the release
     runs-on: ubuntu-latest
     permissions:
@@ -176,53 +270,54 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
       - name: Setup mise
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: 2026.10.3
           cache: "false"
       - id: gen-release-notes
         name: Generate release notes
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         run: git-cliff --latest --output "${RUNNER_TEMP}/notes.md"
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: draft-release
         name: Create the draft
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         run: |-
           gh release view "${TAG}" >/dev/null 2>&1 \
           || gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md" --prerelease
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: ${{ needs.prepare.outputs.tag }}
   guard-dispatch:
-    if: github.event_name == 'workflow_dispatch' && inputs.tag != '' && inputs.platforms != 'All'
+    if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.tag != '' && inputs.platforms != 'All'
     name: Guard the dispatch inputs
     runs-on: ubuntu-latest
     permissions: {}
     steps:
       - id: reject-contradiction
         name: Reject a tag with a platforms subset
-        run: echo "::error::A release tag cannot be combined with a platforms subset — a subset can never satisfy every required target, so the run would build without ever publishing. Dispatch again with platforms left at All, or leave tag empty for a build-only run." && exit 1
+        run: echo "::error::A release tag cannot be combined with a platforms subset — a subset can never satisfy every required target, so the run would build without ever publishing. Dispatch again with platforms left at All, or as a dry run." && exit 1
         shell: bash
   build-macos:
     needs:
+      - prepare
       - test-macos
       - test-windows
       - test-linux
       - create-release
       - guard-dispatch
-    if: github.event_name == 'push' || contains(fromJson('["All","Desktop","macOS"]'), inputs.platforms)
+    if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Desktop","macOS"]'), inputs.platforms))
     name: Build macOS
     runs-on: macos-26
     permissions:
@@ -332,7 +427,7 @@ jobs:
         run: cargo xtask release-stage --platform macos ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -346,12 +441,13 @@ jobs:
         shell: bash
   build-windows:
     needs:
+      - prepare
       - test-macos
       - test-windows
       - test-linux
       - create-release
       - guard-dispatch
-    if: github.event_name == 'push' || contains(fromJson('["All","Desktop","Windows"]'), inputs.platforms)
+    if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Desktop","Windows"]'), inputs.platforms))
     name: Build Windows
     runs-on: windows-latest
     permissions:
@@ -461,7 +557,7 @@ jobs:
         run: cargo xtask release-stage --platform windows ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -475,12 +571,13 @@ jobs:
         shell: bash
   build-linux:
     needs:
+      - prepare
       - test-macos
       - test-windows
       - test-linux
       - create-release
       - guard-dispatch
-    if: github.event_name == 'push' || contains(fromJson('["All","Desktop","Linux"]'), inputs.platforms)
+    if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Desktop","Linux"]'), inputs.platforms))
     name: Build Linux
     runs-on: ubuntu-22.04
     permissions:
@@ -607,7 +704,7 @@ jobs:
         run: cargo xtask release-stage --platform linux ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -621,12 +718,13 @@ jobs:
         shell: bash
   build-ios:
     needs:
+      - prepare
       - test-macos
       - test-windows
       - test-linux
       - create-release
       - guard-dispatch
-    if: github.event_name == 'push' || contains(fromJson('["All","Mobile","iOS"]'), inputs.platforms)
+    if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Mobile","iOS"]'), inputs.platforms))
     name: Build iOS
     runs-on: macos-26
     permissions:
@@ -714,6 +812,8 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
+          WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.bundle_version }}
+          WAYPOINTS_VERSION: ${{ needs.prepare.outputs.version }}
       - id: sccache-stats
         name: Report the compiler cache
         if: always()
@@ -736,7 +836,7 @@ jobs:
         run: cargo xtask release-stage --platform ios ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -750,12 +850,13 @@ jobs:
         shell: bash
   build-android:
     needs:
+      - prepare
       - test-macos
       - test-windows
       - test-linux
       - create-release
       - guard-dispatch
-    if: github.event_name == 'push' || contains(fromJson('["All","Mobile","Android"]'), inputs.platforms)
+    if: needs.prepare.outputs.should_build == 'true' && (github.event_name != 'workflow_dispatch' || contains(fromJson('["All","Mobile","Android"]'), inputs.platforms))
     name: Build Android
     runs-on: ubuntu-22.04
     permissions:
@@ -888,6 +989,8 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
+          WAYPOINTS_BUILD_CODE: ${{ needs.prepare.outputs.version_code }}
+          WAYPOINTS_VERSION: ${{ needs.prepare.outputs.version }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/30.0.16138531
       - id: sccache-stats
         name: Report the compiler cache
@@ -931,7 +1034,7 @@ jobs:
         run: cargo xtask release-stage --platform android ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: v${{ needs.prepare.outputs.version }}
       - id: upload-artifacts
         name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -945,13 +1048,14 @@ jobs:
         shell: bash
   publish:
     needs:
+      - prepare
       - build-macos
       - build-windows
       - build-linux
       - build-ios
       - build-android
       - create-release
-    if: (needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android') && ((github.event_name == 'push' && github.ref_name || inputs.tag) != '')
+    if: (needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android') && (needs.prepare.outputs.tag != '')
     name: Publish the release
     runs-on: ubuntu-latest
     permissions:
@@ -1048,27 +1152,31 @@ jobs:
           SECRETSPEC_REASON: xfastlane prepare renders store assets; no secret values are read
       - id: upload-to-store
         name: Upload to the release store
+        if: needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- cargo xtask release-upload --from release --tag "${TAG}"
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: ${{ needs.prepare.outputs.tag }}
           SECRETSPEC_REASON: release-upload derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: publish-release
         name: Publish the release
+        if: needs.prepare.outputs.dry_run != 'true'
         run: gh release edit "${TAG}" --draft=false
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: ${{ needs.prepare.outputs.tag }}
       - id: mark-submitted
         name: Mark the point of no return
+        if: needs.prepare.outputs.dry_run != 'true'
         run: echo "submitted=true" >> "$GITHUB_OUTPUT"
         shell: bash
       - id: submit-android
         name: Submit to the Play Store
+        if: needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- secretspec run --profile release --provider op --scope android -- xfastlane publish android preview --from release
         shell: bash
         env:
@@ -1076,6 +1184,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: submit-ios
         name: Submit to the App Store
+        if: needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- secretspec run --profile release --provider op --scope ios -- xfastlane publish ios preview --from release
         shell: bash
         env:
@@ -1083,16 +1192,60 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: write-manifest
         name: Write the channel manifest
-        if: (github.event_name == 'push' && github.ref_name || inputs.tag) != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- cargo xtask release-manifest --tag "${TAG}"
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: ${{ needs.prepare.outputs.tag }}
           SECRETSPEC_REASON: release-manifest derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: dry-notes
+        name: Render the release notes (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        run: |-
+          mkdir -p "${RUNNER_TEMP}/dry-run"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            devenv shell -- git-cliff --latest --output "${RUNNER_TEMP}/dry-run/notes.md"
+          else
+            devenv shell -- git-cliff --unreleased --tag "${TAG}" --output "${RUNNER_TEMP}/dry-run/notes.md"
+          fi
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SECRETSPEC_REASON: git-cliff renders the notes a dry run would have published; no secret values are read
+      - id: dry-manifest
+        name: Render the channel manifest (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        run: devenv shell -- cargo xtask release-manifest --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          SECRETSPEC_REASON: release-manifest renders the manifest a dry run would have written; no secret values are read
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: dry-index
+        name: Render the index entry (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        run: devenv shell -- cargo xtask release-index --tag "${TAG}" --rev "${REV}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          REV: ${{ github.sha }}
+          SECRETSPEC_REASON: release-index renders the entry a dry run would have recorded; no secret values are read
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: upload-dry-run
+        name: Upload the dry run
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dry-run-preview
+          path: ${RUNNER_TEMP}/dry-run
+          if-no-files-found: error
+          retention-days: "7"
   withdraw-release:
     needs:
+      - prepare
       - build-macos
       - build-windows
       - build-linux
@@ -1100,7 +1253,7 @@ jobs:
       - build-android
       - create-release
       - publish
-    if: ((github.event_name == 'push' && github.ref_name || inputs.tag) != '') && (failure() || !(needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android')) && needs.publish.outputs.submitted != 'true'
+    if: (needs.prepare.outputs.tag != '') && (needs.prepare.outputs.dry_run != 'true') && (failure() || !(needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android')) && needs.publish.outputs.submitted != 'true'
     name: Withdraw the release
     runs-on: ubuntu-latest
     permissions:
@@ -1143,12 +1296,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: ${{ needs.prepare.outputs.tag }}
       - id: withdraw-from-store
         name: Withdraw uploaded artifacts
         run: devenv shell -- cargo xtask release-withdraw --tag "${TAG}"
         shell: bash
         env:
-          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          TAG: ${{ needs.prepare.outputs.tag }}
           SECRETSPEC_REASON: release-withdraw derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: delete-minted-tag
+        name: Delete the minted tag
+        if: needs.prepare.outputs.tag_minted == 'true'
+        run: gh api -X DELETE "repos/${GH_REPO}/git/refs/tags/${TAG}"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare.outputs.tag }}

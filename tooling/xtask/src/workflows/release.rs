@@ -18,22 +18,19 @@ use strum::IntoEnumIterator;
 const NIGHTLY_CRON: &str = "0 7 * * *";
 
 pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
-    // Built once and lent to everything that depends on it; only nightly has
-    // a planner.
-    let prepare = channel.is_nightly().then(|| jobs::prepare(context));
+    // Built once and lent to everything that depends on it.
+    let prepare = jobs::prepare(channel, context);
 
     // Nothing ships until the release suite passes on every desktop platform.
     let tests: Vec<NamedJob> = Platform::iter()
         .filter(|platform| platform.is_desktop())
         .map(|platform| {
-            // A nightly that finds nothing new skips its builds, so its gates
-            // skip with them.
+            // A run that builds nothing — a quiet nightly, or a dry run asked
+            // not to build — skips its gates with its builds.
             jobs::test(TestSuite::Release, platform, context).map(|job| {
-                job.when_some(prepare.as_ref(), |job, prepare| {
-                    let expr = format!("{} == 'true'", prepare.should_build.expr());
-                    job.add_needs(prepare.name().to_owned())
-                        .cond(Expression::new(expr))
-                })
+                let expr = format!("{} == 'true'", prepare.should_build.expr());
+                job.add_needs(prepare.name().to_owned())
+                    .cond(Expression::new(expr))
             })
         })
         .collect();
@@ -43,7 +40,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
 
     // The draft the builds upload into — behind the same gates, so a failed
     // suite never drafts a release.
-    let create = jobs::create_release(channel, prepare.as_ref(), context).map(|job| {
+    let create = jobs::create_release(channel, &prepare, context).map(|job| {
         gates
             .iter()
             .fold(job, |job, gate| job.add_needs(gate.clone()))
@@ -52,21 +49,30 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
     let platforms =
         WorkflowInput::choices("platforms", helpers::dispatch_platforms(), "All".into())
             .description("Platforms to build");
+    let build = WorkflowInput::bool("build", Some(true))
+        .description("Run the test and build stages; off, the run only decides and reports");
 
     // Defaulted to empty, not unset: an input with no default is `required`,
-    // and blank is how a build-only run is asked for.
-    let tag = WorkflowInput::string("tag", Some(String::new()))
-        .description("Release tag (leave empty for build-only, no release)");
+    // and a dry run may leave it blank to take the manifest's version.
+    let tag = WorkflowInput::string("tag", Some(String::new())).description(
+        "The existing tag to publish; a dry run left blank uses the manifest's version",
+    );
+    // Every dispatch rehearses unless it says otherwise, so a forgotten flag
+    // never re-publishes. Nightly has no such input: only its schedule
+    // publishes, so its every dispatch is dry.
+    let dry_run = WorkflowInput::bool("dry_run", Some(true)).description(
+        "Rehearse: decide and build as asked, write only to the run's artifacts, publish nothing",
+    );
 
     // Only the tag-driven channels can hit the contradiction this guards:
     // nightly takes no `tag` dispatch input, since it mints its own.
-    let guard = (!channel.is_nightly()).then(|| jobs::guard_dispatch(&tag, &platforms));
+    let guard = (!channel.is_nightly()).then(|| jobs::guard_dispatch(&tag, &platforms, &dry_run));
 
     // Builds wait on the test gates, the draft, and the guard; `build` wires
     // their planner dependency.
     let builds: Vec<NamedJob> = Platform::iter()
         .map(|platform| {
-            jobs::build(channel, context, platform, prepare.as_ref()).map(|job| {
+            jobs::build(channel, context, platform, &prepare).map(|job| {
                 let job = gates
                     .iter()
                     .fold(job, |job, gate| job.add_needs(gate.clone()))
@@ -81,7 +87,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
 
     // Uploads, publishes, and submits once every required target has
     // recorded in.
-    let publish = jobs::publish(channel, prepare.as_ref()).map(|job| {
+    let publish = jobs::publish(channel, &prepare).map(|job| {
         builds
             .iter()
             .fold(job, |job, build| job.add_needs(build.name.clone()))
@@ -91,7 +97,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
     // Cleans up a run that failed or fell short, on the same `needs` as the
     // publish it mirrors, and on the publish itself for its point of no
     // return.
-    let withdraw = jobs::withdraw_release(channel, prepare.as_ref()).map(|job| {
+    let withdraw = jobs::withdraw_release(channel, &prepare).map(|job| {
         builds
             .iter()
             .fold(job, |job, build| job.add_needs(build.name.clone()))
@@ -99,14 +105,18 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
             .add_needs(publish.name.clone())
     });
 
-    // Nightly mints its own tag, so only the tag-driven channels take one.
     let dispatch = WorkflowDispatch::default()
-        .inputs([(platforms.name.into(), platforms.input())])
+        .inputs([
+            (platforms.name.into(), platforms.input()),
+            (build.name.into(), build.input()),
+        ])
         .when(!channel.is_nightly(), |mut dispatch| {
             dispatch.inputs.insert(tag.name.into(), tag.input());
+            dispatch.inputs.insert(dry_run.name.into(), dry_run.input());
             dispatch
         });
 
+    let prepare: NamedJob = prepare.into();
     helpers::named_workflow(channel.flavor().to_title_case())
         .on(Event::default()
             .workflow_dispatch(dispatch)
@@ -118,12 +128,10 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
             }))
         // A scheduled run and a manual or tag run must never bundle at once,
         // and cancelling one mid-publish would strand release artifacts.
-        .when_some(prepare, |workflow, prepare| {
-            let prepare: NamedJob = prepare.into();
-            workflow
-                .concurrency(helpers::serialize("nightly"))
-                .add_job(prepare.name, prepare.job)
+        .when(channel.is_nightly(), |workflow| {
+            workflow.concurrency(helpers::serialize("nightly"))
         })
+        .add_job(prepare.name, prepare.job)
         .map(|workflow| {
             tests
                 .into_iter()
@@ -141,40 +149,139 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
+
+    const CHANNELS: [Channel; 3] = [Channel::Nightly, Channel::Preview, Channel::Stable];
+
+    fn rendered(channel: Channel) -> Value {
+        let workflow = workflow(channel, &WorkflowContext::fixture());
+        serde_json::to_value(&workflow).expect("workflow serializes")
+    }
+
+    fn needs(job: &Value) -> Vec<&str> {
+        job["needs"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|need| need.as_str().unwrap())
+            .collect()
+    }
+
+    /// Every channel decides before it does anything: the planner job is
+    /// there, and every job but the guard waits on it.
+    #[test]
+    fn every_channel_plans_first() {
+        for channel in CHANNELS {
+            let value = rendered(channel);
+            let jobs = value["jobs"].as_object().expect("jobs");
+            assert!(jobs.contains_key("prepare"), "{channel}: no prepare job");
+            for (name, job) in jobs {
+                if name == "prepare" || name == "guard-dispatch" {
+                    continue;
+                }
+                assert!(
+                    needs(job).contains(&"prepare"),
+                    "{channel}/{name}: does not need prepare"
+                );
+            }
+        }
+    }
+
+    /// The dispatch inputs, and their defaults, per design D4: nightly takes
+    /// `build` and `platforms` and is always dry; the others add `tag` and
+    /// `dry_run`, defaulting to a rehearsal.
+    #[test]
+    fn each_workflow_offers_its_dispatch_inputs() {
+        for channel in CHANNELS {
+            let value = rendered(channel);
+            let inputs = value["on"]["workflow_dispatch"]["inputs"]
+                .as_object()
+                .expect("inputs");
+            let mut names: Vec<&str> = inputs.keys().map(String::as_str).collect();
+            names.sort_unstable();
+            let expected: &[&str] = if channel.is_nightly() {
+                &["build", "platforms"]
+            } else {
+                &["build", "dry_run", "platforms", "tag"]
+            };
+            assert_eq!(names, expected, "{channel}");
+
+            let default = |name: &str| inputs[name]["default"].to_string().replace('"', "");
+            assert_eq!(default("build"), "true", "{channel}");
+            assert_eq!(default("platforms"), "All", "{channel}");
+            if !channel.is_nightly() {
+                assert_eq!(default("dry_run"), "true", "{channel}");
+                assert_eq!(default("tag"), "", "{channel}");
+            }
+        }
+    }
+
+    /// The planner's flags come from the dispatch, with the event guard
+    /// leading every expression: on a push `inputs` is empty, and `!null`
+    /// is true.
+    #[test]
+    fn the_planner_takes_its_flags_from_the_dispatch() {
+        for channel in CHANNELS {
+            let value = rendered(channel);
+            let steps = value["jobs"]["prepare"]["steps"].as_array().expect("steps");
+            let run = steps
+                .iter()
+                .find(|step| step["id"] == "publish-plan")
+                .and_then(|step| step["run"].as_str())
+                .unwrap_or_else(|| panic!("{channel}: no publish-plan step"));
+            assert!(
+                run.starts_with(&format!("cargo xtask publish-plan {}", channel.flavor())),
+                "{channel}: {run}"
+            );
+            let dry = if channel.is_nightly() {
+                "${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }}"
+            } else {
+                "${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}"
+            };
+            assert!(run.contains(dry), "{channel}: {run}");
+            assert!(
+                run.contains(
+                    "${{ github.event_name == 'workflow_dispatch' && !inputs.build && '--no-build' || '' }}"
+                ),
+                "{channel}: {run}"
+            );
+            assert_eq!(
+                run.contains(r#"--tag "$TAG""#),
+                !channel.is_nightly(),
+                "{channel}: {run}"
+            );
+        }
+    }
 
     /// Preview and stable take a `tag` dispatch input, so a subset
     /// `platforms` dispatch alongside it is a contradiction the guard job
-    /// must catch before any build starts. Nightly takes no `tag` input, so
-    /// the contradiction cannot arise there and the guard is absent.
+    /// must catch before any build starts — on a real run; a dry run may
+    /// build a subset. Nightly takes no `tag` input, so the contradiction
+    /// cannot arise there and the guard is absent.
     #[test]
     fn every_build_waits_on_the_dispatch_guard_where_one_exists() {
-        let context = WorkflowContext::fixture();
         for channel in [Channel::Preview, Channel::Stable] {
-            let workflow = workflow(channel, &context);
-            let value = serde_json::to_value(&workflow).expect("workflow serializes");
+            let value = rendered(channel);
             let jobs = value["jobs"].as_object().expect("jobs");
 
-            assert!(
-                jobs.contains_key("guard-dispatch"),
-                "{channel}: no guard-dispatch job"
-            );
+            let guard = jobs
+                .get("guard-dispatch")
+                .unwrap_or_else(|| panic!("{channel}: no guard-dispatch job"));
+            let cond = guard["if"].as_str().expect("if");
+            assert!(cond.contains("!inputs.dry_run"), "{channel}: {cond}");
 
             for platform in Platform::iter() {
                 let name = format!("build-{}", platform.slug());
-                let needs = jobs[&name]["needs"]
-                    .as_array()
-                    .unwrap_or_else(|| panic!("{channel}/{name}: no needs"));
                 assert!(
-                    needs.iter().any(|need| need == "guard-dispatch"),
+                    needs(&jobs[&name]).contains(&"guard-dispatch"),
                     "{channel}/{name}: does not need guard-dispatch"
                 );
             }
         }
 
-        let nightly = workflow(Channel::Nightly, &context);
-        let value = serde_json::to_value(&nightly).expect("workflow serializes");
+        let nightly = rendered(Channel::Nightly);
         assert!(
-            !value["jobs"]
+            !nightly["jobs"]
                 .as_object()
                 .expect("jobs")
                 .contains_key("guard-dispatch"),
@@ -182,15 +289,13 @@ mod tests {
         );
     }
 
-    /// The job writing the manifest is the same `publish-release` job, which
-    /// `needs` every build — so the manifest can never be written before
-    /// every required target has reported its success.
+    /// The job writing the manifest is the same `publish` job, which `needs`
+    /// every build — so the manifest can never be written before every
+    /// required target has reported its success.
     #[test]
     fn the_manifest_write_depends_on_every_build_job() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let workflow = workflow(channel, &context);
-            let value = serde_json::to_value(&workflow).expect("workflow serializes");
+        for channel in CHANNELS {
+            let value = rendered(channel);
             let jobs = value["jobs"].as_object().expect("jobs");
 
             let (job_name, job) = jobs
@@ -209,13 +314,7 @@ mod tests {
                 "{channel}: the publishing job replaces publish-release"
             );
 
-            let needs: Vec<&str> = job["needs"]
-                .as_array()
-                .unwrap_or_else(|| panic!("{channel}/{job_name}: no needs"))
-                .iter()
-                .map(|need| need.as_str().unwrap())
-                .collect();
-
+            let needs = needs(job);
             for platform in Platform::iter() {
                 let build_name = format!("build-{}", platform.slug());
                 assert!(
@@ -231,18 +330,14 @@ mod tests {
     /// it must wait on the same set.
     #[test]
     fn the_withdraw_depends_on_every_build_job() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let workflow = workflow(channel, &context);
-            let value = serde_json::to_value(&workflow).expect("workflow serializes");
+        for channel in CHANNELS {
+            let value = rendered(channel);
             let jobs = value["jobs"].as_object().expect("jobs");
-
-            let needs: Vec<&str> = jobs["withdraw-release"]["needs"]
-                .as_array()
-                .unwrap_or_else(|| panic!("{channel}: withdraw-release has no needs"))
-                .iter()
-                .map(|need| need.as_str().unwrap())
-                .collect();
+            let needs = needs(&jobs["withdraw-release"]);
+            assert!(
+                !needs.is_empty(),
+                "{channel}: withdraw-release has no needs"
+            );
 
             for platform in Platform::iter() {
                 let build_name = format!("build-{}", platform.slug());
