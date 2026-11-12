@@ -275,28 +275,28 @@ jobs:
     steps:
       - id: checkout
         name: Checkout
-        if: needs.prepare.outputs.tag != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
       - name: Setup mise
-        if: needs.prepare.outputs.tag != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         with:
           version: 2026.10.3
           cache: "false"
       - id: gen-release-notes
         name: Generate release notes
-        if: needs.prepare.outputs.tag != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         run: git-cliff --latest --output "${RUNNER_TEMP}/notes.md"
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: draft-release
         name: Create the draft
-        if: needs.prepare.outputs.tag != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         run: |-
           gh release view "${TAG}" >/dev/null 2>&1 \
           || gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md" --prerelease
@@ -1142,6 +1142,7 @@ jobs:
           SECRETSPEC_REASON: xfastlane prepare renders store assets; no secret values are read
       - id: upload-to-store
         name: Upload to the release store
+        if: needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- cargo xtask release-upload --from release --tag "${TAG}"
         shell: bash
         env:
@@ -1151,6 +1152,7 @@ jobs:
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: publish-release
         name: Publish the release
+        if: needs.prepare.outputs.dry_run != 'true'
         run: gh release edit "${TAG}" --draft=false
         shell: bash
         env:
@@ -1159,10 +1161,12 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
       - id: mark-submitted
         name: Mark the point of no return
+        if: needs.prepare.outputs.dry_run != 'true'
         run: echo "submitted=true" >> "$GITHUB_OUTPUT"
         shell: bash
       - id: submit-android
         name: Submit to the Play Store
+        if: needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- secretspec run --profile release --provider op --scope android -- xfastlane publish android nightly --from release
         shell: bash
         env:
@@ -1170,6 +1174,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: submit-ios
         name: Submit to the App Store
+        if: needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- secretspec run --profile release --provider op --scope ios -- xfastlane publish ios nightly --from release
         shell: bash
         env:
@@ -1177,7 +1182,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: write-manifest
         name: Write the channel manifest
-        if: needs.prepare.outputs.tag != ''
+        if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
         run: devenv shell -- cargo xtask release-manifest --tag "${TAG}"
         shell: bash
         env:
@@ -1185,6 +1190,49 @@ jobs:
           SECRETSPEC_REASON: release-manifest derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: dry-notes
+        name: Render the release notes (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        run: |-
+          mkdir -p "${RUNNER_TEMP}/dry-run"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            devenv shell -- git-cliff --latest --output "${RUNNER_TEMP}/dry-run/notes.md"
+          else
+            devenv shell -- git-cliff --unreleased --tag "${TAG}" --output "${RUNNER_TEMP}/dry-run/notes.md"
+          fi
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SECRETSPEC_REASON: git-cliff renders the notes a dry run would have published; no secret values are read
+      - id: dry-manifest
+        name: Render the channel manifest (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        run: devenv shell -- cargo xtask release-manifest --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          SECRETSPEC_REASON: release-manifest renders the manifest a dry run would have written; no secret values are read
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: dry-index
+        name: Render the index entry (dry run)
+        if: needs.prepare.outputs.dry_run == 'true'
+        run: devenv shell -- cargo xtask release-index --tag "${TAG}" --rev "${REV}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          REV: ${{ github.sha }}
+          SECRETSPEC_REASON: release-index renders the entry a dry run would have recorded; no secret values are read
+          CARGO_BUILD_RUSTC_WRAPPER: sccache
+      - id: upload-dry-run
+        name: Upload the dry run
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dry-run-nightly
+          path: ${RUNNER_TEMP}/dry-run
+          if-no-files-found: error
+          retention-days: "7"
   withdraw-release:
     needs:
       - prepare
@@ -1195,7 +1243,7 @@ jobs:
       - build-android
       - create-release
       - publish
-    if: (needs.prepare.outputs.tag != '') && (failure() || !(needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android')) && needs.publish.outputs.submitted != 'true'
+    if: (needs.prepare.outputs.tag != '') && (needs.prepare.outputs.dry_run != 'true') && (failure() || !(needs.build-macos.outputs.target == 'macos' && needs.build-windows.outputs.target == 'windows' && needs.build-linux.outputs.target == 'linux' && needs.build-ios.outputs.target == 'ios' && needs.build-android.outputs.target == 'android')) && needs.publish.outputs.submitted != 'true'
     name: Withdraw the release
     runs-on: ubuntu-latest
     permissions:

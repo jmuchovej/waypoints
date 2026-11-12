@@ -220,6 +220,27 @@ pub fn tag_condition(tag: &JobOutput) -> Expression {
     Expression::new(format!("{} != ''", tag.expr()))
 }
 
+/// True on a rehearsal: the gate on every dry counterpart.
+pub fn rehearsing(dry_run: &JobOutput) -> Expression {
+    Expression::new(format!("{} == 'true'", dry_run.expr()))
+}
+
+/// True on a real run: the gate on every write that reaches past the run's
+/// own artifacts.
+pub fn not_rehearsing(dry_run: &JobOutput) -> Expression {
+    Expression::new(format!("{} != 'true'", dry_run.expr()))
+}
+
+/// True when the run has a tag and is not a rehearsal: a real write that
+/// also needs something to publish.
+pub fn publishing(tag: &JobOutput, dry_run: &JobOutput) -> Expression {
+    Expression::new(format!(
+        "{} != '' && {} != 'true'",
+        tag.expr(),
+        dry_run.expr()
+    ))
+}
+
 /// The full set of choices offered by the `platforms` dispatch input.
 pub fn dispatch_platforms() -> Vec<&'static str> {
     vec![

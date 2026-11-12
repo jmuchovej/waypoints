@@ -263,14 +263,16 @@ pub fn license(context: &WorkflowContext) -> NamedJob {
 ///
 /// The tag guards sit on the steps, not the job: the builds `need` this job,
 /// and a skipped job would drag them down with it — a run with nothing to
-/// publish lets every step no-op.
+/// publish lets every step no-op, and so does a dry run, whose notes the
+/// publish job renders into the run's artifact instead.
 pub fn create_release(
     channel: Channel,
     prepare: &PrepareJob,
     context: &WorkflowContext,
 ) -> NamedJob {
     let tag = &prepare.tag;
-    let publishing = || helpers::tag_condition(tag);
+    let dry_run = &prepare.dry_run;
+    let publishing = || helpers::publishing(tag, dry_run);
 
     // `git-cliff` is the only tool this job runs through mise, and it lives in
     // `xtask` — the lane the release-automation jobs share.
@@ -297,8 +299,8 @@ pub fn create_release(
                 .if_condition(publishing()),
         )
         .add_step(steps::setup_mise(false.into(), &context.mise_version).if_condition(publishing()))
-        .add_step(steps::release_notes(tag))
-        .add_step(steps::create_release(channel, tag));
+        .add_step(steps::release_notes(tag, dry_run))
+        .add_step(steps::create_release(channel, tag, dry_run));
 
     NamedJob::new("create-release", job)
 }
@@ -346,7 +348,10 @@ fn with_devenv(job: Job) -> Job {
 
 /// Publishes a complete run, in order of retractability: the store upload,
 /// the public record, the point of no return, both store submissions, and
-/// the manifest last. One job, so the order is a step order.
+/// the manifest last. One job, so the order is a step order. On a dry run
+/// every one of those stands down, and the counterparts after them render
+/// the notes, the manifest, and the index entry into one directory, which
+/// is uploaded as the run's artifact.
 ///
 /// Completeness is counted, not inferred from the absence of failure: a
 /// target skipped by a `platforms` subset dispatch blocks the gate exactly
@@ -355,13 +360,14 @@ fn with_devenv(job: Job) -> Job {
 /// nightly that built nothing.
 pub fn publish(channel: Channel, prepare: &PrepareJob) -> NamedJob {
     let tag = &prepare.tag;
+    let dry_run = &prepare.dry_run;
     let completeness = completeness_expr(channel);
     let expr = format!(
         "({completeness}) && ({tag})",
         tag = helpers::tag_condition(tag).0
     );
 
-    let mark = steps::mark_submitted();
+    let mark = steps::mark_submitted(dry_run);
     let submitted = StepOutput::new_trusted(&mark, "submitted");
 
     // The devenv shell leaves `CARGO_HOME` unset, so cargo keeps its registry
@@ -402,15 +408,20 @@ pub fn publish(channel: Channel, prepare: &PrepareJob) -> NamedJob {
         .add_step(steps::cache_save(&registry, Tools::Devenv))
         .add_step(steps::download_staged(channel))
         .add_step(steps::prepare_listing(channel))
-        .add_step(steps::with_sccache(steps::upload_to_store(tag)))
-        .add_step(steps::publish_release(tag))
+        .add_step(steps::with_sccache(steps::upload_to_store(tag, dry_run)))
+        .add_step(steps::publish_release(tag, dry_run))
         .add_step(mark)
-        .add_step(steps::submit(Platform::Android, channel))
-        .add_step(steps::submit(Platform::iOS, channel))
+        .add_step(steps::submit(Platform::Android, channel, dry_run))
+        .add_step(steps::submit(Platform::iOS, channel, dry_run))
         // Last: the manifest is what the updater and the download links
         // read, and it is idempotent, so a failure here is repaired by
         // running it again.
-        .add_step(steps::with_sccache(steps::write_manifest(tag)))
+        .add_step(steps::with_sccache(steps::write_manifest(tag, dry_run)))
+        // A dry run's counterparts, after the writes they stand in for.
+        .add_step(steps::dry_notes(tag, dry_run))
+        .add_step(steps::with_sccache(steps::dry_manifest(tag, dry_run)))
+        .add_step(steps::with_sccache(steps::dry_index(tag, dry_run)))
+        .add_step(steps::upload_dry_run(channel, dry_run))
         .outputs([submitted.as_output()])
         // Reads the planner's tag, so it waits on the planner.
         .add_needs(prepare.name().to_owned());
@@ -422,7 +433,8 @@ pub fn publish(channel: Channel, prepare: &PrepareJob) -> NamedJob {
 /// discards the drafted record always, best-effort deletes the objects this
 /// run uploaded, and deletes the tag only when this run minted it — which
 /// only nightly's planner does; see the design's "Withdrawal reads the point
-/// of no return" decision.
+/// of no return" decision. Never on a dry run, which created nothing to
+/// withdraw and may be rehearsing against a tag whose release is published.
 ///
 /// Gated on the negation of the completeness count, ORed with `failure()`:
 /// a skipped build already leaves its target unrecorded, which the negated
@@ -437,9 +449,10 @@ pub fn withdraw_release(channel: Channel, prepare: &PrepareJob) -> NamedJob {
     let tag = &prepare.tag;
     let completeness = completeness_expr(channel);
     let expr = format!(
-        "({tag}) && (failure() || !({completeness})) && \
+        "({tag}) && ({real}) && (failure() || !({completeness})) && \
          needs.{PUBLISH_JOB}.outputs.submitted != 'true'",
         tag = helpers::tag_condition(tag).0,
+        real = helpers::not_rehearsing(&prepare.dry_run).0,
     );
 
     let job = Job::default()
@@ -764,21 +777,31 @@ mod tests {
             .unwrap_or_else(|| panic!("no {id} step"))
     }
 
+    /// The real writes an ordinary run makes, in the order it makes them.
+    const REAL_WRITES: [&str; 6] = [
+        "upload-to-store",
+        "publish-release",
+        "mark-submitted",
+        "submit-android",
+        "submit-ios",
+        "write-manifest",
+    ];
+
+    /// What a dry run renders instead, in order, ending in the one upload.
+    const DRY_COUNTERPARTS: [&str; 4] =
+        ["dry-notes", "dry-manifest", "dry-index", "upload-dry-run"];
+
     /// Ordered by retractability: everything that only touches the runner,
     /// then the store, the record, the mark, the submissions, and the
-    /// manifest last — nothing between them.
+    /// manifest last — nothing between them. The dry counterparts follow,
+    /// after every write they stand in for.
     #[test]
     fn the_publish_steps_run_in_order_of_retractability() {
-        let order = [
-            "download-staged",
-            "prepare-listing",
-            "upload-to-store",
-            "publish-release",
-            "mark-submitted",
-            "submit-android",
-            "submit-ios",
-            "write-manifest",
-        ];
+        let order: Vec<&str> = ["download-staged", "prepare-listing"]
+            .into_iter()
+            .chain(REAL_WRITES)
+            .chain(DRY_COUNTERPARTS)
+            .collect();
         let steps = publish_steps();
         let ids = steps
             .iter()
@@ -786,6 +809,56 @@ mod tests {
             .skip_while(|id| *id != order[0])
             .collect::<Vec<_>>();
         assert_eq!(ids, order);
+    }
+
+    /// Every real write stands down on a dry run, and every counterpart runs
+    /// only then — in the publish job and in the draft job alike.
+    #[test]
+    fn every_real_write_stands_down_on_a_dry_run_and_its_counterpart_runs_only_then() {
+        let prepare = planned(Channel::Stable);
+        let real = format!("{} != 'true'", prepare.dry_run.expr());
+        let dry = format!("{} == 'true'", prepare.dry_run.expr());
+
+        let named = publish(Channel::Stable, &prepare);
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        for id in REAL_WRITES {
+            let cond = step(steps, id)["if"].as_str().unwrap_or("");
+            assert!(cond.contains(&real), "{id}: {cond}");
+        }
+        for id in DRY_COUNTERPARTS {
+            assert_eq!(step(steps, id)["if"], dry, "{id}");
+        }
+
+        let named = create_release(Channel::Stable, &prepare, &WorkflowContext::fixture());
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        for id in ["gen-release-notes", "draft-release"] {
+            let cond = step(steps, id)["if"].as_str().unwrap_or("");
+            assert!(cond.contains(&real), "{id}: {cond}");
+        }
+    }
+
+    /// The dry counterparts render into one directory and leave one artifact,
+    /// kept a week; the index entry is rendered for the commit the run is on.
+    #[test]
+    fn a_dry_run_leaves_one_artifact() {
+        let steps = publish_steps();
+        for id in ["dry-notes", "dry-manifest", "dry-index"] {
+            let run = step(&steps, id)["run"].as_str().unwrap();
+            assert!(run.contains(steps::DRY_RUN_DIR), "{id}: {run}");
+        }
+        assert!(
+            step(&steps, "dry-index")["run"]
+                .as_str()
+                .unwrap()
+                .contains(r#"--rev "${REV}""#)
+        );
+        assert_eq!(step(&steps, "dry-index")["env"]["REV"], "${{ github.sha }}");
+        let upload = step(&steps, "upload-dry-run");
+        assert_eq!(upload["with"]["name"], "dry-run-stable");
+        assert_eq!(upload["with"]["path"], steps::DRY_RUN_DIR);
+        assert_eq!(upload["with"]["retention-days"], "7");
     }
 
     /// The upload reads the merged staged directory, and the submissions
@@ -820,7 +893,7 @@ mod tests {
     /// Each step resolves only its own credential: the store on the upload
     /// and the manifest (derived in-process), each platform's release scope
     /// on its own submission, `GITHUB_TOKEN` on the record, and nothing on
-    /// the preparation or the mark.
+    /// the preparation, the mark, or any dry counterpart.
     #[test]
     fn every_publish_step_resolves_only_its_own_scope() {
         let steps = publish_steps();
@@ -833,6 +906,9 @@ mod tests {
         let run = |id: &str| step(&steps, id)["run"].as_str().unwrap().to_owned();
 
         for id in ["prepare-listing", "mark-submitted"] {
+            assert!(!vault(id) && !github(id), "{id} resolves nothing");
+        }
+        for id in DRY_COUNTERPARTS {
             assert!(!vault(id) && !github(id), "{id} resolves nothing");
         }
         for id in ["upload-to-store", "write-manifest"] {
@@ -1017,13 +1093,19 @@ mod tests {
     /// The withdraw gate is the negation of the publish gate's completeness,
     /// ORed with `failure()` — an explicit `if:`, since the job's own
     /// `needs` may have failed and GitHub's default implicit gate would
-    /// skip it exactly when it is needed.
+    /// skip it exactly when it is needed — and never on a dry run, which
+    /// created nothing to withdraw.
     #[test]
     fn withdraw_gates_on_failure_or_shortfall() {
-        let named = withdraw_release(Channel::Stable, &planned(Channel::Stable));
+        let prepare = planned(Channel::Stable);
+        let named = withdraw_release(Channel::Stable, &prepare);
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let cond = value["if"].as_str().expect("if");
         assert!(cond.contains("failure()"), "{cond}");
+        assert!(
+            cond.contains(&format!("({} != 'true')", prepare.dry_run.expr())),
+            "{cond}"
+        );
         // A top-level conjunct, so neither a failure nor a shortfall can
         // override it: past the mark, a store already has the build.
         assert!(
