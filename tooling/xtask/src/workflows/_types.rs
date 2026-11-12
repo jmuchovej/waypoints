@@ -43,7 +43,7 @@ impl TestSuite {
 #[display("waypoints-{}-{}", _1.slug(), _0)]
 pub struct Artifact(pub Channel, pub Platform);
 
-/// The nightly planner, together with the outputs its dependents read back.
+/// A channel's planner, together with the outputs its dependents read back.
 ///
 /// Built once and lent to the jobs that depend on it. Each output already
 /// carries the job name, so nothing downstream respells either that or the
@@ -52,10 +52,13 @@ pub struct Artifact(pub Channel, pub Platform);
 pub struct PrepareJob {
     job: NamedJob,
     pub tag: JobOutput,
-    /// Whether this run itself created `tag`'s ref. True only on the
+    /// Whether this run itself created `tag`'s ref. True only on nightly's
     /// publish path — the withdraw job reads it back to decide whether it
     /// may delete the tag.
     pub tag_minted: JobOutput,
+    /// Whether this run is a rehearsal: its writes go to the run's own
+    /// artifacts, and nothing is published.
+    pub dry_run: JobOutput,
     pub should_build: JobOutput,
     pub version: JobOutput,
     pub version_code: JobOutput,
@@ -65,9 +68,14 @@ pub struct PrepareJob {
 impl PrepareJob {
     /// Outputs first: each is derived from `job`, so they have to be built
     /// before it is moved in.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "one parameter per planner output, the fields the struct carries"
+    )]
     pub fn new(
         tag: JobOutput,
         tag_minted: JobOutput,
+        dry_run: JobOutput,
         should_build: JobOutput,
         version: JobOutput,
         version_code: JobOutput,
@@ -78,6 +86,7 @@ impl PrepareJob {
             job,
             tag,
             tag_minted,
+            dry_run,
             should_build,
             version,
             version_code,

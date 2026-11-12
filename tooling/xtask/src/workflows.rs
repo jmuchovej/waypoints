@@ -804,7 +804,7 @@ mod tests {
                 let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
                 let plans = steps.iter().any(|step| {
                     step["run"].as_str().is_some_and(|run| {
-                        run.contains("cargo xtask nightly-plan")
+                        run.contains("cargo xtask publish-plan")
                             || run.contains("cargo xtask release-plan")
                     })
                 });

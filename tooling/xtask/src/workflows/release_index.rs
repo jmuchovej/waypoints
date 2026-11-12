@@ -43,7 +43,7 @@ const ACCESS_TOKEN: &str = "access-tokens = github.com=${{ secrets.GITHUB_TOKEN 
 
 pub fn workflow(_context: &WorkflowContext) -> Workflow {
     let tag = WorkflowInput::string("tag", None).description("An existing tag to record");
-    let dry_run = WorkflowInput::bool("dry_run", Some(false))
+    let dry_run = WorkflowInput::bool("dry_run", Some(true))
         .description("Compute and print the entry without committing it");
 
     // Inside the devenv shell, as `check-generated` and `devenv-update` run:
@@ -57,7 +57,7 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
         ))
         .shell("bash")
         .id("release-index")
-        .add_env(("TAG", helpers::tag(None)))
+        .add_env(("TAG", helpers::triggering_tag()))
         .add_env((
             "SECRETSPEC_REASON",
             "release-index records a published tag in nix/releases; no secret values are read",

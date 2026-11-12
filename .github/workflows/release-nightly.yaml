@@ -23,22 +23,27 @@ on:
           - Mobile
           - Android
           - iOS
+      build:
+        description: Run the test and build stages; off, the run only decides and reports
+        type: boolean
+        default: "true"
 permissions: {}
 jobs:
   prepare:
-    name: Plan the nightly
+    name: Plan the nightly release
     runs-on: ubuntu-latest
     permissions:
       contents: read
     environment:
       name: CI
     outputs:
-      tag: ${{ steps.nightly-plan.outputs.tag }}
-      tag_minted: ${{ steps.nightly-plan.outputs.tag_minted }}
-      should_build: ${{ steps.nightly-plan.outputs.should_build }}
-      version: ${{ steps.nightly-plan.outputs.version }}
-      version_code: ${{ steps.nightly-plan.outputs.version_code }}
-      bundle_version: ${{ steps.nightly-plan.outputs.bundle_version }}
+      tag: ${{ steps.publish-plan.outputs.tag }}
+      tag_minted: ${{ steps.publish-plan.outputs.tag_minted }}
+      dry_run: ${{ steps.publish-plan.outputs.dry_run }}
+      should_build: ${{ steps.publish-plan.outputs.should_build }}
+      version: ${{ steps.publish-plan.outputs.version }}
+      version_code: ${{ steps.publish-plan.outputs.version_code }}
+      bundle_version: ${{ steps.publish-plan.outputs.bundle_version }}
     env:
       MISE_ENV: xtask
     steps:
@@ -89,9 +94,9 @@ jobs:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
           private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
           permission-contents: write
-      - id: nightly-plan
-        name: cargo xtask nightly-plan
-        run: cargo xtask nightly-plan ${{ github.event_name == 'workflow_dispatch' && '--build-only' || '' }}
+      - id: publish-plan
+        name: cargo xtask publish-plan
+        run: cargo xtask publish-plan nightly ${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }} ${{ github.event_name == 'workflow_dispatch' && !inputs.build && '--no-build' || '' }}
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
