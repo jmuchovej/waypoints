@@ -264,7 +264,7 @@ mod tests {
 
     fn entry() -> Entry {
         Entry {
-            tag: "v0.2.0-nightly.7+2026.08.29".to_owned(),
+            tag: "v0.2.0-nightly.20260829".to_owned(),
             rev: "9f3c1a".to_owned(),
             hash: "sha256-source=".to_owned(),
         }
@@ -279,10 +279,10 @@ mod tests {
     /// nowhere.
     #[test]
     fn a_tag_is_filed_by_the_channel_its_manifest_names() {
-        let nightly = v("0.2.0-nightly.7+2026.08.29");
+        let nightly = v("0.2.0-nightly.20260829");
         assert_eq!(
             classify(
-                "v0.2.0-nightly.7+2026.08.29",
+                "v0.2.0-nightly.20260829",
                 &nightly,
                 &manifest("0.2.0-nightly")
             )
@@ -318,7 +318,7 @@ mod tests {
             entry().render().unwrap(),
             indoc! {r#"
                 {
-                  "tag": "v0.2.0-nightly.7+2026.08.29",
+                  "tag": "v0.2.0-nightly.20260829",
                   "rev": "9f3c1a",
                   "hash": "sha256-source="
                 }
@@ -362,12 +362,12 @@ mod tests {
     fn a_history_of_only_index_commits_is_empty() {
         let repo = Repo::new();
         repo.product("feat: the nightly's work");
-        repo.tag("v0.2.0-nightly.1+2026.08.29");
-        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.tag("v0.2.0-nightly.20260829");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
         repo.index("stable", "v0.1.0");
 
         assert_eq!(
-            repo.product_commits("v0.2.0-nightly.1+2026.08.29..HEAD"),
+            repo.product_commits("v0.2.0-nightly.20260829..HEAD"),
             Vec::<String>::new()
         );
     }
@@ -381,7 +381,7 @@ mod tests {
         repo.tag("v0.1.0");
         repo.index("stable", "v0.1.0");
         repo.product("fix: a bug");
-        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
         repo.product("feat: landmarks");
 
         assert_eq!(
@@ -402,18 +402,18 @@ mod tests {
     fn a_merged_index_pull_request_is_not_product_work() {
         let repo = Repo::new();
         repo.product("feat: the nightly's work");
-        repo.tag("v0.2.0-nightly.1+2026.08.29");
+        repo.tag("v0.2.0-nightly.20260829");
 
         repo.git(&["checkout", "-q", "-b", "botswain/release-index/nightly"]);
-        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
         land(
             &repo,
             "botswain/release-index/nightly",
-            "feat(release): record v0.2.0-nightly.1+2026.08.29 as the published nightly (#7)",
+            "feat(release): record v0.2.0-nightly.20260829 as the published nightly (#7)",
         );
 
         assert_eq!(
-            repo.product_commits("v0.2.0-nightly.1+2026.08.29..HEAD"),
+            repo.product_commits("v0.2.0-nightly.20260829..HEAD"),
             Vec::<String>::new()
         );
     }
@@ -424,20 +424,20 @@ mod tests {
     fn work_landing_beside_a_merged_entry_still_counts() {
         let repo = Repo::new();
         repo.product("feat: the nightly's work");
-        repo.tag("v0.2.0-nightly.1+2026.08.29");
+        repo.tag("v0.2.0-nightly.20260829");
 
         repo.git(&["checkout", "-q", "-b", "botswain/release-index/nightly"]);
-        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
         repo.git(&["checkout", "-q", "main"]);
         repo.commit("crates/domain/src/other.rs", "fix: landed meanwhile");
         land(
             &repo,
             "botswain/release-index/nightly",
-            "feat(release): record v0.2.0-nightly.1+2026.08.29 as the published nightly (#7)",
+            "feat(release): record v0.2.0-nightly.20260829 as the published nightly (#7)",
         );
 
         assert_eq!(
-            repo.product_commits("v0.2.0-nightly.1+2026.08.29..HEAD"),
+            repo.product_commits("v0.2.0-nightly.20260829..HEAD"),
             ["fix: landed meanwhile"]
         );
     }
@@ -458,7 +458,7 @@ mod tests {
     #[test]
     fn the_whole_history_is_filtered_the_same_way() {
         let repo = Repo::new();
-        repo.index("nightly", "v0.1.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.1.0-nightly.20260829");
         repo.product("feat: first");
 
         assert_eq!(repo.product_commits("HEAD"), ["feat: first"]);

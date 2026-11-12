@@ -6,7 +6,7 @@
 # of that channel's most recent publish:
 #
 #   {
-#     "tag": "v0.2.0-nightly.7+2026.08.29",
+#     "tag": "v0.2.0-nightly.20260829",
 #     "rev": "<the commit the tag points at>",
 #     "hash": "<SRI NAR hash of the fetched tree at that rev>"
 #   }

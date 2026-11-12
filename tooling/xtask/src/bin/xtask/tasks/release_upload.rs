@@ -22,7 +22,7 @@ pub struct Options {
     #[arg(long)]
     from: PathBuf,
 
-    /// The release tag, e.g. `v0.1.1` or `v0.2.0-nightly.3+2026.10.19`. Both
+    /// The release tag, e.g. `v0.1.1` or `v0.2.0-nightly.20261019`. Both
     /// the store's version segment and the saved filename come from this
     /// exactly; the channel and series are derived from it, never supplied.
     #[arg(long)]
