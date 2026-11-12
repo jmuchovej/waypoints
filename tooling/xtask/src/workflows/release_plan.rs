@@ -10,6 +10,11 @@
 //! performs is the `transition` input; the planner derives everything else
 //! from the manifest version and the tags already published.
 //!
+//! A dispatch rehearses unless it says otherwise: `dry_run` defaults to true,
+//! and a dry run mints nothing, opens nothing, and uploads what it would have
+//! written — the version writes as patches, the refs, and the notes — as the
+//! run's artifact.
+//!
 //! Nightlies are minted by [`super::release`]'s `prepare` job instead — their
 //! version is a timestamp, not a claim about content.
 //!
@@ -29,9 +34,12 @@ use gh_workflow::{
     WorkflowDispatch,
 };
 
-/// Becomes the merge commit's body, so it says what the merge commit is. GitHub
-/// wraps that body at 72 columns, so this stays under them.
-pub(super) const BODY: &str = "Written by `cargo xtask release-plan`; merges when its checks pass.";
+/// Becomes the merge commit's body, so it says what the merge commit is.
+pub(super) const BODY: &str = crate::planners::release::PULL_REQUEST_BODY;
+
+/// Where a dry run renders, and what it uploads.
+const DRY_RUN_FLAGS: &str =
+    r#"${{ inputs.dry_run && '--dry-run --into "${RUNNER_TEMP}/dry-run"' || '' }}"#;
 
 pub fn workflow(context: &WorkflowContext) -> Workflow {
     let transition = WorkflowInput::choices(
@@ -40,38 +48,59 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         None::<String>,
     )
     .description("Which release-cycle transition to perform");
+    let dry_run = WorkflowInput::bool("dry_run", Some(true))
+        .description("Rehearse: plan, render the writes and refs as an artifact, and mint nothing");
+    let real = || Expression::new(format!("!{}", dry_run.expr()));
+    let rehearsing = || Expression::new(dry_run.expr());
 
-    let app_token = steps::app_token(&[("contents", "write"), ("pull-requests", "write")]);
+    let app_token =
+        steps::app_token(&[("contents", "write"), ("pull-requests", "write")]).if_condition(real());
     let token = StepOutput::new_trusted(&app_token, "token");
     let registry = steps::cargo_registry(steps::CARGO_HOME);
 
-    let planner = steps::cargo_xtask("release-plan", &[("${{ inputs.transition }}", None)])
-        .id("release-plan")
-        .add_env(("GH_TOKEN", token.to_string()));
+    let planner = steps::cargo_xtask(
+        "release-plan",
+        &[("${{ inputs.transition }}", None), (DRY_RUN_FLAGS, None)],
+    )
+    .id("release-plan")
+    .add_env(("GH_TOKEN", token.to_string()));
     let output = |name| StepOutput::new_trusted(&planner, name);
     let next_main = output("next_main_version");
 
-    let series = steps::land_write(&planner, &token, "series-pull-request", BODY);
+    // Every landing step stands down on a dry run. The auto-merges read the
+    // pull-request numbers, which a stood-down pull-request step leaves empty,
+    // and are gated again here all the same.
+    let series =
+        steps::land_write(&planner, &token, "series-pull-request", BODY).if_condition(real());
     let series_number = StepOutput::new_trusted(&series, "pull-request-number");
 
-    let bump = steps::bump_main(&next_main);
-    let main = steps::land_write(&bump, &token, "main-pull-request", BODY)
-        .if_condition(Expression::new(format!("{} != ''", next_main.expr())));
+    let bumping = || Expression::new(format!("!{} && {} != ''", dry_run.expr(), next_main.expr()));
+    let bump = steps::bump_main(&next_main).if_condition(bumping());
+    let main = steps::land_write(&bump, &token, "main-pull-request", BODY).if_condition(bumping());
     let main_number = StepOutput::new_trusted(&main, "pull-request-number");
 
-    let wait = steps::wait_for_merge(&series_number);
+    let wait = steps::wait_for_merge(&series_number).if_condition(real());
     let merge_commit = StepOutput::new_trusted(&wait, "merge_commit");
 
     let tag_token = steps::app_token(&[("contents", "write")])
         .name("Mint a wp-botswain token for the tag")
-        .id("tag-token");
+        .id("tag-token")
+        .if_condition(real());
     let tag = steps::tag_merge_commit(
         &output("tag"),
         &merge_commit,
         &StepOutput::new_trusted(&tag_token, "token"),
-    );
-    let auto_merge_series = steps::auto_merge(&series_number, &token, Tools::Mise);
-    let auto_merge_main = steps::auto_merge(&main_number, &token, Tools::Mise);
+    )
+    .if_condition(real());
+    let landing = |number: &StepOutput| {
+        Expression::new(format!("!{} && {} != ''", dry_run.expr(), number.expr()))
+    };
+    let auto_merge_series = steps::auto_merge(&series_number, &token, Tools::Mise)
+        .if_condition(landing(&series_number));
+    let auto_merge_main =
+        steps::auto_merge(&main_number, &token, Tools::Mise).if_condition(landing(&main_number));
+
+    let upload = steps::upload_rendering("dry-run-release-plan".to_owned(), rehearsing());
 
     let plan = Job::new("plan the transition")
         // A `cargo xtask` run and nothing more.
@@ -102,13 +131,15 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         // it.
         .add_step(steps::cache_restore(&registry, Tools::Mise))
         .add_step(steps::sccache_start(Tools::Mise))
-        .add_step(steps::botswain_credentials(Tools::Mise))
+        // A dry run mints nothing, so it authenticates as nobody.
+        .add_step(steps::botswain_credentials(Tools::Mise).if_condition(real()))
         .add_step(app_token)
         .add_step(steps::with_sccache(planner))
         // Before the pull requests: the wait below is long, and this stops the
         // server holding the cache credential.
         .add_step(steps::sccache_stats(Tools::Mise))
         .add_step(steps::cache_save(&registry, Tools::Mise))
+        .add_step(upload)
         .add_step(series)
         .add_step(auto_merge_series)
         // A cut's two pull requests open together and land independently. If the
@@ -122,9 +153,12 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .add_step(tag);
 
     helpers::named_workflow("mint the refs for a release-cycle transition")
-        .on(Event::default().workflow_dispatch(
-            WorkflowDispatch::default().inputs([(transition.name.into(), transition.input())]),
-        ))
+        .on(
+            Event::default().workflow_dispatch(WorkflowDispatch::default().inputs([
+                (transition.name.into(), transition.input()),
+                (dry_run.name.into(), dry_run.input()),
+            ])),
+        )
         // A half-applied transition leaves the branch and its tag disagreeing.
         .concurrency(helpers::serialize("release-plan"))
         .add_job("release-plan", plan)
@@ -135,9 +169,12 @@ mod tests {
     use super::*;
     use serde_json::Value;
 
+    fn rendered() -> Value {
+        serde_json::to_value(workflow(&WorkflowContext::fixture())).unwrap()
+    }
+
     fn steps() -> Vec<Value> {
-        let value = serde_json::to_value(workflow(&WorkflowContext::fixture())).unwrap();
-        value["jobs"]["release-plan"]["steps"]
+        rendered()["jobs"]["release-plan"]["steps"]
             .as_array()
             .unwrap()
             .clone()
@@ -230,7 +267,7 @@ mod tests {
         for id in ["bump-main", "main-pull-request"] {
             assert_eq!(
                 steps[position(&steps, id)]["if"],
-                "steps.release-plan.outputs.next_main_version != ''",
+                "!inputs.dry_run && steps.release-plan.outputs.next_main_version != ''",
                 "{id}"
             );
         }
@@ -264,5 +301,57 @@ mod tests {
     fn the_cache_server_stops_before_the_wait() {
         let steps = steps();
         assert!(position(&steps, "sccache-stats") < position(&steps, "series-pull-request"));
+    }
+
+    /// The dispatch rehearses unless told otherwise, and the planner is handed
+    /// the flags and the directory only then.
+    #[test]
+    fn a_dispatch_rehearses_by_default() {
+        let value = rendered();
+        let inputs = &value["on"]["workflow_dispatch"]["inputs"];
+        assert_eq!(
+            inputs["dry_run"]["default"].to_string().replace('"', ""),
+            "true"
+        );
+        assert!(inputs["transition"].is_object());
+
+        let steps = steps();
+        let run = steps[position(&steps, "release-plan")]["run"]
+            .as_str()
+            .unwrap();
+        assert!(run.contains(DRY_RUN_FLAGS), "{run}");
+        assert!(run.contains(r#"--into "${RUNNER_TEMP}/dry-run""#), "{run}");
+    }
+
+    /// Every step that mints, lands, or authenticates stands down on a dry run;
+    /// the rendering is uploaded only then.
+    #[test]
+    fn every_landing_step_stands_down_on_a_dry_run() {
+        let steps = steps();
+        for id in [
+            "series-pull-request",
+            "bump-main",
+            "main-pull-request",
+            "wait-for-merge",
+            "tag-token",
+            "app-token",
+        ] {
+            let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
+            assert!(cond.starts_with("!inputs.dry_run"), "{id}: {cond}");
+        }
+        for command in ["release-land tag", "release-land auto-merge"] {
+            let cond = steps[running(&steps, command)]["if"].as_str().unwrap_or("");
+            assert!(cond.starts_with("!inputs.dry_run"), "{command}: {cond}");
+        }
+        let credentials = steps
+            .iter()
+            .find(|step| step["name"] == "Resolve the botswain secrets")
+            .expect("the credentials step");
+        assert_eq!(credentials["if"], "!inputs.dry_run");
+
+        let upload = &steps[position(&steps, "upload-dry-run")];
+        assert_eq!(upload["if"], "inputs.dry_run");
+        assert_eq!(upload["with"]["name"], "dry-run-release-plan");
+        assert_eq!(upload["with"]["path"], steps::DRY_RUN_DIR);
     }
 }
