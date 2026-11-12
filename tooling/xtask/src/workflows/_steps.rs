@@ -841,13 +841,14 @@ pub fn prepare_listing(channel: Channel) -> Step<Run> {
 }
 
 /// Uploads the staged tree to the `releases` bucket; `release-upload`
-/// derives its own store credential.
-pub fn upload_to_store(tag: &JobOutput) -> Step<Run> {
+/// derives its own store credential. Stands down on a dry run.
+pub fn upload_to_store(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let step = Step::new("Upload to the release store")
         .run(Tools::Devenv.command(&format!(
             r#"cargo xtask release-upload --from {STAGE_DIR} --tag "${{TAG}}""#
         )))
         .shell("bash")
+        .if_condition(helpers::not_rehearsing(dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
@@ -859,19 +860,22 @@ pub fn upload_to_store(tag: &JobOutput) -> Step<Run> {
 
 /// Marks the point of no return: everything after this submits to a store,
 /// which cannot be withdrawn. Immediately before the first submission, so
-/// one that fails partway still counts as past it.
-pub fn mark_submitted() -> Step<Run> {
+/// one that fails partway still counts as past it. A dry run never marks
+/// it, having nothing to submit.
+pub fn mark_submitted(dry_run: &JobOutput) -> Step<Run> {
     Step::new("Mark the point of no return")
         .run(r#"echo "submitted=true" >> "$GITHUB_OUTPUT""#)
         .shell("bash")
+        .if_condition(helpers::not_rehearsing(dry_run))
         .id("mark-submitted")
 }
 
 /// Submits the staged package to the platform's store, with the platform's
 /// release scope resolved for that one command. Every fastlane concern —
 /// the lane, Transporter, where the package and its plist sit — stays
-/// inside `xfastlane`.
-pub fn submit(platform: Platform, channel: Channel) -> Step<Run> {
+/// inside `xfastlane`. Stands down on a dry run: neither store offers a
+/// rehearsal that consumes no build number.
+pub fn submit(platform: Platform, channel: Channel, dry_run: &JobOutput) -> Step<Run> {
     let command = format!(
         "xfastlane publish {lane} {flavor} --from {STAGE_DIR}",
         lane = platform.slug(),
@@ -885,6 +889,7 @@ pub fn submit(platform: Platform, channel: Channel) -> Step<Run> {
         ));
 
     Into::<Step<Run>>::into(spec)
+        .if_condition(helpers::not_rehearsing(dry_run))
         .when(platform.is_android(), |step| {
             step.name("Submit to the Play Store")
         })
@@ -927,16 +932,17 @@ pub fn record_target(platform: Platform) -> Step<Run> {
 }
 
 /// Renders the notes for `tag` with git-cliff: everything since the previous
-/// tag, grouped straight from the Conventional Commit history.
+/// tag, grouped straight from the Conventional Commit history. Stands down on
+/// a dry run, whose notes [`dry_notes`] renders into the run's artifact.
 ///
 /// The token is for the template's first-time-contributor section, which
 /// asks the GitHub API who opened each pull request; without it git-cliff
 /// gets a 404 from the private repository and renders nothing.
-pub fn release_notes(tag: &JobOutput) -> Step<Run> {
+pub fn release_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Generate release notes")
         .run(r#"git-cliff --latest --output "${RUNNER_TEMP}/notes.md""#)
         .shell("bash")
-        .if_condition(helpers::tag_condition(tag))
+        .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
         .id("gen-release-notes")
 }
@@ -946,8 +952,9 @@ pub fn release_notes(tag: &JobOutput) -> Step<Run> {
 /// A draft: the platform builds upload into it, and it goes public only when
 /// [`publish_release`] flips it — so a failed build never leaves a
 /// half-populated release visible. The `view` guard makes a re-run reuse the
-/// draft it left behind; `gh` resolves drafts by tag name.
-pub fn create_release(channel: Channel, tag: &JobOutput) -> Step<Run> {
+/// draft it left behind; `gh` resolves drafts by tag name. Stands down on a
+/// dry run, which creates and edits no record.
+pub fn create_release(channel: Channel, tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let view = r#"gh release view "${TAG}" >/dev/null 2>&1"#;
     let create =
         r#"gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md""#;
@@ -963,22 +970,24 @@ pub fn create_release(channel: Channel, tag: &JobOutput) -> Step<Run> {
     Step::new("Create the draft")
         .run(create)
         .shell("bash")
-        .if_condition(helpers::tag_condition(tag))
+        .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("TAG", helpers::tag(tag)))
         .id("draft-release")
 }
 
-/// Flips the draft public. When this runs is the publish job's decision.
+/// Flips the draft public. When this runs is the publish job's decision;
+/// never on a dry run.
 ///
 /// `GH_REPO` because this is the one `gh` call in a job that checks nothing
 /// out, and `gh` otherwise reads the repository from the checkout's git
 /// remote. The job only runs when every build succeeded, so the gap survived
 /// until the first release where that happened.
-pub fn publish_release(tag: &JobOutput) -> Step<Run> {
+pub fn publish_release(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Publish the release")
         .run(r#"gh release edit "${TAG}" --draft=false"#)
         .shell("bash")
+        .if_condition(helpers::not_rehearsing(dry_run))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("GH_REPO", "${{ github.repository }}"))
         .add_env(("TAG", helpers::tag(tag)))
@@ -989,12 +998,13 @@ pub fn publish_release(tag: &JobOutput) -> Step<Run> {
 /// advertises through. Ordered after [`publish_release`] in the same job,
 /// so it is the run's true last write: the reverse (a published record
 /// naming artifacts the manifest has not yet confirmed) cannot happen. One
-/// line dispatching to `xtask`, like every other store-touching step.
-pub fn write_manifest(tag: &JobOutput) -> Step<Run> {
+/// line dispatching to `xtask`, like every other store-touching step. Stands
+/// down on a dry run, whose manifest [`dry_manifest`] renders instead.
+pub fn write_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let step = Step::new("Write the channel manifest")
         .run(Tools::Devenv.command(r#"cargo xtask release-manifest --tag "${TAG}""#))
         .shell("bash")
-        .if_condition(helpers::tag_condition(tag))
+        .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
@@ -1002,6 +1012,89 @@ pub fn write_manifest(tag: &JobOutput) -> Step<Run> {
         ))
         .id("write-manifest");
     Tools::Devenv.resolving(step)
+}
+
+/// Where a dry run renders what the real run would have written: one
+/// directory, one upload.
+pub const DRY_RUN_DIR: &str = "${RUNNER_TEMP}/dry-run";
+
+/// A dry run's release notes. For a tag that does not exist yet, everything
+/// since the latest tag under the would-be tag's name; for one that does — a
+/// preview or stable rehearsed against its tag — `--latest`, as the real
+/// draft renders. Rendered here rather than in the draft job, so the run's
+/// dry artifact is one upload from one runner.
+pub fn dry_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    let latest = Tools::Devenv.command(&format!(
+        r#"git-cliff --latest --output "{DRY_RUN_DIR}/notes.md""#
+    ));
+    let unreleased = Tools::Devenv.command(&format!(
+        r#"git-cliff --unreleased --tag "${{TAG}}" --output "{DRY_RUN_DIR}/notes.md""#
+    ));
+    let run = format!(
+        "mkdir -p \"{DRY_RUN_DIR}\"\n\
+         if git rev-parse -q --verify \"refs/tags/${{TAG}}\" >/dev/null; then\n  {latest}\n\
+         else\n  {unreleased}\nfi"
+    );
+
+    Step::new("Render the release notes (dry run)")
+        .run(run)
+        .shell("bash")
+        .if_condition(helpers::rehearsing(dry_run))
+        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "git-cliff renders the notes a dry run would have published; no secret values are read",
+        ))
+        .id("dry-notes")
+}
+
+/// A dry run's manifest, rendered into the dry directory. `release-manifest`
+/// builds no store client for it, so the step resolves nothing.
+pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    Step::new("Render the channel manifest (dry run)")
+        .run(Tools::Devenv.command(&format!(
+            r#"cargo xtask release-manifest --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
+        )))
+        .shell("bash")
+        .if_condition(helpers::rehearsing(dry_run))
+        .add_env(("TAG", helpers::tag(tag)))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release-manifest renders the manifest a dry run would have written; no secret values are read",
+        ))
+        .id("dry-manifest")
+}
+
+/// A dry run's index entry for the tag it would have, from the commit the run
+/// is on — where a real tag would point. The channel-agreement check runs as
+/// for a real write; the index itself is untouched, and no pull request opens.
+pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    Step::new("Render the index entry (dry run)")
+        .run(Tools::Devenv.command(&format!(
+            r#"cargo xtask release-index --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
+        )))
+        .shell("bash")
+        .if_condition(helpers::rehearsing(dry_run))
+        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("REV", "${{ github.sha }}"))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release-index renders the entry a dry run would have recorded; no secret values are read",
+        ))
+        .id("dry-index")
+}
+
+/// The one artifact a dry run leaves — everything it rendered — kept a week.
+pub fn upload_dry_run(channel: Channel, dry_run: &JobOutput) -> Step<Use> {
+    upload_artifact_action()
+        .step("Upload the dry run")
+        .add_with(("name", format!("dry-run-{channel}")))
+        .add_with(("path", DRY_RUN_DIR))
+        .add_with(("if-no-files-found", "error"))
+        .add_with(("retention-days", 7))
+        .if_condition(helpers::rehearsing(dry_run))
+        .id("upload-dry-run")
 }
 
 /// Discards the drafted release. Tolerant of there being none to discard —
@@ -1264,7 +1357,7 @@ mod tests {
                 channel,
                 &crate::workflows::WorkflowContext::fixture(),
             );
-            let step = rendered(create_release(channel, &prepare.tag));
+            let step = rendered(create_release(channel, &prepare.tag, &prepare.dry_run));
             let run = step["run"].as_str().expect("run");
             assert!(run.contains("gh release create"), "{run}");
             assert!(run.contains("--verify-tag"), "{run}");

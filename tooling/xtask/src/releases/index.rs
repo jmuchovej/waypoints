@@ -107,11 +107,12 @@ pub(crate) fn manifest_version(manifest: &str) -> Result<Version> {
     Version::parse(version).with_context(|| format!("{APP_MANIFEST} version is not semver"))
 }
 
-/// The commit `tag` points at, and the app manifest in that tree.
-pub fn tagged_manifest(tag: &str) -> Result<(String, String)> {
-    let rev = git::run(&["rev-parse", &format!("{tag}^{{commit}}")])?;
+/// The commit `reference` resolves to — a tag, or for a tag that does not
+/// exist yet the commit it would point at — and the app manifest in that tree.
+pub fn manifest_at(reference: &str) -> Result<(String, String)> {
+    let rev = git::run(&["rev-parse", &format!("{reference}^{{commit}}")])?;
     let manifest = git::run(&["show", &format!("{rev}:{APP_MANIFEST}")])
-        .with_context(|| format!("{tag} carries no {APP_MANIFEST}"))?;
+        .with_context(|| format!("{reference} carries no {APP_MANIFEST}"))?;
     Ok((rev, manifest))
 }
 
