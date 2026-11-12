@@ -1087,13 +1087,18 @@ pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 
 /// The one artifact a dry run leaves — everything it rendered — kept a week.
 pub fn upload_dry_run(channel: Channel, dry_run: &JobOutput) -> Step<Use> {
+    upload_rendering(format!("dry-run-{channel}"), helpers::rehearsing(dry_run))
+}
+
+/// Uploads [`DRY_RUN_DIR`] as `name` when `rehearsing` holds, kept a week.
+pub fn upload_rendering(name: String, rehearsing: Expression) -> Step<Use> {
     upload_artifact_action()
         .step("Upload the dry run")
-        .add_with(("name", format!("dry-run-{channel}")))
+        .add_with(("name", name))
         .add_with(("path", DRY_RUN_DIR))
         .add_with(("if-no-files-found", "error"))
         .add_with(("retention-days", 7))
-        .if_condition(helpers::rehearsing(dry_run))
+        .if_condition(rehearsing)
         .id("upload-dry-run")
 }
 

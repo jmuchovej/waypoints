@@ -29,7 +29,8 @@ use crate::{
     workspace,
 };
 use anyhow::{Context as _, Result, bail};
-use std::{fs, path::Path};
+use cargo_metadata::Metadata;
+use std::{fs, path::Path, process::Command};
 
 /// The branch a cut's bump lands on.
 const MAIN: &str = "main";
@@ -185,6 +186,252 @@ pub fn bump_main(next: &Version) -> Result<Landing> {
     git::check_out_latest(MAIN)?;
     write_version(next)?;
     main_landing(next, &release_groups::load(&workspace::load()?)?)
+}
+
+/// The body of every pull request the planner opens. It becomes the merge
+/// commit's body, so it says what the merge commit is; GitHub wraps it at 72
+/// columns, so it stays under them.
+pub const PULL_REQUEST_BODY: &str =
+    "Written by `cargo xtask release-plan`; merges when its checks pass.";
+
+/// What a dry run renders instead of writing, each file by name, for the task
+/// to put under one directory: `series.patch` and, for a cut, `main.patch` are
+/// the version writes as unified diffs against the trees they would land on;
+/// `refs.md` names the branch, the tag, and the pull requests; `notes.md` is
+/// git-cliff's rendering for the would-be tag. Everything is read with `git
+/// show`, so the checkout is left as it was.
+pub fn rehearse(transition: Transition, plan: &Plan) -> Result<Vec<(String, String)>> {
+    let metadata = workspace::load()?;
+    let groups = release_groups::load(&metadata)?;
+    let version = Version::parse(&plan.version)?;
+
+    // A cut opens its series from the commit the run is on; the others write
+    // on a series that exists, which the checkout may not be on.
+    let series_tree = if transition == Transition::Cut {
+        "HEAD".to_owned()
+    } else {
+        remote_or_local(&plan.branch)
+    };
+    let mut files = vec![(
+        "series.patch".to_owned(),
+        version_patch(&metadata, &groups, &series_tree, &version)?,
+    )];
+
+    let series = plan.landing(&groups)?;
+    let main = plan.main_landing(&groups)?;
+    if !plan.next_main_version.is_empty() {
+        let next = Version::parse(&plan.next_main_version)?;
+        files.push((
+            "main.patch".to_owned(),
+            version_patch(&metadata, &groups, "HEAD", &next)?,
+        ));
+    }
+    files.push((
+        "refs.md".to_owned(),
+        refs_markdown(transition, plan, &series, main.as_ref()),
+    ));
+    files.push(("notes.md".to_owned(), unreleased_notes(&plan.tag)?));
+    Ok(files)
+}
+
+/// The remote's view of `branch` where the checkout has fetched it, else the
+/// local branch — and a name `git show` fails on, by name, when neither exists.
+fn remote_or_local(branch: &str) -> String {
+    let remote = format!("origin/{branch}");
+    match git::run(&["rev-parse", "--verify", "--quiet", &remote]) {
+        Ok(_) => remote,
+        Err(_) => branch.to_owned(),
+    }
+}
+
+/// The write [`write_version`] would make in the tree at `reference`, as one
+/// unified diff. Computed from `git show`, so nothing in the checkout moves.
+fn version_patch(
+    metadata: &Metadata,
+    groups: &GroupFile,
+    reference: &str,
+    version: &Version,
+) -> Result<String> {
+    let packages = test::package_directories(metadata);
+    let before = git::show(reference, LOCKFILE)?;
+    let mut lock = before.clone();
+    let mut changes = Vec::new();
+    for member in app_members(groups)? {
+        let path = format!("{member}/Cargo.toml");
+        let manifest = git::show(reference, &path)?;
+        let rewritten = set_package_version(&manifest, version)?;
+        changes.push((path, manifest, rewritten));
+
+        let (package, _) = packages
+            .iter()
+            .find(|(_, directory)| directory == member)
+            .with_context(|| format!("`{member}` is not a workspace member"))?;
+        lock = set_locked_version(&lock, package, version)?;
+    }
+    changes.push((LOCKFILE.to_owned(), before, lock));
+    unified_diff(&changes)
+}
+
+/// `changes` — `(path, before, after)` — as `git diff` prints them between two
+/// trees, from a scratch directory holding both sides under `a/` and `b/`.
+fn unified_diff(changes: &[(String, String, String)]) -> Result<String> {
+    let scratch = std::env::temp_dir().join(format!("xtask-release-plan-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&scratch);
+    for (path, before, after) in changes {
+        for (side, text) in [("a", before), ("b", after)] {
+            let file = scratch.join(side).join(path);
+            let parent = file.parent().context("a change has a parent directory")?;
+            fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
+            write(&file, text)?;
+        }
+    }
+    // `--no-prefix`: the `a/` and `b/` directories are the prefixes. Like
+    // `diff`, the command exits 1 when the sides differ.
+    let output = Command::new("git")
+        .args([
+            "diff",
+            "--no-index",
+            "--no-color",
+            "--no-prefix",
+            "--",
+            "a",
+            "b",
+        ])
+        .current_dir(&scratch)
+        .output()
+        .context("running `git diff --no-index`")?;
+    let _ = fs::remove_dir_all(&scratch);
+    match output.status.code() {
+        Some(0 | 1) => String::from_utf8(output.stdout).context("the diff is not UTF-8"),
+        _ => bail!(
+            "`git diff --no-index` failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ),
+    }
+}
+
+/// The refs a dry run would mint and the pull requests it would open.
+fn refs_markdown(
+    transition: Transition,
+    plan: &Plan,
+    series: &Landing,
+    main: Option<&Landing>,
+) -> String {
+    let transition = format!("{transition:?}").to_lowercase();
+    let branch = if plan.next_main_version.is_empty() {
+        format!("`{}`", plan.branch)
+    } else {
+        format!("`{}`, created from the commit this run is on", plan.branch)
+    };
+    let mut out = format!(
+        "# Dry run: {transition}\n\n\
+         - series branch: {branch}\n\
+         - tag: `{tag}`, on the merge commit of the series pull request\n\
+         - series pull request: {series}\n  body: {PULL_REQUEST_BODY}\n",
+        tag = plan.tag,
+        series = series.describe(&plan.branch),
+    );
+    if let Some(main) = main {
+        out += &format!(
+            "- main moves to `{next}`\n\
+             - main pull request: {main}\n  body: {PULL_REQUEST_BODY}\n",
+            next = plan.next_main_version,
+            main = main.describe(MAIN),
+        );
+    }
+    out
+}
+
+/// git-cliff's notes for the tag this plan would mint: everything unreleased,
+/// under that name. The real draft renders `--latest` once the tag exists.
+fn unreleased_notes(tag: &str) -> Result<String> {
+    let output = Command::new("git-cliff")
+        .args(["--unreleased", "--tag", tag])
+        .output()
+        .context("running git-cliff, which the xtask lane installs")?;
+    if !output.status.success() {
+        bail!(
+            "git-cliff failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    String::from_utf8(output.stdout).context("the notes are not UTF-8")
+}
+
+#[cfg(test)]
+mod rehearsal_tests {
+    use super::*;
+
+    fn v(s: &str) -> Version {
+        Version::parse(s).unwrap()
+    }
+
+    /// Scenario _A dry cut_, as far as the rendering goes: the patch is the
+    /// write `write_version` would make, under the paths it would touch, with
+    /// the final newline intact on both sides.
+    #[test]
+    fn the_patch_is_the_version_write_under_its_paths() {
+        let manifest = "[package]\nname = \"waypoints\"\nversion = \"0.1.0-nightly\"\n";
+        let rewritten = set_package_version(manifest, &v("0.2.0-pre.1")).unwrap();
+        let patch = unified_diff(&[(
+            "src-tauri/Cargo.toml".to_owned(),
+            manifest.to_owned(),
+            rewritten,
+        )])
+        .unwrap();
+        assert!(patch.contains("--- a/src-tauri/Cargo.toml\n"), "{patch}");
+        assert!(patch.contains("+++ b/src-tauri/Cargo.toml\n"), "{patch}");
+        assert!(patch.contains("-version = \"0.1.0-nightly\"\n"), "{patch}");
+        assert!(patch.contains("+version = \"0.2.0-pre.1\"\n"), "{patch}");
+        assert!(!patch.contains("No newline"), "{patch}");
+    }
+
+    /// Nothing to write renders an empty patch rather than a failure.
+    #[test]
+    fn an_unchanged_tree_is_an_empty_patch() {
+        let text = "[package]\nversion = \"0.1.0\"\n".to_owned();
+        let patch = unified_diff(&[("Cargo.toml".to_owned(), text.clone(), text)]).unwrap();
+        assert_eq!(patch, "");
+    }
+
+    /// The refs a reader audits before the first real cut: branch, tag, both
+    /// pull requests and their body, and where `main` moves.
+    #[test]
+    fn a_dry_cut_names_its_refs() {
+        let plan = Plan::new(Transition::Cut, &v("0.1.0"), &["feat: charts".to_owned()]).unwrap();
+        let series = Landing::new(
+            "botswain/release-plan/v0.2.x".to_owned(),
+            plan.commit_message(),
+            &["src-tauri/Cargo.toml".to_owned(), LOCKFILE.to_owned()],
+        );
+        let main = Landing::new(
+            "botswain/release-plan/main".to_owned(),
+            next_main_message(&v("0.3.0-nightly")),
+            &["src-tauri/Cargo.toml".to_owned()],
+        );
+        let refs = refs_markdown(Transition::Cut, &plan, &series, Some(&main));
+        assert!(refs.starts_with("# Dry run: cut\n"), "{refs}");
+        assert!(
+            refs.contains("`v0.2.x`, created from the commit this run is on"),
+            "{refs}"
+        );
+        assert!(refs.contains("- tag: `v0.2.0-pre.1`"), "{refs}");
+        assert!(
+            refs.contains("from botswain/release-plan/v0.2.x into v0.2.x"),
+            "{refs}"
+        );
+        assert!(refs.contains("- main moves to `0.3.0-nightly`"), "{refs}");
+        assert!(
+            refs.contains("from botswain/release-plan/main into main"),
+            "{refs}"
+        );
+        assert_eq!(refs.matches(PULL_REQUEST_BODY).count(), 2, "{refs}");
+
+        let advance = Plan::new(Transition::Advance, &v("0.2.0-pre.1"), &[]).unwrap();
+        let refs = refs_markdown(Transition::Advance, &advance, &series, None);
+        assert!(refs.contains("- series branch: `v0.2.x`\n"), "{refs}");
+        assert!(!refs.contains("main moves"), "{refs}");
+    }
 }
 
 /// Writes `version` to every member of the app's group, in the tree checked out
