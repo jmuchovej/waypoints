@@ -532,11 +532,10 @@ fn last_stable(tags: &[String]) -> Option<Version> {
         .max()
 }
 
+/// The published tags, from the remote: a cut measures its work from the last
+/// release that exists, not the last one this checkout happens to hold.
 fn stable_tags() -> Result<Vec<String>> {
-    Ok(git::run(&["tag", "--list", "v*"])?
-        .lines()
-        .map(str::to_owned)
-        .collect())
+    git::remote_tags()
 }
 
 /// The `git log` range covering one cycle's work.

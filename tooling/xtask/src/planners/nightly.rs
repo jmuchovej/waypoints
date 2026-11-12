@@ -14,8 +14,8 @@
 //! [`Plan`] is every channel's: preview and stable publish a tag that already
 //! exists, so their planner only reads it, and rehearses the same way.
 //!
-//! Tags are read from the checkout with `git` and created through the API,
-//! so the job needs neither deep history nor a committer identity.
+//! Tags are read from the remote and created through the API, so the job
+//! needs neither a committer identity nor a checkout whose tags are current.
 
 use crate::{
     releases::{index, version::Version},
@@ -180,11 +180,10 @@ pub fn latest_nightly(target: &Version, tags: &[String]) -> Result<Option<Versio
     Ok(latest)
 }
 
+/// The published tags, from the remote: a workstation's local tags can be
+/// stale or stray, and a decision is a claim about what is published.
 pub fn nightly_tags() -> Result<Vec<String>> {
-    Ok(git::run(&["tag", "--list", "v*-nightly.*"])?
-        .lines()
-        .map(str::to_owned)
-        .collect())
+    git::remote_tags()
 }
 
 /// Commit subjects since `tag`, or the whole history before the first nightly.
