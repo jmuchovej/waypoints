@@ -12,11 +12,13 @@
 //! as. `nix/channel.nix` is the same reading for the overlay.
 //!
 //! A version also knows how to make each [`Transition`] of the release cycle:
-//! see [`Version::transition`].
+//! see [`Version::transition`]. A nightly is not a transition but a date:
+//! see [`Version::nightly`].
 
 use crate::Channel;
 use anyhow::{Context as _, Result, bail};
-use cargo_metadata::semver::{self, BuildMetadata, Prerelease};
+use cargo_metadata::semver::{self, Prerelease};
+use chrono::NaiveDate;
 use clap::ValueEnum;
 use derive_more::{AsMut, AsRef, Deref, From, Into};
 use next_version::VersionUpdater;
@@ -218,8 +220,8 @@ impl Version {
     /// Counts the trailing identifier directly rather than going through a
     /// commit-driven bumper: a backport's message describes the original
     /// change rather than its severity here, so advancing a preview is
-    /// mechanical by design. Contrast [`next_nightly`](Self::next_nightly),
-    /// where the commits are the whole point.
+    /// mechanical by design. A nightly is not counted at all: see
+    /// [`nightly`](Self::nightly).
     pub fn next_preview(&self) -> Result<Self> {
         let pre = self.pre.as_str();
         let (stem, index) = match pre.rsplit_once('.') {
@@ -237,69 +239,58 @@ impl Version {
         Ok(Self(next))
     }
 
-    /// The first nightly of the release this version is a view of:
-    /// `{target}-nightly.1`.
-    pub fn first_nightly(&self) -> Result<Self> {
+    /// The nightly of the release this version is a view of, dated `date`:
+    /// `{target}-nightly.{YYYYMMDD}`, with no build metadata. The date is the
+    /// whole identifier, so nightlies order by date and a day holds at most
+    /// one.
+    pub fn nightly(&self, date: NaiveDate) -> Result<Self> {
         let mut version: semver::Version = self.target().into();
-        version.pre = Prerelease::new(&format!("{NIGHTLY}.1"))
-            .with_context(|| format!("`{NIGHTLY}.1` is not a valid prerelease"))?;
+        let identifier = format!("{NIGHTLY}.{}", date.format("%Y%m%d"));
+        version.pre = Prerelease::new(&identifier)
+            .with_context(|| format!("`{identifier}` is not a valid prerelease"))?;
         Ok(Self(version))
     }
 
-    /// `0.2.0-nightly.3` → `0.2.0-nightly.4` when `commits` landed since
-    /// it, else `None`.
-    ///
-    /// `N` counts the nightlies shipped since the target last changed, and
-    /// is bumped by [`VersionUpdater`], which increments a trailing numeric
-    /// prerelease identifier and leaves build metadata alone — and,
-    /// usefully, returns the version *unchanged* when no commits landed, so
-    /// "is there anything new?" and "what is the next version?" are one
-    /// call. The date is the caller's to stamp: see
-    /// [`stamped`](Self::stamped).
-    pub fn next_nightly(&self, commits: &[String]) -> Result<Option<Self>> {
+    /// The date a published nightly is named by, refusing every other shape:
+    /// the prerelease is exactly `nightly.{YYYYMMDD}` and nothing is attached
+    /// as build metadata. A tag of the earlier `nightly.{N}+{date}` grammar
+    /// fails here by name rather than being read.
+    pub fn nightly_date(&self) -> Result<NaiveDate> {
         if !self.is_nightly() {
-            bail!("{self} is not a nightly; only a nightly has a next nightly");
+            bail!("{self} is not a nightly");
         }
-        let bumped = VersionUpdater::new().increment(self, commits);
-        Ok((bumped.pre != self.pre).then_some(Self(bumped)))
+        if !self.build.is_empty() {
+            bail!("{self} carries build metadata; a nightly is `{{target}}-{NIGHTLY}.YYYYMMDD`");
+        }
+        let date = match self.pre.as_str().split_once('.') {
+            Some((NIGHTLY, date))
+                if date.len() == 8 && date.bytes().all(|b| b.is_ascii_digit()) =>
+            {
+                date
+            }
+            _ => bail!("{self} is not dated; a nightly is `{{target}}-{NIGHTLY}.YYYYMMDD`"),
+        };
+        NaiveDate::parse_from_str(date, "%Y%m%d")
+            .with_context(|| format!("{self}: `{date}` is not a calendar date"))
     }
 
-    /// This version carrying `stamp` as its build metadata, replacing
-    /// whatever came through — a preserved date is a stale one.
-    pub fn stamped(&self, stamp: &str) -> Result<Self> {
-        let mut version = self.0.clone();
-        version.build = BuildMetadata::new(stamp)
-            .with_context(|| format!("\"{stamp}\" is not valid build metadata"))?;
-        Ok(Self(version))
-    }
-
-    /// The store build numbers a nightly's date stamp yields, as
-    /// `(android, ios)`.
+    /// The store build numbers a nightly's date yields, as `(android, ios)`.
     ///
-    /// Both are the date: Android's `versionCode` is a single integer, so the
-    /// separators are dropped; iOS's `CFBundleVersion` takes period-separated
-    /// components and keeps them. Both increase monotonically because dates
-    /// do, and 8 digits stays far under Android's 2_100_000_000 ceiling.
+    /// Android's `versionCode` is one integer, so it is the identifier itself;
+    /// iOS's `CFBundleVersion` takes period-separated components, so the date
+    /// is rebuilt as `YYYY.MM.DD`. Both climb with the date, and 8 digits
+    /// stays far under Android's 2_100_000_000 ceiling.
     ///
     /// ```text
-    /// 0.2.0-nightly.1+2026.08.29  ->  20260829   2026.08.29
-    /// 0.2.0-nightly.2+2026.08.30  ->  20260830   2026.08.30
+    /// 0.2.0-nightly.20260829  ->  20260829   2026.08.29
+    /// 0.2.0-nightly.20260830  ->  20260830   2026.08.30
     /// ```
     pub fn build_numbers(&self) -> Result<(String, String)> {
-        let stamp = self.build.as_str();
-        if stamp.is_empty() {
-            bail!("{self} carries no date; a nightly needs one for its build number");
-        }
-
-        let android: String = stamp.chars().filter(char::is_ascii_digit).collect();
-        if android.len() != 8 {
-            bail!(
-                "\"{stamp}\" is not a YYYY.MM.DD date; got {} digits",
-                android.len()
-            );
-        }
-
-        Ok((android, stamp.to_owned()))
+        let date = self.nightly_date()?;
+        Ok((
+            date.format("%Y%m%d").to_string(),
+            date.format("%Y.%m.%d").to_string(),
+        ))
     }
 }
 
@@ -328,6 +319,9 @@ mod tests {
     fn msgs(items: &[&str]) -> Vec<String> {
         items.iter().map(|s| (*s).to_owned()).collect()
     }
+    fn day(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
 
     #[test]
     fn a_version_names_its_own_channel() {
@@ -335,7 +329,8 @@ mod tests {
         assert_eq!(v("0.2.1").channel(), Channel::Stable);
         assert_eq!(v("0.2.0-pre.1").channel(), Channel::Preview);
         assert_eq!(v("0.2.0-pre").channel(), Channel::Preview);
-        assert_eq!(v("0.2.0-nightly.7+2026.08.29").channel(), Channel::Nightly);
+        assert_eq!(v("0.2.0-nightly").channel(), Channel::Nightly);
+        assert_eq!(v("0.2.0-nightly.20260829").channel(), Channel::Nightly);
     }
 
     #[test]
@@ -368,10 +363,7 @@ mod tests {
 
     #[test]
     fn the_target_strips_every_suffix() {
-        assert_eq!(
-            v("0.2.0-nightly.7+2026.08.29").target(),
-            Version::new(0, 2, 0)
-        );
+        assert_eq!(v("0.2.0-nightly.20260829").target(), Version::new(0, 2, 0));
         assert_eq!(v("0.2.0-pre.3").target(), Version::new(0, 2, 0));
     }
 
@@ -444,32 +436,64 @@ mod tests {
     #[test]
     fn transitions_refuse_the_wrong_channel() {
         assert!(v("0.2.0").advance().is_err());
-        assert!(v("0.2.0-nightly.3+2026.08.29").advance().is_err());
+        assert!(v("0.2.0-nightly.20260829").advance().is_err());
         assert!(v("0.2.0").promote().is_err());
         assert!(v("0.2.0-pre.1").patch().is_err());
-        assert!(v("0.2.0-pre.1").next_nightly(&[]).is_err());
+        assert!(v("0.2.0-pre.1").nightly_date().is_err());
     }
 
+    /// Scenario _A date-named version_: the date is the whole identifier, and
+    /// nothing rides along as build metadata — from whatever view of the
+    /// target it is asked of.
     #[test]
-    fn the_first_nightly_of_a_target_starts_at_one() {
-        assert_eq!(v("0.2.0").first_nightly().unwrap(), v("0.2.0-nightly.1"));
-        // ...from whatever view of the target it is asked of.
+    fn a_nightly_is_named_by_its_date() {
+        let nightly = v("0.2.0").nightly(day(2026, 11, 9)).unwrap();
+        assert_eq!(nightly.to_string(), "0.2.0-nightly.20261109");
+        assert_eq!(nightly.tag(), "v0.2.0-nightly.20261109");
+        assert!(nightly.build.is_empty());
+        assert_eq!(nightly.channel(), Channel::Nightly);
         assert_eq!(
-            v("0.3.0-nightly").first_nightly().unwrap(),
-            v("0.3.0-nightly.1")
+            v("0.3.0-nightly").nightly(day(2026, 11, 9)).unwrap(),
+            v("0.3.0-nightly.20261109")
+        );
+        assert_eq!(nightly.nightly_date().unwrap(), day(2026, 11, 9));
+    }
+
+    /// Scenario _Dates order without a tie_: a later date is a greater
+    /// version under semver alone, and `main`'s undated `nightly` sorts
+    /// below every published one.
+    #[test]
+    fn dates_order_without_a_tie() {
+        assert!(v("0.2.0-nightly.20261108") < v("0.2.0-nightly.20261109"));
+        assert!(v("0.2.0-nightly.20261231") < v("0.2.0-nightly.20270101"));
+        assert!(v("0.2.0-nightly") < v("0.2.0-nightly.20261108"));
+        assert_ne!(
+            v("0.2.0-nightly.20261108").cmp(&v("0.2.0-nightly.20261109")),
+            std::cmp::Ordering::Equal
         );
     }
 
-    /// The bump and the "anything new?" check are the same call: a landed
-    /// commit advances the counter, an idle day yields nothing.
+    /// Scenario _An earlier-grammar tag is refused_: the counted-and-stamped
+    /// shape is not read as a nightly, and neither is any other dating.
     #[test]
-    fn a_nightly_advances_only_when_something_landed() {
-        let latest = v("0.2.0-nightly.1+2026.08.29");
-        let next = latest
-            .next_nightly(&msgs(&["fix: something landed"]))
-            .unwrap();
-        assert_eq!(next, Some(v("0.2.0-nightly.2+2026.08.29")));
-        assert_eq!(latest.next_nightly(&[]).unwrap(), None);
+    fn an_earlier_grammar_nightly_is_refused() {
+        for text in [
+            "0.1.0-nightly.2+2026.11.08",
+            "0.1.0-nightly.20261108+2026.11.08",
+            "0.2.0-nightly",
+            "0.2.0-nightly.2026",
+            "0.2.0-nightly.20261399",
+            "0.2.0-nightly.20261108.1",
+        ] {
+            assert!(
+                v(text).nightly_date().is_err(),
+                "{text} was read as a nightly"
+            );
+            assert!(
+                v(text).build_numbers().is_err(),
+                "{text} yielded build numbers"
+            );
+        }
     }
 
     /// `main` names its channel the way every branch does — in its version.
@@ -480,38 +504,25 @@ mod tests {
         let next = v("0.2.0").next_main().unwrap();
         assert_eq!(next.to_string(), "0.3.0-nightly");
         assert_eq!(next.channel(), Channel::Nightly);
-        assert!(next < v("0.3.0-nightly.1+2026.08.29"));
-        assert!(v("0.3.0-nightly.1+2026.08.29") < v("0.3.0-pre.1"));
+        assert!(next < v("0.3.0-nightly.20260829"));
+        assert!(v("0.3.0-nightly.20260829") < v("0.3.0-pre.1"));
         assert!(v("0.3.0-pre.1") < v("0.3.0"));
     }
 
+    /// Scenario _Build numbers come from the identifier_.
     #[test]
-    fn build_numbers_come_from_the_date() {
-        let (android, ios) = v("0.2.0-nightly.7+2026.08.29").build_numbers().unwrap();
+    fn build_numbers_come_from_the_identifier() {
+        let (android, ios) = v("0.2.0-nightly.20260829").build_numbers().unwrap();
         assert_eq!((android.as_str(), ios.as_str()), ("20260829", "2026.08.29"));
     }
 
     /// Android's `versionCode` is one integer and must only ever climb.
     #[test]
     fn version_codes_increase_with_the_date() {
-        let earlier = v("0.2.0-nightly.9+2026.08.29").build_numbers().unwrap().0;
-        let later = v("0.2.0-nightly.1+2026.09.01").build_numbers().unwrap().0;
+        let earlier = v("0.2.0-nightly.20260829").build_numbers().unwrap().0;
+        let later = v("0.3.0-nightly.20260901").build_numbers().unwrap().0;
         assert!(earlier.parse::<u64>().unwrap() < later.parse::<u64>().unwrap());
-        // ...even across a target bump, which restarts N but not the date.
+        // ...even across a target bump, and never near Android's ceiling.
         assert!(later.parse::<u64>().unwrap() < 2_100_000_000);
-    }
-
-    #[test]
-    fn a_nightly_without_a_date_is_rejected() {
-        assert!(v("0.2.0-nightly.1").build_numbers().is_err());
-    }
-
-    /// A preserved date would be the previous run's.
-    #[test]
-    fn stamping_replaces_the_build_metadata() {
-        let restamped = v("0.2.0-nightly.1+2026.08.29")
-            .stamped("2026.09.01")
-            .unwrap();
-        assert_eq!(restamped.to_string(), "0.2.0-nightly.1+2026.09.01");
     }
 }

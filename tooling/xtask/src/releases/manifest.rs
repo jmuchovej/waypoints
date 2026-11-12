@@ -96,9 +96,9 @@ mod tests {
 
     #[test]
     fn the_manifest_serializes_to_the_agreed_wire_shape() {
-        let manifest = manifest(Channel::Nightly, "v0.2.0-nightly.3+2026.10.19");
+        let manifest = manifest(Channel::Nightly, "v0.2.0-nightly.20261019");
         let value: serde_json::Value = serde_json::from_slice(&manifest.render().unwrap()).unwrap();
-        assert_eq!(value["version"], "v0.2.0-nightly.3+2026.10.19");
+        assert_eq!(value["version"], "v0.2.0-nightly.20261019");
         assert_eq!(value["series"], "v0.2.x");
         assert!(value["targets"].as_array().unwrap().iter().any(|target| {
             target["os"] == "macos"

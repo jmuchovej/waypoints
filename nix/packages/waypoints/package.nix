@@ -42,7 +42,7 @@
   # when absent).
   rev ? null,
   # The published version, where the tag knows more than the manifest: a
-  # nightly's tag carries the counter and date stamp its manifest never does.
+  # nightly's tag carries the date its manifest never does.
   # Must extend the manifest's version. Null means the manifest's.
   version ? null,
   # Replaces the flavor's updater endpoints, for exercising the notify-only
@@ -72,7 +72,7 @@ let
   manifest-version = (fromTOML (read "/src-tauri/Cargo.toml")).package.version;
 
   # A publish-time suffix extends the manifest's version; it never replaces
-  # it: `0.3.0-nightly` becomes `0.3.0-nightly.7+2026.08.29`, never anything
+  # it: `0.3.0-nightly` becomes `0.3.0-nightly.20260829`, never anything
   # whose stem differs. A recorded tag that disagrees with the manifest it
   # points at is a wrong entry, and fails here rather than building under a
   # false name.
