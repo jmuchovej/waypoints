@@ -216,6 +216,20 @@ pub fn set_outputs_if_available<T: Serialize>(outputs: &T) -> Result<()> {
     }
 }
 
+/// Appends `markdown` to the step's job summary — a no-op off a runner, where
+/// nothing is listening.
+pub fn add_summary(markdown: &str) -> Result<()> {
+    let Some(path) = std::env::var_os("GITHUB_STEP_SUMMARY") else {
+        return Ok(());
+    };
+    fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .and_then(|mut file| file.write_all(markdown.as_bytes()))
+        .with_context(|| format!("Failed to append to {}", Path::new(&path).display()))
+}
+
 /// Appends to the file GitHub hands the step.
 ///
 /// Appending, not writing: the file is the step's whole output channel, so

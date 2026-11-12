@@ -788,11 +788,11 @@ fn download_artifact_action() -> Action {
 
 /// Renames the platform's published and updater artifacts out of the
 /// bundler's nested output into the flat [`STAGE_DIR`], as
-/// `waypoints-{tag}.{ext}`. Every run stages, build-only included, so a
-/// change in what Tauri exports fails the build that produced it. `tag` is
-/// the tag the files are named for — on a build-only run, the one it would
-/// have published; when it is empty, `release-stage` takes the app's own
-/// version. Needs no credential.
+/// `waypoints-{tag}.{ext}`. Every run stages, dry runs included, so a change
+/// in what Tauri exports fails the build that produced it. `tag` is the tag
+/// the files are named for — on a dry run, the one it would have published;
+/// when it is empty, `release-stage` takes the app's own version. Needs no
+/// credential.
 pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
     Step::new("Stage the release artifacts")
         .run(format!(
@@ -842,7 +842,7 @@ pub fn prepare_listing(channel: Channel) -> Step<Run> {
 
 /// Uploads the staged tree to the `releases` bucket; `release-upload`
 /// derives its own store credential.
-pub fn upload_to_store(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn upload_to_store(tag: &JobOutput) -> Step<Run> {
     let step = Step::new("Upload to the release store")
         .run(Tools::Devenv.command(&format!(
             r#"cargo xtask release-upload --from {STAGE_DIR} --tag "${{TAG}}""#
@@ -902,8 +902,8 @@ pub fn reject_tag_with_platforms_subset() -> Step<Run> {
         .run(concat!(
             "echo \"::error::A release tag cannot be combined with a platforms subset — ",
             "a subset can never satisfy every required target, so the run would build ",
-            "without ever publishing. Dispatch again with platforms left at All, or leave ",
-            "tag empty for a build-only run.\" && exit 1"
+            "without ever publishing. Dispatch again with platforms left at All, or as ",
+            "a dry run.\" && exit 1"
         ))
         .shell("bash")
         .id("reject-contradiction")
@@ -932,7 +932,7 @@ pub fn record_target(platform: Platform) -> Step<Run> {
 /// The token is for the template's first-time-contributor section, which
 /// asks the GitHub API who opened each pull request; without it git-cliff
 /// gets a 404 from the private repository and renders nothing.
-pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn release_notes(tag: &JobOutput) -> Step<Run> {
     Step::new("Generate release notes")
         .run(r#"git-cliff --latest --output "${RUNNER_TEMP}/notes.md""#)
         .shell("bash")
@@ -947,7 +947,7 @@ pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
 /// [`publish_release`] flips it — so a failed build never leaves a
 /// half-populated release visible. The `view` guard makes a re-run reuse the
 /// draft it left behind; `gh` resolves drafts by tag name.
-pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
+pub fn create_release(channel: Channel, tag: &JobOutput) -> Step<Run> {
     let view = r#"gh release view "${TAG}" >/dev/null 2>&1"#;
     let create =
         r#"gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md""#;
@@ -975,7 +975,7 @@ pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
 /// out, and `gh` otherwise reads the repository from the checkout's git
 /// remote. The job only runs when every build succeeded, so the gap survived
 /// until the first release where that happened.
-pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn publish_release(tag: &JobOutput) -> Step<Run> {
     Step::new("Publish the release")
         .run(r#"gh release edit "${TAG}" --draft=false"#)
         .shell("bash")
@@ -990,7 +990,7 @@ pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
 /// so it is the run's true last write: the reverse (a published record
 /// naming artifacts the manifest has not yet confirmed) cannot happen. One
 /// line dispatching to `xtask`, like every other store-touching step.
-pub fn write_manifest(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn write_manifest(tag: &JobOutput) -> Step<Run> {
     let step = Step::new("Write the channel manifest")
         .run(Tools::Devenv.command(r#"cargo xtask release-manifest --tag "${TAG}""#))
         .shell("bash")
@@ -1011,7 +1011,7 @@ pub fn write_manifest(tag: Option<&JobOutput>) -> Step<Run> {
 /// absorb that case, rather than gating the step, keeps the withdraw job's
 /// later steps on their ordinary default `if: success()` instead of each
 /// needing `always()` to survive this one's absence.
-pub fn discard_release(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn discard_release(tag: &JobOutput) -> Step<Run> {
     Step::new("Discard the drafted release")
         .run(r#"gh release delete "${TAG}" --yes || true"#)
         .shell("bash")
@@ -1027,7 +1027,7 @@ pub fn discard_release(tag: Option<&JobOutput>) -> Step<Run> {
 /// constructor" decision. A failed delete is caught and warned on inside
 /// `release-withdraw` itself rather than propagated, so this step's exit
 /// code carries no information about whether every object was removed.
-pub fn withdraw_from_store(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn withdraw_from_store(tag: &JobOutput) -> Step<Run> {
     let step = Step::new("Withdraw uploaded artifacts")
         .run(Tools::Devenv.command(r#"cargo xtask release-withdraw --tag "${TAG}""#))
         .shell("bash")
@@ -1055,7 +1055,7 @@ pub fn delete_minted_tag(tag: &JobOutput, tag_minted: &JobOutput) -> Step<Run> {
         )))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("GH_REPO", "${{ github.repository }}"))
-        .add_env(("TAG", helpers::tag(Some(tag))))
+        .add_env(("TAG", helpers::tag(tag)))
         .id("delete-minted-tag")
 }
 
@@ -1260,7 +1260,11 @@ mod tests {
     #[test]
     fn the_draft_never_creates_its_tag() {
         for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let step = rendered(create_release(channel, None));
+            let prepare = crate::workflows::jobs::prepare(
+                channel,
+                &crate::workflows::WorkflowContext::fixture(),
+            );
+            let step = rendered(create_release(channel, &prepare.tag));
             let run = step["run"].as_str().expect("run");
             assert!(run.contains("gh release create"), "{run}");
             assert!(run.contains("--verify-tag"), "{run}");

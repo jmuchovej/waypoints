@@ -7,8 +7,12 @@
 //! whole prerelease identifier, so nightlies order by date under semver alone
 //! and a day holds at most one. The same date is the store build number,
 //! which is the same limit stated the other way round — two runs on one day
-//! would produce the same `versionCode`. A manual dispatch therefore builds
-//! without publishing, stamped as the scheduled run would stamp it.
+//! would produce the same `versionCode`. A manual dispatch therefore
+//! rehearses: it decides as the scheduled run would, builds when asked, and
+//! publishes nothing.
+//!
+//! [`Plan`] is every channel's: preview and stable publish a tag that already
+//! exists, so their planner only reads it, and rehearses the same way.
 //!
 //! Tags are read from the checkout with `git` and created through the API,
 //! so the job needs neither deep history nor a committer identity.
@@ -26,43 +30,66 @@ use chrono::NaiveDate;
 /// the output keys.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct Plan {
-    /// Empty on a build-only run.
+    /// The tag this run publishes — minted by nightly, pushed or named on the
+    /// others — or, on a dry run, the one it would have. Empty when nothing
+    /// is planned.
     pub tag: String,
-    /// Whether this run itself created `tag`'s ref — true only on the
-    /// publish path, which always creates the ref right after. A withdraw
-    /// job reads this back to decide whether it may delete the tag: this
-    /// run's own ref, or one that predates it (a tag push, for the channels
-    /// that have no planner at all).
+    /// Whether this run itself created `tag`'s ref — true only on nightly's
+    /// publish path, which creates the ref right after. A withdraw job reads
+    /// this back to decide whether it may delete the tag: this run's own
+    /// ref, or one that predates it.
     pub tag_minted: bool,
+    /// Whether this run is a rehearsal: its writes go to the run's own
+    /// artifacts, and nothing is published.
+    pub dry_run: bool,
     pub should_build: bool,
-    /// The full nightly version, `{target}-nightly.{YYYYMMDD}`, which the
-    /// builds stamp into the app. Empty only when nothing builds.
+    /// The version the builds stamp into the app. Empty when nothing builds.
     pub version: String,
-    /// Android `versionCode`. Empty when `version` is.
+    /// Android `versionCode`: a nightly's date. Empty off nightly, and when
+    /// `version` is.
     pub version_code: String,
-    /// iOS `CFBundleVersion`. Empty when `version` is.
+    /// iOS `CFBundleVersion`. As `version_code`.
     pub bundle_version: String,
 }
 
 impl Plan {
-    /// Derives the build numbers from the version, so the two cannot disagree.
+    /// A nightly this run mints and publishes.
     pub fn publish(version: &Version) -> Result<Self> {
-        Ok(Self {
-            tag: version.tag(),
-            tag_minted: true,
-            ..Self::build_only(version)?
-        })
+        Self::planned(version, true, false, true)
     }
 
-    /// Builds `version` without minting its tag — a manual dispatch. The
-    /// artifacts are stamped exactly as the scheduled run would stamp them.
-    pub fn build_only(version: &Version) -> Result<Self> {
-        let (version_code, bundle_version) = version.build_numbers()?;
+    /// A preview or stable release of a tag that already exists.
+    pub fn release(version: &Version) -> Result<Self> {
+        Self::planned(version, false, false, true)
+    }
+
+    /// A rehearsal of publishing `version`: the tag is reported, not minted,
+    /// and the stages run only when `build` says so.
+    pub fn rehearsal(version: &Version, build: bool) -> Result<Self> {
+        Self::planned(version, false, true, build)
+    }
+
+    /// Derives the build numbers from the version, so the two cannot disagree.
+    fn planned(
+        version: &Version,
+        tag_minted: bool,
+        dry_run: bool,
+        should_build: bool,
+    ) -> Result<Self> {
+        let (version_code, bundle_version) = match (should_build, version.is_nightly()) {
+            (true, true) => version.build_numbers()?,
+            _ => (String::new(), String::new()),
+        };
         Ok(Self {
-            tag: String::new(),
-            tag_minted: false,
-            should_build: true,
-            version: version.to_string(),
+            tag: version.tag(),
+            tag_minted,
+            dry_run,
+            should_build,
+            version: if should_build {
+                version.to_string()
+            } else {
+                String::new()
+            },
             version_code,
             bundle_version,
         })
@@ -71,6 +98,7 @@ impl Plan {
     pub const SKIP: Self = Self {
         tag: String::new(),
         tag_minted: false,
+        dry_run: false,
         should_build: false,
         version: String::new(),
         version_code: String::new(),
@@ -188,19 +216,41 @@ mod tests {
         NaiveDate::from_ymd_opt(year, month, day).unwrap()
     }
 
-    /// A dispatch mints no tag but stamps its artifacts like the real run.
+    /// Scenario _A dry run reports the would-be tag_: the tag is there to
+    /// read, nothing is minted, and the stages follow the `build` flag.
     #[test]
-    fn a_build_only_plan_carries_the_numbers_without_a_tag() {
-        let plan = Plan::build_only(&v("0.2.0-nightly.20260829")).unwrap();
-        assert_eq!(plan.tag, "");
-        assert!(plan.should_build);
-        assert_eq!(plan.version, "0.2.0-nightly.20260829");
-        assert_eq!(plan.version_code, "20260829");
-        assert_eq!(plan.bundle_version, "2026.08.29");
+    fn a_rehearsal_reports_the_tag_it_would_mint() {
+        let version = v("0.2.0-nightly.20260829");
+        let building = Plan::rehearsal(&version, true).unwrap();
+        assert_eq!(building.tag, "v0.2.0-nightly.20260829");
+        assert!(building.dry_run && !building.tag_minted && building.should_build);
+        assert_eq!(building.version, "0.2.0-nightly.20260829");
+        assert_eq!(building.version_code, "20260829");
+        assert_eq!(building.bundle_version, "2026.08.29");
 
-        let published = Plan::publish(&v("0.2.0-nightly.20260829")).unwrap();
-        assert_eq!(published.tag, "v0.2.0-nightly.20260829");
-        assert_eq!(published.version_code, plan.version_code);
+        let deciding = Plan::rehearsal(&version, false).unwrap();
+        assert_eq!(deciding.tag, "v0.2.0-nightly.20260829");
+        assert!(deciding.dry_run && !deciding.tag_minted && !deciding.should_build);
+        assert_eq!(deciding.version, "");
+        assert_eq!(deciding.version_code, "");
+    }
+
+    /// Off nightly the tag already exists, so it is published rather than
+    /// minted, and its store build numbers are not the planner's to fill.
+    #[test]
+    fn a_release_publishes_an_existing_tag() {
+        let plan = Plan::release(&v("0.2.0-pre.1")).unwrap();
+        assert_eq!(plan.tag, "v0.2.0-pre.1");
+        assert!(!plan.tag_minted && !plan.dry_run && plan.should_build);
+        assert_eq!(plan.version, "0.2.0-pre.1");
+        assert_eq!(
+            (plan.version_code.as_str(), plan.bundle_version.as_str()),
+            ("", "")
+        );
+
+        let rehearsed = Plan::rehearsal(&v("0.2.0-pre.1"), true).unwrap();
+        assert!(rehearsed.dry_run && !rehearsed.tag_minted);
+        assert_eq!(rehearsed.version_code, "");
     }
 
     /// `tag_minted` is true only on the path that actually creates the ref
@@ -215,8 +265,10 @@ mod tests {
     fn tag_minted_is_set_only_on_the_publish_path() {
         let version = v("0.2.0-nightly.20260829");
         assert!(Plan::publish(&version).unwrap().tag_minted);
-        assert!(!Plan::build_only(&version).unwrap().tag_minted);
+        assert!(!Plan::rehearsal(&version, true).unwrap().tag_minted);
+        assert!(!Plan::release(&v("0.2.0")).unwrap().tag_minted);
         assert!(!Plan::SKIP.tag_minted);
+        assert!(!Plan::SKIP.dry_run);
     }
 
     #[test]
@@ -355,14 +407,26 @@ mod tests {
         assert_eq!(sorted, ordered, "channel ordering is not monotonic");
     }
 
-    /// A dispatch builds but publishes nothing; an idle day does neither.
+    /// Every row of the design's table: a real run publishes, a rehearsal
+    /// builds or only decides and publishes nothing either way, and a quiet
+    /// or taken day does neither.
     #[test]
-    fn the_three_outcomes_differ_in_the_right_way() {
-        let outcome = |plan: &Plan| (plan.should_build, plan.tag.is_empty());
+    fn the_outcomes_differ_in_the_right_way() {
+        let outcome = |plan: &Plan| (plan.should_build, plan.tag.is_empty(), plan.dry_run);
         let version = v("0.2.0-nightly.20260829");
-        assert_eq!(outcome(&Plan::build_only(&version).unwrap()), (true, true));
-        assert_eq!(outcome(&Plan::SKIP), (false, true));
-        assert_eq!(outcome(&Plan::publish(&version).unwrap()), (true, false));
+        assert_eq!(
+            outcome(&Plan::publish(&version).unwrap()),
+            (true, false, false)
+        );
+        assert_eq!(
+            outcome(&Plan::rehearsal(&version, true).unwrap()),
+            (true, false, true)
+        );
+        assert_eq!(
+            outcome(&Plan::rehearsal(&version, false).unwrap()),
+            (false, false, true)
+        );
+        assert_eq!(outcome(&Plan::SKIP), (false, true, false));
     }
 
     /// `Plan` is serialized field-for-field into `$GITHUB_OUTPUT`, and the
@@ -371,7 +435,10 @@ mod tests {
     /// resolving to an empty string.
     #[test]
     fn the_prepare_job_republishes_exactly_the_plans_fields() {
-        use crate::workflows::{WorkflowContext, jobs};
+        use crate::{
+            Channel,
+            workflows::{WorkflowContext, jobs},
+        };
         use gh_workflow::NamedJob;
         use std::collections::BTreeSet;
 
@@ -383,16 +450,17 @@ mod tests {
             .map(String::as_str)
             .collect();
 
-        let prepare: NamedJob = jobs::prepare(&WorkflowContext::fixture()).into();
-        let republished: BTreeSet<&str> = prepare
-            .job
-            .outputs
-            .as_ref()
-            .expect("the prepare job declares outputs")
-            .keys()
-            .map(String::as_str)
-            .collect();
-
-        assert_eq!(fields, republished);
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let prepare: NamedJob = jobs::prepare(channel, &WorkflowContext::fixture()).into();
+            let republished: BTreeSet<&str> = prepare
+                .job
+                .outputs
+                .as_ref()
+                .expect("the prepare job declares outputs")
+                .keys()
+                .map(String::as_str)
+                .collect();
+            assert_eq!(fields, republished, "{channel}");
+        }
     }
 }

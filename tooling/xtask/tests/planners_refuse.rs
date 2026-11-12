@@ -91,5 +91,5 @@ fn the_release_planner_refuses_an_unnamed_crate() {
 
 #[test]
 fn the_nightly_planner_refuses_an_unnamed_crate() {
-    assert_refuses_naming_the_crate(&["nightly-plan", "--build-only"]);
+    assert_refuses_naming_the_crate(&["publish-plan", "nightly", "--dry-run", "--no-build"]);
 }
