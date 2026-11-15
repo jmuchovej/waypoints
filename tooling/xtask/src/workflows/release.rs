@@ -256,8 +256,9 @@ mod tests {
     /// Preview and stable take a `tag` dispatch input, so a subset
     /// `platforms` dispatch alongside it is a contradiction the guard job
     /// must catch before any build starts — on a real run; a dry run may
-    /// build a subset. Nightly takes no `tag` input, so the contradiction
-    /// cannot arise there and the guard is absent.
+    /// build a subset. The job itself always runs, since a job skipped by
+    /// its own `if` skips every build that needs it. Nightly takes no `tag`
+    /// input, so the contradiction cannot arise there and the guard is absent.
     #[test]
     fn every_build_waits_on_the_dispatch_guard_where_one_exists() {
         for channel in [Channel::Preview, Channel::Stable] {
@@ -267,7 +268,11 @@ mod tests {
             let guard = jobs
                 .get("guard-dispatch")
                 .unwrap_or_else(|| panic!("{channel}: no guard-dispatch job"));
-            let cond = guard["if"].as_str().expect("if");
+            assert!(
+                guard.get("if").is_none(),
+                "{channel}: a job-level condition skips every build that needs it"
+            );
+            let cond = guard["steps"][0]["if"].as_str().expect("the step's if");
             assert!(cond.contains("!inputs.dry_run"), "{channel}: {cond}");
 
             for platform in Platform::iter() {
