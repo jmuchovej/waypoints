@@ -379,7 +379,7 @@ mod tests {
         let without = repo.product_commits("v0.1.0..HEAD");
 
         repo.index("stable", "v0.1.0");
-        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
         let with = repo.product_commits("v0.1.0..HEAD");
 
         assert_eq!(with, without);
