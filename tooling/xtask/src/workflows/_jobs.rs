@@ -482,24 +482,26 @@ pub fn withdraw_release(channel: Channel, prepare: &PrepareJob) -> NamedJob {
 /// may build a subset: its publish job then skips on the same count, as it
 /// would for real. Only wired for the tag-driven channels: nightly takes no
 /// `tag` dispatch input, since it mints its own.
+///
+/// The condition sits on the step, not the job: the builds `need` this job,
+/// and a job skipped by its own `if` skips everything that needs it.
 pub fn guard_dispatch(
     tag: &WorkflowInput,
     platforms: &WorkflowInput,
     dry_run: &WorkflowInput,
 ) -> NamedJob {
-    let expr = format!(
+    let contradiction = Expression::new(format!(
         "github.event_name == 'workflow_dispatch' && !{dry_run} && {tag} != '' && {platforms} != 'All'",
         dry_run = dry_run.expr(),
         tag = tag.expr(),
         platforms = platforms.expr(),
-    );
+    ));
 
     let job = Job::default()
         .name("Guard the dispatch inputs")
         .permissions(Permissions::default())
         .runs_on(runners::LINUX)
-        .cond(Expression::new(expr))
-        .add_step(steps::reject_tag_with_platforms_subset());
+        .add_step(steps::reject_tag_with_platforms_subset().if_condition(contradiction));
 
     NamedJob::new("guard-dispatch", job)
 }

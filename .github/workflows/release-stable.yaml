@@ -300,13 +300,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
   guard-dispatch:
-    if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.tag != '' && inputs.platforms != 'All'
     name: Guard the dispatch inputs
     runs-on: ubuntu-latest
     permissions: {}
     steps:
       - id: reject-contradiction
         name: Reject a tag with a platforms subset
+        if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.tag != '' && inputs.platforms != 'All'
         run: echo "::error::A release tag cannot be combined with a platforms subset — a subset can never satisfy every required target, so the run would build without ever publishing. Dispatch again with platforms left at All, or as a dry run." && exit 1
         shell: bash
   build-macos:
