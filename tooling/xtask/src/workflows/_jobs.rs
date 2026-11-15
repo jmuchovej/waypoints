@@ -857,7 +857,7 @@ mod tests {
         assert_eq!(step(&steps, "dry-index")["env"]["REV"], "${{ github.sha }}");
         let upload = step(&steps, "upload-dry-run");
         assert_eq!(upload["with"]["name"], "dry-run-stable");
-        assert_eq!(upload["with"]["path"], steps::DRY_RUN_DIR);
+        assert_eq!(upload["with"]["path"], steps::DRY_RUN_ARTIFACT_PATH);
         assert_eq!(upload["with"]["retention-days"], "7");
     }
 

@@ -352,6 +352,7 @@ mod tests {
         let upload = &steps[position(&steps, "upload-dry-run")];
         assert_eq!(upload["if"], "inputs.dry_run");
         assert_eq!(upload["with"]["name"], "dry-run-release-plan");
-        assert_eq!(upload["with"]["path"], steps::DRY_RUN_DIR);
+        assert_eq!(upload["with"]["path"], steps::DRY_RUN_ARTIFACT_PATH);
+        assert!(!steps::DRY_RUN_ARTIFACT_PATH.contains("${RUNNER_TEMP}"));
     }
 }

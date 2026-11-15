@@ -1090,12 +1090,16 @@ pub fn upload_dry_run(channel: Channel, dry_run: &JobOutput) -> Step<Use> {
     upload_rendering(format!("dry-run-{channel}"), helpers::rehearsing(dry_run))
 }
 
+/// [`DRY_RUN_DIR`] as the upload action reads it: `with` values are not
+/// shell-expanded, so `${RUNNER_TEMP}` there is a literal path.
+pub const DRY_RUN_ARTIFACT_PATH: &str = "${{ runner.temp }}/dry-run";
+
 /// Uploads [`DRY_RUN_DIR`] as `name` when `rehearsing` holds, kept a week.
 pub fn upload_rendering(name: String, rehearsing: Expression) -> Step<Use> {
     upload_artifact_action()
         .step("Upload the dry run")
         .add_with(("name", name))
-        .add_with(("path", DRY_RUN_DIR))
+        .add_with(("path", DRY_RUN_ARTIFACT_PATH))
         .add_with(("if-no-files-found", "error"))
         .add_with(("retention-days", 7))
         .if_condition(rehearsing)
