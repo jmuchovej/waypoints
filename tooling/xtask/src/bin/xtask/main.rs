@@ -36,7 +36,7 @@ pub mod tasks {
     pub mod devenv_files;
     pub mod icongen;
     pub mod license;
-    pub mod nightly_plan;
+    pub mod publish_plan;
     pub mod release_groups;
     pub mod release_index;
     pub mod release_land;
@@ -62,8 +62,8 @@ struct Args {
 enum Command {
     /// Prints the nextest filterset a CI run should use.
     TestPlan(tasks::test_plan::Options),
-    /// Mints the release tag for a Nightly workflow run.
-    NightlyPlan(tasks::nightly_plan::Options),
+    /// Plans a channel's release run: what it builds, whether it publishes, and the tag nightly mints.
+    PublishPlan(tasks::publish_plan::Options),
     /// Copies one platform's published artifacts into `release/` under their store keys.
     ReleaseStage(tasks::release_stage::Options),
     /// Uploads published artifacts to the releases bucket.
@@ -102,7 +102,7 @@ fn main() -> Result<()> {
 
     match args.command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
-        Command::NightlyPlan(args) => tasks::nightly_plan::run(args),
+        Command::PublishPlan(args) => tasks::publish_plan::run(args),
         Command::ReleaseStage(args) => tasks::release_stage::run(args),
         Command::ReleaseUpload(args) => tasks::release_upload::run(args),
         Command::ReleaseManifest(args) => tasks::release_manifest::run(args),

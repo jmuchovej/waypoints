@@ -17,6 +17,10 @@ on:
           - advance
           - promote
           - patch
+      dry_run:
+        description: "Rehearse: plan, render the writes and refs as an artifact, and mint nothing"
+        type: boolean
+        default: "true"
 permissions: {}
 jobs:
   release-plan:
@@ -64,6 +68,7 @@ jobs:
           SCCACHE_REGION: auto
           SCCACHE_IDLE_TIMEOUT: "0"
       - name: Resolve the botswain secrets
+        if: "!inputs.dry_run"
         run: secretspec export --profile ci --scope botswain --format gha
         shell: bash
         env:
@@ -72,6 +77,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: app-token
         name: Mint a wp-botswain token
+        if: "!inputs.dry_run"
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
@@ -80,7 +86,7 @@ jobs:
           permission-pull-requests: write
       - id: release-plan
         name: cargo xtask release-plan
-        run: cargo xtask release-plan ${{ inputs.transition }}
+        run: cargo xtask release-plan ${{ inputs.transition }} ${{ inputs.dry_run && '--dry-run --into "${RUNNER_TEMP}/dry-run"' || '' }}
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -102,8 +108,18 @@ jobs:
           SECRETSPEC_REASON: saving the cargo-registry snapshot to the ci-cache bucket; the store client alone holds the credential
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      - id: upload-dry-run
+        name: Upload the dry run
+        if: inputs.dry_run
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dry-run-release-plan
+          path: ${RUNNER_TEMP}/dry-run
+          if-no-files-found: error
+          retention-days: "7"
       - id: series-pull-request
         name: Open a pull request
+        if: "!inputs.dry_run"
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -115,7 +131,7 @@ jobs:
           commit-message: ${{ steps.release-plan.outputs.title }}
           add-paths: ${{ steps.release-plan.outputs.paths }}
       - name: cargo xtask release-land auto-merge
-        if: steps.series-pull-request.outputs.pull-request-number != ''
+        if: "!inputs.dry_run && steps.series-pull-request.outputs.pull-request-number != ''"
         run: cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
         shell: bash
         env:
@@ -123,14 +139,14 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - id: bump-main
         name: cargo xtask release-land bump-main
-        if: steps.release-plan.outputs.next_main_version != ''
+        if: "!inputs.dry_run && steps.release-plan.outputs.next_main_version != ''"
         run: cargo xtask release-land bump-main --version "${VERSION}"
         shell: bash
         env:
           VERSION: ${{ steps.release-plan.outputs.next_main_version }}
       - id: main-pull-request
         name: Open a pull request
-        if: steps.release-plan.outputs.next_main_version != ''
+        if: "!inputs.dry_run && steps.release-plan.outputs.next_main_version != ''"
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -142,7 +158,7 @@ jobs:
           commit-message: ${{ steps.bump-main.outputs.title }}
           add-paths: ${{ steps.bump-main.outputs.paths }}
       - name: cargo xtask release-land auto-merge
-        if: steps.main-pull-request.outputs.pull-request-number != ''
+        if: "!inputs.dry_run && steps.main-pull-request.outputs.pull-request-number != ''"
         run: cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
         shell: bash
         env:
@@ -150,6 +166,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - id: wait-for-merge
         name: cargo xtask release-land wait
+        if: "!inputs.dry_run"
         run: cargo xtask release-land wait --pull-request "${PULL_REQUEST}"
         shell: bash
         env:
@@ -157,12 +174,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: tag-token
         name: Mint a wp-botswain token for the tag
+        if: "!inputs.dry_run"
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
           private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
           permission-contents: write
       - name: cargo xtask release-land tag
+        if: "!inputs.dry_run"
         run: cargo xtask release-land tag --tag "${TAG}" --commit "${COMMIT}"
         shell: bash
         env:
