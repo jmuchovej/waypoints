@@ -198,6 +198,46 @@ impl GroupFile {
             .collect()
     }
 
+    /// Whether `path` is bookkeeping, which counts for no group.
+    pub fn is_bookkeeping(&self, path: &str) -> bool {
+        self.bookkeeping
+            .paths
+            .iter()
+            .any(|dir| path.starts_with(dir.as_str()))
+    }
+
+    /// The group `path` counts for: the one whose crate or fixtures hold it,
+    /// else the group owning the remainder. `tooling/` and bookkeeping count
+    /// for none.
+    pub fn owner_of(&self, path: &str) -> Option<&str> {
+        if path.starts_with(TOOLING) || self.is_bookkeeping(path) {
+            return None;
+        }
+        match test::owning_package(path, &self.owned_paths()) {
+            Some(name) => self
+                .group
+                .get_key_value(name)
+                .map(|(name, _)| name.as_str()),
+            None => self.remainder_group(),
+        }
+    }
+
+    /// The group owning every path no other group does.
+    pub fn remainder_group(&self) -> Option<&str> {
+        self.group
+            .iter()
+            .find(|(_, group)| matches!(group.owns, Some(Owns::Remainder)))
+            .map(|(name, _)| name.as_str())
+    }
+
+    /// The groups counting every group's paths as their own work.
+    pub fn closure_groups(&self) -> impl Iterator<Item = &str> {
+        self.group
+            .iter()
+            .filter(|(_, group)| matches!(group.counts, Some(Counts::Closure)))
+            .map(|(name, _)| name.as_str())
+    }
+
     /// Every `(group, path)` a group owns: its crates and its fixtures.
     fn owned_paths(&self) -> Vec<(String, String)> {
         self.group

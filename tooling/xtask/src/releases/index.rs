@@ -14,11 +14,13 @@
 //!
 //! An entry lands on `main` strictly after the tag it describes, so to the
 //! planners it looks like work that landed. [`product_commits`] is the one
-//! `git log` both planners read, with that bookkeeping excluded.
+//! history walk both planners read, with that bookkeeping excluded: the group
+//! file names the index directory as bookkeeping, and [`history`] drops it.
 
 use crate::{
     Channel,
     releases::{
+        history,
         landing::Landing,
         version::{APP_MANIFEST, Version},
     },
@@ -28,11 +30,6 @@ use anyhow::{Context as _, Result, bail};
 
 /// Where the index lives, relative to the repository root.
 pub const INDEX_DIR: &str = "nix/releases";
-
-/// The pathspec that drops index-only commits. A list of exclusions alone
-/// matches nothing in git; the positive `.` is what gives it anything to
-/// exclude from.
-const PRODUCT_PATHSPEC: [&str; 3] = ["--", ".", ":(exclude)nix/releases/"];
 
 /// One channel's entry, serialized field-for-field as its file.
 ///
@@ -136,40 +133,152 @@ pub fn source_hash(rev: &str) -> Result<String> {
         .with_context(|| format!("`nix flake prefetch` reported no hash for {rev}"))
 }
 
-/// Conventional-commit subjects in `range`, oldest first, skipping commits
-/// that touch only the release index.
+/// The subjects of the commits in `range` that count for any group, oldest
+/// first: [`history::walk`] over `main`'s first-parent history, with the
+/// bookkeeping the group file names left out.
 ///
 /// Filtered by path rather than by message: whether a commit is bookkeeping
 /// is a question about what it touched, and a path answer survives any
 /// change to how the index commit is worded.
 pub fn product_commits(range: &str) -> Result<Vec<String>> {
-    Ok(git::run(&log_args(range))?
-        .lines()
-        .map(str::to_owned)
-        .collect())
+    let metadata = crate::workspace::load()?;
+    let groups = crate::release_groups::load(&metadata)?;
+    let ignored = history::ignored_revisions(metadata.workspace_root.as_std_path(), &groups)?;
+    Ok(history::product_subjects(&history::walk(
+        range, &groups, &ignored,
+    )?))
 }
 
-fn log_args(range: &str) -> [&str; 7] {
-    let [sep, all, exclude] = PRODUCT_PATHSPEC;
-    ["log", "--format=%s", "--reverse", range, sep, all, exclude]
-}
-
-/// A throwaway git repository, for proving what the planners' `git log` sees.
+/// A throwaway git repository, for proving what the planners' walk sees.
 #[cfg(test)]
 pub(crate) mod fixture {
-    use super::{INDEX_DIR, log_args};
+    use super::{INDEX_DIR, history};
+    use crate::release_groups::GroupFile;
     use std::{
+        collections::BTreeSet,
         fs,
         path::PathBuf,
         process::Command,
         sync::atomic::{AtomicUsize, Ordering},
     };
 
+    /// Groups for a fixture tree: three libraries, and the app owning the
+    /// remainder and counting the closure. Parsed rather than loaded, so
+    /// nothing has to exist on disk.
+    pub(crate) const GROUPS: &str = r#"
+        [bookkeeping]
+        paths = [ "nix/releases/" ]
+        ignore-revs = ".git-blame-ignore-revs"
+        bot-subjects = [ "chore(release):" ]
+
+        [group.bedrock]
+        members = [ "crates/bedrock", "crates/bedrock-core" ]
+        anchor = "crates/bedrock"
+        tag = "bedrock-v{version}"
+        breaking = "header"
+        floors = [ "cargo-semver-checks" ]
+        fixtures = "covenant/fixtures/bedrock/"
+        minted = [ "cut" ]
+
+        [group.outpost]
+        members = [ "crates/outpost" ]
+        anchor = "crates/outpost"
+        tag = "outpost-v{version}"
+        breaking = "header"
+        floors = [ "cargo-semver-checks" ]
+        fixtures = "covenant/fixtures/outpost/"
+        minted = [ "cut" ]
+
+        [group.domain]
+        members = [ "crates/domain" ]
+        anchor = "crates/domain"
+        tag = "domain-v{version}"
+        breaking = "header"
+        floors = [ "cargo-semver-checks" ]
+        fixtures = "covenant/fixtures/domain/"
+        minted = [ "cut" ]
+
+        [group.waypoints]
+        members = [ "src-tauri" ]
+        internals = [ "crates/store" ]
+        anchor = "src-tauri"
+        tag = "v{version}"
+        owns = "remainder"
+        counts = "closure"
+        breaking = "trailer:Covenant: break"
+        floors = [ "covenant-fixtures" ]
+        fixtures = "covenant/fixtures/waypoints/"
+        minted = [ "cut", "advance", "promote", "patch" ]
+
+        [enforce]
+        commits = "conventional"
+        summary-type = "summary"
+        version-writes = "botswain"
+        fixtures = "append-only"
+        schema = "current"
+    "#;
+
     pub(crate) struct Repo {
         dir: PathBuf,
     }
 
     impl Repo {
+        /// The commit `HEAD` names.
+        pub(crate) fn head(&self) -> String {
+            self.git(&["rev-parse", "HEAD"])
+        }
+
+        /// Starts `name` at `HEAD` and checks it out.
+        pub(crate) fn branch(&self, name: &str) {
+            self.git(&["checkout", "-q", "-b", name]);
+        }
+
+        /// Lands `branch` on `main` the way a pull request does: a merge
+        /// commit carrying `message`.
+        pub(crate) fn merge(&self, branch: &str, message: &str) {
+            self.git(&["checkout", "-q", "main"]);
+            self.git(&["merge", "-q", "--no-ff", "-m", message, branch]);
+        }
+
+        /// Lists `sha` as a treewide pass.
+        pub(crate) fn ignore(&self, sha: &str) {
+            let file = self.dir.join(".git-blame-ignore-revs");
+            let mut text = fs::read_to_string(&file).unwrap_or_default();
+            text.push_str(sha);
+            text.push('\n');
+            fs::write(&file, text).unwrap();
+        }
+
+        /// A commit of `path` under `message`, which may carry a body and
+        /// trailers.
+        pub(crate) fn commit_with(&self, path: &str, message: &str) {
+            let file = self.dir.join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(&file, message).unwrap();
+            self.git(&["add", path]);
+            self.git(&["commit", "-q", "-m", message]);
+        }
+
+        /// What [`history::walk`] sees here for `range`, under [`GROUPS`].
+        pub(crate) fn walk(&self, range: &str) -> Vec<history::Commit> {
+            let groups = GroupFile::parse(GROUPS).unwrap();
+            let ignored: BTreeSet<String> =
+                fs::read_to_string(self.dir.join(".git-blame-ignore-revs"))
+                    .unwrap_or_default()
+                    .lines()
+                    .map(str::trim)
+                    .filter(|line| !line.is_empty() && !line.starts_with('#'))
+                    .map(str::to_owned)
+                    .collect();
+            let args = history::log_args(range);
+            let args: Vec<&str> = args.iter().map(String::as_str).collect();
+            let output = self.git(&args);
+            history::parse(&output)
+                .into_iter()
+                .map(|raw| history::attribute(raw, &groups, &ignored))
+                .collect()
+        }
+
         pub(crate) fn new() -> Self {
             // Unique per call: the runner reuses threads, so a thread id would
             // let two tests collide.
@@ -238,10 +347,7 @@ pub(crate) mod fixture {
 
         /// What [`super::product_commits`] would return here for `range`.
         pub(crate) fn product_commits(&self, range: &str) -> Vec<String> {
-            self.git(&log_args(range))
-                .lines()
-                .map(str::to_owned)
-                .collect()
+            history::product_subjects(&self.walk(range))
         }
     }
 
@@ -343,21 +449,7 @@ mod tests {
         }
     }
 
-    /// The exclusion and the directory the index lives in are stated
-    /// separately; this is what keeps them the same directory.
-    #[test]
-    fn the_pathspec_excludes_the_index_directory() {
-        let [sep, all, exclude] = PRODUCT_PATHSPEC;
-        assert_eq!(sep, "--");
-        assert_eq!(all, ".");
-        assert_eq!(exclude, format!(":(exclude){INDEX_DIR}/"));
-
-        let args = log_args("v0.1.0..HEAD");
-        assert_eq!(args[3], "v0.1.0..HEAD");
-        assert_eq!(&args[4..], &PRODUCT_PATHSPEC);
-    }
-
-    /// The whole reason the pathspec exists: a history of nothing but index
+    /// The whole reason the exclusion exists: a history of nothing but index
     /// commits reads as empty.
     #[test]
     fn a_history_of_only_index_commits_is_empty() {
@@ -391,12 +483,6 @@ mod tests {
         );
     }
 
-    /// Lands `branch` on `main` the way a pull request does.
-    fn land(repo: &Repo, branch: &str, title: &str) {
-        repo.git(&["checkout", "-q", "main"]);
-        repo.git(&["merge", "-q", "--no-ff", "-m", title, branch]);
-    }
-
     /// An entry now lands as a merge commit over a branch commit. Neither may
     /// read as work, or the quiet-repository skip never fires again.
     #[test]
@@ -405,10 +491,9 @@ mod tests {
         repo.product("feat: the nightly's work");
         repo.tag("v0.2.0-nightly.20260829");
 
-        repo.git(&["checkout", "-q", "-b", "botswain/release-index/nightly"]);
+        repo.branch("botswain/release-index/nightly");
         repo.index("nightly", "v0.2.0-nightly.20260829");
-        land(
-            &repo,
+        repo.merge(
             "botswain/release-index/nightly",
             "feat(release): record v0.2.0-nightly.20260829 as the published nightly (#7)",
         );
@@ -427,12 +512,11 @@ mod tests {
         repo.product("feat: the nightly's work");
         repo.tag("v0.2.0-nightly.20260829");
 
-        repo.git(&["checkout", "-q", "-b", "botswain/release-index/nightly"]);
+        repo.branch("botswain/release-index/nightly");
         repo.index("nightly", "v0.2.0-nightly.20260829");
         repo.git(&["checkout", "-q", "main"]);
         repo.commit("crates/domain/src/other.rs", "fix: landed meanwhile");
-        land(
-            &repo,
+        repo.merge(
             "botswain/release-index/nightly",
             "feat(release): record v0.2.0-nightly.20260829 as the published nightly (#7)",
         );

@@ -61,6 +61,7 @@ pub mod planners {
 /// all keyed by.
 pub mod releases {
     pub mod artifacts;
+    pub mod history;
     pub mod index;
     pub mod landing;
     pub mod manifest;
