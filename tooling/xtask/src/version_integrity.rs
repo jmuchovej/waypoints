@@ -208,7 +208,7 @@ fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) 
 /// Whether `path` is frozen. A group's own README describes its directory, so
 /// it is not; a `README.md` any deeper is data, since import corpora are
 /// Markdown.
-fn is_fixture(path: &str) -> bool {
+pub(crate) fn is_fixture(path: &str) -> bool {
     path.strip_prefix(FIXTURES).is_some_and(|rest| {
         !rest
             .split_once('/')

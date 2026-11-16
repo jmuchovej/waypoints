@@ -91,13 +91,16 @@ pub struct GroupPlan {
     /// not declare raises the bump to breaking (design D5). None where
     /// nothing was measured — no tag to measure against, or nothing counted.
     pub api_break: Option<bool>,
+    /// Whether a frozen fixture of the group changed since the last stable
+    /// release, which is breaking for the group whatever its commits say.
+    pub fixture_break: bool,
 }
 
-/// The header the API floor speaks in: a break, as the bumper reads one.
-const DETECTED_BREAK: &str = "feat!: an API break the check detected";
+/// The header the floors speak in: a break, as the bumper reads one.
+const DETECTED_BREAK: &str = "feat!: a break the evidence shows";
 
-/// What raises a group's bump beyond what its commits declare; neither ever
-/// lowers it.
+/// What raises a group's bump beyond what its commits declare; none of it
+/// ever lowers the bump.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Raise {
     /// The least a group-scoped cut bumps.
@@ -106,16 +109,20 @@ pub struct Raise {
     /// raises the bump to breaking (design D5). None where nothing was
     /// measured — no tag to measure against, or nothing counted.
     pub detected: Option<bool>,
+    /// Whether a frozen fixture of the group was modified, deleted, or
+    /// renamed since the last stable release: breaking, since it changes
+    /// what old data means (design D5).
+    pub fixtures: bool,
 }
 
 impl GroupPlan {
     /// Decides `group` from its tag `template`, its `current` version, the
     /// remote's `tags`, and the `commits` since its last tag, raised by
-    /// `raise` — the floor a group-scoped cut names, and the API check's
-    /// evidence. A group with no counted commit stays where it is; before
-    /// its first tag, its anchor manifest is its version and the whole
-    /// history its cycle, as the app's first cut is measured, and there is
-    /// no baseline to measure against.
+    /// `raise` — the floor a group-scoped cut names, and the evidence of the
+    /// API check and the fixtures. A group with no counted commit stays where
+    /// it is; before its first tag, its anchor manifest is its version and
+    /// the whole history its cycle, as the app's first cut is measured, and
+    /// there is no baseline to measure against.
     pub fn decide(
         group: &str,
         template: &str,
@@ -134,7 +141,7 @@ impl GroupPlan {
         let counted = headers.len();
         let next = (counted > 0).then(|| {
             let mut bumped = current.next_library(&headers);
-            if raise.detected == Some(true) {
+            if raise.detected == Some(true) || raise.fixtures {
                 bumped = bumped.max(current.next_library(&[DETECTED_BREAK.to_owned()]));
             }
             match raise.floor {
@@ -142,7 +149,6 @@ impl GroupPlan {
                 None => bumped,
             }
         });
-        let detected = raise.detected;
         Ok(Self {
             group: group.to_owned(),
             current: current.to_string(),
@@ -152,7 +158,8 @@ impl GroupPlan {
             next: next.map(|next| next.to_string()),
             last_tag: last.map(|last| format!("{prefix}{last}")),
             counted,
-            api_break: detected,
+            api_break: raise.detected,
+            fixture_break: raise.fixtures,
         })
     }
 
@@ -171,8 +178,19 @@ impl GroupPlan {
             tag: &'a str,
             counted: usize,
             since: String,
-            evidence: &'a str,
+            evidence: String,
         }
+        let api = match (&self.last_tag, self.api_break) {
+            (None, _) => "; no tag to measure an API break against until this cut mints one",
+            (Some(_), Some(true)) => "; the API check found a break",
+            (Some(_), Some(false)) => "; the API check found no break",
+            (Some(_), None) => "",
+        };
+        let fixtures = if self.fixture_break {
+            "; a frozen fixture changed since the last stable release"
+        } else {
+            ""
+        };
         let values = Values {
             group: &self.group,
             current: &self.current,
@@ -183,12 +201,7 @@ impl GroupPlan {
                 Some(tag) => format!("since `{tag}`"),
                 None => "over the whole history, with no tag yet".to_owned(),
             },
-            evidence: match (&self.last_tag, self.api_break) {
-                (None, _) => "; no tag to measure an API break against until this cut mints one",
-                (Some(_), Some(true)) => "; the API check found a break",
-                (Some(_), Some(false)) => "; the API check found no break",
-                (Some(_), None) => "",
-            },
+            evidence: format!("{api}{fixtures}"),
         };
         let template = if self.mints() {
             "dry-run.group-minted"
@@ -730,6 +743,15 @@ pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
     let ignored = history::ignored_revisions(root, &groups)?;
     let app = app_group(&groups)?;
 
+    // The fixture floor: a frozen fixture modified, deleted, or renamed since
+    // the last stable release breaks its group and the app. Before the first
+    // stable release there is nothing to diff from.
+    let last = last_stable(&stable_tags()?);
+    let fixtures = match &last {
+        Some(last) => fixture_breaks(&crate::version_integrity::changes(&last.tag())?, &groups),
+        None => BTreeMap::new(),
+    };
+
     // One library alone: its tag on `main`, nothing else moved, and a refusal
     // where nothing counted since its last tag.
     if let Some(name) = &options.group {
@@ -739,7 +761,14 @@ pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
         if !groups.group.contains_key(name) {
             bail!("no group named `{name}` in {GROUP_FILE}");
         }
-        let only = group_plan(name, &groups, &metadata, &ignored, options.floor)?;
+        let only = group_plan(
+            name,
+            &groups,
+            &metadata,
+            &ignored,
+            options.floor,
+            fixtures.contains_key(name),
+        )?;
         if !only.mints() {
             bail!(
                 "nothing to cut for `{name}`: no counted commit {}",
@@ -756,26 +785,61 @@ pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
         .group
         .keys()
         .filter(|name| name.as_str() != app)
-        .map(|name| group_plan(name, &groups, &metadata, &ignored, None))
+        .map(|name| {
+            group_plan(
+                name,
+                &groups,
+                &metadata,
+                &ignored,
+                None,
+                fixtures.contains_key(name),
+            )
+        })
         .collect::<Result<Vec<_>>>()?;
 
-    let last = last_stable(&stable_tags()?);
     let commits = commits_since(last.as_ref(), &groups, root)?;
     // Nothing released yet: the first cut is measured from 0.0.0, and
     // `log_range` reads the whole history rather than a missing tag.
     let last = last.unwrap_or_else(|| Version::new(0, 0, 0));
-    let version = cut_target(&last, &commits, &groups, options.major)?;
+    let changed: Vec<String> = fixtures.values().flatten().cloned().collect();
+    let version = cut_target(&last, &commits, &groups, options.major, &changed)?;
     Ok(Plan::from_version(Transition::Cut, version)?.with_groups(planned))
 }
 
+/// The frozen fixtures among `changes` that were modified or deleted — a
+/// rename is both — by the group owning them: breaking for that group, and
+/// for the app, which ships them all. A group's own `README.md` is not a
+/// fixture, and an added fixture breaks nothing.
+fn fixture_breaks(
+    changes: &[crate::version_integrity::Change],
+    groups: &GroupFile,
+) -> BTreeMap<String, Vec<String>> {
+    use crate::version_integrity::{Status, is_fixture};
+    let mut broken: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for change in changes {
+        if change.status == Status::Added || !is_fixture(&change.path) {
+            continue;
+        }
+        if let Some(owner) = groups.owner_of(&change.path) {
+            broken
+                .entry(owner.to_owned())
+                .or_default()
+                .push(change.path.clone());
+        }
+    }
+    broken
+}
+
 /// One library group's part of a cut, from the remote's tags and the commits
-/// since its last one.
+/// since its last one, raised by the API check against that tag and by a
+/// frozen `fixture` of its own changed since the last stable release.
 fn group_plan(
     name: &str,
     groups: &GroupFile,
     metadata: &Metadata,
     ignored: &BTreeSet<String>,
     floor: Option<Floor>,
+    fixtures: bool,
 ) -> Result<GroupPlan> {
     let group = &groups.group[name];
     let prefix = tag_prefix(&group.tag)?;
@@ -801,7 +865,11 @@ fn group_plan(
         &tags,
         &commits,
         groups,
-        Raise { floor, detected },
+        Raise {
+            floor,
+            detected,
+            fixtures,
+        },
     )
 }
 
@@ -823,26 +891,29 @@ fn anchor_version(metadata: &Metadata, anchor: &str) -> Result<Version> {
         .with_context(|| format!("`{anchor}` is not a workspace member"))
 }
 
-/// The app's target for a cut from `last` over `commits`.
+/// The app's target for a cut from `last` over `commits`, with the frozen
+/// `fixtures` changed since `last`.
 ///
 /// A major is cut only when asked for: it is a product decision no commit
 /// can prove. A `Covenant: break` since the last stable is the floor, not the
-/// trigger — without `--major` the cut refuses and names the commits, since a
-/// silent minor and an unreviewed major are both wrong. The app's headers
-/// are read as [`history::Commit::header_for`] reads them, so a `!` never
-/// reaches the bumper and the trailer does.
+/// trigger — and so is a changed fixture, which changes what old data means
+/// — without `--major` the cut refuses and names them, since a silent minor
+/// and an unreviewed major are both wrong. The app's headers are read as
+/// [`history::Commit::header_for`] reads them, so a `!` never reaches the
+/// bumper and the trailer does.
 pub fn cut_target(
     last: &Version,
     commits: &[history::Commit],
     groups: &GroupFile,
     major: bool,
+    fixtures: &[String],
 ) -> Result<Version> {
     let app = app_group(groups)?;
     if major {
         return last.cut_major();
     }
 
-    let breaking: Vec<String> = commits
+    let mut breaking: Vec<String> = commits
         .iter()
         .filter(|commit| commit.covenant_break && commit.counts_for(app))
         .map(|commit| {
@@ -853,6 +924,11 @@ pub fn cut_target(
             )
         })
         .collect();
+    breaking.extend(
+        fixtures
+            .iter()
+            .map(|path| format!("`{path}`, a frozen fixture, changed")),
+    );
     if !breaking.is_empty() {
         bail!(
             "a covenant break landed since {last}:\n  {}\na major is a product decision: pass `--major` to cut {next}, or hold the cut",
@@ -1376,6 +1452,7 @@ mod rehearsal_tests {
             last_tag: Some(format!("{group}-v{current}")),
             counted,
             api_break: None,
+            fixture_break: false,
         }
     }
 
@@ -1788,6 +1865,7 @@ mod tests {
             &[app_commit("feat!: drop the old importer", false)],
             &workspace_groups(),
             false,
+            &[],
         )
         .unwrap();
         assert_eq!(target, v("1.3.0-pre.1"));
@@ -1800,7 +1878,7 @@ mod tests {
         let groups = workspace_groups();
         let commits = [app_commit("fix: tighten the envelope", true)];
 
-        let error = cut_target(&v("1.2.0"), &commits, &groups, false).unwrap_err();
+        let error = cut_target(&v("1.2.0"), &commits, &groups, false, &[]).unwrap_err();
         let text = error.to_string();
         assert!(
             text.contains("abc1234de fix: tighten the envelope"),
@@ -1811,7 +1889,7 @@ mod tests {
             "{text}"
         );
 
-        let target = cut_target(&v("1.2.0"), &commits, &groups, true).unwrap();
+        let target = cut_target(&v("1.2.0"), &commits, &groups, true, &[]).unwrap();
         assert_eq!(target, v("2.0.0-pre.1"));
     }
 
@@ -1823,10 +1901,103 @@ mod tests {
             &[app_commit("fix: a bug", false)],
             &workspace_groups(),
             true,
+            &[],
         )
         .unwrap();
         assert_eq!(target, v("2.0.0-pre.1"));
         assert_eq!(v("0.1.0").cut_major().unwrap(), v("1.0.0-pre.1"));
+    }
+
+    fn change(
+        status: crate::version_integrity::Status,
+        path: &str,
+    ) -> crate::version_integrity::Change {
+        crate::version_integrity::Change {
+            status,
+            path: path.to_owned(),
+        }
+    }
+
+    /// Scenario _Domain fixture modified_: a frozen fixture modified since
+    /// the last stable release breaks its group — a minor under right-shift,
+    /// from fixes alone — and the app, whose cut refuses without `--major`,
+    /// naming the fixture. An added fixture breaks nothing.
+    #[test]
+    fn a_modified_fixture_breaks_its_group_and_the_app() {
+        use crate::version_integrity::Status;
+        let groups = workspace_groups();
+        let changes = [
+            change(
+                Status::Modified,
+                "covenant/fixtures/domain/v1/envelope.json",
+            ),
+            change(Status::Added, "covenant/fixtures/bedrock/new.json"),
+            change(Status::Modified, "crates/domain/src/lib.rs"),
+        ];
+        let broken = fixture_breaks(&changes, &groups);
+        assert_eq!(broken.keys().collect::<Vec<_>>(), ["domain"]);
+        assert_eq!(
+            broken["domain"],
+            ["covenant/fixtures/domain/v1/envelope.json"]
+        );
+
+        let fixes = [library_commit("domain", "fix(domain): a bug")];
+        let domain = GroupPlan::decide(
+            "domain",
+            "domain-v{version}",
+            &v("0.1.0"),
+            &tags(&["domain-v0.1.0"]),
+            &fixes,
+            &groups,
+            Raise {
+                fixtures: true,
+                ..Raise::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(domain.next.as_deref(), Some("0.2.0"));
+        assert!(domain.fixture_break);
+        assert!(
+            domain.describe().contains("a frozen fixture changed"),
+            "{}",
+            domain.describe()
+        );
+
+        let changed: Vec<String> = broken.values().flatten().cloned().collect();
+        let commits = [app_commit("fix: a bug", false)];
+        let error = cut_target(&v("1.2.0"), &commits, &groups, false, &changed).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("`covenant/fixtures/domain/v1/envelope.json`, a frozen fixture, changed"),
+            "{error}"
+        );
+        assert_eq!(
+            cut_target(&v("1.2.0"), &commits, &groups, true, &changed).unwrap(),
+            v("2.0.0-pre.1")
+        );
+    }
+
+    /// Scenario _A group's README is edited_: the directory's own README is
+    /// not a fixture and raises nothing; a README any deeper is data.
+    #[test]
+    fn a_group_s_readme_raises_no_floor() {
+        use crate::version_integrity::Status;
+        let groups = workspace_groups();
+        let readme = [
+            change(Status::Modified, "covenant/fixtures/domain/README.md"),
+            change(Status::Deleted, "covenant/fixtures/domain/README.md"),
+        ];
+        assert!(fixture_breaks(&readme, &groups).is_empty());
+
+        let deeper = [change(
+            Status::Deleted,
+            "covenant/fixtures/domain/corpus/README.md",
+        )];
+        assert_eq!(
+            fixture_breaks(&deeper, &groups).keys().collect::<Vec<_>>(),
+            ["domain"]
+        );
     }
 
     fn decide(
@@ -1856,7 +2027,11 @@ mod tests {
             &tags,
             commits,
             &workspace_groups(),
-            Raise { floor, detected },
+            Raise {
+                floor,
+                detected,
+                fixtures: false,
+            },
         )
         .unwrap()
     }
@@ -2221,6 +2396,7 @@ version = \"ignored\"
             last_tag: last_tag.map(str::to_owned),
             counted,
             api_break: None,
+            fixture_break: false,
         }
     }
 
