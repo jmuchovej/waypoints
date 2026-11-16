@@ -12,8 +12,12 @@
 //! treewide passes `.git-blame-ignore-revs` lists, and the release bot's own
 //! subjects.
 
-use crate::{release_groups::GroupFile, tools::git};
+use crate::{
+    release_groups::{Breaking, GroupFile},
+    tools::git,
+};
 use anyhow::{Context as _, Result};
+use git_conventional::{Commit as Conventional, Type};
 use std::{collections::BTreeSet, fs, path::Path};
 
 /// Record and field separators the format emits; no message or path carries
@@ -23,6 +27,9 @@ const FIELD: char = '\x1f';
 
 /// The trailer whose value marks a covenant break.
 const COVENANT: &str = "Covenant";
+
+/// The multi-group subject type: the body carries one header per group.
+const SUMMARY: &str = "summary";
 
 /// One first-parent commit, attributed.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,6 +59,87 @@ impl Commit {
         } else {
             format!("{}\n\n{}", self.subject, self.body)
         }
+    }
+
+    /// The header `group` reads this commit by, as the version bumper takes
+    /// it, or none where the commit counts for another group only.
+    ///
+    /// A summary's subject counts for no group: a group breaking on its own
+    /// header reads the body header scoped to it, and the app reads the
+    /// highest-ranked header. A single-group commit is read by its subject.
+    /// The app never breaks on `!`; its one breaking signal is the trailer,
+    /// which is re-expressed as `!` for the bumper.
+    pub fn header_for(&self, group: &str, groups: &GroupFile) -> Option<String> {
+        if !self.counts_for(group) {
+            return None;
+        }
+        let rule = &groups.group.get(group)?.breaking;
+        let subject = Conventional::parse(&self.subject).ok();
+        let is_summary = subject
+            .as_ref()
+            .is_some_and(|commit| commit.type_().as_str() == SUMMARY);
+
+        match rule {
+            Breaking::Header if is_summary => self.body.lines().find(|line| {
+                Conventional::parse(line).is_ok_and(|header| {
+                    header.type_().as_str() != SUMMARY
+                        && header.scope().is_some_and(|scope| scope.as_str() == group)
+                })
+            }),
+            Breaking::Header => Some(self.subject.as_str()),
+            Breaking::CovenantTrailer => {
+                let declared = if is_summary {
+                    highest(self.body_headers())
+                } else {
+                    subject
+                };
+                return Some(match declared {
+                    Some(header) => format!(
+                        "{kind}{bang}: {description}",
+                        kind = header.type_(),
+                        bang = if self.covenant_break { "!" } else { "" },
+                        description = header.description(),
+                    ),
+                    // Not conventional: the bumper decides what that is worth.
+                    None => self.subject.clone(),
+                });
+            }
+        }
+        .map(str::to_owned)
+    }
+
+    /// The conventional headers in the body, in order, the summary line aside.
+    fn body_headers(&self) -> Vec<Conventional<'_>> {
+        self.body
+            .lines()
+            .filter_map(|line| Conventional::parse(line).ok())
+            .filter(|header| header.type_().as_str() != SUMMARY)
+            .collect()
+    }
+}
+
+/// The header that claims the most: a feature over a fix over anything
+/// else, the first of equals.
+fn highest(headers: Vec<Conventional<'_>>) -> Option<Conventional<'_>> {
+    let mut best: Option<Conventional<'_>> = None;
+    for header in headers {
+        if best
+            .as_ref()
+            .is_none_or(|current| rank(header.type_()) > rank(current.type_()))
+        {
+            best = Some(header);
+        }
+    }
+    best
+}
+
+fn rank(kind: Type<'_>) -> u8 {
+    if kind == Type::FEAT {
+        2
+    } else if kind == Type::FIX {
+        1
+    } else {
+        0
     }
 }
 
@@ -183,7 +271,10 @@ pub fn product_subjects(commits: &[Commit]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::releases::index::{INDEX_DIR, fixture::Repo};
+    use crate::releases::{
+        index::{INDEX_DIR, fixture::Repo},
+        version::Version,
+    };
 
     fn groups(commit: &Commit) -> Vec<&str> {
         commit.groups.iter().map(String::as_str).collect()
@@ -334,5 +425,104 @@ mod tests {
             file.bookkeeping.paths
         );
         assert!(file.is_bookkeeping(&format!("{INDEX_DIR}/nightly.json")));
+    }
+
+    fn file() -> GroupFile {
+        GroupFile::parse(crate::releases::index::fixture::GROUPS).unwrap()
+    }
+
+    fn v(text: &str) -> Version {
+        Version::parse(text).unwrap()
+    }
+
+    fn header(commit: &Commit, group: &str) -> Vec<String> {
+        commit.header_for(group, &file()).into_iter().collect()
+    }
+
+    /// Scenario _Library break with caller edits elsewhere_, on a `1.x` base
+    /// so a break and a feature cannot look alike: breaking for `bedrock`,
+    /// non-breaking for `outpost`, a feature for the app, and nothing for a
+    /// group the summary does not touch.
+    #[test]
+    fn a_summary_reads_one_header_per_group() {
+        let repo = Repo::new();
+        repo.product("feat: before");
+        repo.branch("topic");
+        repo.commit("crates/bedrock/src/lib.rs", "wip: one");
+        repo.commit("crates/outpost/src/lib.rs", "wip: two");
+        repo.merge(
+            "topic",
+            "summary: rename the filter API\n\nfeat(bedrock)!: rename the filter API\nrefactor(outpost): follow the rename",
+        );
+        let landed = repo.walk("HEAD").pop().unwrap();
+
+        let bedrock = header(&landed, "bedrock");
+        let outpost = header(&landed, "outpost");
+        let app = header(&landed, "waypoints");
+        assert_eq!(bedrock, ["feat(bedrock)!: rename the filter API"]);
+        assert_eq!(outpost, ["refactor(outpost): follow the rename"]);
+        assert_eq!(app, ["feat: rename the filter API"]);
+        assert_eq!(header(&landed, "domain"), Vec::<String>::new());
+
+        let base = v("1.2.0");
+        assert_eq!(base.next_library(&bedrock), v("2.0.0"));
+        assert_eq!(base.next_library(&outpost), v("1.2.1"));
+        assert_eq!(base.cut(&app).unwrap(), v("1.3.0-pre.1"));
+    }
+
+    /// Scenario _Single-group commit with a free-form scope_: the path
+    /// decides the group, and the scope is kept for the library's bumper.
+    #[test]
+    fn a_single_group_commit_keeps_its_free_form_scope() {
+        let repo = Repo::new();
+        repo.commit("crates/bedrock/src/query.rs", "fix(query): a bug");
+        let commit = repo.walk("HEAD").pop().unwrap();
+
+        let bedrock = header(&commit, "bedrock");
+        let app = header(&commit, "waypoints");
+        assert_eq!(bedrock, ["fix(query): a bug"]);
+        assert_eq!(app, ["fix: a bug"]);
+        assert_eq!(v("1.2.0").next_library(&bedrock), v("1.2.1"));
+        assert_eq!(v("1.2.0").cut(&app).unwrap(), v("1.2.1-pre.1"));
+    }
+
+    /// The app never breaks on `!`, and does break on the trailer, which
+    /// reaches the bumper as `!` on the app's own header.
+    #[test]
+    fn the_app_ignores_the_bang_and_reads_the_trailer() {
+        let repo = Repo::new();
+        repo.commit_with("src-tauri/src/main.rs", "feat(app)!: drop the old importer");
+        repo.commit_with(
+            "src-tauri/src/other.rs",
+            "fix(app): tighten the envelope\n\nCovenant: break",
+        );
+        let walked = repo.walk("HEAD");
+
+        let banged = header(&walked[0], "waypoints");
+        let trailed = header(&walked[1], "waypoints");
+        assert_eq!(banged, ["feat: drop the old importer"]);
+        assert_eq!(trailed, ["fix!: tighten the envelope"]);
+        assert_eq!(v("1.2.0").cut(&banged).unwrap(), v("1.3.0-pre.1"));
+        assert_eq!(v("1.2.0").cut(&trailed).unwrap(), v("2.0.0-pre.1"));
+    }
+
+    /// A library right-shifts before `1.0`, as Cargo reads it: a feature is a
+    /// patch and a break is a minor.
+    #[test]
+    fn a_library_right_shifts_before_one() {
+        let base = v("0.3.0");
+        assert_eq!(
+            base.next_library(&["feat(bedrock)!: a break".to_owned()]),
+            v("0.4.0")
+        );
+        assert_eq!(
+            base.next_library(&["feat(bedrock): a feature".to_owned()]),
+            v("0.3.1")
+        );
+        assert_eq!(base.next_library(&["fix: a bug".to_owned()]), v("0.3.1"));
+        assert_eq!(
+            v("1.4.2").next_library(&["feat(outpost): a feature".to_owned()]),
+            v("1.5.0")
+        );
     }
 }

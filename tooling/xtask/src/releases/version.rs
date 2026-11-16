@@ -167,12 +167,27 @@ impl Version {
     /// only: the first candidate for the release `commits` add up to. `self`
     /// is the last stable release — `0.0.0` before there is one.
     pub fn cut(&self, commits: &[String]) -> Result<Self> {
-        let mut target = VersionUpdater::new()
-            .with_features_always_increment_minor(true)
-            .increment(self, commits);
+        let mut target = self.bumped(commits, true);
         target.pre = Prerelease::new(&format!("{PRE}.1"))
             .with_context(|| format!("`{PRE}.1` is not a valid prerelease"))?;
         Ok(Self(target))
+    }
+
+    /// A library line's next version after `commits`, as Cargo reads semver:
+    /// a feature moves the patch and a break the minor before `1.0`, the
+    /// minor and the major after. No prerelease — a library's tag is its
+    /// release.
+    pub fn next_library(&self, commits: &[String]) -> Self {
+        Self(self.bumped(commits, false))
+    }
+
+    /// The conventional-commit bump `commits` add up to, from this version.
+    /// `minor_for_features` is the app's rule: a feature moves the minor even
+    /// before `1.0`, where a library right-shifts.
+    fn bumped(&self, commits: &[String], minor_for_features: bool) -> semver::Version {
+        VersionUpdater::new()
+            .with_features_always_increment_minor(minor_for_features)
+            .increment(self, commits)
     }
 
     /// `0.2.0-pre.1` → `0.2.0-pre.2`: [`next_preview`](Self::next_preview),
