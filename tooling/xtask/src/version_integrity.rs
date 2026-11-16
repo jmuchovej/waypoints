@@ -11,7 +11,7 @@
 //! commits underneath are not checked.
 
 use crate::{
-    release_groups::{self, GroupFile, SCHEMA_FILE},
+    release_groups::{self, GroupFile, RELEASE_BOT, SCHEMA_FILE},
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -22,9 +22,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
 };
-
-/// The only author who writes a version or a bookkeeping subject.
-const RELEASE_BOT: &str = "wp-botswain[bot]";
 
 /// Frozen inputs: append-only unless the merge message declares otherwise.
 const FIXTURES: &str = "covenant/fixtures/";

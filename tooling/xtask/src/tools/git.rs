@@ -33,7 +33,13 @@ pub fn show(reference: &str, path: &str) -> Result<String> {
 /// cannot be reached, since deciding from local tags would be deciding from
 /// stale ones.
 pub fn remote_tags() -> Result<Vec<String>> {
-    let listed = run(&["ls-remote", "--tags", "--refs", "origin", "v*"])
+    remote_tags_like("v*")
+}
+
+/// Every tag matching `pattern` as `origin` holds it — a group's
+/// `bedrock-v*`, or the app's `v*`.
+pub fn remote_tags_like(pattern: &str) -> Result<Vec<String>> {
+    let listed = run(&["ls-remote", "--tags", "--refs", "origin", pattern])
         .context("listing origin's tags: a planner decides from what is published")?;
     Ok(tag_names(&listed))
 }

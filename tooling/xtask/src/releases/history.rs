@@ -13,7 +13,7 @@
 //! subjects.
 
 use crate::{
-    release_groups::{Breaking, GroupFile},
+    release_groups::{Breaking, GroupFile, RELEASE_BOT},
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -147,6 +147,7 @@ fn rank(kind: Type<'_>) -> u8 {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Raw {
     pub(crate) sha: String,
+    pub(crate) author: String,
     pub(crate) subject: String,
     pub(crate) body: String,
     pub(crate) covenant_break: bool,
@@ -165,7 +166,7 @@ pub fn log_args(range: &str) -> Vec<String> {
         "--reverse".to_owned(),
         "--name-only".to_owned(),
         format!(
-            "--format={RECORD}%H{FIELD}%s{FIELD}%b{FIELD}%(trailers:key={COVENANT},valueonly){FIELD}"
+            "--format={RECORD}%H{FIELD}%an{FIELD}%s{FIELD}%b{FIELD}%(trailers:key={COVENANT},valueonly){FIELD}"
         ),
         range.to_owned(),
     ]
@@ -176,9 +177,10 @@ pub(crate) fn parse(output: &str) -> Vec<Raw> {
         .split(RECORD)
         .filter(|record| !record.trim().is_empty())
         .map(|record| {
-            let mut fields = record.splitn(5, FIELD);
+            let mut fields = record.splitn(6, FIELD);
             let mut next = || fields.next().unwrap_or_default();
             let sha = next().trim().to_owned();
+            let author = next().trim().to_owned();
             let subject = next().trim().to_owned();
             let body = next().trim().to_owned();
             let covenant_break = next().lines().any(|line| line.trim() == "break");
@@ -190,6 +192,7 @@ pub(crate) fn parse(output: &str) -> Vec<Raw> {
                 .collect();
             Raw {
                 sha,
+                author,
                 subject,
                 body,
                 covenant_break,
@@ -199,12 +202,13 @@ pub(crate) fn parse(output: &str) -> Vec<Raw> {
         .collect()
 }
 
-/// Which groups `raw` counts for. A revision the ignore file lists or a
-/// subject reserved to the release bot counts for none; otherwise each
-/// product path's owner counts, and when any does, so does every group that
-/// counts the closure.
+/// Which groups `raw` counts for. A revision the ignore file lists, a commit
+/// the release bot authored, or a subject reserved to it counts for none;
+/// otherwise each product path's owner counts, and when any does, so does
+/// every group that counts the closure.
 pub(crate) fn attribute(raw: Raw, groups: &GroupFile, ignored: &BTreeSet<String>) -> Commit {
     let bookkeeping = ignored.iter().any(|rev| raw.sha.starts_with(rev.as_str()))
+        || raw.author == RELEASE_BOT
         || groups
             .bookkeeping
             .bot_subjects
@@ -284,12 +288,13 @@ mod tests {
     #[test]
     fn the_format_parses_back_into_records() {
         let output = format!(
-            "{RECORD}abc123{FIELD}feat(bedrock): a thing{FIELD}A body.\n\nCovenant: break{FIELD}break\n{FIELD}\ncrates/bedrock/src/lib.rs\nsrc-tauri/src/main.rs\n\n\
-             {RECORD}def456{FIELD}chore: nothing{FIELD}{FIELD}{FIELD}\n"
+            "{RECORD}abc123{FIELD}John{FIELD}feat(bedrock): a thing{FIELD}A body.\n\nCovenant: break{FIELD}break\n{FIELD}\ncrates/bedrock/src/lib.rs\nsrc-tauri/src/main.rs\n\n\
+             {RECORD}def456{FIELD}xtask{FIELD}chore: nothing{FIELD}{FIELD}{FIELD}\n"
         );
         let records = parse(&output);
         assert_eq!(records.len(), 2);
         assert_eq!(records[0].sha, "abc123");
+        assert_eq!(records[0].author, "John");
         assert_eq!(records[0].subject, "feat(bedrock): a thing");
         assert_eq!(records[0].body, "A body.\n\nCovenant: break");
         assert!(records[0].covenant_break);
@@ -347,6 +352,27 @@ mod tests {
         repo.commit("crates/bedrock/Cargo.toml", "chore(release): bedrock 0.2.0");
         let walked = repo.walk("HEAD");
         assert!(walked[0].groups.is_empty(), "{:?}", walked[0]);
+    }
+
+    /// Whatever the release bot authors is bookkeeping: a cut's summary
+    /// lands under its name with headers scoped by group, and must not read
+    /// as the next cut's work.
+    #[test]
+    fn the_release_bot_s_commits_count_for_no_group() {
+        let repo = Repo::new();
+        repo.commit_as(
+            RELEASE_BOT,
+            "crates/bedrock/Cargo.toml",
+            "summary: cut 0.2.0-pre.1\n\nchore(bedrock): 0.2.0\nchore(waypoints): main now targets 0.3.0-nightly",
+        );
+        repo.commit_as(
+            "someone",
+            "crates/bedrock/src/lib.rs",
+            "feat(bedrock): after",
+        );
+        let walked = repo.walk("HEAD");
+        assert!(walked[0].groups.is_empty(), "{:?}", walked[0]);
+        assert_eq!(groups(&walked[1]), ["bedrock", "waypoints"]);
     }
 
     /// Scenario _A pull request lands as one commit_: the merge commit's

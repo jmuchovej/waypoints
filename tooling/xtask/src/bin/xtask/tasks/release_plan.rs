@@ -20,8 +20,15 @@ pub struct Options {
     /// Cut toward the app's next major. A `Covenant: break` since the last
     /// stable refuses a cut without this; with it, the major is cut whether
     /// or not a break was declared.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "group")]
     major: bool,
+    /// Cut one library group alone: mint its tag on `main`, open no series,
+    /// and move nothing else. Refused when the group has no counted commits.
+    #[arg(long)]
+    group: Option<String>,
+    /// Raise a group-scoped cut's bump to at least this; never lowers it.
+    #[arg(long, value_enum, requires = "group")]
+    floor: Option<planner::Floor>,
     /// Plan and print without creating a ref or writing a file.
     #[arg(long)]
     dry_run: bool,
@@ -32,28 +39,51 @@ pub struct Options {
 }
 
 pub fn run(args: Options) -> Result<()> {
-    if args.major && args.transition != Transition::Cut {
+    if args.transition != Transition::Cut && (args.major || args.group.is_some()) {
         anyhow::bail!(
-            "`--major` applies to a cut; `{:?}` moves a series mechanically",
+            "`--major` and `--group` apply to a cut; `{:?}` moves a series mechanically",
             args.transition
         );
     }
-    let plan = planner::plan(args.transition, planner::CutOptions { major: args.major })?;
+    let options = planner::CutOptions {
+        major: args.major,
+        group: args.group.clone(),
+        floor: args.floor,
+    };
+    let plan = planner::plan(args.transition, options)?;
     let groups = release_groups::load(&workspace::load()?)?;
     let landing = plan.landing(&groups)?;
 
-    println!(
-        "{transition:?}: {version} on {branch} ({channel}); tag {tag}",
-        transition = args.transition,
-        version = plan.version,
-        branch = plan.branch,
-        channel = plan.channel,
-        tag = plan.tag,
-    );
-    println!("  {}", landing.describe(&plan.branch));
+    match &landing {
+        Some(landing) => {
+            println!(
+                "{transition:?}: {version} on {branch} ({channel}); tag {tag}",
+                transition = args.transition,
+                version = plan.version,
+                branch = plan.branch,
+                channel = plan.channel,
+                tag = plan.tag,
+            );
+            println!("  {}", landing.describe(&plan.branch));
+        }
+        None => println!(
+            "{transition:?}: one library on main, no series",
+            transition = args.transition
+        ),
+    }
     if let Some(main) = plan.main_landing(&groups)? {
-        println!("  main moves to {}", plan.next_main_version);
+        if !plan.next_main_version.is_empty() {
+            println!("  main moves to {}", plan.next_main_version);
+        }
         println!("  {}", main.describe("main"));
+        if main.title.starts_with("summary:") {
+            for header in plan.summary_headers(&groups)? {
+                println!("    {header}");
+            }
+        }
+    }
+    for group in &plan.groups {
+        println!("  {}", group.describe());
     }
 
     if args.dry_run {
@@ -77,7 +107,10 @@ pub fn run(args: Options) -> Result<()> {
     println!("  wrote {} on {}", plan.version, plan.branch);
 
     github::set_outputs_if_available(&plan)?;
-    github::set_outputs_if_available(&landing)
+    match &landing {
+        Some(landing) => github::set_outputs_if_available(landing),
+        None => Ok(()),
+    }
 }
 
 #[cfg(test)]
@@ -104,6 +137,27 @@ mod tests {
         let args =
             Options::try_parse_from(["release-plan", "cut", "--major", "--dry-run"]).unwrap();
         assert!(args.major && args.dry_run);
+
+        // A library alone, with the least it must bump.
+        let args = Options::try_parse_from([
+            "release-plan",
+            "cut",
+            "--group",
+            "bedrock",
+            "--floor",
+            "minor",
+            "--dry-run",
+        ])
+        .unwrap();
+        assert_eq!(args.group.as_deref(), Some("bedrock"));
+        assert_eq!(args.floor, Some(planner::Floor::Minor));
+
+        // A floor needs a group, and a major is the app's alone.
+        assert!(Options::try_parse_from(["release-plan", "cut", "--floor", "minor"]).is_err());
+        assert!(
+            Options::try_parse_from(["release-plan", "cut", "--group", "bedrock", "--major"])
+                .is_err()
+        );
 
         // A rendering directory is a dry run's; a real run writes the tree.
         assert!(Options::try_parse_from(["release-plan", "cut", "--into", "out"]).is_err());

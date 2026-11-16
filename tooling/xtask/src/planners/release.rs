@@ -19,7 +19,7 @@
 
 use crate::{
     planners::test,
-    release_groups::{self, GroupFile},
+    release_groups::{self, GROUP_FILE, GroupFile},
     releases::{
         history,
         landing::Landing,
@@ -30,14 +30,149 @@ use crate::{
 };
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::Metadata;
-use std::{fs, path::Path, process::Command};
+use std::{collections::BTreeSet, fs, path::Path, process::Command};
 
 /// What a cut is asked for beyond its transition.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CutOptions {
     /// Target the app's next major. A major is a product decision no commit
     /// can prove, so it is never computed, only asked for.
     pub major: bool,
+    /// Cut one library group alone: its tag on `main`, no series, nothing
+    /// else moved.
+    pub group: Option<String>,
+    /// The least a group-scoped cut bumps.
+    pub floor: Option<Floor>,
+}
+
+/// The least a group-scoped cut bumps: raises what the commits declare,
+/// never lowers it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum Floor {
+    Major,
+    Minor,
+    Patch,
+}
+
+impl Floor {
+    /// The lowest version above `current` this floor admits.
+    fn applied(self, current: &Version) -> Version {
+        match self {
+            Floor::Major => Version::new(current.major + 1, 0, 0),
+            Floor::Minor => Version::new(current.major, current.minor + 1, 0),
+            Floor::Patch => Version::new(current.major, current.minor, current.patch + 1),
+        }
+    }
+}
+
+/// One library group's part of a cut.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GroupPlan {
+    pub group: String,
+    /// The anchor manifest's version: what the group is now.
+    pub current: String,
+    /// What it becomes, or none when no counted commit landed since its tag.
+    pub next: Option<String>,
+    /// The tag a cut mints for it, when `next` is some.
+    pub tag: Option<String>,
+    /// The tag it was last minted at, or none before its first cut.
+    pub last_tag: Option<String>,
+    /// The commits that counted for it since that tag.
+    pub counted: usize,
+}
+
+impl GroupPlan {
+    /// Decides `group` from its tag `template`, its `current` version, the
+    /// remote's `tags`, and the `commits` since its last tag, raised to
+    /// `floor` where one is named. A group with no counted commit stays where
+    /// it is; before its first tag, its anchor manifest is its version and
+    /// the whole history its cycle, as the app's first cut is measured.
+    pub fn decide(
+        group: &str,
+        template: &str,
+        current: &Version,
+        tags: &[String],
+        commits: &[history::Commit],
+        groups: &GroupFile,
+        floor: Option<Floor>,
+    ) -> Result<Self> {
+        let prefix = tag_prefix(template)?;
+        let last = latest_group_tag(prefix, tags);
+        let headers: Vec<String> = commits
+            .iter()
+            .filter_map(|commit| commit.header_for(group, groups))
+            .collect();
+        let counted = headers.len();
+        let next = (counted > 0).then(|| {
+            let bumped = current.next_library(&headers);
+            match floor {
+                Some(floor) => bumped.max(floor.applied(current)),
+                None => bumped,
+            }
+        });
+        Ok(Self {
+            group: group.to_owned(),
+            current: current.to_string(),
+            tag: next
+                .as_ref()
+                .map(|next| template.replace("{version}", &next.to_string())),
+            next: next.map(|next| next.to_string()),
+            last_tag: last.map(|last| format!("{prefix}{last}")),
+            counted,
+        })
+    }
+
+    /// Whether a cut mints a tag for this group.
+    pub fn mints(&self) -> bool {
+        self.next.is_some()
+    }
+
+    /// One line a reader audits before a cut.
+    pub fn describe(&self) -> String {
+        let since = match &self.last_tag {
+            Some(tag) => format!("since `{tag}`"),
+            None => "over the whole history, with no tag yet".to_owned(),
+        };
+        match (&self.next, &self.tag) {
+            (Some(next), Some(tag)) => format!(
+                "`{group}`: `{current}` → `{next}`, tag `{tag}` on the merge commit of the main pull request ({counted} commits {since})",
+                group = self.group,
+                current = self.current,
+                counted = self.counted,
+            ),
+            _ => format!(
+                "`{group}`: `{current}`, unchanged (no counted commit {since})",
+                group = self.group,
+                current = self.current,
+            ),
+        }
+    }
+}
+
+/// The part of a group's tag template before its version.
+fn tag_prefix(template: &str) -> Result<&str> {
+    template
+        .split_once("{version}")
+        .map(|(prefix, _)| prefix)
+        .filter(|prefix| !prefix.is_empty())
+        .with_context(|| format!("tag template `{template}` has no prefix before `{{version}}`"))
+}
+
+/// The newest of a group's tags among `tags`, by version.
+fn latest_group_tag(prefix: &str, tags: &[String]) -> Option<Version> {
+    tags.iter()
+        .filter_map(|tag| tag.strip_prefix(prefix))
+        .filter_map(|rest| Version::parse(rest).ok())
+        .max()
+}
+
+/// A group's cycle: since its last tag, or the whole history before its
+/// first — the rule [`log_range`] applies to the app.
+fn group_range(prefix: &str, last: Option<&Version>) -> String {
+    match last {
+        Some(last) => format!("{prefix}{last}..HEAD"),
+        None => "HEAD".to_owned(),
+    }
 }
 
 /// The branch a cut's bump lands on.
@@ -56,16 +191,25 @@ const HEAD_PREFIX: &str = "botswain/release-plan/";
 /// the output keys.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub struct Plan {
-    /// The version to write into the manifest on `branch`.
+    /// The version to write into the manifest on `branch`. Empty on a
+    /// group-scoped cut, which moves no app version.
     pub version: String,
-    /// The tag to create, always `v{version}`.
+    /// The tag to create, always `v{version}`; empty on a group-scoped cut.
     pub tag: String,
-    /// The branch the commit and tag land on.
+    /// The branch the commit and tag land on; empty on a group-scoped cut.
     pub branch: String,
     /// `preview` or `stable` — derived from `version`, never stored.
     pub channel: String,
     /// Where `main` moves to. Empty except on `cut`.
     pub next_main_version: String,
+    /// The library tags a cut mints at the main pull request's merge commit,
+    /// comma-separated: `bedrock-v0.2.0,domain-v0.1.1`. Empty when no
+    /// library moves.
+    pub group_tags: String,
+    /// Every library group's part of the cut, minting or not. Not an output:
+    /// the workflow reads `group_tags`.
+    #[serde(skip)]
+    pub groups: Vec<GroupPlan>,
 }
 
 impl Plan {
@@ -89,7 +233,45 @@ impl Plan {
             channel: version.channel().to_string(),
             next_main_version: next_main.map(|v| v.to_string()).unwrap_or_default(),
             version: version.to_string(),
+            group_tags: String::new(),
+            groups: Vec::new(),
         })
+    }
+
+    /// A plan minting one library alone: no app version, no series, one tag
+    /// on `main`.
+    pub fn library(group: GroupPlan) -> Self {
+        Self {
+            version: String::new(),
+            tag: String::new(),
+            branch: String::new(),
+            channel: String::new(),
+            next_main_version: String::new(),
+            group_tags: String::new(),
+            groups: Vec::new(),
+        }
+        .with_groups(vec![group])
+    }
+
+    /// The same plan, carrying every group's part of the cut.
+    pub fn with_groups(mut self, groups: Vec<GroupPlan>) -> Self {
+        self.group_tags = groups
+            .iter()
+            .filter_map(|group| group.tag.clone())
+            .collect::<Vec<_>>()
+            .join(",");
+        self.groups = groups;
+        self
+    }
+
+    /// Whether this cut mints a library alone, with no app version behind it.
+    pub fn is_group_only(&self) -> bool {
+        self.tag.is_empty()
+    }
+
+    /// The groups this plan mints.
+    pub fn minted(&self) -> impl Iterator<Item = &GroupPlan> {
+        self.groups.iter().filter(|group| group.mints())
     }
 
     /// The message for the version commit this plan's tag points at.
@@ -103,18 +285,97 @@ impl Plan {
     }
 
     /// The pull request that lands this plan's version write on its series.
-    pub fn landing(&self, groups: &GroupFile) -> Result<Landing> {
-        landing(&self.branch, self.commit_message(), groups)
-    }
-
-    /// The pull request that lands `main`'s bump. Only a cut has one.
-    pub fn main_landing(&self, groups: &GroupFile) -> Result<Option<Landing>> {
-        if self.next_main_version.is_empty() {
+    /// None on a group-scoped cut, which opens no series.
+    pub fn landing(&self, groups: &GroupFile) -> Result<Option<Landing>> {
+        if self.is_group_only() {
             return Ok(None);
         }
-        let next = Version::parse(&self.next_main_version)?;
-        main_landing(&next, groups).map(Some)
+        landing(&self.branch, self.commit_message(), groups).map(Some)
     }
+
+    /// The pull request that lands the `main`-side writes: the app's bump,
+    /// each minted group's manifests, or both. None when nothing lands there.
+    pub fn main_landing(&self, groups: &GroupFile) -> Result<Option<Landing>> {
+        let minted: Vec<&GroupPlan> = self.minted().collect();
+        if self.next_main_version.is_empty() && minted.is_empty() {
+            return Ok(None);
+        }
+
+        let mut paths = Vec::new();
+        if !self.next_main_version.is_empty() {
+            paths.extend(
+                app_members(groups)?
+                    .iter()
+                    .map(|member| format!("{member}/Cargo.toml")),
+            );
+        }
+        for group in &minted {
+            paths.extend(
+                members_of(groups, &group.group)?
+                    .iter()
+                    .map(|member| format!("{member}/Cargo.toml")),
+            );
+        }
+        paths.push(LOCKFILE.to_owned());
+
+        Ok(Some(Landing::new(
+            format!("{HEAD_PREFIX}{MAIN}"),
+            self.main_title(&minted)?,
+            &paths,
+        )))
+    }
+
+    /// The main-side subject: the app's bump alone, as before; one library
+    /// alone, under the subject reserved to the bot; or a summary of the cut,
+    /// since its writes touch more than one group, with one header per group
+    /// in its body — see [`Plan::summary_headers`].
+    fn main_title(&self, minted: &[&GroupPlan]) -> Result<String> {
+        if minted.is_empty() {
+            return Ok(next_main_message(&Version::parse(&self.next_main_version)?));
+        }
+        if self.is_group_only()
+            && let [only] = minted
+        {
+            return Ok(format!(
+                "{RELEASE_PREFIX}{} {}",
+                only.group,
+                only.next.as_deref().unwrap_or_default()
+            ));
+        }
+        Ok(format!("summary: cut {}", self.version))
+    }
+
+    /// The headers a summary's body carries, one per group it writes, scoped
+    /// by the group so the pull-request check reads each.
+    pub fn summary_headers(&self, groups: &GroupFile) -> Result<Vec<String>> {
+        let mut headers: Vec<String> = self
+            .minted()
+            .map(|group| {
+                format!(
+                    "chore({}): {}",
+                    group.group,
+                    group.next.as_deref().unwrap_or_default()
+                )
+            })
+            .collect();
+        if !self.next_main_version.is_empty() {
+            headers.push(format!(
+                "chore({}): main now targets {}",
+                app_group(groups)?,
+                self.next_main_version
+            ));
+        }
+        Ok(headers)
+    }
+}
+
+/// The crates a group's version write sets together.
+fn members_of<'a>(groups: &'a GroupFile, name: &str) -> Result<&'a [String]> {
+    groups
+        .group
+        .get(name)
+        .map(|group| group.members.as_slice())
+        .with_context(|| format!("no group named `{name}`"))
 }
 
 fn landing(target: &str, title: String, groups: &GroupFile) -> Result<Landing> {
@@ -169,23 +430,88 @@ pub fn next_main_message(next: &Version) -> String {
 pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
     let metadata = workspace::load()?;
     let groups = release_groups::load(&metadata)?;
+    let root = metadata.workspace_root.as_std_path();
 
-    let version = match transition {
-        Transition::Cut => {
-            let last = last_stable(&stable_tags()?);
-            let commits = commits_since(
-                last.as_ref(),
-                &groups,
-                metadata.workspace_root.as_std_path(),
-            )?;
-            // Nothing released yet: the first cut is measured from 0.0.0, and
-            // `log_range` reads the whole history rather than a missing tag.
-            let last = last.unwrap_or_else(|| Version::new(0, 0, 0));
-            cut_target(&last, &commits, &groups, options)?
+    if transition != Transition::Cut {
+        let version = Version::from(workspace::version()?).transition(transition, &[])?;
+        return Plan::from_version(transition, version);
+    }
+
+    let ignored = history::ignored_revisions(root, &groups)?;
+    let app = app_group(&groups)?;
+
+    // One library alone: its tag on `main`, nothing else moved, and a refusal
+    // where nothing counted since its last tag.
+    if let Some(name) = &options.group {
+        if name == app {
+            bail!("`{name}` is the app; a cut moves it with its series, never alone");
         }
-        _ => Version::from(workspace::version()?).transition(transition, &[])?,
-    };
-    Plan::from_version(transition, version)
+        if !groups.group.contains_key(name) {
+            bail!("no group named `{name}` in {GROUP_FILE}");
+        }
+        let only = group_plan(name, &groups, &metadata, &ignored, options.floor)?;
+        if !only.mints() {
+            bail!(
+                "nothing to cut for `{name}`: no counted commit {}",
+                match &only.last_tag {
+                    Some(tag) => format!("since `{tag}`"),
+                    None => "in its history".to_owned(),
+                }
+            );
+        }
+        return Ok(Plan::library(only));
+    }
+
+    let planned = groups
+        .group
+        .keys()
+        .filter(|name| name.as_str() != app)
+        .map(|name| group_plan(name, &groups, &metadata, &ignored, None))
+        .collect::<Result<Vec<_>>>()?;
+
+    let last = last_stable(&stable_tags()?);
+    let commits = commits_since(last.as_ref(), &groups, root)?;
+    // Nothing released yet: the first cut is measured from 0.0.0, and
+    // `log_range` reads the whole history rather than a missing tag.
+    let last = last.unwrap_or_else(|| Version::new(0, 0, 0));
+    let version = cut_target(&last, &commits, &groups, options.major)?;
+    Ok(Plan::from_version(Transition::Cut, version)?.with_groups(planned))
+}
+
+/// One library group's part of a cut, from the remote's tags and the commits
+/// since its last one.
+fn group_plan(
+    name: &str,
+    groups: &GroupFile,
+    metadata: &Metadata,
+    ignored: &BTreeSet<String>,
+    floor: Option<Floor>,
+) -> Result<GroupPlan> {
+    let group = &groups.group[name];
+    let prefix = tag_prefix(&group.tag)?;
+    let current = anchor_version(metadata, &group.anchor)?;
+    let tags = git::remote_tags_like(&format!("{prefix}*"))?;
+    let last = latest_group_tag(prefix, &tags);
+    let commits = history::walk(&group_range(prefix, last.as_ref()), groups, ignored)?;
+    GroupPlan::decide(name, &group.tag, &current, &tags, &commits, groups, floor)
+}
+
+/// The version the manifest at `anchor` declares.
+fn anchor_version(metadata: &Metadata, anchor: &str) -> Result<Version> {
+    let root = metadata.workspace_root.as_std_path();
+    metadata
+        .workspace_packages()
+        .iter()
+        .find(|package| {
+            package
+                .manifest_path
+                .as_std_path()
+                .parent()
+                .and_then(|dir| dir.strip_prefix(root).ok())
+                .is_some_and(|dir| dir.to_string_lossy() == anchor)
+        })
+        .map(|package| Version::from(package.version.clone()))
+        .with_context(|| format!("`{anchor}` is not a workspace member"))
 }
 
 /// The app's target for a cut from `last` over `commits`.
@@ -200,10 +526,10 @@ pub fn cut_target(
     last: &Version,
     commits: &[history::Commit],
     groups: &GroupFile,
-    options: CutOptions,
+    major: bool,
 ) -> Result<Version> {
     let app = app_group(groups)?;
-    if options.major {
+    if major {
         return last.cut_major();
     }
 
@@ -248,6 +574,11 @@ fn app_group(groups: &GroupFile) -> Result<&str> {
 /// Leaves `plan`'s version write in the working tree on its series, for the
 /// pull-request step to commit. A cut opens the series first.
 pub fn execute(transition: Transition, plan: &Plan) -> Result<()> {
+    if plan.is_group_only() {
+        bail!(
+            "a library alone opens no series; its write lands through the main pull request, which the workflow opens from this plan's outputs"
+        );
+    }
     if transition == Transition::Cut {
         github::create_branch(&plan.branch, &git::run(&["rev-parse", "HEAD"])?)?;
     }
@@ -278,35 +609,61 @@ pub const PULL_REQUEST_BODY: &str =
 pub fn rehearse(transition: Transition, plan: &Plan) -> Result<Vec<(String, String)>> {
     let metadata = workspace::load()?;
     let groups = release_groups::load(&metadata)?;
-    let version = Version::parse(&plan.version)?;
+    let mut files = Vec::new();
 
     // A cut opens its series from the commit the run is on; the others write
-    // on a series that exists, which the checkout may not be on.
-    let series_tree = if transition == Transition::Cut {
-        "HEAD".to_owned()
-    } else {
-        remote_or_local(&plan.branch)
-    };
-    let mut files = vec![(
-        "series.patch".to_owned(),
-        version_patch(&metadata, &groups, &series_tree, &version)?,
-    )];
-
+    // on a series that exists, which the checkout may not be on. A
+    // group-scoped cut opens none.
     let series = plan.landing(&groups)?;
-    let main = plan.main_landing(&groups)?;
-    if !plan.next_main_version.is_empty() {
-        let next = Version::parse(&plan.next_main_version)?;
+    if series.is_some() {
+        let series_tree = if transition == Transition::Cut {
+            "HEAD".to_owned()
+        } else {
+            remote_or_local(&plan.branch)
+        };
+        let writes = member_writes(app_members(&groups)?, &Version::parse(&plan.version)?);
         files.push((
-            "main.patch".to_owned(),
-            version_patch(&metadata, &groups, "HEAD", &next)?,
+            "series.patch".to_owned(),
+            manifests_patch(&metadata, &series_tree, &writes)?,
         ));
     }
+
+    // The main-side commit: the app's bump, each minted group's manifests, or
+    // both.
+    let main = plan.main_landing(&groups)?;
+    if main.is_some() {
+        let mut writes = Vec::new();
+        if !plan.next_main_version.is_empty() {
+            let next = Version::parse(&plan.next_main_version)?;
+            writes.extend(member_writes(app_members(&groups)?, &next));
+        }
+        for group in plan.minted() {
+            let next = Version::parse(group.next.as_deref().unwrap_or_default())?;
+            writes.extend(member_writes(members_of(&groups, &group.group)?, &next));
+        }
+        files.push((
+            "main.patch".to_owned(),
+            manifests_patch(&metadata, "HEAD", &writes)?,
+        ));
+    }
+
     files.push((
         "refs.md".to_owned(),
-        refs_markdown(transition, plan, &series, main.as_ref()),
+        refs_markdown(transition, plan, series.as_ref(), main.as_ref(), &groups)?,
     ));
-    files.push(("notes.md".to_owned(), unreleased_notes(&plan.tag)?));
+    // A library tag is not a release, and draws no notes.
+    if !plan.is_group_only() {
+        files.push(("notes.md".to_owned(), unreleased_notes(&plan.tag)?));
+    }
     Ok(files)
+}
+
+/// `version` for each of `members`: one version write's worth of manifests.
+fn member_writes(members: &[String], version: &Version) -> Vec<(String, Version)> {
+    members
+        .iter()
+        .map(|member| (member.clone(), version.clone()))
+        .collect()
 }
 
 /// The remote's view of `branch` where the checkout has fetched it, else the
@@ -319,19 +676,20 @@ fn remote_or_local(branch: &str) -> String {
     }
 }
 
-/// The write [`write_version`] would make in the tree at `reference`, as one
-/// unified diff. Computed from `git show`, so nothing in the checkout moves.
-fn version_patch(
+/// The `writes` — `(member, version)` — as the tree at `reference` would take
+/// them, as one unified diff: each member's manifest and the lockfile entries
+/// that repeat their versions. Computed from `git show`, so nothing in the
+/// checkout moves.
+fn manifests_patch(
     metadata: &Metadata,
-    groups: &GroupFile,
     reference: &str,
-    version: &Version,
+    writes: &[(String, Version)],
 ) -> Result<String> {
     let packages = test::package_directories(metadata);
     let before = git::show(reference, LOCKFILE)?;
     let mut lock = before.clone();
     let mut changes = Vec::new();
-    for member in app_members(groups)? {
+    for (member, version) in writes {
         let path = format!("{member}/Cargo.toml");
         let manifest = git::show(reference, &path)?;
         let rewritten = set_package_version(&manifest, version)?;
@@ -385,36 +743,53 @@ fn unified_diff(changes: &[(String, String, String)]) -> Result<String> {
     }
 }
 
-/// The refs a dry run would mint and the pull requests it would open.
+/// The refs a dry run would mint and the pull requests it would open: the
+/// series and its tag, the main-side commit with its summary headers, and
+/// every library group's part, minting or not.
 fn refs_markdown(
     transition: Transition,
     plan: &Plan,
-    series: &Landing,
+    series: Option<&Landing>,
     main: Option<&Landing>,
-) -> String {
+    groups: &GroupFile,
+) -> Result<String> {
     let transition = format!("{transition:?}").to_lowercase();
-    let branch = if plan.next_main_version.is_empty() {
-        format!("`{}`", plan.branch)
-    } else {
-        format!("`{}`, created from the commit this run is on", plan.branch)
-    };
-    let mut out = format!(
-        "# Dry run: {transition}\n\n\
-         - series branch: {branch}\n\
-         - tag: `{tag}`, on the merge commit of the series pull request\n\
-         - series pull request: {series}\n  body: {PULL_REQUEST_BODY}\n",
-        tag = plan.tag,
-        series = series.describe(&plan.branch),
-    );
-    if let Some(main) = main {
+    let mut out = format!("# Dry run: {transition}\n\n");
+    if let Some(series) = series {
+        let branch = if plan.next_main_version.is_empty() {
+            format!("`{}`", plan.branch)
+        } else {
+            format!("`{}`, created from the commit this run is on", plan.branch)
+        };
         out += &format!(
-            "- main moves to `{next}`\n\
-             - main pull request: {main}\n  body: {PULL_REQUEST_BODY}\n",
-            next = plan.next_main_version,
-            main = main.describe(MAIN),
+            "- series branch: {branch}\n\
+             - tag: `{tag}`, on the merge commit of the series pull request\n\
+             - series pull request: {series}\n  body: {PULL_REQUEST_BODY}\n",
+            tag = plan.tag,
+            series = series.describe(&plan.branch),
         );
     }
-    out
+    if let Some(main) = main {
+        if !plan.next_main_version.is_empty() {
+            out += &format!("- main moves to `{}`\n", plan.next_main_version);
+        }
+        out += &format!(
+            "- main pull request: {}\n  body: {PULL_REQUEST_BODY}\n",
+            main.describe(MAIN)
+        );
+        if main.title.starts_with("summary:") {
+            for header in plan.summary_headers(groups)? {
+                out += &format!("    {header}\n");
+            }
+        }
+    }
+    if !plan.groups.is_empty() {
+        out += "- groups:\n";
+        for group in &plan.groups {
+            out += &format!("  - {}\n", group.describe());
+        }
+    }
+    Ok(out)
 }
 
 /// git-cliff's notes for the tag this plan would mint: everything unreleased,
@@ -469,22 +844,31 @@ mod rehearsal_tests {
         assert_eq!(patch, "");
     }
 
+    fn groups() -> GroupFile {
+        release_groups::load(&workspace::load().unwrap()).unwrap()
+    }
+
+    fn group_plan(group: &str, current: &str, next: Option<&str>, counted: usize) -> GroupPlan {
+        GroupPlan {
+            group: group.to_owned(),
+            current: current.to_owned(),
+            next: next.map(str::to_owned),
+            tag: next.map(|next| format!("{group}-v{next}")),
+            last_tag: Some(format!("{group}-v{current}")),
+            counted,
+        }
+    }
+
     /// The refs a reader audits before the first real cut: branch, tag, both
     /// pull requests and their body, and where `main` moves.
     #[test]
     fn a_dry_cut_names_its_refs() {
+        let groups = groups();
         let plan = Plan::new(Transition::Cut, &v("0.1.0"), &["feat: charts".to_owned()]).unwrap();
-        let series = Landing::new(
-            "botswain/release-plan/v0.2.x".to_owned(),
-            plan.commit_message(),
-            &["src-tauri/Cargo.toml".to_owned(), LOCKFILE.to_owned()],
-        );
-        let main = Landing::new(
-            "botswain/release-plan/main".to_owned(),
-            next_main_message(&v("0.3.0-nightly")),
-            &["src-tauri/Cargo.toml".to_owned()],
-        );
-        let refs = refs_markdown(Transition::Cut, &plan, &series, Some(&main));
+        let series = plan.landing(&groups).unwrap().unwrap();
+        let main = plan.main_landing(&groups).unwrap().unwrap();
+        let refs =
+            refs_markdown(Transition::Cut, &plan, Some(&series), Some(&main), &groups).unwrap();
         assert!(refs.starts_with("# Dry run: cut\n"), "{refs}");
         assert!(
             refs.contains("`v0.2.x`, created from the commit this run is on"),
@@ -501,11 +885,60 @@ mod rehearsal_tests {
             "{refs}"
         );
         assert_eq!(refs.matches(PULL_REQUEST_BODY).count(), 2, "{refs}");
+        assert!(!refs.contains("- groups:"), "{refs}");
 
         let advance = Plan::new(Transition::Advance, &v("0.2.0-pre.1"), &[]).unwrap();
-        let refs = refs_markdown(Transition::Advance, &advance, &series, None);
+        let refs =
+            refs_markdown(Transition::Advance, &advance, Some(&series), None, &groups).unwrap();
         assert!(refs.contains("- series branch: `v0.2.x`\n"), "{refs}");
         assert!(!refs.contains("main moves"), "{refs}");
+    }
+
+    /// Scenario _A dry cut names every group it would mint_: the minted
+    /// group's tag and write beside the app's, the unchanged group named as
+    /// unchanged, and the summary's headers under the main pull request.
+    #[test]
+    fn a_dry_cut_names_every_group_it_would_mint() {
+        let groups = groups();
+        let plan = Plan::new(Transition::Cut, &v("0.1.0"), &["feat: charts".to_owned()])
+            .unwrap()
+            .with_groups(vec![
+                group_plan("bedrock", "0.3.0", Some("0.3.1"), 2),
+                group_plan("outpost", "0.1.0", None, 0),
+            ]);
+        let series = plan.landing(&groups).unwrap().unwrap();
+        let main = plan.main_landing(&groups).unwrap().unwrap();
+        let refs =
+            refs_markdown(Transition::Cut, &plan, Some(&series), Some(&main), &groups).unwrap();
+
+        assert!(refs.contains("summary: cut 0.2.0-pre.1"), "{refs}");
+        assert!(refs.contains("    chore(bedrock): 0.3.1\n"), "{refs}");
+        assert!(
+            refs.contains("    chore(waypoints): main now targets 0.3.0-nightly\n"),
+            "{refs}"
+        );
+        assert!(
+            refs.contains(
+                "  - `bedrock`: `0.3.0` → `0.3.1`, tag `bedrock-v0.3.1` on the merge commit of the main pull request (2 commits since `bedrock-v0.3.0`)\n"
+            ),
+            "{refs}"
+        );
+        assert!(
+            refs.contains(
+                "  - `outpost`: `0.1.0`, unchanged (no counted commit since `outpost-v0.1.0`)\n"
+            ),
+            "{refs}"
+        );
+        assert!(
+            main.paths.contains("crates/bedrock/Cargo.toml"),
+            "{}",
+            main.paths
+        );
+        assert!(
+            !main.paths.contains("crates/outpost/Cargo.toml"),
+            "{}",
+            main.paths
+        );
     }
 }
 
@@ -786,8 +1219,13 @@ mod tests {
         assert_eq!(log_range(Some(&v("0.1.0"))), "v0.1.0..HEAD");
     }
 
-    /// A commit on the app's own paths, with or without the trailer.
-    fn app_commit(subject: &str, covenant_break: bool) -> history::Commit {
+    /// A commit on `path`, counting for `groups`, with or without the trailer.
+    fn commit_on(
+        path: &str,
+        groups: &[&str],
+        subject: &str,
+        covenant_break: bool,
+    ) -> history::Commit {
         history::Commit {
             sha: "abc1234def5678".to_owned(),
             subject: subject.to_owned(),
@@ -797,9 +1235,29 @@ mod tests {
                 String::new()
             },
             covenant_break,
-            paths: vec!["src-tauri/src/main.rs".to_owned()],
-            groups: ["waypoints".to_owned()].into_iter().collect(),
+            paths: vec![path.to_owned()],
+            groups: groups.iter().map(|group| (*group).to_owned()).collect(),
         }
+    }
+
+    /// A commit on the app's own paths, with or without the trailer.
+    fn app_commit(subject: &str, covenant_break: bool) -> history::Commit {
+        commit_on(
+            "src-tauri/src/main.rs",
+            &["waypoints"],
+            subject,
+            covenant_break,
+        )
+    }
+
+    /// A commit on a library's own paths, which the app counts too.
+    fn library_commit(group: &str, subject: &str) -> history::Commit {
+        commit_on(
+            &format!("crates/{group}/src/lib.rs"),
+            &[group, "waypoints"],
+            subject,
+            false,
+        )
     }
 
     /// Scenario _Break marker without the trailer after v1_: `!` is not the
@@ -810,7 +1268,7 @@ mod tests {
             &v("1.2.0"),
             &[app_commit("feat!: drop the old importer", false)],
             &workspace_groups(),
-            CutOptions::default(),
+            false,
         )
         .unwrap();
         assert_eq!(target, v("1.3.0-pre.1"));
@@ -823,7 +1281,7 @@ mod tests {
         let groups = workspace_groups();
         let commits = [app_commit("fix: tighten the envelope", true)];
 
-        let error = cut_target(&v("1.2.0"), &commits, &groups, CutOptions::default()).unwrap_err();
+        let error = cut_target(&v("1.2.0"), &commits, &groups, false).unwrap_err();
         let text = error.to_string();
         assert!(
             text.contains("abc1234de fix: tighten the envelope"),
@@ -834,8 +1292,7 @@ mod tests {
             "{text}"
         );
 
-        let target =
-            cut_target(&v("1.2.0"), &commits, &groups, CutOptions { major: true }).unwrap();
+        let target = cut_target(&v("1.2.0"), &commits, &groups, true).unwrap();
         assert_eq!(target, v("2.0.0-pre.1"));
     }
 
@@ -846,11 +1303,180 @@ mod tests {
             &v("1.2.0"),
             &[app_commit("fix: a bug", false)],
             &workspace_groups(),
-            CutOptions { major: true },
+            true,
         )
         .unwrap();
         assert_eq!(target, v("2.0.0-pre.1"));
         assert_eq!(v("0.1.0").cut_major().unwrap(), v("1.0.0-pre.1"));
+    }
+
+    fn decide(
+        group: &str,
+        current: &str,
+        tags: &[&str],
+        commits: &[history::Commit],
+        floor: Option<Floor>,
+    ) -> GroupPlan {
+        let tags: Vec<String> = tags.iter().map(|tag| (*tag).to_owned()).collect();
+        GroupPlan::decide(
+            group,
+            &format!("{group}-v{{version}}"),
+            &v(current),
+            &tags,
+            commits,
+            &workspace_groups(),
+            floor,
+        )
+        .unwrap()
+    }
+
+    /// Scenario _Cut with library work_: the group moves, its tag is named,
+    /// and the main-side commit becomes a summary carrying its manifests.
+    #[test]
+    fn a_group_with_counted_commits_moves_and_is_tagged() {
+        let groups = workspace_groups();
+        let bedrock = decide(
+            "bedrock",
+            "0.3.0",
+            &["bedrock-v0.3.0", "v0.1.0"],
+            &[library_commit("bedrock", "feat(bedrock): a thing")],
+            None,
+        );
+        assert_eq!(bedrock.next.as_deref(), Some("0.3.1"));
+        assert_eq!(bedrock.tag.as_deref(), Some("bedrock-v0.3.1"));
+        assert_eq!(bedrock.last_tag.as_deref(), Some("bedrock-v0.3.0"));
+        assert_eq!(bedrock.counted, 1);
+
+        let plan = Plan::from_version(Transition::Cut, v("0.2.0-pre.1"))
+            .unwrap()
+            .with_groups(vec![bedrock]);
+        assert_eq!(plan.group_tags, "bedrock-v0.3.1");
+        let main = plan.main_landing(&groups).unwrap().unwrap();
+        assert_eq!(main.title, "summary: cut 0.2.0-pre.1");
+        for path in [
+            "crates/bedrock/Cargo.toml",
+            "crates/bedrock-core/Cargo.toml",
+            "src-tauri/Cargo.toml",
+            "Cargo.lock",
+        ] {
+            assert!(main.paths.contains(path), "{}", main.paths);
+        }
+        assert_eq!(
+            plan.summary_headers(&groups).unwrap(),
+            [
+                "chore(bedrock): 0.3.1",
+                "chore(waypoints): main now targets 0.3.0-nightly",
+            ]
+        );
+    }
+
+    /// Scenario _Cut without library work_: nothing moves and no tag is
+    /// named, whatever other groups did.
+    #[test]
+    fn a_group_without_counted_commits_stays() {
+        let outpost = decide(
+            "outpost",
+            "0.1.0",
+            &["outpost-v0.1.0"],
+            &[library_commit("bedrock", "feat(bedrock): elsewhere")],
+            None,
+        );
+        assert!(!outpost.mints());
+        assert_eq!(outpost.tag, None);
+        assert_eq!(outpost.counted, 0);
+
+        let plan = Plan::from_version(Transition::Cut, v("0.2.0-pre.1"))
+            .unwrap()
+            .with_groups(vec![outpost]);
+        assert_eq!(plan.group_tags, "");
+        let main = plan.main_landing(&workspace_groups()).unwrap().unwrap();
+        assert_eq!(main.title, next_main_message(&v("0.3.0-nightly")));
+        assert!(!main.paths.contains("crates/outpost"), "{}", main.paths);
+    }
+
+    /// Scenario _First cut of a group with no tag_: the anchor manifest is the
+    /// version and the whole history the cycle.
+    #[test]
+    fn a_group_with_no_tag_is_measured_over_its_whole_history() {
+        assert_eq!(group_range("domain-v", None), "HEAD");
+        assert_eq!(
+            group_range("domain-v", Some(&v("0.1.1"))),
+            "domain-v0.1.1..HEAD"
+        );
+        let domain = decide(
+            "domain",
+            "0.1.0",
+            &["v0.1.0", "bedrock-v0.3.0"],
+            &[library_commit("domain", "feat(domain): a thing")],
+            None,
+        );
+        assert_eq!(domain.last_tag, None);
+        assert_eq!(domain.next.as_deref(), Some("0.1.1"));
+        assert_eq!(domain.tag.as_deref(), Some("domain-v0.1.1"));
+    }
+
+    /// Scenario _Group-only cut_: one tag on `main`, no series, nothing else
+    /// moved, under the subject reserved to the bot.
+    #[test]
+    fn a_group_only_cut_opens_no_series() {
+        let groups = workspace_groups();
+        let bedrock = decide(
+            "bedrock",
+            "0.3.0",
+            &["bedrock-v0.3.0"],
+            &[library_commit("bedrock", "fix(bedrock): a bug")],
+            None,
+        );
+        let plan = Plan::library(bedrock);
+        assert!(plan.is_group_only());
+        assert_eq!(plan.landing(&groups).unwrap(), None);
+        assert_eq!(plan.group_tags, "bedrock-v0.3.1");
+        let main = plan.main_landing(&groups).unwrap().unwrap();
+        assert_eq!(main.title, "chore(release): bedrock 0.3.1");
+        assert_eq!(
+            main.paths,
+            "crates/bedrock/Cargo.toml,crates/bedrock-core/Cargo.toml,crates/bedrock-derive/Cargo.toml,Cargo.lock"
+        );
+        assert_eq!(
+            plan.summary_headers(&groups).unwrap(),
+            ["chore(bedrock): 0.3.1"]
+        );
+    }
+
+    /// Scenario _A floor raises a group's bump_, and never lowers it.
+    #[test]
+    fn a_floor_raises_a_group_s_bump_and_never_lowers_it() {
+        let fixes = [library_commit("outpost", "fix(outpost): a bug")];
+        let raised = decide("outpost", "1.4.2", &[], &fixes, Some(Floor::Major));
+        assert_eq!(raised.next.as_deref(), Some("2.0.0"));
+
+        let breaking = [library_commit("outpost", "feat(outpost)!: a break")];
+        let same = decide("outpost", "1.4.2", &[], &breaking, Some(Floor::Major));
+        assert_eq!(same.next.as_deref(), Some("2.0.0"));
+
+        let feature = [library_commit("outpost", "feat(outpost): a feature")];
+        let kept = decide("outpost", "1.4.2", &[], &feature, Some(Floor::Patch));
+        assert_eq!(kept.next.as_deref(), Some("1.5.0"));
+    }
+
+    /// Scenario _Nothing to cut_: a group with no counted commit mints
+    /// nothing, floor or not, and a cut scoped to it is refused by name.
+    #[test]
+    fn nothing_to_cut_mints_nothing() {
+        let domain = decide(
+            "domain",
+            "0.1.1",
+            &["domain-v0.1.1"],
+            &[],
+            Some(Floor::Major),
+        );
+        assert!(!domain.mints());
+        assert_eq!(domain.counted, 0);
+        assert!(
+            domain.describe().contains("unchanged"),
+            "{}",
+            domain.describe()
+        );
     }
 
     #[test]
@@ -916,7 +1542,7 @@ version = \"ignored\"
             (Transition::Patch, "0.2.0", &[]),
         ] {
             let plan = plan(transition, from, commits);
-            let landing = plan.landing(&groups).unwrap();
+            let landing = plan.landing(&groups).unwrap().unwrap();
             assert_eq!(
                 landing.paths, "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
                 "{transition:?}"
@@ -936,7 +1562,7 @@ version = \"ignored\"
         let groups = workspace_groups();
 
         let cut = plan(Transition::Cut, "0.1.0", &["feat: charts"]);
-        let series = cut.landing(&groups).unwrap();
+        let series = cut.landing(&groups).unwrap().unwrap();
         let main = cut
             .main_landing(&groups)
             .unwrap()

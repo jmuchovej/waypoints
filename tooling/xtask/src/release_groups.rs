@@ -27,6 +27,10 @@ pub const GROUP_FILE: &str = "tooling/release-groups.toml";
 /// Its generated schema, relative to the workspace root.
 pub const SCHEMA_FILE: &str = "tooling/schemas/release-groups.schema.json";
 
+/// The only author who writes a version or a bookkeeping subject, and whose
+/// every commit is bookkeeping to the planners.
+pub const RELEASE_BOT: &str = "wp-botswain[bot]";
+
 /// Members here build the repository, not the product, and are never named.
 const TOOLING: &str = "tooling/";
 

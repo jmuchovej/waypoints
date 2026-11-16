@@ -252,11 +252,23 @@ pub(crate) mod fixture {
         /// A commit of `path` under `message`, which may carry a body and
         /// trailers.
         pub(crate) fn commit_with(&self, path: &str, message: &str) {
+            self.commit_as("xtask", path, message);
+        }
+
+        /// A commit of `path` under `message`, authored by `author`.
+        pub(crate) fn commit_as(&self, author: &str, path: &str, message: &str) {
             let file = self.dir.join(path);
             fs::create_dir_all(file.parent().unwrap()).unwrap();
             fs::write(&file, message).unwrap();
             self.git(&["add", path]);
-            self.git(&["commit", "-q", "-m", message]);
+            self.git(&[
+                "-c",
+                &format!("user.name={author}"),
+                "commit",
+                "-q",
+                "-m",
+                message,
+            ]);
         }
 
         /// What [`history::walk`] sees here for `range`, under [`GROUPS`].
