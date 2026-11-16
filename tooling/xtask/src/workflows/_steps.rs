@@ -222,6 +222,28 @@ pub fn create_pull_request(
     body: &str,
     paths: &[String],
 ) -> Step<Use> {
+    pull_request(token, branch, title, ("body", body), paths)
+}
+
+/// [`create_pull_request`] with its body read from a file at `body_path`: a
+/// summary's per-group headers span lines, which a step output cannot carry.
+pub fn create_pull_request_from_file(
+    token: &StepOutput,
+    branch: &str,
+    title: &str,
+    body_path: &str,
+    paths: &[String],
+) -> Step<Use> {
+    pull_request(token, branch, title, ("body-path", body_path), paths)
+}
+
+fn pull_request(
+    token: &StepOutput,
+    branch: &str,
+    title: &str,
+    body: (&str, &str),
+    paths: &[String],
+) -> Step<Use> {
     Action::new(
         "peter-evans",
         "create-pull-request",
@@ -234,7 +256,7 @@ pub fn create_pull_request(
     .add_with(("delete-branch", true))
     .add_with(("sign-commits", true))
     .add_with(("title", title))
-    .add_with(("body", body))
+    .add_with(body)
     .add_with(("commit-message", title))
     .add_with(("add-paths", paths.join("\n")))
 }
@@ -253,6 +275,20 @@ pub(crate) fn land_write<T>(
         &output("head"),
         &output("title"),
         body,
+        &[output("paths")],
+    )
+    .id(id)
+}
+
+/// [`land_write`] with the body read from the file `writer` published as
+/// `body_path`.
+pub(crate) fn land_write_from_file<T>(writer: &Step<T>, token: &StepOutput, id: &str) -> Step<Use> {
+    let output = |name| StepOutput::new_trusted(writer, name).to_string();
+    create_pull_request_from_file(
+        token,
+        &output("head"),
+        &output("title"),
+        &output("body_path"),
         &[output("paths")],
     )
     .id(id)
@@ -304,12 +340,38 @@ pub(crate) fn tag_merge_commit(
         .add_env(("GH_TOKEN", token.to_string()))
 }
 
-/// Leaves `main`'s post-cut bump in the tree. Only a cut names a next version.
-pub(crate) fn bump_main(version: &StepOutput) -> Step<Run> {
-    release_land("bump-main", r#"--version "${VERSION}""#, Tools::Mise)
-        .id("bump-main")
-        .if_condition(Expression::new(format!("{} != ''", version.expr())))
-        .add_env(("VERSION", version.to_string()))
+/// Tags the merge commit [`wait_for_merge`] found with every library tag the
+/// cut minted, comma-separated as the planner published them, under a token
+/// minted after the wait.
+pub(crate) fn tag_groups(tags: &StepOutput, commit: &StepOutput, token: &StepOutput) -> Step<Run> {
+    release_land(
+        "tag-groups",
+        r#"--tags "${TAGS}" --commit "${COMMIT}""#,
+        Tools::Mise,
+    )
+    .id("tag-groups")
+    .add_env(("TAGS", tags.to_string()))
+    .add_env(("COMMIT", commit.to_string()))
+    .add_env(("GH_TOKEN", token.to_string()))
+}
+
+/// Opens a cut's series at the merge commit its main pull request landed as,
+/// with the app's version written on it, and publishes the series' landing
+/// for the pull-request step.
+pub(crate) fn open_series(
+    version: &StepOutput,
+    commit: &StepOutput,
+    token: &StepOutput,
+) -> Step<Run> {
+    release_land(
+        "open-series",
+        r#"--version "${VERSION}" --commit "${COMMIT}""#,
+        Tools::Mise,
+    )
+    .id("open-series")
+    .add_env(("VERSION", version.to_string()))
+    .add_env(("COMMIT", commit.to_string()))
+    .add_env(("GH_TOKEN", token.to_string()))
 }
 
 /// Installs the whole toolchain — node, pnpm, just, sops, age, yq, nu, and

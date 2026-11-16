@@ -21,6 +21,18 @@ on:
         description: "Rehearse: plan, render the writes and refs as an artifact, and mint nothing"
         type: boolean
         default: "true"
+      major:
+        description: "Cut toward the app's next major; without it, a cut after a `Covenant: break` is refused"
+        type: boolean
+        default: "false"
+      group:
+        description: "Cut one library group alone: its tag on main, no series, nothing else moved"
+        required: true
+        type: string
+      floor:
+        description: "The least a group-scoped cut bumps: major, minor, or patch"
+        required: true
+        type: string
 permissions: {}
 jobs:
   release-plan:
@@ -86,10 +98,12 @@ jobs:
           permission-pull-requests: write
       - id: release-plan
         name: cargo xtask release-plan
-        run: cargo xtask release-plan ${{ inputs.transition }} ${{ inputs.dry_run && '--dry-run --into "${RUNNER_TEMP}/dry-run"' || '' }}
+        run: cargo xtask release-plan ${{ inputs.transition }} ${{ inputs.major && '--major' || '' }} ${GROUP:+--group "$GROUP"} ${FLOOR:+--floor "$FLOOR"} ${{ inputs.dry_run && '--dry-run --into "${RUNNER_TEMP}/dry-run"' || '' }}
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GROUP: ${{ inputs.group }}
+          FLOOR: ${{ inputs.floor }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
         name: Report the compiler cache
@@ -117,9 +131,9 @@ jobs:
           path: ${{ runner.temp }}/dry-run
           if-no-files-found: error
           retention-days: "7"
-      - id: series-pull-request
+      - id: main-pull-request
         name: Open a pull request
-        if: "!inputs.dry_run"
+        if: "!inputs.dry_run && inputs.transition == 'cut'"
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -127,36 +141,9 @@ jobs:
           delete-branch: "true"
           sign-commits: "true"
           title: ${{ steps.release-plan.outputs.title }}
-          body: Written by `cargo xtask release-plan`; merges when its checks pass.
+          body-path: ${{ steps.release-plan.outputs.body_path }}
           commit-message: ${{ steps.release-plan.outputs.title }}
           add-paths: ${{ steps.release-plan.outputs.paths }}
-      - name: cargo xtask release-land auto-merge
-        if: "!inputs.dry_run && steps.series-pull-request.outputs.pull-request-number != ''"
-        run: cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
-        shell: bash
-        env:
-          PULL_REQUEST: ${{ steps.series-pull-request.outputs.pull-request-number }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-      - id: bump-main
-        name: cargo xtask release-land bump-main
-        if: "!inputs.dry_run && steps.release-plan.outputs.next_main_version != ''"
-        run: cargo xtask release-land bump-main --version "${VERSION}"
-        shell: bash
-        env:
-          VERSION: ${{ steps.release-plan.outputs.next_main_version }}
-      - id: main-pull-request
-        name: Open a pull request
-        if: "!inputs.dry_run && steps.release-plan.outputs.next_main_version != ''"
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          branch: ${{ steps.bump-main.outputs.head }}
-          delete-branch: "true"
-          sign-commits: "true"
-          title: ${{ steps.bump-main.outputs.title }}
-          body: Written by `cargo xtask release-plan`; merges when its checks pass.
-          commit-message: ${{ steps.bump-main.outputs.title }}
-          add-paths: ${{ steps.bump-main.outputs.paths }}
       - name: cargo xtask release-land auto-merge
         if: "!inputs.dry_run && steps.main-pull-request.outputs.pull-request-number != ''"
         run: cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
@@ -164,9 +151,64 @@ jobs:
         env:
           PULL_REQUEST: ${{ steps.main-pull-request.outputs.pull-request-number }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      - id: wait-for-main
+        name: cargo xtask release-land wait
+        if: "!inputs.dry_run && inputs.transition == 'cut'"
+        run: cargo xtask release-land wait --pull-request "${PULL_REQUEST}"
+        shell: bash
+        env:
+          PULL_REQUEST: ${{ steps.main-pull-request.outputs.pull-request-number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - id: series-token
+        name: Mint a wp-botswain token for the series
+        if: "!inputs.dry_run"
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
+          private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - id: tag-groups
+        name: cargo xtask release-land tag-groups
+        if: "!inputs.dry_run && inputs.transition == 'cut' && steps.release-plan.outputs.group_tags != ''"
+        run: cargo xtask release-land tag-groups --tags "${TAGS}" --commit "${COMMIT}"
+        shell: bash
+        env:
+          TAGS: ${{ steps.release-plan.outputs.group_tags }}
+          COMMIT: ${{ steps.wait-for-main.outputs.merge_commit }}
+          GH_TOKEN: ${{ steps.series-token.outputs.token }}
+      - id: open-series
+        name: cargo xtask release-land open-series
+        if: "!inputs.dry_run && inputs.transition == 'cut' && steps.release-plan.outputs.tag != ''"
+        run: cargo xtask release-land open-series --version "${VERSION}" --commit "${COMMIT}"
+        shell: bash
+        env:
+          VERSION: ${{ steps.release-plan.outputs.version }}
+          COMMIT: ${{ steps.wait-for-main.outputs.merge_commit }}
+          GH_TOKEN: ${{ steps.series-token.outputs.token }}
+      - id: series-pull-request
+        name: Open a pull request
+        if: "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+        with:
+          token: ${{ steps.series-token.outputs.token }}
+          branch: ${{ steps.open-series.outputs.head || steps.release-plan.outputs.head }}
+          delete-branch: "true"
+          sign-commits: "true"
+          title: ${{ steps.open-series.outputs.title || steps.release-plan.outputs.title }}
+          body: Written by `cargo xtask release-plan`; merges when its checks pass.
+          commit-message: ${{ steps.open-series.outputs.title || steps.release-plan.outputs.title }}
+          add-paths: ${{ steps.open-series.outputs.paths || steps.release-plan.outputs.paths }}
+      - name: cargo xtask release-land auto-merge
+        if: "!inputs.dry_run && steps.series-pull-request.outputs.pull-request-number != ''"
+        run: cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
+        shell: bash
+        env:
+          PULL_REQUEST: ${{ steps.series-pull-request.outputs.pull-request-number }}
+          GH_TOKEN: ${{ steps.series-token.outputs.token }}
       - id: wait-for-merge
         name: cargo xtask release-land wait
-        if: "!inputs.dry_run"
+        if: "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
         run: cargo xtask release-land wait --pull-request "${PULL_REQUEST}"
         shell: bash
         env:
@@ -174,14 +216,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: tag-token
         name: Mint a wp-botswain token for the tag
-        if: "!inputs.dry_run"
+        if: "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
           private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
           permission-contents: write
       - name: cargo xtask release-land tag
-        if: "!inputs.dry_run"
+        if: "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
         run: cargo xtask release-land tag --tag "${TAG}" --commit "${COMMIT}"
         shell: bash
         env:

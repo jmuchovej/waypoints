@@ -25,8 +25,9 @@ use gh_workflow::{
     StepOutput, Workflow, WorkflowDispatch,
 };
 
-/// Every release tag; the task tells the channels apart from the version.
-const TAG_PATTERN: &str = "v*";
+/// Every release tag; the task tells the channels apart from the version. A
+/// library's `<group>-v…` tag matches neither this nor a channel's pattern.
+pub(super) const TAG_PATTERN: &str = "v*";
 
 /// Becomes the merge commit's body, so it says what the merge commit is. GitHub
 /// wraps that body at 72 columns, so this stays under them.

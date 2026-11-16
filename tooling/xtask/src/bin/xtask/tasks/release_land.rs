@@ -3,7 +3,9 @@
 
 //! Takes a bot's pull request from opened to landed, one step at a time, so a
 //! job can mint a fresh App token between the wait and the tag: an installation
-//! token lasts an hour, and the required checks can take most of that.
+//! token lasts an hour, and the required checks can take most of that. A cut
+//! lands twice — its main-side summary, then its series — and between the two
+//! tags each library it minted and opens the series at that merge commit.
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -35,10 +37,21 @@ enum Action {
         #[arg(long)]
         commit: String,
     },
-    /// Leaves `main`'s post-cut bump in the tree for the pull-request step.
-    BumpMain {
+    /// Tags a merge commit with every library tag a cut minted,
+    /// comma-separated as the planner publishes them.
+    TagGroups {
+        #[arg(long)]
+        tags: String,
+        #[arg(long)]
+        commit: String,
+    },
+    /// Opens a cut's series at its main pull request's merge commit and leaves
+    /// the app version written on it for the pull-request step.
+    OpenSeries {
         #[arg(long)]
         version: String,
+        #[arg(long)]
+        commit: String,
     },
 }
 
@@ -65,10 +78,19 @@ pub fn run(args: Options) -> Result<()> {
             println!("Tagged {tag} at {commit}");
             Ok(())
         }
-        Action::BumpMain { version } => {
-            let landing = planner::bump_main(&Version::parse(&version)?)?;
-            println!("Wrote {version} on main");
-            println!("  {}", landing.describe("main"));
+        Action::TagGroups { tags, commit } => {
+            for tag in tags.split(',').map(str::trim).filter(|tag| !tag.is_empty()) {
+                github::create_tag(tag, &commit)?;
+                println!("Tagged {tag} at {commit}");
+            }
+            Ok(())
+        }
+        Action::OpenSeries { version, commit } => {
+            let version = Version::parse(&version)?;
+            let branch = version.release_branch();
+            let landing = planner::open_series(&version, &commit)?;
+            println!("Opened {branch} at {commit}, with {version} written on it");
+            println!("  {}", landing.describe(&branch));
             github::set_outputs_if_available(&landing)
         }
     }
@@ -84,7 +106,22 @@ mod tests {
             &["release-land", "auto-merge", "--pull-request", "7"][..],
             &["release-land", "wait", "--pull-request", "7"],
             &["release-land", "tag", "--tag", "v0.2.0", "--commit", "abc"],
-            &["release-land", "bump-main", "--version", "0.3.0-nightly"],
+            &[
+                "release-land",
+                "tag-groups",
+                "--tags",
+                "bedrock-v0.2.0,domain-v0.1.1",
+                "--commit",
+                "abc",
+            ],
+            &[
+                "release-land",
+                "open-series",
+                "--version",
+                "0.2.0-pre.1",
+                "--commit",
+                "abc",
+            ],
         ] {
             assert!(Options::try_parse_from(args).is_ok(), "{args:?}");
         }
@@ -92,6 +129,7 @@ mod tests {
         for args in [
             &["release-land"][..],
             &["release-land", "wait"],
+            &["release-land", "bump-main", "--version", "0.3.0-nightly"],
             &["release-land", "auto-merge", "--pull-request", "seven"],
         ] {
             assert!(Options::try_parse_from(args).is_err(), "{args:?}");

@@ -15,6 +15,14 @@
 //! written — the version writes as patches, the refs, and the notes — as the
 //! run's artifact.
 //!
+//! A cut lands twice. Its main-side writes — each minted library's manifests
+//! and `main`'s own bump — land first, as one pull request; the run waits for
+//! that merge, tags each library at the merge commit, and opens the series
+//! there, so a library tag always names a commit the planners' first-parent
+//! walk contains. The series' version write then lands as the other
+//! transitions' do, and the app's tag goes on its merge commit. A cut scoped
+//! to one library stops after its tags.
+//!
 //! Nightlies are minted by [`super::release`]'s `prepare` job instead — their
 //! version is a timestamp, not a claim about content.
 //!
@@ -22,10 +30,10 @@
 //! a tag pushed with the latter raises no `push` event, so neither the
 //! channel's release workflow nor the release index would run on it.
 //!
-//! `main` and the series branches are protected, so the version write lands
-//! through a pull request gated like any other, and the tag goes on its merge
-//! commit. The job waits for that merge, which can outlast an App token, so it
-//! looks under `GITHUB_TOKEN` and mints a fresh token for the tag.
+//! `main` and the series branches are protected, so every version write lands
+//! through a pull request gated like any other. Each wait can outlast an App
+//! token, so a wait looks under `GITHUB_TOKEN` and the steps after it mint a
+//! fresh token.
 
 use super::{MiseEnv, WorkflowInput};
 use super::{WorkflowContext, helpers, helpers::Environment, runners, steps, steps::Tools};
@@ -41,6 +49,14 @@ pub(super) const BODY: &str = crate::planners::release::PULL_REQUEST_BODY;
 const DRY_RUN_FLAGS: &str =
     r#"${{ inputs.dry_run && '--dry-run --into "${RUNNER_TEMP}/dry-run"' || '' }}"#;
 
+/// The app's major is asked for, never computed. A boolean input cannot carry
+/// text, so it is safe inline.
+const MAJOR_FLAG: &str = "${{ inputs.major && '--major' || '' }}";
+
+/// A group and a floor reach the planner through the environment: the group
+/// is free text, which never belongs on a command line as written.
+const GROUP_FLAGS: &str = r#"${GROUP:+--group "$GROUP"} ${FLOOR:+--floor "$FLOOR"}"#;
+
 pub fn workflow(context: &WorkflowContext) -> Workflow {
     let transition = WorkflowInput::choices(
         "transition",
@@ -50,8 +66,23 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     .description("Which release-cycle transition to perform");
     let dry_run = WorkflowInput::bool("dry_run", Some(true))
         .description("Rehearse: plan, render the writes and refs as an artifact, and mint nothing");
+    let major = WorkflowInput::bool("major", Some(false)).description(
+        "Cut toward the app's next major; without it, a cut after a `Covenant: break` is refused",
+    );
+    let group = WorkflowInput::string("group", None)
+        .description("Cut one library group alone: its tag on main, no series, nothing else moved");
+    let floor = WorkflowInput::string("floor", None)
+        .description("The least a group-scoped cut bumps: major, minor, or patch");
+
     let real = || Expression::new(format!("!{}", dry_run.expr()));
     let rehearsing = || Expression::new(dry_run.expr());
+    let cutting = || {
+        Expression::new(format!(
+            "!{} && {} == 'cut'",
+            dry_run.expr(),
+            transition.expr()
+        ))
+    };
 
     let app_token =
         steps::app_token(&[("contents", "write"), ("pull-requests", "write")]).if_condition(real());
@@ -60,52 +91,106 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
 
     let planner = steps::cargo_xtask(
         "release-plan",
-        &[("${{ inputs.transition }}", None), (DRY_RUN_FLAGS, None)],
+        &[
+            ("${{ inputs.transition }}", None),
+            (MAJOR_FLAG, None),
+            (GROUP_FLAGS, None),
+            (DRY_RUN_FLAGS, None),
+        ],
     )
     .id("release-plan")
-    .add_env(("GH_TOKEN", token.to_string()));
+    .add_env(("GH_TOKEN", token.to_string()))
+    .add_env(("GROUP", "${{ inputs.group }}"))
+    .add_env(("FLOOR", "${{ inputs.floor }}"));
     let output = |name| StepOutput::new_trusted(&planner, name);
-    let next_main = output("next_main_version");
-
-    // Every landing step stands down on a dry run. The auto-merges read the
-    // pull-request numbers, which a stood-down pull-request step leaves empty,
-    // and are gated again here all the same.
-    let series =
-        steps::land_write(&planner, &token, "series-pull-request", BODY).if_condition(real());
-    let series_number = StepOutput::new_trusted(&series, "pull-request-number");
-
-    let bumping = || Expression::new(format!("!{} && {} != ''", dry_run.expr(), next_main.expr()));
-    let bump = steps::bump_main(&next_main).if_condition(bumping());
-    let main = steps::land_write(&bump, &token, "main-pull-request", BODY).if_condition(bumping());
-    let main_number = StepOutput::new_trusted(&main, "pull-request-number");
-
-    let wait = steps::wait_for_merge(&series_number).if_condition(real());
-    let merge_commit = StepOutput::new_trusted(&wait, "merge_commit");
-
-    let tag_token = steps::app_token(&[("contents", "write")])
-        .name("Mint a wp-botswain token for the tag")
-        .id("tag-token")
-        .if_condition(real());
-    let tag = steps::tag_merge_commit(
-        &output("tag"),
-        &merge_commit,
-        &StepOutput::new_trusted(&tag_token, "token"),
-    )
-    .if_condition(real());
+    let tag = output("tag");
+    let group_tags = output("group_tags");
+    let version = output("version");
     let landing = |number: &StepOutput| {
         Expression::new(format!("!{} && {} != ''", dry_run.expr(), number.expr()))
     };
-    let auto_merge_series = steps::auto_merge(&series_number, &token, Tools::Mise)
-        .if_condition(landing(&series_number));
+
+    // A cut lands on `main` first: the planner left the main-side manifests
+    // in the tree and published that landing, with the summary's headers in a
+    // body file.
+    let main =
+        steps::land_write_from_file(&planner, &token, "main-pull-request").if_condition(cutting());
+    let main_number = StepOutput::new_trusted(&main, "pull-request-number");
     let auto_merge_main =
         steps::auto_merge(&main_number, &token, Tools::Mise).if_condition(landing(&main_number));
+    let wait_main = steps::wait_for_merge(&main_number)
+        .id("wait-for-main")
+        .if_condition(cutting());
+    let main_commit = StepOutput::new_trusted(&wait_main, "merge_commit");
+
+    // The series phase runs under a token minted after the main wait, which
+    // can outlast the first; the other transitions have no wait before it.
+    let series_token = steps::app_token(&[("contents", "write"), ("pull-requests", "write")])
+        .name("Mint a wp-botswain token for the series")
+        .id("series-token")
+        .if_condition(real());
+    let series_token_output = StepOutput::new_trusted(&series_token, "token");
+
+    let minting = || {
+        Expression::new(format!(
+            "!{} && {} == 'cut' && {} != ''",
+            dry_run.expr(),
+            transition.expr(),
+            group_tags.expr()
+        ))
+    };
+    let tag_groups =
+        steps::tag_groups(&group_tags, &main_commit, &series_token_output).if_condition(minting());
+
+    // Every transition but a cut wrote on its series in the planner step; a
+    // cut opens its series here, from the merge commit, and a cut scoped to
+    // one library opens none.
+    let on_a_series = || Expression::new(format!("!{} && {} != ''", dry_run.expr(), tag.expr()));
+    let opening = || {
+        Expression::new(format!(
+            "!{} && {} == 'cut' && {} != ''",
+            dry_run.expr(),
+            transition.expr(),
+            tag.expr()
+        ))
+    };
+    let open_series =
+        steps::open_series(&version, &main_commit, &series_token_output).if_condition(opening());
+    let from_series_or_planner = |name: &str| {
+        format!("${{{{ steps.open-series.outputs.{name} || steps.release-plan.outputs.{name} }}}}")
+    };
+    let series = steps::create_pull_request(
+        &series_token_output,
+        &from_series_or_planner("head"),
+        &from_series_or_planner("title"),
+        BODY,
+        &[from_series_or_planner("paths")],
+    )
+    .id("series-pull-request")
+    .if_condition(on_a_series());
+    let series_number = StepOutput::new_trusted(&series, "pull-request-number");
+    let auto_merge_series = steps::auto_merge(&series_number, &series_token_output, Tools::Mise)
+        .if_condition(landing(&series_number));
+
+    let wait = steps::wait_for_merge(&series_number).if_condition(on_a_series());
+    let merge_commit = StepOutput::new_trusted(&wait, "merge_commit");
+    let tag_token = steps::app_token(&[("contents", "write")])
+        .name("Mint a wp-botswain token for the tag")
+        .id("tag-token")
+        .if_condition(on_a_series());
+    let tag_step = steps::tag_merge_commit(
+        &tag,
+        &merge_commit,
+        &StepOutput::new_trusted(&tag_token, "token"),
+    )
+    .if_condition(on_a_series());
 
     let upload = steps::upload_rendering("dry-run-release-plan".to_owned(), rehearsing());
 
     let plan = Job::new("plan the transition")
         // A `cargo xtask` run and nothing more.
         .add_env(MiseEnv::select(&[MiseEnv::Xtask]))
-        // Only what `checkout` and the wait need: every write goes through the
+        // Only what `checkout` and the waits need: every write goes through an
         // App token, which carries its own scope.
         .permissions(
             Permissions::default()
@@ -117,9 +202,8 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .environment(GhEnvironment::from(Environment::Ci))
         .runs_on(runners::LINUX)
         // Tags and the history between them: a cut walks from the last stable
-        // release to HEAD with a pathspec that drops the index directory, and
-        // in a shallow clone the tip is a root commit that appears to touch
-        // every path — see the nightly planner.
+        // release to HEAD, and in a shallow clone the tip is a root commit that
+        // appears to touch every path — see the nightly planner.
         .add_step(
             steps::checkout()
                 .add_with(("fetch-depth", 0))
@@ -135,28 +219,31 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .add_step(steps::botswain_credentials(Tools::Mise).if_condition(real()))
         .add_step(app_token)
         .add_step(steps::with_sccache(planner))
-        // Before the pull requests: the wait below is long, and this stops the
-        // server holding the cache credential.
+        // Before the pull requests: the waits below are long, and this stops
+        // the server holding the cache credential.
         .add_step(steps::sccache_stats(Tools::Mise))
         .add_step(steps::cache_save(&registry, Tools::Mise))
         .add_step(upload)
-        .add_step(series)
-        .add_step(auto_merge_series)
-        // A cut's two pull requests open together and land independently. If the
-        // series' checks fail, `main` has still moved on, and the series recovers
-        // with `advance`; no transition could move `main` later.
-        .add_step(bump)
         .add_step(main)
         .add_step(auto_merge_main)
+        .add_step(wait_main)
+        .add_step(series_token)
+        .add_step(tag_groups)
+        .add_step(open_series)
+        .add_step(series)
+        .add_step(auto_merge_series)
         .add_step(wait)
         .add_step(tag_token)
-        .add_step(tag);
+        .add_step(tag_step);
 
     helpers::named_workflow("mint the refs for a release-cycle transition")
         .on(
             Event::default().workflow_dispatch(WorkflowDispatch::default().inputs([
                 (transition.name.into(), transition.input()),
                 (dry_run.name.into(), dry_run.input()),
+                (major.name.into(), major.input()),
+                (group.name.into(), group.input()),
+                (floor.name.into(), floor.input()),
             ])),
         )
         // A half-applied transition leaves the branch and its tag disagreeing.
@@ -203,7 +290,7 @@ mod tests {
     #[test]
     fn the_tag_waits_for_the_merge_commit() {
         let steps = steps();
-        let tag = running(&steps, "release-land tag");
+        let tag = running(&steps, "release-land tag --tag");
 
         assert!(position(&steps, "wait-for-merge") < tag);
         assert_eq!(
@@ -226,7 +313,7 @@ mod tests {
 
         assert!(wait < position(&steps, "tag-token"));
         assert_eq!(
-            steps[running(&steps, "release-land tag")]["env"]["GH_TOKEN"],
+            steps[running(&steps, "release-land tag --tag")]["env"]["GH_TOKEN"],
             "${{ steps.tag-token.outputs.token }}"
         );
     }
@@ -245,32 +332,105 @@ mod tests {
         assert_eq!(scopes, ["permission-contents"]);
     }
 
-    /// In this order, so a failed series leaves `main` moved and the series
-    /// recoverable with `advance`, rather than `main` stranded on a version no
-    /// transition moves.
+    /// A cut lands on `main` first and waits for it, mints the library tags
+    /// at that merge commit, opens the series there, and only then lands the
+    /// series: a library tag names a commit the walk contains, and a series
+    /// starts from the tree its pins describe.
     #[test]
-    fn a_cut_opens_both_pull_requests_before_the_wait() {
+    fn a_cut_lands_main_then_tags_then_opens_the_series() {
         let steps = steps();
         let order = [
             position(&steps, "release-plan"),
-            position(&steps, "series-pull-request"),
-            position(&steps, "bump-main"),
             position(&steps, "main-pull-request"),
+            position(&steps, "wait-for-main"),
+            position(&steps, "series-token"),
+            position(&steps, "tag-groups"),
+            position(&steps, "open-series"),
+            position(&steps, "series-pull-request"),
             position(&steps, "wait-for-merge"),
+            running(&steps, "release-land tag --tag"),
         ];
         assert!(order.is_sorted(), "{order:?}");
+
+        let tag_groups = &steps[position(&steps, "tag-groups")];
+        assert_eq!(
+            tag_groups["env"]["COMMIT"],
+            "${{ steps.wait-for-main.outputs.merge_commit }}"
+        );
+        assert_eq!(
+            tag_groups["env"]["TAGS"],
+            "${{ steps.release-plan.outputs.group_tags }}"
+        );
+        assert_eq!(
+            tag_groups["env"]["GH_TOKEN"],
+            "${{ steps.series-token.outputs.token }}"
+        );
+        let open = &steps[position(&steps, "open-series")];
+        assert_eq!(
+            open["env"]["COMMIT"],
+            "${{ steps.wait-for-main.outputs.merge_commit }}"
+        );
+        assert_eq!(
+            open["env"]["VERSION"],
+            "${{ steps.release-plan.outputs.version }}"
+        );
     }
 
+    /// The main-side landing and the series opening are a cut's alone; the
+    /// series landing serves every transition, reading the series opener's
+    /// outputs where a cut produced them and the planner's otherwise.
     #[test]
-    fn only_a_cut_bumps_main() {
+    fn only_a_cut_lands_on_main_and_opens_a_series() {
         let steps = steps();
-        for id in ["bump-main", "main-pull-request"] {
-            assert_eq!(
-                steps[position(&steps, id)]["if"],
-                "!inputs.dry_run && steps.release-plan.outputs.next_main_version != ''",
-                "{id}"
+        for id in [
+            "main-pull-request",
+            "wait-for-main",
+            "open-series",
+            "tag-groups",
+        ] {
+            let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
+            assert!(cond.contains("inputs.transition == 'cut'"), "{id}: {cond}");
+        }
+        assert!(
+            steps[position(&steps, "tag-groups")]["if"]
+                .as_str()
+                .unwrap()
+                .contains("steps.release-plan.outputs.group_tags != ''")
+        );
+
+        let series = &steps[position(&steps, "series-pull-request")];
+        for key in ["branch", "title", "add-paths"] {
+            let value = series["with"][key].as_str().unwrap();
+            assert!(
+                value.contains("steps.open-series.outputs."),
+                "{key}: {value}"
+            );
+            assert!(
+                value.contains("|| steps.release-plan.outputs."),
+                "{key}: {value}"
             );
         }
+        assert_eq!(
+            series["if"],
+            "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
+        );
+    }
+
+    /// The summary's per-group headers span lines, so the main pull request
+    /// reads its body from the file the planner wrote.
+    #[test]
+    fn the_main_pull_request_reads_its_body_from_the_planner_s_file() {
+        let steps = steps();
+        let main = &steps[position(&steps, "main-pull-request")];
+        assert_eq!(
+            main["with"]["body-path"],
+            "${{ steps.release-plan.outputs.body_path }}"
+        );
+        assert!(main["with"].get("body").is_none());
+        assert_eq!(
+            main["with"]["branch"],
+            "${{ steps.release-plan.outputs.head }}"
+        );
     }
 
     /// Each pull request is landed by the auto-merge step reading its own number.
@@ -289,22 +449,23 @@ mod tests {
         assert_eq!(
             numbers,
             [
-                "${{ steps.series-pull-request.outputs.pull-request-number }}",
                 "${{ steps.main-pull-request.outputs.pull-request-number }}",
+                "${{ steps.series-pull-request.outputs.pull-request-number }}",
             ]
         );
     }
 
     /// The compiler cache's credential should not sit in a server for the length
-    /// of the wait.
+    /// of the waits.
     #[test]
-    fn the_cache_server_stops_before_the_wait() {
+    fn the_cache_server_stops_before_the_first_landing() {
         let steps = steps();
-        assert!(position(&steps, "sccache-stats") < position(&steps, "series-pull-request"));
+        assert!(position(&steps, "sccache-stats") < position(&steps, "main-pull-request"));
     }
 
     /// The dispatch rehearses unless told otherwise, and the planner is handed
-    /// the flags and the directory only then.
+    /// the flags and the directory only then. The free-text inputs reach the
+    /// planner through its environment, never the command line as written.
     #[test]
     fn a_dispatch_rehearses_by_default() {
         let value = rendered();
@@ -314,13 +475,20 @@ mod tests {
             "true"
         );
         assert!(inputs["transition"].is_object());
+        assert_eq!(inputs["major"]["type"], "boolean");
+        assert_eq!(inputs["group"]["type"], "string");
+        assert_eq!(inputs["floor"]["type"], "string");
 
         let steps = steps();
-        let run = steps[position(&steps, "release-plan")]["run"]
-            .as_str()
-            .unwrap();
+        let planner = &steps[position(&steps, "release-plan")];
+        let run = planner["run"].as_str().unwrap();
         assert!(run.contains(DRY_RUN_FLAGS), "{run}");
         assert!(run.contains(r#"--into "${RUNNER_TEMP}/dry-run""#), "{run}");
+        assert!(run.contains(MAJOR_FLAG), "{run}");
+        assert!(run.contains(GROUP_FLAGS), "{run}");
+        assert!(!run.contains("inputs.group"), "{run}");
+        assert_eq!(planner["env"]["GROUP"], "${{ inputs.group }}");
+        assert_eq!(planner["env"]["FLOOR"], "${{ inputs.floor }}");
     }
 
     /// Every step that mints, lands, or authenticates stands down on a dry run;
@@ -329,9 +497,12 @@ mod tests {
     fn every_landing_step_stands_down_on_a_dry_run() {
         let steps = steps();
         for id in [
-            "series-pull-request",
-            "bump-main",
             "main-pull-request",
+            "wait-for-main",
+            "series-token",
+            "tag-groups",
+            "open-series",
+            "series-pull-request",
             "wait-for-merge",
             "tag-token",
             "app-token",
@@ -339,7 +510,12 @@ mod tests {
             let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
             assert!(cond.starts_with("!inputs.dry_run"), "{id}: {cond}");
         }
-        for command in ["release-land tag", "release-land auto-merge"] {
+        for command in [
+            "release-land tag --tag",
+            "release-land tag-groups",
+            "release-land open-series",
+            "release-land auto-merge",
+        ] {
             let cond = steps[running(&steps, command)]["if"].as_str().unwrap_or("");
             assert!(cond.starts_with("!inputs.dry_run"), "{command}: {cond}");
         }
@@ -354,5 +530,37 @@ mod tests {
         assert_eq!(upload["with"]["name"], "dry-run-release-plan");
         assert_eq!(upload["with"]["path"], steps::DRY_RUN_ARTIFACT_PATH);
         assert!(!steps::DRY_RUN_ARTIFACT_PATH.contains("${RUNNER_TEMP}"));
+    }
+
+    /// A library tag is a source ref, not a release: it matches none of the
+    /// `v…` patterns the release workflows and the index trigger on, so a
+    /// group-scoped cut starts no run and no run can withdraw its tag.
+    #[test]
+    fn a_group_tag_triggers_no_release_or_index_run() {
+        use crate::Channel;
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let text = std::fs::read_to_string(root.join(crate::release_groups::GROUP_FILE)).unwrap();
+        let file = crate::release_groups::GroupFile::parse(&text).unwrap();
+
+        let patterns: Vec<&str> = [Channel::Nightly, Channel::Preview, Channel::Stable]
+            .into_iter()
+            .filter_map(|channel| channel.tag_pattern())
+            .chain([super::super::release_index::TAG_PATTERN])
+            .collect();
+        assert!(!patterns.is_empty());
+        for pattern in &patterns {
+            assert!(pattern.starts_with('v'), "{pattern}");
+        }
+
+        for (name, group) in &file.group {
+            if group.tag == "v{version}" {
+                continue;
+            }
+            let tag = group.tag.replace("{version}", "0.2.0");
+            assert!(
+                !tag.starts_with('v'),
+                "{name}: {tag} would match a `v…` trigger"
+            );
+        }
     }
 }

@@ -104,13 +104,40 @@ pub fn run(args: Options) -> Result<()> {
     }
 
     planner::execute(args.transition, &plan)?;
-    println!("  wrote {} on {}", plan.version, plan.branch);
-
     github::set_outputs_if_available(&plan)?;
-    match &landing {
-        Some(landing) => github::set_outputs_if_available(landing),
-        None => Ok(()),
+
+    // A cut lands on `main` first; its series opens from that merge commit,
+    // in a later step that publishes the series' landing itself.
+    if args.transition == Transition::Cut {
+        let main = plan.main_landing(&groups)?.context("a cut lands on main")?;
+        println!("  wrote the main-side manifests on main");
+        let body = if main.title.starts_with("summary:") {
+            format!(
+                "{}\n\n{}\n",
+                planner::PULL_REQUEST_BODY,
+                plan.summary_headers(&groups)?.join("\n")
+            )
+        } else {
+            planner::PULL_REQUEST_BODY.to_owned()
+        };
+        let body_path = std::env::temp_dir().join("release-plan-body.md");
+        fs::write(&body_path, body).with_context(|| format!("writing {}", body_path.display()))?;
+        github::set_outputs_if_available(&main)?;
+        return github::set_outputs_if_available(&BodyPath {
+            body_path: body_path.to_string_lossy().into_owned(),
+        });
     }
+
+    let landing = landing.context("a transition on a series has a landing")?;
+    println!("  wrote {} on {}", plan.version, plan.branch);
+    github::set_outputs_if_available(&landing)
+}
+
+/// Where the main pull request's body was written: a summary's headers span
+/// lines, which a step output cannot carry.
+#[derive(serde::Serialize)]
+struct BodyPath {
+    body_path: String,
 }
 
 #[cfg(test)]

@@ -386,10 +386,6 @@ fn landing(target: &str, title: String, groups: &GroupFile) -> Result<Landing> {
     ))
 }
 
-fn main_landing(next: &Version, groups: &GroupFile) -> Result<Landing> {
-    landing(MAIN, next_main_message(next), groups)
-}
-
 /// The crates an app version write sets together: the app's group, which the
 /// pull-request check holds to one version.
 fn app_members(groups: &GroupFile) -> Result<&[String]> {
@@ -571,27 +567,42 @@ fn app_group(groups: &GroupFile) -> Result<&str> {
         .with_context(|| format!("no group is anchored at `{anchor}`"))
 }
 
-/// Leaves `plan`'s version write in the working tree on its series, for the
-/// pull-request step to commit. A cut opens the series first.
+/// Leaves `plan`'s writes in the working tree for the pull-request step to
+/// commit: on a cut, the `main`-side manifests — each minted group's and the
+/// app's bump — on `main`; otherwise the app's version on its series. A cut's
+/// series is opened later, from the merge commit those writes land as
+/// ([`open_series`]).
 pub fn execute(transition: Transition, plan: &Plan) -> Result<()> {
-    if plan.is_group_only() {
-        bail!(
-            "a library alone opens no series; its write lands through the main pull request, which the workflow opens from this plan's outputs"
-        );
-    }
+    let groups = release_groups::load(&workspace::load()?)?;
+
     if transition == Transition::Cut {
-        github::create_branch(&plan.branch, &git::run(&["rev-parse", "HEAD"])?)?;
+        git::check_out_latest(MAIN)?;
+        for group in plan.minted() {
+            let next = Version::parse(group.next.as_deref().unwrap_or_default())?;
+            write_members(members_of(&groups, &group.group)?, &next)?;
+        }
+        if !plan.next_main_version.is_empty() {
+            let next = Version::parse(&plan.next_main_version)?;
+            write_members(app_members(&groups)?, &next)?;
+        }
+        return Ok(());
     }
+
     git::check_out_latest(&plan.branch)?;
-    write_version(&Version::parse(&plan.version)?)
+    write_members(app_members(&groups)?, &Version::parse(&plan.version)?)
 }
 
-/// Leaves `main`'s post-cut bump in the working tree, for the pull-request step
-/// to commit.
-pub fn bump_main(next: &Version) -> Result<Landing> {
-    git::check_out_latest(MAIN)?;
-    write_version(next)?;
-    main_landing(next, &release_groups::load(&workspace::load()?)?)
+/// Opens a cut's series at `commit` — the merge commit of its main pull
+/// request, which its first-parent history contains — and leaves the app's
+/// `version` written on it for the pull-request step, which reads the
+/// returned landing.
+pub fn open_series(version: &Version, commit: &str) -> Result<Landing> {
+    let plan = Plan::from_version(Transition::Cut, version.clone())?;
+    github::create_branch(&plan.branch, commit)?;
+    git::check_out_latest(&plan.branch)?;
+    let groups = release_groups::load(&workspace::load()?)?;
+    write_members(app_members(&groups)?, version)?;
+    plan.landing(&groups)?.context("a cut opens a series")
 }
 
 /// The body of every pull request the planner opens. It becomes the merge
@@ -942,17 +953,16 @@ mod rehearsal_tests {
     }
 }
 
-/// Writes `version` to every member of the app's group, in the tree checked out
-/// now: their manifests and their lockfile entries.
-fn write_version(version: &Version) -> Result<()> {
+/// Writes `version` to each of `members`, in the tree checked out now: their
+/// manifests and their lockfile entries.
+fn write_members(members: &[String], version: &Version) -> Result<()> {
     let metadata = workspace::load()?;
-    let groups = release_groups::load(&metadata)?;
     let packages = test::package_directories(&metadata);
     let root = metadata.workspace_root.as_std_path();
 
     let lockfile = root.join(LOCKFILE);
     let mut lock = read(&lockfile)?;
-    for member in app_members(&groups)? {
+    for member in members {
         let manifest = root.join(member).join("Cargo.toml");
         write(&manifest, &set_package_version(&read(&manifest)?, version)?)?;
 
