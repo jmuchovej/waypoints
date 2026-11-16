@@ -19,7 +19,7 @@
 
 use crate::{
     planners::test,
-    release_groups::{self, GROUP_FILE, GroupFile, REPOSITORY},
+    release_groups::{self, GROUP_FILE, GroupFile, REPOSITORY, ROOT_MANIFEST, pins_in},
     releases::{
         history,
         landing::Landing,
@@ -31,6 +31,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::Metadata;
+use git_conventional::Commit as Conventional;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -191,15 +192,121 @@ fn group_range(prefix: &str, last: Option<&Version>) -> String {
     }
 }
 
-/// The branch a cut's bump lands on.
+/// One pinned library group's part of a patch: the tag the series pins, the
+/// newer tag on the pin's line it moves to, or why it stays (design D1).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PinMove {
+    pub group: String,
+    /// The tag the series pins now.
+    pub from: String,
+    /// The newest tag on the pin's line, where one is newer than the pin.
+    pub to: Option<String>,
+    /// The commits on `main` that broke the group's line since the newest
+    /// tag on it — `<sha> <subject>` — which no tag on that line can carry.
+    pub breaking: Vec<String>,
+}
+
+impl PinMove {
+    /// Decides `group`, pinned at `from`, moving to `to` where the remote
+    /// holds a newer tag on the pin's line, from the `commits` on `main`
+    /// since that tag — or since the pin, where there is none: a break among
+    /// them is named, and with nothing to move to it is the refusal, since a
+    /// fix landed after a break reaches a series only by a new cut.
+    pub fn decide(
+        group: &str,
+        from: &str,
+        to: Option<String>,
+        commits: &[history::Commit],
+        groups: &GroupFile,
+    ) -> Self {
+        let breaking = commits
+            .iter()
+            .filter(|commit| {
+                commit.header_for(group, groups).is_some_and(|header| {
+                    Conventional::parse(&header).is_ok_and(|header| header.breaking())
+                })
+            })
+            .map(|commit| {
+                format!(
+                    "{} {}",
+                    &commit.sha[..commit.sha.len().min(9)],
+                    commit.subject
+                )
+            })
+            .collect();
+        Self {
+            group: group.to_owned(),
+            from: from.to_owned(),
+            to,
+            breaking,
+        }
+    }
+
+    /// Whether the patch moves this pin.
+    pub fn moves(&self) -> bool {
+        self.to.is_some()
+    }
+
+    /// The tag the series builds the group from after the patch.
+    pub fn target(&self) -> &str {
+        self.to.as_deref().unwrap_or(&self.from)
+    }
+
+    /// One line a reader audits before a patch.
+    pub fn describe(&self) -> String {
+        #[derive(serde::Serialize)]
+        struct Values<'a> {
+            group: &'a str,
+            from: &'a str,
+            to: &'a str,
+            breaking: &'a [String],
+        }
+        let template = match (&self.to, self.breaking.is_empty()) {
+            (Some(_), _) => "dry-run.pin-moved",
+            (None, true) => "dry-run.pin-held",
+            (None, false) => "dry-run.pin-refused",
+        };
+        templates::must(
+            template,
+            &Values {
+                group: &self.group,
+                from: &self.from,
+                to: self.to.as_deref().unwrap_or_default(),
+                breaking: &self.breaking,
+            },
+        )
+    }
+}
+
+/// The newest of a group's `tags` on `pinned`'s line, where one is newer
+/// than the pin.
+fn newer_on_line(prefix: &str, pinned: &Version, tags: &[String]) -> Option<Version> {
+    tags.iter()
+        .filter_map(|tag| tag.strip_prefix(prefix))
+        .filter_map(|rest| Version::parse(rest).ok())
+        .filter(|candidate| candidate > pinned && same_line(pinned, candidate))
+        .max()
+}
+
+/// Whether `candidate` is on `pinned`'s line, as cargo reads a caret
+/// requirement: the same major, or before `1.0` the same minor — where a
+/// break bumps under right-shift — and before `0.1` nothing but itself.
+fn same_line(pinned: &Version, candidate: &Version) -> bool {
+    if pinned.major > 0 {
+        candidate.major == pinned.major
+    } else if pinned.minor > 0 {
+        candidate.major == 0 && candidate.minor == pinned.minor
+    } else {
+        candidate.major == 0 && candidate.minor == 0 && candidate.patch == pinned.patch
+    }
+}
+
+/// The branch a cut's bump lands on, and the history a patch reads a pin's
+/// line from.
 const MAIN: &str = "main";
 
 /// Records every workspace crate's version, so a version write moves it too.
 const LOCKFILE: &str = "Cargo.lock";
-
-/// Declares the workspace's members and, once, each library dependency —
-/// where a series pins its library groups.
-const ROOT_MANIFEST: &str = "Cargo.toml";
 
 /// A transition's pull requests come from here, one branch per target, since a
 /// cut opens one against the series and one against `main` in a single run.
@@ -230,6 +337,10 @@ pub struct Plan {
     /// the workflow reads `group_tags`.
     #[serde(skip)]
     pub groups: Vec<GroupPlan>,
+    /// Every pinned library group's part of a patch, moving or not. Not an
+    /// output: the planner writes the moves itself.
+    #[serde(skip)]
+    pub moves: Vec<PinMove>,
 }
 
 impl Plan {
@@ -255,6 +366,7 @@ impl Plan {
             version: version.to_string(),
             group_tags: String::new(),
             groups: Vec::new(),
+            moves: Vec::new(),
         })
     }
 
@@ -269,6 +381,7 @@ impl Plan {
             next_main_version: String::new(),
             group_tags: String::new(),
             groups: Vec::new(),
+            moves: Vec::new(),
         }
         .with_groups(vec![group])
     }
@@ -282,6 +395,17 @@ impl Plan {
             .join(",");
         self.groups = groups;
         self
+    }
+
+    /// The same plan, carrying every pinned group's part of the patch.
+    pub fn with_moves(mut self, moves: Vec<PinMove>) -> Self {
+        self.moves = moves;
+        self
+    }
+
+    /// Whether this patch moves a pin.
+    pub fn moves_a_pin(&self) -> bool {
+        self.moves.iter().any(PinMove::moves)
     }
 
     /// Whether this cut mints a library alone, with no app version behind it.
@@ -300,9 +424,10 @@ impl Plan {
         self.groups.iter().filter(|group| group.mints())
     }
 
-    /// What the series this plan opens pins: each library group at the tag
-    /// the cut mints, or at its last one where nothing counted. A group with
-    /// no tag at all stays in-tree.
+    /// What this plan's series write pins: on a cut, each library group at
+    /// the tag the cut mints, or at its last one where nothing counted — a
+    /// group with no tag at all stays in-tree; on a patch, each pin it
+    /// moves, at the tag it moves to.
     pub fn pins(&self) -> BTreeMap<String, String> {
         self.groups
             .iter()
@@ -310,6 +435,11 @@ impl Plan {
                 let tag = group.tag.clone().or_else(|| group.last_tag.clone())?;
                 Some((group.group.clone(), tag))
             })
+            .chain(
+                self.moves
+                    .iter()
+                    .filter_map(|pin| Some((pin.group.clone(), pin.to.clone()?))),
+            )
             .collect()
     }
 
@@ -332,8 +462,9 @@ impl Plan {
     }
 
     /// The pull request that lands this plan's version write on its series —
-    /// and, on the series a cut opens, the root manifest's pins. None on a
-    /// group-scoped cut, which opens no series.
+    /// and, where the write also pins (the series a cut opens) or moves a
+    /// pin (a patch), the root manifest. None on a group-scoped cut, which
+    /// opens no series.
     pub fn landing(&self, groups: &GroupFile) -> Result<Option<Landing>> {
         if self.is_group_only() {
             return Ok(None);
@@ -341,7 +472,7 @@ impl Plan {
         Ok(Some(Landing::new(
             format!("{HEAD_PREFIX}{}", self.branch),
             self.commit_message(),
-            &written_paths(groups, self.opens_series())?,
+            &written_paths(groups, self.opens_series() || self.moves_a_pin())?,
         )))
     }
 
@@ -508,9 +639,44 @@ pub fn next_main_message(next: &Version) -> String {
     )
 }
 
+/// Each library group the series `branch` pins, carried forward along its
+/// line: the pins read from the series' root manifest as the remote has it,
+/// the line's newer tags from the remote, and the break check from `main`'s
+/// history since the newest tag on the line.
+fn pin_moves(branch: &str, groups: &GroupFile, root: &Path) -> Result<Vec<PinMove>> {
+    let manifest = git::show(&remote_or_local(branch), ROOT_MANIFEST)?;
+    let mut pinned: BTreeMap<String, String> = BTreeMap::new();
+    for pin in pins_in(ROOT_MANIFEST, &manifest, groups)? {
+        pinned.entry(pin.group).or_insert(pin.tag);
+    }
+    let ignored = history::ignored_revisions(root, groups)?;
+    let main = remote_or_local(MAIN);
+    let mut moves = Vec::new();
+    for (group, from) in pinned {
+        let template = &groups
+            .group
+            .get(&group)
+            .with_context(|| format!("no group named `{group}`"))?
+            .tag;
+        let prefix = tag_prefix(template)?;
+        let version = from
+            .strip_prefix(prefix)
+            .map(Version::parse)
+            .transpose()?
+            .with_context(|| format!("`{from}` is not a `{template}` tag"))?;
+        let tags = git::remote_tags_like(&format!("{prefix}*"))?;
+        let to = newer_on_line(prefix, &version, &tags).map(|to| format!("{prefix}{to}"));
+        let since = to.as_deref().unwrap_or(&from);
+        let commits = history::walk(&format!("{since}..{main}"), groups, &ignored)?;
+        moves.push(PinMove::decide(&group, &from, to, &commits, groups));
+    }
+    Ok(moves)
+}
+
 /// Plans `transition` from the checkout: the app's current version, or for
-/// a cut the stable tags and the commits since the last one. Refuses a tree
-/// the group file does not describe.
+/// a cut the stable tags and the commits since the last one — and for a
+/// patch, each library pin's move along its line. Refuses a tree the group
+/// file does not describe.
 pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
     let metadata = workspace::load()?;
     let groups = release_groups::load(&metadata)?;
@@ -518,7 +684,14 @@ pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
 
     if transition != Transition::Cut {
         let version = Version::from(workspace::version()?).transition(transition, &[])?;
-        return Plan::from_version(transition, version);
+        let plan = Plan::from_version(transition, version)?;
+        // A patch carries each pin forward along its line; advance and
+        // promote move the app alone.
+        if transition != Transition::Patch {
+            return Ok(plan);
+        }
+        let moves = pin_moves(&plan.branch, &groups, root)?;
+        return Ok(plan.with_moves(moves));
     }
 
     let ignored = history::ignored_revisions(root, &groups)?;
@@ -657,14 +830,13 @@ fn app_group(groups: &GroupFile) -> Result<&str> {
 
 /// Leaves `plan`'s writes in the working tree for the pull-request step to
 /// commit: on a cut, the `main`-side manifests — each minted group's and the
-/// app's bump — on `main`; otherwise the app's version on its series. A cut's
-/// series is opened later, from the merge commit those writes land as
-/// ([`open_series`]).
+/// app's bump — on `main`; otherwise the app's version on its series, and on
+/// a patch the pins it moves. A cut's series is opened later, from the merge
+/// commit those writes land as ([`open_series`]).
 pub fn execute(transition: Transition, plan: &Plan) -> Result<()> {
-    let groups = release_groups::load(&workspace::load()?)?;
-
     if transition == Transition::Cut {
         git::check_out_latest(MAIN)?;
+        let groups = release_groups::load(&workspace::load()?)?;
         for group in plan.minted() {
             let next = Version::parse(group.next.as_deref().unwrap_or_default())?;
             write_members(members_of(&groups, &group.group)?, &next)?;
@@ -677,7 +849,19 @@ pub fn execute(transition: Transition, plan: &Plan) -> Result<()> {
     }
 
     git::check_out_latest(&plan.branch)?;
-    write_members(app_members(&groups)?, &Version::parse(&plan.version)?)
+    let metadata = workspace::load()?;
+    let groups = release_groups::load(&metadata)?;
+    write_members(app_members(&groups)?, &Version::parse(&plan.version)?)?;
+    if plan.moves_a_pin() {
+        let root = metadata.workspace_root.as_std_path();
+        let manifest = root.join(ROOT_MANIFEST);
+        write(
+            &manifest,
+            &pin_workspace(&read(&manifest)?, &plan.pins(), &groups)?,
+        )?;
+        update_lockfile(root)?;
+    }
+    Ok(())
 }
 
 /// Opens a cut's series at `commit` — the merge commit of its main pull
@@ -720,8 +904,10 @@ fn remote_pins(groups: &GroupFile) -> Result<BTreeMap<String, String>> {
 /// The root `manifest` as a series carries it: every workspace dependency on
 /// a crate of a pinned group declared as `git` + `tag` in place of `path`,
 /// every other key kept, and those crates out of `[workspace].members` under
-/// a comment saying why — they stay on disk, and build nothing. `pins` maps a
-/// group to its tag; a group absent from it stays in-tree.
+/// a comment saying why — they stay on disk, and build nothing. A dependency
+/// already pinned to the group moves to the group's tag, which is how a patch
+/// carries a pin forward. `pins` maps a group to its tag; a group absent from
+/// it stays as it is.
 ///
 /// Edited as a document, not reformatted: a key keeps its indent and the
 /// alignment tombi gave it, and a pinned entry stays on its line, since the
@@ -740,7 +926,9 @@ fn pin_workspace(
         .and_then(Item::as_table_mut)
         .with_context(|| format!("{ROOT_MANIFEST} has no [workspace]"))?;
 
+    // Each pinned group's crates by directory, and its tags by prefix.
     let mut crates: BTreeMap<&str, &str> = BTreeMap::new();
+    let mut prefixes: BTreeMap<&str, &str> = BTreeMap::new();
     for (name, tag) in pins {
         let group = groups
             .group
@@ -749,6 +937,7 @@ fn pin_workspace(
         for directory in group.members.iter().chain(&group.internals) {
             crates.insert(directory, tag);
         }
+        prefixes.insert(tag_prefix(&group.tag)?, tag);
     }
 
     let dependencies = workspace
@@ -759,25 +948,37 @@ fn pin_workspace(
         let Some(spec) = item.as_inline_table_mut() else {
             continue;
         };
-        let Some(tag) = spec
+        if let Some(tag) = spec
             .get("path")
             .and_then(Value::as_str)
             .and_then(|path| crates.get(path))
-        else {
+        {
+            let kept: Vec<(String, Value)> = spec
+                .iter()
+                .filter(|(key, _)| *key != "path")
+                .map(|(key, value)| (key.to_owned(), value.clone()))
+                .collect();
+            spec.clear();
+            spec.insert("git", REPOSITORY.into());
+            spec.insert("tag", (*tag).into());
+            for (key, value) in kept {
+                spec.insert(key, value);
+            }
+            spec.fmt();
             continue;
-        };
-        let kept: Vec<(String, Value)> = spec
-            .iter()
-            .filter(|(key, _)| *key != "path")
-            .map(|(key, value)| (key.to_owned(), value.clone()))
-            .collect();
-        spec.clear();
-        spec.insert("git", REPOSITORY.into());
-        spec.insert("tag", (*tag).into());
-        for (key, value) in kept {
-            spec.insert(key, value);
         }
-        spec.fmt();
+        let moved = spec
+            .get("tag")
+            .and_then(Value::as_str)
+            .and_then(|current| {
+                prefixes
+                    .iter()
+                    .find(|(prefix, _)| current.starts_with(*prefix))
+            })
+            .map(|(_, tag)| *tag);
+        if let Some(tag) = moved {
+            spec.insert("tag", tag.into());
+        }
     }
 
     let members = workspace
@@ -863,7 +1064,8 @@ pub fn rehearse(transition: Transition, plan: &Plan) -> Result<Vec<(String, Stri
         };
         let writes = member_writes(app_members(&groups)?, &Version::parse(&plan.version)?);
         let mut changes = manifest_changes(&metadata, &series_tree, &writes)?;
-        if plan.opens_series() {
+        // The pins a cut starts its series on, or the ones a patch moves.
+        if plan.opens_series() || plan.moves_a_pin() {
             let before = git::show(&series_tree, ROOT_MANIFEST)?;
             let after = pin_workspace(&before, &plan.pins(), &groups)?;
             changes.push((ROOT_MANIFEST.to_owned(), before, after));
@@ -1047,7 +1249,12 @@ fn refs_markdown(
                 landing: landing.describe(&plan.branch),
             }),
             main,
-            groups: plan.groups.iter().map(GroupPlan::describe).collect(),
+            groups: plan
+                .groups
+                .iter()
+                .map(GroupPlan::describe)
+                .chain(plan.moves.iter().map(PinMove::describe))
+                .collect(),
         },
     )
 }
@@ -2084,6 +2291,212 @@ version = \"ignored\"
         assert_eq!(read.len(), 9, "{read:?}");
         for pin in &read {
             assert_eq!(tags[&pin.group], pin.tag, "{pin:?}");
+        }
+    }
+
+    fn tags(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    /// The tag a pin moves to is the newest on its line, as cargo reads a
+    /// caret: before `1.0` the minor is the line, after it the major; the
+    /// pin itself and anything older never qualify, nor does another group.
+    #[test]
+    fn a_pin_moves_to_the_newest_tag_on_its_line() {
+        let bedrock = tags(&[
+            "bedrock-v0.1.9",
+            "bedrock-v0.2.0",
+            "bedrock-v0.2.1",
+            "bedrock-v0.2.3",
+            "bedrock-v0.3.0",
+            "outpost-v0.2.9",
+        ]);
+        assert_eq!(
+            newer_on_line("bedrock-v", &v("0.2.0"), &bedrock),
+            Some(v("0.2.3"))
+        );
+        assert_eq!(newer_on_line("bedrock-v", &v("0.2.3"), &bedrock), None);
+        assert_eq!(newer_on_line("bedrock-v", &v("0.3.0"), &bedrock), None);
+
+        let outpost = tags(&["outpost-v1.4.2", "outpost-v1.5.0", "outpost-v2.0.0"]);
+        assert_eq!(
+            newer_on_line("outpost-v", &v("1.4.2"), &outpost),
+            Some(v("1.5.0"))
+        );
+        assert_eq!(
+            newer_on_line("outpost-v", &v("0.0.3"), &tags(&["outpost-v0.0.4"])),
+            None
+        );
+    }
+
+    /// Scenario _A fix reaches a series by pin_: `main` minted
+    /// `bedrock-v0.2.1` on an unbroken line, the series' pin moves to it,
+    /// and the patch writes that move beside the app's bump — and nothing on
+    /// `main`.
+    #[test]
+    fn a_fix_reaches_a_series_by_pin() {
+        use crate::releases::index::fixture::{GROUPS, Repo};
+        let groups = GroupFile::parse(GROUPS).unwrap();
+        let repo = Repo::new();
+        repo.commit("crates/bedrock/src/lib.rs", "feat(bedrock): the library");
+        repo.tag("bedrock-v0.2.0");
+        repo.commit("crates/bedrock/src/lib.rs", "fix(bedrock): a bug");
+        repo.tag("bedrock-v0.2.1");
+
+        let minted = tags(&["bedrock-v0.2.0", "bedrock-v0.2.1"]);
+        let to =
+            newer_on_line("bedrock-v", &v("0.2.0"), &minted).map(|to| format!("bedrock-v{to}"));
+        assert_eq!(to.as_deref(), Some("bedrock-v0.2.1"));
+        let commits = repo.walk("bedrock-v0.2.1..HEAD");
+        let pin = PinMove::decide("bedrock", "bedrock-v0.2.0", to, &commits, &groups);
+        assert!(pin.moves());
+        assert_eq!(pin.target(), "bedrock-v0.2.1");
+        assert!(pin.breaking.is_empty(), "{pin:?}");
+        assert_eq!(
+            pin.describe(),
+            "`bedrock`: `bedrock-v0.2.0` → `bedrock-v0.2.1`"
+        );
+
+        let groups = workspace_groups();
+        let patch = plan(Transition::Patch, "0.2.0", &[]).with_moves(vec![pin]);
+        assert!(patch.moves_a_pin());
+        assert_eq!(patch.pins(), pins(&[("bedrock", "bedrock-v0.2.1")]));
+        assert_eq!(
+            patch.landing(&groups).unwrap().unwrap().paths,
+            "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.toml,Cargo.lock"
+        );
+        assert_eq!(patch.main_landing(&groups).unwrap(), None);
+    }
+
+    /// Scenario _A line broken on main cannot be patched into a series_: the
+    /// pin stays, the breaking commit is named, a new cut is pointed at, and
+    /// the patch still moves the app.
+    #[test]
+    fn a_line_broken_on_main_cannot_be_patched_into_a_series() {
+        use crate::releases::index::fixture::{GROUPS, Repo};
+        let groups = GroupFile::parse(GROUPS).unwrap();
+        let repo = Repo::new();
+        repo.commit("crates/bedrock/src/lib.rs", "feat(bedrock): the library");
+        repo.tag("bedrock-v0.2.0");
+        repo.commit(
+            "crates/bedrock/src/lib.rs",
+            "feat(bedrock)!: rename the filter API",
+        );
+        let sha = repo.head();
+        repo.commit(
+            "crates/bedrock/src/lib.rs",
+            "fix(bedrock): the fix a series wants",
+        );
+        repo.tag("bedrock-v0.3.0");
+
+        let minted = tags(&["bedrock-v0.2.0", "bedrock-v0.3.0"]);
+        assert_eq!(newer_on_line("bedrock-v", &v("0.2.0"), &minted), None);
+        let commits = repo.walk("bedrock-v0.2.0..HEAD");
+        let pin = PinMove::decide("bedrock", "bedrock-v0.2.0", None, &commits, &groups);
+        assert!(!pin.moves());
+        assert_eq!(
+            pin.breaking,
+            [format!(
+                "{} feat(bedrock)!: rename the filter API",
+                &sha[..9]
+            )]
+        );
+        let line = pin.describe();
+        assert!(line.contains("stays at `bedrock-v0.2.0`"), "{line}");
+        assert!(line.contains(&sha[..9]), "{line}");
+        assert!(
+            line.contains("a new cut is the way to ship a fix"),
+            "{line}"
+        );
+
+        let groups = workspace_groups();
+        let patch = plan(Transition::Patch, "0.2.0", &[]).with_moves(vec![pin]);
+        assert!(!patch.moves_a_pin());
+        assert!(patch.pins().is_empty());
+        assert_eq!(
+            patch.landing(&groups).unwrap().unwrap().paths,
+            "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock"
+        );
+    }
+
+    /// A break after the tag the pin moves to is named too: the move is
+    /// sound, and a fix behind the break is a new cut's to ship.
+    #[test]
+    fn a_break_after_the_moved_tag_is_named() {
+        use crate::releases::index::fixture::{GROUPS, Repo};
+        let groups = GroupFile::parse(GROUPS).unwrap();
+        let repo = Repo::new();
+        repo.commit("crates/bedrock/src/lib.rs", "fix(bedrock): a bug");
+        repo.tag("bedrock-v0.2.1");
+        repo.commit("crates/bedrock/src/lib.rs", "feat(bedrock)!: a break");
+
+        let commits = repo.walk("bedrock-v0.2.1..HEAD");
+        let pin = PinMove::decide(
+            "bedrock",
+            "bedrock-v0.2.0",
+            Some("bedrock-v0.2.1".to_owned()),
+            &commits,
+            &groups,
+        );
+        assert!(pin.moves());
+        let line = pin.describe();
+        assert!(
+            line.starts_with(
+                "`bedrock`: `bedrock-v0.2.0` → `bedrock-v0.2.1`; main broke the line after it ("
+            ),
+            "{line}"
+        );
+        assert!(
+            line.ends_with("), so a later fix needs a new cut"),
+            "{line}"
+        );
+    }
+
+    /// A pinned manifest takes a moved pin in place: the tag alone changes,
+    /// the members and the comment stay as they are, and a group that does
+    /// not move keeps its tag.
+    #[test]
+    fn a_moved_pin_changes_only_its_tag() {
+        let groups = GroupFile::parse(SERIES_GROUPS).unwrap();
+        let pinned = pin_workspace(
+            IN_TREE,
+            &pins(&[("bedrock", "bedrock-v0.2.0"), ("outpost", "outpost-v0.3.0")]),
+            &groups,
+        )
+        .unwrap();
+        let moved =
+            pin_workspace(&pinned, &pins(&[("bedrock", "bedrock-v0.2.1")]), &groups).unwrap();
+        assert_eq!(moved, pinned.replace("bedrock-v0.2.0", "bedrock-v0.2.1"));
+        assert!(moved.contains("tag = \"outpost-v0.3.0\""), "{moved}");
+        assert_eq!(moved.matches("# On a series").count(), 1, "{moved}");
+    }
+
+    /// Scenario _Backport to a series branch_, and the rule advance and
+    /// promote share with a patch: a transition on a series moves no library
+    /// version, mints no library tag, lands nothing on `main`, and — a
+    /// patch's pin moves aside — writes no pin.
+    #[test]
+    fn transitions_on_a_series_touch_no_library_manifest_pin_or_tag() {
+        let groups = workspace_groups();
+        for (transition, from) in [
+            (Transition::Advance, "0.2.0-pre.1"),
+            (Transition::Promote, "0.2.0-pre.7"),
+            (Transition::Patch, "0.2.0"),
+        ] {
+            let plan = plan(transition, from, &[]);
+            assert!(
+                plan.moves.is_empty() && plan.groups.is_empty(),
+                "{transition:?}"
+            );
+            assert!(plan.pins().is_empty(), "{transition:?}");
+            assert_eq!(plan.minted().count(), 0, "{transition:?}");
+            assert!(plan.group_tags.is_empty(), "{transition:?}");
+            assert_eq!(plan.main_landing(&groups).unwrap(), None, "{transition:?}");
+            assert_eq!(
+                plan.landing(&groups).unwrap().unwrap().paths,
+                "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
+                "{transition:?}"
+            );
         }
     }
 

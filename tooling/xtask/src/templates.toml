@@ -50,6 +50,11 @@
   # One library group's part of a cut.
   group-minted    = "`{{ group }}`: `{{ current }}` → `{{ next }}`, tag `{{ tag }}` on the merge commit of the main pull request ({{ counted }} commits {{ since }})"
   group-unchanged = "`{{ group }}`: `{{ current }}`, unchanged (no counted commit {{ since }})"
+  # One pinned library group's part of a patch: moved along its line, held
+  # with nothing newer, or held because main broke the line.
+  pin-moved       = "`{{ group }}`: `{{ from }}` → `{{ to }}`{% if breaking %}; main broke the line after it ({{ breaking | join(sep=\", \") }}), so a later fix needs a new cut{% endif %}"
+  pin-held        = "`{{ group }}`: `{{ from }}`, nothing newer on its line"
+  pin-refused     = "`{{ group }}`: stays at `{{ from }}` — main broke the line since ({{ breaking | join(sep=\", \") }}); a new cut is the way to ship a fix"
   # The refs a transition would mint and the pull requests it would open.
   refs            = """
 # Dry run: {{ transition }}

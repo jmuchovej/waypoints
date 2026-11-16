@@ -278,78 +278,9 @@ fn summary_violations(
     found
 }
 
-/// A library group a manifest pins: a `git` dependency naming the group's
-/// tag. Read by the tag's shape against each group's template, so no map
-/// from crate names to groups is needed — on a series the library crates are
-/// no longer workspace members.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Pin {
-    pub group: String,
-    pub tag: String,
-    /// The manifest declaring it, relative to the workspace root.
-    pub manifest: String,
-}
-
-/// The tables a manifest declares dependencies in.
-const DEPENDENCY_TABLES: [&[&str]; 4] = [
-    &["workspace", "dependencies"],
-    &["dependencies"],
-    &["dev-dependencies"],
-    &["build-dependencies"],
-];
-
-fn nested<'a>(table: &'a toml::Table, keys: &[&str]) -> Option<&'a toml::Table> {
-    let mut current = table;
-    for key in keys {
-        current = current.get(*key)?.as_table()?;
-    }
-    Some(current)
-}
-
-/// The group whose tag template `tag` fits.
-fn group_of_tag<'a>(tag: &str, groups: &'a GroupFile) -> Option<&'a str> {
-    groups
-        .group
-        .iter()
-        .find(|(_, group)| {
-            group
-                .tag
-                .split_once("{version}")
-                .is_some_and(|(prefix, _)| !prefix.is_empty() && tag.starts_with(prefix))
-        })
-        .map(|(name, _)| name.as_str())
-}
-
-/// Every pin the manifest at `path` declares.
-pub fn pins_in(path: &str, manifest: &str, groups: &GroupFile) -> Result<Vec<Pin>> {
-    let table: toml::Table = manifest
-        .parse()
-        .with_context(|| format!("{path} is not TOML"))?;
-    let mut pins = Vec::new();
-    for keys in DEPENDENCY_TABLES {
-        let Some(dependencies) = nested(&table, keys) else {
-            continue;
-        };
-        for dependency in dependencies.values() {
-            let Some(spec) = dependency.as_table() else {
-                continue;
-            };
-            let git = spec.get("git").and_then(toml::Value::as_str);
-            let tag = spec.get("tag").and_then(toml::Value::as_str);
-            let (Some(_), Some(tag)) = (git, tag) else {
-                continue;
-            };
-            if let Some(group) = group_of_tag(tag, groups) {
-                pins.push(Pin {
-                    group: group.to_owned(),
-                    tag: tag.to_owned(),
-                    manifest: path.to_owned(),
-                });
-            }
-        }
-    }
-    Ok(pins)
-}
+/// A pin is read by the group file, whose tag templates it is read against;
+/// the check's callers find it here.
+pub use crate::release_groups::{Pin, pins_in};
 
 /// Every pin the checkout declares: the root manifest's workspace table and
 /// each member's own.

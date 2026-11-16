@@ -167,6 +167,29 @@ request:
 Branch commits are not checked, but they stay conventional: the release notes are
 rendered from them, and one unconventional commit fails the notes.
 
+### A series branch takes library code only by pin
+
+A `v{major}.{minor}.x` series pins each library group — `bedrock`, `outpost`,
+`domain`, `transload` — to a tag minted on `main`, in the root `Cargo.toml`'s
+`[workspace.dependencies]`. Its in-tree copies of those crates stay on disk so
+cherry-picks from `main` apply, and build nothing. A pull request against a
+series that changes a file under a pinned group's paths fails
+`version-integrity`:
+
+> `crates/bedrock/src/query.rs` is `bedrock` code, which this series builds
+> from `bedrock-v0.2.0`; a library change reaches a series by moving its pin
+
+A library fix reaches a series in two steps: it lands on `main`, a cut scoped
+to its group (`release-plan cut --group bedrock`) mints the next tag on its
+line, and `patch` on the series moves the pin to that tag and bumps the app in
+one pull request. Where `main` has broken the group's line since the pin, no
+tag on that line can carry the fix: `patch` holds the pin, names the breaking
+commit, and the fix ships as a new series.
+
+A cherry-pick whose summary touches both app and library paths is split: the
+app-group half is cherry-picked, and the library half reaches the series by
+pin.
+
 ### `Covenant: break`
 
 Files under `covenant/fixtures/` are append-only, because changing one changes

@@ -85,6 +85,9 @@ pub fn run(args: Options) -> Result<()> {
     for group in &plan.groups {
         println!("  {}", group.describe());
     }
+    for pin in &plan.moves {
+        println!("  {}", pin.describe());
+    }
 
     if args.dry_run {
         match &args.into {
