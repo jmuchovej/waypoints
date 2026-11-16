@@ -400,6 +400,15 @@ fn nested<'a>(table: &'a toml::Table, keys: &[&str]) -> Option<&'a toml::Table> 
     Some(current)
 }
 
+/// The part of a group's tag `template` before its version.
+pub fn tag_prefix(template: &str) -> Result<&str> {
+    template
+        .split_once("{version}")
+        .map(|(prefix, _)| prefix)
+        .filter(|prefix| !prefix.is_empty())
+        .with_context(|| format!("tag template `{template}` has no prefix before `{{version}}`"))
+}
+
 /// The group whose tag template `tag` fits.
 pub fn group_of_tag<'a>(tag: &str, groups: &'a GroupFile) -> Option<&'a str> {
     groups

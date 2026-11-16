@@ -996,7 +996,7 @@ mod tests {
         }
 
         let jobs = value["jobs"].as_object().unwrap();
-        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs.len(), 2);
         let job = &jobs["version-integrity"];
         assert_eq!(job["name"], "version-integrity");
         assert!(job.get("environment").is_none(), "needs no credential");
@@ -1008,6 +1008,21 @@ mod tests {
             steps
                 .iter()
                 .any(|step| step["run"] == "cargo xtask version-integrity")
+        );
+
+        // The API floor measures against a tag it checks out as a worktree,
+        // on Linux alone, under no credential.
+        let semver = &jobs["semver"];
+        assert_eq!(semver["runs-on"], "ubuntu-latest");
+        assert!(semver.get("environment").is_none(), "needs no credential");
+        let steps = semver["steps"].as_array().unwrap();
+        let checkout = steps.iter().find(|step| step["id"] == "checkout").unwrap();
+        assert_eq!(checkout["with"]["fetch-depth"], "0");
+        assert_eq!(checkout["with"]["fetch-tags"], "true");
+        assert!(
+            steps
+                .iter()
+                .any(|step| step["run"] == "cargo xtask semver-check")
         );
     }
 

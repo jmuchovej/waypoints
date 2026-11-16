@@ -247,6 +247,14 @@
         spec = "aqua:orhun/git-cliff";
         envs = [ "xtask" ];
       };
+      # The API floor: measures each library member's stable surface against
+      # its group's last tag, in the `semver` job and at a cut. Published as
+      # GitHub release binaries and absent from the aqua registry, so ubi.
+      cargo-semver-checks = {
+        package = pkgs.cargo-semver-checks;
+        spec = "ubi:obi1kenobi/cargo-semver-checks";
+        envs = [ "xtask" ];
+      };
 
       node = {
         package = config.languages.javascript.package;

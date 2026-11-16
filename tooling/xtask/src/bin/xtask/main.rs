@@ -45,6 +45,7 @@ pub mod tasks {
     pub mod release_stage;
     pub mod release_upload;
     pub mod release_withdraw;
+    pub mod semver_check;
     pub mod test_plan;
     pub mod typegen;
     pub mod version_integrity;
@@ -82,6 +83,8 @@ enum Command {
     ReleaseGroups(tasks::release_groups::Options),
     /// Checks what a pull request claims about versions.
     VersionIntegrity(tasks::version_integrity::Options),
+    /// Measures each touched library group's stable surface against its last tag.
+    SemverCheck(tasks::semver_check::Options),
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::devenv_files::Options),
     /// Regenerates every checked-in GitHub Actions workflow, and the checks OpenTofu requires of them.
@@ -112,6 +115,7 @@ fn main() -> Result<()> {
         Command::ReleaseLand(args) => tasks::release_land::run(args),
         Command::ReleaseGroups(args) => tasks::release_groups::run(args),
         Command::VersionIntegrity(args) => tasks::version_integrity::run(args),
+        Command::SemverCheck(args) => tasks::semver_check::run(args),
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
         Command::Typegen(args) => tasks::typegen::run(args),

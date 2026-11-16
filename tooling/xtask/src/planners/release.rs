@@ -25,7 +25,7 @@ use crate::{
         landing::Landing,
         version::{APP_MANIFEST, Transition, Version},
     },
-    templates,
+    semver_check, templates,
     tools::{git, github},
     workspace,
 };
@@ -87,14 +87,35 @@ pub struct GroupPlan {
     pub last_tag: Option<String>,
     /// The commits that counted for it since that tag.
     pub counted: usize,
+    /// What the API check found against `last_tag`: a break its commits did
+    /// not declare raises the bump to breaking (design D5). None where
+    /// nothing was measured — no tag to measure against, or nothing counted.
+    pub api_break: Option<bool>,
+}
+
+/// The header the API floor speaks in: a break, as the bumper reads one.
+const DETECTED_BREAK: &str = "feat!: an API break the check detected";
+
+/// What raises a group's bump beyond what its commits declare; neither ever
+/// lowers it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Raise {
+    /// The least a group-scoped cut bumps.
+    pub floor: Option<Floor>,
+    /// What the API check found against the group's last tag: a break
+    /// raises the bump to breaking (design D5). None where nothing was
+    /// measured — no tag to measure against, or nothing counted.
+    pub detected: Option<bool>,
 }
 
 impl GroupPlan {
     /// Decides `group` from its tag `template`, its `current` version, the
-    /// remote's `tags`, and the `commits` since its last tag, raised to
-    /// `floor` where one is named. A group with no counted commit stays where
-    /// it is; before its first tag, its anchor manifest is its version and
-    /// the whole history its cycle, as the app's first cut is measured.
+    /// remote's `tags`, and the `commits` since its last tag, raised by
+    /// `raise` — the floor a group-scoped cut names, and the API check's
+    /// evidence. A group with no counted commit stays where it is; before
+    /// its first tag, its anchor manifest is its version and the whole
+    /// history its cycle, as the app's first cut is measured, and there is
+    /// no baseline to measure against.
     pub fn decide(
         group: &str,
         template: &str,
@@ -102,7 +123,7 @@ impl GroupPlan {
         tags: &[String],
         commits: &[history::Commit],
         groups: &GroupFile,
-        floor: Option<Floor>,
+        raise: Raise,
     ) -> Result<Self> {
         let prefix = tag_prefix(template)?;
         let last = latest_group_tag(prefix, tags);
@@ -112,12 +133,16 @@ impl GroupPlan {
             .collect();
         let counted = headers.len();
         let next = (counted > 0).then(|| {
-            let bumped = current.next_library(&headers);
-            match floor {
+            let mut bumped = current.next_library(&headers);
+            if raise.detected == Some(true) {
+                bumped = bumped.max(current.next_library(&[DETECTED_BREAK.to_owned()]));
+            }
+            match raise.floor {
                 Some(floor) => bumped.max(floor.applied(current)),
                 None => bumped,
             }
         });
+        let detected = raise.detected;
         Ok(Self {
             group: group.to_owned(),
             current: current.to_string(),
@@ -127,6 +152,7 @@ impl GroupPlan {
             next: next.map(|next| next.to_string()),
             last_tag: last.map(|last| format!("{prefix}{last}")),
             counted,
+            api_break: detected,
         })
     }
 
@@ -145,6 +171,7 @@ impl GroupPlan {
             tag: &'a str,
             counted: usize,
             since: String,
+            evidence: &'a str,
         }
         let values = Values {
             group: &self.group,
@@ -155,6 +182,12 @@ impl GroupPlan {
             since: match &self.last_tag {
                 Some(tag) => format!("since `{tag}`"),
                 None => "over the whole history, with no tag yet".to_owned(),
+            },
+            evidence: match (&self.last_tag, self.api_break) {
+                (None, _) => "; no tag to measure an API break against until this cut mints one",
+                (Some(_), Some(true)) => "; the API check found a break",
+                (Some(_), Some(false)) => "; the API check found no break",
+                (Some(_), None) => "",
             },
         };
         let template = if self.mints() {
@@ -750,7 +783,26 @@ fn group_plan(
     let tags = git::remote_tags_like(&format!("{prefix}*"))?;
     let last = latest_group_tag(prefix, &tags);
     let commits = history::walk(&group_range(prefix, last.as_ref()), groups, ignored)?;
-    GroupPlan::decide(name, &group.tag, &current, &tags, &commits, groups, floor)
+    // The API floor: measured against the last tag where there is one and
+    // something counted since it; a group with no tag has no baseline until
+    // this cut mints one, and says so in its line.
+    let detected = match &last {
+        Some(last) if commits.iter().any(|commit| commit.counts_for(name)) => {
+            let tag = format!("{prefix}{last}");
+            let broke = semver_check::measure_group(metadata, groups, name, &tag)?;
+            Some(!broke.is_empty())
+        }
+        _ => None,
+    };
+    GroupPlan::decide(
+        name,
+        &group.tag,
+        &current,
+        &tags,
+        &commits,
+        groups,
+        Raise { floor, detected },
+    )
 }
 
 /// The version the manifest at `anchor` declares.
@@ -1323,6 +1375,7 @@ mod rehearsal_tests {
             tag: next.map(|next| format!("{group}-v{next}")),
             last_tag: Some(format!("{group}-v{current}")),
             counted,
+            api_break: None,
         }
     }
 
@@ -1783,6 +1836,18 @@ mod tests {
         commits: &[history::Commit],
         floor: Option<Floor>,
     ) -> GroupPlan {
+        decide_measured(group, current, tags, commits, floor, None)
+    }
+
+    /// [`decide`] with what the API check `detected` against the last tag.
+    fn decide_measured(
+        group: &str,
+        current: &str,
+        tags: &[&str],
+        commits: &[history::Commit],
+        floor: Option<Floor>,
+        detected: Option<bool>,
+    ) -> GroupPlan {
         let tags: Vec<String> = tags.iter().map(|tag| (*tag).to_owned()).collect();
         GroupPlan::decide(
             group,
@@ -1791,9 +1856,94 @@ mod tests {
             &tags,
             commits,
             &workspace_groups(),
-            floor,
+            Raise { floor, detected },
         )
         .unwrap()
+    }
+
+    /// Scenario _Undeclared API break reaches a cut_: fixes alone would move
+    /// `outpost` a patch, and the break the check found against its tag
+    /// raises it to breaking — a minor, under right-shift.
+    #[test]
+    fn an_undeclared_api_break_raises_a_cut_to_breaking() {
+        let fixes = [library_commit("outpost", "fix(outpost): a bug")];
+        let broke = decide_measured(
+            "outpost",
+            "0.2.0",
+            &["outpost-v0.2.0"],
+            &fixes,
+            None,
+            Some(true),
+        );
+        assert_eq!(broke.next.as_deref(), Some("0.3.0"));
+        assert_eq!(broke.api_break, Some(true));
+        assert!(
+            broke.describe().contains("the API check found a break"),
+            "{}",
+            broke.describe()
+        );
+
+        let clean = decide_measured(
+            "outpost",
+            "0.2.0",
+            &["outpost-v0.2.0"],
+            &fixes,
+            None,
+            Some(false),
+        );
+        assert_eq!(clean.next.as_deref(), Some("0.2.1"));
+        assert!(
+            clean.describe().contains("found no break"),
+            "{}",
+            clean.describe()
+        );
+
+        // After `1.0` the same evidence is a major.
+        let major = decide_measured(
+            "outpost",
+            "1.4.2",
+            &["outpost-v1.4.2"],
+            &fixes,
+            None,
+            Some(true),
+        );
+        assert_eq!(major.next.as_deref(), Some("2.0.0"));
+    }
+
+    /// Scenario _Declared break with no evidence_: the declaration alone
+    /// breaks the group — behaviour changes and macro output escape the
+    /// checker, and the header is trusted.
+    #[test]
+    fn a_declared_break_with_no_evidence_still_breaks() {
+        let declared = [library_commit(
+            "bedrock",
+            "fix(bedrock)!: tighten the query",
+        )];
+        let bedrock = decide_measured(
+            "bedrock",
+            "0.3.0",
+            &["bedrock-v0.3.0"],
+            &declared,
+            None,
+            Some(false),
+        );
+        assert_eq!(bedrock.next.as_deref(), Some("0.4.0"));
+    }
+
+    /// Scenario _Group with no tag yet_: nothing is measured — there is no
+    /// baseline — and the line says the cut mints one; the bump comes from
+    /// the declarations alone.
+    #[test]
+    fn a_group_with_no_tag_is_not_measured_and_says_so() {
+        let feature = [library_commit("transload", "feat(transload): a thing")];
+        let transload = decide_measured("transload", "0.1.0", &[], &feature, None, None);
+        assert_eq!(transload.api_break, None);
+        assert_eq!(transload.next.as_deref(), Some("0.1.1"));
+        let line = transload.describe();
+        assert!(
+            line.contains("no tag to measure an API break against until this cut mints one"),
+            "{line}"
+        );
     }
 
     /// Scenario _Cut with library work_: the group moves, its tag is named,
@@ -2070,6 +2220,7 @@ version = \"ignored\"
             tag: next.map(|next| format!("{group}-v{next}")),
             last_tag: last_tag.map(str::to_owned),
             counted,
+            api_break: None,
         }
     }
 

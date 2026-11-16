@@ -63,7 +63,7 @@ impl PullRequest {
 
     /// GitHub's web form submits CRLF, which the parsers below would read as
     /// part of each line.
-    fn description(&self) -> String {
+    pub(crate) fn description(&self) -> String {
         self.body
             .as_deref()
             .unwrap_or_default()

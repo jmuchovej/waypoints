@@ -48,7 +48,7 @@
 # What a dry run renders for a reader to audit before anything is minted.
 [dry-run]
   # One library group's part of a cut.
-  group-minted    = "`{{ group }}`: `{{ current }}` → `{{ next }}`, tag `{{ tag }}` on the merge commit of the main pull request ({{ counted }} commits {{ since }})"
+  group-minted    = "`{{ group }}`: `{{ current }}` → `{{ next }}`, tag `{{ tag }}` on the merge commit of the main pull request ({{ counted }} commits {{ since }}{{ evidence }})"
   group-unchanged = "`{{ group }}`: `{{ current }}`, unchanged (no counted commit {{ since }})"
   # One pinned library group's part of a patch: moved along its line, held
   # with nothing newer, or held because main broke the line.
