@@ -68,6 +68,8 @@ export type BuildInfo = {
    *  release build).
    */
   branch: string;
+  /**  The version of every library group the binary carries, by group. */
+  groups: GroupVersion[];
 };
 
 /**  Result of a create operation. */
@@ -89,6 +91,22 @@ export type CreateResult_Serialize = {
 export type CursorState = {
   block_id: MarkID;
   offset: number | null;
+};
+
+/**
+ *  One library group's version in a build: the tag it was built from — the
+ *  pin on a series, the tag or a `git describe` past it on `main` — or, where
+ *  the source carries no tags, the value injected into the build, else the
+ *  bare version its manifest declares.
+ */
+export type GroupVersion = {
+  /**  `bedrock`, `outpost`, `domain`, `transload`. */
+  group: string;
+  /**
+   *  `bedrock-v0.4.0`; `bedrock-v0.4.0-3-gabc1234` three commits past the
+   *  tag on `main`; `0.4.0` where only the manifest could say.
+   */
+  version: string;
 };
 
 /**

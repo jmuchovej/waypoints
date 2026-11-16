@@ -37,6 +37,10 @@ compile_error!(
     "Waypoints: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
 );
 
+// The resolution half is `build.rs`'s, which includes this file by path; the
+// crate reads the baked value back, and tests hold the order.
+#[allow(dead_code)]
+mod group_versions;
 mod registry_store;
 mod settings;
 

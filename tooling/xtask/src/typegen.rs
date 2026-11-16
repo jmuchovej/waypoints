@@ -143,15 +143,16 @@ fn domain_types() -> Types {
 /// Every type `cartograph` exports to the frontend.
 fn cartograph_types() -> Types {
     use cartograph::{
-        BuildInfo, CreateResult, CursorState, IdentityCreated, MutationResult, PairingCode,
-        RenderNode, SetupCode, SplitResult, StationStatus, SyncDevice, SyncState, SyncStatus,
-        Territory, TerritoryKind, UndoRedoResult,
+        BuildInfo, CreateResult, CursorState, GroupVersion, IdentityCreated, MutationResult,
+        PairingCode, RenderNode, SetupCode, SplitResult, StationStatus, SyncDevice, SyncState,
+        SyncStatus, Territory, TerritoryKind, UndoRedoResult,
     };
 
     let mut collection = Types::default();
 
     // build info
     collection.register_mut::<BuildInfo>();
+    collection.register_mut::<GroupVersion>();
 
     // territory
     collection.register_mut::<Territory>();
