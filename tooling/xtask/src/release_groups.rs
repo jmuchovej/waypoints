@@ -31,6 +31,9 @@ pub const SCHEMA_FILE: &str = "tooling/schemas/release-groups.schema.json";
 /// every commit is bookkeeping to the planners.
 pub const RELEASE_BOT: &str = "wp-botswain[bot]";
 
+/// Where every group's tag is minted, and what a series pins a library from.
+pub const REPOSITORY: &str = "https://github.com/jmuchovej/waypoints";
+
 /// Members here build the repository, not the product, and are never named.
 const TOOLING: &str = "tooling/";
 

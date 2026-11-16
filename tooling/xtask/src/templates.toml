@@ -29,6 +29,16 @@
   group = "chore({{ group }}): {{ version }}"
   main  = "chore({{ app }}): main now targets {{ next }}"
 
+# What a cut writes into its series' root manifest, above the members it
+# pinned away.
+[manifest]
+  pinned = """
+# On a series the library groups are pinned, below, to the tags the cut minted.
+# Their crates stay on disk so a cherry-pick from main applies, and build
+# nothing: a library change reaches this series only by a pin that `patch`
+# moves (docs/CONTRIBUTING.md).
+"""
+
 # Each becomes a merge commit's body, so it says what the merge commit is;
 # GitHub wraps it at 72 columns.
 [pull-request]
