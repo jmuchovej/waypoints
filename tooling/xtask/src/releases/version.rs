@@ -173,6 +173,15 @@ impl Version {
         Ok(Self(target))
     }
 
+    /// `1.2.0` → `2.0.0-pre.1`: the first candidate of the next major, which
+    /// only a person asks for. `self` is the last stable release.
+    pub fn cut_major(&self) -> Result<Self> {
+        let mut target = semver::Version::new(self.major + 1, 0, 0);
+        target.pre = Prerelease::new(&format!("{PRE}.1"))
+            .with_context(|| format!("`{PRE}.1` is not a valid prerelease"))?;
+        Ok(Self(target))
+    }
+
     /// A library line's next version after `commits`, as Cargo reads semver:
     /// a feature moves the patch and a break the minor before `1.0`, the
     /// minor and the major after. No prerelease — a library's tag is its

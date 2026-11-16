@@ -21,7 +21,7 @@ use crate::{
     planners::test,
     release_groups::{self, GroupFile},
     releases::{
-        index,
+        history,
         landing::Landing,
         version::{APP_MANIFEST, Transition, Version},
     },
@@ -31,6 +31,14 @@ use crate::{
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::Metadata;
 use std::{fs, path::Path, process::Command};
+
+/// What a cut is asked for beyond its transition.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CutOptions {
+    /// Target the app's next major. A major is a product decision no commit
+    /// can prove, so it is never computed, only asked for.
+    pub major: bool,
+}
 
 /// The branch a cut's bump lands on.
 const MAIN: &str = "main";
@@ -65,7 +73,12 @@ impl Plan {
     /// cut, the branch's current version otherwise. `commits` matter only to
     /// a cut — see [`Version::transition`].
     pub fn new(transition: Transition, from: &Version, commits: &[String]) -> Result<Self> {
-        let version = from.transition(transition, commits)?;
+        Self::from_version(transition, from.transition(transition, commits)?)
+    }
+
+    /// The plan that mints `version` by `transition`, once the version is
+    /// decided — by [`Version::transition`], or for a cut by [`cut_target`].
+    pub fn from_version(transition: Transition, version: Version) -> Result<Self> {
         let next_main = match transition {
             Transition::Cut => Some(version.target().next_main()?),
             _ => None,
@@ -153,21 +166,83 @@ pub fn next_main_message(next: &Version) -> String {
 /// Plans `transition` from the checkout: the app's current version, or for
 /// a cut the stable tags and the commits since the last one. Refuses a tree
 /// the group file does not describe.
-pub fn plan(transition: Transition) -> Result<Plan> {
-    crate::release_groups::load(&crate::workspace::load()?)?;
+pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
+    let metadata = workspace::load()?;
+    let groups = release_groups::load(&metadata)?;
 
-    let (from, commits) = match transition {
+    let version = match transition {
         Transition::Cut => {
-            let tags = stable_tags()?;
-            let last = last_stable(&tags);
-            let commits = commits_since(last.as_ref())?;
+            let last = last_stable(&stable_tags()?);
+            let commits = commits_since(
+                last.as_ref(),
+                &groups,
+                metadata.workspace_root.as_std_path(),
+            )?;
             // Nothing released yet: the first cut is measured from 0.0.0, and
             // `log_range` reads the whole history rather than a missing tag.
-            (last.unwrap_or_else(|| Version::new(0, 0, 0)), commits)
+            let last = last.unwrap_or_else(|| Version::new(0, 0, 0));
+            cut_target(&last, &commits, &groups, options)?
         }
-        _ => (crate::workspace::version()?.into(), Vec::new()),
+        _ => Version::from(workspace::version()?).transition(transition, &[])?,
     };
-    Plan::new(transition, &from, &commits)
+    Plan::from_version(transition, version)
+}
+
+/// The app's target for a cut from `last` over `commits`.
+///
+/// A major is cut only when asked for: it is a product decision no commit
+/// can prove. A `Covenant: break` since the last stable is the floor, not the
+/// trigger — without `--major` the cut refuses and names the commits, since a
+/// silent minor and an unreviewed major are both wrong. The app's headers
+/// are read as [`history::Commit::header_for`] reads them, so a `!` never
+/// reaches the bumper and the trailer does.
+pub fn cut_target(
+    last: &Version,
+    commits: &[history::Commit],
+    groups: &GroupFile,
+    options: CutOptions,
+) -> Result<Version> {
+    let app = app_group(groups)?;
+    if options.major {
+        return last.cut_major();
+    }
+
+    let breaking: Vec<String> = commits
+        .iter()
+        .filter(|commit| commit.covenant_break && commit.counts_for(app))
+        .map(|commit| {
+            format!(
+                "{} {}",
+                &commit.sha[..commit.sha.len().min(9)],
+                commit.subject
+            )
+        })
+        .collect();
+    if !breaking.is_empty() {
+        bail!(
+            "a covenant break landed since {last}:\n  {}\na major is a product decision: pass `--major` to cut {next}, or hold the cut",
+            breaking.join("\n  "),
+            next = last.cut_major()?,
+        );
+    }
+
+    let headers: Vec<String> = commits
+        .iter()
+        .filter_map(|commit| commit.header_for(app, groups))
+        .collect();
+    last.cut(&headers)
+}
+
+/// The group the app manifest anchors: the one whose version a cut moves
+/// with the series.
+fn app_group(groups: &GroupFile) -> Result<&str> {
+    let anchor = APP_MANIFEST.trim_end_matches("/Cargo.toml");
+    groups
+        .group
+        .iter()
+        .find(|(_, group)| group.anchor == anchor)
+        .map(|(name, _)| name.as_str())
+        .with_context(|| format!("no group is anchored at `{anchor}`"))
 }
 
 /// Leaves `plan`'s version write in the working tree on its series, for the
@@ -550,12 +625,18 @@ fn log_range(since: Option<&Version>) -> String {
     }
 }
 
-/// Conventional-commit subjects for one cycle, oldest first.
+/// One cycle's first-parent commits, attributed, oldest first.
 ///
-/// Index commits are left out: they land on `main` between releases, and
-/// reading them as work would nudge the target a cut is heading toward.
-fn commits_since(since: Option<&Version>) -> Result<Vec<String>> {
-    index::product_commits(&log_range(since))
+/// Bookkeeping counts for no group: index entries land on `main` between
+/// releases, and reading them as work would nudge the target a cut is
+/// heading toward.
+fn commits_since(
+    since: Option<&Version>,
+    groups: &GroupFile,
+    root: &Path,
+) -> Result<Vec<history::Commit>> {
+    let ignored = history::ignored_revisions(root, groups)?;
+    history::walk(&log_range(since), groups, &ignored)
 }
 
 #[cfg(test)]
@@ -703,6 +784,73 @@ mod tests {
     fn the_first_cut_reads_the_whole_history() {
         assert_eq!(log_range(None), "HEAD");
         assert_eq!(log_range(Some(&v("0.1.0"))), "v0.1.0..HEAD");
+    }
+
+    /// A commit on the app's own paths, with or without the trailer.
+    fn app_commit(subject: &str, covenant_break: bool) -> history::Commit {
+        history::Commit {
+            sha: "abc1234def5678".to_owned(),
+            subject: subject.to_owned(),
+            body: if covenant_break {
+                "Covenant: break".to_owned()
+            } else {
+                String::new()
+            },
+            covenant_break,
+            paths: vec!["src-tauri/src/main.rs".to_owned()],
+            groups: ["waypoints".to_owned()].into_iter().collect(),
+        }
+    }
+
+    /// Scenario _Break marker without the trailer after v1_: `!` is not the
+    /// app's signal, so a feature is a minor even on `1.x`.
+    #[test]
+    fn a_bang_without_the_trailer_cuts_a_minor() {
+        let target = cut_target(
+            &v("1.2.0"),
+            &[app_commit("feat!: drop the old importer", false)],
+            &workspace_groups(),
+            CutOptions::default(),
+        )
+        .unwrap();
+        assert_eq!(target, v("1.3.0-pre.1"));
+    }
+
+    /// Scenario _The trailer after v1_: the trailer refuses a cut that did not
+    /// ask for a major, naming the commit, and `--major` cuts one.
+    #[test]
+    fn the_trailer_refuses_a_cut_without_major_and_cuts_one_with_it() {
+        let groups = workspace_groups();
+        let commits = [app_commit("fix: tighten the envelope", true)];
+
+        let error = cut_target(&v("1.2.0"), &commits, &groups, CutOptions::default()).unwrap_err();
+        let text = error.to_string();
+        assert!(
+            text.contains("abc1234de fix: tighten the envelope"),
+            "{text}"
+        );
+        assert!(
+            text.contains("--major") && text.contains("2.0.0-pre.1"),
+            "{text}"
+        );
+
+        let target =
+            cut_target(&v("1.2.0"), &commits, &groups, CutOptions { major: true }).unwrap();
+        assert_eq!(target, v("2.0.0-pre.1"));
+    }
+
+    /// Scenario _Product major without the trailer_: the flag alone is enough.
+    #[test]
+    fn a_major_is_cut_when_asked_for_without_a_trailer() {
+        let target = cut_target(
+            &v("1.2.0"),
+            &[app_commit("fix: a bug", false)],
+            &workspace_groups(),
+            CutOptions { major: true },
+        )
+        .unwrap();
+        assert_eq!(target, v("2.0.0-pre.1"));
+        assert_eq!(v("0.1.0").cut_major().unwrap(), v("1.0.0-pre.1"));
     }
 
     #[test]

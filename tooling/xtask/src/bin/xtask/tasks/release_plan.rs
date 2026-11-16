@@ -17,6 +17,11 @@ use xtask::{
 pub struct Options {
     #[arg(value_enum)]
     transition: Transition,
+    /// Cut toward the app's next major. A `Covenant: break` since the last
+    /// stable refuses a cut without this; with it, the major is cut whether
+    /// or not a break was declared.
+    #[arg(long)]
+    major: bool,
     /// Plan and print without creating a ref or writing a file.
     #[arg(long)]
     dry_run: bool,
@@ -27,7 +32,13 @@ pub struct Options {
 }
 
 pub fn run(args: Options) -> Result<()> {
-    let plan = planner::plan(args.transition)?;
+    if args.major && args.transition != Transition::Cut {
+        anyhow::bail!(
+            "`--major` applies to a cut; `{:?}` moves a series mechanically",
+            args.transition
+        );
+    }
+    let plan = planner::plan(args.transition, planner::CutOptions { major: args.major })?;
     let groups = release_groups::load(&workspace::load()?)?;
     let landing = plan.landing(&groups)?;
 
@@ -87,7 +98,12 @@ mod tests {
 
         let args = Options::try_parse_from(["release-plan", "patch"]).unwrap();
         assert_eq!(args.transition, Transition::Patch);
-        assert!(!args.dry_run);
+        assert!(!args.dry_run && !args.major);
+
+        // A major is asked for by flag, never computed.
+        let args =
+            Options::try_parse_from(["release-plan", "cut", "--major", "--dry-run"]).unwrap();
+        assert!(args.major && args.dry_run);
 
         // A rendering directory is a dry run's; a real run writes the tree.
         assert!(Options::try_parse_from(["release-plan", "cut", "--into", "out"]).is_err());
