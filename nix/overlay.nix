@@ -110,22 +110,16 @@ let
   # that tag's tree with the tag's own recipe (library-minting design D7).
   station =
     let
-      lock = fromTOML (builtins.readFile (tree + "/Cargo.lock"));
-      pin = lib.findFirst (
-        package: package.name == "outpost" && lib.hasPrefix "git+" (package.source or "")
-      ) null lock.package;
-      # `git+<url>?tag=<tag>#<rev>`: how cargo locks a tag pin.
-      parts = builtins.match "git\\+([^?#]+)\\?tag=([^#]+)#([0-9a-f]+)" pin.source;
+      pin = (import ./lockfile.nix tree).pinOf "outpost";
       fetched = fetchGit {
-        url = builtins.elemAt parts 0;
-        ref = "refs/tags/${builtins.elemAt parts 1}";
-        rev = builtins.elemAt parts 2;
+        inherit (pin) url rev;
+        ref = "refs/tags/${pin.tag}";
       };
     in
     if pin == null then
       station-of tree
-    else if parts == null then
-      throw "outpost: Cargo.lock pins `outpost` from `${pin.source}`, which is not a tag of this repository"
+    else if pin.tag == null then
+      throw "outpost: Cargo.lock pins `outpost` from `${pin.url}` by something other than a tag"
     else
       station-of (/. + fetched.outPath);
 in

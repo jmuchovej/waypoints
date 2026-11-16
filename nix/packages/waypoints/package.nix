@@ -135,6 +135,32 @@ let
   );
 
   crane = callPackage ../crane.nix { inherit workingTree craneLib rustToolchain; };
+
+  # Each library group's version, injected as `build.rs` reads it first — a
+  # fetched tree carries no git metadata to describe one from: the tag the
+  # lockfile pins the group to on a series, the version its anchor manifest
+  # declares on `main` (library-minting design D6). The group file names the
+  # groups; the anchor manifests are kept TOML 1.0 for this reader.
+  group-versions =
+    let
+      groups = (fromTOML (read "/tooling/release-groups.toml")).group;
+      libraries = lib.filterAttrs (_: group: !(group ? owns)) groups;
+      pins = import ../../lockfile.nix workingTree;
+      version =
+        group:
+        let
+          manifest = (fromTOML (read "/${group.anchor}/Cargo.toml")).package;
+          pin = pins.pinOf manifest.name;
+        in
+        if pin == null then
+          manifest.version
+        else
+          assert lib.assertMsg (
+            pin.tag != null
+          ) "waypoints.${flavor}: Cargo.lock pins `${manifest.name}` by something other than a tag";
+          pin.tag;
+    in
+    lib.concatStringsSep "," (lib.mapAttrsToList (name: group: "${name}=${version group}") libraries);
 in
 crane.buildPackage {
   pname = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
@@ -225,11 +251,14 @@ crane.buildPackage {
 
   # `WAYPOINTS_FLAVOR` is what build.rs reads for the channel it stamps, and
   # `src-tauri/justfile` exports the same — without it every package reports
-  # itself as `development`, whatever its cargo features say. `WAYPOINTS_BUILD`
-  # stays unset on purpose: it only enables a wall-clock timestamp, and the
-  # store path already identifies the build.
+  # itself as `development`, whatever its cargo features say.
+  # `WAYPOINTS_GROUP_VERSIONS` is what it reads for each library group's
+  # version before anything else, since a fetched tree has no tags to
+  # describe. `WAYPOINTS_BUILD` stays unset on purpose: it only enables a
+  # wall-clock timestamp, and the store path already identifies the build.
   env = {
     WAYPOINTS_FLAVOR = flavor;
+    WAYPOINTS_GROUP_VERSIONS = group-versions;
   }
   // lib.optionalAttrs (rev != null) {
     GITHUB_SHA = rev;

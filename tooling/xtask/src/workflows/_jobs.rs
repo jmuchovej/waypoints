@@ -551,7 +551,14 @@ pub fn build(
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(platform.runner())
         .cond(helpers::guard(platform, &prepare.should_build))
-        .add_step(steps::checkout())
+        // The build stamps each library group's version from its tags on
+        // `main` (`git describe`), which a shallow, tagless checkout cannot
+        // name — it would fall back to the manifests' bare versions.
+        .add_step(
+            steps::checkout()
+                .add_with(("fetch-depth", 0))
+                .add_with(("fetch-tags", true)),
+        )
         // Both of these build on an Ubuntu runner, and both are large enough to
         // be worth the reclaim. It runs before `setup-android` so nothing is
         // removed after being installed — and Android keeps its runtime, since
@@ -789,6 +796,31 @@ mod tests {
                         "{channel} {platform}: {forbidden}"
                     );
                 }
+            }
+        }
+    }
+
+    /// The build stamps each library group's version from its tags, so every
+    /// build job checks out the history and the tags a `git describe` reads.
+    #[test]
+    fn every_build_checks_out_full_history_and_tags() {
+        let context = WorkflowContext::fixture();
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let prepare = planned(channel);
+            for platform in Platform::iter() {
+                let named = build(channel, &context, platform, &prepare);
+                let job = serde_json::to_value(&named.job).expect("job serializes");
+                let checkout = job["steps"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|step| step["id"] == "checkout")
+                    .unwrap_or_else(|| panic!("{channel} {platform}: no checkout"));
+                assert_eq!(checkout["with"]["fetch-depth"], "0", "{channel} {platform}");
+                assert_eq!(
+                    checkout["with"]["fetch-tags"], "true",
+                    "{channel} {platform}"
+                );
             }
         }
     }
