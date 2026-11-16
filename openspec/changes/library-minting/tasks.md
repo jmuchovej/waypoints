@@ -6,7 +6,7 @@
 
 ## 2. Pin checks
 
-- [ ] 2.1 Extend `cargo xtask version-integrity` (the task `release-groups-guards` lands) with the pin checks (design.md D8): on a series branch whose root `[workspace.dependencies]` declares a library group as `git` + `tag`, any change under that group's own paths is refused naming the path and the pin, unless the author is `wp-botswain[bot]` moving the pin; every crate that depends on a group pins the same tag, or the check names both manifests; a series whose groups are still `path` dependencies passes its library paths; verify unit tests cover all four scenarios of _A series branch takes library changes only by pin_, including that a fixture of `main`'s root manifest — what a series cut before minting inherits — passes a `crates/bedrock` change
+- [x] 2.1 (done 2026-11-16: `Pin`, `pins_in`, `pins`, and `pin_violations` in `version_integrity.rs`, appended by `run`; a pin is read from a git dependency's tag against the group's template) Extend `cargo xtask version-integrity` (the task `release-groups-guards` lands) with the pin checks (design.md D8): on a series branch whose root `[workspace.dependencies]` declares a library group as `git` + `tag`, any change under that group's own paths is refused naming the path and the pin, unless the author is `wp-botswain[bot]` moving the pin; every crate that depends on a group pins the same tag, or the check names both manifests; a series whose groups are still `path` dependencies passes its library paths; verify unit tests cover all four scenarios of _A series branch takes library changes only by pin_, including that a fixture of `main`'s root manifest — what a series cut before minting inherits — passes a `crates/bedrock` change
 
 ## 3. Minting at cut, and per-channel library builds
 
