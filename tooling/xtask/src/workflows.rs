@@ -970,7 +970,7 @@ mod tests {
     /// GitHub wraps a merge commit's body at 72 columns, and these land unread.
     #[test]
     fn the_bots_merge_messages_land_unwrapped() {
-        for body in [release_plan::BODY, release_index::BODY] {
+        for body in [release_plan::body(), release_index::body()] {
             assert!(body.len() <= 72, "{}: {body}", body.len());
         }
     }

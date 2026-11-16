@@ -43,7 +43,9 @@ use gh_workflow::{
 };
 
 /// Becomes the merge commit's body, so it says what the merge commit is.
-pub(super) const BODY: &str = crate::planners::release::PULL_REQUEST_BODY;
+pub(super) fn body() -> String {
+    crate::planners::release::pull_request_body()
+}
 
 /// Where a dry run renders, and what it uploads.
 const DRY_RUN_FLAGS: &str =
@@ -163,7 +165,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         &series_token_output,
         &from_series_or_planner("head"),
         &from_series_or_planner("title"),
-        BODY,
+        &body(),
         &[from_series_or_planner("paths")],
     )
     .id("series-pull-request")

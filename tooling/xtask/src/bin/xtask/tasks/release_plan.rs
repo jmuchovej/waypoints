@@ -114,11 +114,11 @@ pub fn run(args: Options) -> Result<()> {
         let body = if main.title.starts_with("summary:") {
             format!(
                 "{}\n\n{}\n",
-                planner::PULL_REQUEST_BODY,
+                planner::pull_request_body(),
                 plan.summary_headers(&groups)?.join("\n")
             )
         } else {
-            planner::PULL_REQUEST_BODY.to_owned()
+            planner::pull_request_body()
         };
         let body_path = std::env::temp_dir().join("release-plan-body.md");
         fs::write(&body_path, body).with_context(|| format!("writing {}", body_path.display()))?;

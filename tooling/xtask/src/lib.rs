@@ -115,6 +115,7 @@ pub mod license {
     pub use notices::generate as generate_notices;
 }
 pub mod release_groups;
+pub mod templates;
 pub mod tools;
 pub mod typegen;
 pub mod version_integrity;

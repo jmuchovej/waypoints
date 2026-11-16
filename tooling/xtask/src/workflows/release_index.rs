@@ -29,10 +29,10 @@ use gh_workflow::{
 /// library's `<group>-v…` tag matches neither this nor a channel's pattern.
 pub(super) const TAG_PATTERN: &str = "v*";
 
-/// Becomes the merge commit's body, so it says what the merge commit is. GitHub
-/// wraps that body at 72 columns, so this stays under them.
-pub(super) const BODY: &str =
-    "Written by `cargo xtask release-index`; merges when its checks pass.";
+/// Becomes the merge commit's body, so it says what the merge commit is.
+pub(super) fn body() -> String {
+    crate::templates::must("pull-request.index", &())
+}
 
 /// Passed only when the dispatch asks for it: compute and print the entry,
 /// commit nothing. Absent on a push, where `inputs` is empty.
@@ -76,7 +76,7 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
         .if_condition(wrote());
     let token = StepOutput::new_trusted(&app_token, "token");
     let pull_request =
-        steps::land_write(&record, &token, "index-pull-request", BODY).if_condition(wrote());
+        steps::land_write(&record, &token, "index-pull-request", &body()).if_condition(wrote());
     let auto_merge = steps::auto_merge(
         &StepOutput::new_trusted(&pull_request, "pull-request-number"),
         &token,

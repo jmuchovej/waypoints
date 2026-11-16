@@ -25,6 +25,7 @@ use crate::{
         landing::Landing,
         version::{APP_MANIFEST, Transition, Version},
     },
+    templates,
     tools::{git, github},
     workspace,
 };
@@ -129,23 +130,32 @@ impl GroupPlan {
 
     /// One line a reader audits before a cut.
     pub fn describe(&self) -> String {
-        let since = match &self.last_tag {
-            Some(tag) => format!("since `{tag}`"),
-            None => "over the whole history, with no tag yet".to_owned(),
-        };
-        match (&self.next, &self.tag) {
-            (Some(next), Some(tag)) => format!(
-                "`{group}`: `{current}` → `{next}`, tag `{tag}` on the merge commit of the main pull request ({counted} commits {since})",
-                group = self.group,
-                current = self.current,
-                counted = self.counted,
-            ),
-            _ => format!(
-                "`{group}`: `{current}`, unchanged (no counted commit {since})",
-                group = self.group,
-                current = self.current,
-            ),
+        #[derive(serde::Serialize)]
+        struct Values<'a> {
+            group: &'a str,
+            current: &'a str,
+            next: &'a str,
+            tag: &'a str,
+            counted: usize,
+            since: String,
         }
+        let values = Values {
+            group: &self.group,
+            current: &self.current,
+            next: self.next.as_deref().unwrap_or_default(),
+            tag: self.tag.as_deref().unwrap_or_default(),
+            counted: self.counted,
+            since: match &self.last_tag {
+                Some(tag) => format!("since `{tag}`"),
+                None => "over the whole history, with no tag yet".to_owned(),
+            },
+        };
+        let template = if self.mints() {
+            "dry-run.group-minted"
+        } else {
+            "dry-run.group-unchanged"
+        };
+        templates::must(template, &values)
     }
 }
 
@@ -276,11 +286,19 @@ impl Plan {
 
     /// The message for the version commit this plan's tag points at.
     pub fn commit_message(&self) -> String {
-        format!(
-            "{RELEASE_PREFIX}{branch} {channel} {version}",
-            branch = self.branch,
-            channel = self.channel,
-            version = self.version,
+        #[derive(serde::Serialize)]
+        struct Values<'a> {
+            branch: &'a str,
+            channel: &'a str,
+            version: &'a str,
+        }
+        templates::must(
+            "commit.series",
+            &Values {
+                branch: &self.branch,
+                channel: &self.channel,
+                version: &self.version,
+            },
         )
     }
 
@@ -336,33 +354,63 @@ impl Plan {
         if self.is_group_only()
             && let [only] = minted
         {
-            return Ok(format!(
-                "{RELEASE_PREFIX}{} {}",
-                only.group,
-                only.next.as_deref().unwrap_or_default()
+            #[derive(serde::Serialize)]
+            struct Values<'a> {
+                group: &'a str,
+                version: &'a str,
+            }
+            return Ok(templates::must(
+                "commit.library",
+                &Values {
+                    group: &only.group,
+                    version: only.next.as_deref().unwrap_or_default(),
+                },
             ));
         }
-        Ok(format!("summary: cut {}", self.version))
+        #[derive(serde::Serialize)]
+        struct Summary<'a> {
+            version: &'a str,
+        }
+        Ok(templates::must(
+            "commit.summary",
+            &Summary {
+                version: &self.version,
+            },
+        ))
     }
 
     /// The headers a summary's body carries, one per group it writes, scoped
     /// by the group so the pull-request check reads each.
     pub fn summary_headers(&self, groups: &GroupFile) -> Result<Vec<String>> {
+        #[derive(serde::Serialize)]
+        struct Group<'a> {
+            group: &'a str,
+            version: &'a str,
+        }
+        #[derive(serde::Serialize)]
+        struct Main<'a> {
+            app: &'a str,
+            next: &'a str,
+        }
         let mut headers: Vec<String> = self
             .minted()
             .map(|group| {
-                format!(
-                    "chore({}): {}",
-                    group.group,
-                    group.next.as_deref().unwrap_or_default()
+                templates::must(
+                    "header.group",
+                    &Group {
+                        group: &group.group,
+                        version: group.next.as_deref().unwrap_or_default(),
+                    },
                 )
             })
             .collect();
         if !self.next_main_version.is_empty() {
-            headers.push(format!(
-                "chore({}): main now targets {}",
-                app_group(groups)?,
-                self.next_main_version
+            headers.push(templates::must(
+                "header.main",
+                &Main {
+                    app: app_group(groups)?,
+                    next: &self.next_main_version,
+                },
             ));
         }
         Ok(headers)
@@ -417,7 +465,16 @@ const RELEASE_PREFIX: &str = "chore(release): ";
 
 /// The message for `main`'s post-cut bump.
 pub fn next_main_message(next: &Version) -> String {
-    format!("{RELEASE_PREFIX}main now targets {next}")
+    #[derive(serde::Serialize)]
+    struct Values {
+        next: String,
+    }
+    templates::must(
+        "commit.main",
+        &Values {
+            next: next.to_string(),
+        },
+    )
 }
 
 /// Plans `transition` from the checkout: the app's current version, or for
@@ -608,8 +665,9 @@ pub fn open_series(version: &Version, commit: &str) -> Result<Landing> {
 /// The body of every pull request the planner opens. It becomes the merge
 /// commit's body, so it says what the merge commit is; GitHub wraps it at 72
 /// columns, so it stays under them.
-pub const PULL_REQUEST_BODY: &str =
-    "Written by `cargo xtask release-plan`; merges when its checks pass.";
+pub fn pull_request_body() -> String {
+    templates::must("pull-request.plan", &())
+}
 
 /// What a dry run renders instead of writing, each file by name, for the task
 /// to put under one directory: `series.patch` and, for a cut, `main.patch` are
@@ -764,43 +822,55 @@ fn refs_markdown(
     main: Option<&Landing>,
     groups: &GroupFile,
 ) -> Result<String> {
-    let transition = format!("{transition:?}").to_lowercase();
-    let mut out = format!("# Dry run: {transition}\n\n");
-    if let Some(series) = series {
-        let branch = if plan.next_main_version.is_empty() {
-            format!("`{}`", plan.branch)
-        } else {
-            format!("`{}`, created from the commit this run is on", plan.branch)
-        };
-        out += &format!(
-            "- series branch: {branch}\n\
-             - tag: `{tag}`, on the merge commit of the series pull request\n\
-             - series pull request: {series}\n  body: {PULL_REQUEST_BODY}\n",
-            tag = plan.tag,
-            series = series.describe(&plan.branch),
-        );
+    #[derive(serde::Serialize)]
+    struct Series {
+        branch: String,
+        created: bool,
+        tag: String,
+        landing: String,
     }
-    if let Some(main) = main {
-        if !plan.next_main_version.is_empty() {
-            out += &format!("- main moves to `{}`\n", plan.next_main_version);
-        }
-        out += &format!(
-            "- main pull request: {}\n  body: {PULL_REQUEST_BODY}\n",
-            main.describe(MAIN)
-        );
-        if main.title.starts_with("summary:") {
-            for header in plan.summary_headers(groups)? {
-                out += &format!("    {header}\n");
-            }
-        }
+    #[derive(serde::Serialize)]
+    struct Main {
+        next: Option<String>,
+        landing: String,
+        headers: Vec<String>,
     }
-    if !plan.groups.is_empty() {
-        out += "- groups:\n";
-        for group in &plan.groups {
-            out += &format!("  - {}\n", group.describe());
-        }
+    #[derive(serde::Serialize)]
+    struct Refs {
+        transition: String,
+        body: String,
+        series: Option<Series>,
+        main: Option<Main>,
+        groups: Vec<String>,
     }
-    Ok(out)
+
+    let main = match main {
+        Some(landing) => Some(Main {
+            next: (!plan.next_main_version.is_empty()).then(|| plan.next_main_version.clone()),
+            landing: landing.describe(MAIN),
+            headers: if landing.title.starts_with("summary:") {
+                plan.summary_headers(groups)?
+            } else {
+                Vec::new()
+            },
+        }),
+        None => None,
+    };
+    templates::render(
+        "dry-run.refs",
+        &Refs {
+            transition: format!("{transition:?}").to_lowercase(),
+            body: pull_request_body(),
+            series: series.map(|landing| Series {
+                branch: plan.branch.clone(),
+                created: !plan.next_main_version.is_empty(),
+                tag: plan.tag.clone(),
+                landing: landing.describe(&plan.branch),
+            }),
+            main,
+            groups: plan.groups.iter().map(GroupPlan::describe).collect(),
+        },
+    )
 }
 
 /// git-cliff's notes for the tag this plan would mint: everything unreleased,
@@ -895,7 +965,7 @@ mod rehearsal_tests {
             refs.contains("from botswain/release-plan/main into main"),
             "{refs}"
         );
-        assert_eq!(refs.matches(PULL_REQUEST_BODY).count(), 2, "{refs}");
+        assert_eq!(refs.matches(&pull_request_body()).count(), 2, "{refs}");
         assert!(!refs.contains("- groups:"), "{refs}");
 
         let advance = Plan::new(Transition::Advance, &v("0.2.0-pre.1"), &[]).unwrap();
