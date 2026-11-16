@@ -765,6 +765,34 @@ mod tests {
         assert!(!cond.contains("cancelled()"), "{cond}");
     }
 
+    /// A series' lockfile pins each library group to a tag of this
+    /// repository, which is public: cargo fetches the pins with nothing
+    /// configured, so no build step carries a git credential or a fetch
+    /// override (library-minting design D7).
+    #[test]
+    fn a_build_fetches_a_series_pin_with_nothing_configured() {
+        let context = WorkflowContext::fixture();
+        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
+            let prepare = planned(channel);
+            for platform in Platform::iter() {
+                let named = build(channel, &context, platform, &prepare);
+                let job = serde_json::to_string(&named.job).expect("job serializes");
+                for forbidden in [
+                    "CARGO_NET_GIT_FETCH_WITH_CLI",
+                    "GIT_CONFIG",
+                    "GIT_ASKPASS",
+                    "insteadOf",
+                    "git-credential",
+                ] {
+                    assert!(
+                        !job.contains(forbidden),
+                        "{channel} {platform}: {forbidden}"
+                    );
+                }
+            }
+        }
+    }
+
     fn publish_steps() -> Vec<serde_json::Value> {
         let named = publish(Channel::Stable, &planned(Channel::Stable));
         let value = serde_json::to_value(&named.job).expect("job serializes");

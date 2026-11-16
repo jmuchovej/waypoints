@@ -95,6 +95,39 @@ let
       own channel
     else
       unavailable channel;
+
+  # The Station's recipe, as `root` carries it, applied to `root`.
+  station-of =
+    root:
+    final.callPackage (root + "/nix/packages/outpost/package.nix") {
+      inherit rustToolchain;
+      workingTree = root;
+    };
+
+  # The Station the tree ships: built from `crates/outpost` where the
+  # workspace holds it — `main` — and, where the lockfile pins `outpost` to a
+  # tag of this repository — a series, whose in-tree copy is inert — from
+  # that tag's tree with the tag's own recipe (library-minting design D7).
+  station =
+    let
+      lock = fromTOML (builtins.readFile (tree + "/Cargo.lock"));
+      pin = lib.findFirst (
+        package: package.name == "outpost" && lib.hasPrefix "git+" (package.source or "")
+      ) null lock.package;
+      # `git+<url>?tag=<tag>#<rev>`: how cargo locks a tag pin.
+      parts = builtins.match "git\\+([^?#]+)\\?tag=([^#]+)#([0-9a-f]+)" pin.source;
+      fetched = fetchGit {
+        url = builtins.elemAt parts 0;
+        ref = "refs/tags/${builtins.elemAt parts 1}";
+        rev = builtins.elemAt parts 2;
+      };
+    in
+    if pin == null then
+      station-of tree
+    else if parts == null then
+      throw "outpost: Cargo.lock pins `outpost` from `${pin.source}`, which is not a tag of this repository"
+    else
+      station-of (/. + fetched.outPath);
 in
 {
   waypoints = lib.recurseIntoAttrs {
@@ -104,10 +137,6 @@ in
   };
 
   # The sync server's command-line binary — headless, and channel-less: it
-  # publishes no release of its own yet, so every ref builds it from its own
-  # tree rather than from a recorded entry.
-  outpost = final.callPackage ./packages/outpost/package.nix {
-    inherit rustToolchain;
-    workingTree = tree;
-  };
+  # publishes no release of its own yet, so no recorded entry names it.
+  outpost = station;
 }

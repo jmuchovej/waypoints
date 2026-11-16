@@ -12,6 +12,11 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+    # Pinned here for the recipes, which read its locked revision out of
+    # flake.lock rather than take it from the overlay — so the overlay stays
+    # flake-independent, and a tag's recipe builds with the crane it was
+    # written for (nix/packages/crane.nix).
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
@@ -41,8 +46,9 @@
             inherit (overlaid.waypoints) stable preview nightly;
             default = overlaid.waypoints.${default};
             # Channel-less and unstamped: outpost publishes no release yet, so
-            # the overlay builds it from this tree, and the Station carries no
-            # build metadata to stamp.
+            # the overlay builds it from this tree — or, on a series, from the
+            # tag the lockfile pins — and the Station carries no build
+            # metadata to stamp.
             inherit (overlaid) outpost;
           }
           # The container image is a Linux artifact and a flake output only —

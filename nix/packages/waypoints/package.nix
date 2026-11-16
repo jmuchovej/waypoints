@@ -19,8 +19,6 @@
 {
   lib,
   stdenv,
-  rustPlatform,
-  makeRustPlatform,
   callPackage,
   cargo-tauri,
   writeText,
@@ -37,6 +35,9 @@
   # Escape hatch (see nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
   # e.g. from rust-overlay. Default: the consumer nixpkgs' rustPlatform.
   rustToolchain ? null,
+  # The crane library to build with. Default: the one the tree's `flake.lock`
+  # pins — see ../crane.nix.
+  craneLib ? null,
   # Commit stamped into build metadata (the flake passes self.rev/dirtyRev,
   # the overlay a release's recorded rev; build.rs falls back to "unknown"
   # when absent).
@@ -92,10 +93,11 @@ let
         "waypoints.${flavor}: version ${version} does not extend the manifest version ${manifest-version}";
       version;
 
-  # Hashes nix cannot derive from the tree: the pnpm dependency closure and the
-  # git-sourced cargo crates. They live in data rather than in these
-  # expressions so `nix-pins` refreshes one by writing a JSON key — see the
-  # header of `tooling/bin/nix-pins`.
+  # The one hash nix cannot derive from the tree: the pnpm dependency
+  # closure. It lives in data rather than in these expressions so `nix-pins`
+  # refreshes it by writing a JSON key — see the header of
+  # `tooling/bin/nix-pins`. The cargo side needs none: crane vendors the
+  # lockfile's crates by their checksums and its git pins by their revisions.
   pins = lib.importJSON ./hashes.json;
 
   frontend = callPackage ./_frontend.nix {
@@ -132,16 +134,9 @@ let
     )
   );
 
-  rust-platform =
-    if rustToolchain != null then
-      makeRustPlatform {
-        cargo = rustToolchain;
-        rustc = rustToolchain;
-      }
-    else
-      rustPlatform;
+  crane = callPackage ../crane.nix { inherit workingTree craneLib rustToolchain; };
 in
-rust-platform.buildRustPackage (_finalAttrs: {
+crane.buildPackage {
   pname = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
   version = app-version;
 
@@ -154,7 +149,6 @@ rust-platform.buildRustPackage (_finalAttrs: {
         (workingTree + "/Cargo.lock")
         (workingTree + "/crates")
         (workingTree + "/tooling")
-        (workingTree + "/vendor")
         # Bundled beside the notices; every distribution carries the license.
         (workingTree + "/LICENSE")
         (workingTree + "/docs/licensing/COPYING.exceptions")
@@ -164,27 +158,35 @@ rust-platform.buildRustPackage (_finalAttrs: {
       ];
     };
 
-  cargoLock = {
-    lockFile = workingTree + "/Cargo.lock";
-  };
-
   buildAndTestSubdir = "src-tauri";
 
   # Flavors are additive cargo features over `desktop`; `self-update` (a
   # default feature) is deliberately absent.
   #
-  # These must be `buildFeatures`/`buildNoDefaultFeatures`, not the `cargo*`
-  # spellings the build hook reads: `buildRustPackage` *computes* the `cargo*`
-  # attrs from these, so setting the `cargo*` names directly is silently
-  # overwritten by the defaults (`[]` and `false`) and the build quietly gets
-  # every default feature — `self-update` included.
-  buildNoDefaultFeatures = true;
-  buildFeatures = [
-    "desktop"
-    flavor
-  ];
+  # `cargoBuildNoDefaultFeatures` is the tauri hook's own variable (crane
+  # computes nothing from the `buildRustPackage` spellings). The features go
+  # to tauri rather than to cargo behind `--`: tauri-cli forwards them to
+  # cargo either way, but reads only its own `--features` to pick the
+  # `[[bin]]` whose `required-features` they enable — each flavor's
+  # executable, `waypoints-<flavor>` — and bundles the package's name
+  # otherwise, which no binary carries.
+  cargoBuildNoDefaultFeatures = true;
+
+  # The tauri hook drives cargo, not crane: crane sets both phases itself, so
+  # the hook's own defaults never apply and are named here. No
+  # dependency-only pass precedes it — a dummy-source build cannot run `cargo
+  # tauri build`, and see ../crane.nix. crane still vendors the lockfile and
+  # configures the offline sources the hook's `--offline` build reads.
+  cargoArtifacts = null;
+  buildPhase = "tauriBuildHook";
+  installPhase = "tauriInstallHook";
+  # crane's own install reads a cargo build log the tauri hook never writes;
+  # the bundle is what gets installed.
+  doNotPostBuildInstallCargoBinaries = true;
 
   tauriBuildFlags = [
+    "--features"
+    "desktop,${flavor}"
     "--config"
     "res/configs/flavors/${flavor}.toml"
     "--config"
@@ -247,4 +249,4 @@ rust-platform.buildRustPackage (_finalAttrs: {
     # Each flavor's executable carries its name (see src-tauri/Cargo.toml).
     mainProgram = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
   };
-})
+}
