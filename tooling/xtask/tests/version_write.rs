@@ -14,25 +14,30 @@ use std::{
 };
 use tempfile::TempDir;
 
-const GROUP_FILE: &str = r#"
-[bookkeeping]
+/// The group file declaring the app at `app` and the library at `domain`,
+/// aligned the way tombi leaves ours.
+fn group_file(app: &str, domain: &str) -> String {
+    format!(
+        r#"[bookkeeping]
   paths        = [ "nix/releases/" ]
   ignore-revs  = ".git-blame-ignore-revs"
   bot-subjects = [ "chore(release):" ]
 
 [group.domain]
+  version  = "{domain}"
   members  = [ "crates/domain" ]
-  anchor   = "crates/domain"
-  tag      = "domain-v{version}"
+  tag      = "domain-v{{version}}"
   breaking = "header"
   floors   = [ "cargo-semver-checks" ]
   fixtures = "covenant/fixtures/domain/"
   minted   = [ "cut" ]
 
 [group.waypoints]
+  version  = "{app}"
   members  = [ "src-tauri", "crates/cartograph" ]
-  anchor   = "src-tauri"
-  tag      = "v{version}"
+  tag      = "v{{version}}"
+  owns     = "remainder"
+  counts   = "closure"
   breaking = "trailer:Covenant: break"
   floors   = [ "covenant-fixtures" ]
   fixtures = "covenant/fixtures/waypoints/"
@@ -44,7 +49,9 @@ const GROUP_FILE: &str = r#"
   version-writes = "botswain"
   fixtures       = "append-only"
   schema         = "current"
-"#;
+"#
+    )
+}
 
 /// The library's version in every fixture: a cut moves it from here.
 const DOMAIN: &str = "0.1.0";
@@ -110,7 +117,6 @@ impl Fixture {
         write(&root, "src-tauri/src/lib.rs", "");
         write(&root, "crates/cartograph/src/lib.rs", "");
         write(&root, "crates/domain/src/lib.rs", "");
-        write(&root, "tooling/release-groups.toml", GROUP_FILE);
         write(&root, "covenant/fixtures/waypoints/README.md", "");
         write(&root, "covenant/fixtures/domain/README.md", "");
         write(&root, "nix/releases/stable.json", "");
@@ -138,6 +144,11 @@ impl Fixture {
     }
 
     fn commit_versions(&self, version: &str, subject: &str) {
+        write(
+            &self.root,
+            "tooling/release-groups.toml",
+            &group_file(version, DOMAIN),
+        );
         write(
             &self.root,
             "src-tauri/Cargo.toml",

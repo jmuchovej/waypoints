@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! The pull-request check in front of every version claim: who wrote a
-//! version, whether a group's members agree with its anchor, whether the
+//! version, whether a group's members agree with the group file, whether the
 //! landing message is conventional and, for a multi-group change, complete, and
 //! whether a frozen fixture was rewritten undeclared.
 //!
@@ -185,19 +185,18 @@ fn declared_versions(metadata: &Metadata) -> BTreeMap<String, String> {
         .collect()
 }
 
-/// Every member declaring anything but its anchor's exact version, prerelease
-/// included.
+/// Every member declaring anything but the exact version its group declares
+/// in the group file, prerelease included. A pinned group's members are out
+/// of the workspace and declare nothing here.
 fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
     let mut found = Vec::new();
-    for group in groups.group.values() {
-        let Some(expected) = versions.get(&group.anchor) else {
-            continue;
-        };
+    for (name, group) in &groups.group {
         for member in &group.members {
-            if let Some(declared) = versions.get(member).filter(|v| *v != expected) {
+            if let Some(declared) = versions.get(member).filter(|v| **v != group.version) {
                 found.push(format!(
-                    "`{member}/Cargo.toml` declares {declared}, but its group's anchor `{anchor}/Cargo.toml` declares {expected}",
-                    anchor = group.anchor,
+                    "`{member}/Cargo.toml` declares {declared}, but its group `{name}` declares {expected} in `{file}`",
+                    expected = group.version,
+                    file = release_groups::GROUP_FILE,
                 ));
             }
         }
@@ -501,8 +500,8 @@ mod tests {
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
+        version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
-        anchor = "crates/bedrock"
         tag = "bedrock-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -510,8 +509,8 @@ mod tests {
         minted = [ "cut" ]
 
         [group.domain]
+        version = "0.1.0"
         members = [ "crates/domain" ]
-        anchor = "crates/domain"
         tag = "domain-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -519,8 +518,8 @@ mod tests {
         minted = [ "cut" ]
 
         [group.outpost]
+        version = "0.1.0"
         members = [ "crates/outpost" ]
-        anchor = "crates/outpost"
         tag = "outpost-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -528,9 +527,9 @@ mod tests {
         minted = [ "cut" ]
 
         [group.waypoints]
+        version = "0.1.0-nightly"
         members = [ "src-tauri", "crates/cartograph" ]
         internals = [ "crates/store" ]
-        anchor = "src-tauri"
         tag = "v{version}"
         breaking = "trailer:Covenant: break"
         floors = [ "covenant-fixtures" ]
@@ -951,18 +950,26 @@ mod tests {
             .collect()
     }
 
+    /// The group file is the version; a member declaring another has drifted,
+    /// whichever member it is, and the message names the file.
     #[test]
-    fn a_drifted_member_fails_naming_both_manifests() {
+    fn a_drifted_member_fails_naming_its_manifest_and_the_file() {
         let declared = versions(&[("src-tauri", "0.2.0"), ("crates/cartograph", "0.1.9")]);
+        let found = lockstep_violations(&groups(), &declared);
+        assert_eq!(found.len(), 2);
         assert_names(
-            &lockstep_violations(&groups(), &declared),
-            &["crates/cartograph/Cargo.toml", "src-tauri/Cargo.toml"],
+            &found,
+            &["crates/cartograph/Cargo.toml", "0.1.9", "0.1.0-nightly"],
+        );
+        assert_names(
+            &found,
+            &["src-tauri/Cargo.toml", "0.2.0", release_groups::GROUP_FILE],
         );
     }
 
     /// The prerelease is part of the version: `main`'s `-nightly` is mirrored.
     #[test]
-    fn a_member_missing_the_anchor_s_prerelease_has_drifted() {
+    fn a_member_missing_the_file_s_prerelease_has_drifted() {
         let declared = versions(&[
             ("src-tauri", "0.1.0-nightly"),
             ("crates/cartograph", "0.1.0"),
@@ -971,6 +978,12 @@ mod tests {
             &lockstep_violations(&groups(), &declared),
             &["crates/cartograph/Cargo.toml", "0.1.0-nightly"],
         );
+    }
+
+    /// The group file at the version the bot wrote; its members are held to
+    /// it, so the bot writes the file and every member in one commit.
+    fn groups_at(app_version: &str) -> GroupFile {
+        GroupFile::parse(&GROUPS.replace("0.1.0-nightly", app_version)).unwrap()
     }
 
     /// Being the release bot's does not excuse drift, so the planner has to
@@ -988,7 +1001,7 @@ mod tests {
                     "",
                     RELEASE_BOT,
                 ),
-                groups: &groups(),
+                groups: &groups_at("0.2.0-pre.2"),
                 changes: &[
                     modified("src-tauri/Cargo.toml"),
                     modified("crates/cartograph/Cargo.toml"),
@@ -1011,20 +1024,20 @@ mod tests {
         ]);
         assert_names(
             &check_bot_write(&one),
-            &["crates/cartograph/Cargo.toml", "src-tauri/Cargo.toml"],
+            &["crates/cartograph/Cargo.toml", release_groups::GROUP_FILE],
         );
     }
 
     /// `store` is an internal, so it carries nothing to compare.
     #[test]
-    fn an_internal_is_not_held_to_its_anchor() {
+    fn an_internal_is_not_held_to_the_file() {
         let declared = versions(&[
             ("src-tauri", "0.2.0"),
             ("crates/cartograph", "0.2.0"),
             ("crates/store", "0.0.0"),
         ]);
         assert_eq!(
-            lockstep_violations(&groups(), &declared),
+            lockstep_violations(&groups_at("0.2.0"), &declared),
             Vec::<String>::new()
         );
     }

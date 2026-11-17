@@ -9,7 +9,7 @@
 use anyhow::Result;
 use clap::Parser;
 use std::path::Path;
-use xtask::{Platform, releases::artifacts, workspace};
+use xtask::{Platform, release_groups, releases::artifacts, workspace};
 
 #[derive(Parser)]
 pub struct Options {
@@ -19,7 +19,7 @@ pub struct Options {
 
     /// The release tag the files are named for. A build-only run has none:
     /// it passes the tag it would have published, or omits this to take
-    /// `v` and the app's own version.
+    /// `v` and the version the group file declares for the app.
     #[arg(long)]
     tag: Option<String>,
 }
@@ -27,7 +27,10 @@ pub struct Options {
 pub fn run(args: Options) -> Result<()> {
     let tag = match args.tag {
         Some(tag) => tag,
-        None => format!("v{}", workspace::version()?),
+        None => format!(
+            "v{}",
+            release_groups::load(&workspace::load()?)?.app_version()?
+        ),
     };
     for path in artifacts::stage(args.platform, &tag, Path::new("."))? {
         println!("staged {}", path.display());

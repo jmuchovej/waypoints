@@ -3,15 +3,20 @@
 
 //! The group file: `tooling/release-groups.toml` names every workspace crate
 //! outside `tooling/` as a versioned member or an unversioned internal of one
-//! group. Versions stay in the manifests, so the file takes no bookkeeping
-//! commits.
+//! group, and declares each group's version, which every member's manifest
+//! projects. The release bot writes the declaration and the projections in
+//! one commit; `version-integrity` holds them equal.
 //!
 //! The schema checks shape and is generated from these types, so the two
 //! cannot drift; [`load`] checks what a schema cannot see. Keys whose meaning
 //! belongs to a later change are parsed and shape-checked here, and nothing
 //! acts on them yet.
 
-use crate::{Channel, Flavor, planners::test, releases::version::Transition};
+use crate::{
+    Channel, Flavor,
+    planners::test,
+    releases::version::{Transition, Version},
+};
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::Metadata;
 use schemars::{JsonSchema, generate::SchemaSettings};
@@ -63,13 +68,14 @@ pub struct Bookkeeping {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Group {
+    /// The group's version, which every member's `[package].version`
+    /// projects: bare for a library, with its channel suffix for the app.
+    pub version: String,
     /// Crates carrying the group's version.
     pub members: Vec<String>,
     /// Crates the group owns and never versions.
     #[serde(default)]
     pub internals: Vec<String>,
-    /// The member whose `[package].version` is the group's version.
-    pub anchor: String,
     /// The group's tag, with `{version}` standing in for its version.
     pub tag: String,
     /// What marks a breaking change for this group.
@@ -187,13 +193,29 @@ impl GroupFile {
             .map(String::as_str)
     }
 
-    /// The members of the group anchored at `anchor`, the crates one version
-    /// write has to set together.
-    pub fn members_anchored_at(&self, anchor: &str) -> Option<&[String]> {
-        self.group
-            .values()
-            .find(|group| group.anchor == anchor)
-            .map(|group| group.members.as_slice())
+    /// The version `group` declares, which its members project.
+    pub fn version_of(&self, group: &str) -> Result<Version> {
+        let named = self
+            .group
+            .get(group)
+            .with_context(|| format!("no group named `{group}`"))?;
+        Version::parse(&named.version).with_context(|| {
+            format!(
+                "group `{group}`: version `{}` is not a semantic version",
+                named.version
+            )
+        })
+    }
+
+    /// The app's group: the one owning the remainder.
+    pub fn app_group(&self) -> Result<&str> {
+        self.remainder_group()
+            .context("no group owns the remainder; the app's group names `owns = \"remainder\"`")
+    }
+
+    /// The version the tree ships as — the app's, channel suffix included.
+    pub fn app_version(&self) -> Result<Version> {
+        self.version_of(self.app_group()?)
     }
 
     /// The groups owning any of `paths`.
@@ -297,10 +319,10 @@ impl GroupFile {
         }
 
         for (name, group) in &self.group {
-            if !group.members.contains(&group.anchor) {
+            if Version::parse(&group.version).is_err() {
                 problems.push(format!(
-                    "group `{name}`: anchor `{}` is not among its members",
-                    group.anchor
+                    "group `{name}`: version `{}` is not a semantic version",
+                    group.version
                 ));
             }
             for path in group.members.iter().chain(&group.internals) {
@@ -474,8 +496,8 @@ mod tests {
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
+        version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
-        anchor = "crates/bedrock"
         tag = "bedrock-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -483,9 +505,9 @@ mod tests {
         minted = [ "cut" ]
 
         [group.waypoints]
+        version = "0.1.0-nightly"
         members = [ "src-tauri" ]
         internals = [ "crates/store" ]
-        anchor = "src-tauri"
         tag = "v{version}"
         breaking = "trailer:Covenant: break"
         floors = [ "covenant-fixtures" ]
@@ -617,10 +639,37 @@ mod tests {
         }
     }
 
+    /// Every group declares its version in the file, and it is read as
+    /// semver — the app's with its channel suffix, a library's bare.
     #[test]
-    fn an_anchor_outside_its_members_is_refused() {
-        let toml = GROUPS.replace(r#"anchor = "crates/bedrock""#, r#"anchor = "crates/store""#);
-        assert_refused(&problems(&toml, &tree(&[])), &["bedrock", "crates/store"]);
+    fn a_version_that_is_not_semver_is_refused() {
+        let toml = GROUPS.replace(r#"version = "0.1.0""#, r#"version = "0.1""#);
+        assert_refused(&problems(&toml, &tree(&[])), &["bedrock", "0.1"]);
+
+        // A group declaring no version — and the anchor that used to stand in
+        // for one — does not parse.
+        let anchored = GROUPS.replace(
+            r#"tag = "bedrock-v{version}""#,
+            "anchor = \"crates/bedrock\"\n        tag = \"bedrock-v{version}\"",
+        );
+        let refused = format!("{:#}", GroupFile::parse(&anchored).unwrap_err());
+        assert!(refused.contains("anchor"), "{refused}");
+        let unversioned = GROUPS.replace(r#"version = "0.1.0""#, "");
+        let refused = format!("{:#}", GroupFile::parse(&unversioned).unwrap_err());
+        assert!(refused.contains("version"), "{refused}");
+
+        let file = GroupFile::parse(GROUPS).unwrap();
+        assert_eq!(file.version_of("bedrock").unwrap(), Version::new(0, 1, 0));
+        assert!(file.version_of("outpost").is_err());
+        assert!(file.app_group().is_err());
+
+        let with_app = GroupFile::parse(&GROUPS.replace(
+            r#"tag = "v{version}""#,
+            "tag = \"v{version}\"\n        owns = \"remainder\"",
+        ))
+        .unwrap();
+        assert_eq!(with_app.app_group().unwrap(), "waypoints");
+        assert_eq!(with_app.app_version().unwrap().to_string(), "0.1.0-nightly");
     }
 
     #[test]

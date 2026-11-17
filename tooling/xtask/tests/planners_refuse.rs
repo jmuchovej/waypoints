@@ -19,9 +19,10 @@ const GROUP_FILE: &str = r#"
   bot-subjects = [ "chore(release):" ]
 
 [group.waypoints]
+  version  = "0.1.0-nightly"
   members  = [ "src-tauri" ]
-  anchor   = "src-tauri"
   tag      = "v{version}"
+  owns     = "remainder"
   breaking = "trailer:Covenant: break"
   floors   = [ "covenant-fixtures" ]
   fixtures = "covenant/fixtures/waypoints/"

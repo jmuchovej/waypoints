@@ -42,4 +42,16 @@ in
       found = builtins.filter (pin: pin.name == name) pins;
     in
     if found == [ ] then null else builtins.head found;
+
+  # The tag pin whose tag starts with `prefix` — a release group's, since
+  # every member of a pinned group names the group's one tag — or null where
+  # no entry is pinned to such a tag.
+  pinWithTag =
+    prefix:
+    let
+      length = builtins.stringLength prefix;
+      fits = pin: pin.tag != null && builtins.substring 0 length pin.tag == prefix;
+      found = builtins.filter fits pins;
+    in
+    if found == [ ] then null else builtins.head found;
 }

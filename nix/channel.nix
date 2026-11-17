@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 John Muchovej
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# The channel a tree ships as, read from its app manifest's version — the
-# one reading shared by the overlay and the flake, and the same one the
-# release planner applies to tags (`release_plan::channel_of`):
+# The channel a tree ships as, read from the version its group file declares
+# for the app — the one reading shared by the overlay and the flake, and the
+# same one the release planner applies to tags (`release_plan::channel_of`):
 #
 #   X.Y.Z-nightly…   nightly   (main)
 #   X.Y.Z-<other>…   preview   (a series branch until promoted)
@@ -11,10 +11,14 @@
 #
 # Builtins only, so a flake can call it before it has a nixpkgs. Returns the
 # channel and the series the version belongs to (`vX.Y.x`), which is what
-# the overlay's messages name.
+# the overlay's messages name. The app manifest projects the same version;
+# `version-integrity` holds the two equal.
 tree:
 let
-  version = (fromTOML (builtins.readFile (tree + "/src-tauri/Cargo.toml"))).package.version;
+  groups = (fromTOML (builtins.readFile (tree + "/tooling/release-groups.toml"))).group;
+  # The app's group owns the remainder; the libraries own their crates.
+  app = builtins.head (builtins.filter (group: group ? owns) (builtins.attrValues groups));
+  inherit (app) version;
 
   # `1.2.3-pre.4+build` → "pre"; `1.2.3` → "".
   withoutBuild = builtins.head (builtins.split "\\+" version);

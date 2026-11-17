@@ -1,4 +1,4 @@
-#:tombi toml-version = "v1.1.0"
+#:tombi toml-version = "v1.0.0"
 #:schema ./schemas/release-groups.schema.json
 # SPDX-FileCopyrightText: 2026 John Muchovej
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,9 +6,12 @@
 # Every workspace crate outside tooling/ is named: as a member or an internal.
 # tooling/ builds the repository, not the product, and must not appear.
 #
-# `anchor` is the member whose version is the group's: every member == anchor.
+# `version` is the group's, declared here and projected into every member's
+# manifest by the release bot; `version-integrity` holds the two equal.
 # `breaking = "header"` is `!` in the group's own header. `minted = [ "cut" ]`
 # mints on main only; a series pins a library, never builds it in-tree.
+#
+# Strict TOML 1.0: nix reads this file with `builtins.fromTOML`.
 
 # Never product work, for any group or planner.
 [bookkeeping]
@@ -19,8 +22,8 @@
 
 # bedrock-derive's floor is declared-only.
 [group.bedrock]
+  version  = "0.1.0"
   members  = [ "crates/bedrock", "crates/bedrock-core", "crates/bedrock-derive" ]
-  anchor   = "crates/bedrock"
   tag      = "bedrock-v{version}"
   breaking = "header"
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
@@ -30,13 +33,13 @@
 # The wire (ALPN outpost/sync/v1 + session negotiation) is not this number.
 # A wire break is an interop break: it needs the covenant trailer.
 [group.outpost]
+  version  = "0.1.0"
   members  = [
     "crates/outpost",
     "crates/outpost-fabric",
     "crates/outpost-hold",
     "crates/outpost-protocol",
   ]
-  anchor   = "crates/outpost"
   tag      = "outpost-v{version}"
   breaking = "header"
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
@@ -45,8 +48,8 @@
 
 # Core of the data covenant.
 [group.domain]
+  version  = "0.1.0"
   members  = [ "crates/domain" ]
-  anchor   = "crates/domain"
   tag      = "domain-v{version}"
   breaking = "header"
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
@@ -54,8 +57,8 @@
   minted   = [ "cut" ]
 
 [group.transload]
+  version  = "0.1.0"
   members  = [ "crates/transload" ]
-  anchor   = "crates/transload"
   tag      = "transload-v{version}"
   breaking = "header"
   floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
@@ -63,11 +66,11 @@
   minted   = [ "cut" ]
 
 # cartograph is the API surface, so it moves with the app. store is an internal:
-# owned and counted, never versioned.
+# owned and counted, never versioned. The app's version carries its channel.
 [group.waypoints]
+  version                         = "0.1.0-nightly"
   members                         = [ "src-tauri", "crates/cartograph" ]
   internals                       = [ "crates/store" ]
-  anchor                          = "src-tauri"
   tag                             = "v{version}"
   owns                            = "remainder"
   counts                          = "closure"

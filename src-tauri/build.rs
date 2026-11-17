@@ -16,7 +16,8 @@ use std::{
 #[path = "src/group_versions.rs"]
 mod group_versions;
 
-/// The group file: every library group, its tag template, and its anchor.
+/// The group file: every library group, its tag template, and the version it
+/// declares.
 const GROUP_FILE: &str = "tooling/release-groups.toml";
 
 fn env_var(key: &str) -> Option<String> {
@@ -70,9 +71,9 @@ fn resolve_group_versions() -> String {
         if group.get("owns").is_some() {
             continue;
         }
-        let (Some(template), Some(anchor)) = (
+        let (Some(template), Some(declared)) = (
             group.get("tag").and_then(toml::Value::as_str),
-            group.get("anchor").and_then(toml::Value::as_str),
+            group.get("version").and_then(toml::Value::as_str),
         ) else {
             continue;
         };
@@ -80,24 +81,10 @@ fn resolve_group_versions() -> String {
             continue;
         };
 
-        let manifest_path = root.join(anchor).join("Cargo.toml");
-        println!("cargo:rerun-if-changed={}", manifest_path.display());
-        let manifest: toml::Table = fs::read_to_string(&manifest_path)
-            .ok()
-            .and_then(|text| text.parse().ok())
-            .unwrap_or_default();
-        let package = manifest.get("package").and_then(toml::Value::as_table);
-        let field = |key: &str| {
-            package
-                .and_then(|p| p.get(key))
-                .and_then(toml::Value::as_str)
-        };
-
         let group = group_versions::Group {
             name,
             prefix,
-            anchor_package: field("name").unwrap_or(name),
-            anchor_version: field("version").unwrap_or("unknown"),
+            declared,
         };
         let version = group_versions::resolve(&group, &injected, &lock, |prefix| {
             git(["describe", "--tags", "--match", &format!("{prefix}*")])

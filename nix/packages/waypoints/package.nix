@@ -67,10 +67,10 @@ let
   # the version: a Tauri config `version` would override the manifest's.
   flavor-config = fromTOML (read "/src-tauri/res/configs/flavors/${flavor}.toml");
 
-  # The single source of the version, tracking the branch this tree sits on.
-  # Kept parseable by `builtins.fromTOML` (strict TOML 1.0) — see the
-  # nix-flake-overlay design, D10.
-  manifest-version = (fromTOML (read "/src-tauri/Cargo.toml")).package.version;
+  # The version the app's group declares in the group file, tracking the
+  # branch this tree sits on; the manifest is its projection. Read through
+  # `channel.nix`, the one reader of that declaration.
+  manifest-version = (import ../../channel.nix workingTree).version;
 
   # A publish-time suffix extends the manifest's version; it never replaces
   # it: `0.3.0-nightly` becomes `0.3.0-nightly.20260829`, never anything
@@ -138,9 +138,9 @@ let
 
   # Each library group's version, injected as `build.rs` reads it first — a
   # fetched tree carries no git metadata to describe one from: the tag the
-  # lockfile pins the group to on a series, the version its anchor manifest
-  # declares on `main` (library-minting design D6). The group file names the
-  # groups; the anchor manifests are kept TOML 1.0 for this reader.
+  # lockfile pins the group to on a series, the version the group file
+  # declares on `main` (library-minting design D6). The pin is read by the
+  # tag's shape, so no manifest is opened.
   group-versions =
     let
       groups = (fromTOML (read "/tooling/release-groups.toml")).group;
@@ -149,16 +149,9 @@ let
       version =
         group:
         let
-          manifest = (fromTOML (read "/${group.anchor}/Cargo.toml")).package;
-          pin = pins.pinOf manifest.name;
+          pin = pins.pinWithTag (lib.removeSuffix "{version}" group.tag);
         in
-        if pin == null then
-          manifest.version
-        else
-          assert lib.assertMsg (
-            pin.tag != null
-          ) "waypoints.${flavor}: Cargo.lock pins `${manifest.name}` by something other than a tag";
-          pin.tag;
+        if pin == null then group.version else pin.tag;
     in
     lib.concatStringsSep "," (lib.mapAttrsToList (name: group: "${name}=${version group}") libraries);
 in

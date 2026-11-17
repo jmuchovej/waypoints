@@ -181,8 +181,8 @@ pub(crate) mod fixture {
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
+        version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
-        anchor = "crates/bedrock"
         tag = "bedrock-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -190,8 +190,8 @@ pub(crate) mod fixture {
         minted = [ "cut" ]
 
         [group.outpost]
+        version = "0.1.0"
         members = [ "crates/outpost" ]
-        anchor = "crates/outpost"
         tag = "outpost-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -199,8 +199,8 @@ pub(crate) mod fixture {
         minted = [ "cut" ]
 
         [group.domain]
+        version = "0.1.0"
         members = [ "crates/domain" ]
-        anchor = "crates/domain"
         tag = "domain-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -208,9 +208,9 @@ pub(crate) mod fixture {
         minted = [ "cut" ]
 
         [group.waypoints]
+        version = "0.1.0-nightly"
         members = [ "src-tauri" ]
         internals = [ "crates/store" ]
-        anchor = "src-tauri"
         tag = "v{version}"
         owns = "remainder"
         counts = "closure"

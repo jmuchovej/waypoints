@@ -77,7 +77,7 @@ impl Floor {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GroupPlan {
     pub group: String,
-    /// The anchor manifest's version: what the group is now.
+    /// The version the group file declares: what the group is now.
     pub current: String,
     /// What it becomes, or none when no counted commit landed since its tag.
     pub next: Option<String>,
@@ -120,7 +120,7 @@ impl GroupPlan {
     /// remote's `tags`, and the `commits` since its last tag, raised by
     /// `raise` — the floor a group-scoped cut names, and the evidence of the
     /// API check and the fixtures. A group with no counted commit stays where
-    /// it is; before its first tag, its anchor manifest is its version and
+    /// it is; before its first tag, the file's declaration is its version and
     /// the whole history its cycle, as the app's first cut is measured, and
     /// there is no baseline to measure against.
     pub fn decide(
@@ -640,10 +640,7 @@ fn members_of<'a>(groups: &'a GroupFile, name: &str) -> Result<&'a [String]> {
 /// The crates an app version write sets together: the app's group, which the
 /// pull-request check holds to one version.
 fn app_members(groups: &GroupFile) -> Result<&[String]> {
-    let anchor = APP_MANIFEST.trim_end_matches("/Cargo.toml");
-    groups
-        .members_anchored_at(anchor)
-        .with_context(|| format!("no group is anchored at `{anchor}`"))
+    members_of(groups, groups.app_group()?)
 }
 
 /// What a version write changes: every member's manifest, the root manifest
@@ -729,7 +726,7 @@ pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
     let root = metadata.workspace_root.as_std_path();
 
     if transition != Transition::Cut {
-        let version = Version::from(workspace::version()?).transition(transition, &[])?;
+        let version = groups.app_version()?.transition(transition, &[])?;
         let plan = Plan::from_version(transition, version)?;
         // A patch carries each pin forward along its line; advance and
         // promote move the app alone.
@@ -843,7 +840,7 @@ fn group_plan(
 ) -> Result<GroupPlan> {
     let group = &groups.group[name];
     let prefix = tag_prefix(&group.tag)?;
-    let current = anchor_version(metadata, &group.anchor)?;
+    let current = groups.version_of(name)?;
     let tags = git::remote_tags_like(&format!("{prefix}*"))?;
     let last = latest_group_tag(prefix, &tags);
     let commits = history::walk(&group_range(prefix, last.as_ref()), groups, ignored)?;
@@ -871,24 +868,6 @@ fn group_plan(
             fixtures,
         },
     )
-}
-
-/// The version the manifest at `anchor` declares.
-fn anchor_version(metadata: &Metadata, anchor: &str) -> Result<Version> {
-    let root = metadata.workspace_root.as_std_path();
-    metadata
-        .workspace_packages()
-        .iter()
-        .find(|package| {
-            package
-                .manifest_path
-                .as_std_path()
-                .parent()
-                .and_then(|dir| dir.strip_prefix(root).ok())
-                .is_some_and(|dir| dir.to_string_lossy() == anchor)
-        })
-        .map(|package| Version::from(package.version.clone()))
-        .with_context(|| format!("`{anchor}` is not a workspace member"))
 }
 
 /// The app's target for a cut from `last` over `commits`, with the frozen
@@ -944,16 +923,10 @@ pub fn cut_target(
     last.cut(&headers)
 }
 
-/// The group the app manifest anchors: the one whose version a cut moves
-/// with the series.
+/// The app's group — the one owning the remainder — whose version a cut
+/// moves with the series.
 fn app_group(groups: &GroupFile) -> Result<&str> {
-    let anchor = APP_MANIFEST.trim_end_matches("/Cargo.toml");
-    groups
-        .group
-        .iter()
-        .find(|(_, group)| group.anchor == anchor)
-        .map(|(name, _)| name.as_str())
-        .with_context(|| format!("no group is anchored at `{anchor}`"))
+    groups.app_group()
 }
 
 /// Leaves `plan`'s writes in the working tree for the pull-request step to
@@ -2185,7 +2158,7 @@ mod tests {
         assert!(!main.paths.contains("crates/outpost"), "{}", main.paths);
     }
 
-    /// Scenario _First cut of a group with no tag_: the anchor manifest is the
+    /// Scenario _First cut of a group with no tag_: the file's declaration is the
     /// version and the whole history the cycle.
     #[test]
     fn a_group_with_no_tag_is_measured_over_its_whole_history() {
@@ -2425,8 +2398,8 @@ version = \"ignored\"
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
+        version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
-        anchor = "crates/bedrock"
         tag = "bedrock-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -2434,9 +2407,9 @@ version = \"ignored\"
         minted = [ "cut" ]
 
         [group.outpost]
+        version = "0.1.0"
         members = [ "crates/outpost" ]
         internals = [ "crates/outpost-protocol" ]
-        anchor = "crates/outpost"
         tag = "outpost-v{version}"
         breaking = "header"
         floors = [ "cargo-semver-checks" ]
@@ -2444,9 +2417,9 @@ version = \"ignored\"
         minted = [ "cut" ]
 
         [group.waypoints]
+        version = "0.1.0-nightly"
         members = [ "src-tauri" ]
         internals = [ "crates/store" ]
-        anchor = "src-tauri"
         tag = "v{version}"
         owns = "remainder"
         counts = "closure"

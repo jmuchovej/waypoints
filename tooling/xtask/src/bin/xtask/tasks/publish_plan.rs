@@ -44,20 +44,19 @@ pub fn run(args: Options) -> Result<()> {
     let build = builds(args.dry_run, args.no_build)?;
     let tag = args.tag.filter(|tag| !tag.is_empty());
 
-    release_groups::load(&workspace::load()?)?;
-    let manifest = Version::from(workspace::version()?);
-    if manifest.channel() != args.channel {
+    let declared = release_groups::load(&workspace::load()?)?.app_version()?;
+    if declared.channel() != args.channel {
         bail!(
-            "the manifest declares {manifest}, a {} version, and this run is for the {} channel",
-            manifest.channel(),
+            "the group file declares {declared}, a {} version, and this run is for the {} channel",
+            declared.channel(),
             args.channel
         );
     }
 
     let (plan, report) = match args.channel {
-        Channel::Nightly => plan_nightly(&manifest, tag.as_deref(), args.dry_run, build)?,
+        Channel::Nightly => plan_nightly(&declared, tag.as_deref(), args.dry_run, build)?,
         Channel::Preview | Channel::Stable => {
-            plan_release(args.channel, &manifest, tag.as_deref(), args.dry_run, build)?
+            plan_release(args.channel, &declared, tag.as_deref(), args.dry_run, build)?
         }
     };
     println!("{report}");

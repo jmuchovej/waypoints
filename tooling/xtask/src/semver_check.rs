@@ -15,6 +15,7 @@ use crate::{
     releases::{history::Commit as Walked, version::Version},
     tools::git,
     version_integrity::{Change, PullRequest},
+    workspace,
 };
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::{Metadata, TargetKind};
@@ -134,7 +135,7 @@ pub fn library_members(
         .group
         .get(group)
         .with_context(|| format!("no group named `{group}`"))?;
-    let app_anchor = (groups.remainder_group() == Some(group)).then_some(named.anchor.as_str());
+    let is_app_group = groups.remainder_group() == Some(group);
 
     let mut members = Vec::new();
     for package in metadata.workspace_packages() {
@@ -147,7 +148,8 @@ pub fn library_members(
         else {
             continue;
         };
-        if !named.members.contains(&directory) || app_anchor == Some(directory.as_str()) {
+        let is_app = is_app_group && package.name.as_str() == workspace::APP;
+        if !named.members.contains(&directory) || is_app {
             continue;
         }
         let kinds: Vec<&TargetKind> = package

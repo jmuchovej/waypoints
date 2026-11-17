@@ -58,6 +58,10 @@
       "description": "One versioned line of crates.",
       "type": "object",
       "properties": {
+        "version": {
+          "description": "The group's version, which every member's `[package].version`\nprojects: bare for a library, with its channel suffix for the app.",
+          "type": "string"
+        },
         "members": {
           "description": "Crates carrying the group's version.",
           "type": "array",
@@ -72,10 +76,6 @@
             "type": "string"
           },
           "default": []
-        },
-        "anchor": {
-          "description": "The member whose `[package].version` is the group's version.",
-          "type": "string"
         },
         "tag": {
           "description": "The group's tag, with `{version}` standing in for its version.",
@@ -151,8 +151,8 @@
       },
       "additionalProperties": false,
       "required": [
+        "version",
         "members",
-        "anchor",
         "tag",
         "breaking",
         "floors",
