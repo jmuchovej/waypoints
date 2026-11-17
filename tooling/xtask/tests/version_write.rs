@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! What `release-plan` leaves in a real working tree for the pull-request
-//! step. The fixture has a real remote, because the planner fetches the branch
-//! it writes to and reads the tags the remote holds. Nothing here reaches the
-//! GitHub API: `advance` writes on its series, and a cut's first write lands on
-//! `main` before any ref is minted.
+//! step, and what `release-groups project` writes from the group file. The
+//! fixture has a real remote, because the planner fetches the branch it
+//! writes to and reads the tags the remote holds. Nothing here reaches the
+//! GitHub API: `advance` writes on its series, and a cut's first write lands
+//! on `main` before any ref is minted.
 
 use std::{
     fs,
@@ -52,6 +53,8 @@ fn group_file(app: &str, domain: &str) -> String {
 "#
     )
 }
+
+const GROUP_FILE: &str = "tooling/release-groups.toml";
 
 /// The library's version in every fixture: a cut moves it from here.
 const DOMAIN: &str = "0.1.0";
@@ -144,11 +147,7 @@ impl Fixture {
     }
 
     fn commit_versions(&self, version: &str, subject: &str) {
-        write(
-            &self.root,
-            "tooling/release-groups.toml",
-            &group_file(version, DOMAIN),
-        );
+        write(&self.root, GROUP_FILE, &group_file(version, DOMAIN));
         write(
             &self.root,
             "src-tauri/Cargo.toml",
@@ -228,6 +227,8 @@ fn assert_published(published: &str, lines: &[&str]) {
     }
 }
 
+/// Scenario _An advance writes the app alone_: the group file's app version
+/// and the app's manifests move together, and the library's line stays.
 #[test]
 fn advance_writes_the_whole_group_on_its_series() {
     let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
@@ -249,9 +250,11 @@ fn advance_writes_the_whole_group_on_its_series() {
         [
             "Cargo.lock",
             "crates/cartograph/Cargo.toml",
-            "src-tauri/Cargo.toml"
+            "src-tauri/Cargo.toml",
+            GROUP_FILE,
         ]
     );
+    assert_eq!(fixture.read(GROUP_FILE), group_file("0.2.0-pre.2", DOMAIN));
     assert_eq!(
         fixture.read("src-tauri/Cargo.toml"),
         manifest("Waypoints", "0.2.0-pre.2")
@@ -269,7 +272,7 @@ fn advance_writes_the_whole_group_on_its_series() {
             "tag=v0.2.0-pre.2",
             "head=botswain/release-plan/v0.2.x",
             "title=chore(release): v0.2.x preview 0.2.0-pre.2",
-            "paths=src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
+            "paths=tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
         ],
     );
 }
@@ -295,31 +298,54 @@ fn the_write_lands_on_the_series_as_the_remote_has_it() {
     assert!(fixture.root.join("landed-meanwhile.txt").exists());
 }
 
+/// A dry run names what it would write and renders it — the group file's
+/// hunk beside the manifests' in `series.patch` — and leaves the tree as it
+/// was.
 #[test]
 fn a_dry_run_names_the_pull_request_and_leaves_the_tree_clean() {
     let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
     git(&fixture.root, &["checkout", "-q", "v0.2.x"]);
+    let into = fixture.root.join("target/dry-run");
 
-    let (output, published) = fixture.xtask(&["release-plan", "advance", "--dry-run"]);
+    let (output, published) = fixture.xtask(&[
+        "release-plan",
+        "advance",
+        "--dry-run",
+        "--into",
+        into.to_str().unwrap(),
+    ]);
     assert_succeeded(&output);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     for named in [
         "chore(release): v0.2.x preview 0.2.0-pre.2",
         "botswain/release-plan/v0.2.x",
-        "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
+        "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
     ] {
         assert!(stdout.contains(named), "{named}: {stdout}");
     }
+    let patch = fs::read_to_string(into.join("series.patch")).unwrap();
+    for hunk in [
+        "--- a/tooling/release-groups.toml\n",
+        "-  version  = \"0.2.0-pre.1\"\n+  version  = \"0.2.0-pre.2\"\n",
+        "--- a/src-tauri/Cargo.toml\n",
+        "--- a/crates/cartograph/Cargo.toml\n",
+        "--- a/Cargo.lock\n",
+    ] {
+        assert!(patch.contains(hunk), "{hunk}: {patch}");
+    }
+    assert!(!patch.contains("crates/domain"), "{patch}");
     assert_eq!(fixture.changed(), Vec::<String>::new());
     // Without a landing the pull-request step has nothing to open.
     assert!(!published.contains("head="), "{published}");
 }
 
-/// A cut's first write: the main-side manifests on `main` — the library the
-/// history moved and the app's bump — under a summary whose headers the
-/// planner wrote to a body file for the pull-request step. The series is
-/// opened later, from that write's merge commit, so nothing touches it here.
+/// Scenario _A cut writes the file with the manifests_: a cut's first write
+/// is the main-side projection on `main` — the library the history moved and
+/// the app's bump, in the group file and every member manifest — under a
+/// summary whose headers the planner wrote to a body file for the
+/// pull-request step. The series is opened later, from that write's merge
+/// commit, so nothing touches it here.
 #[test]
 fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
     let fixture = Fixture::new("0.1.0-nightly", "0.2.0-pre.1");
@@ -337,7 +363,12 @@ fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
             "crates/cartograph/Cargo.toml",
             "crates/domain/Cargo.toml",
             "src-tauri/Cargo.toml",
+            GROUP_FILE,
         ]
+    );
+    assert_eq!(
+        fixture.read(GROUP_FILE),
+        group_file("0.2.0-nightly", "0.1.1")
     );
     assert_eq!(
         fixture.read("src-tauri/Cargo.toml"),
@@ -363,7 +394,7 @@ fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
             "group_tags=domain-v0.1.1",
             "head=botswain/release-plan/main",
             "title=summary: cut 0.1.0-pre.1",
-            "paths=src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,crates/domain/Cargo.toml,Cargo.lock",
+            "paths=tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,crates/domain/Cargo.toml,Cargo.lock",
         ],
     );
     let body_path = published
@@ -375,4 +406,108 @@ fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
         body.contains("chore(domain): 0.1.1\nchore(waypoints): main now targets 0.2.0-nightly"),
         "{body}"
     );
+}
+
+/// Scenario _A hand-edited file is projected_: the library's manifest and
+/// lockfile entry take the version the file now declares, and nothing else
+/// moves.
+#[test]
+fn project_writes_a_hand_edited_file_into_its_manifests() {
+    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
+    write(
+        &fixture.root,
+        GROUP_FILE,
+        &group_file("0.3.0-nightly", "0.2.0"),
+    );
+
+    let (output, _) = fixture.xtask(&["release-groups", "project"]);
+    assert_succeeded(&output);
+
+    assert_eq!(
+        fixture.changed(),
+        ["Cargo.lock", "crates/domain/Cargo.toml", GROUP_FILE]
+    );
+    assert_eq!(
+        fixture.read("crates/domain/Cargo.toml"),
+        manifest("domain", "0.2.0")
+    );
+    assert_eq!(fixture.read("Cargo.lock"), lock("0.3.0-nightly", "0.2.0"));
+    assert_cargo_agrees(&fixture.root);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("wrote crates/domain/Cargo.toml"),
+        "{stdout}"
+    );
+}
+
+/// Scenario _A new member takes its group's version_: a crate added to a
+/// group at some other version is written to the group's.
+#[test]
+fn project_gives_a_new_member_its_group_s_version() {
+    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
+    write(
+        &fixture.root,
+        "Cargo.toml",
+        "[workspace]\nresolver = \"3\"\nmembers = [ \"crates/cartograph\", \"crates/domain\", \"crates/domain-core\", \"src-tauri\" ]\n",
+    );
+    write(&fixture.root, "crates/domain-core/src/lib.rs", "");
+    write(
+        &fixture.root,
+        "crates/domain-core/Cargo.toml",
+        &manifest("domain-core", "0.0.0"),
+    );
+    write(
+        &fixture.root,
+        "Cargo.lock",
+        &format!(
+            "{}\n[[package]]\nname = \"domain-core\"\nversion = \"0.0.0\"\n",
+            lock("0.3.0-nightly", DOMAIN)
+        ),
+    );
+    write(
+        &fixture.root,
+        GROUP_FILE,
+        &group_file("0.3.0-nightly", DOMAIN).replace(
+            r#"members  = [ "crates/domain" ]"#,
+            r#"members  = [ "crates/domain", "crates/domain-core" ]"#,
+        ),
+    );
+    git(&fixture.root, &["add", "-A"]);
+    git(
+        &fixture.root,
+        &["commit", "-q", "-m", "feat(domain): a core crate"],
+    );
+
+    let (output, _) = fixture.xtask(&["release-groups", "project"]);
+    assert_succeeded(&output);
+
+    assert_eq!(
+        fixture.changed(),
+        ["Cargo.lock", "crates/domain-core/Cargo.toml"]
+    );
+    assert_eq!(
+        fixture.read("crates/domain-core/Cargo.toml"),
+        manifest("domain-core", DOMAIN)
+    );
+    assert!(
+        fixture
+            .read("Cargo.lock")
+            .contains("name = \"domain-core\"\nversion = \"0.1.0\"\n"),
+        "{}",
+        fixture.read("Cargo.lock")
+    );
+    assert_cargo_agrees(&fixture.root);
+}
+
+/// Scenario _An agreeing tree is untouched_.
+#[test]
+fn project_on_an_agreeing_tree_changes_nothing() {
+    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
+
+    let (output, _) = fixture.xtask(&["release-groups", "project"]);
+    assert_succeeded(&output);
+
+    assert_eq!(fixture.changed(), Vec::<String>::new());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("already declares"), "{stdout}");
 }

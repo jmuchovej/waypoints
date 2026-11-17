@@ -523,14 +523,15 @@ impl Plan {
     }
 
     /// The pull request that lands the `main`-side writes: the app's bump,
-    /// each minted group's manifests, or both. None when nothing lands there.
+    /// each minted group's version, or both — in the group file and the
+    /// manifests projecting it. None when nothing lands there.
     pub fn main_landing(&self, groups: &GroupFile) -> Result<Option<Landing>> {
         let minted: Vec<&GroupPlan> = self.minted().collect();
         if self.next_main_version.is_empty() && minted.is_empty() {
             return Ok(None);
         }
 
-        let mut paths = Vec::new();
+        let mut paths = vec![GROUP_FILE.to_owned()];
         if !self.next_main_version.is_empty() {
             paths.extend(
                 app_members(groups)?
@@ -643,14 +644,17 @@ fn app_members(groups: &GroupFile) -> Result<&[String]> {
     members_of(groups, groups.app_group()?)
 }
 
-/// What a version write changes: every member's manifest, the root manifest
-/// where the write also `pins` the series' libraries, and the lockfile
-/// entries that repeat their versions.
+/// What a version write changes: the group file that declares the version,
+/// every member's manifest that projects it, the root manifest where the
+/// write also `pins` the series' libraries, and the lockfile entries that
+/// repeat their versions.
 fn written_paths(groups: &GroupFile, pins: bool) -> Result<Vec<String>> {
-    let mut paths: Vec<String> = app_members(groups)?
-        .iter()
-        .map(|member| format!("{member}/Cargo.toml"))
-        .collect();
+    let mut paths = vec![GROUP_FILE.to_owned()];
+    paths.extend(
+        app_members(groups)?
+            .iter()
+            .map(|member| format!("{member}/Cargo.toml")),
+    );
     if pins {
         paths.push(ROOT_MANIFEST.to_owned());
     }
@@ -930,36 +934,51 @@ fn app_group(groups: &GroupFile) -> Result<&str> {
 }
 
 /// Leaves `plan`'s writes in the working tree for the pull-request step to
-/// commit: on a cut, the `main`-side manifests — each minted group's and the
-/// app's bump — on `main`; otherwise the app's version on its series, and on
-/// a patch the pins it moves. A cut's series is opened later, from the merge
-/// commit those writes land as ([`open_series`]).
+/// commit, each a projection of the group file onto its members: on a cut,
+/// the `main`-side versions — each minted group's and the app's bump — on
+/// `main`; otherwise the app's version on its series, and on a patch the pins
+/// it moves, each moved group's line in the file beside the root manifest's
+/// pin. A cut's series is opened later, from the merge commit those writes
+/// land as ([`open_series`]).
 pub fn execute(transition: Transition, plan: &Plan) -> Result<()> {
     if transition == Transition::Cut {
         git::check_out_latest(MAIN)?;
-        let groups = release_groups::load(&workspace::load()?)?;
+        let metadata = workspace::load()?;
+        let groups = release_groups::load(&metadata)?;
+        let mut writes = Vec::new();
         for group in plan.minted() {
             let next = Version::parse(group.next.as_deref().unwrap_or_default())?;
-            write_members(members_of(&groups, &group.group)?, &next)?;
+            writes.push((group.group.clone(), next));
         }
         if !plan.next_main_version.is_empty() {
             let next = Version::parse(&plan.next_main_version)?;
-            write_members(app_members(&groups)?, &next)?;
+            writes.push((app_group(&groups)?.to_owned(), next));
         }
+        project(&metadata, &groups, &writes)?;
         return Ok(());
     }
 
     git::check_out_latest(&plan.branch)?;
     let metadata = workspace::load()?;
     let groups = release_groups::load(&metadata)?;
-    write_members(app_members(&groups)?, &Version::parse(&plan.version)?)?;
+    let root = metadata.workspace_root.as_std_path();
+    let mut writes = vec![(
+        app_group(&groups)?.to_owned(),
+        Version::parse(&plan.version)?,
+    )];
     if plan.moves_a_pin() {
-        let root = metadata.workspace_root.as_std_path();
         let manifest = root.join(ROOT_MANIFEST);
+        let pins = plan.pins();
         write(
             &manifest,
-            &pin_workspace(&read(&manifest)?, &plan.pins(), &groups)?,
+            &pin_workspace(&read(&manifest)?, &pins, &groups)?,
         )?;
+        for (group, tag) in &pins {
+            writes.push((group.clone(), tag_version(&groups, group, tag)?));
+        }
+    }
+    project(&metadata, &groups, &writes)?;
+    if plan.moves_a_pin() {
         update_lockfile(root)?;
     }
     Ok(())
@@ -968,9 +987,11 @@ pub fn execute(transition: Transition, plan: &Plan) -> Result<()> {
 /// Opens a cut's series at `commit` — the merge commit of its main pull
 /// request, which its first-parent history contains — and leaves its first
 /// write in the working tree for the pull-request step, which reads the
-/// returned landing: the app's `version`, and every library group pinned to
-/// its newest tag on the remote, which the cut's tagging step moved for each
-/// group it minted (design D7).
+/// returned landing: every library group pinned to its newest tag on the
+/// remote, which the cut's tagging step moved for each group it minted
+/// (design D7), and the group file saying what the series ships — the app's
+/// `version`, projected into its manifests, and each pinned group's held to
+/// its pin.
 pub fn open_series(version: &Version, commit: &str) -> Result<Landing> {
     let plan = Plan::from_version(Transition::Cut, version.clone())?;
     github::create_branch(&plan.branch, commit)?;
@@ -979,10 +1000,17 @@ pub fn open_series(version: &Version, commit: &str) -> Result<Landing> {
     let groups = release_groups::load(&metadata)?;
     let root = metadata.workspace_root.as_std_path();
 
-    write_members(app_members(&groups)?, version)?;
     let manifest = root.join(ROOT_MANIFEST);
-    let pinned = pin_workspace(&read(&manifest)?, &remote_pins(&groups)?, &groups)?;
-    write(&manifest, &pinned)?;
+    let pins = remote_pins(&groups)?;
+    write(
+        &manifest,
+        &pin_workspace(&read(&manifest)?, &pins, &groups)?,
+    )?;
+    let mut writes = vec![(app_group(&groups)?.to_owned(), version.clone())];
+    for (group, tag) in &pins {
+        writes.push((group.clone(), tag_version(&groups, group, tag)?));
+    }
+    project(&metadata, &groups, &writes)?;
     update_lockfile(root)?;
     plan.landing(&groups)?.context("a cut opens a series")
 }
@@ -1143,14 +1171,18 @@ pub fn pull_request_body() -> String {
 /// What a dry run renders instead of writing, each file by name, for the task
 /// to put under one directory: `series.patch` and, for a cut, `main.patch` are
 /// the version writes as unified diffs against the trees they would land on —
-/// a cut's `series.patch` carries the root manifest's pins too, though not
-/// the lockfile entries cargo resolves from them once the tags exist;
-/// `refs.md` names the branch, the tag, and the pull requests; `notes.md` is
-/// git-cliff's rendering for the would-be tag. Everything is read with `git
-/// show`, so the checkout is left as it was.
+/// each the group file's lines beside the manifests they project into; a
+/// cut's `series.patch` carries the root manifest's pins too, and each pinned
+/// group's line in the file, though not the lockfile entries cargo resolves
+/// from the pins once the tags exist; `refs.md` names the branch, the tag,
+/// and the pull requests; `notes.md` is git-cliff's rendering for the
+/// would-be tag. Everything is read with `git show`, so the checkout is left
+/// as it was.
 pub fn rehearse(transition: Transition, plan: &Plan) -> Result<Vec<(String, String)>> {
     let metadata = workspace::load()?;
     let groups = release_groups::load(&metadata)?;
+    let packages = test::package_directories(&metadata);
+    let app = app_group(&groups)?;
     let mut files = Vec::new();
 
     // A cut opens its series from the commit the run is on; the others write
@@ -1163,34 +1195,45 @@ pub fn rehearse(transition: Transition, plan: &Plan) -> Result<Vec<(String, Stri
         } else {
             remote_or_local(&plan.branch)
         };
-        let writes = member_writes(app_members(&groups)?, &Version::parse(&plan.version)?);
-        let mut changes = manifest_changes(&metadata, &series_tree, &writes)?;
-        // The pins a cut starts its series on, or the ones a patch moves.
+        let mut writes = vec![(app.to_owned(), Version::parse(&plan.version)?)];
+        let mut changes = Vec::new();
+        // The pins a cut starts its series on, or the ones a patch moves: the
+        // root manifest as the write leaves it, which the projection reads to
+        // tell a pinned group — its line in the file alone — from one in tree.
+        let mut root_manifest = git::show(&series_tree, ROOT_MANIFEST)?;
         if plan.opens_series() || plan.moves_a_pin() {
-            let before = git::show(&series_tree, ROOT_MANIFEST)?;
-            let after = pin_workspace(&before, &plan.pins(), &groups)?;
-            changes.push((ROOT_MANIFEST.to_owned(), before, after));
+            let pins = plan.pins();
+            let after = pin_workspace(&root_manifest, &pins, &groups)?;
+            for (group, tag) in &pins {
+                writes.push((group.clone(), tag_version(&groups, group, tag)?));
+            }
+            changes.push((ROOT_MANIFEST.to_owned(), root_manifest, after.clone()));
+            root_manifest = after;
         }
+        changes.extend(projection(&groups, &packages, &writes, |path| {
+            if path == ROOT_MANIFEST {
+                Ok(root_manifest.clone())
+            } else {
+                git::show(&series_tree, path)
+            }
+        })?);
         files.push(("series.patch".to_owned(), unified_diff(&changes)?));
     }
 
-    // The main-side commit: the app's bump, each minted group's manifests, or
+    // The main-side commit: the app's bump, each minted group's version, or
     // both.
     let main = plan.main_landing(&groups)?;
     if main.is_some() {
         let mut writes = Vec::new();
         if !plan.next_main_version.is_empty() {
-            let next = Version::parse(&plan.next_main_version)?;
-            writes.extend(member_writes(app_members(&groups)?, &next));
+            writes.push((app.to_owned(), Version::parse(&plan.next_main_version)?));
         }
         for group in plan.minted() {
             let next = Version::parse(group.next.as_deref().unwrap_or_default())?;
-            writes.extend(member_writes(members_of(&groups, &group.group)?, &next));
+            writes.push((group.group.clone(), next));
         }
-        files.push((
-            "main.patch".to_owned(),
-            unified_diff(&manifest_changes(&metadata, "HEAD", &writes)?)?,
-        ));
+        let changes = projection(&groups, &packages, &writes, |path| git::show("HEAD", path))?;
+        files.push(("main.patch".to_owned(), unified_diff(&changes)?));
     }
 
     files.push((
@@ -1204,14 +1247,6 @@ pub fn rehearse(transition: Transition, plan: &Plan) -> Result<Vec<(String, Stri
     Ok(files)
 }
 
-/// `version` for each of `members`: one version write's worth of manifests.
-fn member_writes(members: &[String], version: &Version) -> Vec<(String, Version)> {
-    members
-        .iter()
-        .map(|member| (member.clone(), version.clone()))
-        .collect()
-}
-
 /// The remote's view of `branch` where the checkout has fetched it, else the
 /// local branch — and a name `git show` fails on, by name, when neither exists.
 fn remote_or_local(branch: &str) -> String {
@@ -1220,35 +1255,6 @@ fn remote_or_local(branch: &str) -> String {
         Ok(_) => remote,
         Err(_) => branch.to_owned(),
     }
-}
-
-/// The `writes` — `(member, version)` — as the tree at `reference` would take
-/// them, as `(path, before, after)` for [`unified_diff`]: each member's
-/// manifest and the lockfile entries that repeat their versions. Read with
-/// `git show`, so nothing in the checkout moves.
-fn manifest_changes(
-    metadata: &Metadata,
-    reference: &str,
-    writes: &[(String, Version)],
-) -> Result<Vec<(String, String, String)>> {
-    let packages = test::package_directories(metadata);
-    let before = git::show(reference, LOCKFILE)?;
-    let mut lock = before.clone();
-    let mut changes = Vec::new();
-    for (member, version) in writes {
-        let path = format!("{member}/Cargo.toml");
-        let manifest = git::show(reference, &path)?;
-        let rewritten = set_package_version(&manifest, version)?;
-        changes.push((path, manifest, rewritten));
-
-        let (package, _) = packages
-            .iter()
-            .find(|(_, directory)| directory == member)
-            .with_context(|| format!("`{member}` is not a workspace member"))?;
-        lock = set_locked_version(&lock, package, version)?;
-    }
-    changes.push((LOCKFILE.to_owned(), before, lock));
-    Ok(changes)
 }
 
 /// `changes` — `(path, before, after)` — as `git diff` prints them between two
@@ -1512,26 +1518,99 @@ mod rehearsal_tests {
     }
 }
 
-/// Writes `version` to each of `members`, in the tree checked out now: their
-/// manifests and their lockfile entries.
-fn write_members(members: &[String], version: &Version) -> Result<()> {
-    let metadata = workspace::load()?;
-    let packages = test::package_directories(&metadata);
-    let root = metadata.workspace_root.as_std_path();
+/// The texts a version write rewrites, as `(path, before, after)`, read
+/// through `read` — the checkout, or a tree `git show` reads — and left for
+/// the caller to write or to diff: for each `(group, version)` of `writes`,
+/// the group's `version` line in the group file and, unless the root manifest
+/// pins the group — a series' library, on disk and out of the workspace,
+/// whose line is held to its pin — every member's manifest and lockfile
+/// entry. The file comes first and the lockfile last, each carrying every
+/// write.
+fn projection(
+    groups: &GroupFile,
+    packages: &[(String, String)],
+    writes: &[(String, Version)],
+    read: impl Fn(&str) -> Result<String>,
+) -> Result<Vec<(String, String, String)>> {
+    let pinned: BTreeSet<String> = pins_in(ROOT_MANIFEST, &read(ROOT_MANIFEST)?, groups)?
+        .into_iter()
+        .map(|pin| pin.group)
+        .collect();
+    let file = read(GROUP_FILE)?;
+    let mut file_after = file.clone();
+    let lock = read(LOCKFILE)?;
+    let mut lock_after = lock.clone();
+    let mut manifests = Vec::new();
+    for (group, version) in writes {
+        file_after = set_group_version(&file_after, group, version)?;
+        if pinned.contains(group) {
+            continue;
+        }
+        for member in members_of(groups, group)? {
+            let path = format!("{member}/Cargo.toml");
+            let manifest = read(&path)?;
+            let rewritten = set_package_version(&manifest, version)?;
+            manifests.push((path, manifest, rewritten));
 
-    let lockfile = root.join(LOCKFILE);
-    let mut lock = read(&lockfile)?;
-    for member in members {
-        let manifest = root.join(member).join("Cargo.toml");
-        write(&manifest, &set_package_version(&read(&manifest)?, version)?)?;
-
-        let (package, _) = packages
-            .iter()
-            .find(|(_, directory)| directory == member)
-            .with_context(|| format!("`{member}` is not a workspace member"))?;
-        lock = set_locked_version(&lock, package, version)?;
+            let (package, _) = packages
+                .iter()
+                .find(|(_, directory)| directory == member)
+                .with_context(|| format!("`{member}` is not a workspace member"))?;
+            lock_after = set_locked_version(&lock_after, package, version)?;
+        }
     }
-    write(&lockfile, &lock)
+    let mut changes = vec![(GROUP_FILE.to_owned(), file, file_after)];
+    changes.extend(manifests);
+    changes.push((LOCKFILE.to_owned(), lock, lock_after));
+    Ok(changes)
+}
+
+/// Writes each `(group, version)` of `writes` in the tree checked out now —
+/// the group file's line, the members' manifests, their lockfile entries, as
+/// [`projection`] reads them — and returns the paths it changed. A file the
+/// write leaves as it is stays untouched.
+fn project(
+    metadata: &Metadata,
+    groups: &GroupFile,
+    writes: &[(String, Version)],
+) -> Result<Vec<String>> {
+    let root = metadata.workspace_root.as_std_path();
+    let packages = test::package_directories(metadata);
+    let changes = projection(groups, &packages, writes, |path| read(&root.join(path)))?;
+    let mut written = Vec::new();
+    for (path, before, after) in changes {
+        if before != after {
+            write(&root.join(&path), &after)?;
+            written.push(path);
+        }
+    }
+    Ok(written)
+}
+
+/// Every group's declared version projected onto its members, from the file
+/// as it stands: what `release-groups project` runs for a hand-edited file, a
+/// crate newly joining a group, or a scratch tree. Returns the paths it
+/// changed — none on a tree that already agrees.
+pub fn project_file(metadata: &Metadata, groups: &GroupFile) -> Result<Vec<String>> {
+    let writes = groups
+        .group
+        .keys()
+        .map(|name| Ok((name.clone(), groups.version_of(name)?)))
+        .collect::<Result<Vec<_>>>()?;
+    project(metadata, groups, &writes)
+}
+
+/// The version `group`'s `tag` names: the tag less the group's prefix.
+fn tag_version(groups: &GroupFile, group: &str, tag: &str) -> Result<Version> {
+    let template = &groups
+        .group
+        .get(group)
+        .with_context(|| format!("no group named `{group}`"))?
+        .tag;
+    let version = tag
+        .strip_prefix(tag_prefix(template)?)
+        .with_context(|| format!("tag `{tag}` is not `{template}`"))?;
+    Version::parse(version)
 }
 
 fn read(path: &Path) -> Result<String> {
@@ -1572,6 +1651,38 @@ fn set_package_version(manifest: &str, version: &Version) -> Result<String> {
 
     if !edited {
         bail!("no `[package]` version to rewrite");
+    }
+    Ok(out.join("\n") + "\n")
+}
+
+/// Rewrites `group`'s `version` in the group file, leaving every other line
+/// alone: the first `version` key under `[group.<name>]`, which keeps its
+/// indent and alignment as [`set_package_version`] keeps a manifest's.
+fn set_group_version(file: &str, group: &str, version: &Version) -> Result<String> {
+    let header = format!("[group.{group}]");
+    let mut in_group = false;
+    let mut edited = false;
+
+    let out: Vec<String> = file
+        .lines()
+        .map(|line| {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with('[') {
+                in_group = trimmed.starts_with(&header);
+            } else if in_group
+                && !edited
+                && let Some((key, _)) = line.split_once('=')
+                && key.trim() == "version"
+            {
+                edited = true;
+                return format!("{key}= \"{version}\"");
+            }
+            line.to_owned()
+        })
+        .collect();
+
+    if !edited {
+        bail!("{GROUP_FILE} declares no `version` for `{group}`");
     }
     Ok(out.join("\n") + "\n")
 }
@@ -2199,7 +2310,7 @@ mod tests {
         assert_eq!(main.title, "chore(release): bedrock 0.3.1");
         assert_eq!(
             main.paths,
-            "crates/bedrock/Cargo.toml,crates/bedrock-core/Cargo.toml,crates/bedrock-derive/Cargo.toml,Cargo.lock"
+            "tooling/release-groups.toml,crates/bedrock/Cargo.toml,crates/bedrock-core/Cargo.toml,crates/bedrock-derive/Cargo.toml,Cargo.lock"
         );
         assert_eq!(
             plan.summary_headers(&groups).unwrap(),
@@ -2310,9 +2421,9 @@ version = \"ignored\"
             let plan = plan(transition, from, commits);
             let landing = plan.landing(&groups).unwrap().unwrap();
             let expected = if transition == Transition::Cut {
-                "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.toml,Cargo.lock"
+                "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.toml,Cargo.lock"
             } else {
-                "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock"
+                "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock"
             };
             assert_eq!(landing.paths, expected, "{transition:?}");
             assert_eq!(
@@ -2341,7 +2452,7 @@ version = \"ignored\"
         // `main` keeps its path dependencies: the pins are the series' alone.
         assert_eq!(
             main.paths,
-            "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock"
+            "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock"
         );
 
         let advance = plan(Transition::Advance, "0.2.0-pre.1", &[]);
@@ -2663,7 +2774,7 @@ version = \"ignored\"
         assert_eq!(patch.pins(), pins(&[("bedrock", "bedrock-v0.2.1")]));
         assert_eq!(
             patch.landing(&groups).unwrap().unwrap().paths,
-            "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.toml,Cargo.lock"
+            "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.toml,Cargo.lock"
         );
         assert_eq!(patch.main_landing(&groups).unwrap(), None);
     }
@@ -2715,7 +2826,7 @@ version = \"ignored\"
         assert!(patch.pins().is_empty());
         assert_eq!(
             patch.landing(&groups).unwrap().unwrap().paths,
-            "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock"
+            "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock"
         );
     }
 
@@ -2771,6 +2882,134 @@ version = \"ignored\"
         assert_eq!(moved.matches("# On a series").count(), 1, "{moved}");
     }
 
+    /// A group file for [`SERIES_GROUPS`]' groups, aligned as tombi leaves
+    /// ours — the app's table wider than the libraries', as in the real one.
+    fn series_file(bedrock: &str, outpost: &str, app: &str) -> String {
+        format!(
+            "[group.bedrock]\n  version  = \"{bedrock}\"\n  members  = [ \"crates/bedrock\", \"crates/bedrock-core\" ]\n  tag      = \"bedrock-v{{version}}\"\n\n\
+             [group.outpost]\n  version  = \"{outpost}\"\n  members  = [ \"crates/outpost\" ]\n  tag      = \"outpost-v{{version}}\"\n\n\
+             [group.waypoints]\n  version                         = \"{app}\"\n  members                         = [ \"src-tauri\" ]\n  tag                             = \"v{{version}}\"\n"
+        )
+    }
+
+    /// The file's line edit: the named group's `version` alone, at its own
+    /// alignment, and a refusal for a group the file does not declare.
+    #[test]
+    fn a_group_s_version_line_moves_alone() {
+        let file = series_file("0.1.0", "0.1.0", "0.2.0");
+        assert_eq!(
+            set_group_version(&file, "outpost", &v("0.3.0")).unwrap(),
+            series_file("0.1.0", "0.3.0", "0.2.0")
+        );
+        assert_eq!(
+            set_group_version(&file, "waypoints", &v("0.2.1")).unwrap(),
+            series_file("0.1.0", "0.1.0", "0.2.1")
+        );
+        assert!(set_group_version(&file, "domain", &v("0.1.0")).is_err());
+    }
+
+    fn manifest(name: &str, version: &str) -> String {
+        format!("[package]\n  name    = \"{name}\"\n  version = \"{version}\"\n")
+    }
+
+    /// Scenarios _A patch writes a moved pin's version_ and _A held pin
+    /// leaves the file alone_, and what a dry patch renders: on a series
+    /// pinning `bedrock` and `outpost`, the app's write reaches its manifest
+    /// and lockfile entry, the moved pin's write is `bedrock`'s line in the
+    /// file alone — its crates are out of the workspace, and their lockfile
+    /// entries are cargo's — and `outpost`, not written, keeps its line.
+    #[test]
+    fn a_pinned_group_projects_onto_the_file_alone() {
+        let groups = GroupFile::parse(SERIES_GROUPS).unwrap();
+        let root_manifest = pin_workspace(
+            IN_TREE,
+            &pins(&[("bedrock", "bedrock-v0.2.0"), ("outpost", "outpost-v0.3.0")]),
+            &groups,
+        )
+        .unwrap();
+        let file = series_file("0.2.0", "0.3.0", "0.2.0");
+        let lock = "[[package]]\nname = \"Waypoints\"\nversion = \"0.2.0\"\n\n[[package]]\nname = \"bedrock\"\nversion = \"0.2.0\"\nsource = \"git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.2.0#abc\"\n";
+        let packages = vec![("Waypoints".to_owned(), "src-tauri".to_owned())];
+        let read = |path: &str| -> Result<String> {
+            Ok(match path {
+                ROOT_MANIFEST => root_manifest.clone(),
+                GROUP_FILE => file.clone(),
+                LOCKFILE => lock.to_owned(),
+                "src-tauri/Cargo.toml" => manifest("Waypoints", "0.2.0"),
+                other => bail!("a pinned crate's manifest is never read: {other}"),
+            })
+        };
+        let writes = [
+            ("waypoints".to_owned(), v("0.2.1")),
+            ("bedrock".to_owned(), v("0.2.1")),
+        ];
+
+        let changes = projection(&groups, &packages, &writes, read).unwrap();
+        let paths: Vec<&str> = changes.iter().map(|(path, _, _)| path.as_str()).collect();
+        assert_eq!(paths, [GROUP_FILE, "src-tauri/Cargo.toml", LOCKFILE]);
+        assert_eq!(changes[0].2, series_file("0.2.1", "0.3.0", "0.2.1"));
+        assert_eq!(changes[1].2, manifest("Waypoints", "0.2.1"));
+        assert_eq!(changes[2].2, lock.replacen("0.2.0", "0.2.1", 1));
+    }
+
+    /// Scenario _A dry cut renders the file_, as far as the projection goes:
+    /// on `main`, where nothing is pinned, the minted group's write reaches
+    /// every member manifest and lockfile entry beside its line in the file,
+    /// and the app's bump the same; the file comes first and the lockfile
+    /// last, each carrying both writes.
+    #[test]
+    fn an_in_tree_group_projects_onto_every_member() {
+        let groups = GroupFile::parse(SERIES_GROUPS).unwrap();
+        let file = series_file("0.1.0", "0.1.0", "0.1.0-nightly");
+        let lock = "[[package]]\nname = \"Waypoints\"\nversion = \"0.1.0-nightly\"\n\n[[package]]\nname = \"bedrock\"\nversion = \"0.1.0\"\n\n[[package]]\nname = \"bedrock-core\"\nversion = \"0.1.0\"\n";
+        let packages = vec![
+            ("Waypoints".to_owned(), "src-tauri".to_owned()),
+            ("bedrock".to_owned(), "crates/bedrock".to_owned()),
+            ("bedrock-core".to_owned(), "crates/bedrock-core".to_owned()),
+        ];
+        let read = |path: &str| -> Result<String> {
+            Ok(match path {
+                ROOT_MANIFEST => IN_TREE.to_owned(),
+                GROUP_FILE => file.clone(),
+                LOCKFILE => lock.to_owned(),
+                "src-tauri/Cargo.toml" => manifest("Waypoints", "0.1.0-nightly"),
+                "crates/bedrock/Cargo.toml" => manifest("bedrock", "0.1.0"),
+                "crates/bedrock-core/Cargo.toml" => manifest("bedrock-core", "0.1.0"),
+                other => bail!("unexpected read of {other}"),
+            })
+        };
+        let writes = [
+            ("waypoints".to_owned(), v("0.2.0-nightly")),
+            ("bedrock".to_owned(), v("0.2.0")),
+        ];
+
+        let changes = projection(&groups, &packages, &writes, read).unwrap();
+        let paths: Vec<&str> = changes.iter().map(|(path, _, _)| path.as_str()).collect();
+        assert_eq!(
+            paths,
+            [
+                GROUP_FILE,
+                "src-tauri/Cargo.toml",
+                "crates/bedrock/Cargo.toml",
+                "crates/bedrock-core/Cargo.toml",
+                LOCKFILE,
+            ]
+        );
+        assert_eq!(changes[0].2, series_file("0.2.0", "0.1.0", "0.2.0-nightly"));
+        assert_eq!(changes[2].2, manifest("bedrock", "0.2.0"));
+        assert_eq!(changes[3].2, manifest("bedrock-core", "0.2.0"));
+        assert_eq!(
+            changes[4].2,
+            lock.replace("0.1.0-nightly", "0.2.0-nightly")
+                .replace("version = \"0.1.0\"", "version = \"0.2.0\"")
+        );
+        assert_eq!(
+            tag_version(&groups, "bedrock", "bedrock-v0.2.0").unwrap(),
+            v("0.2.0")
+        );
+        assert!(tag_version(&groups, "bedrock", "outpost-v0.2.0").is_err());
+    }
+
     /// Scenario _Backport to a series branch_, and the rule advance and
     /// promote share with a patch: a transition on a series moves no library
     /// version, mints no library tag, lands nothing on `main`, and — a
@@ -2794,7 +3033,7 @@ version = \"ignored\"
             assert_eq!(plan.main_landing(&groups).unwrap(), None, "{transition:?}");
             assert_eq!(
                 plan.landing(&groups).unwrap().unwrap().paths,
-                "src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
+                "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
                 "{transition:?}"
             );
         }
