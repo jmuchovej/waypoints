@@ -161,8 +161,13 @@ request:
   that or it lands split across two lines.
 
 - **`chore(release):` and version writes belong to the release bot.** A subject
-  starting `chore(release):`, or a change to a versioned crate's
-  `[package].version`, fails unless `wp-botswain[bot]` authored the pull request.
+  starting `chore(release):`, a change to a versioned crate's
+  `[package].version`, or a change to a group's `version` in
+  `tooling/release-groups.toml`, fails unless `wp-botswain[bot]` authored the
+  pull request. The file declares each group's version and every member
+  manifest projects it, and the check holds the two equal: a crate joining a
+  group runs `cargo xtask release-groups project` so its manifest takes the
+  group's version.
 
 Branch commits are not checked, but they stay conventional: the release notes are
 rendered from them, and one unconventional commit fails the notes.

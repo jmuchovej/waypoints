@@ -11,7 +11,9 @@
 //! commits underneath are not checked.
 
 use crate::{
-    release_groups::{self, GroupFile, RELEASE_BOT, SCHEMA_FILE},
+    release_groups::{
+        self, GROUP_FILE, GroupFile, RELEASE_BOT, SCHEMA_FILE, declared_versions, tag_prefix,
+    },
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -123,9 +125,11 @@ pub fn changes(base: &str) -> Result<Vec<Change>> {
     Ok(parse_changes(&git::run(&diff_args(base))?))
 }
 
-/// The versioned members' manifests whose `[package].version` differs between
-/// `sides(path)`'s two texts. A manifest that appears or disappears is a crate
-/// joining or leaving, not a version write.
+/// The version writes among `changes`, read from `sides(path)`'s two texts: a
+/// versioned member's manifest whose `[package].version` differs, and the
+/// group file where a group's `version` differs — a key's introduction aside,
+/// which is the lockstep rule's to bound. A manifest that appears or
+/// disappears is a crate joining or leaving, not a version write.
 fn differing_versions(
     groups: &GroupFile,
     changes: &[Change],
@@ -138,7 +142,21 @@ fn differing_versions(
 
     let mut writes = Vec::new();
     for change in changes {
-        if change.status != Status::Modified || !manifests.contains(&change.path) {
+        if change.status != Status::Modified {
+            continue;
+        }
+        if change.path == GROUP_FILE {
+            let (before, after) = sides(&change.path)?;
+            let (before, after) = (group_versions(&before)?, group_versions(&after)?);
+            let moved = after
+                .iter()
+                .any(|(group, version)| before.get(group).is_some_and(|was| was != version));
+            if moved {
+                writes.push(change.path.clone());
+            }
+            continue;
+        }
+        if !manifests.contains(&change.path) {
             continue;
         }
         let (before, after) = sides(&change.path)?;
@@ -159,49 +177,31 @@ fn package_version(manifest: &str) -> Result<Option<toml::Value>> {
         .cloned())
 }
 
+/// Each group's `version` in a group file's text, where it declares one —
+/// read as plain TOML, since a merge base may predate the key.
+fn group_versions(file: &str) -> Result<BTreeMap<String, String>> {
+    let table: toml::Table = file
+        .parse()
+        .with_context(|| format!("{GROUP_FILE} is not TOML"))?;
+    Ok(table
+        .get("group")
+        .and_then(toml::Value::as_table)
+        .into_iter()
+        .flatten()
+        .filter_map(|(name, group)| {
+            let version = group.get("version")?.as_str()?;
+            Some((name.clone(), version.to_owned()))
+        })
+        .collect())
+}
+
 /// Every versioned member's manifest whose `[package].version` moved since
-/// `base`.
+/// `base`, and the group file where a group's `version` did.
 pub fn version_writes(groups: &GroupFile, changes: &[Change], base: &str) -> Result<Vec<String>> {
     let show = |revision: &str, path: &str| git::run(&["show", &format!("{revision}:{path}")]);
     differing_versions(groups, changes, |path| {
         Ok((show(base, path)?, show("HEAD", path)?))
     })
-}
-
-/// Every workspace crate's declared version, by its directory.
-fn declared_versions(metadata: &Metadata) -> BTreeMap<String, String> {
-    let root = metadata.workspace_root.as_std_path();
-    metadata
-        .workspace_packages()
-        .iter()
-        .filter_map(|package| {
-            let dir = package.manifest_path.as_std_path().parent()?;
-            let relative = dir.strip_prefix(root).ok()?;
-            Some((
-                relative.to_string_lossy().into_owned(),
-                package.version.to_string(),
-            ))
-        })
-        .collect()
-}
-
-/// Every member declaring anything but the exact version its group declares
-/// in the group file, prerelease included. A pinned group's members are out
-/// of the workspace and declare nothing here.
-fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
-    let mut found = Vec::new();
-    for (name, group) in &groups.group {
-        for member in &group.members {
-            if let Some(declared) = versions.get(member).filter(|v| **v != group.version) {
-                found.push(format!(
-                    "`{member}/Cargo.toml` declares {declared}, but its group `{name}` declares {expected} in `{file}`",
-                    expected = group.version,
-                    file = release_groups::GROUP_FILE,
-                ));
-            }
-        }
-    }
-    found
 }
 
 /// Whether `path` is frozen. A group's own README describes its directory, so
@@ -308,9 +308,11 @@ pub fn pins(metadata: &Metadata, groups: &GroupFile) -> Result<Vec<Pin>> {
 ///
 /// A pinned group's own paths are inert — the series builds the tag — so a
 /// change under them could never reach the artifacts, and is refused naming
-/// the pin, unless the release bot is moving the pin. And every manifest
-/// pins one tag per group, since a binary carries one copy of each. A tree
-/// that pins nothing builds its libraries in-tree, and passes.
+/// the pin, unless the release bot is moving the pin. Every manifest pins one
+/// tag per group, since a binary carries one copy of each. And the group file
+/// says what the series ships: a pinned group's `version` there is the one
+/// its pin's tag names. A tree that pins nothing builds its libraries
+/// in-tree, and passes.
 pub fn pin_violations(
     groups: &GroupFile,
     changes: &[Change],
@@ -339,6 +341,20 @@ pub fn pin_violations(
                 listed.join(" and ")
             ));
         }
+        let Some(declared) = groups.group.get(*group) else {
+            continue;
+        };
+        let Ok(prefix) = tag_prefix(&declared.tag) else {
+            continue;
+        };
+        for tag in tags.keys() {
+            if tag.strip_prefix(prefix) != Some(declared.version.as_str()) {
+                found.push(format!(
+                    "`{GROUP_FILE}` declares {version} for `{group}`, which this series pins to `{tag}`; the file names what the series ships",
+                    version = declared.version,
+                ));
+            }
+        }
     }
 
     if author != RELEASE_BOT {
@@ -364,7 +380,8 @@ pub struct Evidence<'a> {
     pub pull_request: &'a PullRequest,
     pub groups: &'a GroupFile,
     pub changes: &'a [Change],
-    /// Versioned manifests whose `[package].version` moved.
+    /// Versioned manifests whose `[package].version` moved, and the group
+    /// file where a group's `version` did.
     pub version_writes: &'a [String],
     /// Every workspace crate's declared version, by its directory.
     pub versions: &'a BTreeMap<String, String>,
@@ -428,14 +445,19 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
                 "`{subject}` is reserved to {RELEASE_BOT}; this pull request is by {author}"
             ));
         }
-        for manifest in *version_writes {
+        for path in *version_writes {
+            let key = if path == GROUP_FILE {
+                "a group's `version`"
+            } else {
+                "`[package].version`"
+            };
             found.push(format!(
-                "`{manifest}` changes `[package].version`; only {RELEASE_BOT} writes versions"
+                "`{path}` changes {key}; only {RELEASE_BOT} writes versions"
             ));
         }
     }
 
-    found.extend(lockstep_violations(groups, versions));
+    found.extend(groups.lockstep_problems(versions));
 
     if !commit.as_ref().is_ok_and(declares_covenant_break) {
         let rewritten = changes
@@ -459,9 +481,10 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
 }
 
 /// Gathers the evidence from the checkout and the event `payload`, then checks
-/// it. A group file that does not describe the workspace refuses here.
+/// it. A group file that does not describe the workspace refuses here; one
+/// the manifests disagree with is a violation the check reports.
 pub fn run(metadata: &Metadata, payload: &str, base: &str) -> Result<Vec<String>> {
-    let groups = release_groups::load(metadata)?;
+    let groups = release_groups::load_unprojected(metadata)?;
     let pull_request = PullRequest::from_event(payload)?;
     let changes = changes(base)?;
     let version_writes = version_writes(&groups, &changes, base)?;
@@ -1115,22 +1138,99 @@ mod tests {
         );
     }
 
-    /// Scenario _Pin moved by the release bot_.
+    /// The group file with `bedrock` — the first group, so the first
+    /// `version` line — declared at `version`.
+    fn bedrock_at(version: &str) -> GroupFile {
+        GroupFile::parse(&GROUPS.replacen(
+            "version = \"0.1.0\"",
+            &format!("version = \"{version}\""),
+            1,
+        ))
+        .unwrap()
+    }
+
+    fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
+        groups.lockstep_problems(versions)
+    }
+
+    /// Scenario _Pin moved by the release bot_: the file's `bedrock` moved
+    /// with the pin, in the same write.
     #[test]
     fn the_release_bot_moving_a_pin_passes() {
         let pins = [pin("bedrock", "bedrock-v0.2.1", "Cargo.toml")];
         let changes = [
+            modified(GROUP_FILE),
             modified("Cargo.toml"),
             modified("Cargo.lock"),
             modified("crates/bedrock/src/lib.rs"),
         ];
+        let groups = bedrock_at("0.2.1");
         assert_eq!(
-            pin_violations(&groups(), &changes, &pins, RELEASE_BOT),
+            pin_violations(&groups, &changes, &pins, RELEASE_BOT),
             Vec::<String>::new()
         );
         assert_names(
-            &pin_violations(&groups(), &changes, &pins, "jmuchovej"),
+            &pin_violations(&groups, &changes, &pins, "jmuchovej"),
             &["crates/bedrock/src/lib.rs"],
+        );
+    }
+
+    /// Scenarios _A series' file names its pins_ and _A pinned group has no
+    /// manifest to compare_: the file's `bedrock` is held to the pin's tag,
+    /// naming both, and `bedrock`'s own crates, out of the workspace, are not
+    /// compared.
+    #[test]
+    fn a_series_file_is_held_to_its_pins() {
+        let pins = [pin("bedrock", "bedrock-v0.2.0", "Cargo.toml")];
+        let found = pin_violations(&bedrock_at("0.1.0"), &[], &pins, "jmuchovej");
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_names(&found, &["bedrock-v0.2.0", "0.1.0", GROUP_FILE]);
+
+        let at_pin = bedrock_at("0.2.0");
+        assert_eq!(
+            pin_violations(&at_pin, &[], &pins, "jmuchovej"),
+            Vec::<String>::new()
+        );
+        let declared = versions(&[
+            ("src-tauri", "0.1.0-nightly"),
+            ("crates/cartograph", "0.1.0-nightly"),
+        ]);
+        assert_eq!(
+            lockstep_violations(&at_pin, &declared),
+            Vec::<String>::new()
+        );
+    }
+
+    /// Scenarios _Hand-edited group version_ and _Release bot writes the
+    /// file_, and the key's introduction: a group's `version` moving in the
+    /// file is a write a person may not land, while one appearing where the
+    /// merge base declared none is not a write.
+    #[test]
+    fn a_group_s_version_in_the_file_is_a_write_once_declared() {
+        let changes = [modified(GROUP_FILE)];
+        let before =
+            "[group.domain]\nversion = \"0.1.0\"\n\n[group.bedrock]\nversion = \"0.1.0\"\n";
+        assert_eq!(
+            writes_between(before, &before.replacen("0.1.0", "0.2.0", 1), &changes),
+            [GROUP_FILE]
+        );
+        assert_eq!(
+            writes_between(
+                "[group.domain]\nmembers = []\n",
+                "[group.domain]\nversion = \"0.1.0\"\nmembers = []\n",
+                &changes
+            ),
+            Vec::<String>::new()
+        );
+
+        let writes = [GROUP_FILE.to_owned()];
+        assert_names(
+            &with_version_writes("jmuchovej", &writes),
+            &[GROUP_FILE, "a group's `version`", RELEASE_BOT],
+        );
+        assert_eq!(
+            with_version_writes(RELEASE_BOT, &writes),
+            Vec::<String>::new()
         );
     }
 

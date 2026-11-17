@@ -77,12 +77,58 @@ fn xtask(root: &Path, args: &[&str]) -> Output {
         .expect("xtask runs")
 }
 
-fn assert_refuses_naming_the_crate(args: &[&str]) {
-    let workspace = workspace_with_an_unnamed_member();
+/// A workspace whose app manifest declares another version than the group
+/// file does for its group.
+fn workspace_with_a_stale_projection() -> TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    write(
+        root,
+        "Cargo.toml",
+        "[workspace]\nresolver = \"3\"\nmembers = [ \"src-tauri\" ]\n",
+    );
+    member(root, "src-tauri", "Waypoints");
+    write(
+        root,
+        "tooling/release-groups.toml",
+        &GROUP_FILE.replace("0.1.0-nightly", "0.2.0-nightly"),
+    );
+    write(root, "covenant/fixtures/waypoints/README.md", "");
+    write(root, "nix/releases/stable.json", "");
+    write(root, ".git-blame-ignore-revs", "");
+    dir
+}
+
+fn assert_refuses_naming(workspace: &TempDir, args: &[&str], names: &[&str]) {
     let output = xtask(workspace.path(), args);
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!output.status.success(), "{args:?} ran: {stderr}");
-    assert!(stderr.contains("crates/importer"), "{args:?}: {stderr}");
+    for name in names {
+        assert!(stderr.contains(name), "{args:?} names no {name}: {stderr}");
+    }
+}
+
+fn assert_refuses_naming_the_crate(args: &[&str]) {
+    assert_refuses_naming(
+        &workspace_with_an_unnamed_member(),
+        args,
+        &["crates/importer"],
+    );
+}
+
+/// Neither planner plans from a projection `version-integrity` would refuse:
+/// the manifest and the file are both named.
+fn assert_refuses_naming_the_manifest_and_the_file(args: &[&str]) {
+    assert_refuses_naming(
+        &workspace_with_a_stale_projection(),
+        args,
+        &[
+            "src-tauri/Cargo.toml",
+            "0.1.0-nightly",
+            "0.2.0-nightly",
+            "tooling/release-groups.toml",
+        ],
+    );
 }
 
 #[test]
@@ -93,4 +139,19 @@ fn the_release_planner_refuses_an_unnamed_crate() {
 #[test]
 fn the_nightly_planner_refuses_an_unnamed_crate() {
     assert_refuses_naming_the_crate(&["publish-plan", "nightly", "--dry-run", "--no-build"]);
+}
+
+#[test]
+fn the_release_planner_refuses_a_stale_projection() {
+    assert_refuses_naming_the_manifest_and_the_file(&["release-plan", "cut", "--dry-run"]);
+}
+
+#[test]
+fn the_nightly_planner_refuses_a_stale_projection() {
+    assert_refuses_naming_the_manifest_and_the_file(&[
+        "publish-plan",
+        "nightly",
+        "--dry-run",
+        "--no-build",
+    ]);
 }

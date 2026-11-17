@@ -41,7 +41,9 @@ pub fn run(args: Options) -> Result<()> {
         }
         Command::Project => {
             let metadata = workspace::load()?;
-            let groups = release_groups::load(&metadata)?;
+            // The file as it stands: the projection is what makes the
+            // manifests agree with it.
+            let groups = release_groups::load_unprojected(&metadata)?;
             let written = release::project_file(&metadata, &groups)?;
             if written.is_empty() {
                 println!(

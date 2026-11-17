@@ -218,6 +218,27 @@ impl GroupFile {
         self.version_of(self.app_group()?)
     }
 
+    /// Every member declaring anything but the exact version its group
+    /// declares here, prerelease included — `versions` being each workspace
+    /// crate's declared version by its directory. The lockstep rule:
+    /// `version-integrity` holds a pull request to it, and [`load`] a
+    /// planner's tree. A pinned group's members are out of the workspace and
+    /// declare nothing here.
+    pub fn lockstep_problems(&self, versions: &BTreeMap<String, String>) -> Vec<String> {
+        let mut found = Vec::new();
+        for (name, group) in &self.group {
+            for member in &group.members {
+                if let Some(declared) = versions.get(member).filter(|v| **v != group.version) {
+                    found.push(format!(
+                        "`{member}/Cargo.toml` declares {declared}, but its group `{name}` declares {expected} in `{GROUP_FILE}`",
+                        expected = group.version,
+                    ));
+                }
+            }
+        }
+        found
+    }
+
     /// The groups owning any of `paths`.
     pub fn touched<'a>(&self, paths: impl Iterator<Item = &'a str>) -> BTreeSet<String> {
         let owned = self.owned_paths();
@@ -360,10 +381,44 @@ impl GroupFile {
 }
 
 /// Reads the group file of the workspace `metadata` describes, refusing one
-/// that does not describe it. A series' root manifest pins its library
-/// groups, whose crates are on disk and out of the workspace; those are
-/// described by their pins.
+/// that does not describe it or that its members do not project — the
+/// lockstep rule, so no planner plans from a projection `version-integrity`
+/// would refuse.
 pub fn load(metadata: &Metadata) -> Result<GroupFile> {
+    let file = load_unprojected(metadata)?;
+    let problems = file.lockstep_problems(&declared_versions(metadata));
+    if !problems.is_empty() {
+        bail!(
+            "{GROUP_FILE} is not projected into this workspace:\n  {}",
+            problems.join("\n  ")
+        );
+    }
+    Ok(file)
+}
+
+/// Every workspace crate's declared version, by its directory.
+pub fn declared_versions(metadata: &Metadata) -> BTreeMap<String, String> {
+    let root = metadata.workspace_root.as_std_path();
+    metadata
+        .workspace_packages()
+        .iter()
+        .filter_map(|package| {
+            let dir = package.manifest_path.as_std_path().parent()?;
+            let relative = dir.strip_prefix(root).ok()?;
+            Some((
+                relative.to_string_lossy().into_owned(),
+                package.version.to_string(),
+            ))
+        })
+        .collect()
+}
+
+/// [`load`] without the lockstep rule: the file as it stands, for the
+/// projection that makes the members agree with it and for the check that
+/// reports a disagreement rather than refusing on it. A series' root
+/// manifest pins its library groups, whose crates are on disk and out of the
+/// workspace; those are described by their pins.
+pub fn load_unprojected(metadata: &Metadata) -> Result<GroupFile> {
     let root = metadata.workspace_root.as_std_path();
     let path = root.join(GROUP_FILE);
     let text =
