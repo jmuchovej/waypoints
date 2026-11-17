@@ -22,7 +22,7 @@
 
 ## 5. Validation
 
-- [ ] 5.1 Run `openspec validate group-file-versions --strict --no-interactive` and `prek run` (or every `.config/hk.pkl` step by hand in a jj workspace) and verify clippy, cargo-check, cargo-test, and treefmt are green across the change, `just check-generated` is clean (the schema regenerated, the workflows and bindings unchanged), and `cargo xtask version-integrity` and `cargo xtask semver-check` run against the tree as it stands report agreement and skip every group by name
+- [x] 5.1 Run `openspec validate group-file-versions --strict --no-interactive` and `prek run` (or every `.config/hk.pkl` step by hand in a jj workspace) and verify clippy, cargo-check, cargo-test, and treefmt are green across the change, `just check-generated` is clean (the schema regenerated, the workflows and bindings unchanged), and `cargo xtask version-integrity` and `cargo xtask semver-check` run against the tree as it stands report agreement and skip every group by name
 
 ## 6. The first cut
 
