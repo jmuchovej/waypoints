@@ -171,9 +171,9 @@ pub(crate) mod fixture {
         sync::atomic::{AtomicUsize, Ordering},
     };
 
-    /// Groups for a fixture tree: three libraries, and the app owning the
-    /// remainder and counting the closure. Parsed rather than loaded, so
-    /// nothing has to exist on disk.
+    /// Groups for a fixture tree: three libraries, and the app owning `src/`
+    /// beside its crates. Parsed rather than loaded, so nothing has to exist
+    /// on disk.
     pub(crate) const GROUPS: &str = r#"
         [bookkeeping]
         paths = [ "nix/releases/" ]
@@ -184,47 +184,27 @@ pub(crate) mod fixture {
         version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
         tag = "bedrock-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/bedrock/"
-        minted = [ "cut" ]
 
         [group.outpost]
         version = "0.1.0"
         members = [ "crates/outpost" ]
         tag = "outpost-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/outpost/"
-        minted = [ "cut" ]
 
         [group.domain]
         version = "0.1.0"
         members = [ "crates/domain" ]
         tag = "domain-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/domain/"
-        minted = [ "cut" ]
 
         [group.waypoints]
         version = "0.1.0-nightly"
         members = [ "src-tauri" ]
         internals = [ "crates/store" ]
         tag = "v{version}"
-        owns = "remainder"
-        counts = "closure"
-        breaking = "trailer:Covenant: break"
-        floors = [ "covenant-fixtures" ]
         fixtures = "covenant/fixtures/waypoints/"
-        minted = [ "cut", "advance", "promote", "patch" ]
-
-        [enforce]
-        commits = "conventional"
-        summary-type = "summary"
-        version-writes = "botswain"
-        fixtures = "append-only"
-        schema = "current"
+        paths = [ "src/" ]
     "#;
 
     pub(crate) struct Repo {

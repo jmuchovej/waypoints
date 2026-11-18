@@ -143,8 +143,10 @@ let
   # tag's shape, so no manifest is opened.
   group-versions =
     let
+      # Every group but the app's, by the name `release_groups::APP_GROUP`
+      # gives it.
       groups = (fromTOML (read "/tooling/release-groups.toml")).group;
-      libraries = lib.filterAttrs (_: group: !(group ? owns)) groups;
+      libraries = lib.filterAttrs (name: _: name != "waypoints") groups;
       pins = import ../../lockfile.nix workingTree;
       version =
         group:

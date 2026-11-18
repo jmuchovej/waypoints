@@ -686,6 +686,33 @@ pub fn next_main_message(next: &Version) -> String {
     )
 }
 
+/// The refusal for a cut whose cycle holds no commit counting for the app:
+/// what the cut is measured from, and which libraries moved, which a
+/// group-scoped cut mints alone.
+fn app_unmoved(app: &str, last: Option<&Version>, planned: &[GroupPlan]) -> String {
+    #[derive(serde::Serialize)]
+    struct Values<'a> {
+        app: &'a str,
+        since: String,
+        moved: Vec<String>,
+    }
+    templates::must(
+        "refusal.app-unmoved",
+        &Values {
+            app,
+            since: match last {
+                Some(last) => format!("since `{}`", last.tag()),
+                None => "in its history".to_owned(),
+            },
+            moved: planned
+                .iter()
+                .filter(|group| group.mints())
+                .map(|group| format!("`{}`", group.group))
+                .collect(),
+        },
+    )
+}
+
 /// Each library group the series `branch` pins, carried forward along its
 /// line: the pins read from the series' root manifest as the remote has it,
 /// the line's newer tags from the remote, and the break check from `main`'s
@@ -799,6 +826,13 @@ pub fn plan(transition: Transition, options: CutOptions) -> Result<Plan> {
         .collect::<Result<Vec<_>>>()?;
 
     let commits = commits_since(last.as_ref(), &groups, root)?;
+    // Nothing counted for the app since the last stable release: there is no
+    // app to cut, whatever the libraries did, and a target computed from no
+    // commit would sit below that release. Before `--major` is read, since a
+    // major is a floor on counted work, not a substitute for it.
+    if !commits.iter().any(|commit| commit.counts_for(app)) {
+        bail!("{}", app_unmoved(app, last.as_ref(), &planned));
+    }
     // Nothing released yet: the first cut is measured from 0.0.0, and
     // `log_range` reads the whole history rather than a missing tag.
     let last = last.unwrap_or_else(|| Version::new(0, 0, 0));
@@ -1930,14 +1964,33 @@ mod tests {
         )
     }
 
-    /// A commit on a library's own paths, which the app counts too.
+    /// A commit on a library's own paths, which counts for the library alone.
     fn library_commit(group: &str, subject: &str) -> history::Commit {
         commit_on(
             &format!("crates/{group}/src/lib.rs"),
-            &[group, "waypoints"],
+            &[group],
             subject,
             false,
         )
+    }
+
+    /// Scenarios _Library-only cycle_, _Before the first stable_, and the
+    /// refusal's text with nothing moved: the app's refusal names what the
+    /// cut is measured from and the libraries a group-scoped cut would mint.
+    #[test]
+    fn a_cut_with_nothing_counted_for_the_app_says_what_moved() {
+        let bedrock = group_plan("bedrock", Some("0.1.1"), Some("bedrock-v0.1.0"), 2);
+        let outpost = group_plan("outpost", None, Some("outpost-v0.1.0"), 0);
+        let planned = [bedrock, outpost];
+        let refusal = app_unmoved("waypoints", Some(&v("0.1.0")), &planned);
+        assert_eq!(
+            refusal,
+            "nothing to cut for `waypoints`: no counted commit since `v0.1.0`; `bedrock` moved, and `release-plan cut --group <name>` mints one alone"
+        );
+        let first = app_unmoved("waypoints", None, &planned);
+        assert!(first.contains("in its history"), "{first}");
+        let nothing = app_unmoved("waypoints", Some(&v("0.1.0")), &[]);
+        assert!(nothing.ends_with("; no library moved either"), "{nothing}");
     }
 
     /// Scenario _Break marker without the trailer after v1_: `!` is not the
@@ -2512,39 +2565,21 @@ version = \"ignored\"
         version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
         tag = "bedrock-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/bedrock/"
-        minted = [ "cut" ]
 
         [group.outpost]
         version = "0.1.0"
         members = [ "crates/outpost" ]
         internals = [ "crates/outpost-protocol" ]
         tag = "outpost-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/outpost/"
-        minted = [ "cut" ]
 
         [group.waypoints]
         version = "0.1.0-nightly"
         members = [ "src-tauri" ]
         internals = [ "crates/store" ]
         tag = "v{version}"
-        owns = "remainder"
-        counts = "closure"
-        breaking = "trailer:Covenant: break"
-        floors = [ "covenant-fixtures" ]
         fixtures = "covenant/fixtures/waypoints/"
-        minted = [ "cut", "advance", "promote", "patch" ]
-
-        [enforce]
-        commits = "conventional"
-        summary-type = "summary"
-        version-writes = "botswain"
-        fixtures = "append-only"
-        schema = "current"
     "#;
 
     /// A root manifest as `main` carries it, aligned as tombi leaves it.

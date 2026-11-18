@@ -3,13 +3,16 @@
 # SPDX-FileCopyrightText: 2026 John Muchovej
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Every workspace crate outside tooling/ is named: as a member or an internal.
-# tooling/ builds the repository, not the product, and must not appear.
+# Every workspace crate outside tooling/ is named once: as a member or an
+# internal. tooling/ builds the repository, not the product, and must not
+# appear. `waypoints` is the app's group; every other group is a library,
+# versioned and tagged on its own.
 #
 # `version` is the group's, declared here and projected into every member's
 # manifest by the release bot; `version-integrity` holds the two equal.
-# `breaking = "header"` is `!` in the group's own header. `minted = [ "cut" ]`
-# mints on main only; a series pins a library, never builds it in-tree.
+# `paths` lists what a group owns beyond its crates and fixtures. A commit
+# counts for the groups whose owned paths it changes; a path no group lists
+# counts for none.
 #
 # Strict TOML 1.0: nix reads this file with `builtins.fromTOML`.
 
@@ -20,15 +23,11 @@
   # Reserved to botswain.
   bot-subjects = [ "chore(release):" ]
 
-# bedrock-derive's floor is declared-only.
 [group.bedrock]
   version  = "0.1.0"
   members  = [ "crates/bedrock", "crates/bedrock-core", "crates/bedrock-derive" ]
   tag      = "bedrock-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/bedrock/"
-  minted   = [ "cut" ]
 
 # The wire (ALPN outpost/sync/v1 + session negotiation) is not this number.
 # A wire break is an interop break: it needs the covenant trailer.
@@ -41,51 +40,28 @@
     "crates/outpost-protocol",
   ]
   tag      = "outpost-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/outpost/"
-  minted   = [ "cut" ]
 
 # Core of the data covenant.
 [group.domain]
   version  = "0.1.0"
   members  = [ "crates/domain" ]
   tag      = "domain-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/domain/"
-  minted   = [ "cut" ]
 
 [group.transload]
   version  = "0.1.0"
   members  = [ "crates/transload" ]
   tag      = "transload-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/transload/"
-  minted   = [ "cut" ]
 
 # cartograph is the API surface, so it moves with the app. store is an internal:
-# owned and counted, never versioned. The app's version carries its channel.
+# owned and counted, never versioned. src/ is the frontend. The app's version
+# carries its channel.
 [group.waypoints]
-  version                         = "0.1.0-nightly"
-  members                         = [ "src-tauri", "crates/cartograph" ]
-  internals                       = [ "crates/store" ]
-  tag                             = "v{version}"
-  owns                            = "remainder"
-  counts                          = "closure"
-  breaking                        = "trailer:Covenant: break"
-  features-always-increment-minor = true
-  floors                          = [ "covenant-fixtures" ]
-  fixtures                        = "covenant/fixtures/waypoints/"
-  minted                          = [ "cut", "advance", "promote", "patch" ]
-  channels                        = [ "nightly", "preview", "stable" ]
-  flavors                         = [ "nightly", "preview", "stable", "development" ]
-
-# The pull-request checks `version-integrity` carries.
-[enforce]
-  commits        = "conventional"
-  summary-type   = "summary"
-  version-writes = "botswain"
-  fixtures       = "append-only"
-  schema         = "current"
+  version   = "0.1.0-nightly"
+  members   = [ "src-tauri", "crates/cartograph" ]
+  internals = [ "crates/store" ]
+  tag       = "v{version}"
+  fixtures  = "covenant/fixtures/waypoints/"
+  paths     = [ "src/" ]

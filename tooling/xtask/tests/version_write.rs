@@ -28,28 +28,13 @@ fn group_file(app: &str, domain: &str) -> String {
   version  = "{domain}"
   members  = [ "crates/domain" ]
   tag      = "domain-v{{version}}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks" ]
   fixtures = "covenant/fixtures/domain/"
-  minted   = [ "cut" ]
 
 [group.waypoints]
   version  = "{app}"
   members  = [ "src-tauri", "crates/cartograph" ]
   tag      = "v{{version}}"
-  owns     = "remainder"
-  counts   = "closure"
-  breaking = "trailer:Covenant: break"
-  floors   = [ "covenant-fixtures" ]
   fixtures = "covenant/fixtures/waypoints/"
-  minted   = [ "cut", "advance", "promote", "patch" ]
-
-[enforce]
-  commits        = "conventional"
-  summary-type   = "summary"
-  version-writes = "botswain"
-  fixtures       = "append-only"
-  schema         = "current"
 "#
     )
 }

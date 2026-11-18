@@ -6,14 +6,13 @@
 //!
 //! A pull request lands as a merge commit, so the merge commit is the unit:
 //! its message, and its diff against its first parent. The branch commits
-//! beneath it are never read. A library group counts a commit that changes
-//! its own paths; the app counts its own paths and every group's, since the
-//! binary ships them. Bookkeeping counts for nothing: the release index, the
-//! treewide passes `.git-blame-ignore-revs` lists, and the release bot's own
-//! subjects.
+//! beneath it are never read. A commit counts for exactly the groups whose
+//! owned paths it changes; a path no group lists counts for none. Bookkeeping
+//! counts for nothing: the release index, the treewide passes
+//! `.git-blame-ignore-revs` lists, and the release bot's own subjects.
 
 use crate::{
-    release_groups::{Breaking, GroupFile, RELEASE_BOT},
+    release_groups::{APP_GROUP, GroupFile, RELEASE_BOT},
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -64,48 +63,51 @@ impl Commit {
     /// The header `group` reads this commit by, as the version bumper takes
     /// it, or none where the commit counts for another group only.
     ///
-    /// A summary's subject counts for no group: a group breaking on its own
-    /// header reads the body header scoped to it, and the app reads the
-    /// highest-ranked header. A single-group commit is read by its subject.
-    /// The app never breaks on `!`; its one breaking signal is the trailer,
-    /// which is re-expressed as `!` for the bumper.
+    /// A summary's subject counts for no group: a library reads the body
+    /// header scoped to it, and the app reads the highest-ranked header. A
+    /// single-group commit is read by its subject. A library breaks on `!` in
+    /// its own header; the app never does, and its one breaking signal is the
+    /// trailer, which is re-expressed as `!` for the bumper. A group the file
+    /// does not name has no header.
     pub fn header_for(&self, group: &str, groups: &GroupFile) -> Option<String> {
-        if !self.counts_for(group) {
+        if !self.counts_for(group) || !groups.group.contains_key(group) {
             return None;
         }
-        let rule = &groups.group.get(group)?.breaking;
         let subject = Conventional::parse(&self.subject).ok();
         let is_summary = subject
             .as_ref()
             .is_some_and(|commit| commit.type_().as_str() == SUMMARY);
 
-        match rule {
-            Breaking::Header if is_summary => self.body.lines().find(|line| {
-                Conventional::parse(line).is_ok_and(|header| {
-                    header.type_().as_str() != SUMMARY
-                        && header.scope().is_some_and(|scope| scope.as_str() == group)
-                })
-            }),
-            Breaking::Header => Some(self.subject.as_str()),
-            Breaking::CovenantTrailer => {
-                let declared = if is_summary {
-                    highest(self.body_headers())
-                } else {
-                    subject
-                };
-                return Some(match declared {
-                    Some(header) => format!(
-                        "{kind}{bang}: {description}",
-                        kind = header.type_(),
-                        bang = if self.covenant_break { "!" } else { "" },
-                        description = header.description(),
-                    ),
-                    // Not conventional: the bumper decides what that is worth.
-                    None => self.subject.clone(),
-                });
-            }
+        if group == APP_GROUP {
+            let declared = if is_summary {
+                highest(self.body_headers())
+            } else {
+                subject
+            };
+            return Some(match declared {
+                Some(header) => format!(
+                    "{kind}{bang}: {description}",
+                    kind = header.type_(),
+                    bang = if self.covenant_break { "!" } else { "" },
+                    description = header.description(),
+                ),
+                // Not conventional: the bumper decides what that is worth.
+                None => self.subject.clone(),
+            });
         }
-        .map(str::to_owned)
+        if is_summary {
+            self.body
+                .lines()
+                .find(|line| {
+                    Conventional::parse(line).is_ok_and(|header| {
+                        header.type_().as_str() != SUMMARY
+                            && header.scope().is_some_and(|scope| scope.as_str() == group)
+                    })
+                })
+                .map(str::to_owned)
+        } else {
+            Some(self.subject.clone())
+        }
     }
 
     /// The conventional headers in the body, in order, the summary line aside.
@@ -204,8 +206,7 @@ pub(crate) fn parse(output: &str) -> Vec<Raw> {
 
 /// Which groups `raw` counts for. A revision the ignore file lists, a commit
 /// the release bot authored, or a subject reserved to it counts for none;
-/// otherwise each product path's owner counts, and when any does, so does
-/// every group that counts the closure.
+/// otherwise exactly the owners of the paths it changed.
 pub(crate) fn attribute(raw: Raw, groups: &GroupFile, ignored: &BTreeSet<String>) -> Commit {
     let bookkeeping = ignored.iter().any(|rev| raw.sha.starts_with(rev.as_str()))
         || raw.author == RELEASE_BOT
@@ -221,9 +222,6 @@ pub(crate) fn attribute(raw: Raw, groups: &GroupFile, ignored: &BTreeSet<String>
             if let Some(owner) = groups.owner_of(path) {
                 counted.insert(owner.to_owned());
             }
-        }
-        if !counted.is_empty() {
-            counted.extend(groups.closure_groups().map(str::to_owned));
         }
     }
 
@@ -307,16 +305,42 @@ mod tests {
         assert!(records[1].body.is_empty() && records[1].paths.is_empty());
     }
 
-    /// Scenario _Library-only change_: the owning group and the app, nothing
-    /// else.
+    /// Scenario _Library-only change_: the owning group, and nothing else —
+    /// not the app, which ships the library but did not change.
     #[test]
-    fn a_library_change_counts_for_its_group_and_the_app() {
+    fn a_library_change_counts_for_its_group_alone() {
         let repo = Repo::new();
         repo.commit("crates/bedrock-core/src/lib.rs", "feat(core): a thing");
         let walked = repo.walk("HEAD");
         assert_eq!(walked.len(), 1);
-        assert_eq!(groups(&walked[0]), ["bedrock", "waypoints"]);
-        assert!(!walked[0].counts_for("outpost") && !walked[0].counts_for("domain"));
+        assert_eq!(groups(&walked[0]), ["bedrock"]);
+        assert!(!walked[0].counts_for("waypoints"), "{:?}", walked[0]);
+    }
+
+    /// Scenario _Frontend change_: `src/` is listed under the app, so it
+    /// counts for the app alone.
+    #[test]
+    fn a_frontend_change_counts_for_the_app() {
+        let repo = Repo::new();
+        repo.commit("src/app/editor.vue", "feat(app/editor): a thing");
+        let walked = repo.walk("HEAD");
+        assert_eq!(groups(&walked[0]), ["waypoints"]);
+    }
+
+    /// Scenario _Unlisted path_: a path no group lists counts for none, so a
+    /// day of such commits is no product work and publishes no nightly.
+    #[test]
+    fn an_unlisted_path_counts_for_no_group() {
+        let repo = Repo::new();
+        repo.commit("website/content/index.md", "docs(website): a page");
+        repo.commit("docs/CONTRIBUTING.md", "docs: a rule");
+        repo.commit("nix/overlay.nix", "build(nix): a thing");
+        let walked = repo.walk("HEAD");
+        assert!(
+            walked.iter().all(|commit| commit.groups.is_empty()),
+            "{walked:?}"
+        );
+        assert_eq!(repo.product_commits("HEAD"), Vec::<String>::new());
     }
 
     /// Scenario _Tooling-only change_.
@@ -339,7 +363,7 @@ mod tests {
         repo.ignore(&repo.head());
         let walked = repo.walk("HEAD");
         assert_eq!(walked.len(), 2);
-        assert_eq!(groups(&walked[0]), ["domain", "waypoints"]);
+        assert_eq!(groups(&walked[0]), ["domain"]);
         assert!(walked[1].groups.is_empty(), "{:?}", walked[1]);
         assert_eq!(repo.product_commits("HEAD"), ["feat: first"]);
     }
@@ -372,7 +396,7 @@ mod tests {
         );
         let walked = repo.walk("HEAD");
         assert!(walked[0].groups.is_empty(), "{:?}", walked[0]);
-        assert_eq!(groups(&walked[1]), ["bedrock", "waypoints"]);
+        assert_eq!(groups(&walked[1]), ["bedrock"]);
     }
 
     /// Scenario _A pull request lands as one commit_: the merge commit's
@@ -465,10 +489,10 @@ mod tests {
         commit.header_for(group, &file()).into_iter().collect()
     }
 
-    /// Scenario _Library break with caller edits elsewhere_, on a `1.x` base
-    /// so a break and a feature cannot look alike: breaking for `bedrock`,
-    /// non-breaking for `outpost`, a feature for the app, and nothing for a
-    /// group the summary does not touch.
+    /// Scenarios _Library break with caller edits elsewhere_ and _Summary
+    /// across two libraries_, on a `1.x` base so a break and a feature cannot
+    /// look alike: breaking for `bedrock`, non-breaking for `outpost`, and
+    /// nothing for the app or for a group the summary does not touch.
     #[test]
     fn a_summary_reads_one_header_per_group() {
         let repo = Repo::new();
@@ -481,23 +505,43 @@ mod tests {
             "summary: rename the filter API\n\nfeat(bedrock)!: rename the filter API\nrefactor(outpost): follow the rename",
         );
         let landed = repo.walk("HEAD").pop().unwrap();
+        assert_eq!(groups(&landed), ["bedrock", "outpost"]);
 
         let bedrock = header(&landed, "bedrock");
         let outpost = header(&landed, "outpost");
-        let app = header(&landed, "waypoints");
         assert_eq!(bedrock, ["feat(bedrock)!: rename the filter API"]);
         assert_eq!(outpost, ["refactor(outpost): follow the rename"]);
-        assert_eq!(app, ["feat: rename the filter API"]);
+        assert_eq!(header(&landed, "waypoints"), Vec::<String>::new());
         assert_eq!(header(&landed, "domain"), Vec::<String>::new());
 
         let base = v("1.2.0");
         assert_eq!(base.next_library(&bedrock), v("2.0.0"));
         assert_eq!(base.next_library(&outpost), v("1.2.1"));
-        assert_eq!(base.cut(&app).unwrap(), v("1.3.0-pre.1"));
+    }
+
+    /// A summary touching the app's own paths reads the app's header as the
+    /// highest-ranked body header, with no `!`.
+    #[test]
+    fn a_summary_touching_the_app_reads_its_highest_header() {
+        let repo = Repo::new();
+        repo.product("feat: before");
+        repo.branch("topic");
+        repo.commit("crates/bedrock/src/lib.rs", "wip: one");
+        repo.commit("src-tauri/src/main.rs", "wip: two");
+        repo.merge(
+            "topic",
+            "summary: rename the filter API\n\nfeat(bedrock)!: rename the filter API\nrefactor(waypoints): follow the rename",
+        );
+        let landed = repo.walk("HEAD").pop().unwrap();
+        assert_eq!(groups(&landed), ["bedrock", "waypoints"]);
+        let app = header(&landed, "waypoints");
+        assert_eq!(app, ["feat: rename the filter API"]);
+        assert_eq!(v("1.2.0").cut(&app).unwrap(), v("1.3.0-pre.1"));
     }
 
     /// Scenario _Single-group commit with a free-form scope_: the path
-    /// decides the group, and the scope is kept for the library's bumper.
+    /// decides the group, and the scope is kept for the library's bumper;
+    /// the app, whose paths it did not touch, reads nothing from it.
     #[test]
     fn a_single_group_commit_keeps_its_free_form_scope() {
         let repo = Repo::new();
@@ -505,11 +549,9 @@ mod tests {
         let commit = repo.walk("HEAD").pop().unwrap();
 
         let bedrock = header(&commit, "bedrock");
-        let app = header(&commit, "waypoints");
         assert_eq!(bedrock, ["fix(query): a bug"]);
-        assert_eq!(app, ["fix: a bug"]);
+        assert_eq!(header(&commit, "waypoints"), Vec::<String>::new());
         assert_eq!(v("1.2.0").next_library(&bedrock), v("1.2.1"));
-        assert_eq!(v("1.2.0").cut(&app).unwrap(), v("1.2.1-pre.1"));
     }
 
     /// The app never breaks on `!`, and does break on the trailer, which

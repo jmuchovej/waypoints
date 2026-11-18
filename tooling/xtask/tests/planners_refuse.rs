@@ -22,18 +22,7 @@ const GROUP_FILE: &str = r#"
   version  = "0.1.0-nightly"
   members  = [ "src-tauri" ]
   tag      = "v{version}"
-  owns     = "remainder"
-  breaking = "trailer:Covenant: break"
-  floors   = [ "covenant-fixtures" ]
   fixtures = "covenant/fixtures/waypoints/"
-  minted   = [ "cut" ]
-
-[enforce]
-  commits        = "conventional"
-  summary-type   = "summary"
-  version-writes = "botswain"
-  fixtures       = "append-only"
-  schema         = "current"
 "#;
 
 fn write(root: &Path, path: &str, text: &str) {

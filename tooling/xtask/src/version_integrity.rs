@@ -526,45 +526,27 @@ mod tests {
         version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
         tag = "bedrock-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/bedrock/"
-        minted = [ "cut" ]
 
         [group.domain]
         version = "0.1.0"
         members = [ "crates/domain" ]
         tag = "domain-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/domain/"
-        minted = [ "cut" ]
 
         [group.outpost]
         version = "0.1.0"
         members = [ "crates/outpost" ]
         tag = "outpost-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/outpost/"
-        minted = [ "cut" ]
 
         [group.waypoints]
         version = "0.1.0-nightly"
         members = [ "src-tauri", "crates/cartograph" ]
         internals = [ "crates/store" ]
         tag = "v{version}"
-        breaking = "trailer:Covenant: break"
-        floors = [ "covenant-fixtures" ]
         fixtures = "covenant/fixtures/waypoints/"
-        minted = [ "cut" ]
-
-        [enforce]
-        commits = "conventional"
-        summary-type = "summary"
-        version-writes = "botswain"
-        fixtures = "append-only"
-        schema = "current"
+        paths = [ "src/" ]
     "#;
 
     fn groups() -> GroupFile {
@@ -652,6 +634,33 @@ mod tests {
         ];
         let found = by_a_person("refactor(domain,bedrock): rename", "", &changes);
         assert_names(&found, &["bedrock", "domain", "summary"]);
+    }
+
+    /// Scenarios _Frontend and library in one pull request_ and _An unlisted
+    /// path beside a library_: `src/` is the app's, so it joins a library
+    /// change into a summary; `website/` is nobody's, so it does not.
+    #[test]
+    fn the_frontend_is_the_app_s_and_an_unlisted_path_is_nobody_s() {
+        let found = by_a_person(
+            "feat(app): take the new filter",
+            "",
+            &[
+                modified("src/app/a.vue"),
+                modified("crates/bedrock/src/lib.rs"),
+            ],
+        );
+        assert_names(&found, &["waypoints", "bedrock", "summary"]);
+        assert_eq!(
+            by_a_person(
+                "fix(bedrock): a bug",
+                "",
+                &[
+                    modified("website/a.md"),
+                    modified("crates/bedrock/src/lib.rs"),
+                ],
+            ),
+            Vec::<String>::new()
+        );
     }
 
     #[test]

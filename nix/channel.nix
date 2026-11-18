@@ -16,9 +16,8 @@
 tree:
 let
   groups = (fromTOML (builtins.readFile (tree + "/tooling/release-groups.toml"))).group;
-  # The app's group owns the remainder; the libraries own their crates.
-  app = builtins.head (builtins.filter (group: group ? owns) (builtins.attrValues groups));
-  inherit (app) version;
+  # The app's group, by the name `release_groups::APP_GROUP` gives it.
+  inherit (groups.waypoints) version;
 
   # `1.2.3-pre.4+build` → "pre"; `1.2.3` → "".
   withoutBuild = builtins.head (builtins.split "\\+" version);

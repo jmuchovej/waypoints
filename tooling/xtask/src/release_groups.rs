@@ -3,20 +3,17 @@
 
 //! The group file: `tooling/release-groups.toml` names every workspace crate
 //! outside `tooling/` as a versioned member or an unversioned internal of one
-//! group, and declares each group's version, which every member's manifest
-//! projects. The release bot writes the declaration and the projections in
-//! one commit; `version-integrity` holds them equal.
+//! group, lists what each group owns beyond its crates, and declares each
+//! group's version, which every member's manifest projects. The release bot
+//! writes the declaration and the projections in one commit;
+//! `version-integrity` holds them equal.
 //!
 //! The schema checks shape and is generated from these types, so the two
-//! cannot drift; [`load`] checks what a schema cannot see. Keys whose meaning
-//! belongs to a later change are parsed and shape-checked here, and nothing
-//! acts on them yet.
+//! cannot drift; [`load`] checks what a schema cannot see. The app's group is
+//! [`APP_GROUP`] and every other group is a library; what a group is decides
+//! how it is versioned, so the file carries no key saying so.
 
-use crate::{
-    Channel, Flavor,
-    planners::test,
-    releases::version::{Transition, Version},
-};
+use crate::{planners::test, releases::version::Version};
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::Metadata;
 use schemars::{JsonSchema, generate::SchemaSettings};
@@ -42,14 +39,17 @@ pub const REPOSITORY: &str = "https://github.com/jmuchovej/waypoints";
 /// Members here build the repository, not the product, and are never named.
 const TOOLING: &str = "tooling/";
 
-/// Which workspace crates version together, and what a pull request may claim
-/// about them.
+/// The app's group, by name: this is one repository with one app, and what a
+/// group is — the app or a library — decides how it is versioned.
+/// `workspace::APP` names the app's crate; this names its group.
+pub const APP_GROUP: &str = "waypoints";
+
+/// Which workspace crates version together, and what each group owns.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct GroupFile {
     pub bookkeeping: Bookkeeping,
     pub group: BTreeMap<String, Group>,
-    pub enforce: Enforce,
 }
 
 /// What is never product work, for any group or planner.
@@ -78,106 +78,11 @@ pub struct Group {
     pub internals: Vec<String>,
     /// The group's tag, with `{version}` standing in for its version.
     pub tag: String,
-    /// What marks a breaking change for this group.
-    pub breaking: Breaking,
-    /// What can force a cut above what the commits declare.
-    pub floors: Vec<Floor>,
     /// The group's append-only corpus.
     pub fixtures: String,
-    /// The transitions that mint this group's versions.
-    pub minted: Vec<Transition>,
-    /// Paths the group owns beyond its crates and fixtures.
+    /// Directories the group owns beyond its crates and fixtures.
     #[serde(default)]
-    pub owns: Option<Owns>,
-    /// Which paths count as work for this group.
-    #[serde(default)]
-    pub counts: Option<Counts>,
-    /// Whether a `feat` always moves the minor, even before `v1`.
-    #[serde(default)]
-    pub features_always_increment_minor: bool,
-    /// The channels the group ships through.
-    #[serde(default)]
-    pub channels: Vec<Channel>,
-    /// The flavors every crate in the group declares.
-    #[serde(default)]
-    pub flavors: Vec<Flavor>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub enum Breaking {
-    /// `!` in the group's own header.
-    #[serde(rename = "header")]
-    Header,
-    /// The `Covenant: break` trailer.
-    #[serde(rename = "trailer:Covenant: break")]
-    CovenantTrailer,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum Floor {
-    CargoSemverChecks,
-    CovenantFixtures,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum Owns {
-    /// Everything no other group owns, minus `tooling/` and bookkeeping.
-    Remainder,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum Counts {
-    /// Its own paths plus every group's: the binary ships them.
-    Closure,
-}
-
-/// The pull-request checks `version-integrity` carries.
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct Enforce {
-    pub commits: Commits,
-    pub summary_type: SummaryType,
-    pub version_writes: VersionWrites,
-    pub fixtures: Fixtures,
-    pub schema: SchemaRule,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum Commits {
-    /// A landing message is a conventional commit.
-    Conventional,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum SummaryType {
-    /// A multi-group change lands as `summary`, one body header per group.
-    Summary,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum VersionWrites {
-    /// Only `wp-botswain[bot]` changes a member's `[package].version`.
-    Botswain,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum Fixtures {
-    /// A fixture changes only under the `Covenant: break` trailer.
-    AppendOnly,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum SchemaRule {
-    /// The committed schema equals the regenerated one.
-    Current,
+    pub paths: Vec<String>,
 }
 
 impl GroupFile {
@@ -207,10 +112,12 @@ impl GroupFile {
         })
     }
 
-    /// The app's group: the one owning the remainder.
+    /// The app's group, [`APP_GROUP`], which the file has to carry.
     pub fn app_group(&self) -> Result<&str> {
-        self.remainder_group()
-            .context("no group owns the remainder; the app's group names `owns = \"remainder\"`")
+        self.group
+            .get_key_value(APP_GROUP)
+            .map(|(name, _)| name.as_str())
+            .with_context(|| format!("{GROUP_FILE} has no `[group.{APP_GROUP}]`, the app's group"))
     }
 
     /// The version the tree ships as — the app's, channel suffix included.
@@ -256,39 +163,22 @@ impl GroupFile {
             .any(|dir| path.starts_with(dir.as_str()))
     }
 
-    /// The group `path` counts for: the one whose crate or fixtures hold it,
-    /// else the group owning the remainder. `tooling/` and bookkeeping count
-    /// for none.
+    /// The group `path` counts for: the one whose crate, fixtures, or listed
+    /// directory holds it. A path no group lists, `tooling/`, and bookkeeping
+    /// count for none.
     pub fn owner_of(&self, path: &str) -> Option<&str> {
         if path.starts_with(TOOLING) || self.is_bookkeeping(path) {
             return None;
         }
-        match test::owning_package(path, &self.owned_paths()) {
-            Some(name) => self
-                .group
-                .get_key_value(name)
-                .map(|(name, _)| name.as_str()),
-            None => self.remainder_group(),
-        }
-    }
-
-    /// The group owning every path no other group does.
-    pub fn remainder_group(&self) -> Option<&str> {
+        let owned = self.owned_paths();
+        let name = test::owning_package(path, &owned)?;
         self.group
-            .iter()
-            .find(|(_, group)| matches!(group.owns, Some(Owns::Remainder)))
+            .get_key_value(name)
             .map(|(name, _)| name.as_str())
     }
 
-    /// The groups counting every group's paths as their own work.
-    pub fn closure_groups(&self) -> impl Iterator<Item = &str> {
-        self.group
-            .iter()
-            .filter(|(_, group)| matches!(group.counts, Some(Counts::Closure)))
-            .map(|(name, _)| name.as_str())
-    }
-
-    /// Every `(group, path)` a group owns: its crates and its fixtures.
+    /// Every `(group, path)` a group owns: its crates, its fixtures, and the
+    /// directories it lists.
     fn owned_paths(&self) -> Vec<(String, String)> {
         self.group
             .iter()
@@ -298,6 +188,7 @@ impl GroupFile {
                     .iter()
                     .chain(&group.internals)
                     .chain([&group.fixtures])
+                    .chain(&group.paths)
                     .map(|path| (name.clone(), path.trim_end_matches('/').to_owned()))
             })
             .collect()
@@ -314,6 +205,11 @@ impl GroupFile {
         pinned: &BTreeSet<String>,
     ) -> Vec<String> {
         let mut problems = Vec::new();
+        if !self.group.contains_key(APP_GROUP) {
+            problems.push(format!(
+                "no `[group.{APP_GROUP}]`: the app's group is named `{APP_GROUP}`"
+            ));
+        }
 
         let mut named: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for (group, path) in self.owned_paths() {
@@ -353,11 +249,10 @@ impl GroupFile {
                     ));
                 }
             }
-            if !exists(&group.fixtures) {
-                problems.push(format!(
-                    "group `{name}`: `{}` does not exist",
-                    group.fixtures
-                ));
+            for path in group.paths.iter().chain([&group.fixtures]) {
+                if !exists(path) {
+                    problems.push(format!("group `{name}`: `{path}` does not exist"));
+                }
             }
         }
 
@@ -554,27 +449,15 @@ mod tests {
         version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
         tag = "bedrock-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/bedrock/"
-        minted = [ "cut" ]
 
         [group.waypoints]
         version = "0.1.0-nightly"
         members = [ "src-tauri" ]
         internals = [ "crates/store" ]
         tag = "v{version}"
-        breaking = "trailer:Covenant: break"
-        floors = [ "covenant-fixtures" ]
         fixtures = "covenant/fixtures/waypoints/"
-        minted = [ "cut", "advance", "promote", "patch" ]
-
-        [enforce]
-        commits = "conventional"
-        summary-type = "summary"
-        version-writes = "botswain"
-        fixtures = "append-only"
-        schema = "current"
+        paths = [ "src/" ]
     "#;
 
     fn directories(paths: &[&str]) -> Vec<(String, String)> {
@@ -716,15 +599,8 @@ mod tests {
         let file = GroupFile::parse(GROUPS).unwrap();
         assert_eq!(file.version_of("bedrock").unwrap(), Version::new(0, 1, 0));
         assert!(file.version_of("outpost").is_err());
-        assert!(file.app_group().is_err());
-
-        let with_app = GroupFile::parse(&GROUPS.replace(
-            r#"tag = "v{version}""#,
-            "tag = \"v{version}\"\n        owns = \"remainder\"",
-        ))
-        .unwrap();
-        assert_eq!(with_app.app_group().unwrap(), "waypoints");
-        assert_eq!(with_app.app_version().unwrap().to_string(), "0.1.0-nightly");
+        assert_eq!(file.app_group().unwrap(), APP_GROUP);
+        assert_eq!(file.app_version().unwrap().to_string(), "0.1.0-nightly");
     }
 
     #[test]
@@ -765,14 +641,83 @@ mod tests {
     #[test]
     fn a_misspelled_key_does_not_parse() {
         let toml = GROUPS.replace(
-            "breaking = \"header\"",
-            "breaking = \"header\"\nattribution = \"header\"",
+            "tag = \"bedrock-v{version}\"",
+            "tag = \"bedrock-v{version}\"\nattribution = \"header\"",
         );
         let error = GroupFile::parse(&toml).unwrap_err();
         assert!(format!("{error:#}").contains("attribution"), "{error:#}");
     }
 
-    /// Fixtures belong to their group, and a nested path to the longer prefix.
+    /// Scenario _A retired key does not parse_: what a group is decides its
+    /// policy, so a key restating one is refused by name, as a misspelled
+    /// key is.
+    #[test]
+    fn a_retired_key_does_not_parse() {
+        for retired in [
+            "owns = \"remainder\"",
+            "counts = \"closure\"",
+            "breaking = \"header\"",
+            "minted = [ \"cut\" ]",
+            "floors = [ \"cargo-semver-checks\" ]",
+            "features-always-increment-minor = true",
+            "channels = [ \"stable\" ]",
+            "flavors = [ \"stable\" ]",
+        ] {
+            let toml = GROUPS.replace(
+                "tag = \"bedrock-v{version}\"",
+                &format!("tag = \"bedrock-v{{version}}\"\n{retired}"),
+            );
+            let error = format!("{:#}", GroupFile::parse(&toml).unwrap_err());
+            let key = retired.split(' ').next().unwrap();
+            assert!(error.contains(key), "{retired}: {error}");
+        }
+        let enforced = format!("{GROUPS}\n[enforce]\ncommits = \"conventional\"\n");
+        let error = format!("{:#}", GroupFile::parse(&enforced).unwrap_err());
+        assert!(error.contains("enforce"), "{error}");
+    }
+
+    /// Scenario _A file without the app's group_: the app is `waypoints` by
+    /// name, and a file not carrying it describes no workspace.
+    #[test]
+    fn a_file_without_the_app_s_group_is_refused() {
+        let toml = GROUPS.replace("[group.waypoints]", "[group.app]");
+        let found = problems(&toml, &["crates/bedrock", "crates/bedrock-core"]);
+        assert_refused(&found, &["[group.waypoints]", "the app's group"]);
+        assert!(GroupFile::parse(&toml).unwrap().app_group().is_err());
+    }
+
+    /// Scenarios _Listed path that does not exist_, _Listed path under
+    /// tooling_, and _Overlapping listed path_: a listed directory is held to
+    /// what a fixtures directory is held to.
+    #[test]
+    fn a_listed_path_is_held_like_a_fixture() {
+        let file = GroupFile::parse(GROUPS).unwrap();
+        let found = file.problems(
+            &directories(&tree(&[])),
+            |path| path != "src/",
+            &BTreeSet::new(),
+        );
+        assert_refused(&found, &["waypoints", "src/", "does not exist"]);
+
+        let under_tooling =
+            GROUPS.replace(r#"paths = [ "src/" ]"#, r#"paths = [ "tooling/bin/" ]"#);
+        assert_refused(
+            &problems(&under_tooling, &tree(&[])),
+            &["tooling/bin", "waypoints", "tooling/"],
+        );
+
+        let nested = GROUPS.replace(
+            r#"paths = [ "src/" ]"#,
+            r#"paths = [ "crates/bedrock/src/" ]"#,
+        );
+        assert_refused(
+            &problems(&nested, &tree(&[])),
+            &["crates/bedrock", "crates/bedrock/src"],
+        );
+    }
+
+    /// Fixtures and listed directories belong to their group, a nested path
+    /// to the longer prefix, and a path no group lists to none.
     #[test]
     fn a_path_resolves_to_the_group_owning_it() {
         let file = GroupFile::parse(GROUPS).unwrap();
@@ -783,12 +728,22 @@ mod tests {
         };
         assert_eq!(touched(&["crates/bedrock/src/lib.rs"]), ["bedrock"]);
         assert_eq!(touched(&["crates/store/src/db.rs"]), ["waypoints"]);
+        assert_eq!(touched(&["src/app/a.vue"]), ["waypoints"]);
         assert_eq!(touched(&["covenant/fixtures/bedrock/a.json"]), ["bedrock"]);
         assert_eq!(
             touched(&["crates/bedrock-core/src/lib.rs", "src-tauri/src/lib.rs"]),
             ["bedrock", "waypoints"]
         );
-        assert!(touched(&["docs/CONTRIBUTING.md", "tooling/xtask/src/lib.rs"]).is_empty());
+        assert!(
+            touched(&[
+                "docs/CONTRIBUTING.md",
+                "website/content/index.md",
+                "tooling/xtask/src/lib.rs"
+            ])
+            .is_empty()
+        );
+        assert_eq!(file.owner_of("src/app/a.vue"), Some("waypoints"));
+        assert_eq!(file.owner_of("docs/CONTRIBUTING.md"), None);
     }
 
     /// The internal is not versioned, so a version write to it is no claim.

@@ -143,7 +143,9 @@ request:
 
 - **The title is a conventional commit**, with a type from the table above.
 - **One release group:** the scope stays free-form. The changed paths decide the
-  group, not the scope. `tooling/release-groups.toml` names the groups.
+  group, not the scope. `tooling/release-groups.toml` names the groups and what
+  each owns; a path the file lists for no group — `website/`, `docs/`, `nix/`,
+  the workflows — counts for no release.
 - **More than one release group:** the title is `summary: …`, with no scope and
   no `!`, and the description carries exactly one header per touched group,
   scoped by the group's name:

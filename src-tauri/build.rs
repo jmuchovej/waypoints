@@ -66,9 +66,8 @@ fn resolve_group_versions() -> String {
     let mut versions = BTreeMap::new();
     let named = groups.get("group").and_then(toml::Value::as_table);
     for (name, group) in named.into_iter().flatten() {
-        // The app owns the remainder, and ships the libraries rather than
-        // being one.
-        if group.get("owns").is_some() {
+        // The app ships the libraries rather than being one.
+        if name == "waypoints" {
             continue;
         }
         let (Some(template), Some(declared)) = (

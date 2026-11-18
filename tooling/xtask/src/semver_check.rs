@@ -11,7 +11,7 @@
 //! it.
 
 use crate::{
-    release_groups::{GroupFile, tag_prefix},
+    release_groups::{APP_GROUP, GroupFile, tag_prefix},
     releases::{history::Commit as Walked, version::Version},
     tools::git,
     version_integrity::{Change, PullRequest},
@@ -135,7 +135,7 @@ pub fn library_members(
         .group
         .get(group)
         .with_context(|| format!("no group named `{group}`"))?;
-    let is_app_group = groups.remainder_group() == Some(group);
+    let is_app_group = group == APP_GROUP;
 
     let mut members = Vec::new();
     for package in metadata.workspace_packages() {
