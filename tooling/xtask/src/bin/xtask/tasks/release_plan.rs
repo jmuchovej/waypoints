@@ -114,15 +114,12 @@ pub fn run(args: Options) -> Result<()> {
     if args.transition == Transition::Cut {
         let main = plan.main_landing(&groups)?.context("a cut lands on main")?;
         println!("  wrote the main-side manifests on main");
-        let body = if main.title.starts_with("summary:") {
-            format!(
-                "{}\n\n{}\n",
-                planner::pull_request_body(),
-                plan.summary_headers(&groups)?.join("\n")
-            )
-        } else {
-            planner::pull_request_body()
-        };
+        let mut body = planner::pull_request_body();
+        if main.title.starts_with("summary:") {
+            body.push_str("\n\n");
+            body.push_str(&plan.summary_headers(&groups)?.join("\n"));
+            body.push('\n');
+        }
         let body_path = std::env::temp_dir().join("release-plan-body.md");
         fs::write(&body_path, body).with_context(|| format!("writing {}", body_path.display()))?;
         github::set_outputs_if_available(&main)?;

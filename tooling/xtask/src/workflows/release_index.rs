@@ -31,7 +31,7 @@ pub(super) const TAG_PATTERN: &str = "v*";
 
 /// Becomes the merge commit's body, so it says what the merge commit is.
 pub(super) fn body() -> String {
-    crate::templates::must("pull-request.index", &())
+    crate::templates::must("pull-request.index", tera::Context::new())
 }
 
 /// Passed only when the dispatch asks for it: compute and print the entry,

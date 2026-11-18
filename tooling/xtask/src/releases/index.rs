@@ -56,19 +56,13 @@ impl Entry {
 
     /// The commit that records this entry on `main`.
     pub fn commit_message(&self, channel: Channel) -> String {
-        #[derive(serde::Serialize)]
-        struct Values<'a> {
-            tag: &'a str,
-            channel: String,
-        }
-        crate::templates::render(
+        crate::templates::must(
             "commit.index",
-            &Values {
-                tag: &self.tag,
-                channel: channel.to_string(),
+            tera::context! {
+                tag => &self.tag,
+                channel => &channel.to_string(),
             },
         )
-        .unwrap_or_else(|error| panic!("{error:#}"))
     }
 
     /// The pull request that lands this entry. One branch per channel, so two

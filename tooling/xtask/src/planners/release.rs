@@ -38,6 +38,7 @@ use std::{
     path::Path,
     process::Command,
 };
+use tera::{Context, Value as TeraValue, context};
 use toml_edit::{DocumentMut, Item, RawString, Value};
 
 /// What a cut is asked for beyond its transition.
@@ -170,16 +171,6 @@ impl GroupPlan {
 
     /// One line a reader audits before a cut.
     pub fn describe(&self) -> String {
-        #[derive(serde::Serialize)]
-        struct Values<'a> {
-            group: &'a str,
-            current: &'a str,
-            next: &'a str,
-            tag: &'a str,
-            counted: usize,
-            since: String,
-            evidence: String,
-        }
         let api = match (&self.last_tag, self.api_break) {
             (None, _) => "; no tag to measure an API break against until this cut mints one",
             (Some(_), Some(true)) => "; the API check found a break",
@@ -191,24 +182,24 @@ impl GroupPlan {
         } else {
             ""
         };
-        let values = Values {
-            group: &self.group,
-            current: &self.current,
-            next: self.next.as_deref().unwrap_or_default(),
-            tag: self.tag.as_deref().unwrap_or_default(),
-            counted: self.counted,
-            since: match &self.last_tag {
-                Some(tag) => format!("since `{tag}`"),
-                None => "over the whole history, with no tag yet".to_owned(),
+        let suffix = if self.mints() { "minted" } else { "unchanged" };
+        let template = &format!("dry-run.group-{suffix}");
+        let since = match &self.last_tag {
+            Some(tag) => format!("since `{tag}`"),
+            None => "over the whole history, with no tag yet".to_owned(),
+        };
+        templates::must(
+            template,
+            context! {
+              group => &self.group,
+              current => &self.current,
+              next => self.next.as_deref().unwrap_or_default(),
+              tag => self.tag.as_deref().unwrap_or_default(),
+              counted => &self.counted,
+              since,
+              evidence => &format!("{api}{fixtures}"),
             },
-            evidence: format!("{api}{fixtures}"),
-        };
-        let template = if self.mints() {
-            "dry-run.group-minted"
-        } else {
-            "dry-run.group-unchanged"
-        };
-        templates::must(template, &values)
+        )
     }
 }
 
@@ -300,13 +291,6 @@ impl PinMove {
 
     /// One line a reader audits before a patch.
     pub fn describe(&self) -> String {
-        #[derive(serde::Serialize)]
-        struct Values<'a> {
-            group: &'a str,
-            from: &'a str,
-            to: &'a str,
-            breaking: &'a [String],
-        }
         let template = match (&self.to, self.breaking.is_empty()) {
             (Some(_), _) => "dry-run.pin-moved",
             (None, true) => "dry-run.pin-held",
@@ -314,11 +298,11 @@ impl PinMove {
         };
         templates::must(
             template,
-            &Values {
-                group: &self.group,
-                from: &self.from,
-                to: self.to.as_deref().unwrap_or_default(),
-                breaking: &self.breaking,
+            context! {
+                group => &self.group,
+                from => &self.from,
+                to => self.to.as_deref().unwrap_or_default(),
+                breaking => &self.breaking,
             },
         )
     }
@@ -491,18 +475,12 @@ impl Plan {
 
     /// The message for the version commit this plan's tag points at.
     pub fn commit_message(&self) -> String {
-        #[derive(serde::Serialize)]
-        struct Values<'a> {
-            branch: &'a str,
-            channel: &'a str,
-            version: &'a str,
-        }
         templates::must(
             "commit.series",
-            &Values {
-                branch: &self.branch,
-                channel: &self.channel,
-                version: &self.version,
+            context! {
+                branch => &self.branch,
+                channel => &self.channel,
+                version => &self.version,
             },
         )
     }
@@ -566,64 +544,37 @@ impl Plan {
         if self.is_group_only()
             && let [only] = minted
         {
-            #[derive(serde::Serialize)]
-            struct Values<'a> {
-                group: &'a str,
-                version: &'a str,
-            }
-            return Ok(templates::must(
-                "commit.library",
-                &Values {
-                    group: &only.group,
-                    version: only.next.as_deref().unwrap_or_default(),
-                },
-            ));
+            let ctx = context! {
+                group => &only.group,
+                version => only.next.as_deref().unwrap_or_default(),
+            };
+            return Ok(templates::must("commit.library", ctx));
         }
-        #[derive(serde::Serialize)]
-        struct Summary<'a> {
-            version: &'a str,
-        }
-        Ok(templates::must(
-            "commit.summary",
-            &Summary {
-                version: &self.version,
-            },
-        ))
+        let ctx = context! {
+          version => &self.version,
+        };
+        Ok(templates::must("commit.summary", ctx))
     }
 
     /// The headers a summary's body carries, one per group it writes, scoped
     /// by the group so the pull-request check reads each.
     pub fn summary_headers(&self, groups: &GroupFile) -> Result<Vec<String>> {
-        #[derive(serde::Serialize)]
-        struct Group<'a> {
-            group: &'a str,
-            version: &'a str,
-        }
-        #[derive(serde::Serialize)]
-        struct Main<'a> {
-            app: &'a str,
-            next: &'a str,
-        }
         let mut headers: Vec<String> = self
             .minted()
             .map(|group| {
-                templates::must(
-                    "header.group",
-                    &Group {
-                        group: &group.group,
-                        version: group.next.as_deref().unwrap_or_default(),
-                    },
-                )
+                let ctx = context! {
+                    group => &group.group,
+                    version => group.next.as_deref().unwrap_or_default(),
+                };
+                templates::must("header.group", ctx)
             })
             .collect();
         if !self.next_main_version.is_empty() {
-            headers.push(templates::must(
-                "header.main",
-                &Main {
-                    app: app_group(groups)?,
-                    next: &self.next_main_version,
-                },
-            ));
+            let ctx = context! {
+                app => app_group(groups)?,
+                next => &self.next_main_version,
+            };
+            headers.push(templates::must("header.main", ctx));
         }
         Ok(headers)
     }
@@ -674,41 +625,31 @@ const RELEASE_PREFIX: &str = "chore(release): ";
 
 /// The message for `main`'s post-cut bump.
 pub fn next_main_message(next: &Version) -> String {
-    #[derive(serde::Serialize)]
-    struct Values {
-        next: String,
-    }
-    templates::must(
-        "commit.main",
-        &Values {
-            next: next.to_string(),
-        },
-    )
+    let ctx = context! {
+      next => &next.to_string(),
+    };
+    templates::must("commit.main", ctx)
 }
 
 /// The refusal for a cut whose cycle holds no commit counting for the app:
 /// what the cut is measured from, and which libraries moved, which a
 /// group-scoped cut mints alone.
 fn app_unmoved(app: &str, last: Option<&Version>, planned: &[GroupPlan]) -> String {
-    #[derive(serde::Serialize)]
-    struct Values<'a> {
-        app: &'a str,
-        since: String,
-        moved: Vec<String>,
-    }
+    let since = match last {
+        Some(last) => format!("since `{}`", last.tag()),
+        None => "in its history".to_owned(),
+    };
+    let moved: Vec<String> = planned
+        .iter()
+        .filter(|group| group.mints())
+        .map(|group| format!("`{}`", group.group))
+        .collect();
     templates::must(
         "refusal.app-unmoved",
-        &Values {
+        context! {
             app,
-            since: match last {
-                Some(last) => format!("since `{}`", last.tag()),
-                None => "in its history".to_owned(),
-            },
-            moved: planned
-                .iter()
-                .filter(|group| group.mints())
-                .map(|group| format!("`{}`", group.group))
-                .collect(),
+            since,
+            moved
         },
     )
 }
@@ -1169,7 +1110,7 @@ fn pin_workspace(
             Some((above, indent)) => (format!("{above}\n"), indent.to_owned()),
             None => (String::new(), prefix),
         };
-        let comment: String = templates::must("manifest.pinned", &())
+        let comment: String = templates::must("manifest.pinned", Context::new())
             .lines()
             .map(|line| format!("{indent}{line}\n"))
             .collect();
@@ -1199,7 +1140,7 @@ fn update_lockfile(root: &Path) -> Result<()> {
 /// commit's body, so it says what the merge commit is; GitHub wraps it at 72
 /// columns, so it stays under them.
 pub fn pull_request_body() -> String {
-    templates::must("pull-request.plan", &())
+    templates::must("pull-request.plan", Context::new())
 }
 
 /// What a dry run renders instead of writing, each file by name, for the task
@@ -1344,58 +1285,46 @@ fn refs_markdown(
     main: Option<&Landing>,
     groups: &GroupFile,
 ) -> Result<String> {
-    #[derive(serde::Serialize)]
-    struct Series {
-        branch: String,
-        created: bool,
-        tag: String,
-        landing: String,
-    }
-    #[derive(serde::Serialize)]
-    struct Main {
-        next: Option<String>,
-        landing: String,
-        headers: Vec<String>,
-    }
-    #[derive(serde::Serialize)]
-    struct Refs {
-        transition: String,
-        body: String,
-        series: Option<Series>,
-        main: Option<Main>,
-        groups: Vec<String>,
-    }
-
+    // The nested tables are `Value` maps: the macro inserts whatever
+    // serializes, and a map of values is what `main.next` reads from.
     let main = match main {
-        Some(landing) => Some(Main {
-            next: (!plan.next_main_version.is_empty()).then(|| plan.next_main_version.clone()),
-            landing: landing.describe(MAIN),
-            headers: if landing.title.starts_with("summary:") {
+        Some(landing) => {
+            let next = (!plan.next_main_version.is_empty()).then(|| plan.next_main_version.clone());
+            let headers = if landing.title.starts_with("summary:") {
                 plan.summary_headers(groups)?
             } else {
                 Vec::new()
-            },
-        }),
+            };
+            Some(TeraValue::from(BTreeMap::from([
+                ("next", TeraValue::from(next)),
+                ("landing", TeraValue::from(landing.describe(MAIN))),
+                ("headers", TeraValue::from(headers)),
+            ])))
+        }
         None => None,
     };
+    let series = series.map(|landing| {
+        TeraValue::from(BTreeMap::from([
+            ("branch", TeraValue::from(plan.branch.clone())),
+            ("created", TeraValue::from(plan.opens_series())),
+            ("tag", TeraValue::from(plan.tag.clone())),
+            ("landing", TeraValue::from(landing.describe(&plan.branch))),
+        ]))
+    });
+    let groups: Vec<String> = plan
+        .groups
+        .iter()
+        .map(GroupPlan::describe)
+        .chain(plan.moves.iter().map(PinMove::describe))
+        .collect();
     templates::render(
         "dry-run.refs",
-        &Refs {
-            transition: format!("{transition:?}").to_lowercase(),
-            body: pull_request_body(),
-            series: series.map(|landing| Series {
-                branch: plan.branch.clone(),
-                created: plan.opens_series(),
-                tag: plan.tag.clone(),
-                landing: landing.describe(&plan.branch),
-            }),
+        context! {
+            transition => &format!("{transition:?}").to_lowercase(),
+            body => &pull_request_body(),
+            series,
             main,
-            groups: plan
-                .groups
-                .iter()
-                .map(GroupPlan::describe)
-                .chain(plan.moves.iter().map(PinMove::describe))
-                .collect(),
+            groups,
         },
     )
 }

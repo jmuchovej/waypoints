@@ -5,11 +5,14 @@
 //! headers, pull-request bodies, and what a dry run renders — lives in
 //! `templates.toml` as a Tera template, named by its table path. Rendering is
 //! the one way to produce one, so the file is the one place to read them.
+//!
+//! A caller builds its context with [`tera::context!`]: a flat template takes
+//! `key => &value` pairs, and a nested table is a [`TeraValue`] map inserted
+//! like any other value, since the macro inserts whatever serializes.
 
 use anyhow::{Context as _, Result, anyhow};
-use serde::Serialize;
 use std::{collections::BTreeMap, sync::LazyLock};
-use tera::{Context, Tera};
+use tera::{Context, Tera, Value as TeraValue};
 
 const SOURCE: &str = include_str!("templates.toml");
 
@@ -21,7 +24,7 @@ static TEMPLATES: LazyLock<std::result::Result<Tera, String>> = LazyLock::new(||
     flatten(&table, String::new(), &mut named);
 
     let mut tera = Tera::default();
-    tera.autoescape_on(Vec::new());
+    tera.autoescape_on(Vec::<&str>::new());
     tera.add_raw_templates(
         named
             .iter()
@@ -51,14 +54,10 @@ fn flatten(table: &toml::Table, prefix: String, into: &mut BTreeMap<String, Stri
     }
 }
 
-/// Renders the template `name` with `values`.
-pub fn render<T: Serialize>(name: &str, values: &T) -> Result<String> {
+/// Renders the template `name` with `context`; an empty context is a template
+/// with nothing to fill in.
+pub fn render(name: &str, context: Context) -> Result<String> {
     let tera = TEMPLATES.as_ref().map_err(|error| anyhow!("{error}"))?;
-    // `()` is a template with nothing to fill in, not a refusal.
-    let context = match serde_json::to_value(values).context("the template's values serialize")? {
-        serde_json::Value::Null => Context::new(),
-        value => Context::from_value(value).context("the template's values are an object")?,
-    };
     tera.render(name, &context)
         .with_context(|| format!("rendering the template `{name}`"))
 }
@@ -66,8 +65,8 @@ pub fn render<T: Serialize>(name: &str, values: &T) -> Result<String> {
 /// [`render`] where the values are the program's own — a plan's fields, the
 /// workflow generator's constants — so a failure is a defect in
 /// `templates.toml` rather than in any input, and is reported as one.
-pub fn must<T: Serialize>(name: &str, values: &T) -> String {
-    render(name, values).unwrap_or_else(|error| panic!("{error:#}"))
+pub fn must(name: &str, context: Context) -> String {
+    render(name, context).unwrap_or_else(|error| panic!("{error:#}"))
 }
 
 /// The names the file defines, for the test that holds every one to a render.
@@ -82,12 +81,13 @@ fn names() -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tera::context;
 
     #[test]
     fn every_template_in_the_file_is_loaded() {
         let tera = TEMPLATES.as_ref().unwrap();
         for name in names() {
-            assert!(tera.get_template(&name).is_ok(), "{name} did not load");
+            assert!(tera.contains_template(&name), "{name} did not load");
         }
         assert!(names().contains(&"commit.series".to_owned()));
         assert!(names().contains(&"dry-run.refs".to_owned()));
@@ -95,22 +95,40 @@ mod tests {
 
     #[test]
     fn a_subject_renders_from_its_values() {
-        #[derive(Serialize)]
-        struct Series<'a> {
-            branch: &'a str,
-            channel: &'a str,
-            version: &'a str,
-        }
         let subject = render(
             "commit.series",
-            &Series {
-                branch: "v0.2.x",
-                channel: "preview",
-                version: "0.2.0-pre.1",
+            context! {
+                branch => "v0.2.x",
+                channel => "preview",
+                version => "0.2.0-pre.1",
             },
         )
         .unwrap();
         assert_eq!(subject, "chore(release): v0.2.x preview 0.2.0-pre.1");
-        assert!(render("commit.nothing", &()).is_err());
+        assert!(render("commit.nothing", Context::new()).is_err());
+    }
+
+    /// A nested table reaches the template as a `Value` map, read with the
+    /// dotted path the template already uses.
+    #[test]
+    fn a_nested_table_renders_from_a_value_map() {
+        let main = TeraValue::from(BTreeMap::from([
+            ("next", TeraValue::from(Some("0.3.0-nightly".to_owned()))),
+            ("landing", TeraValue::from("a pull request")),
+            ("headers", TeraValue::from(vec!["chore(bedrock): 0.2.0"])),
+        ]));
+        let refs = render(
+            "dry-run.refs",
+            context! {
+                transition => "cut",
+                body => "the body",
+                main => &main,
+                groups => &Vec::<String>::new(),
+            },
+        )
+        .unwrap();
+        assert!(refs.contains("- main moves to `0.3.0-nightly`\n"), "{refs}");
+        assert!(refs.contains("    chore(bedrock): 0.2.0\n"), "{refs}");
+        assert!(!refs.contains("series"), "{refs}");
     }
 }
