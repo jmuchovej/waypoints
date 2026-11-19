@@ -7,6 +7,7 @@
 
 use anyhow::{Context as _, Result};
 use clap::Parser;
+use indoc::formatdoc;
 use std::{fs, path::PathBuf};
 use xtask::{
     planners::release as planner, release_groups, releases::version::Transition, tools::github,
@@ -114,12 +115,18 @@ pub fn run(args: Options) -> Result<()> {
     if args.transition == Transition::Cut {
         let main = plan.main_landing(&groups)?.context("a cut lands on main")?;
         println!("  wrote the main-side manifests on main");
-        let mut body = planner::pull_request_body();
-        if main.title.starts_with("summary:") {
-            body.push_str("\n\n");
-            body.push_str(&plan.summary_headers(&groups)?.join("\n"));
-            body.push('\n');
-        }
+        let body = if main.title.starts_with("summary:") {
+            formatdoc! { "
+                {plan}
+
+                {headers}
+                ",
+                plan = planner::pull_request_body(),
+                headers = plan.summary_headers(&groups)?.join("\n"),
+            }
+        } else {
+            planner::pull_request_body()
+        };
         let body_path = std::env::temp_dir().join("release-plan-body.md");
         fs::write(&body_path, body).with_context(|| format!("writing {}", body_path.display()))?;
         github::set_outputs_if_available(&main)?;

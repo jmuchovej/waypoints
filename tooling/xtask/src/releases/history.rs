@@ -17,6 +17,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use git_conventional::{Commit as Conventional, Type};
+use indoc::formatdoc;
 use std::{collections::BTreeSet, fs, path::Path};
 
 /// Record and field separators the format emits; no message or path carries
@@ -53,11 +54,13 @@ impl Commit {
 
     /// The message as a conventional-commit parser reads it.
     pub fn message(&self) -> String {
-        if self.body.is_empty() {
-            self.subject.clone()
-        } else {
-            format!("{}\n\n{}", self.subject, self.body)
-        }
+        formatdoc! { "
+            {subject}
+
+            {body}
+          ", subject = self.subject, body = self.body}
+        .trim()
+        .to_string()
     }
 
     /// The header `group` reads this commit by, as the version bumper takes
@@ -272,6 +275,8 @@ pub fn product_subjects(commits: &[Commit]) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    use indoc::indoc;
+
     use super::*;
     use crate::releases::{
         index::{INDEX_DIR, fixture::Repo},
@@ -387,7 +392,12 @@ mod tests {
         repo.commit_as(
             RELEASE_BOT,
             "crates/bedrock/Cargo.toml",
-            "summary: cut 0.2.0-pre.1\n\nchore(bedrock): 0.2.0\nchore(waypoints): main now targets 0.3.0-nightly",
+            indoc! { "
+              summary: cut 0.2.0-pre.1
+
+              chore(bedrock): 0.2.0
+              chore(waypoints): main now targets 0.3.0-nightly
+            " },
         );
         repo.commit_as(
             "someone",
@@ -411,7 +421,11 @@ mod tests {
         repo.commit("src-tauri/src/main.rs", "wip: three");
         repo.merge(
             "topic",
-            "summary: the filter API\n\nfeat(bedrock)!: rename the filter API\nrefactor(waypoints): follow the rename",
+            indoc::indoc! {"
+                summary: the filter API
+
+                feat(bedrock)!: rename the filter API
+                refactor(waypoints): follow the rename"},
         );
 
         let walked = repo.walk("HEAD");
@@ -502,7 +516,11 @@ mod tests {
         repo.commit("crates/outpost/src/lib.rs", "wip: two");
         repo.merge(
             "topic",
-            "summary: rename the filter API\n\nfeat(bedrock)!: rename the filter API\nrefactor(outpost): follow the rename",
+            indoc::indoc! {"
+                summary: rename the filter API
+
+                feat(bedrock)!: rename the filter API
+                refactor(outpost): follow the rename"},
         );
         let landed = repo.walk("HEAD").pop().unwrap();
         assert_eq!(groups(&landed), ["bedrock", "outpost"]);
@@ -530,7 +548,11 @@ mod tests {
         repo.commit("src-tauri/src/main.rs", "wip: two");
         repo.merge(
             "topic",
-            "summary: rename the filter API\n\nfeat(bedrock)!: rename the filter API\nrefactor(waypoints): follow the rename",
+            indoc::indoc! {"
+                summary: rename the filter API
+
+                feat(bedrock)!: rename the filter API
+                refactor(waypoints): follow the rename"},
         );
         let landed = repo.walk("HEAD").pop().unwrap();
         assert_eq!(groups(&landed), ["bedrock", "waypoints"]);

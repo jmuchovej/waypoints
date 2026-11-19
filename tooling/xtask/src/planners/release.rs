@@ -32,6 +32,7 @@ use crate::{
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::Metadata;
 use git_conventional::Commit as Conventional;
+use indoc::formatdoc;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -888,11 +889,13 @@ pub fn cut_target(
             .map(|path| format!("`{path}`, a frozen fixture, changed")),
     );
     if !breaking.is_empty() {
-        bail!(
-            "a covenant break landed since {last}:\n  {}\na major is a product decision: pass `--major` to cut {next}, or hold the cut",
-            breaking.join("\n  "),
+        bail!(formatdoc! { "
+            a covenant break landed since {last}:
+              {breaking}
+            a major is a product decision: pass `--major` to cut {next}, or hold the cut",
+            breaking = breaking.join("\n  "),
             next = last.cut_major()?,
-        );
+        });
     }
 
     let headers: Vec<String> = commits
@@ -2369,10 +2372,20 @@ version = \"ignored\"
     /// these manifests are aligned by tombi.
     #[test]
     fn the_rewrite_keeps_the_line_s_indent_and_alignment() {
-        let manifest = "[package]\n  name              = \"cartograph\"\n  version           = \"0.1.0\"\n  edition.workspace = true\n";
+        let manifest = indoc::indoc! {r#"
+            [package]
+              name              = "cartograph"
+              version           = "0.1.0"
+              edition.workspace = true
+        "#};
         assert_eq!(
             set_package_version(manifest, &v("0.2.0-pre.1")).unwrap(),
-            "[package]\n  name              = \"cartograph\"\n  version           = \"0.2.0-pre.1\"\n  edition.workspace = true\n"
+            indoc::indoc! {r#"
+                [package]
+                  name              = "cartograph"
+                  version           = "0.2.0-pre.1"
+                  edition.workspace = true
+            "#}
         );
     }
 
@@ -2849,11 +2862,22 @@ version = \"ignored\"
     /// A group file for [`SERIES_GROUPS`]' groups, aligned as tombi leaves
     /// ours — the app's table wider than the libraries', as in the real one.
     fn series_file(bedrock: &str, outpost: &str, app: &str) -> String {
-        format!(
-            "[group.bedrock]\n  version  = \"{bedrock}\"\n  members  = [ \"crates/bedrock\", \"crates/bedrock-core\" ]\n  tag      = \"bedrock-v{{version}}\"\n\n\
-             [group.outpost]\n  version  = \"{outpost}\"\n  members  = [ \"crates/outpost\" ]\n  tag      = \"outpost-v{{version}}\"\n\n\
-             [group.waypoints]\n  version                         = \"{app}\"\n  members                         = [ \"src-tauri\" ]\n  tag                             = \"v{{version}}\"\n"
-        )
+        formatdoc! { r#"
+            [group.bedrock]
+              version  = "{bedrock}"
+              members  = [ "crates/bedrock", "crates/bedrock-core" ]
+              tag      = "bedrock-v{{version}}"
+
+            [group.outpost]
+              version  = "{outpost}"
+              members  = [ "crates/outpost" ]
+              tag      = "outpost-v{{version}}"
+
+            [group.waypoints]
+              version                         = "{app}"
+              members                         = [ "src-tauri" ]
+              tag                             = "v{{version}}"
+        "# }
     }
 
     /// The file's line edit: the named group's `version` alone, at its own
@@ -2873,7 +2897,11 @@ version = \"ignored\"
     }
 
     fn manifest(name: &str, version: &str) -> String {
-        format!("[package]\n  name    = \"{name}\"\n  version = \"{version}\"\n")
+        formatdoc! { r#"
+            [package]
+              name    = "{name}"
+              version = "{version}"
+        "# }
     }
 
     /// Scenarios _A patch writes a moved pin's version_ and _A held pin
@@ -2892,7 +2920,16 @@ version = \"ignored\"
         )
         .unwrap();
         let file = series_file("0.2.0", "0.3.0", "0.2.0");
-        let lock = "[[package]]\nname = \"Waypoints\"\nversion = \"0.2.0\"\n\n[[package]]\nname = \"bedrock\"\nversion = \"0.2.0\"\nsource = \"git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.2.0#abc\"\n";
+        let lock = indoc::indoc! {r#"
+            [[package]]
+            name = "Waypoints"
+            version = "0.2.0"
+
+            [[package]]
+            name = "bedrock"
+            version = "0.2.0"
+            source = "git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.2.0#abc"
+        "#};
         let packages = vec![("Waypoints".to_owned(), "src-tauri".to_owned())];
         let read = |path: &str| -> Result<String> {
             Ok(match path {
@@ -2925,7 +2962,19 @@ version = \"ignored\"
     fn an_in_tree_group_projects_onto_every_member() {
         let groups = GroupFile::parse(SERIES_GROUPS).unwrap();
         let file = series_file("0.1.0", "0.1.0", "0.1.0-nightly");
-        let lock = "[[package]]\nname = \"Waypoints\"\nversion = \"0.1.0-nightly\"\n\n[[package]]\nname = \"bedrock\"\nversion = \"0.1.0\"\n\n[[package]]\nname = \"bedrock-core\"\nversion = \"0.1.0\"\n";
+        let lock = indoc::indoc! {r#"
+            [[package]]
+            name = "Waypoints"
+            version = "0.1.0-nightly"
+
+            [[package]]
+            name = "bedrock"
+            version = "0.1.0"
+
+            [[package]]
+            name = "bedrock-core"
+            version = "0.1.0"
+        "#};
         let packages = vec![
             ("Waypoints".to_owned(), "src-tauri".to_owned()),
             ("bedrock".to_owned(), "crates/bedrock".to_owned()),

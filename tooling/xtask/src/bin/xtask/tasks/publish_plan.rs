@@ -9,6 +9,7 @@
 use anyhow::{Result, bail};
 use chrono::Utc;
 use clap::Parser;
+use indoc::formatdoc;
 use xtask::{
     Channel,
     planners::nightly::{self, Decision, Plan},
@@ -165,13 +166,23 @@ fn rehearsing(verb: &str, version: &Version, build: bool) -> String {
 /// The job summary: the verdict, and the outputs a reader would otherwise dig
 /// out of the log.
 fn summary(report: &str, plan: &Plan) -> String {
-    format!(
-        "### Plan\n\n{report}\n\n| output | value |\n| --- | --- |\n| tag | `{tag}` |\n| version | `{version}` |\n| dry_run | {dry_run} |\n| should_build | {should_build} |\n",
+    formatdoc! { "
+        ### Plan
+
+        {report}
+
+        | output | value |
+        | --- | --- |
+        | tag | `{tag}` |
+        | version | `{version}` |
+        | dry_run | {dry_run} |
+        | should_build | {should_build} |
+        ",
         tag = plan.tag,
         version = plan.version,
         dry_run = plan.dry_run,
         should_build = plan.should_build,
-    )
+    }
 }
 
 #[cfg(test)]

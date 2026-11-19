@@ -11,7 +11,7 @@ use super::helpers::{
 use super::{Artifact, TestSuite};
 use crate::{Channel, Platform, releases::artifacts::STAGE_DIR};
 use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
-use indoc::indoc;
+use indoc::{formatdoc, indoc};
 
 /// A `uses:` reference — `{owner}/{repo}@{sha}`. Pinning to the hash rather
 /// than a tag means a retagged (compromised) release cannot reach CI on its
@@ -1092,11 +1092,14 @@ pub fn dry_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let unreleased = Tools::Devenv.command(&format!(
         r#"git-cliff --unreleased --tag "${{TAG}}" --output "{DRY_RUN_DIR}/notes.md""#
     ));
-    let run = format!(
-        "mkdir -p \"{DRY_RUN_DIR}\"\n\
-         if git rev-parse -q --verify \"refs/tags/${{TAG}}\" >/dev/null; then\n  {latest}\n\
-         else\n  {unreleased}\nfi"
-    );
+    let run = formatdoc! { r#"
+        mkdir -p "{DRY_RUN_DIR}"
+        if git rev-parse -q --verify "refs/tags/${{TAG}}" >/dev/null; then
+          {latest}
+        else
+          {unreleased}
+        fi"#
+    };
 
     Step::new("Render the release notes (dry run)")
         .run(run)

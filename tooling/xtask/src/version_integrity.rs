@@ -669,7 +669,12 @@ mod tests {
             modified("crates/bedrock/src/lib.rs"),
             modified("crates/outpost/src/lib.rs"),
         ];
-        let body = "Why this moved together.\n\nfeat(bedrock)!: rename Filter::eq\nrefactor(outpost): follow the rename\n";
+        let body = indoc::indoc! {"
+            Why this moved together.
+
+            feat(bedrock)!: rename Filter::eq
+            refactor(outpost): follow the rename
+        "};
         assert_eq!(
             by_a_person("summary: rename the filter", body, &changes),
             Vec::<String>::new()
@@ -732,7 +737,12 @@ mod tests {
     #[test]
     fn a_summary_body_may_carry_prose() {
         let changes = [modified("crates/bedrock/src/lib.rs")];
-        let body = "Note: this took a while.\n\nfeat(bedrock): rename\n\nSigned-off-by: someone";
+        let body = indoc::indoc! {"
+            Note: this took a while.
+
+            feat(bedrock): rename
+
+            Signed-off-by: someone"};
         assert_eq!(
             by_a_person("summary: rename", body, &changes),
             Vec::<String>::new()
@@ -845,9 +855,12 @@ mod tests {
     fn a_dependency_s_version_is_not_a_write() {
         let changes = [modified("crates/domain/Cargo.toml")];
         let manifest = |serde: &str| {
-            format!(
-                "[package]\nversion = \"0.1.0\"\n[dependencies]\nserde = {{ version = \"{serde}\" }}\n"
-            )
+            indoc::formatdoc! { r#"
+                [package]
+                version = "0.1.0"
+                [dependencies]
+                serde = {{ version = "{serde}" }}
+            "# }
         };
         assert!(writes_between(&manifest("1.0"), &manifest("1.1"), &changes).is_empty());
     }
@@ -896,7 +909,11 @@ mod tests {
     #[test]
     fn modifying_a_fixture_with_the_trailer_passes() {
         let changes = [modified("covenant/fixtures/domain/a.json")];
-        let body = "The old reading was wrong.\n\nCovenant: break\n";
+        let body = indoc::indoc! {"
+            The old reading was wrong.
+
+            Covenant: break
+        "};
         assert_eq!(
             by_a_person("fix(domain): reread it", body, &changes),
             Vec::<String>::new()
@@ -1217,16 +1234,28 @@ mod tests {
     #[test]
     fn a_group_s_version_in_the_file_is_a_write_once_declared() {
         let changes = [modified(GROUP_FILE)];
-        let before =
-            "[group.domain]\nversion = \"0.1.0\"\n\n[group.bedrock]\nversion = \"0.1.0\"\n";
+        let before = indoc::indoc! {r#"
+            [group.domain]
+            version = "0.1.0"
+
+            [group.bedrock]
+            version = "0.1.0"
+        "#};
         assert_eq!(
             writes_between(before, &before.replacen("0.1.0", "0.2.0", 1), &changes),
             [GROUP_FILE]
         );
         assert_eq!(
             writes_between(
-                "[group.domain]\nmembers = []\n",
-                "[group.domain]\nversion = \"0.1.0\"\nmembers = []\n",
+                indoc::indoc! {"
+                    [group.domain]
+                    members = []
+                "},
+                indoc::indoc! {r#"
+                    [group.domain]
+                    version = "0.1.0"
+                    members = []
+                "#},
                 &changes
             ),
             Vec::<String>::new()

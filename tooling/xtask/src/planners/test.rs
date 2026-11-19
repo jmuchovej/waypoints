@@ -235,8 +235,13 @@ mod tests {
     /// A suite runs under the flavor its tree ships as.
     #[test]
     fn the_suite_takes_the_manifest_s_channel_flavor() {
-        let manifest =
-            |version: &str| format!("[package]\nname = \"Waypoints\"\nversion = \"{version}\"\n");
+        let manifest = |version: &str| {
+            indoc::formatdoc! { r#"
+                [package]
+                name = "Waypoints"
+                version = "{version}"
+            "# }
+        };
         assert_eq!(flavor(&manifest("0.3.0-nightly")).unwrap(), "nightly");
         assert_eq!(flavor(&manifest("0.3.0-pre.2")).unwrap(), "preview");
         assert_eq!(flavor(&manifest("0.3.0")).unwrap(), "stable");

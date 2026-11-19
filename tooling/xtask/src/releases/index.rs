@@ -373,7 +373,11 @@ mod tests {
     }
 
     fn manifest(version: &str) -> String {
-        format!("[package]\nname = \"Waypoints\"\nversion = \"{version}\"\n")
+        indoc::formatdoc! { r#"
+            [package]
+            name = "Waypoints"
+            version = "{version}"
+        "# }
     }
 
     /// Each channel's tag is recorded under its own file when the manifest

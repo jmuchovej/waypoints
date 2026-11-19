@@ -23,6 +23,7 @@
 use crate::license;
 use anyhow::{Context as _, Result, anyhow, bail};
 use heck::ToPascalCase as _;
+use indoc::formatdoc;
 use specta::Types;
 use specta_typescript::Typescript;
 use std::collections::BTreeSet;
@@ -41,12 +42,14 @@ pub fn stamp(generated: &str, existing: Option<&str>, current_year: i32) -> Stri
         .and_then(license::copyright_year)
         .map(str::to_owned)
         .unwrap_or_else(|| current_year.to_string());
-    let tags = format!(
-        "// {} {year} {}\n// SPDX-License-Identifier: {}\n",
-        license::SPDX_COPYRIGHT_TAG,
-        license::HOLDER,
-        license::POLICY,
-    );
+    let tags = formatdoc! { "
+        // {tag} {year} {holder}
+        // SPDX-License-Identifier: {policy}
+        ",
+        tag = license::SPDX_COPYRIGHT_TAG,
+        holder = license::HOLDER,
+        policy = license::POLICY,
+    };
     match generated.split_once('\n') {
         Some((marker, rest)) => format!("{marker}\n{tags}{rest}"),
         None => format!("{generated}\n{tags}"),
@@ -406,7 +409,11 @@ fn const_object(name: &str, values: &[String]) -> String {
         .map(|value| format!("  {}: \"{value}\",", value.to_pascal_case()))
         .collect::<Vec<_>>()
         .join("\n");
-    format!("export const {name} = {{\n{entries}\n}} as const;")
+    formatdoc! { "
+        export const {name} = {{
+        {entries}
+        }} as const;"
+    }
 }
 
 #[cfg(test)]
