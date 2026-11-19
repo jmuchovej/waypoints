@@ -17,7 +17,7 @@ use xtask::{
 
 #[derive(Parser)]
 pub struct Options {
-    /// The flat directory every build's `release-stage` output merges into;
+    /// The flat directory every build's `release stage` output merges into;
     /// each file is uploaded to the key its name and extension determine.
     #[arg(long)]
     from: PathBuf,

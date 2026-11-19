@@ -3,8 +3,8 @@
 
 //! Asserts that everything we generate is in lockstep with the source it is
 //! generated from — devenv's `files."..."`/`tasks."mise:lock"` outputs, the
-//! TypeScript bindings `cargo xtask typegen` exports from `domain` and
-//! `cartograph`, the app icons `cargo xtask icongen` renders from
+//! TypeScript bindings `cargo xtask generate bindings` exports from `domain`
+//! and `cartograph`, the app icons `cargo xtask generate icons` renders from
 //! `src-tauri/res/`, and the workflows emitted by this very crate. The
 //! recipe runs at a workstation's `cargo xtask`, `local-dev` included, since
 //! the icons are among what it regenerates.

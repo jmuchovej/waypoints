@@ -162,7 +162,7 @@ pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run>
 pub fn devenv_update() -> Step<Run> {
     let cmd = indoc! {r#"
         devenv update
-        devenv shell cargo ci-task workflows
+        devenv shell cargo ci-task generate workflows
     "#}
     .trim_end();
 
@@ -302,14 +302,14 @@ pub(crate) fn land_write_from_file<T>(writer: &Step<T>, token: &StepOutput, id: 
 /// One step of a bot pull request's landing. Its values travel through the
 /// environment rather than the command line.
 fn release_land(action: &str, flags: &str, tools: Tools) -> Step<Run> {
-    let step = Step::new(format!("{CI_TASK} release-land {action}"))
-        .run(tools.command(&format!("{CI_TASK} release-land {action} {flags}")))
+    let step = Step::new(format!("{CI_TASK} release land {action}"))
+        .run(tools.command(&format!("{CI_TASK} release land {action} {flags}")))
         .shell("bash");
     match tools {
         Tools::Mise => step,
         Tools::Devenv => step.add_env((
             "SECRETSPEC_REASON",
-            "release-land drives a pull request through the GitHub API; no secret values are read",
+            "release land drives a pull request through the GitHub API; no secret values are read",
         )),
     }
 }
@@ -863,12 +863,12 @@ fn download_artifact_action() -> Action {
 /// `waypoints-{tag}.{ext}`. Every run stages, dry runs included, so a change
 /// in what Tauri exports fails the build that produced it. `tag` is the tag
 /// the files are named for — on a dry run, the one it would have published;
-/// when it is empty, `release-stage` takes the app's own version. Needs no
+/// when it is empty, `release stage` takes the app's own version. Needs no
 /// credential.
 pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
     Step::new("Stage the release artifacts")
         .run(format!(
-            r#"cargo ci-task release-stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
+            r#"cargo ci-task release stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
             slug = platform.slug(),
         ))
         .shell("bash")
@@ -912,19 +912,19 @@ pub fn prepare_listing(channel: Channel) -> Step<Run> {
         .id("prepare-listing")
 }
 
-/// Uploads the staged tree to the `releases` bucket; `release-upload`
+/// Uploads the staged tree to the `releases` bucket; `release upload`
 /// derives its own store credential. Stands down on a dry run.
 pub fn upload_to_store(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let step = Step::new("Upload to the release store")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo ci-task release-upload --from {STAGE_DIR} --tag "${{TAG}}""#
+            r#"cargo ci-task release upload --from {STAGE_DIR} --tag "${{TAG}}""#
         )))
         .shell("bash")
         .if_condition(helpers::not_rehearsing(dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-upload derives a short-lived, channel-scoped store credential",
+            "release upload derives a short-lived, channel-scoped store credential",
         ))
         .id("upload-to-store");
     Tools::Devenv.resolving(step)
@@ -1074,13 +1074,13 @@ pub fn publish_release(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 /// down on a dry run, whose manifest [`dry_manifest`] renders instead.
 pub fn write_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let step = Step::new("Write the channel manifest")
-        .run(Tools::Devenv.command(r#"cargo ci-task release-manifest --tag "${TAG}""#))
+        .run(Tools::Devenv.command(r#"cargo ci-task release manifest --tag "${TAG}""#))
         .shell("bash")
         .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-manifest derives a short-lived, channel-scoped store credential",
+            "release manifest derives a short-lived, channel-scoped store credential",
         ))
         .id("write-manifest");
     Tools::Devenv.resolving(step)
@@ -1124,19 +1124,19 @@ pub fn dry_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
         .id("dry-notes")
 }
 
-/// A dry run's manifest, rendered into the dry directory. `release-manifest`
+/// A dry run's manifest, rendered into the dry directory. `release manifest`
 /// builds no store client for it, so the step resolves nothing.
 pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Render the channel manifest (dry run)")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo ci-task release-manifest --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
+            r#"cargo ci-task release manifest --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
         )))
         .shell("bash")
         .if_condition(helpers::rehearsing(dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-manifest renders the manifest a dry run would have written; no secret values are read",
+            "release manifest renders the manifest a dry run would have written; no secret values are read",
         ))
         .id("dry-manifest")
 }
@@ -1147,7 +1147,7 @@ pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Render the index entry (dry run)")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo ci-task release-index --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
+            r#"cargo ci-task release index --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
         )))
         .shell("bash")
         .if_condition(helpers::rehearsing(dry_run))
@@ -1155,7 +1155,7 @@ pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
         .add_env(("REV", "${{ github.sha }}"))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-index renders the entry a dry run would have recorded; no secret values are read",
+            "release index renders the entry a dry run would have recorded; no secret values are read",
         ))
         .id("dry-index")
 }
@@ -1202,16 +1202,16 @@ pub fn discard_release(tag: &JobOutput) -> Step<Run> {
 /// to `xtask`, like every other store-touching step — see the design's "The
 /// store is reached through opendal in-process, from one client
 /// constructor" decision. A failed delete is caught and warned on inside
-/// `release-withdraw` itself rather than propagated, so this step's exit
+/// `release withdraw` itself rather than propagated, so this step's exit
 /// code carries no information about whether every object was removed.
 pub fn withdraw_from_store(tag: &JobOutput) -> Step<Run> {
     let step = Step::new("Withdraw uploaded artifacts")
-        .run(Tools::Devenv.command(r#"cargo ci-task release-withdraw --tag "${TAG}""#))
+        .run(Tools::Devenv.command(r#"cargo ci-task release withdraw --tag "${TAG}""#))
         .shell("bash")
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-withdraw derives a short-lived, channel-scoped store credential",
+            "release withdraw derives a short-lived, channel-scoped store credential",
         ))
         .id("withdraw-from-store");
     Tools::Devenv.resolving(step)

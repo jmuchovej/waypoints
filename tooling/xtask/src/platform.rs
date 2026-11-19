@@ -91,7 +91,7 @@ impl Platform {
 
     /// Globs matching this platform's installers on disk — what a person
     /// downloads — in the same order as [`PublishedTarget::extensions`].
-    /// `release-stage` renames each match, and requires exactly one, so a
+    /// `release stage` renames each match, and requires exactly one, so a
     /// change in what the bundler exports fails the build.
     pub fn published_globs(self) -> &'static [&'static str] {
         use Platform::*;

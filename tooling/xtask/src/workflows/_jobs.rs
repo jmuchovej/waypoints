@@ -98,8 +98,8 @@ pub fn prepare(channel: Channel, context: &WorkflowContext) -> PrepareJob {
         args.push(("--tag", Some("$TAG")));
     }
     args.extend([(dry_run, None), (NO_BUILD_WHEN_ASKED, None)]);
-    let planner = steps::cargo_xtask("publish-plan", &args)
-        .id("publish-plan")
+    let planner = steps::cargo_xtask("release prepare", &args)
+        .id("prepare")
         .when(channel.is_nightly(), |step| {
             step.add_env(("GH_TOKEN", token.to_string()))
         })
@@ -253,7 +253,7 @@ pub fn license(context: &WorkflowContext) -> NamedJob {
         .add_step(steps::checkout())
         .add_step(steps::setup_mise(false.into(), &context.mise_version))
         .add_step(steps::rust_cache())
-        .add_step(steps::cargo_xtask("license check", &[]))
+        .add_step(steps::cargo_xtask("check licenses", &[]))
         .add_step(steps::cargo_deny_licenses());
 
     NamedJob::new("license", job)
@@ -464,7 +464,7 @@ pub fn withdraw_release(channel: Channel, prepare: &PrepareJob) -> NamedJob {
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(runners::LINUX)
         .cond(Expression::new(expr))
-        // `release-withdraw` is a `cargo xtask`, so it needs the tree.
+        // `release withdraw` is a `cargo xtask`, so it needs the tree.
         .add_step(steps::checkout());
     let job = with_devenv(job)
         .add_step(steps::discard_release(tag))
@@ -713,7 +713,7 @@ mod tests {
                     .is_some_and(|uses| uses.starts_with("actions/create-github-app-token@"))
             });
             assert_eq!(mints, channel.is_nightly(), "{channel}");
-            let planner = step(steps, "publish-plan");
+            let planner = step(steps, "prepare");
             assert_eq!(
                 planner["env"].get("GH_TOKEN").is_some(),
                 channel.is_nightly(),
@@ -932,7 +932,7 @@ mod tests {
             step(&steps, "upload-to-store")["run"]
                 .as_str()
                 .unwrap()
-                .contains("cargo ci-task release-upload --from release --tag")
+                .contains("cargo ci-task release upload --from release --tag")
         );
         assert_eq!(step(&steps, "download-staged")["with"]["path"], "release");
         assert_eq!(
@@ -1040,7 +1040,7 @@ mod tests {
             let steps = value["steps"].as_array().expect("steps");
             for step in steps {
                 let run = step["run"].as_str().unwrap_or("");
-                for publishing in ["release-upload", "release-manifest", "xfastlane"] {
+                for publishing in ["release upload", "release manifest", "xfastlane"] {
                     assert!(!run.contains(publishing), "{platform}: {run}");
                 }
             }
@@ -1071,7 +1071,7 @@ mod tests {
 
     /// Every channel names its staged files for the planner's version — the
     /// tag's on preview and stable, and on nightly the one it minted or would
-    /// mint — and `release-stage` still takes the app's own version when the
+    /// mint — and `release stage` still takes the app's own version when the
     /// planner hands it nothing.
     #[test]
     fn the_staged_files_are_named_for_the_run_s_tag() {

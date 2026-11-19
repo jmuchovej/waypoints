@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! What `release-plan` leaves in a real working tree for the pull-request
-//! step, and what `release-groups project` writes from the group file. The
+//! What `release plan` leaves in a real working tree for the pull-request
+//! step, and what `release groups project` writes from the group file. The
 //! fixture has a real remote, because the planner fetches the branch it
 //! writes to and reads the tags the remote holds. Nothing here reaches the
 //! GitHub API: `advance` writes on its series, and a cut's first write lands
@@ -218,7 +218,7 @@ fn assert_published(published: &str, lines: &[&str]) {
 fn advance_writes_the_whole_group_on_its_series() {
     let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
 
-    let (output, published) = fixture.xtask(&["release-plan", "advance"]);
+    let (output, published) = fixture.xtask(&["release", "plan", "advance"]);
 
     // `advance` reads the version from the tree it runs in, so a dispatch runs
     // it from the series.
@@ -226,7 +226,7 @@ fn advance_writes_the_whole_group_on_its_series() {
     assert!(published.is_empty(), "{published}");
 
     git(&fixture.root, &["checkout", "-q", "v0.2.x"]);
-    let (output, published) = fixture.xtask(&["release-plan", "advance"]);
+    let (output, published) = fixture.xtask(&["release", "plan", "advance"]);
     assert_succeeded(&output);
 
     assert_eq!(git(&fixture.root, &["branch", "--show-current"]), "v0.2.x");
@@ -278,7 +278,7 @@ fn the_write_lands_on_the_series_as_the_remote_has_it() {
     git(&other, &["commit", "-q", "-m", "fix: landed meanwhile"]);
     git(&other, &["push", "-q", "origin", "v0.2.x"]);
 
-    let (output, _) = fixture.xtask(&["release-plan", "advance"]);
+    let (output, _) = fixture.xtask(&["release", "plan", "advance"]);
     assert_succeeded(&output);
     assert!(fixture.root.join("landed-meanwhile.txt").exists());
 }
@@ -293,7 +293,8 @@ fn a_dry_run_names_the_pull_request_and_leaves_the_tree_clean() {
     let into = fixture.root.join("target/dry-run");
 
     let (output, published) = fixture.xtask(&[
-        "release-plan",
+        "release",
+        "plan",
         "advance",
         "--dry-run",
         "--into",
@@ -337,7 +338,7 @@ fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
     // Wherever the job happened to be: the write goes to `main`.
     git(&fixture.root, &["checkout", "-q", "v0.2.x"]);
 
-    let (output, published) = fixture.xtask(&["release-plan", "cut"]);
+    let (output, published) = fixture.xtask(&["release", "plan", "cut"]);
     assert_succeeded(&output);
 
     assert_eq!(git(&fixture.root, &["branch", "--show-current"]), "main");
@@ -405,7 +406,7 @@ fn project_writes_a_hand_edited_file_into_its_manifests() {
         &group_file("0.3.0-nightly", "0.2.0"),
     );
 
-    let (output, _) = fixture.xtask(&["release-groups", "project"]);
+    let (output, _) = fixture.xtask(&["release", "groups", "project"]);
     assert_succeeded(&output);
 
     assert_eq!(
@@ -463,7 +464,7 @@ fn project_gives_a_new_member_its_group_s_version() {
         &["commit", "-q", "-m", "feat(domain): a core crate"],
     );
 
-    let (output, _) = fixture.xtask(&["release-groups", "project"]);
+    let (output, _) = fixture.xtask(&["release", "groups", "project"]);
     assert_succeeded(&output);
 
     assert_eq!(
@@ -489,7 +490,7 @@ fn project_gives_a_new_member_its_group_s_version() {
 fn project_on_an_agreeing_tree_changes_nothing() {
     let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
 
-    let (output, _) = fixture.xtask(&["release-groups", "project"]);
+    let (output, _) = fixture.xtask(&["release", "groups", "project"]);
     assert_succeeded(&output);
 
     assert_eq!(fixture.changed(), Vec::<String>::new());

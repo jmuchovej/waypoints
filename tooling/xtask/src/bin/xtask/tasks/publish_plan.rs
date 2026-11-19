@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Plans a channel's release run: what it builds, whether it publishes, and —
-//! for nightly — the tag it mints. The deciding is
+//! `release prepare`: plans a channel's run — what it builds, whether it
+//! publishes, and, for nightly, the tag it mints. The deciding is
 //! [`xtask::planners::nightly`]'s; this reads the checkout and the flags,
-//! decides, and publishes the plan as the step's outputs and summary.
+//! decides, and publishes the plan as the `prepare` job's outputs and
+//! summary. Not to be confused with `release plan`, which plans a transition
+//! of the release cycle rather than one run of a channel.
 
 use anyhow::{Result, bail};
 use chrono::Utc;
@@ -57,7 +59,7 @@ pub fn run(args: Options) -> Result<()> {
     let (plan, report) = match args.channel {
         Channel::Nightly => plan_nightly(&declared, tag.as_deref(), args.dry_run, build)?,
         Channel::Preview | Channel::Stable => {
-            plan_release(args.channel, &declared, tag.as_deref(), args.dry_run, build)?
+            plan_tagged(args.channel, &declared, tag.as_deref(), args.dry_run, build)?
         }
     };
     println!("{report}");
@@ -120,7 +122,7 @@ fn plan_nightly(
     }
 }
 
-fn plan_release(
+fn plan_tagged(
     channel: Channel,
     manifest: &Version,
     tag: Option<&str>,

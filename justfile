@@ -43,7 +43,7 @@ mod deploy "deploy/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
-    cargo xtask typegen
+    cargo xtask generate bindings
 
 # Validate TypeScript types on the app & website
 typecheck:
@@ -101,7 +101,7 @@ check-generated:
     # baseline cannot be a pre-run snapshot of the tree — asking xtask for the
     # file list would already have rewritten it. Git holds the baseline anyway:
     # the question is whether what is *committed* matches what devenv produces.
-    files="$(devenv shell cargo xtask devenv-files --copied)"
+    files="$(devenv shell cargo xtask dev devenv-files --copied)"
     if [ -z "$files" ]; then
       echo "devenv reported no copied files." >&2
       exit 1
@@ -110,7 +110,7 @@ check-generated:
     # The TypeScript bindings are regenerated in place the same way, and
     # diffed against the same baseline.
     bindings="crates/domain/typescript/types.g.ts crates/domain/typescript/schema.g.ts crates/cartograph/typescript/types.g.ts"
-    devenv shell cargo xtask typegen
+    devenv shell cargo xtask generate bindings
     files="$files $bindings"
 
     # App icons are diffed by the locations the generator owns, not the files
@@ -118,11 +118,11 @@ check-generated:
     # deletion. The globs are pathspecs: `set -f` keeps the shell from
     # expanding them to only the files that exist.
     icons='src-tauri/assets/icons/app src-tauri/gen/apple/Assets.xcassets/*.appiconset src-tauri/gen/android/app/src/*/res/mipmap-*/ic_launcher* src-tauri/gen/android/app/src/*/res/values/ic_launcher_background.xml'
-    devenv shell cargo xtask icongen
+    devenv shell cargo xtask generate icons
     files="$files $icons"
 
     # The notices are regenerated from the lockfiles and the third-party registry.
-    devenv shell cargo xtask license notices
+    devenv shell cargo xtask generate notices
     files="$files docs/licensing/THIRD-PARTY-NOTICES.md"
     set -f
 
@@ -146,11 +146,11 @@ check-generated:
         rc=1
       fi
     fi
-    devenv shell cargo xtask workflows --check || rc=1
+    devenv shell cargo xtask generate workflows --check || rc=1
 
     if [ "$rc" -ne 0 ]; then
       echo "Generated files are stale. Any devenv output or binding diffed above has" >&2
-      echo "already been regenerated; for workflows, run \`cargo xtask workflows\`." >&2
+      echo "already been regenerated; for workflows, run \`cargo xtask generate workflows\`." >&2
       echo "Review and commit the result." >&2
       exit 1
     fi
@@ -194,7 +194,7 @@ deny: deny-targets
 [script]
 license:
     export SECRETSPEC_REASON="just license checks license declarations against the tree; no secret values are read"
-    devenv shell cargo xtask license check
+    devenv shell cargo xtask check licenses
     devenv shell cargo deny check licenses
 
 [doc("Fails if .cargo/deny.toml graph.targets drifted from rust-toolchain.toml's targets.")]

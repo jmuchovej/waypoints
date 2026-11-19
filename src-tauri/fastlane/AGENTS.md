@@ -167,10 +167,10 @@ On Linux, `prepare` fetches Apple's current Transporter build into
 and `publish ios` points fastlane at it. TestFlight uploads off macOS also need
 the `AppStoreInfo.plist` the iOS export writes beside the ipa.
 
-`publish` submits the one aab or ipa in a `release-stage` directory
+`publish` submits the one aab or ipa in a `release stage` directory
 (`--from`, default `release/`), handing it to the Fastfile as
 `WAYPOINTS_STORE_PACKAGE`; the lanes never read the build output. To submit a
-local build, stage it first: `cargo xtask release-stage --platform ios`, then
+local build, stage it first: `cargo xtask release stage --platform ios`, then
 `xfastlane publish ios <flavor>`. The iOS build stages its plist in the same
 flat directory, beside the ipa, where fastlane looks for it.
 

@@ -92,7 +92,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let registry = steps::cargo_registry(steps::CARGO_HOME);
 
     let planner = steps::cargo_xtask(
-        "release-plan",
+        "release plan",
         &[
             ("${{ inputs.transition }}", None),
             (MAJOR_FLAG, None),
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn the_tag_waits_for_the_merge_commit() {
         let steps = steps();
-        let tag = running(&steps, "release-land tag --tags \"${TAG}\"");
+        let tag = running(&steps, "release land tag --tags \"${TAG}\"");
 
         assert!(position(&steps, "wait-for-merge") < tag);
         assert_eq!(
@@ -315,7 +315,7 @@ mod tests {
 
         assert!(wait < position(&steps, "tag-token"));
         assert_eq!(
-            steps[running(&steps, "release-land tag --tags \"${TAG}\"")]["env"]["GH_TOKEN"],
+            steps[running(&steps, "release land tag --tags \"${TAG}\"")]["env"]["GH_TOKEN"],
             "${{ steps.tag-token.outputs.token }}"
         );
     }
@@ -350,7 +350,7 @@ mod tests {
             position(&steps, "open-series"),
             position(&steps, "series-pull-request"),
             position(&steps, "wait-for-merge"),
-            running(&steps, "release-land tag --tags \"${TAG}\""),
+            running(&steps, "release land tag --tags \"${TAG}\""),
         ];
         assert!(order.is_sorted(), "{order:?}");
 
@@ -444,7 +444,7 @@ mod tests {
             .filter(|step| {
                 step["run"]
                     .as_str()
-                    .is_some_and(|run| run.contains("release-land auto-merge"))
+                    .is_some_and(|run| run.contains("release land auto-merge"))
             })
             .map(|step| step["env"]["PULL_REQUEST"].as_str().unwrap())
             .collect();
@@ -513,10 +513,10 @@ mod tests {
             assert!(cond.starts_with("!inputs.dry_run"), "{id}: {cond}");
         }
         for command in [
-            "release-land tag --tags \"${TAG}\"",
-            "release-land tag --tags \"${TAGS}\"",
-            "release-land open-series",
-            "release-land auto-merge",
+            "release land tag --tags \"${TAG}\"",
+            "release land tag --tags \"${TAGS}\"",
+            "release land open-series",
+            "release land auto-merge",
         ] {
             let cond = steps[running(&steps, command)]["if"].as_str().unwrap_or("");
             assert!(cond.starts_with("!inputs.dry_run"), "{command}: {cond}");

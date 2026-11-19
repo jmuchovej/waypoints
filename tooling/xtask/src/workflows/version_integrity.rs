@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Checks what every pull request claims about versions, with
-//! `cargo xtask version-integrity`.
+//! `cargo xtask check version-integrity`.
 //!
 //! Advisory until a ruleset names it, and built for that day: a required check
 //! that does not report leaves a pull request waiting forever, so there is no
@@ -33,7 +33,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         // not contain.
         .add_step(steps::checkout().add_with(("fetch-depth", 0)))
         .add_step(steps::setup_mise(false.into(), &context.mise_version))
-        .add_step(steps::cargo_xtask("version-integrity", &[]).id("version-integrity"));
+        .add_step(steps::cargo_xtask("check version-integrity", &[]).id("version-integrity"));
 
     let semver = Job::new("semver")
         .add_env(MiseEnv::select(&[MiseEnv::Xtask]))
@@ -47,7 +47,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
                 .add_with(("fetch-tags", true)),
         )
         .add_step(steps::setup_mise(false.into(), &context.mise_version))
-        .add_step(steps::cargo_xtask("semver-check", &[]).id("semver-check"));
+        .add_step(steps::cargo_xtask("check semver", &[]).id("semver-check"));
 
     helpers::named_workflow("check what a pull request claims about versions")
         .on(Event::default().pull_request(

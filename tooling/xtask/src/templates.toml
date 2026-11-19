@@ -42,13 +42,13 @@
 # Each becomes a merge commit's body, so it says what the merge commit is;
 # GitHub wraps it at 72 columns.
 [pull-request]
-  plan  = "Written by `cargo xtask release-plan`; merges when its checks pass."
-  index = "Written by `cargo xtask release-index`; merges when its checks pass."
+  plan  = "Written by `cargo xtask release plan`; merges when its checks pass."
+  index = "Written by `cargo xtask release index`; merges when its checks pass."
 
 # What the planner says when it refuses to mint.
 [refusal]
   # A cut whose cycle holds no commit counting for the app.
-  app-unmoved = "nothing to cut for `{{ app }}`: no counted commit {{ since }}{% if moved %}; {{ moved | join(sep=\", \") }} moved, and `release-plan cut --group <name>` mints one alone{% else %}; no library moved either{% endif %}"
+  app-unmoved = "nothing to cut for `{{ app }}`: no counted commit {{ since }}{% if moved %}; {{ moved | join(sep=\", \") }} moved, and `release plan cut --group <name>` mints one alone{% else %}; no library moved either{% endif %}"
 
 # What a dry run renders for a reader to audit before anything is minted.
 [dry-run]

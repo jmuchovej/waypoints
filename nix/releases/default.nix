@@ -18,7 +18,7 @@
 # it is an evaluation error rather than a fallback: a build standing in for
 # a release would misrepresent it.
 #
-# Written by `cargo xtask release-index` from CI once a tag exists. Editing a
+# Written by `cargo xtask release index` from CI once a tag exists. Editing a
 # file by hand is a repair, not an interface.
 { channel }:
 let

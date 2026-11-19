@@ -1,7 +1,7 @@
 # gh-workflow
 
 A type-safe GitHub Actions workflow generator, vendored from
-[`tailcallhq/gh-workflow`](https://github.com/tailcallhq/gh-workflow). `cargo xtask workflows`
+[`tailcallhq/gh-workflow`](https://github.com/tailcallhq/gh-workflow). `cargo xtask generate workflows`
 builds every file under `.github/workflows` with it.
 
 ## Provenance

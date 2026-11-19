@@ -226,11 +226,14 @@ mod tests {
             let steps = value["jobs"]["prepare"]["steps"].as_array().expect("steps");
             let run = steps
                 .iter()
-                .find(|step| step["id"] == "publish-plan")
+                .find(|step| step["id"] == "prepare")
                 .and_then(|step| step["run"].as_str())
-                .unwrap_or_else(|| panic!("{channel}: no publish-plan step"));
+                .unwrap_or_else(|| panic!("{channel}: no prepare step"));
             assert!(
-                run.starts_with(&format!("cargo ci-task publish-plan {}", channel.flavor())),
+                run.starts_with(&format!(
+                    "cargo ci-task release prepare {}",
+                    channel.flavor()
+                )),
                 "{channel}: {run}"
             );
             let dry = if channel.is_nightly() {

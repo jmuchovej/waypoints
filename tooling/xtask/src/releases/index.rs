@@ -5,7 +5,7 @@
 //! recording the tag that channel last published and what a Nix build needs
 //! to fetch exactly that tree. See `distribution/release-index`.
 //!
-//! `cargo xtask release-index --tag v…` records a tag that already exists.
+//! `cargo xtask release index --tag v…` records a tag that already exists.
 //! It classifies the channel from the version, checks that the tagged tree's
 //! manifest names the same channel, prefetches the tree's hash, and writes the
 //! channel's file to the working tree, for a pull request to land on `main`.

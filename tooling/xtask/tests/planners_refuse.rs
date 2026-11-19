@@ -122,23 +122,24 @@ fn assert_refuses_naming_the_manifest_and_the_file(args: &[&str]) {
 
 #[test]
 fn the_release_planner_refuses_an_unnamed_crate() {
-    assert_refuses_naming_the_crate(&["release-plan", "cut", "--dry-run"]);
+    assert_refuses_naming_the_crate(&["release", "plan", "cut", "--dry-run"]);
 }
 
 #[test]
 fn the_nightly_planner_refuses_an_unnamed_crate() {
-    assert_refuses_naming_the_crate(&["publish-plan", "nightly", "--dry-run", "--no-build"]);
+    assert_refuses_naming_the_crate(&["release", "prepare", "nightly", "--dry-run", "--no-build"]);
 }
 
 #[test]
 fn the_release_planner_refuses_a_stale_projection() {
-    assert_refuses_naming_the_manifest_and_the_file(&["release-plan", "cut", "--dry-run"]);
+    assert_refuses_naming_the_manifest_and_the_file(&["release", "plan", "cut", "--dry-run"]);
 }
 
 #[test]
 fn the_nightly_planner_refuses_a_stale_projection() {
     assert_refuses_naming_the_manifest_and_the_file(&[
-        "publish-plan",
+        "release",
+        "prepare",
         "nightly",
         "--dry-run",
         "--no-build",

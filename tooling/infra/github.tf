@@ -59,7 +59,7 @@ resource "github_repository" "waypoints" {
   }
 }
 
-# `cargo xtask workflows` writes this to `github.auto.tfvars.json`.
+# `cargo xtask generate workflows` writes this to `github.auto.tfvars.json`.
 variable "github" {
   type = object({
     required-pr-checks = list(string)

@@ -60,4 +60,4 @@ A pull request SHALL fail when it changes the `[package].version` of a versioned
 
 **Reason**: Groups no longer name an anchor; the group file declares each group's version, and every member is held to that declaration. The requirement continues under _Group members declare their group's version_, which carries both of its scenarios; _A series' group file names its pins_ adds the pin agreement a series needs.
 
-**Migration**: Remove `anchor` from `tooling/release-groups.toml` and declare `version` per group; run `cargo xtask release-groups project` so every member manifest takes its group's declared version.
+**Migration**: Remove `anchor` from `tooling/release-groups.toml` and declare `version` per group; run `cargo xtask release groups project` so every member manifest takes its group's declared version.

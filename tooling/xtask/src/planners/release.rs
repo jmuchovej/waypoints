@@ -1569,7 +1569,7 @@ fn project(
 }
 
 /// Every group's declared version projected onto its members, from the file
-/// as it stands: what `release-groups project` runs for a hand-edited file, a
+/// as it stands: what `release groups project` runs for a hand-edited file, a
 /// crate newly joining a group, or a scratch tree. Returns the paths it
 /// changed — none on a tree that already agrees.
 pub fn project_file(metadata: &Metadata, groups: &GroupFile) -> Result<Vec<String>> {
@@ -1902,7 +1902,7 @@ mod tests {
         let refusal = app_unmoved("waypoints", Some(&v("0.1.0")), &planned);
         assert_eq!(
             refusal,
-            "nothing to cut for `waypoints`: no counted commit since `v0.1.0`; `bedrock` moved, and `release-plan cut --group <name>` mints one alone"
+            "nothing to cut for `waypoints`: no counted commit since `v0.1.0`; `bedrock` moved, and `release plan cut --group <name>` mints one alone"
         );
         let first = app_unmoved("waypoints", None, &planned);
         assert!(first.contains("in its history"), "{first}");
@@ -3134,7 +3134,7 @@ source = \"registry+https://github.com/rust-lang/crates.io-index\"
         for transition in &offered {
             assert!(
                 accepted.contains(transition),
-                "the workflow offers `{transition}`, which `release-plan` cannot parse; \
+                "the workflow offers `{transition}`, which `release plan` cannot parse; \
                  clap knows {accepted:?}"
             );
         }

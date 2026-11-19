@@ -2,38 +2,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Holds the tree to the licensing policy. The checks are [`xtask::license`]'s;
-//! this picks what to run and prints what it found.
+//! this runs them and prints what they found: `check licenses` and `generate
+//! notices`.
 
 use anyhow::{Context as _, Result, bail};
-use clap::{Parser, Subcommand};
 use std::fs;
 use xtask::{license, workspace};
 
-#[derive(Parser)]
-pub struct Options {
-    #[command(subcommand)]
-    action: Option<Action>,
-}
-
-#[derive(Subcommand)]
-enum Action {
-    /// Checks manifests, headers, layering, license texts, and the third-party
-    /// registry. The default.
-    Check,
-    /// Regenerates `THIRD-PARTY-NOTICES.md` from the registry and the lockfiles.
-    Notices,
-}
-
-pub fn run(args: Options) -> Result<()> {
+/// Checks manifests, headers, layering, license texts, and the third-party
+/// registry.
+pub fn check() -> Result<()> {
     let root = workspace::load()?.workspace_root.into_std_path_buf();
-    match args.action {
-        None | Some(Action::Check) => check(&root),
-        Some(Action::Notices) => notices(&root),
-    }
-}
-
-fn check(root: &std::path::Path) -> Result<()> {
-    let report = license::check_headers(root)?;
+    let report = license::check_headers(&root)?;
 
     for finding in &report.findings {
         eprintln!("{finding}");
@@ -50,8 +30,10 @@ fn check(root: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-fn notices(root: &std::path::Path) -> Result<()> {
-    let contents = license::generate_notices(root)?;
+/// Regenerates `THIRD-PARTY-NOTICES.md` from the registry and the lockfiles.
+pub fn notices() -> Result<()> {
+    let root = workspace::load()?.workspace_root.into_std_path_buf();
+    let contents = license::generate_notices(&root)?;
     let path = root.join(license::NOTICES_PATH);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
