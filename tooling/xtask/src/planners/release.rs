@@ -25,7 +25,8 @@ use crate::{
         landing::Landing,
         version::{APP_MANIFEST, Transition, Version},
     },
-    semver_check, templates,
+    semver_check::{self, Required},
+    templates,
     tools::{git, github},
     workspace,
 };
@@ -93,16 +94,19 @@ pub struct GroupPlan {
     /// The commits that counted for it since that tag.
     pub counted: usize,
     /// What the API check found against `last_tag`: a break its commits did
-    /// not declare raises the bump to breaking (design D5). None where
-    /// nothing was measured — no tag to measure against, or nothing counted.
-    pub api_break: Option<bool>,
+    /// not declare raises the bump to breaking, a surface that grew to a
+    /// feature (design D5). None where nothing was measured — no tag to
+    /// measure against, or nothing counted.
+    pub api: Option<Required>,
     /// Whether a frozen fixture of the group changed since the last stable
     /// release, which is breaking for the group whatever its commits say.
     pub fixture_break: bool,
 }
 
-/// The header the floors speak in: a break, as the bumper reads one.
+/// The headers the floors speak in: a break and a feature, as the bumper
+/// reads them.
 const DETECTED_BREAK: &str = "feat!: a break the evidence shows";
+const DETECTED_GROWTH: &str = "feat: growth the evidence shows";
 
 /// What raises a group's bump beyond what its commits declare; none of it
 /// ever lowers the bump.
@@ -111,9 +115,10 @@ pub struct Raise {
     /// The least a group-scoped cut bumps.
     pub floor: Option<Floor>,
     /// What the API check found against the group's last tag: a break
-    /// raises the bump to breaking (design D5). None where nothing was
-    /// measured — no tag to measure against, or nothing counted.
-    pub detected: Option<bool>,
+    /// raises the bump to breaking, a surface that grew to a feature (design
+    /// D5). None where nothing was measured — no tag to measure against, or
+    /// nothing counted.
+    pub detected: Option<Required>,
     /// Whether a frozen fixture of the group was modified, deleted, or
     /// renamed since the last stable release: breaking, since it changes
     /// what old data means (design D5).
@@ -146,7 +151,15 @@ impl GroupPlan {
         let counted = headers.len();
         let next = (counted > 0).then(|| {
             let mut bumped = current.next_library(&headers);
-            if raise.detected == Some(true) || raise.fixtures {
+            let evidence = match raise.detected {
+                Some(Required::Major) => Some(DETECTED_BREAK),
+                Some(Required::Minor) => Some(DETECTED_GROWTH),
+                _ => None,
+            };
+            if let Some(header) = evidence {
+                bumped = bumped.max(current.next_library(&[header.to_owned()]));
+            }
+            if raise.fixtures {
                 bumped = bumped.max(current.next_library(&[DETECTED_BREAK.to_owned()]));
             }
             match raise.floor {
@@ -163,7 +176,7 @@ impl GroupPlan {
             next: next.map(|next| next.to_string()),
             last_tag: last.map(|last| format!("{prefix}{last}")),
             counted,
-            api_break: raise.detected,
+            api: raise.detected,
             fixture_break: raise.fixtures,
         })
     }
@@ -175,10 +188,11 @@ impl GroupPlan {
 
     /// One line a reader audits before a cut.
     pub fn describe(&self) -> String {
-        let api = match (&self.last_tag, self.api_break) {
+        let api = match (&self.last_tag, self.api) {
             (None, _) => "; no tag to measure an API break against until this cut mints one",
-            (Some(_), Some(true)) => "; the API check found a break",
-            (Some(_), Some(false)) => "; the API check found no break",
+            (Some(_), Some(Required::Major)) => "; the API check found a break",
+            (Some(_), Some(Required::Minor)) => "; the API check found the surface grew",
+            (Some(_), Some(Required::Patch)) => "; the API check found no break",
             (Some(_), None) => "",
         };
         let fixtures = if self.fixture_break {
@@ -829,8 +843,10 @@ fn group_plan(
     let detected = match &last {
         Some(last) if commits.iter().any(|commit| commit.counts_for(name)) => {
             let tag = format!("{prefix}{last}");
-            let broke = semver_check::measure_group(metadata, groups, name, &tag)?;
-            Some(!broke.is_empty())
+            let measured = semver_check::measure_group(metadata, groups, name, &tag)?;
+            // The group requires what its most demanding member does.
+            let required = measured.into_iter().map(|(_, required)| required).max();
+            Some(required.unwrap_or(Required::Patch))
         }
         _ => None,
     };
@@ -1395,7 +1411,7 @@ mod rehearsal_tests {
             tag: next.map(|next| format!("{group}-v{next}")),
             last_tag: Some(format!("{group}-v{current}")),
             counted,
-            api_break: None,
+            api: None,
             fixture_break: false,
         }
     }
@@ -2055,7 +2071,7 @@ mod tests {
         tags: &[&str],
         commits: &[history::Commit],
         floor: Option<Floor>,
-        detected: Option<bool>,
+        detected: Option<Required>,
     ) -> GroupPlan {
         let tags: Vec<String> = tags.iter().map(|tag| (*tag).to_owned()).collect();
         GroupPlan::decide(
@@ -2078,7 +2094,7 @@ mod tests {
     /// `outpost` a patch, and the break the check found against its tag
     /// raises it to breaking — a minor, under right-shift.
     #[test]
-    fn an_undeclared_api_break_raises_a_cut_to_breaking() {
+    fn an_undeclared_api_raises_a_cut_to_breaking() {
         let fixes = [library_commit("outpost", "fix(outpost): a bug")];
         let broke = decide_measured(
             "outpost",
@@ -2086,10 +2102,10 @@ mod tests {
             &["outpost-v0.2.0"],
             &fixes,
             None,
-            Some(true),
+            Some(Required::Major),
         );
         assert_eq!(broke.next.as_deref(), Some("0.3.0"));
-        assert_eq!(broke.api_break, Some(true));
+        assert_eq!(broke.api, Some(Required::Major));
         assert!(
             broke.describe().contains("the API check found a break"),
             "{}",
@@ -2102,7 +2118,7 @@ mod tests {
             &["outpost-v0.2.0"],
             &fixes,
             None,
-            Some(false),
+            Some(Required::Patch),
         );
         assert_eq!(clean.next.as_deref(), Some("0.2.1"));
         assert!(
@@ -2111,6 +2127,34 @@ mod tests {
             clean.describe()
         );
 
+        // A surface that grew is a feature, which right-shifts to the same
+        // patch the fixes move before `1.0`, and to a minor after it; the
+        // line says what was found either way.
+        let grew = decide_measured(
+            "outpost",
+            "0.2.0",
+            &["outpost-v0.2.0"],
+            &fixes,
+            None,
+            Some(Required::Minor),
+        );
+        assert_eq!(grew.next.as_deref(), Some("0.2.1"));
+        assert!(
+            grew.describe()
+                .contains("the API check found the surface grew"),
+            "{}",
+            grew.describe()
+        );
+        let grew_after_one = decide_measured(
+            "outpost",
+            "1.4.2",
+            &["outpost-v1.4.2"],
+            &fixes,
+            None,
+            Some(Required::Minor),
+        );
+        assert_eq!(grew_after_one.next.as_deref(), Some("1.5.0"));
+
         // After `1.0` the same evidence is a major.
         let major = decide_measured(
             "outpost",
@@ -2118,7 +2162,7 @@ mod tests {
             &["outpost-v1.4.2"],
             &fixes,
             None,
-            Some(true),
+            Some(Required::Major),
         );
         assert_eq!(major.next.as_deref(), Some("2.0.0"));
     }
@@ -2138,7 +2182,7 @@ mod tests {
             &["bedrock-v0.3.0"],
             &declared,
             None,
-            Some(false),
+            Some(Required::Patch),
         );
         assert_eq!(bedrock.next.as_deref(), Some("0.4.0"));
     }
@@ -2150,7 +2194,7 @@ mod tests {
     fn a_group_with_no_tag_is_not_measured_and_says_so() {
         let feature = [library_commit("transload", "feat(transload): a thing")];
         let transload = decide_measured("transload", "0.1.0", &[], &feature, None, None);
-        assert_eq!(transload.api_break, None);
+        assert_eq!(transload.api, None);
         assert_eq!(transload.next.as_deref(), Some("0.1.1"));
         let line = transload.describe();
         assert!(
@@ -2443,7 +2487,7 @@ version = \"ignored\"
             tag: next.map(|next| format!("{group}-v{next}")),
             last_tag: last_tag.map(str::to_owned),
             counted,
-            api_break: None,
+            api: None,
             fixture_break: false,
         }
     }

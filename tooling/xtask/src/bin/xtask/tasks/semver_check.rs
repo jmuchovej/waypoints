@@ -57,11 +57,11 @@ pub fn run(args: Options) -> Result<()> {
                 prefix: prefix.to_owned(),
             },
             Some(tag) => {
-                let broke = semver_check::measure_group(&metadata, &groups, group, &tag)?;
+                let measured = semver_check::measure_group(&metadata, &groups, group, &tag)?;
                 let declared =
                     semver_check::declares_break(&pull_request, &changes, group, &groups);
                 let is_app = group == release_groups::APP_GROUP;
-                semver_check::verdict(group, broke, declared, is_app)
+                semver_check::verdict(group, measured, declared, is_app)
             }
         };
         println!("{}", verdict.describe());

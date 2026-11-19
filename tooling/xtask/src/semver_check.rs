@@ -1,14 +1,15 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The API floor's measurement: `cargo semver-checks` over each library
-//! member of a group, against the group's last tag, under the stable flavor
-//! — the surface every series consumes (library-minting design D5). The
-//! `semver` job runs it on a pull request; the cut reads it as evidence.
+//! The API floor's measurement: `cargo-semver-checks`, as a library, over
+//! each library member of a group, against the group's last tag, under the
+//! stable flavor — the surface every series consumes (library-minting design
+//! D5). The `semver` job runs it on a pull request; the cut reads it as
+//! evidence.
 //!
-//! The tool runs in [`measure`]; what to run it on, and what its answer
-//! means against a group's header, is decided here where tests can reach
-//! it.
+//! The checker runs in [`measure`], over rustdoc JSON this module builds for
+//! each side; what to run it on, and what its answer means against a group's
+//! header, is decided here where tests can reach it.
 
 use crate::{
     release_groups::{APP_GROUP, GroupFile, tag_prefix},
@@ -19,6 +20,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::{Metadata, TargetKind};
+use cargo_semver_checks::{Check, GlobalConfig, ReleaseType, Rustdoc};
 use git_conventional::Commit as Conventional;
 use std::{
     fs,
@@ -41,18 +43,53 @@ pub struct Member {
     pub package: String,
 }
 
-/// What the check decides for one group.
+/// What the check requires of a member's next release, from its surface
+/// against the baseline: a patch where nothing it lints changed, a minor
+/// where the surface grew, a major where it broke. The bumper right-shifts
+/// these before `1.0`, as it does a header's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Required {
+    Patch,
+    Minor,
+    Major,
+}
+
+impl From<Option<ReleaseType>> for Required {
+    fn from(required: Option<ReleaseType>) -> Self {
+        match required {
+            Some(ReleaseType::Major) => Self::Major,
+            Some(ReleaseType::Minor) => Self::Minor,
+            _ => Self::Patch,
+        }
+    }
+}
+
+/// What the check decides for one group. `breaks` are the members whose
+/// surface broke; `grew` the ones whose surface grew, which breaks nothing
+/// and which the next cut reads as a feature.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Verdict {
     /// No tag to measure against: the first cut mints the baseline.
     Skipped { group: String, prefix: String },
     /// Nothing broke, or the group's header declared the break.
-    Passed { group: String, breaks: Vec<String> },
+    Passed {
+        group: String,
+        breaks: Vec<String>,
+        grew: Vec<String>,
+    },
     /// The app's surface broke undeclared: reported, since its contract is
     /// the covenant and not a Rust API.
-    Informational { group: String, breaks: Vec<String> },
+    Informational {
+        group: String,
+        breaks: Vec<String>,
+        grew: Vec<String>,
+    },
     /// A library's surface broke, and its header did not say so.
-    Failed { group: String, breaks: Vec<String> },
+    Failed {
+        group: String,
+        breaks: Vec<String>,
+        grew: Vec<String>,
+    },
 }
 
 impl Verdict {
@@ -62,48 +99,95 @@ impl Verdict {
 
     /// One line for the job log, and for the failure it names.
     pub fn describe(&self) -> String {
+        let growth = |grew: &[String]| {
+            if grew.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "; the surface of `{}` grew, which the next cut reads as a feature",
+                    grew.join("`, `")
+                )
+            }
+        };
         match self {
             Verdict::Skipped { group, prefix } => format!(
                 "`{group}` has no `{prefix}*` tag: no baseline until the first cut mints one; its declarations and the fixture floor still apply"
             ),
-            Verdict::Passed { group, breaks } if breaks.is_empty() => {
-                format!("`{group}`: no break against its last tag")
+            Verdict::Passed {
+                group,
+                breaks,
+                grew,
+            } if breaks.is_empty() => {
+                format!("`{group}`: no break against its last tag{}", growth(grew))
             }
-            Verdict::Passed { group, breaks } => format!(
-                "`{group}`: breaks in `{}`, declared by its header",
-                breaks.join("`, `")
+            Verdict::Passed {
+                group,
+                breaks,
+                grew,
+            } => format!(
+                "`{group}`: breaks in `{}`, declared by its header{}",
+                breaks.join("`, `"),
+                growth(grew)
             ),
-            Verdict::Informational { group, breaks } => format!(
-                "`{group}`: breaks in `{}`; information only, since the app's contract is the covenant",
-                breaks.join("`, `")
+            Verdict::Informational {
+                group,
+                breaks,
+                grew,
+            } => format!(
+                "`{group}`: breaks in `{}`; information only, since the app's contract is the covenant{}",
+                breaks.join("`, `"),
+                growth(grew)
             ),
-            Verdict::Failed { group, breaks } => format!(
-                "`{group}`: breaks in `{}` that its header does not declare; add `!` to the group's header, or make the change compatible",
-                breaks.join("`, `")
+            Verdict::Failed {
+                group,
+                breaks,
+                grew,
+            } => format!(
+                "`{group}`: breaks in `{}` that its header does not declare; add `!` to the group's header, or make the change compatible{}",
+                breaks.join("`, `"),
+                growth(grew)
             ),
         }
     }
 }
 
-/// The verdict for `group` from the members whose surface `broke`, whether
-/// its header `declared` a break, and whether it is the app, whose Rust API
-/// is nobody's contract.
-pub fn verdict(group: &str, broke: Vec<String>, declared: bool, is_app: bool) -> Verdict {
+/// The verdict for `group` from what the check `measured` of each member,
+/// whether its header `declared` a break, and whether it is the app, whose
+/// Rust API is nobody's contract. Only a break fails: a surface that grew
+/// is information the cut reads.
+pub fn verdict(
+    group: &str,
+    measured: Vec<(String, Required)>,
+    declared: bool,
+    is_app: bool,
+) -> Verdict {
     let group = group.to_owned();
-    if broke.is_empty() || declared {
+    let mut breaks = Vec::new();
+    let mut grew = Vec::new();
+    for (directory, required) in measured {
+        match required {
+            Required::Major => breaks.push(directory),
+            Required::Minor => grew.push(directory),
+            Required::Patch => {}
+        }
+    }
+    if breaks.is_empty() || declared {
         Verdict::Passed {
             group,
-            breaks: broke,
+            breaks,
+            grew,
         }
     } else if is_app {
         Verdict::Informational {
             group,
-            breaks: broke,
+            breaks,
+            grew,
         }
     } else {
         Verdict::Failed {
             group,
-            breaks: broke,
+            breaks,
+            grew,
         }
     }
 }
@@ -212,24 +296,6 @@ pub fn rustdoc_command(root: &Path, member: &Member, target_dir: &Path) -> Vec<S
     args
 }
 
-/// The command that compares the two sides' rustdoc JSON.
-pub fn command(baseline: &Path, current: &Path) -> Vec<String> {
-    [
-        "cargo",
-        "semver-checks",
-        "check-release",
-        "--baseline-rustdoc",
-        &baseline.to_string_lossy(),
-        "--current-rustdoc",
-        &current.to_string_lossy(),
-        "--color",
-        "never",
-    ]
-    .into_iter()
-    .map(str::to_owned)
-    .collect()
-}
-
 /// Documents `member` in the tree at `root` into `target_dir`, and names the
 /// JSON it wrote.
 fn rustdoc_json(root: &Path, member: &Member, target_dir: &Path) -> Result<PathBuf> {
@@ -308,65 +374,59 @@ pub fn prefix<'a>(groups: &'a GroupFile, group: &str) -> Result<&'a str> {
     tag_prefix(&named.tag)
 }
 
-/// Measures every readable member of `group` against `tag`: the directories
-/// whose surface broke. The tag's tree is checked out once for the group.
+/// Measures every readable member of `group` against `tag`: each directory
+/// with what its surface requires of the next release. The tag's tree is
+/// checked out once for the group.
 pub fn measure_group(
     metadata: &Metadata,
     groups: &GroupFile,
     group: &str,
     tag: &str,
-) -> Result<Vec<String>> {
+) -> Result<Vec<(String, Required)>> {
     let root = metadata.workspace_root.as_std_path();
     let members = library_members(metadata, groups, group)?;
     if members.is_empty() {
         return Ok(Vec::new());
     }
     let baseline = baseline_tree(root, tag)?;
-    let mut broke = Vec::new();
+    let mut measured = Vec::new();
     for member in members {
         println!("Measuring {} against {tag}", member.directory);
-        if measure(root, &baseline, &member)? {
-            broke.push(member.directory);
-        }
+        let required = measure(root, &baseline, &member)?;
+        measured.push((member.directory, required));
     }
-    Ok(broke)
+    Ok(measured)
 }
 
-/// Documents `member` in the tree at `root` and in the `baseline` tree,
-/// compares the two, streaming the tool's report, and says whether the
-/// surface broke. A member the baseline does not carry yet has no surface to
-/// break. The tool's own failure to measure is an error, not a break.
-pub fn measure(root: &Path, baseline: &Path, member: &Member) -> Result<bool> {
+/// Documents `member` in the tree at `root` and in the `baseline` tree and
+/// compares the two through `cargo-semver-checks`, which prints its report
+/// as it goes, and says what the surface requires of the next release. A
+/// member the baseline does not carry yet has no surface to break. The
+/// checker's own failure to measure is an error, not a finding.
+pub fn measure(root: &Path, baseline: &Path, member: &Member) -> Result<Required> {
     if !baseline.join(&member.directory).join("Cargo.toml").exists() {
         println!(
             "  {} is new since the baseline; nothing to break",
             member.directory
         );
-        return Ok(false);
+        return Ok(Required::Patch);
     }
     let current = rustdoc_json(root, member, &root.join(SCRATCH).join("current"))?;
     let before = rustdoc_json(baseline, member, &baseline.join("target"))?;
 
-    let args = command(&before, &current);
-    let output = Command::new(&args[0])
-        .args(&args[1..])
-        .output()
-        .context("running `cargo semver-checks`, which the xtask lane installs")?;
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    print!("{stdout}");
-    eprint!("{stderr}");
-    if output.status.success() {
-        return Ok(false);
-    }
-    if stdout.contains("semver requires new") || stderr.contains("semver requires new") {
-        return Ok(true);
-    }
-    bail!(
-        "`cargo semver-checks` could not measure `{}` (exit {})",
-        member.directory,
-        output.status
-    )
+    // Two rustdoc files, so the checker builds nothing and asks no rustc.
+    let mut check = Check::new(Rustdoc::from_path(current));
+    check.set_baseline(Rustdoc::from_path(before));
+    let mut config = GlobalConfig::new();
+    config.set_log_level(Some(log::Level::Info));
+    let report = check
+        .check_release(&mut config)
+        .with_context(|| format!("measuring `{}`", member.directory))?;
+    let (_, verdict) =
+        report.crate_reports().iter().next().with_context(|| {
+            format!("`{}` was measured, but reported nothing", member.directory)
+        })?;
+    Ok(Required::from(verdict.required_bump()))
 }
 
 #[cfg(test)]
@@ -493,15 +553,18 @@ mod tests {
         let rustdoc = args.iter().position(|arg| arg == "--").unwrap();
         assert!(args[rustdoc..].contains(&"--output-format".to_owned()));
         assert!(args[rustdoc..].contains(&"json".to_owned()));
+    }
 
-        let compare = command(Path::new("/before.json"), Path::new("/after.json"));
-        assert_eq!(
-            compare[..3],
-            ["cargo", "semver-checks", "check-release"].map(str::to_owned)
-        );
-        assert!(compare.contains(&"--baseline-rustdoc".to_owned()));
-        assert!(compare.contains(&"--current-rustdoc".to_owned()));
-        assert!(!compare.iter().any(|arg| arg == "--baseline-rev"));
+    /// The checker's answer, read as what the next release requires: a
+    /// break is a major, growth a minor, anything else — nothing found, or
+    /// a kind of bump this reading does not know — a patch.
+    #[test]
+    fn the_checker_s_answer_is_read_as_a_required_bump() {
+        assert_eq!(Required::from(Some(ReleaseType::Major)), Required::Major);
+        assert_eq!(Required::from(Some(ReleaseType::Minor)), Required::Minor);
+        assert_eq!(Required::from(Some(ReleaseType::Patch)), Required::Patch);
+        assert_eq!(Required::from(None), Required::Patch);
+        assert!(Required::Major > Required::Minor && Required::Minor > Required::Patch);
     }
 
     /// Scenario _Break in an undeclared group_: the summary declares a break
@@ -518,7 +581,8 @@ mod tests {
         assert!(declares_break(&pull_request, &changes, "bedrock", &groups));
         assert!(!declares_break(&pull_request, &changes, "outpost", &groups));
 
-        let outpost = verdict("outpost", vec!["crates/outpost".to_owned()], false, false);
+        let broke = |directory: &str| vec![(directory.to_owned(), Required::Major)];
+        let outpost = verdict("outpost", broke("crates/outpost"), false, false);
         assert!(outpost.failed());
         let line = outpost.describe();
         assert!(
@@ -527,9 +591,33 @@ mod tests {
         );
         assert!(line.contains("does not declare"), "{line}");
 
-        let bedrock = verdict("bedrock", vec!["crates/bedrock".to_owned()], true, false);
+        let bedrock = verdict("bedrock", broke("crates/bedrock"), true, false);
         assert!(!bedrock.failed());
         assert!(bedrock.describe().contains("declared by its header"));
+    }
+
+    /// A surface that grew is not a break: the check passes without a
+    /// declaration and says what grew, and a member at a patch says nothing.
+    #[test]
+    fn growth_passes_and_is_named() {
+        let measured = vec![
+            ("crates/bedrock".to_owned(), Required::Minor),
+            ("crates/bedrock-core".to_owned(), Required::Patch),
+        ];
+        let verdict = verdict("bedrock", measured, false, false);
+        assert!(!verdict.failed());
+        assert_eq!(
+            verdict,
+            Verdict::Passed {
+                group: "bedrock".to_owned(),
+                breaks: Vec::new(),
+                grew: vec!["crates/bedrock".to_owned()],
+            }
+        );
+        let line = verdict.describe();
+        assert!(line.starts_with("`bedrock`: no break"), "{line}");
+        assert!(line.contains("`crates/bedrock` grew"), "{line}");
+        assert!(!line.contains("bedrock-core"), "{line}");
     }
 
     /// Scenario _Over-declared break_: a declared break with nothing detected
@@ -546,7 +634,8 @@ mod tests {
             verdict,
             Verdict::Passed {
                 group: "bedrock".to_owned(),
-                breaks: Vec::new()
+                breaks: Vec::new(),
+                grew: Vec::new(),
             }
         );
         assert_eq!(
@@ -569,7 +658,7 @@ mod tests {
         ));
         let verdict = verdict(
             "waypoints",
-            vec!["crates/cartograph".to_owned()],
+            vec![("crates/cartograph".to_owned(), Required::Major)],
             false,
             true,
         );

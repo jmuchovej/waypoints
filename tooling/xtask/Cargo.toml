@@ -26,6 +26,7 @@
   axum.workspace                 = true
   base64.workspace               = true
   cargo_metadata.workspace       = true
+  cargo-semver-checks            = "0.51"
   chrono                         = { workspace = true, features = [ "clock", "std" ] }
   clap.workspace                 = true
   derive_more                    = {
@@ -54,6 +55,7 @@
   image.workspace                = true
   indexmap.workspace             = true
   indoc.workspace                = true
+  log                            = "0.4"
   octocrab                       = "0.54.5"
   opendal                        = {
     version          = "0.59.5",

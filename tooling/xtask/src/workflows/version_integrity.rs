@@ -14,9 +14,10 @@
 //! `main`. They compile `xtask` cold.
 //!
 //! Beside the claims check runs the API floor's measurement, `semver`:
-//! `cargo semver-checks` over each library group the pull request touches,
-//! against the group's last tag, under the stable flavor (library-minting
-//! design D5). One measurement is the contract, so it runs on Linux alone;
+//! `cargo-semver-checks`, as a library of `xtask`, over each library group
+//! the pull request touches, against the group's last tag, under the stable
+//! flavor (library-minting design D5). One measurement is the contract, so
+//! it runs on Linux alone;
 //! a group with no tag yet is skipped by name, so it is inert until the
 //! first cut mints a baseline (D8).
 
