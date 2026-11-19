@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 [alias]
-  xtask = "run --package xtask --"
+  xtask   = "run --package xtask --"
+  # The same binary without the `local-dev` feature: the tasks CI runs, with
+  # neither the dev server nor the icon renderer compiled in.
+  ci-task = "run --package xtask --no-default-features --"
 
 # Inert unless a rustc wrapper is in effect (CI sets one). Set here rather than
 # on the build step because cargo applies [env] to every rustc and build-script

@@ -81,8 +81,8 @@ jobs:
           SCCACHE_REGION: auto
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: release-index
-        name: cargo xtask release-index
-        run: devenv shell -- cargo xtask release-index --tag "$TAG" ${{ inputs.dry_run == true && '--dry-run' || '' }}
+        name: cargo ci-task release-index
+        run: devenv shell -- cargo ci-task release-index --tag "$TAG" ${{ inputs.dry_run == true && '--dry-run' || '' }}
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
@@ -133,9 +133,9 @@ jobs:
           body: Written by `cargo xtask release-index`; merges when its checks pass.
           commit-message: ${{ steps.release-index.outputs.title }}
           add-paths: ${{ steps.release-index.outputs.paths }}
-      - name: cargo xtask release-land auto-merge
+      - name: cargo ci-task release-land auto-merge
         if: steps.index-pull-request.outputs.pull-request-number != ''
-        run: devenv shell -- cargo xtask release-land auto-merge --pull-request "${PULL_REQUEST}"
+        run: devenv shell -- cargo ci-task release-land auto-merge --pull-request "${PULL_REQUEST}"
         shell: bash
         env:
           SECRETSPEC_REASON: release-land drives a pull request through the GitHub API; no secret values are read

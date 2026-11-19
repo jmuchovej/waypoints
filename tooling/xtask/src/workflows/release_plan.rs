@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn the_tag_waits_for_the_merge_commit() {
         let steps = steps();
-        let tag = running(&steps, "release-land tag --tag");
+        let tag = running(&steps, "release-land tag --tags \"${TAG}\"");
 
         assert!(position(&steps, "wait-for-merge") < tag);
         assert_eq!(
@@ -315,7 +315,7 @@ mod tests {
 
         assert!(wait < position(&steps, "tag-token"));
         assert_eq!(
-            steps[running(&steps, "release-land tag --tag")]["env"]["GH_TOKEN"],
+            steps[running(&steps, "release-land tag --tags \"${TAG}\"")]["env"]["GH_TOKEN"],
             "${{ steps.tag-token.outputs.token }}"
         );
     }
@@ -350,7 +350,7 @@ mod tests {
             position(&steps, "open-series"),
             position(&steps, "series-pull-request"),
             position(&steps, "wait-for-merge"),
-            running(&steps, "release-land tag --tag"),
+            running(&steps, "release-land tag --tags \"${TAG}\""),
         ];
         assert!(order.is_sorted(), "{order:?}");
 
@@ -513,8 +513,8 @@ mod tests {
             assert!(cond.starts_with("!inputs.dry_run"), "{id}: {cond}");
         }
         for command in [
-            "release-land tag --tag",
-            "release-land tag-groups",
+            "release-land tag --tags \"${TAG}\"",
+            "release-land tag --tags \"${TAGS}\"",
             "release-land open-series",
             "release-land auto-merge",
         ] {

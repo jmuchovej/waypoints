@@ -932,7 +932,7 @@ mod tests {
             step(&steps, "upload-to-store")["run"]
                 .as_str()
                 .unwrap()
-                .contains("cargo xtask release-upload --from release --tag")
+                .contains("cargo ci-task release-upload --from release --tag")
         );
         assert_eq!(step(&steps, "download-staged")["with"]["path"], "release");
         assert_eq!(

@@ -90,8 +90,8 @@ jobs:
           SCCACHE_REGION: auto
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: publish-plan
-        name: cargo xtask publish-plan
-        run: cargo xtask publish-plan stable --tag "$TAG" ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }} ${{ github.event_name == 'workflow_dispatch' && !inputs.build && '--no-build' || '' }}
+        name: cargo ci-task publish-plan
+        run: cargo ci-task publish-plan stable --tag "$TAG" ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }} ${{ github.event_name == 'workflow_dispatch' && !inputs.build && '--no-build' || '' }}
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
@@ -141,8 +141,8 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - id: test-plan
-        name: cargo xtask test-plan
-        run: cargo xtask test-plan  --release
+        name: cargo ci-task test-plan
+        run: cargo ci-task test-plan  --release
         shell: bash
       - id: nextest
         name: Run release tests
@@ -182,8 +182,8 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - id: test-plan
-        name: cargo xtask test-plan
-        run: cargo xtask test-plan  --release
+        name: cargo ci-task test-plan
+        run: cargo ci-task test-plan  --release
         shell: bash
       - id: nextest
         name: Run release tests
@@ -240,8 +240,8 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         shell: bash
       - id: test-plan
-        name: cargo xtask test-plan
-        run: cargo xtask test-plan  --release
+        name: cargo ci-task test-plan
+        run: cargo ci-task test-plan  --release
         shell: bash
       - id: nextest
         name: Run release tests
@@ -426,7 +426,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
         name: Stage the release artifacts
-        run: cargo xtask release-stage --platform macos ${TAG:+--tag "${TAG}"}
+        run: cargo ci-task release-stage --platform macos ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -558,7 +558,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
         name: Stage the release artifacts
-        run: cargo xtask release-stage --platform windows ${TAG:+--tag "${TAG}"}
+        run: cargo ci-task release-stage --platform windows ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -707,7 +707,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
         name: Stage the release artifacts
-        run: cargo xtask release-stage --platform linux ${TAG:+--tag "${TAG}"}
+        run: cargo ci-task release-stage --platform linux ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -841,7 +841,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
         name: Stage the release artifacts
-        run: cargo xtask release-stage --platform ios ${TAG:+--tag "${TAG}"}
+        run: cargo ci-task release-stage --platform ios ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -1041,7 +1041,7 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
         name: Stage the release artifacts
-        run: cargo xtask release-stage --platform android ${TAG:+--tag "${TAG}"}
+        run: cargo ci-task release-stage --platform android ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -1163,7 +1163,7 @@ jobs:
       - id: upload-to-store
         name: Upload to the release store
         if: needs.prepare.outputs.dry_run != 'true'
-        run: devenv shell -- cargo xtask release-upload --from release --tag "${TAG}"
+        run: devenv shell -- cargo ci-task release-upload --from release --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -1203,7 +1203,7 @@ jobs:
       - id: write-manifest
         name: Write the channel manifest
         if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
-        run: devenv shell -- cargo xtask release-manifest --tag "${TAG}"
+        run: devenv shell -- cargo ci-task release-manifest --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -1228,7 +1228,7 @@ jobs:
       - id: dry-manifest
         name: Render the channel manifest (dry run)
         if: needs.prepare.outputs.dry_run == 'true'
-        run: devenv shell -- cargo xtask release-manifest --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        run: devenv shell -- cargo ci-task release-manifest --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -1237,7 +1237,7 @@ jobs:
       - id: dry-index
         name: Render the index entry (dry run)
         if: needs.prepare.outputs.dry_run == 'true'
-        run: devenv shell -- cargo xtask release-index --tag "${TAG}" --rev "${REV}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        run: devenv shell -- cargo ci-task release-index --tag "${TAG}" --rev "${REV}" --dry-run --into "${RUNNER_TEMP}/dry-run"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -1309,7 +1309,7 @@ jobs:
           TAG: ${{ needs.prepare.outputs.tag }}
       - id: withdraw-from-store
         name: Withdraw uploaded artifacts
-        run: devenv shell -- cargo xtask release-withdraw --tag "${TAG}"
+        run: devenv shell -- cargo ci-task release-withdraw --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}

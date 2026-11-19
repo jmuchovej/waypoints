@@ -36,8 +36,8 @@ jobs:
           version: 2026.10.3
           cache: "false"
       - id: version-integrity
-        name: cargo xtask version-integrity
-        run: cargo xtask version-integrity
+        name: cargo ci-task version-integrity
+        run: cargo ci-task version-integrity
         shell: bash
   semver:
     name: semver
@@ -60,8 +60,8 @@ jobs:
           version: 2026.10.3
           cache: "false"
       - id: semver-check
-        name: cargo xtask semver-check
-        run: cargo xtask semver-check
+        name: cargo ci-task semver-check
+        run: cargo ci-task semver-check
         shell: bash
 concurrency:
   group: version-integrity-${{ github.ref }}

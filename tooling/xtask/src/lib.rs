@@ -29,6 +29,10 @@
 //! parsing, orchestration, and printing, nothing more. Nothing in this crate
 //! ships in a release artifact, so a module can depend on app crates (e.g.
 //! `cartograph`) without gating one.
+//!
+//! The `local-dev` feature, on by default, carries what only a workstation
+//! runs: the dev server and the icon renderer. `cargo ci-task` is the same
+//! binary without it, so no CI job compiles either.
 
 #![allow(clippy::disallowed_macros)]
 
@@ -38,6 +42,7 @@ pub use channel::{Channel, Flavor};
 pub use platform::{Arch, Platform, PublishedTarget};
 
 /// The browser-dev HTTP backend: the runtime, its routes, and its errors.
+#[cfg(feature = "local-dev")]
 pub mod dev {
     pub mod commands;
     mod error;
@@ -69,6 +74,7 @@ pub mod releases {
     pub mod version;
 }
 
+#[cfg(feature = "local-dev")]
 pub mod icongen;
 pub mod license {
     struct FrozenDocument {

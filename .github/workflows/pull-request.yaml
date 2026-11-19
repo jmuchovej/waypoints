@@ -57,8 +57,8 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         shell: bash
       - id: test-plan
-        name: cargo xtask test-plan
-        run: "cargo xtask test-plan "
+        name: cargo ci-task test-plan
+        run: "cargo ci-task test-plan "
         shell: bash
       - id: nextest
         name: Run affected tests
@@ -117,8 +117,8 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: cargo xtask license check
-        run: cargo xtask license check
+      - name: cargo ci-task license check
+        run: cargo ci-task license check
         shell: bash
       - id: cargo-deny-licenses
         name: Check dependency licenses

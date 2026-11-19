@@ -30,16 +30,9 @@ enum Action {
         #[arg(long)]
         pull_request: u64,
     },
-    /// Tags a merge commit.
+    /// Tags a merge commit: the app's tag, or every library tag a cut
+    /// minted, comma-separated as the planner publishes them.
     Tag {
-        #[arg(long)]
-        tag: String,
-        #[arg(long)]
-        commit: String,
-    },
-    /// Tags a merge commit with every library tag a cut minted,
-    /// comma-separated as the planner publishes them.
-    TagGroups {
         #[arg(long)]
         tags: String,
         #[arg(long)]
@@ -73,12 +66,7 @@ pub fn run(args: Options) -> Result<()> {
             println!("#{pull_request} merged as {merge_commit}");
             github::set_outputs_if_available(&Merged { merge_commit })
         }
-        Action::Tag { tag, commit } => {
-            github::create_tag(&tag, &commit)?;
-            println!("Tagged {tag} at {commit}");
-            Ok(())
-        }
-        Action::TagGroups { tags, commit } => {
+        Action::Tag { tags, commit } => {
             for tag in tags.split(',').map(str::trim).filter(|tag| !tag.is_empty()) {
                 github::create_tag(tag, &commit)?;
                 println!("Tagged {tag} at {commit}");
@@ -105,10 +93,10 @@ mod tests {
         for args in [
             &["release-land", "auto-merge", "--pull-request", "7"][..],
             &["release-land", "wait", "--pull-request", "7"],
-            &["release-land", "tag", "--tag", "v0.2.0", "--commit", "abc"],
+            &["release-land", "tag", "--tags", "v0.2.0", "--commit", "abc"],
             &[
                 "release-land",
-                "tag-groups",
+                "tag",
                 "--tags",
                 "bedrock-v0.2.0,domain-v0.1.1",
                 "--commit",
@@ -130,6 +118,15 @@ mod tests {
             &["release-land"][..],
             &["release-land", "wait"],
             &["release-land", "bump-main", "--version", "0.3.0-nightly"],
+            &[
+                "release-land",
+                "tag-groups",
+                "--tags",
+                "v0.2.0",
+                "--commit",
+                "abc",
+            ],
+            &["release-land", "tag", "--tag", "v0.2.0", "--commit", "abc"],
             &["release-land", "auto-merge", "--pull-request", "seven"],
         ] {
             assert!(Options::try_parse_from(args).is_err(), "{args:?}");

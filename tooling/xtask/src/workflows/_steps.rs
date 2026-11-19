@@ -123,14 +123,19 @@ pub fn cargo_deny_licenses() -> Step<Run> {
         .id("cargo-deny-licenses")
 }
 
-/// Runs an `xtask` subcommand via the `cargo xtask` alias in
-/// `.cargo/config.toml`.
+/// How a workflow step invokes an `xtask` subcommand: the `cargo ci-task`
+/// alias in `.cargo/config.toml`, the same binary as `cargo ci-task` without
+/// the `local-dev` feature, so no job compiles the dev server or the icon
+/// renderer.
+pub const CI_TASK: &str = "cargo ci-task";
+
+/// Runs an `xtask` subcommand via [`CI_TASK`].
 ///
 /// Values are quoted: several carry a `${{ }}` expression, which is substituted
 /// before the shell sees the line.
 pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run> {
     let command = args.iter().fold(
-        format!("cargo xtask {subcommand}"),
+        format!("{CI_TASK} {subcommand}"),
         |command, (flag, value)| {
             if let Some(arg) = value {
                 format!("{command} {flag} \"{arg}\"")
@@ -140,7 +145,7 @@ pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run>
         },
     );
 
-    Step::new(format!("cargo xtask {subcommand}"))
+    Step::new(format!("{CI_TASK} {subcommand}"))
         .run(command)
         .shell("bash")
 }
@@ -151,13 +156,13 @@ pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run>
 /// `devenv update` moves `devenv.lock`, which moves tool versions, which moves
 /// devenv's own generated files — and, because `WorkflowContext` reads the
 /// Android NDK and JDK versions back out of devenv, the workflows too. Entering
-/// the shell is what regenerates devenv's outputs, so the `cargo xtask` call
+/// the shell is what regenerates devenv's outputs, so the `cargo ci-task` call
 /// covers both halves. Committing the lockfile alone would open a pull request
 /// that fails its own `check-generated`.
 pub fn devenv_update() -> Step<Run> {
     let cmd = indoc! {r#"
         devenv update
-        devenv shell cargo xtask workflows
+        devenv shell cargo ci-task workflows
     "#}
     .trim_end();
 
@@ -297,8 +302,8 @@ pub(crate) fn land_write_from_file<T>(writer: &Step<T>, token: &StepOutput, id: 
 /// One step of a bot pull request's landing. Its values travel through the
 /// environment rather than the command line.
 fn release_land(action: &str, flags: &str, tools: Tools) -> Step<Run> {
-    let step = Step::new(format!("cargo xtask release-land {action}"))
-        .run(tools.command(&format!("cargo xtask release-land {action} {flags}")))
+    let step = Step::new(format!("{CI_TASK} release-land {action}"))
+        .run(tools.command(&format!("{CI_TASK} release-land {action} {flags}")))
         .shell("bash");
     match tools {
         Tools::Mise => step,
@@ -334,18 +339,23 @@ pub(crate) fn tag_merge_commit(
     commit: &StepOutput,
     token: &StepOutput,
 ) -> Step<Run> {
-    release_land("tag", r#"--tag "${TAG}" --commit "${COMMIT}""#, Tools::Mise)
-        .add_env(("TAG", tag.to_string()))
-        .add_env(("COMMIT", commit.to_string()))
-        .add_env(("GH_TOKEN", token.to_string()))
+    release_land(
+        "tag",
+        r#"--tags "${TAG}" --commit "${COMMIT}""#,
+        Tools::Mise,
+    )
+    .add_env(("TAG", tag.to_string()))
+    .add_env(("COMMIT", commit.to_string()))
+    .add_env(("GH_TOKEN", token.to_string()))
 }
 
 /// Tags the merge commit [`wait_for_merge`] found with every library tag the
 /// cut minted, comma-separated as the planner published them, under a token
-/// minted after the wait.
+/// minted after the wait. The same action as [`tag_merge_commit`]'s: a tag
+/// list of one or many.
 pub(crate) fn tag_groups(tags: &StepOutput, commit: &StepOutput, token: &StepOutput) -> Step<Run> {
     release_land(
-        "tag-groups",
+        "tag",
         r#"--tags "${TAGS}" --commit "${COMMIT}""#,
         Tools::Mise,
     )
@@ -858,7 +868,7 @@ fn download_artifact_action() -> Action {
 pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
     Step::new("Stage the release artifacts")
         .run(format!(
-            r#"cargo xtask release-stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
+            r#"cargo ci-task release-stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
             slug = platform.slug(),
         ))
         .shell("bash")
@@ -907,7 +917,7 @@ pub fn prepare_listing(channel: Channel) -> Step<Run> {
 pub fn upload_to_store(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let step = Step::new("Upload to the release store")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo xtask release-upload --from {STAGE_DIR} --tag "${{TAG}}""#
+            r#"cargo ci-task release-upload --from {STAGE_DIR} --tag "${{TAG}}""#
         )))
         .shell("bash")
         .if_condition(helpers::not_rehearsing(dry_run))
@@ -1064,7 +1074,7 @@ pub fn publish_release(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 /// down on a dry run, whose manifest [`dry_manifest`] renders instead.
 pub fn write_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let step = Step::new("Write the channel manifest")
-        .run(Tools::Devenv.command(r#"cargo xtask release-manifest --tag "${TAG}""#))
+        .run(Tools::Devenv.command(r#"cargo ci-task release-manifest --tag "${TAG}""#))
         .shell("bash")
         .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("TAG", helpers::tag(tag)))
@@ -1119,7 +1129,7 @@ pub fn dry_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Render the channel manifest (dry run)")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo xtask release-manifest --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
+            r#"cargo ci-task release-manifest --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
         )))
         .shell("bash")
         .if_condition(helpers::rehearsing(dry_run))
@@ -1137,7 +1147,7 @@ pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Render the index entry (dry run)")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo xtask release-index --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
+            r#"cargo ci-task release-index --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
         )))
         .shell("bash")
         .if_condition(helpers::rehearsing(dry_run))
@@ -1196,7 +1206,7 @@ pub fn discard_release(tag: &JobOutput) -> Step<Run> {
 /// code carries no information about whether every object was removed.
 pub fn withdraw_from_store(tag: &JobOutput) -> Step<Run> {
     let step = Step::new("Withdraw uploaded artifacts")
-        .run(Tools::Devenv.command(r#"cargo xtask release-withdraw --tag "${TAG}""#))
+        .run(Tools::Devenv.command(r#"cargo ci-task release-withdraw --tag "${TAG}""#))
         .shell("bash")
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((

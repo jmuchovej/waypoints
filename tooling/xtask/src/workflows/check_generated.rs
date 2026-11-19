@@ -5,7 +5,9 @@
 //! generated from — devenv's `files."..."`/`tasks."mise:lock"` outputs, the
 //! TypeScript bindings `cargo xtask typegen` exports from `domain` and
 //! `cartograph`, the app icons `cargo xtask icongen` renders from
-//! `src-tauri/res/`, and the workflows emitted by this very crate.
+//! `src-tauri/res/`, and the workflows emitted by this very crate. The
+//! recipe runs at a workstation's `cargo xtask`, `local-dev` included, since
+//! the icons are among what it regenerates.
 
 use super::{WorkflowContext, helpers, runners, steps};
 use gh_workflow::{Event, Job, Level, Permissions, PullRequest, Push, Workflow, WorkflowDispatch};

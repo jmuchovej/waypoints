@@ -52,9 +52,9 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
     // come from at the versions the tree pins. The tag reaches the command
     // through the environment — `github.ref_name` is free text as far as the
     // shell is concerned.
-    let record = Step::new("cargo xtask release-index")
+    let record = Step::new("cargo ci-task release-index")
         .run(format!(
-            "devenv shell -- cargo xtask release-index --tag \"$TAG\" {DRY_RUN_ON_REQUEST}"
+            "devenv shell -- cargo ci-task release-index --tag \"$TAG\" {DRY_RUN_ON_REQUEST}"
         ))
         .shell("bash")
         .id("release-index")
@@ -111,7 +111,7 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
         // could have written into it, so no poisoning surface.
         .add_step(steps::cachix("devenv"))
         .add_step(steps::nix_profile_install(&["devenv"]))
-        // The task is a `cargo xtask` compile before it is anything else; the
+        // The task is a `cargo ci-task` compile before it is anything else; the
         // build jobs' registry snapshot and compiler cache pay for most of it.
         .add_step(steps::cache_restore(&registry, Tools::Devenv))
         .add_step(steps::sccache_start(Tools::Devenv))
@@ -156,7 +156,7 @@ mod tests {
             .clone();
 
         let run = step["run"].as_str().unwrap();
-        assert!(run.starts_with("devenv shell -- cargo xtask"), "{run}");
+        assert!(run.starts_with("devenv shell -- cargo ci-task"), "{run}");
         assert!(run.contains("--tag \"$TAG\""), "{run}");
         assert!(!run.contains("github.ref_name"), "{run}");
         assert!(run.contains("--dry-run"), "{run}");
@@ -261,7 +261,7 @@ mod tests {
             auto_merge["run"]
                 .as_str()
                 .unwrap()
-                .starts_with("devenv shell -- cargo xtask"),
+                .starts_with("devenv shell -- cargo ci-task"),
             "{auto_merge}"
         );
         assert!(auto_merge["env"].get("SECRETSPEC_REASON").is_some());

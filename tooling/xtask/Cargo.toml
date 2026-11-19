@@ -23,7 +23,7 @@
 
   anyhow.workspace               = true
   async-trait.workspace          = true
-  axum.workspace                 = true
+  axum                           = { workspace = true, optional = true }
   base64.workspace               = true
   cargo_metadata.workspace       = true
   cargo-semver-checks            = "0.51"
@@ -49,10 +49,10 @@
   heck.workspace                 = true
   hex.workspace                  = true
   hmac.workspace                 = true
-  icns.workspace                 = true
-  ico.workspace                  = true
+  icns                           = { workspace = true, optional = true }
+  ico                            = { workspace = true, optional = true }
   ignore.workspace               = true
-  image.workspace                = true
+  image                          = { workspace = true, optional = true }
   indexmap.workspace             = true
   indoc.workspace                = true
   log                            = "0.4"
@@ -85,13 +85,26 @@
   }
   toml.workspace                 = true
   toml_edit                      = "0.25"
-  tower-http.workspace           = true
+  tower-http                     = { workspace = true, optional = true }
   tracing.workspace              = true
-  tracing-subscriber.workspace   = true
+  tracing-subscriber             = { workspace = true, optional = true }
   uuid.workspace                 = true
 
 [dev-dependencies]
   tempfile.workspace = true
+
+[features]
+  default   = [ "local-dev" ]
+  # The tasks a person runs at a workstation and CI never does: the browser
+  # dev server and the icon renderer. `cargo ci-task` builds without them.
+  local-dev = [
+    "dep:axum",
+    "dep:icns",
+    "dep:ico",
+    "dep:image",
+    "dep:tower-http",
+    "dep:tracing-subscriber"
+  ]
 
 [lints]
   workspace = true

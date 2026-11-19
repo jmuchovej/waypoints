@@ -32,8 +32,10 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 pub mod tasks {
+    #[cfg(feature = "local-dev")]
     pub mod dev_server;
     pub mod devenv_files;
+    #[cfg(feature = "local-dev")]
     pub mod icongen;
     pub mod license;
     pub mod publish_plan;
@@ -53,7 +55,16 @@ pub mod tasks {
 }
 
 #[derive(Parser)]
-#[command(name = "cargo xtask")]
+// Without `local-dev` the binary is the one `cargo ci-task` runs, so it says so;
+// `bin_name` because clap otherwise prints argv[0] in the usage line.
+#[cfg_attr(
+    feature = "local-dev",
+    command(name = "cargo xtask", bin_name = "cargo xtask")
+)]
+#[cfg_attr(
+    not(feature = "local-dev"),
+    command(name = "cargo ci-task", bin_name = "cargo ci-task")
+)]
 struct Args {
     #[command(subcommand)]
     command: Command,
@@ -88,13 +99,14 @@ enum Command {
     /// Prints the files devenv materializes into the working tree.
     DevenvFiles(tasks::devenv_files::Options),
     /// Regenerates every checked-in GitHub Actions workflow, and the checks OpenTofu requires of them.
-    #[command(alias = "gen-workflows")]
     Workflows(tasks::workflows::Options),
     /// Regenerates the TypeScript bindings from the Rust data model.
     Typegen(tasks::typegen::Options),
     /// Regenerates every app icon from the authored artwork in `src-tauri/res/`.
+    #[cfg(feature = "local-dev")]
     Icongen(tasks::icongen::Options),
     /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
+    #[cfg(feature = "local-dev")]
     DevServer(tasks::dev_server::Options),
     /// Holds the tree to the licensing policy; regenerates the third-party notices.
     License(tasks::license::Options),
@@ -119,7 +131,9 @@ fn main() -> Result<()> {
         Command::DevenvFiles(args) => tasks::devenv_files::run(args),
         Command::Workflows(args) => tasks::workflows::run(args),
         Command::Typegen(args) => tasks::typegen::run(args),
+        #[cfg(feature = "local-dev")]
         Command::Icongen(args) => tasks::icongen::run(args),
+        #[cfg(feature = "local-dev")]
         Command::DevServer(args) => tasks::dev_server::run(args),
         Command::License(args) => tasks::license::run(args),
     }

@@ -733,7 +733,7 @@ mod tests {
                 assert!(
                     run.trim_start()
                         .trim_start_matches("devenv shell -- ")
-                        .starts_with("cargo xtask "),
+                        .starts_with("cargo ci-task "),
                     "{name}/{job_name}/{id}: not an xtask dispatch: {run}"
                 );
                 for tool in TRANSFER_TOOLS {
@@ -752,7 +752,7 @@ mod tests {
         assert_store_steps_name_no_transfer_tool(
             "synthetic",
             &json!({ "jobs": { "build": {
-                "steps": [{ "id": "upload-to-store", "run": "cargo xtask release-upload via rclone" }]
+                "steps": [{ "id": "upload-to-store", "run": "cargo ci-task release-upload via rclone" }]
             }}}),
         );
     }
@@ -783,7 +783,7 @@ mod tests {
                 // nothing.
                 let run = step["run"].as_str().unwrap_or("");
                 let store_task = ["upload", "manifest", "withdraw"].iter().any(|task| {
-                    run.starts_with(&format!("devenv shell -- cargo xtask release-{task} "))
+                    run.starts_with(&format!("devenv shell -- cargo ci-task release-{task} "))
                 });
                 let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some()
                     || run.contains("--provider op")
@@ -809,8 +809,8 @@ mod tests {
                 let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
                 let plans = steps.iter().any(|step| {
                     step["run"].as_str().is_some_and(|run| {
-                        run.contains("cargo xtask publish-plan")
-                            || run.contains("cargo xtask release-plan")
+                        run.contains("cargo ci-task publish-plan")
+                            || run.contains("cargo ci-task release-plan")
                     })
                 });
                 if !plans {
@@ -1009,7 +1009,7 @@ mod tests {
         assert!(
             steps
                 .iter()
-                .any(|step| step["run"] == "cargo xtask version-integrity")
+                .any(|step| step["run"] == "cargo ci-task version-integrity")
         );
 
         // The API floor measures against a tag it checks out as a worktree,
@@ -1024,7 +1024,7 @@ mod tests {
         assert!(
             steps
                 .iter()
-                .any(|step| step["run"] == "cargo xtask semver-check")
+                .any(|step| step["run"] == "cargo ci-task semver-check")
         );
     }
 

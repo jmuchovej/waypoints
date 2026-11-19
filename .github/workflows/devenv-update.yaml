@@ -51,7 +51,7 @@ jobs:
         name: Update devenv inputs
         run: |-
           devenv update
-          devenv shell cargo xtask workflows
+          devenv shell cargo ci-task workflows
         shell: bash
         env:
           SECRETSPEC_REASON: devenv update refreshes locked inputs and regenerates devenv- and xtask-managed files; no secret values are read

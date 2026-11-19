@@ -230,7 +230,7 @@ mod tests {
                 .and_then(|step| step["run"].as_str())
                 .unwrap_or_else(|| panic!("{channel}: no publish-plan step"));
             assert!(
-                run.starts_with(&format!("cargo xtask publish-plan {}", channel.flavor())),
+                run.starts_with(&format!("cargo ci-task publish-plan {}", channel.flavor())),
                 "{channel}: {run}"
             );
             let dry = if channel.is_nightly() {
