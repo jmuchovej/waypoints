@@ -151,30 +151,28 @@ struct BodyPath {
 mod tests {
     use super::*;
 
-    /// The workflow dispatches `release-plan <transition> [--dry-run [--into
+    /// The workflow dispatches `release plan <transition> [--dry-run [--into
     /// <dir>]]`; the transition is a positional value, and the flags follow it.
     #[test]
     fn the_cli_takes_a_transition_and_a_dry_run_flag() {
-        let args = Options::try_parse_from(["release-plan", "cut", "--dry-run"]).unwrap();
+        let args = Options::try_parse_from(["plan", "cut", "--dry-run"]).unwrap();
         assert_eq!(args.transition, Transition::Cut);
         assert!(args.dry_run && args.into.is_none());
 
-        let args =
-            Options::try_parse_from(["release-plan", "cut", "--dry-run", "--into", "out"]).unwrap();
+        let args = Options::try_parse_from(["plan", "cut", "--dry-run", "--into", "out"]).unwrap();
         assert_eq!(args.into.as_deref(), Some(std::path::Path::new("out")));
 
-        let args = Options::try_parse_from(["release-plan", "patch"]).unwrap();
+        let args = Options::try_parse_from(["plan", "patch"]).unwrap();
         assert_eq!(args.transition, Transition::Patch);
         assert!(!args.dry_run && !args.major);
 
         // A major is asked for by flag, never computed.
-        let args =
-            Options::try_parse_from(["release-plan", "cut", "--major", "--dry-run"]).unwrap();
+        let args = Options::try_parse_from(["plan", "cut", "--major", "--dry-run"]).unwrap();
         assert!(args.major && args.dry_run);
 
         // A library alone, with the least it must bump.
         let args = Options::try_parse_from([
-            "release-plan",
+            "plan",
             "cut",
             "--group",
             "bedrock",
@@ -187,14 +185,11 @@ mod tests {
         assert_eq!(args.floor, Some(planner::Floor::Minor));
 
         // A floor needs a group, and a major is the app's alone.
-        assert!(Options::try_parse_from(["release-plan", "cut", "--floor", "minor"]).is_err());
-        assert!(
-            Options::try_parse_from(["release-plan", "cut", "--group", "bedrock", "--major"])
-                .is_err()
-        );
+        assert!(Options::try_parse_from(["plan", "cut", "--floor", "minor"]).is_err());
+        assert!(Options::try_parse_from(["plan", "cut", "--group", "bedrock", "--major"]).is_err());
 
         // A rendering directory is a dry run's; a real run writes the tree.
-        assert!(Options::try_parse_from(["release-plan", "cut", "--into", "out"]).is_err());
-        assert!(Options::try_parse_from(["release-plan", "ship"]).is_err());
+        assert!(Options::try_parse_from(["plan", "cut", "--into", "out"]).is_err());
+        assert!(Options::try_parse_from(["plan", "ship"]).is_err());
     }
 }

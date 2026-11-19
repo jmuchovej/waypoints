@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn a_rev_is_only_for_a_dry_run() {
         let dry = Options::try_parse_from([
-            "release-index",
+            "index",
             "--tag",
             "v0.2.0-nightly.20261109",
             "--rev",
@@ -97,12 +97,7 @@ mod tests {
         .unwrap();
         assert_eq!(dry.rev.as_deref(), Some("abc123"));
         assert!(dry.dry_run);
-        assert!(
-            Options::try_parse_from(["release-index", "--tag", "v0.2.0", "--rev", "abc123"])
-                .is_err()
-        );
-        assert!(
-            Options::try_parse_from(["release-index", "--tag", "v0.2.0", "--into", "out"]).is_err()
-        );
+        assert!(Options::try_parse_from(["index", "--tag", "v0.2.0", "--rev", "abc123"]).is_err());
+        assert!(Options::try_parse_from(["index", "--tag", "v0.2.0", "--into", "out"]).is_err());
     }
 }

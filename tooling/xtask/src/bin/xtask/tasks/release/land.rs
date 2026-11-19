@@ -91,11 +91,11 @@ mod tests {
     #[test]
     fn the_cli_names_one_step_of_a_landing() {
         for args in [
-            &["release-land", "auto-merge", "--pull-request", "7"][..],
-            &["release-land", "wait", "--pull-request", "7"],
-            &["release-land", "tag", "--tags", "v0.2.0", "--commit", "abc"],
+            &["land", "auto-merge", "--pull-request", "7"][..],
+            &["land", "wait", "--pull-request", "7"],
+            &["land", "tag", "--tags", "v0.2.0", "--commit", "abc"],
             &[
-                "release-land",
+                "land",
                 "tag",
                 "--tags",
                 "bedrock-v0.2.0,domain-v0.1.1",
@@ -103,7 +103,7 @@ mod tests {
                 "abc",
             ],
             &[
-                "release-land",
+                "land",
                 "open-series",
                 "--version",
                 "0.2.0-pre.1",
@@ -115,19 +115,12 @@ mod tests {
         }
 
         for args in [
-            &["release-land"][..],
-            &["release-land", "wait"],
-            &["release-land", "bump-main", "--version", "0.3.0-nightly"],
-            &[
-                "release-land",
-                "tag-groups",
-                "--tags",
-                "v0.2.0",
-                "--commit",
-                "abc",
-            ],
-            &["release-land", "tag", "--tag", "v0.2.0", "--commit", "abc"],
-            &["release-land", "auto-merge", "--pull-request", "seven"],
+            &["land"][..],
+            &["land", "wait"],
+            &["land", "bump-main", "--version", "0.3.0-nightly"],
+            &["land", "tag-groups", "--tags", "v0.2.0", "--commit", "abc"],
+            &["land", "tag", "--tag", "v0.2.0", "--commit", "abc"],
+            &["land", "auto-merge", "--pull-request", "seven"],
         ] {
             assert!(Options::try_parse_from(args).is_err(), "{args:?}");
         }

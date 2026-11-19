@@ -203,20 +203,17 @@ mod tests {
     #[test]
     fn the_cli_takes_a_channel_and_the_flags() {
         let options =
-            Options::try_parse_from(["publish-plan", "preview", "--tag", "v0.2.0-pre.1"]).unwrap();
+            Options::try_parse_from(["prepare", "preview", "--tag", "v0.2.0-pre.1"]).unwrap();
         assert_eq!(options.channel, Channel::Preview);
         assert_eq!(options.tag.as_deref(), Some("v0.2.0-pre.1"));
         assert!(!options.dry_run && !options.no_build);
 
         let options =
-            Options::try_parse_from(["publish-plan", "nightly", "--dry-run", "--no-build"])
-                .unwrap();
+            Options::try_parse_from(["prepare", "nightly", "--dry-run", "--no-build"]).unwrap();
         assert_eq!(options.channel, Channel::Nightly);
         assert!(options.dry_run && options.no_build);
 
-        assert!(
-            Options::try_parse_from(["publish-plan", "nightly", "--build", "--no-build"]).is_err()
-        );
-        assert!(Options::try_parse_from(["publish-plan", "weekly"]).is_err());
+        assert!(Options::try_parse_from(["prepare", "nightly", "--build", "--no-build"]).is_err());
+        assert!(Options::try_parse_from(["prepare", "weekly"]).is_err());
     }
 }

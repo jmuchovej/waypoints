@@ -78,25 +78,14 @@ mod tests {
     /// A dry run names where it renders, and a real write names no directory.
     #[test]
     fn a_dry_run_needs_a_directory_and_a_real_write_takes_none() {
-        let dry = Options::try_parse_from([
-            "release-manifest",
-            "--tag",
-            "v0.1.1",
-            "--dry-run",
-            "--into",
-            "out",
-        ])
-        .unwrap();
+        let dry =
+            Options::try_parse_from(["manifest", "--tag", "v0.1.1", "--dry-run", "--into", "out"])
+                .unwrap();
         assert!(dry.dry_run);
         assert_eq!(dry.into.as_deref(), Some(std::path::Path::new("out")));
-        assert!(
-            Options::try_parse_from(["release-manifest", "--tag", "v0.1.1", "--dry-run"]).is_err()
-        );
-        assert!(
-            Options::try_parse_from(["release-manifest", "--tag", "v0.1.1", "--into", "out"])
-                .is_err()
-        );
-        let real = Options::try_parse_from(["release-manifest", "--tag", "v0.1.1"]).unwrap();
+        assert!(Options::try_parse_from(["manifest", "--tag", "v0.1.1", "--dry-run"]).is_err());
+        assert!(Options::try_parse_from(["manifest", "--tag", "v0.1.1", "--into", "out"]).is_err());
+        let real = Options::try_parse_from(["manifest", "--tag", "v0.1.1"]).unwrap();
         assert!(!real.dry_run && real.into.is_none());
     }
 
