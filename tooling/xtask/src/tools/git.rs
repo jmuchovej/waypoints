@@ -4,7 +4,10 @@
 //! git, read from the checkout.
 
 use anyhow::{Context as _, Result, bail};
-use std::process::Command;
+use std::{
+    io::Write,
+    process::{Command, Stdio},
+};
 
 /// Runs `git` with `args` and returns its trimmed stdout.
 pub fn run(args: &[&str]) -> Result<String> {
@@ -26,6 +29,41 @@ pub fn show(reference: &str, path: &str) -> Result<String> {
         );
     }
     String::from_utf8(output.stdout).with_context(|| format!("{spec} is not UTF-8"))
+}
+
+/// The trailers of `message` as git reads them — the `Key: value` lines of
+/// its last paragraph, continuation lines unfolded — each as `(key, value)`.
+/// The one trailer engine: what `git log` reports for a landed commit is what
+/// this reports for the message about to land.
+pub fn trailers(message: &str) -> Result<Vec<(String, String)>> {
+    let mut child = Command::new("git")
+        .args(["interpret-trailers", "--parse"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("running `git interpret-trailers`")?;
+    child
+        .stdin
+        .take()
+        .context("`git interpret-trailers` takes its message on stdin")?
+        .write_all(message.as_bytes())
+        .context("writing the message to `git interpret-trailers`")?;
+    let output = child
+        .wait_with_output()
+        .context("waiting for `git interpret-trailers`")?;
+    if !output.status.success() {
+        bail!(
+            "`git interpret-trailers` failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    let parsed = String::from_utf8(output.stdout).context("the trailers are not UTF-8")?;
+    Ok(parsed
+        .lines()
+        .filter_map(|line| line.split_once(':'))
+        .map(|(key, value)| (key.trim().to_owned(), value.trim().to_owned()))
+        .collect())
 }
 
 /// Every `v*` tag as `origin` holds it: what is published, rather than what

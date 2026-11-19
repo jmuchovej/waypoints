@@ -30,7 +30,10 @@ use crate::{
     workspace,
 };
 use anyhow::{Context as _, Result, bail};
-use cargo_metadata::Metadata;
+use cargo_metadata::{
+    Metadata,
+    semver::{Comparator, Op, Prerelease},
+};
 use git_conventional::Commit as Conventional;
 use indoc::formatdoc;
 use std::{
@@ -310,26 +313,22 @@ impl PinMove {
 }
 
 /// The newest of a group's `tags` on `pinned`'s line, where one is newer
-/// than the pin.
+/// than the pin. The line is what cargo reads a caret requirement as — the
+/// same major, or before `1.0` the same minor, and before `0.1` nothing but
+/// itself — so it is `semver`'s own `^pinned`.
 fn newer_on_line(prefix: &str, pinned: &Version, tags: &[String]) -> Option<Version> {
+    let line = Comparator {
+        op: Op::Caret,
+        major: pinned.major,
+        minor: Some(pinned.minor),
+        patch: Some(pinned.patch),
+        pre: Prerelease::EMPTY,
+    };
     tags.iter()
         .filter_map(|tag| tag.strip_prefix(prefix))
         .filter_map(|rest| Version::parse(rest).ok())
-        .filter(|candidate| candidate > pinned && same_line(pinned, candidate))
+        .filter(|candidate| candidate > pinned && line.matches(candidate))
         .max()
-}
-
-/// Whether `candidate` is on `pinned`'s line, as cargo reads a caret
-/// requirement: the same major, or before `1.0` the same minor — where a
-/// break bumps under right-shift — and before `0.1` nothing but itself.
-fn same_line(pinned: &Version, candidate: &Version) -> bool {
-    if pinned.major > 0 {
-        candidate.major == pinned.major
-    } else if pinned.minor > 0 {
-        candidate.major == 0 && candidate.minor == pinned.minor
-    } else {
-        candidate.major == 0 && candidate.minor == 0 && candidate.patch == pinned.patch
-    }
 }
 
 /// The branch a cut's bump lands on, and the history a patch reads a pin's
@@ -1587,70 +1586,40 @@ fn write(path: &Path, text: &str) -> Result<()> {
     fs::write(path, text).with_context(|| format!("Failed to write {}", path.display()))
 }
 
-/// Rewrites the `[package]` version, leaving every other `version =` alone.
-///
-/// Dependencies carry `version` too, so this walks to the `[package]` table
-/// first and edits the first assignment inside it rather than pattern-matching
-/// the file. The key keeps its indent and alignment, so the write never also
-/// reads as a reformat.
+/// Rewrites the `[package]` version of `manifest`: [`set_version`].
 fn set_package_version(manifest: &str, version: &Version) -> Result<String> {
-    let mut in_package = false;
-    let mut edited = false;
-
-    let out: Vec<String> = manifest
-        .lines()
-        .map(|line| {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('[') {
-                in_package = trimmed.starts_with("[package]");
-            } else if in_package
-                && !edited
-                && let Some((key, _)) = line.split_once('=')
-                && key.trim() == "version"
-            {
-                edited = true;
-                return format!("{key}= \"{version}\"");
-            }
-            line.to_owned()
-        })
-        .collect();
-
-    if !edited {
-        bail!("no `[package]` version to rewrite");
-    }
-    Ok(out.join("\n") + "\n")
+    set_version(manifest, &["package"], version)
 }
 
-/// Rewrites `group`'s `version` in the group file, leaving every other line
-/// alone: the first `version` key under `[group.<name>]`, which keeps its
-/// indent and alignment as [`set_package_version`] keeps a manifest's.
+/// Rewrites `group`'s `version` in the group file: [`set_version`].
 fn set_group_version(file: &str, group: &str, version: &Version) -> Result<String> {
-    let header = format!("[group.{group}]");
-    let mut in_group = false;
-    let mut edited = false;
+    set_version(file, &["group", group], version)
+}
 
-    let out: Vec<String> = file
-        .lines()
-        .map(|line| {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('[') {
-                in_group = trimmed.starts_with(&header);
-            } else if in_group
-                && !edited
-                && let Some((key, _)) = line.split_once('=')
-                && key.trim() == "version"
-            {
-                edited = true;
-                return format!("{key}= \"{version}\"");
-            }
-            line.to_owned()
-        })
-        .collect();
-
-    if !edited {
-        bail!("{GROUP_FILE} declares no `version` for `{group}`");
+/// Rewrites the `version` value under `table` in the TOML `text`, as a
+/// document rather than a reformat — the one way `pin_workspace` edits the
+/// root manifest: the key keeps its indent and the alignment tombi gave it,
+/// and every other byte stays. Refuses a text without that value; a crate
+/// inheriting its version declares a table there, not a value.
+fn set_version(text: &str, table: &[&str], version: &Version) -> Result<String> {
+    let path = table.join(".");
+    let mut document: DocumentMut = text
+        .parse()
+        .with_context(|| format!("the text declaring `[{path}]` does not parse"))?;
+    let mut item = document.as_item_mut();
+    for key in table {
+        item = item
+            .get_mut(key)
+            .with_context(|| format!("no `[{path}]` to rewrite a version in"))?;
     }
-    Ok(out.join("\n") + "\n")
+    let value = item
+        .get_mut("version")
+        .and_then(Item::as_value_mut)
+        .with_context(|| format!("no `version` value to rewrite in `[{path}]`"))?;
+    let decor = value.decor().clone();
+    *value = Value::from(version.to_string());
+    *value.decor_mut() = decor;
+    Ok(document.to_string())
 }
 
 /// Rewrites a workspace crate's `Cargo.lock` entry. A registry crate sharing its

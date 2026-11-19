@@ -21,7 +21,7 @@ use cargo_metadata::semver::{self, Prerelease};
 use chrono::NaiveDate;
 use clap::ValueEnum;
 use derive_more::{AsMut, AsRef, Deref, From, Into};
-use next_version::VersionUpdater;
+use next_version::{NextVersion, VersionUpdater};
 use std::{fmt, str::FromStr};
 use strum::{EnumIter, IntoEnumIterator as _};
 
@@ -205,7 +205,7 @@ impl Version {
         if !self.is_preview() {
             bail!("{self} is not a preview; `advance` only applies to one");
         }
-        self.next_preview()
+        Ok(self.next_preview())
     }
 
     /// `0.2.0-pre.7` → `0.2.0`. The branch keeps its identity; only its role
@@ -241,26 +241,15 @@ impl Version {
 
     /// `0.2.0-pre.1` → `0.2.0-pre.2`, `0.2.0-pre` → `0.2.0-pre.1`.
     ///
-    /// Counts the trailing identifier directly rather than going through a
+    /// Counts the trailing identifier rather than going through the
     /// commit-driven bumper: a backport's message describes the original
     /// change rather than its severity here, so advancing a preview is
-    /// mechanical by design. A nightly is not counted at all: see
-    /// [`nightly`](Self::nightly).
-    pub fn next_preview(&self) -> Result<Self> {
-        let pre = self.pre.as_str();
-        let (stem, index) = match pre.rsplit_once('.') {
-            Some((stem, index)) => match index.parse::<u64>() {
-                Ok(index) => (stem, index),
-                // A non-numeric tail is part of the name, not a counter.
-                Err(_) => (pre, 0),
-            },
-            None => (pre, 0),
-        };
-
-        let mut next = self.0.clone();
-        next.pre = Prerelease::new(&format!("{stem}.{}", index + 1))
-            .with_context(|| format!("`{stem}.{}` is not a valid prerelease", index + 1))?;
-        Ok(Self(next))
+    /// mechanical by design. `next_version` counts it the same way — a
+    /// numeric tail moves, any other tail gains `.1` — and panics only on an
+    /// empty prerelease, which [`advance`](Self::advance) refuses first. A
+    /// nightly is not counted at all: see [`nightly`](Self::nightly).
+    pub fn next_preview(&self) -> Self {
+        Self(self.0.increment_prerelease())
     }
 
     /// The nightly of the release this version is a view of, dated `date`:
@@ -433,7 +422,7 @@ mod tests {
 
     #[test]
     fn advancing_a_preview_counts_up() {
-        assert_eq!(v("0.2.0-pre.1").next_preview().unwrap(), v("0.2.0-pre.2"));
+        assert_eq!(v("0.2.0-pre.1").next_preview(), v("0.2.0-pre.2"));
         assert_eq!(v("0.2.0-pre.1").advance().unwrap(), v("0.2.0-pre.2"));
         // Numeric, not lexical: the tenth candidate must outrank the ninth.
         assert_eq!(v("0.2.0-pre.9").advance().unwrap(), v("0.2.0-pre.10"));

@@ -290,7 +290,7 @@ pub fn declares_break(
         sha: String::new(),
         subject: pull_request.title.trim().to_owned(),
         body: pull_request.description(),
-        covenant_break: false,
+        covenant_break: pull_request.covenant_break,
         groups: groups.touched(paths.iter().map(String::as_str)),
         paths,
     };
@@ -383,13 +383,17 @@ mod tests {
     }
 
     fn pull_request(title: &str, body: &str) -> PullRequest {
-        PullRequest {
+        let mut pull_request = PullRequest {
             title: title.to_owned(),
             body: Some(body.to_owned()),
             user: User {
                 login: "someone".to_owned(),
             },
-        }
+            covenant_break: false,
+        };
+        pull_request.covenant_break =
+            crate::version_integrity::declares_covenant_break(&pull_request.message()).unwrap();
+        pull_request
     }
 
     fn changes(paths: &[&str]) -> Vec<Change> {

@@ -45,6 +45,10 @@ pub struct PullRequest {
     /// Null when the description was left empty.
     pub body: Option<String>,
     pub user: User,
+    /// Whether the message carries the `Covenant: break` trailer, as git
+    /// reads trailers; read from the message once it is assembled.
+    #[serde(skip)]
+    pub covenant_break: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -60,7 +64,9 @@ impl PullRequest {
         }
         let event: Event =
             serde_json::from_str(payload).context("The event payload carries no pull request")?;
-        Ok(event.pull_request)
+        let mut pull_request = event.pull_request;
+        pull_request.covenant_break = declares_covenant_break(&pull_request.message())?;
+        Ok(pull_request)
     }
 
     /// GitHub's web form submits CRLF, which the parsers below would read as
@@ -75,7 +81,7 @@ impl PullRequest {
     }
 
     /// The message the merge commit will carry.
-    fn message(&self) -> String {
+    pub(crate) fn message(&self) -> String {
         format!("{}\n\n{}", self.title.trim(), self.description())
             .trim_end()
             .to_owned()
@@ -215,11 +221,15 @@ pub(crate) fn is_fixture(path: &str) -> bool {
     })
 }
 
-/// Whether the message carries the `Covenant: break` trailer.
-fn declares_covenant_break(commit: &Commit<'_>) -> bool {
-    commit.footers().iter().any(|footer| {
-        footer.token().as_str() == "Covenant" && footer.value().lines().next() == Some("break")
-    })
+/// Whether `message` carries the `Covenant: break` trailer, read by git's
+/// trailer engine — the one the history walk reads a landed merge commit
+/// with — so what this check accepts is what the cut will see. A
+/// conventional-commit footer parser accepts the line anywhere after the
+/// body; git takes only the last paragraph, and the walk follows git.
+pub(crate) fn declares_covenant_break(message: &str) -> Result<bool> {
+    Ok(git::trailers(message)?
+        .iter()
+        .any(|(key, value)| key == "Covenant" && value == "break"))
 }
 
 /// What's wrong with a summary's subject and headers, against what it touched.
@@ -459,7 +469,7 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
 
     found.extend(groups.lockstep_problems(versions));
 
-    if !commit.as_ref().is_ok_and(declares_covenant_break) {
+    if !pull_request.covenant_break {
         let rewritten = changes
             .iter()
             .filter(|change| is_fixture(&change.path) && change.status != Status::Added);
@@ -554,13 +564,16 @@ mod tests {
     }
 
     fn pull_request(title: &str, body: &str, author: &str) -> PullRequest {
-        PullRequest {
+        let mut pull_request = PullRequest {
             title: title.to_owned(),
             body: Some(body.to_owned()),
             user: User {
                 login: author.to_owned(),
             },
-        }
+            covenant_break: false,
+        };
+        pull_request.covenant_break = declares_covenant_break(&pull_request.message()).unwrap();
+        pull_request
     }
 
     fn modified(path: &str) -> Change {
@@ -916,6 +929,37 @@ mod tests {
         "};
         assert_eq!(
             by_a_person("fix(domain): reread it", body, &changes),
+            Vec::<String>::new()
+        );
+    }
+
+    /// The trailer is read as git reads it, which is how the walk will read
+    /// the merge commit: only the last paragraph is trailers, so a
+    /// `Covenant: break` followed by prose declares nothing, and the check
+    /// refuses the fixture change it would otherwise have let through.
+    #[test]
+    fn a_trailer_before_prose_is_not_a_break() {
+        let fixture = [modified("covenant/fixtures/domain/a.json")];
+        assert_names(
+            &by_a_person(
+                "fix(domain): reread it",
+                indoc::indoc! {"
+                    Covenant: break
+
+                    More explanation after the trailer."},
+                &fixture,
+            ),
+            &["covenant/fixtures/domain/a.json", "Covenant: break"],
+        );
+        assert_eq!(
+            by_a_person(
+                "fix(domain): reread it",
+                indoc::indoc! {"
+                    More explanation before the trailer.
+
+                    Covenant: break"},
+                &fixture,
+            ),
             Vec::<String>::new()
         );
     }
