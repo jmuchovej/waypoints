@@ -98,7 +98,7 @@ export default defineNuxtConfig({
   ssr: false,
 
   // Dev-only: forward IPC calls from the Nuxt dev server (:9297) to the
-  // `cargo xtask dev server` HTTP backend, so the app runs in a plain browser
+  // `cargo xtask dev` HTTP backend, so the app runs in a plain browser
   // with HMR and same-origin `/ipc` requests. Has no effect on production
   // builds.
   nitro: {

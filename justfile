@@ -101,7 +101,7 @@ check-generated:
     # baseline cannot be a pre-run snapshot of the tree — asking xtask for the
     # file list would already have rewritten it. Git holds the baseline anyway:
     # the question is whether what is *committed* matches what devenv produces.
-    files="$(devenv shell cargo xtask dev devenv-files --copied)"
+    files="$(devenv shell cargo xtask ls managed --copied)"
     if [ -z "$files" ]; then
       echo "devenv reported no copied files." >&2
       exit 1

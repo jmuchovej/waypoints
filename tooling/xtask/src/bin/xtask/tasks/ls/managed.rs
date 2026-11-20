@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+//! `ls managed` — the files devenv materializes into the working tree, which
+//! are generated and never hand-edited. See [`xtask::tools::devenv`].
+
 use anyhow::Result;
 use clap::Parser;
 use xtask::tools::devenv;

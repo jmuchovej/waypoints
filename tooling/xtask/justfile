@@ -4,4 +4,4 @@ default:
 
 # HTTP backend for browser-based app dev
 dev-server *ARGS:
-    cargo xtask dev server {{ ARGS }}
+    cargo xtask dev {{ ARGS }}

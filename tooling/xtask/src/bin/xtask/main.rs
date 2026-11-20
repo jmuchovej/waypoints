@@ -28,8 +28,9 @@
 //! every task can share it.
 //!
 //! `release` is the pipeline, `check` the pull-request checks, `generate` what
-//! `check-generated` holds to its source, `dev` the workstation's tools, and
-//! `test-plan` the one query the hooks and the test jobs read.
+//! `check-generated` holds to its source, `dev` the browser-dev server, `ls`
+//! the listings the recipes read, and `test-plan` the one query the hooks and
+//! the test jobs read.
 
 #![allow(clippy::disallowed_macros)]
 
@@ -68,11 +69,12 @@ mod tasks {
         pub mod workflows;
     }
 
-    /// The workstation's tools.
-    pub mod dev {
-        pub mod devenv_files;
-        #[cfg(feature = "local-dev")]
-        pub mod server;
+    #[cfg(feature = "local-dev")]
+    pub mod dev;
+
+    /// What the tree carries that is generated rather than written.
+    pub mod ls {
+        pub mod managed;
     }
 }
 
@@ -105,9 +107,12 @@ enum Command {
     /// What is generated into the tree, and held to its source.
     #[command(subcommand)]
     Generate(Generate),
-    /// The workstation's tools.
-    #[command(subcommand)]
-    Dev(Dev),
+    /// Serves the Waypoints web UI's HTTP backend, so the app runs in a plain browser.
+    #[cfg(feature = "local-dev")]
+    Dev(tasks::dev::Options),
+    /// Lists what the tree carries that is generated rather than written.
+    #[command(subcommand, name = "ls")]
+    List(List),
 }
 
 #[derive(Subcommand)]
@@ -156,16 +161,13 @@ enum Generate {
 }
 
 #[derive(Subcommand)]
-enum Dev {
-    /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
-    #[cfg(feature = "local-dev")]
-    Server(tasks::dev::server::Options),
-    /// Prints the files devenv materializes into the working tree.
-    DevenvFiles(tasks::dev::devenv_files::Options),
+enum List {
+    /// The files devenv materializes into the working tree, one per line.
+    Managed(tasks::ls::managed::Options),
 }
 
 fn main() -> Result<()> {
-    use tasks::{check, dev, generate, release};
+    use tasks::{check, generate, ls, release};
 
     match Args::parse().command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
@@ -192,10 +194,8 @@ fn main() -> Result<()> {
             Generate::Icons(args) => generate::icons::run(args),
             Generate::Notices(args) => generate::notices::run(args),
         },
-        Command::Dev(command) => match command {
-            #[cfg(feature = "local-dev")]
-            Dev::Server(args) => dev::server::run(args),
-            Dev::DevenvFiles(args) => dev::devenv_files::run(args),
-        },
+        #[cfg(feature = "local-dev")]
+        Command::Dev(args) => tasks::dev::run(args),
+        Command::List(List::Managed(args)) => ls::managed::run(args),
     }
 }
