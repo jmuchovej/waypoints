@@ -22,11 +22,10 @@
 
 //! `cargo xtask` — the CLI over the `xtask` library.
 //!
-//! The tree under `tasks/` is the command line: `tasks/<verb>.rs` declares a
-//! verb's subcommands and dispatches them, and `tasks/<verb>/<task>.rs` is one
-//! task — a clap argument struct and a `run` that parses, orchestrates the
-//! library, and prints. Logic worth testing lives in the library, where every
-//! task can share it.
+//! The tree under `tasks/` is the command line: one file per task, grouped by
+//! verb, each a clap argument struct and a `run` that parses, orchestrates
+//! the library, and prints. Logic worth testing lives in the library, where
+//! every task can share it.
 //!
 //! `release` is the pipeline, `check` the pull-request checks, `generate` what
 //! `check-generated` holds to its source, `dev` the workstation's tools, and
@@ -38,11 +37,43 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod tasks {
-    pub mod check;
-    pub mod dev;
-    pub mod generate;
-    pub mod release;
     pub mod test_plan;
+
+    /// The pipeline: planning, staging, publishing, and landing.
+    pub mod release {
+        pub mod groups;
+        pub mod index;
+        pub mod land;
+        pub mod manifest;
+        pub mod plan;
+        pub mod prepare;
+        pub mod stage;
+        pub mod upload;
+        pub mod withdraw;
+    }
+
+    /// The checks a pull request must pass.
+    pub mod check {
+        pub mod licenses;
+        pub mod semver;
+        pub mod version_integrity;
+    }
+
+    /// What is generated into the tree, and held to its source.
+    pub mod generate {
+        pub mod bindings;
+        #[cfg(feature = "local-dev")]
+        pub mod icons;
+        pub mod notices;
+        pub mod workflows;
+    }
+
+    /// The workstation's tools.
+    pub mod dev {
+        pub mod devenv_files;
+        #[cfg(feature = "local-dev")]
+        pub mod server;
+    }
 }
 
 #[derive(Parser)]
@@ -67,26 +98,104 @@ enum Command {
     TestPlan(tasks::test_plan::Options),
     /// The release pipeline: planning, staging, publishing, and landing.
     #[command(subcommand)]
-    Release(tasks::release::Command),
+    Release(Release),
     /// The checks a pull request must pass.
     #[command(subcommand)]
-    Check(tasks::check::Command),
+    Check(Check),
     /// What is generated into the tree, and held to its source.
     #[command(subcommand)]
-    Generate(tasks::generate::Command),
+    Generate(Generate),
     /// The workstation's tools.
     #[command(subcommand)]
-    Dev(tasks::dev::Command),
+    Dev(Dev),
+}
+
+#[derive(Subcommand)]
+enum Release {
+    /// Plans a channel's run: what it builds, whether it publishes, and the tag nightly mints.
+    Prepare(tasks::release::prepare::Options),
+    /// Plans a release-cycle transition: cut, advance, promote, or patch.
+    Plan(tasks::release::plan::Options),
+    /// Copies one platform's published artifacts into `release/` under their store keys.
+    Stage(tasks::release::stage::Options),
+    /// Uploads published artifacts to the releases bucket.
+    Upload(tasks::release::upload::Options),
+    /// Writes a channel's manifest after every required target has uploaded.
+    Manifest(tasks::release::manifest::Options),
+    /// Best-effort deletes the objects a shortfall run uploaded.
+    Withdraw(tasks::release::withdraw::Options),
+    /// Writes a published tag's release-index entry for its pull request to land.
+    Index(tasks::release::index::Options),
+    /// Takes a bot's pull request from opened to landed, one step at a time.
+    Land(tasks::release::land::Options),
+    /// The group file: its generated schema, and its projection into the manifests.
+    Groups(tasks::release::groups::Options),
+}
+
+#[derive(Subcommand)]
+enum Check {
+    /// Holds the tree to the licensing policy.
+    Licenses(tasks::check::licenses::Options),
+    /// Measures each touched library group's stable surface against its last tag.
+    Semver(tasks::check::semver::Options),
+    /// Checks what a pull request claims about versions.
+    VersionIntegrity(tasks::check::version_integrity::Options),
+}
+
+#[derive(Subcommand)]
+enum Generate {
+    /// Regenerates every checked-in GitHub Actions workflow, and the checks OpenTofu requires of them.
+    Workflows(tasks::generate::workflows::Options),
+    /// Regenerates the TypeScript bindings from the Rust data model.
+    Bindings(tasks::generate::bindings::Options),
+    /// Regenerates every app icon from the authored artwork in `src-tauri/res/`.
+    #[cfg(feature = "local-dev")]
+    Icons(tasks::generate::icons::Options),
+    /// Regenerates the third-party notices from the registry and the lockfiles.
+    Notices(tasks::generate::notices::Options),
+}
+
+#[derive(Subcommand)]
+enum Dev {
+    /// Serves the Waypoints web UI's HTTP backend for browser-based dev.
+    #[cfg(feature = "local-dev")]
+    Server(tasks::dev::server::Options),
+    /// Prints the files devenv materializes into the working tree.
+    DevenvFiles(tasks::dev::devenv_files::Options),
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse();
+    use tasks::{check, dev, generate, release};
 
-    match args.command {
+    match Args::parse().command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
-        Command::Release(command) => tasks::release::run(command),
-        Command::Check(command) => tasks::check::run(command),
-        Command::Generate(command) => tasks::generate::run(command),
-        Command::Dev(command) => tasks::dev::run(command),
+        Command::Release(command) => match command {
+            Release::Prepare(args) => release::prepare::run(args),
+            Release::Plan(args) => release::plan::run(args),
+            Release::Stage(args) => release::stage::run(args),
+            Release::Upload(args) => release::upload::run(args),
+            Release::Manifest(args) => release::manifest::run(args),
+            Release::Withdraw(args) => release::withdraw::run(args),
+            Release::Index(args) => release::index::run(args),
+            Release::Land(args) => release::land::run(args),
+            Release::Groups(args) => release::groups::run(args),
+        },
+        Command::Check(command) => match command {
+            Check::Licenses(args) => check::licenses::run(args),
+            Check::Semver(args) => check::semver::run(args),
+            Check::VersionIntegrity(args) => check::version_integrity::run(args),
+        },
+        Command::Generate(command) => match command {
+            Generate::Workflows(args) => generate::workflows::run(args),
+            Generate::Bindings(args) => generate::bindings::run(args),
+            #[cfg(feature = "local-dev")]
+            Generate::Icons(args) => generate::icons::run(args),
+            Generate::Notices(args) => generate::notices::run(args),
+        },
+        Command::Dev(command) => match command {
+            #[cfg(feature = "local-dev")]
+            Dev::Server(args) => dev::server::run(args),
+            Dev::DevenvFiles(args) => dev::devenv_files::run(args),
+        },
     }
 }

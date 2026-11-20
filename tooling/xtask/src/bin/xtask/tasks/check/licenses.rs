@@ -5,11 +5,15 @@
 //! this runs them and prints what they found.
 
 use anyhow::{Result, bail};
+use clap::Parser;
 use xtask::{license, workspace};
+
+#[derive(Parser)]
+pub struct Options {}
 
 /// Checks manifests, headers, layering, license texts, and the third-party
 /// registry.
-pub fn run() -> Result<()> {
+pub fn run(args: Options) -> Result<()> {
     let root = workspace::load()?.workspace_root.into_std_path_buf();
     let report = license::check_headers(&root)?;
 

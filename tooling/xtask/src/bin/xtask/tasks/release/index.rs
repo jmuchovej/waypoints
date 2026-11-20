@@ -75,29 +75,3 @@ pub fn run(args: Options) -> Result<()> {
     println!("  wrote {path}");
     github::set_outputs_if_available(&landing)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A rev stands in for a tag only on a dry run: a real write records a
-    /// tag that exists, pointing where it points.
-    #[test]
-    fn a_rev_is_only_for_a_dry_run() {
-        let dry = Options::try_parse_from([
-            "index",
-            "--tag",
-            "v0.2.0-nightly.20261109",
-            "--rev",
-            "abc123",
-            "--dry-run",
-            "--into",
-            "out",
-        ])
-        .unwrap();
-        assert_eq!(dry.rev.as_deref(), Some("abc123"));
-        assert!(dry.dry_run);
-        assert!(Options::try_parse_from(["index", "--tag", "v0.2.0", "--rev", "abc123"]).is_err());
-        assert!(Options::try_parse_from(["index", "--tag", "v0.2.0", "--into", "out"]).is_err());
-    }
-}

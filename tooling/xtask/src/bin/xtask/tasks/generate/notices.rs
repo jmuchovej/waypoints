@@ -5,10 +5,14 @@
 //! The text is [`xtask::license`]'s; this writes it where it is committed.
 
 use anyhow::{Context as _, Result};
+use clap::Parser;
 use std::fs;
 use xtask::{license, workspace};
 
-pub fn run() -> Result<()> {
+#[derive(Parser)]
+pub struct Options {}
+
+pub fn run(args: Options) -> Result<()> {
     let root = workspace::load()?.workspace_root.into_std_path_buf();
     let contents = license::generate_notices(&root)?;
     let path = root.join(license::NOTICES_PATH);

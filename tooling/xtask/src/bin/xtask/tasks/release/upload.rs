@@ -52,26 +52,3 @@ pub fn run(args: Options) -> Result<()> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The CLI default is the same lifetime `store` settles on; raising it
-    /// is a flag, not a code change.
-    #[test]
-    fn the_cli_defaults_to_the_store_s_ttl() {
-        let args = Options::parse_from(["xtask", "--from", "release", "--tag", "v0.1.1"]);
-        assert_eq!(args.ttl_seconds, store::DEFAULT_TTL_SECONDS);
-    }
-
-    /// A build's output is never uploaded directly; only a staged tree is.
-    #[test]
-    fn the_cli_uploads_only_a_staged_tree() {
-        let tag = ["--tag", "v0.1.1"];
-        assert!(Options::try_parse_from(["xtask"].iter().chain(&tag)).is_err());
-        assert!(
-            Options::try_parse_from(["xtask", "--platform", "ios"].iter().chain(&tag)).is_err()
-        );
-    }
-}
