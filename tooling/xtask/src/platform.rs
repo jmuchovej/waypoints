@@ -5,18 +5,19 @@
 //! architecture each build targets, and where each files its artifacts.
 
 use derive_more::{Display, IsVariant, Unwrap};
-use strum::EnumIter;
 
 #[derive(
-    Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, IsVariant, EnumIter, clap::ValueEnum,
+    Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, IsVariant, strum::EnumIter, clap::ValueEnum,
 )]
 pub enum Platform {
     #[allow(non_camel_case_types)]
+    #[is_variant(ignore)]
     #[value(name = "macos")]
     macOS,
     Windows,
     Linux,
     #[allow(non_camel_case_types)]
+    #[is_variant(ignore)]
     #[value(name = "ios")]
     iOS,
     Android,
@@ -35,20 +36,17 @@ impl Platform {
     }
 
     pub fn is_desktop(self) -> bool {
-        use Platform::{Linux, Windows, macOS};
-        matches!(self, Linux | macOS | Windows)
+        self.is_macos() || self.is_linux() || self.is_windows()
     }
 
     pub fn is_mobile(self) -> bool {
-        use Platform::{Android, iOS};
-        matches!(self, Android | iOS)
+        self.is_ios() || self.is_android()
     }
 
     pub fn is_ios(self) -> bool {
         matches!(self, Platform::iOS)
     }
 
-    #[allow(dead_code, reason = "completes the platform predicates")]
     pub fn is_macos(self) -> bool {
         matches!(self, Platform::macOS)
     }
@@ -58,10 +56,9 @@ impl Platform {
     /// builds — see the design's "Targets are the host architecture of each
     /// platform" decision — so this names only what is actually produced.
     pub fn arch(self) -> Arch {
-        use Platform::*;
         match self {
-            macOS | Android | iOS => Arch::arm64,
-            Linux | Windows => Arch::amd64,
+            Platform::macOS | Platform::Android | Platform::iOS => Arch::arm64,
+            Platform::Linux | Platform::Windows => Arch::amd64,
         }
     }
 
@@ -71,16 +68,15 @@ impl Platform {
     /// artifact (Android's `.apk` and `.aab` share a target), which is why
     /// `extensions` is a list while the target itself is singular.
     pub fn published_target(self) -> PublishedTarget {
-        use Platform::*;
         let extensions: &'static [&'static str] = match self {
-            macOS => &["dmg"],
+            Platform::macOS => &["dmg"],
             // The AppImage first: it is the one the download link serves. The
             // deb and rpm are for package managers, and each updates itself
             // from its own format.
-            Linux => &["AppImage", "deb", "rpm"],
-            Windows => &["exe"],
-            Android => &["apk", "aab"],
-            iOS => &["ipa"],
+            Platform::Linux => &["AppImage", "deb", "rpm"],
+            Platform::Windows => &["exe"],
+            Platform::Android => &["apk", "aab"],
+            Platform::iOS => &["ipa"],
         };
         PublishedTarget {
             os: self.slug(),
@@ -94,23 +90,22 @@ impl Platform {
     /// `release stage` renames each match, and requires exactly one, so a
     /// change in what the bundler exports fails the build.
     pub fn published_globs(self) -> &'static [&'static str] {
-        use Platform::*;
         match self {
-            macOS => &["target/release/bundle/dmg/*.dmg"],
-            Linux => &[
+            Platform::macOS => &["target/release/bundle/dmg/*.dmg"],
+            Platform::Linux => &[
                 "target/release/bundle/appimage/*.AppImage",
                 "target/release/bundle/deb/*.deb",
                 "target/release/bundle/rpm/*.rpm",
             ],
-            Windows => &["target/release/bundle/nsis/*.exe"],
+            Platform::Windows => &["target/release/bundle/nsis/*.exe"],
             // Gradle splits flavor from build type for an APK
             // (`apk/universal/release`) and joins them for a bundle
             // (`bundle/universalRelease`).
-            Android => &[
+            Platform::Android => &[
                 "src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk",
                 "src-tauri/gen/android/app/build/outputs/bundle/*Release/*.aab",
             ],
-            iOS => &["src-tauri/gen/apple/build/**/*.ipa"],
+            Platform::iOS => &["src-tauri/gen/apple/build/**/*.ipa"],
         }
     }
 
@@ -128,12 +123,11 @@ impl Platform {
     /// and refuses any other payload. Paired one-to-one with
     /// [`updater_globs`].
     pub fn updater_extensions(self) -> &'static [&'static str] {
-        use Platform::*;
         match self {
-            macOS => &["app.tar.gz", "app.tar.gz.sig"],
-            Linux => &["AppImage.sig", "deb.sig", "rpm.sig"],
-            Windows => &["exe.sig"],
-            Android | iOS => &[],
+            Platform::macOS => &["app.tar.gz", "app.tar.gz.sig"],
+            Platform::Linux => &["AppImage.sig", "deb.sig", "rpm.sig"],
+            Platform::Windows => &["exe.sig"],
+            Platform::Android | Platform::iOS => &[],
         }
     }
 
@@ -141,19 +135,18 @@ impl Platform {
     /// order as [`updater_extensions`]: what the updater needs beyond the
     /// installer itself.
     pub fn updater_globs(self) -> &'static [&'static str] {
-        use Platform::*;
         match self {
-            macOS => &[
+            Platform::macOS => &[
                 "target/release/bundle/macos/*.tar.gz",
                 "target/release/bundle/macos/*.tar.gz.sig",
             ],
-            Linux => &[
+            Platform::Linux => &[
                 "target/release/bundle/appimage/*.AppImage.sig",
                 "target/release/bundle/deb/*.deb.sig",
                 "target/release/bundle/rpm/*.rpm.sig",
             ],
-            Windows => &["target/release/bundle/nsis/*.exe.sig"],
-            Android | iOS => &[],
+            Platform::Windows => &["target/release/bundle/nsis/*.exe.sig"],
+            Platform::Android | Platform::iOS => &[],
         }
     }
 }
@@ -167,7 +160,7 @@ pub struct PublishedTarget {
     pub extensions: &'static [&'static str],
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, EnumIter)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Unwrap, Display, strum::EnumIter)]
 pub enum Arch {
     #[allow(non_camel_case_types)]
     amd64,
