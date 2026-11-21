@@ -77,6 +77,37 @@ A cut SHALL refuse when no commit since the last stable release counts for the a
 - **WHEN** no commit counts for `waypoints` and the cut is scoped to `bedrock`, which has counted commits since its tag
 - **THEN** `bedrock` is minted alone, as a group-scoped cut always is
 
+## MODIFIED Requirements
+
+### Requirement: Release-bookkeeping commits are not product work
+
+Commits that touch only the release index, or only another path the group file's `[bookkeeping]` lists, SHALL NOT count as product work in any planner decision; nor SHALL a revision `.git-blame-ignore-revs` lists, a revision `[bookkeeping].ignore-revs` names by its full id, or a commit the release bot authored or whose subject the file reserves to it. A listed revision SHALL be a full commit id, and a file carrying a shorter one SHALL be refused. This holds for the nightly planner's "did anything land?" determination and for the target the release planner computes for a cut, which read the same history.
+
+#### Scenario: Index commit does not wake a quiet repository
+
+- **WHEN** the only commit on `main` since the last published nightly is the index commit recording that nightly
+- **THEN** the nightly planner still decides to skip
+
+#### Scenario: Index commit does not move a cut target
+
+- **WHEN** the commit history since the last stable release contains index commits alongside product commits
+- **THEN** the cut target is the same as it would be with the index commits absent
+
+#### Scenario: Mixed history still publishes
+
+- **WHEN** the history since the last published nightly contains both an index commit and at least one product commit
+- **THEN** a nightly publishes, exactly as if the index commit were not there
+
+#### Scenario: A listed revision counts for nothing
+
+- **WHEN** the group file's `[bookkeeping].ignore-revs` names a commit by its full id and that commit changed a path a group owns
+- **THEN** no group counts it in any planner decision, the nightly planner does not read it as work landed, and `git blame` still credits its lines to it
+
+#### Scenario: A short id is refused
+
+- **WHEN** `[bookkeeping].ignore-revs` carries an id shorter than forty hex digits
+- **THEN** the planner refuses to run and names the entry
+
 ## REMOVED Requirements
 
 ### Requirement: Groups own disjoint paths, and the app counts what it ships

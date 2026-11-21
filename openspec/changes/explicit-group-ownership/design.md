@@ -36,7 +36,7 @@ See proposal.md — Why. Verified 2026-11-17 against the tree `group-file-versio
 
 - No second kind of ownership. `paths` is the same prefix rule as `members`; it is not a glob, a pattern, or a file list.
 - No `kind` key or any other key that says "this is the app". The name says it (D1).
-- No change to the bookkeeping rule: `[bookkeeping].paths`, the ignore file, the reserved subjects, and the bot's authorship stay as `library-minting` D2 left them.
+- No change to the bookkeeping rule beyond D7's list: `[bookkeeping].paths`, `.git-blame-ignore-revs`, the reserved subjects, and the bot's authorship stay as `library-minting` D2 left them; `ignore-revs` lists revisions instead of naming that file, and the walk reads both through one set.
 - No change to how the fixture floor reaches the app's cut; it reads the diff since the last stable and never went through the closure.
 
 ## Decisions
@@ -84,6 +84,13 @@ See proposal.md — Why. Verified 2026-11-17 against the tree `group-file-versio
 - **Shape:** after the change lands, `cargo xtask release plan cut --dry-run` is run on `main` and John reads the app's target, `main`'s next version, and each library's counted commits against `git log --first-parent`. The `version` values in the file are not touched by this change or by that reading; John intends to lower them separately so the first manual cuts land versions that can be committed to `main`.
 - **Gate:** the dry run prints an app target and per-group lines, or the D4 refusal, and `git status` is clean afterwards; John signs off on the reading in tasks.md group 7.
 
+### D7 (2026-11-23): The group file lists the revisions that count for nothing
+
+- **Why:** the dry cut D6 asked for charged `domain` with a break it never had. `refactor(importer)!: delete the dormant crate` (`11798f95d`) deleted the importer crate, whose own public types were the breaking change, and touched `domain` through one line of `crates/domain/docs/dialect.md`; path attribution counted it for `domain`, and the `!` raised `domain`'s first cut from `0.1.1` to `0.2.0`. Path attribution is the right default (D2) and stays; this is the exception it needs a place for. The one existing place, `.git-blame-ignore-revs`, is the wrong one: `git blame` skips a listed revision and credits its lines to whatever came before, which is right for a formatting pass and a lie about a real change. John decided on 2026-11-23 that the exception lives in the group file, where every other bookkeeping rule already does, and on 2026-11-24 that it takes the `ignore-revs` key: the blame file's path is fixed by convention, so the key that named it only ever held one value, and the name says what the list is.
+- **Shape:** `[bookkeeping].ignore-revs` stops naming a file and lists the revisions: full commit ids, default empty, each with a comment saying why it is listed; `Bookkeeping.ignore_revs: Vec<String>` under `#[serde(default)]`; `parse` refuses an entry that is not forty lowercase hex digits, naming it, since the walk matches by prefix and a short id could match more than one commit. The blame file's path moves into xtask as `release_groups::BLAME_IGNORE_FILE`, which `problems` checks exists as before and `history::ignored_revisions` reads together with the list, so `attribute` reads both through the one set it already reads and the blame file stays for formatting passes. The schema is regenerated and every fixture drops the path line. The group file lists `11798f95d76489e4aa1268828b28233e231cb87c` with its reason, which makes `domain`'s first cut `0.1.1` over 45 commits and changes nothing else the dry run prints.
+- **Rejected:** `.git-blame-ignore-revs` (blame is a different claim about history, as above); a second key beside `ignore-revs` for the list, keeping the path key (a key for a value nobody will change); attributing a `!` commit by its scope rather than its paths (`library-minting` D2 and D2 here chose paths because scopes are optional and unchecked, and one break scoped to the wrong crate is not a reason to reopen that); per-group exclusions or per-commit attribution overrides (the case at hand counts for nothing, not for some other group; the general form can wait for a case that needs it); editing landed history (the proposal's non-goals).
+- **Gate:** a `fixture::Repo` commit under `crates/domain/` whose id the fixture's group file lists counts for no group and is absent from `product_commits` (scenario _A listed revision counts for nothing_); `parse` refuses a seven-character id naming it (scenario _A short id is refused_); `the_committed_schema_is_the_generated_one` passes with `ignore-revs` an array in the schema; `cargo xtask release plan cut --dry-run` on this tree plans `domain` at `0.1.1` over 45 commits and the other groups as before.
+
 ## Risks / Trade-offs
 
 - [A day of docs, website, or Nix commits publishes no nightly] → intended: those paths are not the app, and the nightly planner's "product work" now means a listed path (D2). The index and the group versions a build embeds still say what each nightly carried.
@@ -94,6 +101,7 @@ See proposal.md — Why. Verified 2026-11-17 against the tree `group-file-versio
 - [This change's REMOVED names a requirement that is in `library-minting`'s open delta, not the main spec] → `library-minting` is implemented and archives first, after which the REMOVED applies; if this change archived first the archive would find nothing to remove and say so, and `library-minting`'s delta would then need its requirement dropped before it archives. The Migration Plan states the order.
 - [The first dry cut prints the same app target as today] → possible, since any `feat` on an app path from `0.0.0` yields `0.1.0-pre.1`; what D6 reads is whether the paths justify it, not whether the number changed.
 - [`paths` overlaps a member's directory] → `problems`' overlap check refuses it as it refuses a nested fixture (D2).
+- [A listed revision hides a real change from a release] → the list is in the group file, so adding to it is a reviewed pull request, and each entry carries its reason beside it; the walk reads full ids only, so an entry cannot match a second commit by accident; nothing in history is edited, so `git log` and `git blame` still show the commit (D7).
 
 ## Migration Plan
 
@@ -101,9 +109,10 @@ See proposal.md — Why. Verified 2026-11-17 against the tree `group-file-versio
 2. **Ownership and the closure** (D2, D3): `paths`, `owner_of` without a fallback, `attribute` without the closure, the tests, and the CONTRIBUTING sentence. Lands with step 1 or after it.
 3. **The refusal** (D4): `plan` and the template.
 4. **The dry cut** (D6): John reads it. `group-file-versions`' task group 6 — the first cut and `library-minting`'s audits — follows this change.
-5. **Archive order:** `library-minting` archives before this change, so this change's REMOVED finds the requirement it names.
+5. **The listed revisions** (D7): `ignore-revs` as the list, `BLAME_IGNORE_FILE`, the full-id check, `ignored_revisions`, the schema regenerated, every fixture's path line dropped, the group file's one entry, and the dry cut re-read for `domain`. Lands with steps 1–3 or after them; it is what the first reading of step 4 asked for.
+6. **Archive order:** `library-minting` archives before this change, so this change's REMOVED finds the requirement it names.
 
-Rollback: steps 2–3 are code; step 1 reverts by restoring the keys and the `owns`-based readers, one pull request. Nothing minted depends on any of it until the first cut, which this change precedes.
+Rollback: steps 2–3 and 5 are code; step 1 reverts by restoring the keys and the `owns`-based readers, one pull request. Nothing minted depends on any of it until the first cut, which this change precedes.
 
 ## Follow-ups
 
