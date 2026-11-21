@@ -191,9 +191,10 @@ export function versionedUrl(
 /**
  * Orders versions newest-first. Semver precedence in full is more than
  * this needs: numeric major/minor/patch decide almost every real
- * comparison, and the rest (prerelease/build-metadata) is compared as
- * plain text, which is wrong only for cases this project's tag grammar
- * doesn't produce (e.g. `-pre.9` sorting before `-pre.10`).
+ * comparison, and the rest (the prerelease) is compared as plain text,
+ * which is right for a nightly's fixed-width date and wrong only for cases
+ * this project's tag grammar doesn't produce (e.g. `-pre.9` sorting before
+ * `-pre.10`).
  */
 export function compareVersionsDescending(a: string, b: string): number {
   const parse = (version: string) => {

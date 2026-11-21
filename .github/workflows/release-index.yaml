@@ -18,7 +18,7 @@ on:
       dry_run:
         description: Compute and print the entry without committing it
         type: boolean
-        default: "false"
+        default: "true"
 permissions: {}
 jobs:
   release-index:

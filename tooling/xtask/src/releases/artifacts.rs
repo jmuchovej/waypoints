@@ -334,7 +334,7 @@ mod tests {
     /// shortfall run withdraws every key it could have written.
     #[test]
     fn published_keys_cover_every_required_target_and_extension() {
-        let keys = published_keys(Channel::Nightly, "v0.2.0-nightly.3+2026.10.19").unwrap();
+        let keys = published_keys(Channel::Nightly, "v0.2.0-nightly.20261019").unwrap();
         let count = Channel::Nightly
             .required_targets()
             .iter()
@@ -342,8 +342,8 @@ mod tests {
             .sum::<usize>();
         assert_eq!(keys.len(), count);
         assert_eq!(
-            keys["waypoints-v0.2.0-nightly.3+2026.10.19.app.tar.gz"],
-            "nightly/v0.2.x/macos/arm64/waypoints-v0.2.0-nightly.3+2026.10.19.app.tar.gz"
+            keys["waypoints-v0.2.0-nightly.20261019.app.tar.gz"],
+            "nightly/v0.2.x/macos/arm64/waypoints-v0.2.0-nightly.20261019.app.tar.gz"
         );
 
         let stable = published_keys(Channel::Stable, "v0.1.1").unwrap();
@@ -360,7 +360,7 @@ mod tests {
 
     #[test]
     fn published_keys_stay_under_the_channel_s_own_prefix() {
-        for key in published_keys(Channel::Nightly, "v0.2.0-nightly.3+2026.10.19")
+        for key in published_keys(Channel::Nightly, "v0.2.0-nightly.20261019")
             .unwrap()
             .into_values()
         {
