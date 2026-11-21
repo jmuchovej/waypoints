@@ -15,17 +15,13 @@ use chrono::NaiveDateTime;
 use domain::{
     Chart, ChartID, Content, FeatureID, FeatureKind, Landmark, Mark, MarkData, MarkID, Reading,
     RichText, Terrain, TerrainID, TerrainKind, TextMarkKind, fractional_index,
-    syntax::{
-        block,
-        inline::{self, Links},
-    },
 };
 
 use crate::{
     bundle::{BUNDLE_FORMAT, Bundle, Manifest, layout},
+    document::{self, Node},
     export::{Tier, tier},
     frontmatter,
-    identity::{self, Identity, Marker},
     names::{Lenient, Names},
     refusal::{
         ChartConflict, DuplicateConflict, IngestError, Location, Malformed, MalformedKind, Refusal,
@@ -85,7 +81,7 @@ fn gate(bundle: &Bundle) -> Result<Manifest, IngestError> {
         Refusal {
             malformed: vec![Malformed {
                 at: Location::file(layout::MANIFEST),
-                kind: MalformedKind::Grammar { detail },
+                kind: MalformedKind::grammar(detail),
             }],
             ..Refusal::default()
         }
@@ -110,14 +106,6 @@ struct Staged {
     marks: BTreeMap<MarkID, Mark>,
     edges: Vec<Terrain>,
     charts: Vec<Chart>,
-}
-
-/// One body node: a Mark, or (with no content) a nested Landmark's position.
-struct Node {
-    identity: Identity,
-    content: Option<Content>,
-    children: Vec<Node>,
-    line: usize,
 }
 
 struct Stager<'a> {
@@ -172,9 +160,7 @@ impl<'a> Stager<'a> {
                 Some(Kind::Schema(_) | Kind::Sidecar) => {}
                 None => self.malformed(
                     Location::file(path),
-                    MalformedKind::UnknownContent {
-                        detail: format!("`{path}` has no place in a Bundle"),
-                    },
+                    MalformedKind::unknown_content(format!("`{path}` has no place in a Bundle")),
                 ),
             }
         }
@@ -213,9 +199,7 @@ impl<'a> Stager<'a> {
         for id in unstamped {
             self.malformed(
                 Location::file(layout::MARKS),
-                MalformedKind::Grammar {
-                    detail: format!("Content Mark {id} has no `marks.jsonl` line"),
-                },
+                MalformedKind::grammar(format!("Content Mark {id} has no `marks.jsonl` line")),
             );
         }
         self.terrain_sidecar(&mut edges);
@@ -236,21 +220,14 @@ impl<'a> Stager<'a> {
         let Some(text) = self.bundle.get(&path) else {
             self.malformed(
                 at,
-                MalformedKind::Grammar {
-                    detail: format!("Chart directory `{dir}` has no schema"),
-                },
+                MalformedKind::grammar(format!("Chart directory `{dir}` has no schema")),
             );
             return Ok(());
         };
         let document = match serde_json::from_str(text) {
             Ok(document) => document,
             Err(error) => {
-                self.malformed(
-                    at,
-                    MalformedKind::Grammar {
-                        detail: format!("not JSON: {error}"),
-                    },
-                );
+                self.malformed(at, MalformedKind::grammar(format!("not JSON: {error}")));
                 return Ok(());
             }
         };
@@ -262,9 +239,10 @@ impl<'a> Stager<'a> {
         if layout::chart_id(&chart.id) != dir {
             self.malformed(
                 at,
-                MalformedKind::Grammar {
-                    detail: format!("the schema in `{dir}` describes Chart `{}`", chart.id.0),
-                },
+                MalformedKind::grammar(format!(
+                    "the schema in `{dir}` describes Chart `{}`",
+                    chart.id.0
+                )),
             );
             return Ok(());
         }
@@ -304,29 +282,29 @@ impl<'a> Stager<'a> {
         let Some((front, _)) = frontmatter::split(file) else {
             self.malformed(
                 at(),
-                MalformedKind::Grammar {
-                    detail: "a Landmark file must open with frontmatter".into(),
-                },
+                MalformedKind::grammar("a Landmark file must open with frontmatter"),
             );
             return;
         };
         let front = match frontmatter::parse(front, &kinds(&chart), &self.names) {
             Ok(front) => front,
-            Err(kind) => return self.malformed(at(), kind),
+            // The opening fence is the file's first line.
+            Err((line, kind)) => return self.malformed(Location::line(path, 1 + line), kind),
         };
         if layout::chart_id(&front.chart) != dir {
             return self.malformed(
                 at(),
-                MalformedKind::Grammar {
-                    detail: format!("filed under `{dir}` but names Chart `{}`", front.chart.0),
-                },
+                MalformedKind::grammar(format!(
+                    "filed under `{dir}` but names Chart `{}`",
+                    front.chart.0
+                )),
             );
         }
         if let Err(problems) =
             schema::validate_readings(&schema::emit(&chart), &schema::instance(&front.readings))
         {
             for (feature, detail) in problems {
-                self.malformed(at(), MalformedKind::SchemaViolation { feature, detail });
+                self.malformed(at(), MalformedKind::schema_violation(feature, detail));
             }
         }
         if self.marks.contains_key(&id) {
@@ -353,7 +331,7 @@ impl<'a> Stager<'a> {
             },
         );
 
-        match parse_region(&body_lines(file), &self.names) {
+        match document::parse(file, &self.names) {
             Ok(nodes) => self.stage(id, nodes, path),
             Err((line, kind)) => self.malformed(Location::line(path, line), kind),
         }
@@ -367,7 +345,7 @@ impl<'a> Stager<'a> {
         let file = self.bundle.get(path)?;
         let (front, _) = frontmatter::split(file)?;
         let front = frontmatter::parse(front, &kinds(chart), &Lenient).ok()?;
-        let nodes = parse_region(&body_lines(file), &Lenient).ok()?;
+        let nodes = document::parse(file, &Lenient).ok()?;
 
         fn collect(nodes: &[Node], landmarks: &BTreeSet<MarkID>, out: &mut Vec<MarkID>) {
             for node in nodes {
@@ -391,9 +369,9 @@ impl<'a> Stager<'a> {
                 if !self.landmarks.contains(&id) {
                     self.malformed(
                         Location::line(path, node.line),
-                        MalformedKind::Grammar {
-                            detail: format!("names Landmark {id}, which the Bundle does not carry"),
-                        },
+                        MalformedKind::grammar(format!(
+                            "names Landmark {id}, which the Bundle does not carry"
+                        )),
                     );
                 }
                 continue;
@@ -471,7 +449,7 @@ impl<'a> Stager<'a> {
             let row = match row {
                 Ok(row) => row,
                 Err(detail) => {
-                    self.malformed(at, MalformedKind::Grammar { detail });
+                    self.malformed(at, MalformedKind::grammar(detail));
                     continue;
                 }
             };
@@ -484,9 +462,7 @@ impl<'a> Stager<'a> {
                 }
                 None => self.malformed(
                     at,
-                    MalformedKind::Grammar {
-                        detail: "a `marks.jsonl` line names no Mark in the Bundle".into(),
-                    },
+                    MalformedKind::grammar("a `marks.jsonl` line names no Mark in the Bundle"),
                 ),
             }
         }
@@ -507,7 +483,6 @@ impl<'a> Stager<'a> {
 
         for (line, row) in sidecar::lines::<TerrainLine>(text) {
             let at = Location::line(layout::TERRAIN, line);
-            let grammar = |detail: String| MalformedKind::Grammar { detail };
             let TerrainLine {
                 src,
                 dst,
@@ -517,18 +492,21 @@ impl<'a> Stager<'a> {
             } = match row {
                 Ok(row) => row,
                 Err(detail) => {
-                    self.malformed(at, grammar(detail));
+                    self.malformed(at, MalformedKind::grammar(detail));
                     continue;
                 }
             };
             let Some(kind) = strict_kind(&raw_kind) else {
-                self.malformed(at, grammar(format!("`{raw_kind}` is not an edge kind")));
+                self.malformed(
+                    at,
+                    MalformedKind::grammar(format!("`{raw_kind}` is not an edge kind")),
+                );
                 continue;
             };
             if !self.marks.contains_key(&src) || !self.marks.contains_key(&dst) {
                 self.malformed(
                     at,
-                    grammar("a terrain line names a Mark the Bundle does not carry".into()),
+                    MalformedKind::grammar("a terrain line names a Mark the Bundle does not carry"),
                 );
                 continue;
             }
@@ -537,12 +515,7 @@ impl<'a> Stager<'a> {
                     Some(&slot) => edges[slot].extra = extra,
                     None => self.malformed(
                         at,
-                        MalformedKind::OrphanAnnotativeEdge {
-                            src,
-                            dst,
-                            kind: raw_kind,
-                            order,
-                        },
+                        MalformedKind::orphan_annotative_edge(src, dst, raw_kind, order),
                     ),
                 },
                 Tier::Constitutive => self.extra_edges.push(Terrain {
@@ -597,22 +570,6 @@ fn kinds(chart: &Chart) -> HashMap<FeatureID, FeatureKind> {
         .features
         .iter()
         .map(|(id, feature)| (id.clone(), feature.kind.clone()))
-        .collect()
-}
-
-/// A Landmark file's lines after its frontmatter, numbered from 1.
-fn body_lines(file: &str) -> Vec<(usize, String)> {
-    let first_body_line = file
-        .lines()
-        .enumerate()
-        .filter(|(_, line)| *line == "---")
-        .nth(1)
-        .map(|(index, _)| index + 1)
-        .unwrap_or(0);
-    file.lines()
-        .enumerate()
-        .skip(first_body_line)
-        .map(|(index, line)| (index + 1, line.to_string()))
         .collect()
 }
 
@@ -685,210 +642,6 @@ fn classify(path: &str) -> Option<Kind> {
     }
     let id = file.strip_suffix(".md")?.parse::<uuid::Uuid>().ok()?;
     Some(Kind::Landmark(dir.to_string(), MarkID(id)))
-}
-
-type Region = [(usize, String)];
-type Parsed<T> = Result<T, (usize, MalformedKind)>;
-
-fn grammar(line: usize, detail: impl Into<String>) -> (usize, MalformedKind) {
-    (
-        line,
-        MalformedKind::Grammar {
-            detail: detail.into(),
-        },
-    )
-}
-
-/// Parse a sequence of sibling nodes.
-fn parse_region(lines: &Region, links: &dyn Links) -> Parsed<Vec<Node>> {
-    let mut nodes = Vec::new();
-    let mut at = 0;
-    while at < lines.len() {
-        if lines[at].1.trim().is_empty() {
-            at += 1;
-            continue;
-        }
-        let (node, next) = parse_node(lines, at, links)?;
-        nodes.push(node);
-        at = next;
-    }
-    Ok(nodes)
-}
-
-fn parse_node(lines: &Region, start: usize, links: &dyn Links) -> Parsed<(Node, usize)> {
-    let (line_no, line) = &lines[start];
-    let identity = match identity::parse(line).map_err(|kind| (*line_no, kind))? {
-        Some(Marker::Open(identity)) => identity,
-        _ => return Err(grammar(*line_no, "expected a `wp:mark` comment")),
-    };
-    let mut at = start + 1;
-    let Some((first_no, first)) = lines.get(at) else {
-        return Err(grammar(
-            *line_no,
-            "a `wp:mark` comment with no block after it",
-        ));
-    };
-    let (first_no, first) = (*first_no, first.clone());
-
-    // A nested Landmark: its own comment over a link to itself.
-    if is_self_link(&first, identity.id, links) {
-        let node = Node {
-            identity,
-            content: None,
-            children: Vec::new(),
-            line: *line_no,
-        };
-        return Ok((node, at + 1));
-    }
-
-    let take_until = |from: usize, end: &str| -> Parsed<usize> {
-        (from + 1..lines.len())
-            .find(|&index| lines[index].1 == end)
-            .ok_or_else(|| grammar(first_no, format!("unclosed block, expected `{end}`")))
-    };
-
-    let mut children: Vec<(usize, String)> = Vec::new();
-    let mut indented_children = true;
-    let own: String;
-    if first.starts_with("```") {
-        let fence = &first[..first.len() - first.trim_start_matches('`').len()];
-        let end = take_until(at, fence)?;
-        own = join(&lines[at..=end]);
-        at = end + 1;
-    } else if first.starts_with("$$") {
-        let end = take_until(at, "$$")?;
-        own = join(&lines[at..=end]);
-        at = end + 1;
-    } else if let Some(name) = first.strip_prefix("::") {
-        let end = matching_closer(lines, at)
-            .ok_or_else(|| grammar(first_no, "unclosed `::` component"))?;
-        let name = name.split('{').next().unwrap_or_default();
-        if block::CONTAINER_COMPONENTS.contains(&name) {
-            own = first.clone();
-            children = lines[at + 1..end].to_vec();
-            indented_children = false;
-        } else {
-            own = join(&lines[at..=end]);
-        }
-        at = end + 1;
-    } else if first.starts_with(block::TABLE_ROW) {
-        let end = (at..lines.len())
-            .take_while(|&index| lines[index].1.starts_with(block::TABLE_ROW))
-            .last()
-            .unwrap_or(at);
-        own = join(&lines[at..=end]);
-        at = end + 1;
-    } else if first.starts_with('>') {
-        indented_children = false;
-        if first.starts_with(">{") {
-            own = first.clone();
-            at += 1;
-        } else {
-            own = ">".into();
-        }
-        while let Some((number, line)) = lines.get(at) {
-            let stripped = if line == ">" {
-                Some("")
-            } else {
-                line.strip_prefix("> ")
-            };
-            let Some(stripped) = stripped else { break };
-            children.push((*number, stripped.to_string()));
-            at += 1;
-        }
-    } else {
-        own = first.clone();
-        at += 1;
-    }
-
-    if indented_children {
-        let indent = " ".repeat(block::INDENT);
-        while let Some((number, line)) = lines.get(at) {
-            let continues = line.starts_with(&indent)
-                || (line.is_empty()
-                    && lines[at + 1..]
-                        .iter()
-                        .find(|(_, next)| !next.is_empty())
-                        .map(|(_, next)| next.starts_with(&indent))
-                        .unwrap_or(false));
-            if !continues {
-                break;
-            }
-            children.push((
-                *number,
-                line.strip_prefix(&indent).unwrap_or("").to_string(),
-            ));
-            at += 1;
-        }
-    }
-
-    let content =
-        block::parse_with(&own, links).map_err(|error| grammar(first_no, error.to_string()))?;
-    let children = parse_region(&children, links)?;
-    if !children.is_empty() {
-        match lines.get(at) {
-            Some((_, line)) if matches!(identity::parse(line), Ok(Some(Marker::Close))) => at += 1,
-            _ => return Err(grammar(*line_no, "a container's comment is never closed")),
-        }
-    }
-    Ok((
-        Node {
-            identity,
-            content: Some(content),
-            children,
-            line: *line_no,
-        },
-        at,
-    ))
-}
-
-fn join(lines: &Region) -> String {
-    lines
-        .iter()
-        .map(|(_, line)| line.as_str())
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-/// The `::` closing the component opened at `start`, counting nested ones and
-/// skipping fenced code and math, whose lines are verbatim.
-fn matching_closer(lines: &Region, start: usize) -> Option<usize> {
-    let mut depth = 0;
-    let mut fence: Option<&str> = None;
-    for (index, (_, line)) in lines.iter().enumerate().skip(start) {
-        if let Some(open) = fence {
-            if line == open {
-                fence = None;
-            }
-            continue;
-        }
-        if line.starts_with("```") {
-            fence = Some(&line[..line.len() - line.trim_start_matches('`').len()]);
-        } else if line.starts_with("$$") {
-            fence = Some("$$");
-        } else if line == "::" {
-            depth -= 1;
-            if depth == 0 {
-                return Some(index);
-            }
-        } else if line.starts_with("::") {
-            depth += 1;
-        }
-    }
-    None
-}
-
-fn is_self_link(line: &str, id: MarkID, links: &dyn Links) -> bool {
-    let Ok(rich) = inline::parse_with(line, links) else {
-        return false;
-    };
-    match rich.segments() {
-        [segment] => segment.marks.iter().any(|mark| {
-            mark.kind == TextMarkKind::Mention
-                && mark.data.as_ref().and_then(|data| data.as_str()) == Some(&id.to_string())
-        }),
-        _ => false,
-    }
 }
 
 #[cfg(test)]

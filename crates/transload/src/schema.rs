@@ -24,8 +24,6 @@ pub const X_WAYPOINTS: &str = "x-waypoints";
 /// The Draft-07 meta-schema's identifier.
 const DRAFT_07: &str = "http://json-schema.org/draft-07/schema#";
 
-// ── Emit ─────────────────────────────────────────────────────────────────────
-
 /// The `_schema.json` document for one Chart.
 pub fn emit(chart: &Chart) -> Json {
     let mut document = Map::new();
@@ -204,18 +202,15 @@ fn canonical(chart: &Chart) -> Json {
     serde_json::to_value(chart).unwrap_or(Json::Null)
 }
 
-// ── Read ─────────────────────────────────────────────────────────────────────
-
 /// The canonical Chart a `_schema.json` carries.
 pub fn read(document: &Json) -> Result<Chart, MalformedKind> {
     let Some(member) = document.get(X_WAYPOINTS) else {
-        return Err(MalformedKind::Grammar {
-            detail: format!("a schema document with no `{X_WAYPOINTS}` member"),
-        });
+        return Err(MalformedKind::grammar(format!(
+            "a schema document with no `{X_WAYPOINTS}` member"
+        )));
     };
-    serde_json::from_value(member.clone()).map_err(|error| MalformedKind::Grammar {
-        detail: format!("`{X_WAYPOINTS}` is not a Chart: {error}"),
-    })
+    serde_json::from_value(member.clone())
+        .map_err(|error| MalformedKind::grammar(format!("`{X_WAYPOINTS}` is not a Chart: {error}")))
 }
 
 /// Refuse a document whose Draft-07 face disagrees with the Chart it carries.
@@ -225,9 +220,9 @@ pub fn check_consistent(document: &Json) -> Result<(), MalformedKind> {
     if &regenerated == document {
         return Ok(());
     }
-    Err(MalformedKind::Grammar {
-        detail: format!("the Draft-07 face disagrees with the `{X_WAYPOINTS}` Chart it carries",),
-    })
+    Err(MalformedKind::grammar(format!(
+        "the Draft-07 face disagrees with the `{X_WAYPOINTS}` Chart it carries",
+    )))
 }
 
 /// Check a Landmark's readings against the Chart's Draft-07 face.
@@ -266,9 +261,8 @@ pub fn validate_readings(document: &Json, readings: &Json) -> Result<(), Vec<(Fe
 
 /// Does this document satisfy the Draft-07 meta-schema?
 pub fn check_meta_schema(document: &Json) -> Result<(), MalformedKind> {
-    jsonschema::draft7::meta::validate(document).map_err(|error| MalformedKind::Grammar {
-        detail: format!("not a valid Draft-07 schema: {error}"),
-    })
+    jsonschema::draft7::meta::validate(document)
+        .map_err(|error| MalformedKind::grammar(format!("not a valid Draft-07 schema: {error}")))
 }
 
 /// Readings as the instance the face validates — the shape frontmatter writes,
@@ -324,16 +318,9 @@ fn reading_instance(reading: &Reading) -> Json {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use domain::{Base36ID, ChartID, GlyphID, Icon, ReferenceDisplayMode, SelectOption};
+    use domain::fixtures::{feature_id, glyph_id, reference_kind};
+    use domain::{ChartID, Icon, SelectOption};
     use indexmap::IndexMap;
-
-    fn feature_id(id: &str) -> FeatureID {
-        FeatureID(Base36ID(id.to_string()))
-    }
-
-    fn glyph(id: &str) -> GlyphID {
-        GlyphID(Base36ID(id.to_string()))
-    }
 
     fn feature(id: &str, name: &str, kind: FeatureKind) -> Feature {
         Feature {
@@ -362,28 +349,18 @@ mod tests {
 
     fn option(id: &str, name: &str) -> SelectOption {
         SelectOption {
-            id: glyph(id),
+            id: glyph_id(id),
             ..SelectOption::builder().with_name(name).build()
         }
     }
 
     fn select_kind() -> FeatureKind {
         let mut options = IndexMap::new();
-        options.insert(glyph("0001"), option("0001", "Open"));
-        options.insert(glyph("0002"), option("0002", "Done"));
+        options.insert(glyph_id("0001"), option("0001", "Open"));
+        options.insert(glyph_id("0002"), option("0002", "Done"));
         FeatureKind::Select {
             options,
             default_option: None,
-        }
-    }
-
-    fn reference_kind() -> FeatureKind {
-        FeatureKind::Reference {
-            allowed_types: None,
-            max_references: None,
-            display_field: "title".into(),
-            display_mode: ReferenceDisplayMode::default(),
-            filter_criteria: None,
         }
     }
 
