@@ -105,6 +105,9 @@ inspiration, defines it.
 
 ## Inlines
 
+Inline constructs may enclose one another sixteen deep in the source; text
+nested deeper is refused rather than read. The emitter writes one level.
+
 ### Canonical form
 
 ```md
@@ -133,10 +136,8 @@ order" below. `[hi]{bold italic}` is bold italic text.
 
 `**bold**` never appears in an emitted file.
 
-The emphasis remapping is a departure chosen for how it reads. It means the
-parser cannot take `pulldown-cmark`'s merged `Emphasis`/`Strong` events at face
-value: it resolves each by the delimiter character at its source span, so `*` is
-bold, `_` is italic, and `__` is underline.
+The emphasis remapping is a departure chosen for how it reads: `*` is bold, `_`
+is italic, and `__` is underline.
 
 #### Why the scripts are always braced
 

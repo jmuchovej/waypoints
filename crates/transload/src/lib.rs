@@ -49,6 +49,7 @@ compile_error!(
 );
 
 pub(crate) mod bundle;
+pub(crate) mod document;
 pub(crate) mod export;
 pub(crate) mod frontmatter;
 pub(crate) mod identity;

@@ -58,6 +58,10 @@
     chrono             = { version = "0.4.45", default-features = false, features = [
       "serde"
     ] }
+    # `stacker` is left out: every grammar bounds its own recursion.
+    chumsky            = { version = "0.13", default-features = false, features = [
+      "std"
+    ] }
     clap               = { version = "4.6.1", features = [ "derive", "env" ] }
     derive_more        = "2.1.1"
     derive_setters     = "0.1.9"
@@ -94,7 +98,6 @@
     ] }
     pretty_assertions  = "1.4.1"
     proc-macro2        = "1"
-    pulldown-cmark     = { version = "0.13", default-features = false }
     quote              = "1"
     resvg              = "0.47.0"
     rqrr               = "0.10.1"
@@ -104,8 +107,6 @@
     rustls             = { version = "0.23", default-features = false, features = [
       "ring"
     ] }
-    # Bundles are UTF-8 by definition, so the `encoding` default is dead weight.
-    saphyr             = { version = "0.2.2", default-features = false }
     serde              = { version = "1.0.228", features = [ "derive" ] }
     serde_json         = { version = "1.0.150", features = [
       "arbitrary_precision",

@@ -305,7 +305,6 @@ SOFTWARE.
 - argon2 0.5.3: `MIT OR Apache-2.0`
 - aristo 0.4.1: `MIT`
 - aristo-macros 0.4.1: `MIT`
-- arraydeque 0.5.1: `MIT OR Apache-2.0`
 - arrayref 0.3.9: `BSD-2-Clause`
 - arrayvec 0.7.8: `MIT OR Apache-2.0`
 - as-slice 0.2.1: `MIT OR Apache-2.0`
@@ -404,6 +403,7 @@ SOFTWARE.
 - chacha20 0.10.2: `MIT OR Apache-2.0`
 - chacha20poly1305 0.11.0: `Apache-2.0 OR MIT`
 - chrono 0.4.45: `MIT OR Apache-2.0`
+- chumsky 0.13.0: `MIT`
 - cipher 0.4.4: `MIT OR Apache-2.0`
 - cipher 0.5.2: `MIT OR Apache-2.0`
 - clang-sys 1.9.1: `Apache-2.0`
@@ -552,6 +552,7 @@ SOFTWARE.
 - float-cmp 0.9.0: `MIT`
 - fluent-uri 0.4.1: `MIT`
 - fnv 1.0.7: `Apache-2.0  OR  MIT`
+- foldhash 0.1.5: `Zlib`
 - foldhash 0.2.0: `Zlib`
 - fontconfig-parser 0.5.8: `MIT`
 - fontdb 0.23.0: `MIT`
@@ -609,9 +610,9 @@ SOFTWARE.
 - half 2.7.1: `MIT OR Apache-2.0`
 - hashbrown 0.12.3: `MIT OR Apache-2.0`
 - hashbrown 0.14.5: `MIT OR Apache-2.0`
+- hashbrown 0.15.5: `MIT OR Apache-2.0`
 - hashbrown 0.16.1: `MIT OR Apache-2.0`
 - hashbrown 0.17.1: `MIT OR Apache-2.0`
-- hashlink 0.12.2: `MIT OR Apache-2.0`
 - heck 0.4.1: `MIT OR Apache-2.0`
 - heck 0.5.0: `MIT OR Apache-2.0`
 - hex 0.4.3: `MIT OR Apache-2.0`
@@ -919,7 +920,6 @@ SOFTWARE.
 - profiling-procmacros 1.0.18: `MIT OR Apache-2.0`
 - prost 0.14.4: `Apache-2.0`
 - prost-derive 0.14.4: `Apache-2.0`
-- pulldown-cmark 0.13.4: `MIT`
 - pulp 0.22.3: `MIT`
 - pulp-wasm-simd-flag 0.1.1: `MIT`
 - pxfm 0.1.30: `BSD-3-Clause OR Apache-2.0`
@@ -985,8 +985,6 @@ SOFTWARE.
 - rustybuzz 0.20.1: `MIT`
 - ryu 1.0.23: `Apache-2.0 OR BSL-1.0`
 - same-file 1.0.6: `Unlicense OR MIT`
-- saphyr 0.2.2: `MIT OR Apache-2.0`
-- saphyr-parser 0.2.2: `MIT OR Apache-2.0`
 - schannel 0.1.29: `MIT`
 - schemars 0.8.22: `MIT`
 - schemars 1.2.2: `MIT`
@@ -6753,7 +6751,7 @@ DEALINGS IN THE SOFTWARE.
 
 #### MIT License
 
-Used by const-random-macro 0.1.16, const-random 0.1.18, hashbrown 0.12.3, hashbrown 0.14.5, hashbrown 0.16.1, hashbrown 0.17.1, intrusive-collections 0.9.7.
+Used by const-random-macro 0.1.16, const-random 0.1.18, hashbrown 0.12.3, hashbrown 0.14.5, hashbrown 0.15.5, hashbrown 0.16.1, hashbrown 0.17.1, intrusive-collections 0.9.7.
 
 ~~~~text
 Copyright (c) 2016 Amanieu d'Antras
@@ -14076,7 +14074,7 @@ SOFTWARE.
 
 #### MIT License
 
-Used by aristo-macros 0.4.1, aristo 0.4.1, backtrace-ext 0.2.1, bitfields-impl 1.0.3, bitfields 1.0.3, block2 0.6.2, brotli-decompressor 6.0.1, cargo_toml 1.0.1, cesu8 1.1.0, chrono 0.4.45, crc24 0.1.6, crc32c 0.6.8, dispatch2 0.3.1, dlopen2 0.8.2, dlopen2_derive 0.4.3, dpi 0.1.2, enum-assoc 1.4.1, fast_qr 0.13.1, genawaiter-macro 0.99.1, genawaiter 0.99.1, htmlescape 0.3.1, http-serde 2.1.1, inquire 0.9.4, iroh-base 1.2.0, iroh-dns 1.3.0, iroh-metrics-derive 1.0.1, iroh-relay 1.2.0, iroh 1.2.0, jni-macros 0.22.4, jni-sys-macros 0.4.1, jni 0.22.4, jsonschema-regex 0.59.0, jsonschema-value 0.59.0, libappindicator-sys 0.9.0, libm 0.2.16, mac-notification-sys 0.6.15, minisign-verify 0.2.5, n0-error-macros 1.0.1, ndk-context 0.1.1, ndk-sys 0.6.0+11769913, ndk 0.9.0, netlink-packet-core 0.8.2, netlink-packet-core 0.9.0, netlink-proto 0.12.2, netlink-sys 0.8.8, netlink-sys 0.9.0, netwatch 0.19.3, next_version 0.2.26, num-cmp 0.1.0, objc2-app-kit 0.3.2, objc2-cloud-kit 0.3.2, objc2-core-data 0.3.2, objc2-core-foundation 0.3.2, objc2-core-graphics 0.3.2, objc2-core-image 0.3.2, objc2-core-location 0.3.2, objc2-core-text 0.3.2, objc2-core-wlan 0.3.2, objc2-encode 4.1.0, objc2-exception-helper 0.1.1, objc2-foundation 0.3.2, objc2-osa-kit 0.3.2, objc2-quartz-core 0.3.2, objc2-security-foundation 0.3.2, objc2-security 0.3.2, objc2-system-configuration 0.3.2, objc2-ui-kit 0.3.2, objc2-user-notifications 0.3.2, objc2-web-kit 0.3.2, objc2 0.6.4, ownedbytes 0.9.0, pack1 1.1.0, portmapper 0.19.3, profiling-procmacros 1.0.18, profiling 1.0.18, pulp-wasm-simd-flag 0.1.1, rustls-platform-verifier-android 0.1.1, saphyr-parser 0.2.2, saphyr 0.2.2, sigchld 0.2.5, simd_helpers 0.1.0, siphasher 1.0.3, specta-typescript 0.0.12, specta 2.0.0-rc.25, tantivy-bitpacker 0.10.0, tantivy-columnar 0.7.0, tantivy-common 0.11.0, tantivy-query-grammar 0.26.0, tantivy-sstable 0.7.0, tantivy-stacker 0.7.0, tantivy-tokenizer-api 0.7.0, tauri-plugin-barcode-scanner 2.5.1, tauri-plugin-deep-link 2.6.1, tauri-plugin-dialog 2.8.1, tauri-plugin-fs 2.6.0, tauri-plugin-notification 2.5.1, tauri-plugin-os 2.3.2, tauri-plugin-shell 2.4.1, tauri-plugin-single-instance 2.4.5, tauri-plugin-store 2.4.5, tauri-plugin-updater 2.12.0, tauri-plugin 2.7.1, tauri-winrt-notification 0.7.3, turso 0.7.0, turso_core 0.7.2, turso_ext 0.7.2, turso_macros 0.7.2, turso_parser 0.7.2, turso_sdk_kit 0.7.2, turso_sdk_kit_macros 0.7.2, turso_sync_engine 0.7.2, turso_sync_sdk_kit 0.7.2, uuid-simd 0.8.0, validator 0.20.0, vsimd 0.8.0, webview2-com-macros 0.8.1, webview2-com-sys 0.39.1, webview2-com 0.39.1, windows-collections 0.2.0, windows-collections 0.3.2, windows-core 0.61.2, windows-core 0.62.2, windows-future 0.2.1, windows-future 0.3.2, windows-implement 0.60.2, windows-interface 0.59.3, windows-link 0.1.3, windows-link 0.2.1, windows-numerics 0.2.0, windows-numerics 0.3.1, windows-registry 0.6.1, windows-result 0.3.4, windows-result 0.4.1, windows-strings 0.4.2, windows-strings 0.5.1, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.42.2, windows-targets 0.52.6, windows-targets 0.53.5, windows-threading 0.1.0, windows-threading 0.2.1, windows-version 0.1.7, windows 0.61.3, windows 0.62.2, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_aarch64_msvc 0.53.1, windows_x86_64_gnu 0.52.6, windows_x86_64_gnu 0.53.1, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1, zune-inflate 0.2.54.
+Used by aristo-macros 0.4.1, aristo 0.4.1, backtrace-ext 0.2.1, bitfields-impl 1.0.3, bitfields 1.0.3, block2 0.6.2, brotli-decompressor 6.0.1, cargo_toml 1.0.1, cesu8 1.1.0, chrono 0.4.45, crc24 0.1.6, crc32c 0.6.8, dispatch2 0.3.1, dlopen2 0.8.2, dlopen2_derive 0.4.3, dpi 0.1.2, enum-assoc 1.4.1, fast_qr 0.13.1, genawaiter-macro 0.99.1, genawaiter 0.99.1, htmlescape 0.3.1, http-serde 2.1.1, inquire 0.9.4, iroh-base 1.2.0, iroh-dns 1.3.0, iroh-metrics-derive 1.0.1, iroh-relay 1.2.0, iroh 1.2.0, jni-macros 0.22.4, jni-sys-macros 0.4.1, jni 0.22.4, jsonschema-regex 0.59.0, jsonschema-value 0.59.0, libappindicator-sys 0.9.0, libm 0.2.16, mac-notification-sys 0.6.15, minisign-verify 0.2.5, n0-error-macros 1.0.1, ndk-context 0.1.1, ndk-sys 0.6.0+11769913, ndk 0.9.0, netlink-packet-core 0.8.2, netlink-packet-core 0.9.0, netlink-proto 0.12.2, netlink-sys 0.8.8, netlink-sys 0.9.0, netwatch 0.19.3, next_version 0.2.26, num-cmp 0.1.0, objc2-app-kit 0.3.2, objc2-cloud-kit 0.3.2, objc2-core-data 0.3.2, objc2-core-foundation 0.3.2, objc2-core-graphics 0.3.2, objc2-core-image 0.3.2, objc2-core-location 0.3.2, objc2-core-text 0.3.2, objc2-core-wlan 0.3.2, objc2-encode 4.1.0, objc2-exception-helper 0.1.1, objc2-foundation 0.3.2, objc2-osa-kit 0.3.2, objc2-quartz-core 0.3.2, objc2-security-foundation 0.3.2, objc2-security 0.3.2, objc2-system-configuration 0.3.2, objc2-ui-kit 0.3.2, objc2-user-notifications 0.3.2, objc2-web-kit 0.3.2, objc2 0.6.4, ownedbytes 0.9.0, pack1 1.1.0, portmapper 0.19.3, profiling-procmacros 1.0.18, profiling 1.0.18, pulp-wasm-simd-flag 0.1.1, rustls-platform-verifier-android 0.1.1, sigchld 0.2.5, simd_helpers 0.1.0, siphasher 1.0.3, specta-typescript 0.0.12, specta 2.0.0-rc.25, tantivy-bitpacker 0.10.0, tantivy-columnar 0.7.0, tantivy-common 0.11.0, tantivy-query-grammar 0.26.0, tantivy-sstable 0.7.0, tantivy-stacker 0.7.0, tantivy-tokenizer-api 0.7.0, tauri-plugin-barcode-scanner 2.5.1, tauri-plugin-deep-link 2.6.1, tauri-plugin-dialog 2.8.1, tauri-plugin-fs 2.6.0, tauri-plugin-notification 2.5.1, tauri-plugin-os 2.3.2, tauri-plugin-shell 2.4.1, tauri-plugin-single-instance 2.4.5, tauri-plugin-store 2.4.5, tauri-plugin-updater 2.12.0, tauri-plugin 2.7.1, tauri-winrt-notification 0.7.3, turso 0.7.0, turso_core 0.7.2, turso_ext 0.7.2, turso_macros 0.7.2, turso_parser 0.7.2, turso_sdk_kit 0.7.2, turso_sdk_kit_macros 0.7.2, turso_sync_engine 0.7.2, turso_sync_sdk_kit 0.7.2, uuid-simd 0.8.0, validator 0.20.0, vsimd 0.8.0, webview2-com-macros 0.8.1, webview2-com-sys 0.39.1, webview2-com 0.39.1, windows-collections 0.2.0, windows-collections 0.3.2, windows-core 0.61.2, windows-core 0.62.2, windows-future 0.2.1, windows-future 0.3.2, windows-implement 0.60.2, windows-interface 0.59.3, windows-link 0.1.3, windows-link 0.2.1, windows-numerics 0.2.0, windows-numerics 0.3.1, windows-registry 0.6.1, windows-result 0.3.4, windows-result 0.4.1, windows-strings 0.4.2, windows-strings 0.5.1, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-sys 0.60.2, windows-sys 0.61.2, windows-targets 0.42.2, windows-targets 0.52.6, windows-targets 0.53.5, windows-threading 0.1.0, windows-threading 0.2.1, windows-version 0.1.7, windows 0.61.3, windows 0.62.2, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_aarch64_msvc 0.53.1, windows_x86_64_gnu 0.52.6, windows_x86_64_gnu 0.53.1, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6, windows_x86_64_msvc 0.53.1, zune-inflate 0.2.54.
 
 ~~~~text
 MIT License
@@ -14737,35 +14735,6 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-~~~~
-
-#### MIT License
-
-Used by pulldown-cmark 0.13.4.
-
-~~~~text
-The MIT License
-
-Copyright 2015 Google Inc. All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
 
 ~~~~
 
@@ -15931,35 +15900,6 @@ SOFTWARE.
 
 #### MIT License
 
-Used by arraydeque 0.5.1.
-
-~~~~text
-The MIT License (MIT)
-
-Copyright (c) 2018 Andy Lok <andylokandy@hotmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-~~~~
-
-#### MIT License
-
 Used by simplecss 0.2.2, unicode-vo 0.1.0.
 
 ~~~~text
@@ -16204,6 +16144,35 @@ Used by async-broadcast 0.7.2.
 The MIT License (MIT)
 
 Copyright (c) 2020 Yoshua Wuyts
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+~~~~
+
+#### MIT License
+
+Used by chumsky 0.13.0.
+
+~~~~text
+The MIT License (MIT)
+
+Copyright (c) 2021 Joshua Barretto
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -16675,39 +16644,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-~~~~
-
-#### MIT License
-
-Used by hashlink 0.12.2.
-
-~~~~text
-This work is derived in part from the `linked-hash-map` crate, Copyright (c)
-2015 The Rust Project Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
 ~~~~
 
 #### MIT License
@@ -18477,7 +18413,7 @@ the following restrictions:
 
 #### zlib License
 
-Used by foldhash 0.2.0.
+Used by foldhash 0.1.5, foldhash 0.2.0.
 
 ~~~~text
 Copyright (c) 2024 Orson Peters
