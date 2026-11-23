@@ -19,3 +19,9 @@ mod brew "brew/justfile"
 
 # The AUR: check the rendered PKGBUILDs on an Arch host
 mod aur "aur/justfile"
+
+# winget: validate the rendered manifests on a Windows host
+mod winget "winget/justfile"
+
+# Chocolatey: pack the rendered packages on a Windows host
+mod chocolatey "chocolatey/justfile"

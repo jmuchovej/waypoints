@@ -41,7 +41,7 @@
 - [x] 5.5 Add `cargo xtask dist render <channel> --flavor <flavor> [--manifest <path|url>]` (default `https://waypoints.so/api/v1/releases/<flavor>/manifest`) rendering every file under `distribution/<channel>/` — file names through the same context as contents — to `target/dist/<channel>/<flavor>/`, in tera strict mode, writing nothing on failure, and refusing `nix` and `kubernetes` as having nothing to render; verify a test renders a fixture twice and the outputs are byte-identical under identical names, `{{ package.id }}.rb` renders to `waypoints@nightly.rb`, and a release channel the registry does not list for the channel is refused naming the listed ones
 - [x] 5.6 Add `cargo xtask dist check` scanning `distribution/` — excluding `distribution/nix/releases/` — for a concrete tag, a 64-hex digest, or a versioned `/api/v1/releases/` URL; wire `just dist::check`; verify a test fixture with a stamped version fails naming the file and the committed `distribution/nix/releases/nightly.json` does not
 - [x] 5.7 Add a release-manifest fixture with digests under `tooling/xtask/tests/fixtures/`; verify it round-trips through `Manifest` deserialization
-- [ ] 5.8 Add `*.nuspec` to the XML formatter's includes in `.config/treefmt.toml`; verify `treefmt --fail-on-change` is clean and `treefmt --tree-root . distribution/chocolatey` (once 8.2 exists) reports the nuspec as formatted
+- [x] 5.8 Add `*.nuspec` to the XML formatter's includes in `.config/treefmt.toml`; verify `treefmt --fail-on-change` is clean and `treefmt --tree-root . distribution/chocolatey` (once 8.2 exists) reports the nuspec as formatted
 
 ## 6. Homebrew
 
@@ -55,9 +55,9 @@
 
 ## 8. winget and Chocolatey
 
-- [ ] 8.1 Author the package manifests `distribution/winget/{{ package.id }}.yaml`, `{{ package.id }}.installer.yaml`, `{{ package.id }}.locale.en-US.yaml` (`PackageIdentifier: {{ package.id }}`, `PackageVersion: {{ release.version }}`, `InstallerType: nsis`, `Scope: user`, `InstallerSha256` from the exe digest, `AppsAndFeaturesEntries` with `DisplayName: {{ flavor.product_name }}` and `DisplayVersion: {{ release.version }}`; the description says the app updates itself after installation); verify renders for all three release channels carry the identifier in their file names and pass `winget validate` where available, skipped otherwise
-- [ ] 8.2 Author `distribution/chocolatey/{{ package.id }}.nuspec` and `tools/chocolateyinstall.ps1` (`<id>{{ package.id }}</id>`, `<version>{{ release.version }}</version>`; `url64` on the versioned exe, `checksum64` from the digest, `checksumType64 sha256`, `silentArgs /S`, `validExitCodes @(0)`; the description says the app updates itself after installation); verify renders for all three release channels pass `choco pack` where `choco` exists, skipped otherwise
-- [ ] 8.3 Add `distribution/winget/justfile` and `distribution/chocolatey/justfile` with their `check` recipes and register the modules; verify each reports skipped on macOS with a reason
+- [x] 8.1 Author the package manifests `distribution/winget/{{ package.id }}.yaml`, `{{ package.id }}.installer.yaml`, `{{ package.id }}.locale.en-US.yaml` (`PackageIdentifier: {{ package.id }}`, `PackageVersion: {{ release.version }}`, `InstallerType: nsis`, `Scope: user`, `InstallerSha256` from the exe digest, `AppsAndFeaturesEntries` with `DisplayName: {{ flavor.product_name }}` and `DisplayVersion: {{ release.version }}`; the description says the app updates itself after installation); verify renders for all three release channels carry the identifier in their file names and pass `winget validate` where available, skipped otherwise
+- [x] 8.2 Author `distribution/chocolatey/{{ package.id }}.nuspec` and `tools/chocolateyinstall.ps1` (`<id>{{ package.id }}</id>`, `<version>{{ release.version }}</version>`; `url64` on the versioned exe, `checksum64` from the digest, `checksumType64 sha256`, `silentArgs /S`, `validExitCodes @(0)`; the description says the app updates itself after installation); verify renders for all three release channels pass `choco pack` where `choco` exists, skipped otherwise
+- [x] 8.3 Add `distribution/winget/justfile` and `distribution/chocolatey/justfile` with their `check` recipes and register the modules; verify each reports skipped on macOS with a reason
 
 ## 9. Integration
 

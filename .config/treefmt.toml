@@ -116,6 +116,7 @@ verbose                 = 1
     "*.svg",
     "*.entitlements",
     "*.manifest",
+    "*.nuspec",
     "*.plist",
     "*.storyboard",
     "*.xc{scheme,settings,workspacedata}"

@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+
+PackageIdentifier: "{{ package.id }}"
+PackageVersion: "{{ release.version }}"
+PackageLocale: en-US
+Publisher: John Muchovej
+PublisherUrl: https://waypoints.so
+PackageName: "{{ flavor.product_name }}"
+PackageUrl: https://waypoints.so
+License: AGPL-3.0-or-later
+LicenseUrl: https://github.com/jmuchovej/waypoints/blob/main/LICENSE
+ShortDescription: Local-first knowledge management
+Description: >-
+  Waypoints keeps your notes, tasks, and knowledge in blocks you can link,
+  type, and sync between your own devices. After installation the app updates
+  itself.
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
