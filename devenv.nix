@@ -52,9 +52,9 @@
         spec = "github:facebook/ktfmt";
         envs = [ "devtools" ];
       };
-      rufo = {
-        package = pkgs.rufo;
-        spec = "gem:rufo";
+      rubocop = {
+        package = pkgs.rubocop;
+        spec = "gem:rubocop";
         depends = [ config.waypoints.mise.tools.ruby.spec ];
         envs = [ "devtools" ];
       };
@@ -263,7 +263,7 @@
         spec = "core:deno";
         envs = [ "website" ];
       };
-      # since only `rufo` needs ruby, we don't need it in the base env.
+      # since only `rubocop` needs ruby, we don't need it in the base env.
       ruby = {
         package = config.languages.ruby.package;
         spec = "core:ruby";

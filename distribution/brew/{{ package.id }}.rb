@@ -6,7 +6,7 @@ cask "{{ package.id }}" do
   os macos: "macos", linux: "linux"
 
   version "{{ release.version }}"
-  sha256 arm: "{{ artifact.macos_arm64.dmg.sha256 }}",
+  sha256 arm:          "{{ artifact.macos_arm64.dmg.sha256 }}",
          x86_64_linux: "{{ artifact.linux_amd64.AppImage.sha256 }}"
 
   url "https://waypoints.so/api/v1/releases/{{ release.channel }}/{{ release.series }}/#{os}/#{arch}/waypoints-v#{version}.#{on_system_conditional(macos: "dmg", linux: "AppImage")}"

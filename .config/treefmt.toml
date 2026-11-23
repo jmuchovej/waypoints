@@ -84,9 +84,22 @@ verbose                 = 1
   options  = [ "--opt", "2" ]
   includes = [ "*.png" ]
 
-[formatter.rufo]
-  command  = "rufo"
-  options  = [ "-x" ]
+[formatter.rubocop]
+  command  = "rubocop"
+  # Layout and quoting only: the formatter's job, not a rewrite of style.
+  options  = [
+    "--config",
+    ".config/rubocop.yml",
+    "--autocorrect",
+    "--only",
+    "Layout,Style/StringLiterals,Style/StringLiteralsInInterpolation",
+    "--except",
+    "Layout/LineLength",
+    "--fail-level",
+    "fatal",
+    "--format",
+    "quiet",
+  ]
   includes = [ "*.rb", "**/Appfile", "**/Fastfile", "**/Podfile", "*.podspec" ]
 
 [formatter.rustfmt]

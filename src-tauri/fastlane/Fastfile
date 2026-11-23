@@ -25,10 +25,10 @@ end
 
 def asc_api_key
   app_store_connect_api_key(
-    key_id: ENV.fetch("APPLE_API_KEY"),
-    issuer_id: ENV.fetch("APPLE_API_ISSUER"),
+    key_id:       ENV.fetch("APPLE_API_KEY"),
+    issuer_id:    ENV.fetch("APPLE_API_ISSUER"),
     key_filepath: ENV.fetch("APPLE_API_KEY_PATH"),
-    in_house: false,
+    in_house:     false,
   )
 end
 
@@ -36,8 +36,8 @@ platform :android do
   desc "Upload nightly AAB to Play Store internal track"
   lane :nightly do
     upload_to_play_store(
-      track: "internal",
-      aab: staged_package,
+      track:           "internal",
+      aab:             staged_package,
       skip_upload_apk: true,
     )
   end
@@ -45,8 +45,8 @@ platform :android do
   desc "Upload preview AAB to Play Store internal track"
   lane :preview do
     upload_to_play_store(
-      track: "internal",
-      aab: staged_package,
+      track:           "internal",
+      aab:             staged_package,
       skip_upload_apk: true,
     )
   end
@@ -54,8 +54,8 @@ platform :android do
   desc "Upload stable AAB to Play Store production track"
   lane :stable do
     upload_to_play_store(
-      track: "production",
-      aab: staged_package,
+      track:           "production",
+      aab:             staged_package,
       skip_upload_apk: true,
     )
   end
@@ -66,11 +66,11 @@ platform :ios do
   lane :nightly do
     asc_api_key
     upload_to_testflight(
-      ipa: staged_package,
-      changelog: release_notes,
+      ipa:                               staged_package,
+      changelog:                         release_notes,
       skip_waiting_for_build_processing: true,
-      skip_submission: true,
-      distribute_external: false,
+      skip_submission:                   true,
+      distribute_external:               false,
     )
   end
 
@@ -78,11 +78,11 @@ platform :ios do
   lane :preview do
     asc_api_key
     upload_to_testflight(
-      ipa: staged_package,
-      changelog: release_notes,
+      ipa:                               staged_package,
+      changelog:                         release_notes,
       skip_waiting_for_build_processing: true,
-      skip_submission: true,
-      distribute_external: true,
+      skip_submission:                   true,
+      distribute_external:               true,
     )
   end
 
@@ -90,13 +90,13 @@ platform :ios do
   lane :stable do
     asc_api_key
     upload_to_app_store(
-      ipa: staged_package,
-      changelog: release_notes,
+      ipa:                               staged_package,
+      changelog:                         release_notes,
       skip_waiting_for_build_processing: true,
-      skip_submission: true,
-      distribute_external: true,
-      metadata_path: "./metadata/ios",
-      screenshots_path: "./metadata/ios/screenshots",
+      skip_submission:                   true,
+      distribute_external:               true,
+      metadata_path:                     "./metadata/ios",
+      screenshots_path:                  "./metadata/ios/screenshots",
     )
   end
 end
