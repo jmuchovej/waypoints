@@ -1,9 +1,13 @@
 # Homebrew: style-check and audit the rendered casks under target/dist/brew/.
 # Render first (`cargo xtask dist render brew --flavor <flavor>`).
+#
+# `BREW` points at another Homebrew where the installed one cannot run
+# developer commands — a Nix-managed one keeps its vendored gems and taps
+# read-only: `BREW=/path/to/brew/bin/brew just dist::brew::audit`.
 
 set script-interpreter := ["bash", "-euo", "pipefail"]
 
-# `brew audit` reads casks by name from a tap, never by path.
+# `brew style` and `brew audit` read casks by name from a tap, never by path.
 tap := "waypoints/dist-check"
 
 [private]
@@ -13,7 +17,8 @@ default:
 [doc("Runs `brew style` and `brew audit` on every rendered cask, for this host and for x86_64 Linux. Reports skipped where brew is not installed.")]
 [script]
 audit:
-    if ! command -v brew >/dev/null; then
+    brew="${BREW:-brew}"
+    if ! command -v "$brew" >/dev/null; then
       echo "skipped: brew is not installed"
       exit 0
     fi
@@ -26,16 +31,20 @@ audit:
 
     # A developer command for this run only, without flipping the setting.
     export HOMEBREW_DEVELOPER=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1
-    brew --version | head -1
-    brew style --cask "${casks[@]}"
+    "$brew" --version | head -1
 
-    brew tap-new --no-git "{{ tap }}" >/dev/null
-    trap 'brew untap "{{ tap }}" >/dev/null' EXIT
-    dir="$(brew --repository "{{ tap }}")/Casks"
+    "$brew" tap-new --no-git "{{ tap }}" >/dev/null
+    trap '"$brew" untap "{{ tap }}" >/dev/null' EXIT
+    # Current Homebrew loads a tap's casks only once the tap is trusted.
+    if "$brew" commands --quiet | grep -qx trust; then
+      "$brew" trust "{{ tap }}" >/dev/null
+    fi
+    dir="$("$brew" --repository "{{ tap }}")/Casks"
     mkdir -p "$dir"
     cp "${casks[@]}" "$dir/"
     for cask in "${casks[@]}"; do
-      token="$(basename "$cask" .rb)"
-      brew audit --cask "{{ tap }}/$token"
-      brew audit --cask --os linux --arch x86_64 "{{ tap }}/$token"
+      token="{{ tap }}/$(basename "$cask" .rb)"
+      "$brew" style --cask "$token"
+      "$brew" audit --cask "$token"
+      "$brew" audit --cask --os linux --arch intel "$token"
     done
