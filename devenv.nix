@@ -11,7 +11,7 @@
 {
   stdenv = pkgs.clangStdenv;
 
-  imports = [ ./nix/devenv ];
+  imports = [ ./tooling/devenv ];
 
   waypoints.mise = {
     # `MISE_ENV` targets **units of work** rather than actors. a contributor without `nix`
@@ -269,7 +269,7 @@
         spec = "core:ruby";
         envs = [ "devtools" ];
       };
-      # LOAD-BEARING, despite `envs = null`: nix/devenv/android.nix reads this
+      # LOAD-BEARING, despite `envs = null`: tooling/devenv/android.nix reads this
       # package's version into the generated `libs.versions.toml`, which is what
       # pins the Gradle Kotlin plugin. Gradle resolves `kotlin-compiler-embeddable`
       # from Maven at that version and runs it on the JDK — it never looks for
@@ -283,7 +283,7 @@
     };
   };
 
-  # `.env` and both of its substituters are owned by nix/devenv/default.nix.
+  # `.env` and both of its substituters are owned by tooling/devenv/default.nix.
   env.PROJECT_ROOT = config.devenv.root;
 
   delta.enable = true;
@@ -369,6 +369,6 @@
       "rust-toolchain.toml"
       ".config/deny.toml"
     ];
-    exec = builtins.readFile ./nix/devenv/bin/sync-deny-targets;
+    exec = builtins.readFile ./tooling/devenv/bin/sync-deny-targets;
   };
 }

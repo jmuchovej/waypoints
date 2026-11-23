@@ -39,11 +39,11 @@ if !recorded then
   throw ''
     waypoints.${channel}: no release is recorded for the ${channel} channel.
 
-    nix/releases/${channel}.json holds no entry: ${channel} has not published
+    distribution/nix/releases/${channel}.json holds no entry: ${channel} has not published
     under the release index yet. Pin a ref of main whose index records a
     ${channel} release, or wait for the channel's next publish.
   ''
 else if builtins.substring 0 1 tag != "v" then
-  throw "nix/releases/${channel}.json: tag `${tag}` does not start with `v`"
+  throw "distribution/nix/releases/${channel}.json: tag `${tag}` does not start with `v`"
 else
   entry // { inherit version; }

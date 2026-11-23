@@ -126,7 +126,7 @@ in
         included. Normally empty: the environment mise needs — `PROJECT_ROOT`,
         the `.env` pointer, the PATH additions — is policy rather than something
         derived from the tool set, so it is hand-maintained in
-        `.config/mise.toml`; see nix/devenv/default.nix for why each side
+        `.config/mise.toml`; see tooling/devenv/default.nix for why each side
         resolves `PROJECT_ROOT` its own way.
       '';
     };

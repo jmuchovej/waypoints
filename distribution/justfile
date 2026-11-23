@@ -6,3 +6,6 @@ default:
 
 # Station deployment: manifest validation and a kind cluster
 mod kubernetes "kubernetes/justfile"
+
+# The Nix channel: refreshing the hashes the app recipe pins
+mod nix "nix/justfile"

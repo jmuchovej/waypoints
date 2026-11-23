@@ -115,7 +115,7 @@ in
       message =
         "${config.dotenv.filename} references undefined variables in: "
         + concatStringsSep ", " unresolved
-        + ". Define them earlier in the file, or add an anchor in nix/devenv/default.nix.";
+        + ". Define them earlier in the file, or add an anchor in tooling/devenv/default.nix.";
     }
   ];
 }

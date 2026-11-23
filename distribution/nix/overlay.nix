@@ -3,14 +3,14 @@
 
 # Pure, flake-independent overlay: every dependency resolves through
 # `final`/`prev`, so consumers apply it to their own nixpkgs with no extra
-# inputs. Importable without flakes: `import ./nix/overlay.nix {}`.
+# inputs. Importable without flakes: `import ./distribution/nix/overlay.nix {}`.
 #
 # One attribute set, `waypoints`, with a package per channel. What each one
 # builds is decided by the channel this tree's manifest version names (see
 # ./channel.nix):
 #
 #   nightly (main)   every channel is the release its index entry records
-#                    (nix/releases/), fetched by rev and built with that
+#                    (distribution/nix/releases/), fetched by rev and built with that
 #                    tree's own recipe — a latest-tracking target
 #   preview, stable  that channel is this very tree, built with the recipe
 #                    beside this file; the other two fail, saying where to
@@ -28,8 +28,8 @@ final: _prev:
 let
   inherit (final) lib;
 
-  tree = ../.;
-  recipe = root: root + "/nix/packages/waypoints/package.nix";
+  tree = ../..;
+  recipe = root: root + "/distribution/nix/packages/waypoints/package.nix";
   this = import ./channel.nix tree;
 
   # The recorded release of `channel`, built with the recipe its own tree

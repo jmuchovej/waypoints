@@ -5,7 +5,7 @@
 # Refresh the hashes nix cannot derive from the tree, or with `--dry-run`
 # report what they would become. Hand-invoked after a lockfile change.
 #
-# Every such hash lives in `nix/packages/waypoints/hashes.json` and is read
+# Every such hash lives in `distribution/nix/packages/waypoints/hashes.json` and is read
 # from there by `package.nix`, so refreshing one is a write to a JSON key
 # rather than a rewrite of nix source.
 #
@@ -15,13 +15,13 @@
 # touched once, after the answer is known, so an interrupted run cannot leave
 # a placeholder behind to be committed.
 #
-# Builds call `nix/packages/waypoints/package.nix` with `workingTree` set to
+# Builds call `distribution/nix/packages/waypoints/package.nix` with `workingTree` set to
 # this tree rather than `nix build .#`, because an added jj workspace has no `.git`
 # and nix would copy the whole directory — `target/` included — into the
 # store. Not through the overlay: its packages build the releases the index
 # records, and these pins describe the working tree.
 
-const PINS_FILE = "nix/packages/waypoints/hashes.json"
+const PINS_FILE = "distribution/nix/packages/waypoints/hashes.json"
 
 # `key` is the field in the pins file. `attr` is the narrowest attribute that
 # still carries the hash, so a refresh costs one fetch rather than a whole app
@@ -60,7 +60,7 @@ def build-against-placeholder [root: string, attr: string]: nothing -> record {
       pkgs = import \(builtins.getFlake \"github:NixOS/nixpkgs/(nixpkgs-rev $root)\") {
         system = builtins.currentSystem;
       };
-      waypoints = pkgs.callPackage ($root)/nix/packages/waypoints/package.nix {
+      waypoints = pkgs.callPackage ($root)/distribution/nix/packages/waypoints/package.nix {
         workingTree = ($root);
         flavor = \"development\";
       };

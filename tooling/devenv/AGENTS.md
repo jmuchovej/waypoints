@@ -1,29 +1,28 @@
-# Agent Guide — `nix/`
+# Agent Guide — `tooling/devenv/`
 
-Nix lives here: the devenv modules that describe the shell, and the package
-definitions that build the app.
+The devenv modules that describe the dev shell, and the scripts devenv runs as
+tasks. The packages that ship Waypoints live under `distribution/nix/`.
 
 ## Layout
 
-| Path              | Holds                                                                  |
-| ----------------- | ---------------------------------------------------------------------- |
-| `nix/devenv/`     | devenv modules — one per concern, imported by `nix/devenv/default.nix` |
-| `nix/devenv/bin/` | scripts nix deploys **as devenv tasks**                                |
-| `nix/packages/`   | package definitions, built by the flake and the overlay                |
-| `nix/overlay.nix` | the overlay downstream consumers apply                                 |
+| Path                  | Holds                                                                      |
+| --------------------- | -------------------------------------------------------------------------- |
+| `tooling/devenv/`     | devenv modules — one per concern, imported by `tooling/devenv/default.nix` |
+| `tooling/devenv/bin/` | scripts nix deploys **as devenv tasks**                                    |
 
 ## Where a script goes
 
 The deciding question is **who runs it**, not what it does.
 
-- `nix/devenv/bin/` — the script is wired to a `tasks."…"` entry and runs
+- `tooling/devenv/bin/` — the script is wired to a `tasks."…"` entry and runs
   because entering the shell ran it. It never appears on PATH; devenv reads it
   with `builtins.readFile` and executes it under the task's `package`.
 - `tooling/bin/` — a person or a `just` recipe runs it. `.env` puts
   `tooling/bin` on PATH, so it is callable by bare name.
 
-A script that stops being a devenv task should move out of `nix/devenv/bin`;
-staying there implies an automation that no longer exists.
+A script that stops being a devenv task should move out of
+`tooling/devenv/bin`; staying there implies an automation that no longer
+exists.
 
 ## Generated versus hand-maintained
 

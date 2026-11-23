@@ -8,7 +8,7 @@
 #
 # The pnpm dependency FOD's `src` is manifests-only: all flavors share one
 # fetch, and app-code edits never invalidate it. Its hash comes from
-# `hashes.json` by way of package.nix; refresh it with `just nix-pins` after a
+# `hashes.json` by way of package.nix; refresh it with `just dist::nix::pins` after a
 # `pnpm-lock.yaml` change.
 {
   # The tree being built: package.nix's `workingTree`.
@@ -26,7 +26,7 @@
   # source. See the nix-flake-overlay design, D9.
   version,
   # Likewise from package.nix, which reads it from `hashes.json`. Refresh it
-  # with `just nix-pins` after any `pnpm-lock.yaml` change; never by hand.
+  # with `just dist::nix::pins` after any `pnpm-lock.yaml` change; never by hand.
   pnpmDepsHash,
 }:
 let

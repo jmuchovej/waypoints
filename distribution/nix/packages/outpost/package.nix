@@ -21,7 +21,7 @@
   # string-encoded paths outright. (Not `root`: nixpkgs has a package by that
   # name, and `callPackage` would fill it in.)
   workingTree,
-  # Escape hatch (see nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
+  # Escape hatch (see distribution/nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
   # e.g. from rust-overlay. Default: the consumer nixpkgs' rustPlatform.
   rustToolchain ? null,
 }:

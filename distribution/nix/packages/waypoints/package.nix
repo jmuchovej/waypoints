@@ -8,7 +8,7 @@
 # deb-unpacked bin/.desktop/icons into $out on Linux. dmg/nsis/appimage stay
 # with the release pipeline.
 #
-# The recipe for the tree it lives in. `nix/overlay.nix` applies it to its
+# The recipe for the tree it lives in. `distribution/nix/overlay.nix` applies it to its
 # own tree on a series ref, and to a fetched release's tree on main — by
 # evaluating that tree's copy of this file. The argument list is therefore
 # an interface a newer overlay calls on an older tag: add arguments with
@@ -36,7 +36,7 @@
   # string-encoded paths outright. (Not `root`: nixpkgs has a package by that
   # name, and `callPackage` would fill it in.)
   workingTree,
-  # Escape hatch (see nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
+  # Escape hatch (see distribution/nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
   # e.g. from rust-overlay. Default: the consumer nixpkgs' rustPlatform.
   rustToolchain ? null,
   # Commit stamped into build metadata (the flake passes self.rev/dirtyRev,
