@@ -65,7 +65,7 @@ pub fn render(
 
     let source = root.join(DIST_DIR).join(channel);
     let mut tera = tera::Tera::default();
-    tera.autoescape_on(Vec::new());
+    tera.autoescape_on(Vec::<&str>::new());
     tera.register_filter("pkgver", context::pkgver_filter);
 
     let mut rendered = Vec::new();

@@ -84,7 +84,7 @@
   specta-serde.workspace         = true
   specta-typescript.workspace    = true
   strum.workspace                = true
-  tera.workspace                 = true
+  tera                           = { version = "2.4", default-features = false }
   tokio                          = {
     workspace = true,
     features  = [ "fs", "macros", "net", "rt-multi-thread" ]

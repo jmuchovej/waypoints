@@ -21,7 +21,7 @@ use crate::{
 use anyhow::{Context as _, Result, anyhow};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 /// Where the download surface serves the store's objects, by key.
 pub const DOWNLOADS: &str = "https://waypoints.so/api/v1/releases";
@@ -50,11 +50,8 @@ pub fn pkgver(tag: &str) -> String {
 }
 
 /// The `pkgver` filter, over a string value.
-pub fn pkgver_filter(value: &Value, _: &HashMap<String, Value>) -> tera::Result<Value> {
-    let tag = value
-        .as_str()
-        .ok_or_else(|| tera::Error::msg("`pkgver` takes a string"))?;
-    Ok(Value::String(pkgver(tag)))
+pub fn pkgver_filter(tag: &str, _: tera::Kwargs, _: &tera::State) -> String {
+    pkgver(tag)
 }
 
 /// The render context for `channel` published as `package_id`, from
@@ -65,6 +62,12 @@ pub fn build(
     package_id: &str,
     manifest: &Manifest,
 ) -> Result<tera::Context> {
+    let value = value(root, channel, package_id, manifest)?;
+    tera::Context::from_serialize(&value).context("building the render context")
+}
+
+/// [`build`]'s context as plain JSON.
+fn value(root: &Path, channel: Channel, package_id: &str, manifest: &Manifest) -> Result<Value> {
     let config = flavor_config(root, channel)?;
     let tag = &manifest.version;
 
@@ -114,7 +117,7 @@ pub fn build(
         );
     }
 
-    let value = json!({
+    Ok(json!({
         "package": { "id": package_id },
         "flavor": {
             "product_name": config.product_name,
@@ -128,8 +131,7 @@ pub fn build(
             "series": manifest.series,
         },
         "artifact": artifacts,
-    });
-    tera::Context::from_serialize(value).context("building the render context")
+    }))
 }
 
 #[cfg(test)]
@@ -153,8 +155,7 @@ mod tests {
 
     #[test]
     fn the_context_names_the_package_flavor_release_and_artifacts() {
-        let context = build(root(), Channel::Nightly, "waypoints@nightly", &fixture()).unwrap();
-        let value = context.into_json();
+        let value = value(root(), Channel::Nightly, "waypoints@nightly", &fixture()).unwrap();
         assert_eq!(value["package"]["id"], "waypoints@nightly");
         assert_eq!(value["flavor"]["product_name"], "Waypoints Nightly");
         assert_eq!(value["flavor"]["identifier"], "so.waypoints.nightly");
