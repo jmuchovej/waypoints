@@ -4,7 +4,7 @@
 
 ### Requirement: A channel's manifest is what an updater reads
 
-Each channel SHALL expose a manifest naming that channel's current version, the targets available for it, and the SHA-256 digest of every file published for each target. A manifest SHALL describe only a release whose every required target was published. A manifest SHALL be served as published rather than derived on demand — readable in full from the download surface, as the publishing run wrote it — and SHALL be the single answer to what version a channel is on, so that the download surface, an updater, and a package manifest can never disagree about a channel's current release or its bytes.
+Each channel SHALL expose a manifest naming that channel's current version and the targets available for it. A manifest SHALL describe only a release whose every required target was published. A manifest SHALL be served as published rather than derived on demand, and SHALL be the single answer to what version a channel is on — so that the download surface, an updater, and a package manifest can never disagree about a channel's current release.
 
 #### Scenario: An updater learns the current version
 
@@ -25,6 +25,12 @@ Each channel SHALL expose a manifest naming that channel's current version, the 
 
 - **WHEN** the site is deployed
 - **THEN** manifests are read at request time, so a release published after that deployment is reflected without redeploying
+
+## ADDED Requirements
+
+### Requirement: A channel's manifest records every published file's digest and is readable whole
+
+A channel's manifest SHALL record the SHA-256 digest of every file published for each target, and the download surface SHALL serve the manifest in full, as the publishing run wrote it, so that a package manifest derives its checksums from the record without a store credential or a re-download.
 
 #### Scenario: The manifest itself is served
 
