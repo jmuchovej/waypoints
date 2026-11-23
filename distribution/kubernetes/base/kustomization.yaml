@@ -1,7 +1,7 @@
 # A one-Station Fleet: one Station holding the storage and orderer roles,
 # on a block volume, with its keys from Secrets. Reference material for
-# self-hosters and the hosted tier alike — validated with `just deploy::lint`
-# and exercised on kind (`../kind`).
+# self-hosters and the hosted tier alike — validated with
+# `just dist::kubernetes::lint` and exercised on kind (`../kind`).
 #
 # Bringing it up:
 #

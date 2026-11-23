@@ -1,0 +1,8 @@
+# Distribution: one module per distribution channel that has recipes.
+
+[private]
+default:
+    @just --list --list-submodules
+
+# Station deployment: manifest validation and a kind cluster
+mod kubernetes "kubernetes/justfile"

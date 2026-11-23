@@ -38,8 +38,8 @@ mod website "website/justfile"
 # Icon generation for every app flavor
 mod icons "src-tauri/res/icon/justfile"
 
-# Station deployment: manifest validation and a kind cluster
-mod deploy "deploy/justfile"
+# Distribution: package channels, the Nix channel, and the Station's deployment
+mod dist "distribution/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:

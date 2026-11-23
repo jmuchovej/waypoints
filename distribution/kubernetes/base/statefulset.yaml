@@ -25,7 +25,7 @@ spec:
         - name: station
           # `nix build .#outpost-image` produces this name and tag; retag
           # and push to your registry, or load it into kind (`just
-          # deploy::kind-load`).
+          # dist::kubernetes::kind-load`).
           image: outpost:0.1.0
           # Replaces the image's default command (`station`), keeping its
           # entrypoint. Keys are mounted from Secrets; the Station never

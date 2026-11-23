@@ -1,4 +1,5 @@
-# `kind create cluster --config kind-config.yaml` (or `just deploy::kind-up`):
+# `kind create cluster --config kind-config.yaml` (or
+# `just dist::kubernetes::kind-up`):
 # the Station's NodePort reaches the host as UDP 6782, the number the
 # kustomization advertises.
 kind: Cluster
