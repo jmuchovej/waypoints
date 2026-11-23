@@ -27,10 +27,10 @@
 
 ## 4. Digests and the manifest route
 
-- [ ] 4.1 Add `digests: BTreeMap<String, String>` (extension → SHA-256 hex) to `ManifestTarget` in `tooling/xtask/src/releases/manifest.rs`, covering every file the run uploads for the target (installers and updater payloads and signatures alike), computed from the staged files; `Manifest::build` takes the staged directory; verify a unit test over a scratch stage asserts every published and updater extension of a target has a digest equal to the file's hash
-- [ ] 4.2 Thread the staged directory into `release-manifest` (`tooling/xtask/src/bin/xtask/tasks/release_manifest.rs`) and the generated publishing step so the manifest is written from what was uploaded; verify the workflow generator tests pass and the regenerated workflow is committed
-- [ ] 4.3 Add the optional `digests` field to `ReleaseManifest` in `website/shared/utils/releases.ts` and keep every reader compiling; verify the website's typecheck recipe passes and `website/shared/utils/releases.test.ts` still passes
-- [ ] 4.4 Add `website/server/routes/api/v1/releases/[channel]/manifest.get.ts` streaming the stored object through `readObject` and `sendR2Object` with `content-type: application/json` (404 on an unknown channel, 404 when the channel has no manifest); verify a route test returns a fixture object's bytes unchanged and 404s for `foo`
+- [x] 4.1 Add `digests: BTreeMap<String, String>` (extension → SHA-256 hex) to `ManifestTarget` in `tooling/xtask/src/releases/manifest.rs`, covering every file the run uploads for the target (installers and updater payloads and signatures alike), computed from the staged files; `Manifest::build` takes the staged directory; verify a unit test over a scratch stage asserts every published and updater extension of a target has a digest equal to the file's hash
+- [x] 4.2 Thread the staged directory into `release-manifest` (`tooling/xtask/src/bin/xtask/tasks/release_manifest.rs`) and the generated publishing step so the manifest is written from what was uploaded; verify the workflow generator tests pass and the regenerated workflow is committed
+- [x] 4.3 Add the optional `digests` field to `ReleaseManifest` in `website/shared/utils/releases.ts` and keep every reader compiling; verify the website's typecheck recipe passes and `website/shared/utils/releases.test.ts` still passes
+- [x] 4.4 Add `website/server/routes/api/v1/releases/[channel]/manifest.get.ts` streaming the stored object through `readObject` and `sendR2Object` with `content-type: application/json` (404 on an unknown channel, 404 when the channel has no manifest); verify a route test returns a fixture object's bytes unchanged and 404s for `foo`
 
 ## 5. Rendering
 

@@ -1193,7 +1193,7 @@ jobs:
       - id: write-manifest
         name: Write the channel manifest
         if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
-        run: devenv shell -- cargo xtask release-manifest --tag "${TAG}"
+        run: devenv shell -- cargo xtask release-manifest --from release --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -1218,7 +1218,7 @@ jobs:
       - id: dry-manifest
         name: Render the channel manifest (dry run)
         if: needs.prepare.outputs.dry_run == 'true'
-        run: devenv shell -- cargo xtask release-manifest --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        run: devenv shell -- cargo xtask release-manifest --from release --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}

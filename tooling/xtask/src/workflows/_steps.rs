@@ -1002,7 +1002,9 @@ pub fn publish_release(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 /// down on a dry run, whose manifest [`dry_manifest`] renders instead.
 pub fn write_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     let step = Step::new("Write the channel manifest")
-        .run(Tools::Devenv.command(r#"cargo xtask release-manifest --tag "${TAG}""#))
+        .run(Tools::Devenv.command(&format!(
+            r#"cargo xtask release-manifest --from {STAGE_DIR} --tag "${{TAG}}""#
+        )))
         .shell("bash")
         .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("TAG", helpers::tag(tag)))
@@ -1054,7 +1056,7 @@ pub fn dry_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Render the channel manifest (dry run)")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo xtask release-manifest --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
+            r#"cargo xtask release-manifest --from {STAGE_DIR} --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
         )))
         .shell("bash")
         .if_condition(helpers::rehearsing(dry_run))
