@@ -14,8 +14,9 @@
 # an interface a newer overlay calls on an older tag: add arguments with
 # defaults, never rename or remove one.
 #
-# Nix builds compile without the `self-update` feature: store paths cannot
-# rewrite themselves, so the updater notifies and never installs.
+# Nix builds are the same binary as a published artifact. Store paths cannot
+# rewrite themselves, so the package launches it with `--no-self-update`: the
+# updater notifies and never installs.
 {
   lib,
   stdenv,
@@ -23,6 +24,7 @@
   makeRustPlatform,
   callPackage,
   cargo-tauri,
+  makeWrapper,
   writeText,
   pkg-config,
   wrapGAppsHook4,
@@ -53,8 +55,8 @@
   updaterEndpoints ? null,
 }:
 let
-  inherit (stdenv.hostPlatform) isLinux;
-  inherit (lib) optionals;
+  inherit (stdenv.hostPlatform) isDarwin isLinux;
+  inherit (lib) optionals optionalString;
 
   # Files read at evaluation are reached by path arithmetic, never by
   # interpolating `workingTree` into a string: that coerces the path to a
@@ -140,9 +142,12 @@ let
       }
     else
       rustPlatform;
+
+  # Each flavor's executable carries its name (see src-tauri/Cargo.toml).
+  main-program = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
 in
 rust-platform.buildRustPackage (_finalAttrs: {
-  pname = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
+  pname = main-program;
   version = app-version;
 
   src =
@@ -154,7 +159,6 @@ rust-platform.buildRustPackage (_finalAttrs: {
         (workingTree + "/Cargo.lock")
         (workingTree + "/crates")
         (workingTree + "/tooling")
-        (workingTree + "/vendor")
         # Bundled beside the notices; every distribution carries the license.
         (workingTree + "/LICENSE")
         (workingTree + "/docs/licensing/COPYING.exceptions")
@@ -170,19 +174,12 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   buildAndTestSubdir = "src-tauri";
 
-  # Flavors are additive cargo features over `desktop`; `self-update` (a
-  # default feature) is deliberately absent.
-  #
-  # These must be `buildFeatures`/`buildNoDefaultFeatures`, not the `cargo*`
-  # spellings the build hook reads: `buildRustPackage` *computes* the `cargo*`
-  # attrs from these, so setting the `cargo*` names directly is silently
-  # overwritten by the defaults (`[]` and `false`) and the build quietly gets
-  # every default feature — `self-update` included.
-  buildNoDefaultFeatures = true;
-  buildFeatures = [
-    "desktop"
-    flavor
-  ];
+  # The flavor is an additive cargo feature over the defaults. This must be
+  # `buildFeatures`, not the `cargoBuildFeatures` the build hook reads:
+  # `buildRustPackage` *computes* the `cargo*` attrs from these, so setting the
+  # `cargo*` name directly is silently overwritten by the default (`[]`) and
+  # the build quietly gets no flavor.
+  buildFeatures = [ flavor ];
 
   tauriBuildFlags = [
     "--config"
@@ -193,6 +190,7 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   nativeBuildInputs = [
     cargo-tauri.hook
+    makeWrapper
   ]
   ++ optionals isLinux [
     pkg-config
@@ -214,6 +212,30 @@ rust-platform.buildRustPackage (_finalAttrs: {
   # (preBuild runs at the workspace root, before the src-tauri pushd).
   preBuild = ''
     cp -r ${frontend} src-tauri/frontend-dist
+  '';
+
+  # The launch flag that caps self-updating at notify (see `launch.rs`).
+  #
+  # Darwin: the hook installs only the `.app`, and Finder starts its
+  # `Contents/MacOS` executable directly, so the wrapper has to stand in that
+  # slot — the real binary moves aside as `*-unwrapped`. Launch Services runs
+  # a script as the bundle executable without complaint.
+  postInstall = optionalString isDarwin ''
+    for app in "$out"/Applications/*.app; do
+      exe="$app/Contents/MacOS/${main-program}"
+      if [ ! -x "$exe" ]; then
+        echo "waypoints.${flavor}: no bundle executable at $exe" >&2
+        exit 1
+      fi
+      mv "$exe" "$exe-unwrapped"
+      makeWrapper "$exe-unwrapped" "$exe" --add-flags --no-self-update
+    done
+  '';
+
+  # Linux: `wrapGAppsHook4` already wraps `$out/bin/*`, and the deb's desktop
+  # entry names the binary bare, so PATH resolves to the wrapper either way.
+  preFixup = optionalString isLinux ''
+    gappsWrapperArgs+=(--add-flags --no-self-update)
   '';
 
   # Exposed so the pnpm dependency closure is addressable on its own
@@ -244,7 +266,6 @@ rust-platform.buildRustPackage (_finalAttrs: {
       "x86_64-linux"
       "aarch64-linux"
     ];
-    # Each flavor's executable carries its name (see src-tauri/Cargo.toml).
-    mainProgram = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
+    mainProgram = main-program;
   };
 })
