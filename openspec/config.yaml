@@ -42,7 +42,8 @@ context: |
         code: cartograph, app
     - transload: the Bundle format — export, ingest, dialect grammar.
         code: transload, domain (syntax)
-    - app-shell: Tauri command surface, typed IPC, runtime lifecycle.
+    - app-shell: Tauri command surface, typed IPC, runtime lifecycle. A tree,
+        not a leaf: deltas land under `app-shell/<area>` — self-update.
         code: src-tauri, cartograph
     - storage: collection specs, migrations, query semantics.
         code: bedrock-core, bedrock-derive, bedrock

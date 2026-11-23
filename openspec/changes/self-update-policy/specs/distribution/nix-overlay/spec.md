@@ -4,7 +4,7 @@
 
 ### Requirement: Store-installed builds notify about updates but never self-update
 
-A Nix-installed build SHALL NOT download, stage, or apply an update to itself under any circumstance. The package SHALL ensure this by launching the app with `--no-self-update` through the wrapper it installs, so that the same binary a published artifact ships is capped at notify-only on Nix. It SHALL still query its flavor's update endpoint and, when a newer version than the running one is available, surface a notification to the user. The notification SHALL NOT offer an in-place install action.
+A Nix-installed build SHALL NOT download, stage, or apply an update to itself under any circumstance. The package SHALL ensure this by passing `--no-self-update` from the wrapper it installs, capping the same binary a published artifact ships. It SHALL still query its flavor's update endpoint and, when a newer version is available, notify the user without offering an in-place install.
 
 #### Scenario: Newer version available
 

@@ -16,7 +16,7 @@ Whether a Waypoints install may rewrite itself is decided at compile time today:
 
 ### New Capabilities
 
-- `app-shell`: the desktop app's runtime lifecycle as the shell owns it — here, how the app decides whether to check for, announce, or apply an update: the setting, the launch flag that caps it, and what a capped install tells the user. This is the first spec in the `app-shell` domain; it owns only what this change specifies.
+- `app-shell/self-update`: how the app decides whether to check for, announce, or apply an update — the setting, the launch flag that caps it, and what a capped install tells the user. `app-shell` is a tree like `distribution` and `toolchain`; this is its first area, and it owns only what this change specifies.
 
 ### Modified Capabilities
 
@@ -35,5 +35,5 @@ Whether a Waypoints install may rewrite itself is decided at compile time today:
 - **Frontend**: a self-update control on the settings page under the app section (beside `src/app/pages/settings/app/appearance.vue`), disabled-with-notice when capped.
 - **Nix**: `nix/packages/waypoints/package.nix` (`distribution/nix/packages/waypoints/package.nix` once `distribution-tree` lands): `buildNoDefaultFeatures`/`buildFeatures` reduced to the flavor, and `--add-flags --no-self-update` on the wrapper.
 - **Website**: a docs page for managed installs, at a stable URL the app's notice links to.
-- **Specs**: `openspec/specs/distribution/nix-overlay/spec.md` amended; `openspec/specs/app-shell/spec.md` created.
+- **Specs**: `openspec/specs/distribution/nix-overlay/spec.md` amended; `openspec/specs/app-shell/self-update/spec.md` created.
 - **Depended on by**: `distribution-tree` (its AUR package passes the flag).

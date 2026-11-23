@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the desktop app's runtime behavior as the Tauri shell owns it, starting with self-updating: the user's setting, the launch flag through which an installing package caps it, and what the app tells a user whose install is managed.
+Defines how the desktop app decides whether to check for, announce, or apply an update: the user's setting, the launch flag through which an installing package caps it, and what the app tells a user whose install is managed.
 
 ## ADDED Requirements
 
