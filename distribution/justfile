@@ -16,3 +16,6 @@ mod nix "nix/justfile"
 
 # Homebrew: style and audit the rendered casks
 mod brew "brew/justfile"
+
+# The AUR: check the rendered PKGBUILDs on an Arch host
+mod aur "aur/justfile"

@@ -50,7 +50,7 @@
 
 ## 7. AUR (after `self-update-policy`)
 
-- [ ] 7.1 Author `distribution/aur/PKGBUILD` and `distribution/aur/.SRCINFO` (`pkgname={{ package.id }}`) extracting the published deb with bsdtar, installing the binary under `/usr/lib/{{ package.id }}/`, a `/usr/bin/{{ flavor.executable }}` wrapper that execs it with `--no-self-update "$@"`, and the deb's desktop entry with its `Exec` rewritten to the wrapper; `pkgver` from the filter; `sha256sums` from the deb digest; a `pkgdesc` naming the release channel; verify `cargo xtask dist render aur --flavor stable --manifest <fixture>` renders both files
+- [x] 7.1 Author `distribution/aur/PKGBUILD` and `distribution/aur/.SRCINFO` (`pkgname={{ package.id }}`) extracting the published deb with bsdtar, installing the binary under `/usr/lib/{{ package.id }}/`, a `/usr/bin/{{ flavor.executable }}` wrapper that execs it with `--no-self-update "$@"`, and the deb's desktop entry with its `Exec` rewritten to the wrapper; `pkgver` from the filter; `sha256sums` from the deb digest; a `pkgdesc` naming the release channel; verify `cargo xtask dist render aur --flavor stable --manifest <fixture>` renders both files
 - [ ] 7.2 Add `distribution/aur/justfile` with `check` diffing the rendered `.SRCINFO` against `makepkg --printsrcinfo` and running `namcap` where `makepkg` exists, reporting skipped otherwise; register the module; verify the recipe reports skipped on macOS and passes in an Arch container
 
 ## 8. winget and Chocolatey
