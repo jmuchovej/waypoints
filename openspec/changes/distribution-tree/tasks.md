@@ -21,9 +21,9 @@
 
 ## 3. Spec and open-change paths
 
-- [ ] 3.1 Confirm the delta specs under `openspec/changes/distribution-tree/specs/` match the moved paths and recipe names; verify `openspec validate distribution-tree --strict` reports nothing beyond the requirement-length warning `station-deployment`'s published requirement already carries on `main`
-- [ ] 3.2 Update `deploy/…` paths and `just deploy::…` recipes in `fleet-roster`, `station-replication`, and `outpost-observability` to `distribution/kubernetes/…` and `just dist::kubernetes::…`; verify `rg -n "deploy/|deploy::" openspec/changes --glob "!archive/**" --glob "!distribution-tree/**"` is empty and each change validates no worse than before (`station-replication` already trips the requirement-length warning on `main`)
-- [ ] 3.3 Update `nix/channel.nix`, `nix/overlay.nix`, `nix/packages/…`, `nix/releases/`, and `nix-pins` references in `library-minting` and `self-update-policy` to their `distribution/nix/…` paths and `just dist::nix::pins`; verify `rg -nP "(?<!distribution/)nix/(packages|releases|overlay|channel|devenv)" openspec/changes --glob "!archive/**" --glob "!distribution-tree/**"` is empty and each change validates no worse than before
+- [x] 3.1 Confirm the delta specs under `openspec/changes/distribution-tree/specs/` match the moved paths and recipe names; verify `openspec validate distribution-tree --strict` reports nothing beyond the requirement-length warning `station-deployment`'s published requirement already carries on `main`
+- [x] 3.2 Update `deploy/…` paths and `just deploy::…` recipes in `fleet-roster`, `station-replication`, and `outpost-observability` to `distribution/kubernetes/…` and `just dist::kubernetes::…`; verify `rg -n "deploy/|deploy::" openspec/changes --glob "!archive/**" --glob "!distribution-tree/**"` is empty and each change validates no worse than before (`station-replication` already trips the requirement-length warning on `main`)
+- [x] 3.3 Update `nix/channel.nix`, `nix/overlay.nix`, `nix/packages/…`, `nix/releases/`, and `nix-pins` references in `library-minting` and `self-update-policy` to their `distribution/nix/…` paths and `just dist::nix::pins`; verify `rg -nP "(?<!distribution/)nix/(packages|releases|overlay|channel|devenv)" openspec/changes --glob "!archive/**" --glob "!distribution-tree/**"` is empty and each change validates no worse than before
 
 ## 4. Digests and the manifest route
 

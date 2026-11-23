@@ -10,7 +10,7 @@
 
 - [x] 2.1 Rewrite `check_for_updates` in `src-tauri/src/builders/menus.rs` as one `match` on the effective policy (`off` returns before the check; `notify` shows the existing dialog; `on` downloads, installs, restarts) and delete both `#[cfg(feature = "self-update")]` arms; verify `cargo clippy -p waypoints --all-targets` is clean and a test over a fake updater asserts `off` never calls `check`
 - [x] 2.2 Remove `self-update` from `[features]` and `default` in `src-tauri/Cargo.toml`; verify `cargo build -p waypoints` succeeds and `rg -n "self-update" src-tauri/Cargo.toml` is empty
-- [x] 2.3 In the Waypoints Nix recipe (`nix/packages/waypoints/package.nix`, or `distribution/nix/packages/waypoints/package.nix` after `distribution-tree`), reduce `buildFeatures` to the flavor and add `--add-flags --no-self-update` to the wrapper; verify `nix eval --raw .#checks.aarch64-darwin.waypoints-in-tree.drvPath` succeeds and the built wrapper script contains the flag
+- [x] 2.3 In the Waypoints Nix recipe (`distribution/nix/packages/waypoints/package.nix`), reduce `buildFeatures` to the flavor and add `--add-flags --no-self-update` to the wrapper; verify `nix eval --raw .#checks.aarch64-darwin.waypoints-in-tree.drvPath` succeeds and the built wrapper script contains the flag
 
 ## 3. The settings page
 

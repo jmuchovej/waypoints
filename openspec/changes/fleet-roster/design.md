@@ -51,7 +51,7 @@ The dispatch arm matches `RosterRequest` whether or not a `Hello` preceded it an
 
 ### D6 — The roster in Kubernetes is a ConfigMap, optional in the base
 
-`deploy/kubernetes/base` gains an optional `roster.json` ConfigMap mounted read-only at `/config/roster.json` with `OUTPOST_ROSTER` pointing at it; the base ships with the mount but no roster, so the one-Station Fleet keeps working unchanged. The kind recipe `kind-apply` gains the steps to derive the Station identity from the generated key and sign a one-entry roster, so the kind run exercises the fleeted path.
+`distribution/kubernetes/base` gains an optional `roster.json` ConfigMap mounted read-only at `/config/roster.json` with `OUTPOST_ROSTER` pointing at it; the base ships with the mount but no roster, so the one-Station Fleet keeps working unchanged. The kind recipe `kind-apply` gains the steps to derive the Station identity from the generated key and sign a one-entry roster, so the kind run exercises the fleeted path.
 
 ## Risks / Trade-offs
 

@@ -33,7 +33,7 @@ Whether a Waypoints install may rewrite itself is decided at compile time today:
 
 - **App**: `src-tauri/src/bin/{waypoints,waypoints-preview,waypoints-nightly,waypoints-development}.rs` (argv handling, beside the existing `--version`), `src-tauri/src/lib.rs` (the policy handed to `run`), `src-tauri/src/builders/menus.rs` (`check_for_updates` branches at runtime; the `#[cfg(feature = "self-update")]` arms go), `src-tauri/src/settings.rs` (the `self_update` key), a command exposing the effective policy and the cap; `src-tauri/Cargo.toml` (the `self-update` feature removed from `[features]` and `default`); generated bindings.
 - **Frontend**: a self-update control on the settings page under the app section (beside `src/app/pages/settings/app/appearance.vue`), disabled-with-notice when capped.
-- **Nix**: `nix/packages/waypoints/package.nix` (`distribution/nix/packages/waypoints/package.nix` once `distribution-tree` lands): `buildNoDefaultFeatures`/`buildFeatures` reduced to the flavor, and `--add-flags --no-self-update` on the wrapper.
+- **Nix**: `distribution/nix/packages/waypoints/package.nix`: `buildNoDefaultFeatures`/`buildFeatures` reduced to the flavor, and `--add-flags --no-self-update` on the wrapper.
 - **Website**: a docs page for managed installs, at a stable URL the app's notice links to.
 - **Specs**: `openspec/specs/distribution/nix-overlay/spec.md` amended; `openspec/specs/app-shell/self-update/spec.md` created.
 - **Depended on by**: `distribution-tree` (its AUR package passes the flag).
