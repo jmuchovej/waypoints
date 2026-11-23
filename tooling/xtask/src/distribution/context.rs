@@ -7,7 +7,8 @@
 //!
 //! - `package.id`
 //! - `flavor.product_name`, `flavor.identifier`, `flavor.executable`
-//! - `release.tag`, `release.version` (the tag without `v`), `release.series`
+//! - `release.channel`, `release.tag`, `release.version` (the tag without
+//!   `v`), `release.series`
 //! - `artifact.<os>_<arch>.<ext>.{url, file_name, sha256}`, with any `.` in
 //!   the extension spelled `_` (`app_tar_gz`)
 //!
@@ -121,6 +122,7 @@ pub fn build(
             "executable": Flavor::from(channel).executable(),
         },
         "release": {
+            "channel": channel.flavor(),
             "tag": tag,
             "version": tag.strip_prefix('v').unwrap_or(tag),
             "series": manifest.series,
@@ -157,6 +159,7 @@ mod tests {
         assert_eq!(value["flavor"]["product_name"], "Waypoints Nightly");
         assert_eq!(value["flavor"]["identifier"], "so.waypoints.nightly");
         assert_eq!(value["flavor"]["executable"], "waypoints-nightly");
+        assert_eq!(value["release"]["channel"], "nightly");
         assert_eq!(value["release"]["tag"], "v0.1.0-nightly.20261116");
         assert_eq!(value["release"]["version"], "0.1.0-nightly.20261116");
         assert_eq!(value["release"]["series"], "v0.1.x");

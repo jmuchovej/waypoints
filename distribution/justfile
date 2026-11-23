@@ -13,3 +13,6 @@ mod kubernetes "kubernetes/justfile"
 
 # The Nix channel: refreshing the hashes the app recipe pins
 mod nix "nix/justfile"
+
+# Homebrew: style and audit the rendered casks
+mod brew "brew/justfile"
