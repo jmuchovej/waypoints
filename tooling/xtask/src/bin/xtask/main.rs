@@ -35,6 +35,7 @@ pub mod tasks {
     pub mod demo_territory;
     pub mod dev_server;
     pub mod devenv_files;
+    pub mod dist;
     pub mod icongen;
     pub mod license;
     pub mod publish_plan;
@@ -98,6 +99,8 @@ enum Command {
     DemoTerritory(tasks::demo_territory::Options),
     /// Holds the tree to the licensing policy; regenerates the third-party notices.
     License(tasks::license::Options),
+    /// Renders package manifests from a release manifest, and refuses stamped ones.
+    Dist(tasks::dist::Options),
 }
 
 fn main() -> Result<()> {
@@ -122,5 +125,6 @@ fn main() -> Result<()> {
         Command::DevServer(args) => tasks::dev_server::run(args),
         Command::DemoTerritory(args) => tasks::demo_territory::run(args),
         Command::License(args) => tasks::license::run(args),
+        Command::Dist(args) => tasks::dist::run(args),
     }
 }

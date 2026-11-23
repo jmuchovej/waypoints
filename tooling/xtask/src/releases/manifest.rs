@@ -21,25 +21,25 @@ use crate::{
     releases::{artifacts, version::Version},
 };
 use anyhow::{Context as _, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::{collections::BTreeMap, path::Path};
 
 /// What a channel's manifest guarantees to a reader: its current version
 /// and the targets published for it. Field names are the wire format every
 /// reader (the download surface, an updater, a package manifest) agrees on.
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Manifest {
     pub version: String,
     pub series: String,
     pub targets: Vec<ManifestTarget>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ManifestTarget {
     pub os: String,
     pub arch: String,
-    pub extensions: &'static [&'static str],
+    pub extensions: Vec<String>,
     /// Extension → SHA-256 hex, for every file the target uploads:
     /// installers and updater payloads and signatures alike.
     pub digests: BTreeMap<String, String>,
@@ -75,7 +75,7 @@ impl Manifest {
                 Ok(ManifestTarget {
                     os: target.os,
                     arch: target.arch.to_string(),
-                    extensions: target.extensions,
+                    extensions: target.extensions.iter().map(|e| (*e).to_owned()).collect(),
                     digests,
                 })
             })
@@ -180,8 +180,8 @@ mod tests {
             let expected: Vec<&str> = target
                 .extensions
                 .iter()
-                .chain(platform.updater_extensions())
-                .copied()
+                .map(String::as_str)
+                .chain(platform.updater_extensions().iter().copied())
                 .collect();
             assert_eq!(
                 target
@@ -216,6 +216,24 @@ mod tests {
         );
     }
 
+    /// The fixture the renderer's tests read is what this module writes.
+    #[test]
+    fn the_fixture_round_trips() {
+        let text = include_str!("../../tests/fixtures/release-manifest.json");
+        let parsed: Manifest = serde_json::from_str(text).unwrap();
+        assert_eq!(parsed.version, "v0.1.0-nightly.20261116");
+        assert!(
+            parsed
+                .targets
+                .iter()
+                .all(|target| !target.digests.is_empty())
+        );
+        let original: serde_json::Value = serde_json::from_str(text).unwrap();
+        let rendered: serde_json::Value =
+            serde_json::from_slice(&parsed.render().unwrap()).unwrap();
+        assert_eq!(rendered, original);
+    }
+
     #[test]
     fn a_file_missing_from_the_stage_fails_naming_it() {
         let dir = tempfile::tempdir().unwrap();
@@ -223,8 +241,7 @@ mod tests {
         fixture::stage(dir.path(), Channel::Stable, tag);
         std::fs::remove_file(dir.path().join(artifacts::file_name(tag, "deb.sig"))).unwrap();
         let error = Manifest::build(Channel::Stable, &tag.parse().unwrap(), dir.path())
-            .err()
-            .expect("a missing file is refused");
+            .expect_err("a missing file is refused");
         assert!(
             format!("{error:#}").contains("waypoints-v0.1.1.deb.sig"),
             "{error:#}"

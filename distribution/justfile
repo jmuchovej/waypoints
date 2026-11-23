@@ -4,6 +4,10 @@
 default:
     @just --list --list-submodules
 
+[doc("Fails if any package manifest under distribution/ is stamped with a release's tag, digest, or versioned URL.")]
+check:
+    cd .. && cargo xtask dist check
+
 # Station deployment: manifest validation and a kind cluster
 mod kubernetes "kubernetes/justfile"
 

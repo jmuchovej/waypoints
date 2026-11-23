@@ -1,0 +1,55 @@
+{
+  "version": "v0.1.0-nightly.20261116",
+  "series": "v0.1.x",
+  "targets": [
+    {
+      "os": "macos",
+      "arch": "arm64",
+      "extensions": ["dmg"],
+      "digests": {
+        "app.tar.gz": "7548071c6bc36cdc74f414cd9c316f49b198b3b133622d44e29d5237ffd3a6e5",
+        "app.tar.gz.sig": "900b4840c90051df80524fda94980e8d7c098b155a4c471ece2048a6e9a5e0fa",
+        "dmg": "776bde6561054397d2e9ade7c88bdc83e90e3efcc6561049274be3650f4ccde5"
+      }
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "extensions": ["exe"],
+      "digests": {
+        "exe": "25f308750b339d28e598a51113877a53c1f4f8c8246f07f0b5a33e0e47dd601f",
+        "exe.sig": "2b168255818a82f648370812fd1891de9b598f97309c968ac486a50f3559a262"
+      }
+    },
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "extensions": ["AppImage", "deb", "rpm"],
+      "digests": {
+        "AppImage": "1acd7b6229110a5401d49cf8475cb0d1cbdf1edd5082945106dffed13b044d2c",
+        "AppImage.sig": "ec2b44b62f7abf991db83e58b4c41742654470865cc0763e84e7644f8ad6f56e",
+        "deb": "091d8326cba7a901ee5183591c48cc04ae117d53260a15ce171ecc739937ac98",
+        "deb.sig": "6641bda44c586cd8b1b7fb6eae65ebf9346200ec0f2297f76797e62b32eb771a",
+        "rpm": "87d1299b75d8d9d4c8ac94389b2e09ffba1664cb9d97c4aa96d9da8e7231023e",
+        "rpm.sig": "ba0f8ac95eb03d6c0ceb0e3668fb510b4c833945bc90fa4998784acff6a35237"
+      }
+    },
+    {
+      "os": "ios",
+      "arch": "arm64",
+      "extensions": ["ipa"],
+      "digests": {
+        "ipa": "46611920e6bdcc08f9c37fb623c713da798bf74422388af1a3a231b4b293199f"
+      }
+    },
+    {
+      "os": "android",
+      "arch": "arm64",
+      "extensions": ["apk", "aab"],
+      "digests": {
+        "aab": "463a17bf6e76d6b724eb941bed371d2b942068a4619ea571b48b982e5249f675",
+        "apk": "1c9834296ef6ae5fad260e0e0b1f8c545ed62313ab5ea47485efe8f9d55e5427"
+      }
+    }
+  ]
+}
