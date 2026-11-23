@@ -259,6 +259,28 @@ pub fn license(context: &WorkflowContext) -> NamedJob {
     NamedJob::new("license", job)
 }
 
+/// Renders every package manifest against the fixture release manifest and
+/// runs each distribution channel's check. On macOS, the one runner with
+/// Homebrew, so `brew audit` runs; the AUR, winget, and Chocolatey checks
+/// report skipped. On mise until the project has a cachix.
+pub fn dist(context: &WorkflowContext) -> NamedJob {
+    let job = mise_env(Job::default(), &[MiseEnv::Devtools])
+        .name("Check the package manifests")
+        .permissions(Permissions::default().contents(Level::Read))
+        .runs_on(runners::MACOS)
+        .add_step(steps::checkout())
+        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(steps::rust_cache())
+        .add_step(
+            Step::new("just dist::check-all")
+                .run("just dist::check-all")
+                .shell("bash")
+                .id("check-all"),
+        );
+
+    NamedJob::new("dist", job)
+}
+
 /// Drafts the release every build uploads into, with git-cliff notes.
 ///
 /// The tag guards sit on the steps, not the job: the builds `need` this job,

@@ -155,7 +155,7 @@ All three release channels are registered on each of the four package channels (
 
 **Chocolatey** — `<id>` from the registry; `<version>` is `release.version`; `url64` on the versioned exe, `checksum64` from the digest, `checksumType64 sha256`, `silentArgs /S`, `validExitCodes @(0)`; no uninstall script, relying on Chocolatey's Auto Uninstaller (unverified; see Risks). Validator: `choco pack` on Windows.
 
-**The `dist` job** — a new job in the `Tests` workflow (`workflows/pull_request.rs`) on `runners::MACOS`, running `just dist::check-all`: the stamp scan, every render against the fixture, and every channel's `check`. `brew audit` runs there; the AUR, winget, and Chocolatey checks report skipped with their reasons. It is not among the required checks the `protected-main` ruleset names; making it one is a `tooling/infra/github.tf` change for later.
+**The `dist` job** — the one job of a `Distribution` workflow (`workflows/distribution.rs`) on `runners::MACOS`, triggered by changes under `distribution/`, the flavor configs, or `tooling/xtask/`, running `just dist::check-all`: the stamp scan, every render against the fixture, and every channel's `check`. `brew audit` runs there; the AUR, winget, and Chocolatey checks report skipped with their reasons. It is not a required check. It has its own workflow because every job in `Tests` is one: `render_tfvars` names each of them in `var.github`'s required checks. Making it required is adding it to that list.
 
 ### D11. The Linux cask installs the AppImage through `app_image` (2026-11-08)
 

@@ -8,6 +8,14 @@ default:
 check:
     cd .. && cargo xtask dist check
 
+[doc("Refuses stamped package manifests, renders every channel for every release channel against the fixture release manifest, and runs each channel's check.")]
+check-all: check
+    cd .. && cargo xtask dist render-all --manifest tooling/xtask/tests/fixtures/release-manifest.json
+    cd .. && just dist::brew::audit
+    cd .. && just dist::aur::check
+    cd .. && just dist::winget::check
+    cd .. && just dist::chocolatey::check
+
 # Station deployment: manifest validation and a kind cluster
 mod kubernetes "kubernetes/justfile"
 

@@ -9,7 +9,7 @@ use clap::{Parser, Subcommand};
 use std::path::Path;
 use xtask::{
     Channel,
-    distribution::{check, context::DOWNLOADS, render},
+    distribution::{check, context::DOWNLOADS, registry::Registry, render},
     releases::manifest::Manifest,
 };
 
@@ -23,8 +23,17 @@ pub struct Options {
 enum Command {
     /// Renders a distribution channel's package manifests for one release channel into `target/dist/`.
     Render(RenderOptions),
+    /// Renders every distribution channel for every release channel the registry lists.
+    RenderAll(RenderAllOptions),
     /// Fails if any file under `distribution/` carries a concrete tag, digest, or versioned URL.
     Check,
+}
+
+#[derive(Parser)]
+struct RenderAllOptions {
+    /// The release manifest every render reads: a file, or an `http(s)` URL.
+    #[arg(long)]
+    manifest: String,
 }
 
 #[derive(Parser)]
@@ -45,8 +54,24 @@ struct RenderOptions {
 pub fn run(args: Options) -> Result<()> {
     match args.command {
         Command::Render(args) => render(args),
+        Command::RenderAll(args) => render_all(args),
         Command::Check => check(),
     }
+}
+
+fn render_all(args: RenderAllOptions) -> Result<()> {
+    let manifest = read_manifest(&args.manifest)?;
+    let root = Path::new(".");
+    let registry = Registry::read(root)?;
+    for channel in registry.distribution_channels() {
+        for flavor in registry.release_channels(channel) {
+            let rendered = render::render(root, channel, flavor, &manifest)?;
+            let out = render::out_dir(channel, flavor);
+            render::write(&out, &rendered)?;
+            println!("rendered {channel} for {flavor} into {}", out.display());
+        }
+    }
+    Ok(())
 }
 
 fn render(args: RenderOptions) -> Result<()> {
