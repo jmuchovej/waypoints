@@ -12,7 +12,7 @@
   const logger = createLogger("SettingsUpdates");
 
   /** Where the notice sends a user whose copy is managed by a package manager. */
-  export const MANAGED_INSTALLS_URL = "https://waypoints.so/docs/installation/managed-installs";
+  const MANAGED_INSTALLS_URL = "https://waypoints.so/docs/installation/managed-installs";
 
   const status = ref<SelfUpdateStatus | null>(null);
 
