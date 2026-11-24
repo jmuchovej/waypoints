@@ -3,41 +3,42 @@
 # SPDX-FileCopyrightText: 2026 John Muchovej
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Every workspace crate outside tooling/ is named once: as a member or an
-# internal. tooling/ builds the repository, not the product, and must not
-# appear. `waypoints` is the app's group; every other group is a library,
-# versioned and tagged on its own.
+# every workspace crate outside of `tooling/` must be named, either as:
+# - a `member` crate (this will carry the group's version)
+# - an `internal` crate (this will be unversioned)
 #
-# `version` is the group's, declared here and projected into every member's
-# manifest by the release bot; `version-integrity` holds the two equal.
-# `paths` lists what a group owns beyond its crates and fixtures. A commit
-# counts for the groups whose owned paths it changes; a path no group lists
-# counts for none.
+# `tooling/` is exempt because it's not part of the product.
 #
-# Strict TOML 1.0: nix reads this file with `builtins.fromTOML`.
+# `waypoints` is the app's group while all others are libraries. this allows
+# app and library versions to move at separate paces.
+#
+# `version-integrity` enforces that `member` crates carry the version
+# written here. `paths` provides a list of other trees the group owns beyond its
+# `member` and `internal` crates and `fixtures`.
+#
+# commits count for groups whose owned paths change – unclaimed paths do not
+# count toward versioning of any group.
 
-# Never product work, for any group or planner.
 [bookkeeping]
   paths        = [ "nix/releases/" ]
-  # Counted for no group, by full id, with the reason beside each. Treewide
-  # formatting passes go in .git-blame-ignore-revs instead, which the walk also
-  # reads; a commit listed here keeps its blame.
+  # commits that count for no group – **use the full commit id**.
+  # this is in addition to `.git-blame-ignore-revs`
   ignore-revs  = [
-    # `refactor(importer)!: delete the dormant crate`: the break was the
-    # importer's own API, and it touched `domain` by one line of its docs.
+    # `refactor(importer)!: delete the dormant crate`:
+    #   the break was the importer's own API; `domain` only had a doc line touched
     "11798f95d76489e4aa1268828b28233e231cb87c",
   ]
-  # Reserved to botswain.
+  # reserved to botswain.
   bot-subjects = [ "chore(release):" ]
 
+# the database backbone of Waypoints.
 [group.bedrock]
   version  = "0.1.0"
   members  = [ "crates/bedrock", "crates/bedrock-core", "crates/bedrock-derive" ]
   tag      = "bedrock-v{version}"
   fixtures = "covenant/fixtures/bedrock/"
 
-# The wire (ALPN outpost/sync/v1 + session negotiation) is not this number.
-# A wire break is an interop break: it needs the covenant trailer.
+# the sync layer of Waypoints: protocol, transport, and record storage.
 [group.outpost]
   version  = "0.1.0"
   members  = [
@@ -49,26 +50,33 @@
   tag      = "outpost-v{version}"
   fixtures = "covenant/fixtures/outpost/"
 
-# Core of the data covenant.
+# the core datatypes of Waypoints and the foundation of the data covenant.
 [group.domain]
   version  = "0.1.0"
   members  = [ "crates/domain" ]
   tag      = "domain-v{version}"
   fixtures = "covenant/fixtures/domain/"
 
+# the Bundle format: export to legible markdown, re-ingest without loss.
 [group.transload]
   version  = "0.1.0"
   members  = [ "crates/transload" ]
   tag      = "transload-v{version}"
   fixtures = "covenant/fixtures/transload/"
 
-# cartograph is the API surface, so it moves with the app. store is an internal:
-# owned and counted, never versioned. src/ is the frontend. The app's version
-# carries its channel.
 [group.waypoints]
+  # the app version must carry the channel along with the version
   version   = "0.1.0-nightly"
-  members   = [ "src-tauri", "crates/cartograph" ]
+  members   = [
+    # the app's backend
+    "src-tauri",
+    # the API surface whose version should move with the app
+    "crates/cartograph"
+  ]
   internals = [ "crates/store" ]
   tag       = "v{version}"
   fixtures  = "covenant/fixtures/waypoints/"
-  paths     = [ "src/" ]
+  paths     = [
+    # the app's frontend
+    "src/"
+  ]
