@@ -8,6 +8,18 @@ identifier  = "so.waypoints.nightly"
 [plugins.updater]
   endpoints = [ "https://waypoints.so/api/v1/update/nightly.json" ]
 
+# The whole table, as in stable.toml: `mobile` replaces the base's list.
+[plugins.deep-link]
+  [plugins.deep-link.desktop]
+    schemes = [ "waypoints-nightly" ]
+
+  [[plugins.deep-link.mobile]]
+    host       = "waypoints.so"
+    pathPrefix = [ "/pair" ]
+
+  [[plugins.deep-link.mobile]]
+    scheme = [ "waypoints-nightly" ]
+
 [bundle]
   icon = [
     "assets/icons/app/nightly-032.png",

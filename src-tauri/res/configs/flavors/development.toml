@@ -8,6 +8,20 @@ identifier  = "so.waypoints.dev"
 [plugins.updater]
   endpoints = []
 
+# The whole table, as in stable.toml. Development shares stable's scheme:
+# registration is persistent and macOS cannot register at runtime, so there is
+# no way to claim a scheme only while running.
+[plugins.deep-link]
+  [plugins.deep-link.desktop]
+    schemes = [ "waypoints" ]
+
+  [[plugins.deep-link.mobile]]
+    host       = "waypoints.so"
+    pathPrefix = [ "/pair" ]
+
+  [[plugins.deep-link.mobile]]
+    scheme = [ "waypoints" ]
+
 [bundle]
   icon = [
     "assets/icons/app/dev-032.png",
