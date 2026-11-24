@@ -19,7 +19,7 @@
 
 use super::WorkflowInput;
 use super::{WorkflowContext, helpers, helpers::Environment, runners, steps, steps::Tools};
-use crate::Channel;
+use crate::{Channel, constants::MAIN};
 use gh_workflow::{
     Environment as WorkflowEnvironment, Event, Expression, Job, Level, Permissions, Push, Step,
     StepOutput, Workflow, WorkflowDispatch,
@@ -100,7 +100,7 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
         // resolves to its commit here; nothing walks history.
         .add_step(
             steps::checkout()
-                .add_with(("ref", "main"))
+                .add_with(("ref", MAIN))
                 .add_with(("fetch-tags", true)),
         )
         // Entering the shell realises the whole environment, Android SDK and

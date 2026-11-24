@@ -7,7 +7,7 @@
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::fs;
-use xtask::{license, workspace};
+use xtask::{constants::NOTICES, license, workspace};
 
 #[derive(Parser)]
 pub struct Options {}
@@ -15,7 +15,7 @@ pub struct Options {}
 pub fn run(args: Options) -> Result<()> {
     let root = workspace::load()?.workspace_root.into_std_path_buf();
     let contents = license::generate_notices(&root)?;
-    let path = root.join(license::NOTICES_PATH);
+    let path = root.join(NOTICES);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create {}", parent.display()))?;

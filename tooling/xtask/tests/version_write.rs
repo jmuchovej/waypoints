@@ -14,6 +14,7 @@ use std::{
     process::{Command, Output},
 };
 use tempfile::TempDir;
+use xtask::constants::GROUP_FILE;
 
 /// The group file declaring the app at `app` and the library at `domain`,
 /// aligned the way tombi leaves ours.
@@ -37,8 +38,6 @@ fn group_file(app: &str, domain: &str) -> String {
 "#
     )
 }
-
-const GROUP_FILE: &str = "tooling/release-groups.toml";
 
 /// The library's version in every fixture: a cut moves it from here.
 const DOMAIN: &str = "0.1.0";

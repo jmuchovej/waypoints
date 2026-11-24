@@ -10,6 +10,10 @@
 //! the icons are among what it regenerates.
 
 use super::{WorkflowContext, helpers, runners, steps};
+use crate::constants::{
+    ABOUT_CONFIG, ABOUT_TEMPLATE, LOCKFILE, MAIN, NOTICES, TFVARS, THIRD_PARTY_REGISTRY,
+    WORKFLOWS_DIR,
+};
 use gh_workflow::{Event, Job, Level, Permissions, PullRequest, Push, Workflow, WorkflowDispatch};
 
 /// Sources whose change can invalidate something we generate. A change to any
@@ -22,19 +26,19 @@ const SOURCES: &[&str] = &[
     "crates/domain/**",
     "crates/cartograph/**",
     "src-tauri/res/**",
-    "Cargo.lock",
+    LOCKFILE,
     "pnpm-lock.yaml",
-    ".config/third-party.toml",
-    ".config/about.toml",
-    ".config/about.hbs",
+    THIRD_PARTY_REGISTRY,
+    ABOUT_CONFIG,
+    ABOUT_TEMPLATE,
 ];
 
-/// Generated outputs, listed so that hand-editing one is caught. devenv's own
-/// come from the context at generation time.
+/// Generated outputs, listed so that hand-editing one is caught, after the
+/// glob over [`WORKFLOWS_DIR`]. devenv's own come from the context at
+/// generation time.
 const OUTPUTS: &[&str] = &[
-    ".github/workflows/**",
-    super::TFVARS,
-    "docs/licensing/THIRD-PARTY-NOTICES.md",
+    TFVARS,
+    NOTICES,
     "crates/domain/typescript/**",
     "crates/cartograph/typescript/**",
     "src-tauri/assets/icons/app/**",
@@ -45,8 +49,9 @@ const OUTPUTS: &[&str] = &[
 pub fn workflow(context: &WorkflowContext) -> Workflow {
     let paths: Vec<String> = SOURCES
         .iter()
-        .chain(OUTPUTS)
         .map(|path| (*path).to_owned())
+        .chain([format!("{WORKFLOWS_DIR}/**")])
+        .chain(OUTPUTS.iter().map(|path| (*path).to_owned()))
         .chain(context.devenv_files.iter().cloned())
         .collect();
 
@@ -79,7 +84,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
                 paths
                     .iter()
                     .fold(Push::default(), |push, p| push.add_path(p))
-                    .add_branch("main"),
+                    .add_branch(MAIN),
             )
             .workflow_dispatch(WorkflowDispatch::default()))
         .concurrency(helpers::one_run_per_ref("generated"))

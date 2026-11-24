@@ -9,7 +9,10 @@ use super::helpers::{
     WP_BOTSWAIN_PRIVATE_KEY,
 };
 use super::{Artifact, TestSuite};
-use crate::{Channel, Platform, releases::artifacts::STAGE_DIR};
+use crate::{
+    Channel, Platform,
+    constants::{LOCKFILE, STAGE_DIR, WORKFLOWS_DIR},
+};
 use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
 use indoc::{formatdoc, indoc};
 
@@ -110,7 +113,7 @@ pub fn just(recipe: &str) -> Step<Run> {
 /// GitHub.
 pub fn zizmor() -> Step<Run> {
     Step::new("Audit the workflows")
-        .run("zizmor .github/workflows")
+        .run(format!("zizmor {WORKFLOWS_DIR}"))
         .shell("bash")
         .id("zizmor")
         .add_env(("GH_TOKEN", "${{ github.token }}"))
@@ -748,7 +751,7 @@ pub(crate) fn cargo_registry(cargo_home: &str) -> CachedDir {
     CachedDir {
         name: "cargo-registry",
         path: format!("{cargo_home}/registry"),
-        key: CacheKey::Files(&["Cargo.lock"]),
+        key: CacheKey::Files(&[LOCKFILE]),
     }
 }
 

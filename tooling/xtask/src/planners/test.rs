@@ -18,6 +18,7 @@
 //! [nextest filterset]: https://nexte.st/docs/filtersets/
 
 use crate::{
+    constants::{APP, LOCKFILE, ROOT_MANIFEST},
     releases::index,
     tools::{git, github},
 };
@@ -30,13 +31,13 @@ use std::collections::BTreeSet;
 ///
 /// Anything absent — `transload`, `importer-sdk`, the importer plugins,
 /// `xtask` — ships in nothing and so cannot gate a release.
-const RELEASE_ROOTS: [&str; 2] = ["Waypoints", "cartograph"];
+const RELEASE_ROOTS: [&str; 2] = [APP, "cartograph"];
 
 /// Paths that invalidate every crate. `.github/` is excluded — a workflow edit
 /// cannot change how Rust behaves.
 const GLOBAL_PATHS: [&str; 4] = [
-    "Cargo.toml",
-    "Cargo.lock",
+    ROOT_MANIFEST,
+    LOCKFILE,
     "rust-toolchain.toml",
     ".config/cargo.toml",
 ];

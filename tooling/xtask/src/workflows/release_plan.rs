@@ -541,7 +541,7 @@ mod tests {
     fn a_group_tag_triggers_no_release_or_index_run() {
         use crate::Channel;
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let text = std::fs::read_to_string(root.join(crate::release_groups::GROUP_FILE)).unwrap();
+        let text = std::fs::read_to_string(root.join(crate::constants::GROUP_FILE)).unwrap();
         let file = crate::release_groups::GroupFile::parse(&text).unwrap();
 
         let patterns: Vec<&str> = [Channel::Nightly, Channel::Preview, Channel::Stable]

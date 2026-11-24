@@ -12,7 +12,8 @@
 //! `.git-blame-ignore-revs` lists, and the release bot's own subjects.
 
 use crate::{
-    release_groups::{APP_GROUP, BLAME_IGNORE_FILE, GroupFile, RELEASE_BOT},
+    constants::{APP_GROUP, BLAME_IGNORE_FILE, RELEASE_BOT},
+    release_groups::GroupFile,
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -280,9 +281,9 @@ mod tests {
     use indoc::indoc;
 
     use super::*;
-    use crate::releases::{
-        index::{INDEX_DIR, fixture::Repo},
-        version::Version,
+    use crate::{
+        constants::INDEX_DIR,
+        releases::{index::fixture::Repo, version::Version},
     };
 
     fn groups(commit: &Commit) -> Vec<&str> {
@@ -508,7 +509,7 @@ mod tests {
     #[test]
     fn the_index_directory_is_bookkeeping_in_this_workspace() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let text = fs::read_to_string(root.join(crate::release_groups::GROUP_FILE)).unwrap();
+        let text = fs::read_to_string(root.join(crate::constants::GROUP_FILE)).unwrap();
         let file = GroupFile::parse(&text).unwrap();
         assert!(
             file.bookkeeping.paths.contains(&format!("{INDEX_DIR}/")),

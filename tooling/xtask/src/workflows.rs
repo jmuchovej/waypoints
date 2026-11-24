@@ -7,7 +7,10 @@
 //! The YAML under `.github/workflows` is an artifact, not a source file. Edit
 //! the module named in each file's header, then run `cargo xtask generate workflows`.
 
-use crate::Channel;
+use crate::{
+    Channel,
+    constants::{TFVARS, WORKFLOWS_DIR},
+};
 use anyhow::{Context as _, Result, anyhow};
 use gh_workflow::Workflow;
 use heck::ToKebabCase;
@@ -70,7 +73,7 @@ impl WorkflowFamily {
 
     pub fn path(&self) -> PathBuf {
         match self {
-            WorkflowFamily::Waypoints => PathBuf::from(".github/workflows"),
+            WorkflowFamily::Waypoints => PathBuf::from(WORKFLOWS_DIR),
             WorkflowFamily::Plugins => PathBuf::from("plugins/workflows"),
         }
     }
@@ -136,9 +139,6 @@ pub fn workflows() -> Vec<WorkflowFile> {
         release_file(Channel::Stable),
     ]
 }
-
-/// Where OpenTofu auto-loads `var.github`.
-const TFVARS: &str = "tooling/infra/github.auto.tfvars.json";
 
 /// `var.github`, whose required checks are the display name of every job in the
 /// workflows that report on every pull request. A renamed job takes effect on

@@ -18,12 +18,16 @@
 //! claim about content. See [`super::nightly`].
 
 use crate::{
+    constants::{
+        APP_MANIFEST, GROUP_FILE, LOCKFILE, MAIN, RELEASE_PLAN_HEAD_PREFIX, REPOSITORY,
+        ROOT_MANIFEST,
+    },
     planners::test,
-    release_groups::{self, GROUP_FILE, GroupFile, REPOSITORY, ROOT_MANIFEST, pins_in},
+    release_groups::{self, GroupFile, pins_in},
     releases::{
         history,
         landing::Landing,
-        version::{APP_MANIFEST, Transition, Version},
+        version::{Transition, Version},
     },
     semver_check::{self, Required},
     templates,
@@ -345,17 +349,6 @@ fn newer_on_line(prefix: &str, pinned: &Version, tags: &[String]) -> Option<Vers
         .max()
 }
 
-/// The branch a cut's bump lands on, and the history a patch reads a pin's
-/// line from.
-const MAIN: &str = "main";
-
-/// Records every workspace crate's version, so a version write moves it too.
-const LOCKFILE: &str = "Cargo.lock";
-
-/// A transition's pull requests come from here, one branch per target, since a
-/// cut opens one against the series and one against `main` in a single run.
-const HEAD_PREFIX: &str = "botswain/release-plan/";
-
 /// What the planner decided, and what the workflow reads back as job outputs.
 ///
 /// Serialized field-for-field into `$GITHUB_OUTPUT`, so these field names are
@@ -508,7 +501,7 @@ impl Plan {
             return Ok(None);
         }
         Ok(Some(Landing::new(
-            format!("{HEAD_PREFIX}{}", self.branch),
+            format!("{RELEASE_PLAN_HEAD_PREFIX}{}", self.branch),
             self.commit_message(),
             &written_paths(groups, self.opens_series() || self.moves_a_pin())?,
         )))
@@ -541,7 +534,7 @@ impl Plan {
         paths.push(LOCKFILE.to_owned());
 
         Ok(Some(Landing::new(
-            format!("{HEAD_PREFIX}{MAIN}"),
+            format!("{RELEASE_PLAN_HEAD_PREFIX}{MAIN}"),
             self.main_title(&minted)?,
             &paths,
         )))

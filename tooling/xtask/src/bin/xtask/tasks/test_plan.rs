@@ -7,9 +7,7 @@
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::fs;
-use xtask::{
-    planners::test as test_plan, releases::version::APP_MANIFEST, tools::github, workspace,
-};
+use xtask::{constants::APP_MANIFEST, planners::test as test_plan, tools::github, workspace};
 
 #[derive(Parser)]
 pub struct Options {

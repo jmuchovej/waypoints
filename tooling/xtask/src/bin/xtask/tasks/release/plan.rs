@@ -10,8 +10,8 @@ use clap::Parser;
 use indoc::formatdoc;
 use std::{fs, path::PathBuf};
 use xtask::{
-    planners::release as planner, release_groups, releases::version::Transition, tools::github,
-    workspace,
+    constants::MAIN, planners::release as planner, release_groups, releases::version::Transition,
+    tools::github, workspace,
 };
 
 #[derive(Parser)]
@@ -76,7 +76,7 @@ pub fn run(args: Options) -> Result<()> {
         if !plan.next_main_version.is_empty() {
             println!("  main moves to {}", plan.next_main_version);
         }
-        println!("  {}", main.describe("main"));
+        println!("  {}", main.describe(MAIN));
         if main.title.starts_with("summary:") {
             for header in plan.summary_headers(&groups)? {
                 println!("    {header}");

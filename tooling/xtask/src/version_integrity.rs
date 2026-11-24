@@ -11,9 +11,8 @@
 //! commits underneath are not checked.
 
 use crate::{
-    release_groups::{
-        self, GROUP_FILE, GroupFile, RELEASE_BOT, SCHEMA_FILE, declared_versions, tag_prefix,
-    },
+    constants::{GROUP_FILE, RELEASE_BOT, SCHEMA_FILE},
+    release_groups::{self, GroupFile, declared_versions, tag_prefix},
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -1053,10 +1052,7 @@ mod tests {
             &found,
             &["crates/cartograph/Cargo.toml", "0.1.9", "0.1.0-nightly"],
         );
-        assert_names(
-            &found,
-            &["src-tauri/Cargo.toml", "0.2.0", release_groups::GROUP_FILE],
-        );
+        assert_names(&found, &["src-tauri/Cargo.toml", "0.2.0", GROUP_FILE]);
     }
 
     /// The prerelease is part of the version: `main`'s `-nightly` is mirrored.
@@ -1116,7 +1112,7 @@ mod tests {
         ]);
         assert_names(
             &check_bot_write(&one),
-            &["crates/cartograph/Cargo.toml", release_groups::GROUP_FILE],
+            &["crates/cartograph/Cargo.toml", GROUP_FILE],
         );
     }
 

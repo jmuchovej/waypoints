@@ -6,7 +6,7 @@
 
 use super::TestSuite;
 use super::{WorkflowContext, helpers, jobs};
-use crate::Platform;
+use crate::{Platform, constants::MAIN};
 use gh_workflow::{Event, PullRequest, Push, Workflow};
 
 pub(crate) fn workflow(context: &WorkflowContext) -> Workflow {
@@ -17,7 +17,7 @@ pub(crate) fn workflow(context: &WorkflowContext) -> Workflow {
     helpers::named_workflow("Tests")
         .on(Event::default()
             .pull_request(PullRequest::default().add_branch("**"))
-            .push(Push::default().add_branch("main")))
+            .push(Push::default().add_branch(MAIN)))
         .concurrency(helpers::one_run_per_ref("tests"))
         .add_job(job.name, job.job)
         .add_job(audit.name, audit.job)

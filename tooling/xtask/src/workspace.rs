@@ -3,13 +3,9 @@
 
 use std::path::PathBuf;
 
+use crate::constants::APP;
 use anyhow::{Context as _, Result};
 use cargo_metadata::{Metadata, MetadataCommand, semver::Version};
-
-/// The crate the shipped app is built from: the app group's own crate, whose
-/// library target exists for the mobile bindings and whose contract is the
-/// covenant rather than a Rust API.
-pub const APP: &str = "Waypoints";
 
 /// Workspace members and their manifests.
 ///

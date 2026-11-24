@@ -19,17 +19,11 @@
 
 use crate::{
     Channel,
-    releases::{
-        history,
-        landing::Landing,
-        version::{APP_MANIFEST, Version},
-    },
+    constants::{APP_MANIFEST, INDEX_DIR, RELEASE_INDEX_HEAD_PREFIX},
+    releases::{history, landing::Landing, version::Version},
     tools::{git, github, nix},
 };
 use anyhow::{Context as _, Result, bail};
-
-/// Where the index lives, relative to the repository root.
-pub const INDEX_DIR: &str = "nix/releases";
 
 /// One channel's entry, serialized field-for-field as its file.
 ///
@@ -69,7 +63,7 @@ impl Entry {
     /// channels publishing at once never overwrite each other's write.
     pub fn landing(&self, channel: Channel) -> Landing {
         Landing::new(
-            format!("botswain/release-index/{channel}"),
+            format!("{RELEASE_INDEX_HEAD_PREFIX}{channel}"),
             self.commit_message(channel),
             &[Self::path(channel)],
         )
@@ -156,7 +150,7 @@ pub fn product_commits(range: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 pub(crate) mod fixture {
     use super::{INDEX_DIR, history};
-    use crate::release_groups::{BLAME_IGNORE_FILE, GroupFile};
+    use crate::{constants::BLAME_IGNORE_FILE, release_groups::GroupFile};
     use std::{
         fs,
         path::PathBuf,

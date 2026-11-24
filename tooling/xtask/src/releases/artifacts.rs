@@ -20,20 +20,16 @@
 //! TestFlight needs it there to upload off macOS, but it is upload metadata,
 //! never a store object.
 
-use crate::{Channel, Platform, PublishedTarget, releases::version::Version};
+use crate::{
+    Channel, Platform, PublishedTarget,
+    constants::{APP_STORE_INFO, STAGE_DIR},
+    releases::version::Version,
+};
 use anyhow::{Context as _, Result, bail};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
 };
-
-/// The flat directory `release stage` fills and `release upload --from`
-/// reads.
-pub const STAGE_DIR: &str = "release";
-
-/// Upload metadata the iOS build stages beside its ipa: TestFlight reads it
-/// off macOS, and it never becomes a store object.
-pub const APP_STORE_INFO: &str = "AppStoreInfo.plist";
 
 /// Where `xcodebuild -exportArchive` writes it: beside the ipa.
 const APP_STORE_INFO_GLOB: &str = "src-tauri/gen/apple/build/**/AppStoreInfo.plist";

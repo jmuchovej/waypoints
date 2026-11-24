@@ -10,6 +10,7 @@
 //! which is what notice preservation cares about.
 
 use super::{Entry, Kind, Registry};
+use crate::constants::{ABOUT_CONFIG, ABOUT_TEMPLATE};
 use anyhow::{Context as _, Result, bail};
 use indoc::{formatdoc, indoc};
 use serde_json::Value;
@@ -113,8 +114,8 @@ fn cargo_about(root: &Path) -> Result<String> {
             "generate",
             "--workspace",
             "--config",
-            ".config/about.toml",
-            ".config/about.hbs",
+            ABOUT_CONFIG,
+            ABOUT_TEMPLATE,
         ])
         .current_dir(root)
         .output()

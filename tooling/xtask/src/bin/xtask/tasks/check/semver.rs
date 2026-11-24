@@ -9,6 +9,7 @@ use anyhow::{Context as _, Result, bail};
 use clap::Parser;
 use std::{fs, path::PathBuf};
 use xtask::{
+    constants::APP_GROUP,
     planners::test as test_plan,
     release_groups,
     semver_check::{self, Verdict},
@@ -60,7 +61,7 @@ pub fn run(args: Options) -> Result<()> {
                 let measured = semver_check::measure_group(&metadata, &groups, group, &tag)?;
                 let declared =
                     semver_check::declares_break(&pull_request, &changes, group, &groups);
-                let is_app = group == release_groups::APP_GROUP;
+                let is_app = group == APP_GROUP;
                 semver_check::verdict(group, measured, declared, is_app)
             }
         };

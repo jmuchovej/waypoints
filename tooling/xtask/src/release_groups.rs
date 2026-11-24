@@ -13,7 +13,11 @@
 //! [`APP_GROUP`] and every other group is a library; what a group is decides
 //! how it is versioned, so the file carries no key saying so.
 
-use crate::{planners::test, releases::version::Version};
+use crate::{
+    constants::{APP_GROUP, BLAME_IGNORE_FILE, GROUP_FILE, ROOT_MANIFEST, SCHEMA_FILE},
+    planners::test,
+    releases::version::Version,
+};
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::Metadata;
 use schemars::{JsonSchema, generate::SchemaSettings};
@@ -23,31 +27,8 @@ use std::{
     fs,
 };
 
-/// The group file, relative to the workspace root.
-pub const GROUP_FILE: &str = "tooling/release-groups.toml";
-
-/// Its generated schema, relative to the workspace root.
-pub const SCHEMA_FILE: &str = "tooling/schemas/release-groups.schema.json";
-
-/// The treewide formatting passes `git blame` skips, relative to the workspace
-/// root: one full commit id per line, read at the name GitHub and the editors
-/// read it under.
-pub const BLAME_IGNORE_FILE: &str = ".git-blame-ignore-revs";
-
-/// The only author who writes a version or a bookkeeping subject, and whose
-/// every commit is bookkeeping to the planners.
-pub const RELEASE_BOT: &str = "wp-botswain[bot]";
-
-/// Where every group's tag is minted, and what a series pins a library from.
-pub const REPOSITORY: &str = "https://github.com/jmuchovej/waypoints";
-
 /// Members here build the repository, not the product, and are never named.
 const TOOLING: &str = "tooling/";
-
-/// The app's group, by name: this is one repository with one app, and what a
-/// group is — the app or a library — decides how it is versioned.
-/// `workspace::APP` names the app's crate; this names its group.
-pub const APP_GROUP: &str = "waypoints";
 
 /// Which workspace crates version together, and what each group owns.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -362,10 +343,6 @@ pub fn load_unprojected(metadata: &Metadata) -> Result<GroupFile> {
     }
     Ok(file)
 }
-
-/// The workspace's root manifest: its members, and the one place a library
-/// dependency is declared — where a series pins its library groups.
-pub const ROOT_MANIFEST: &str = "Cargo.toml";
 
 /// A library group a manifest pins: a `git` dependency naming the group's
 /// tag. Read by the tag's shape against each group's template, so no map

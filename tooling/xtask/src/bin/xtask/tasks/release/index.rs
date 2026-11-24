@@ -10,6 +10,7 @@ use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::{fs, path::PathBuf};
 use xtask::{
+    constants::MAIN,
     releases::{index, version::Version},
     tools::github,
     workspace,
@@ -53,7 +54,7 @@ pub fn run(args: Options) -> Result<()> {
     println!("{path}:\n{content}");
 
     let landing = entry.landing(channel);
-    println!("  {}", landing.describe("main"));
+    println!("  {}", landing.describe(MAIN));
 
     if args.dry_run {
         match &args.into {

@@ -41,6 +41,8 @@ mod platform;
 pub use channel::{Channel, Flavor};
 pub use platform::{Arch, Platform, PublishedTarget};
 
+pub mod constants;
+
 /// The browser-dev HTTP backend: the runtime, its routes, and its errors.
 #[cfg(feature = "local-dev")]
 pub mod dev {
@@ -109,9 +111,6 @@ pub mod license {
 
     #[cfg(test)]
     const CLA_PATH: &str = "docs/licensing/CLA.md";
-
-    /// Where the notices are committed, relative to the workspace root.
-    pub const NOTICES_PATH: &str = "docs/licensing/THIRD-PARTY-NOTICES.md";
 
     mod headers;
     mod notices;

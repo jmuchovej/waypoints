@@ -4,7 +4,10 @@
 //! Shared expressions, secret handles, and concurrency groups.
 //! Trigger plumbing shared by workflow modules.
 
-use crate::Platform;
+use crate::{
+    Platform,
+    constants::{RELEASE_BOT, RELEASE_BOT_EMAIL},
+};
 use gh_workflow::{
     Concurrency, Environment as WorkflowEnvironment, Expression, JobOutput, Permissions, Run, Step,
     Workflow,
@@ -274,19 +277,16 @@ pub fn guard(platform: Platform, should_build: &JobOutput) -> Expression {
     ))
 }
 
-const BOTSWAIN_GIT_USERNAME: &str = "wp-botswain[bot]";
-const BOTSWAIN_GIT_EMAIL: &str = "3633092+wp-botswain[bot]@users.noreply.github.com";
-
 pub(crate) trait BotswainGitIdentity {
     fn with_botswain_git_identity(self) -> Self;
 }
 
 impl BotswainGitIdentity for Step<Run> {
     fn with_botswain_git_identity(self) -> Self {
-        self.add_env(("GIT_AUTHOR_NAME", BOTSWAIN_GIT_USERNAME))
-            .add_env(("GIT_COMMITTER_NAME", BOTSWAIN_GIT_USERNAME))
-            .add_env(("GIT_AUTHOR_EMAIL", BOTSWAIN_GIT_EMAIL))
-            .add_env(("GIT_COMMITTER_EMAIL", BOTSWAIN_GIT_EMAIL))
+        self.add_env(("GIT_AUTHOR_NAME", RELEASE_BOT))
+            .add_env(("GIT_COMMITTER_NAME", RELEASE_BOT))
+            .add_env(("GIT_AUTHOR_EMAIL", RELEASE_BOT_EMAIL))
+            .add_env(("GIT_COMMITTER_EMAIL", RELEASE_BOT_EMAIL))
     }
 }
 

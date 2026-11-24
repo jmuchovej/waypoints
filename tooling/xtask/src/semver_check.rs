@@ -12,11 +12,11 @@
 //! header, is decided here where tests can reach it.
 
 use crate::{
-    release_groups::{APP_GROUP, GroupFile, tag_prefix},
+    constants::{APP, APP_GROUP, SEMVER_SCRATCH},
+    release_groups::{GroupFile, tag_prefix},
     releases::{history::Commit as Walked, version::Version},
     tools::git,
     version_integrity::{Change, PullRequest},
-    workspace,
 };
 use anyhow::{Context as _, Result, bail};
 use cargo_metadata::{Metadata, TargetKind};
@@ -232,7 +232,7 @@ pub fn library_members(
         else {
             continue;
         };
-        let is_app = is_app_group && package.name.as_str() == workspace::APP;
+        let is_app = is_app_group && package.name.as_str() == APP;
         if !named.members.contains(&directory) || is_app {
             continue;
         }
@@ -254,10 +254,6 @@ pub fn library_members(
     members.sort_by(|a, b| a.directory.cmp(&b.directory));
     Ok(members)
 }
-
-/// Where a measurement builds, under the workspace's `target/`: the current
-/// tree's rustdoc, and a worktree per baseline tag with its own.
-const SCRATCH: &str = "target/semver-checks";
 
 /// The command that documents `member`, in the tree at `root`, as rustdoc
 /// JSON under `target_dir` — one side of a measurement, under [`FEATURES`].
@@ -326,7 +322,7 @@ fn rustdoc_json(root: &Path, member: &Member, target_dir: &Path) -> Result<PathB
 /// The tree at `tag`, as a detached worktree under the scratch directory,
 /// made afresh.
 fn baseline_tree(root: &Path, tag: &str) -> Result<PathBuf> {
-    let path = root.join(SCRATCH).join("baseline").join(tag);
+    let path = root.join(SEMVER_SCRATCH).join("baseline").join(tag);
     let shown = path.to_string_lossy().into_owned();
     if path.exists() {
         // A registered worktree, or a leftover directory: either way, gone.
@@ -411,7 +407,7 @@ pub fn measure(root: &Path, baseline: &Path, member: &Member) -> Result<Required
         );
         return Ok(Required::Patch);
     }
-    let current = rustdoc_json(root, member, &root.join(SCRATCH).join("current"))?;
+    let current = rustdoc_json(root, member, &root.join(SEMVER_SCRATCH).join("current"))?;
     let before = rustdoc_json(baseline, member, &baseline.join("target"))?;
 
     // Two rustdoc files, so the checker builds nothing and asks no rustc.

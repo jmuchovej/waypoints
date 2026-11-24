@@ -8,9 +8,9 @@ use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
 use std::fs;
 use xtask::{
+    constants::{GROUP_FILE, SCHEMA_FILE},
     planners::release,
-    release_groups::{self, GROUP_FILE, SCHEMA_FILE},
-    workspace,
+    release_groups, workspace,
 };
 
 #[derive(Parser)]

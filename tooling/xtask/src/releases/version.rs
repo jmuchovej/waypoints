@@ -31,11 +31,6 @@ pub const PRE: &str = "pre";
 /// The prerelease identifier every nightly carries.
 pub const NIGHTLY: &str = "nightly";
 
-/// The manifest whose `version` is the app's — and, by its suffix, the
-/// channel the tree ships as. Tauri reads the version from here when
-/// `Tauri.toml` leaves it unset.
-pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
-
 /// The four ref-minting transitions of a release cycle, in the order a
 /// version meets them.
 ///
