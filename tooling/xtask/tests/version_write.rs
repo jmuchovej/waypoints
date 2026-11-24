@@ -21,7 +21,6 @@ fn group_file(app: &str, domain: &str) -> String {
     format!(
         r#"[bookkeeping]
   paths        = [ "nix/releases/" ]
-  ignore-revs  = ".git-blame-ignore-revs"
   bot-subjects = [ "chore(release):" ]
 
 [group.domain]

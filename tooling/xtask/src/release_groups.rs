@@ -29,6 +29,11 @@ pub const GROUP_FILE: &str = "tooling/release-groups.toml";
 /// Its generated schema, relative to the workspace root.
 pub const SCHEMA_FILE: &str = "tooling/schemas/release-groups.schema.json";
 
+/// The treewide formatting passes `git blame` skips, relative to the workspace
+/// root: one full commit id per line, read at the name GitHub and the editors
+/// read it under.
+pub const BLAME_IGNORE_FILE: &str = ".git-blame-ignore-revs";
+
 /// The only author who writes a version or a bookkeeping subject, and whose
 /// every commit is bookkeeping to the planners.
 pub const RELEASE_BOT: &str = "wp-botswain[bot]";
@@ -58,8 +63,13 @@ pub struct GroupFile {
 pub struct Bookkeeping {
     /// Commits touching only these paths count for nothing.
     pub paths: Vec<String>,
-    /// The file listing treewide formatting passes.
-    pub ignore_revs: String,
+    /// Commits that count for nothing, by full id: a change whose paths
+    /// misattribute it, such as a break scoped to a crate that is gone,
+    /// touching a group by one doc line. Kept apart from
+    /// [`BLAME_IGNORE_FILE`], which the walk also reads, so `git blame`
+    /// still credits the lines to it.
+    #[serde(default)]
+    pub ignore_revs: Vec<String>,
     /// Subject prefixes reserved to the release bot.
     pub bot_subjects: Vec<String>,
 }
@@ -87,7 +97,19 @@ pub struct Group {
 
 impl GroupFile {
     pub fn parse(text: &str) -> Result<Self> {
-        toml::from_str(text).with_context(|| format!("{GROUP_FILE} does not parse"))
+        let file: Self =
+            toml::from_str(text).with_context(|| format!("{GROUP_FILE} does not parse"))?;
+        // The walk matches a listed revision by prefix, so anything short of
+        // a full id could name more than one commit.
+        let full = |rev: &&String| {
+            rev.len() == 40 && rev.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+        };
+        if let Some(short) = file.bookkeeping.ignore_revs.iter().find(|rev| !full(rev)) {
+            bail!(
+                "{GROUP_FILE}: `[bookkeeping].ignore-revs` lists `{short}`, which is not a full commit id"
+            );
+        }
+        Ok(file)
     }
 
     /// The crates carrying a version, across every group.
@@ -260,7 +282,8 @@ impl GroupFile {
             .bookkeeping
             .paths
             .iter()
-            .chain([&self.bookkeeping.ignore_revs]);
+            .map(String::as_str)
+            .chain([BLAME_IGNORE_FILE]);
         for path in bookkeeping.filter(|path| !exists(path)) {
             problems.push(format!("bookkeeping: `{path}` does not exist"));
         }
@@ -442,7 +465,6 @@ mod tests {
     const GROUPS: &str = r#"
         [bookkeeping]
         paths = [ "nix/releases/" ]
-        ignore-revs = ".git-blame-ignore-revs"
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
@@ -646,6 +668,21 @@ mod tests {
         );
         let error = GroupFile::parse(&toml).unwrap_err();
         assert!(format!("{error:#}").contains("attribution"), "{error:#}");
+    }
+
+    /// Scenario _A short id is refused_: the walk matches a listed revision
+    /// by prefix, so the file names each by its full id.
+    #[test]
+    fn a_short_revision_is_refused() {
+        let listing = |rev: &str| {
+            GROUPS.replace(
+                "bot-subjects",
+                &format!("ignore-revs = [ \"{rev}\" ]\n        bot-subjects"),
+            )
+        };
+        let error = GroupFile::parse(&listing("11798f9")).unwrap_err();
+        assert!(format!("{error:#}").contains("`11798f9`"), "{error:#}");
+        GroupFile::parse(&listing(&"1".repeat(40))).unwrap();
     }
 
     /// Scenario _A retired key does not parse_: what a group is decides its

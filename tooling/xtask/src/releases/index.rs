@@ -156,9 +156,8 @@ pub fn product_commits(range: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 pub(crate) mod fixture {
     use super::{INDEX_DIR, history};
-    use crate::release_groups::GroupFile;
+    use crate::release_groups::{BLAME_IGNORE_FILE, GroupFile};
     use std::{
-        collections::BTreeSet,
         fs,
         path::PathBuf,
         process::Command,
@@ -171,7 +170,6 @@ pub(crate) mod fixture {
     pub(crate) const GROUPS: &str = r#"
         [bookkeeping]
         paths = [ "nix/releases/" ]
-        ignore-revs = ".git-blame-ignore-revs"
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
@@ -225,7 +223,7 @@ pub(crate) mod fixture {
 
         /// Lists `sha` as a treewide pass.
         pub(crate) fn ignore(&self, sha: &str) {
-            let file = self.dir.join(".git-blame-ignore-revs");
+            let file = self.dir.join(BLAME_IGNORE_FILE);
             let mut text = fs::read_to_string(&file).unwrap_or_default();
             text.push_str(sha);
             text.push('\n');
@@ -256,15 +254,14 @@ pub(crate) mod fixture {
 
         /// What [`history::walk`] sees here for `range`, under [`GROUPS`].
         pub(crate) fn walk(&self, range: &str) -> Vec<history::Commit> {
-            let groups = GroupFile::parse(GROUPS).unwrap();
-            let ignored: BTreeSet<String> =
-                fs::read_to_string(self.dir.join(".git-blame-ignore-revs"))
-                    .unwrap_or_default()
-                    .lines()
-                    .map(str::trim)
-                    .filter(|line| !line.is_empty() && !line.starts_with('#'))
-                    .map(str::to_owned)
-                    .collect();
+            self.walk_under(range, GROUPS)
+        }
+
+        /// What [`history::walk`] sees here for `range`, under the group file
+        /// `toml`, with the revisions it and the blame file list left out.
+        pub(crate) fn walk_under(&self, range: &str, toml: &str) -> Vec<history::Commit> {
+            let groups = GroupFile::parse(toml).unwrap();
+            let ignored = history::ignored_revisions(&self.dir, &groups).unwrap();
             let args = history::log_args(range);
             let args: Vec<&str> = args.iter().map(String::as_str).collect();
             let output = self.git(&args);
@@ -284,6 +281,7 @@ pub(crate) mod fixture {
                 n = NEXT.fetch_add(1, Ordering::Relaxed),
             ));
             fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join(BLAME_IGNORE_FILE), "").unwrap();
 
             let repo = Self { dir };
             repo.git(&["init", "-q", "-b", "main"]);

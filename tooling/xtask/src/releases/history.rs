@@ -12,7 +12,7 @@
 //! `.git-blame-ignore-revs` lists, and the release bot's own subjects.
 
 use crate::{
-    release_groups::{APP_GROUP, GroupFile, RELEASE_BOT},
+    release_groups::{APP_GROUP, BLAME_IGNORE_FILE, GroupFile, RELEASE_BOT},
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -207,8 +207,8 @@ pub(crate) fn parse(output: &str) -> Vec<Raw> {
         .collect()
 }
 
-/// Which groups `raw` counts for. A revision the ignore file lists, a commit
-/// the release bot authored, or a subject reserved to it counts for none;
+/// Which groups `raw` counts for. A revision in `ignored`, a commit the
+/// release bot authored, or a subject reserved to it counts for none;
 /// otherwise exactly the owners of the paths it changed.
 pub(crate) fn attribute(raw: Raw, groups: &GroupFile, ignored: &BTreeSet<String>) -> Commit {
     let bookkeeping = ignored.iter().any(|rev| raw.sha.starts_with(rev.as_str()))
@@ -238,10 +238,11 @@ pub(crate) fn attribute(raw: Raw, groups: &GroupFile, ignored: &BTreeSet<String>
     }
 }
 
-/// The revisions `groups`' ignore file lists under `root`: one full commit id
-/// per line, comments and blanks skipped.
+/// The revisions that count for nothing: those [`BLAME_IGNORE_FILE`] lists
+/// under `root`, one full commit id per line with comments and blanks
+/// skipped, and those `groups` names in `[bookkeeping].ignore-revs`.
 pub fn ignored_revisions(root: &Path, groups: &GroupFile) -> Result<BTreeSet<String>> {
-    let path = root.join(&groups.bookkeeping.ignore_revs);
+    let path = root.join(BLAME_IGNORE_FILE);
     let text =
         fs::read_to_string(&path).with_context(|| format!("Failed to read {}", path.display()))?;
     Ok(text
@@ -249,6 +250,7 @@ pub fn ignored_revisions(root: &Path, groups: &GroupFile) -> Result<BTreeSet<Str
         .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .map(str::to_owned)
+        .chain(groups.bookkeeping.ignore_revs.iter().cloned())
         .collect())
 }
 
@@ -358,7 +360,7 @@ mod tests {
         assert_eq!(repo.product_commits("HEAD"), Vec::<String>::new());
     }
 
-    /// Scenario _Treewide formatting pass_: a revision the ignore file lists
+    /// Scenario _Treewide formatting pass_: a revision the blame file lists
     /// counts for nothing, whatever it touched.
     #[test]
     fn an_ignored_revision_counts_for_no_group() {
@@ -371,6 +373,31 @@ mod tests {
         assert_eq!(groups(&walked[0]), ["domain"]);
         assert!(walked[1].groups.is_empty(), "{:?}", walked[1]);
         assert_eq!(repo.product_commits("HEAD"), ["feat: first"]);
+    }
+
+    /// Scenario _A listed revision counts for nothing_: a revision the group
+    /// file names counts for nothing, whatever it touched — and, unlike one
+    /// the blame file lists, keeps its blame.
+    #[test]
+    fn a_listed_revision_counts_for_no_group() {
+        let repo = Repo::new();
+        repo.product("feat: first");
+        repo.commit(
+            "crates/domain/docs/dialect.md",
+            "refactor(importer)!: delete the dormant crate",
+        );
+        let listing = crate::releases::index::fixture::GROUPS.replace(
+            "bot-subjects",
+            &format!(
+                "ignore-revs = [ \"{}\" ]\n        bot-subjects",
+                repo.head()
+            ),
+        );
+        let walked = repo.walk_under("HEAD", &listing);
+        assert_eq!(walked.len(), 2);
+        assert_eq!(groups(&walked[0]), ["domain"]);
+        assert!(walked[1].groups.is_empty(), "{:?}", walked[1]);
+        assert_eq!(product_subjects(&walked), ["feat: first"]);
     }
 
     /// Scenario _Release bot bookkeeping_: the reserved subject counts for
