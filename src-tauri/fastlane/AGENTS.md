@@ -17,11 +17,14 @@ they ship the app, not describe it.
 | `lib/palette.typ`     | colours and font families, all from typewind           |
 | `lib/logo.typ`        | the logo painter                                       |
 | `lib/parts.typ`       | chips, rows, callouts — every size in `em`             |
-| `lib/screen.typ`      | `brand-page`, `device`, `screen`                       |
+| `lib/screen.typ`      | `brand-page`, `slab`, `device`, `screen`               |
 | `lib/surfaces.typ`    | the store surfaces, and the screens × surfaces fan-out |
+| `lib/devices.typ`     | each frame's image, screen rect, radius and scale      |
 | `lib/sheet.typ`       | the `index.html` contact sheet and its CSS             |
 | `logo/{md,xs}.svg`    | the bare logo, quadrant ids painted at render time     |
 | `res/`                | device frames — in the tree, never in history          |
+| `flows/<screen>.yaml` | one Maestro flow per captured screen                   |
+| `captures/`           | generated — `xfastlane capture`'s PNGs, by hand only   |
 | `<locale>.typ`        | that locale's screens and fixed slots                  |
 | `<locale>.toml`       | listing copy, every store in one file                  |
 | `metadata/`           | generated — supply's tree, and deliver's `.txt`        |
@@ -79,8 +82,14 @@ the heights off.
 #import "/fastlane/lib/lib.typ": *
 #import "/fastlane/en-US.typ": screens
 #set page(width: 811.2pt, height: auto, margin: 0pt)  // 84% of 1080, less 2×3em
-#for (i, s) in screens.enumerate() { s.body; if i < screens.len() - 1 { pagebreak() } }
+#let drawn = screens.filter(s => "body" in s)  // a captured screen has no body
+#for (i, s) in drawn.enumerate() { s.body; if i < drawn.len() - 1 { pagebreak() } }
 ```
+
+A screen names either a `body`, drawn into a slab, or a `capture`, framed in
+its surface's device. `local-first` is the one captured screen so far; the
+other three stay drawn until the change that decides what each screen shows,
+and no listing ships before then, so the mixture is interim.
 
 ## Listing copy
 
@@ -201,6 +210,83 @@ rendered without appearing on the sheet.
 Open `index-<locale>.html` to review a build: every asset linked and previewed
 on a chequerboard, with its store requirement beside it. It sits at the output
 root so its `<img src>` paths resolve against the same tree the stores read.
+
+## Capture
+
+Captured screens are minted by hand; nothing in CI calls it, and whether the
+PNGs are ever committed is undecided — `**/*.png` ignores them meanwhile.
+
+```bash
+xfastlane capture ios     [flavor] [locale] [--package Waypoints.app] [--device <udid>]
+xfastlane capture android [flavor] [locale] [--package app.apk]       [--device <serial>]
+```
+
+It writes the demo territory (`cargo xtask demo-territory`), installs a fresh
+build of the flavor, places the territory in the app's data directory before
+the app ever launches, then for each `flows/<screen>.yaml` opens the screen's
+link, runs the flow, and keeps `captures/<platform>/<locale>/<screen>.png`.
+`xfastlane build` frames them; a screen whose capture is missing fails the
+render by name.
+
+**The territory is a returning user's app-data directory**, written on the host
+by the app's own code: `settings.json` (the territory registry),
+`territories/<id>/waypoints.db`, and `sync/` holding a throwaway identity with
+no Station. The identity matters as much as the store — the app's routing gate
+sends anyone without one to onboarding. A release build seeds nothing; `xtask`
+builds `store` with `mock`, which is where the corpus comes from.
+
+| platform | data directory                                                  | written with     |
+| -------- | --------------------------------------------------------------- | ---------------- |
+| iOS      | `<simctl data container>/Library/Application Support/<bundle>/` | `cp` on the host |
+| Android  | `/data/data/<package>/`                                         | `adb root`, push |
+
+**A flow is one screen.** Its `env` names the screen's `LINK` (route and pose,
+no scheme) and `READY` (text only that screen over the placed territory
+renders); `capture` passes `APP_ID`. Three rules, each learned the hard way:
+
+- **`capture` opens the link, not the flow.** Maestro's `openLink` raises an
+  "Open in …?" sheet on iOS whose button cannot be told apart from the
+  webview's own "Open" buttons; `simctl openurl` and `adb am start` raise none.
+  It launches the app first and waits for the library: on iOS a link that
+  itself launches the app never reaches the frontend.
+- **Settle on `READY`, never on `waitForAnimationToEnd` alone.** The latter
+  returns on the webview before its first paint and captures a white screen.
+- **`READY` must exclude onboarding.** "Welcome to Waypoints" is both the
+  getting-started page's title and onboarding's headline. The library flow
+  waits on the territory's name, which heads the open navigation.
+
+**Devices.** iOS: the newest-runtime "iPhone 17 Pro" simulator. Android: an AVD
+named `pixel_10_pro` on a Google APIs image — a Play image refuses `adb root`,
+and a release apk's data directory is root-only. `avdmanager` has no Pixel 10
+Pro profile; the Pixel 9 Pro's has the same 1280×2856 panel:
+
+```bash
+devenv shell -P emulator -- avdmanager create avd -n pixel_10_pro \
+  -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_9_pro
+```
+
+**Traps.**
+
+- Tauri refuses a simulator build unless an installed runtime's version is at
+  least the Xcode SDK's; `capture` checks first and names the
+  `xcodebuild -downloadPlatform iOS` to run.
+- The iOS webview sometimes stays blank after the app is activated — Maestro's
+  `launchApp` reliably, a plain launch now and then — until something
+  repaints it, which a static page never does. `capture` launches with
+  `simctl` and, if the library does not show, flips the simulator's appearance
+  and back to force a repaint. On Android the same retry closes system
+  dialogs: a freshly booted emulator can raise "System UI isn't responding"
+  over the app.
+- Pushed files on Android need the data directory's SELinux context, MLS
+  categories included, or the app cannot read them; `restorecon` leaves a
+  file whose type is already right, so `capture` uses `chcon`.
+- The deep-link plugin writes `CFBundleURLTypes` and the manifest's intent
+  filter from its build script, which a cached build skips. An app built so
+  cannot be opened by its link; `capture` refuses it on iOS and names the
+  `cargo clean -p tauri-plugin-deep-link` that fixes it.
+- On Xcode 27, a release iOS build links only if swift-rs finds
+  `llvm-objcopy` in the Rust sysroot; `rust-toolchain.toml` carries
+  `llvm-tools` for it. Without it every Swift plugin symbol is undefined.
 
 ## Device frames
 

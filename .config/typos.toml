@@ -45,6 +45,8 @@
     writeable = "writeable"
     # Apple's Transporter unpacks to `itms/`
     itms      = "itms"
+    # a simulator's device id, in `simctl` output and Maestro's `--udid`
+    udid      = "udid"
 
 [type.storyboard]
   extend-glob      = [ "*.storyboard", "*.xib" ]

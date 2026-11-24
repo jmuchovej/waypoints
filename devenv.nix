@@ -311,6 +311,7 @@
     git
     imagemagick
     jujutsu
+    maestro
     mise
     ripgrep
   ];
