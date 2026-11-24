@@ -29,11 +29,15 @@ pub enum SetupCode {
 /// Valid BIP-39 mnemonic lengths.
 const PHRASE_WORD_COUNTS: [usize; 5] = [12, 15, 18, 21, 24];
 
-/// The two URL heads a pairing link may wear: the universal link (opens
-/// the app when installed, the waypoints.so landing page when not) and the
-/// custom scheme the app registers.
+/// The URL heads a pairing link may wear: the universal link (opens the app
+/// when installed, the waypoints.so landing page when not) and the custom
+/// scheme each flavor registers (development shares stable's).
 const PAIR_URL_HEAD_WEB: &str = "https://waypoints.so/pair";
-const PAIR_URL_HEAD_APP: &str = "waypoints://pair";
+const PAIR_URL_HEADS_APP: [&str; 3] = [
+    "waypoints://pair",
+    "waypoints-preview://pair",
+    "waypoints-nightly://pair",
+];
 
 pub fn classify(input: &str) -> SetupCode {
     let trimmed = input.trim();
@@ -221,8 +225,8 @@ pub fn qr_svg_liquid(content: &str) -> Result<String, super::SyncError> {
 }
 
 fn pair_url_fragment(input: &str) -> Option<&str> {
-    [PAIR_URL_HEAD_WEB, PAIR_URL_HEAD_APP]
-        .iter()
+    std::iter::once(&PAIR_URL_HEAD_WEB)
+        .chain(PAIR_URL_HEADS_APP.iter())
         .find(|head| input.starts_with(*head))
         .and_then(|_| input.split_once('#'))
         .map(|(_, fragment)| fragment)
@@ -279,9 +283,16 @@ mod tests {
         assert_eq!(classify(&url), SetupCode::Pairing(code.to_string()));
 
         let fragment = url.split_once('#').unwrap().1;
+        for scheme in ["waypoints", "waypoints-preview", "waypoints-nightly"] {
+            assert_eq!(
+                classify(&format!("{scheme}://pair#{fragment}")),
+                SetupCode::Pairing(code.to_string()),
+                "{scheme}"
+            );
+        }
         assert_eq!(
-            classify(&format!("waypoints://pair#{fragment}")),
-            SetupCode::Pairing(code.to_string())
+            classify(&format!("waypoints-bogus://pair#{fragment}")),
+            SetupCode::Unknown
         );
     }
 
