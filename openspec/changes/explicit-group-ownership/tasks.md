@@ -26,7 +26,7 @@
 
 ## 7. The first dry cut
 
-- [ ] 7.1 Run `cargo xtask release plan cut --dry-run` on `main` after this change lands and read the app's target, `main`'s next version, and each library's counted commits against `git log --first-parent`; today the run prints `0.1.0-pre.1` with `main` moving to `0.2.0-nightly`, measured over every commit (design.md D6). **AUDIT:** John signs off that the app's target is what `src-tauri/`, `crates/cartograph/`, `crates/store/`, `src/`, and the app's fixtures justify, and no `version` value in the file was touched by this change
+- [x] 7.1 Run `cargo xtask release plan cut --dry-run` on `main` after this change lands and read the app's target, `main`'s next version, and each library's counted commits against `git log --first-parent`; today the run prints `0.1.0-pre.1` with `main` moving to `0.2.0-nightly`, measured over every commit (design.md D6). **AUDIT:** John signs off that the app's target is what `src-tauri/`, `crates/cartograph/`, `crates/store/`, `src/`, and the app's fixtures justify, and no `version` value in the file was touched by this change. Read 2026-11-23 and 2026-11-24 from the worktree at this change's tip, since `main` takes pull requests only: the app plans `0.1.0-pre.1` on `v0.1.x` with `main` moving to `0.2.0-nightly`, measured over the app's own paths; `bedrock` 35 commits → `0.1.1`, `domain` 45 → `0.1.1` once D7 set `11798f95d` aside, `outpost` 49 → `0.2.0` on `feat(outpost)!: deployable Station`, `transload` 7 → `0.1.1`; every count matched `git log --first-parent --diff-merges=first-parent` by hand, and no `version` value moved. John signed off 2026-11-24
 
 ## 8. Listed revisions
 
