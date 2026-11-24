@@ -17,9 +17,11 @@
   name = "xtask"
 
 [dependencies]
-  cartograph       = { workspace = true, features = [ "development" ] }
-  domain.workspace = true
-  next_version     = "0.2"
+  cartograph          = { workspace = true, features = [ "development" ] }
+  domain.workspace    = true
+  next_version        = "0.2"
+  store.workspace     = true
+  transload.workspace = true
 
   anyhow.workspace               = true
   async-trait.workspace          = true
