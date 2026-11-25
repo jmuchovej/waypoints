@@ -1237,12 +1237,12 @@ jobs:
       - id: dry-index
         name: Render the index entry (dry run)
         if: needs.prepare.outputs.dry_run == 'true'
-        run: devenv shell -- cargo ci-task release index --tag "${TAG}" --rev "${REV}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        run: devenv shell -- cargo ci-task release record --tag "${TAG}" --rev "${REV}" --dry-run --into "${RUNNER_TEMP}/dry-run"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
           REV: ${{ github.sha }}
-          SECRETSPEC_REASON: release index renders the entry a dry run would have recorded; no secret values are read
+          SECRETSPEC_REASON: release record renders the entry a dry run would have recorded; no secret values are read
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: upload-dry-run
         name: Upload the dry run

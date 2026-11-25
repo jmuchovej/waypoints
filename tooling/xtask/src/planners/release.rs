@@ -1562,7 +1562,7 @@ fn project(
 }
 
 /// Every group's declared version projected onto its members, from the file
-/// as it stands: what `release groups project` runs for a hand-edited file, a
+/// as it stands: what `generate versions` runs for a hand-edited file, a
 /// crate newly joining a group, or a scratch tree. Returns the paths it
 /// changed — none on a tree that already agrees.
 pub fn project_file(metadata: &Metadata, groups: &GroupFile) -> Result<Vec<String>> {

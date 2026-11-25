@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Writes a published tag's release-index entry to the working tree, for the
-//! pull-request step to land on `main` — or, on a dry run, renders the entry
-//! a tag would receive, to a directory or to the log. See
-//! [`xtask::releases::index`].
+//! Records a published tag in the release index: writes its entry to the
+//! working tree, for the pull-request step to land on `main` — or, on a dry
+//! run, renders the entry a tag would receive, to a directory or to the log.
+//! See [`xtask::releases::index`].
 
 use anyhow::{Context as _, Result};
 use clap::Parser;

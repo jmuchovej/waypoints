@@ -482,7 +482,7 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
 
     if !schema_is_current {
         found.push(format!(
-            "{SCHEMA_FILE} is stale; run `cargo xtask release groups schema`"
+            "{SCHEMA_FILE} is stale; run `cargo xtask generate schemas`"
         ));
     }
 
@@ -1031,7 +1031,7 @@ mod tests {
             versions: &BTreeMap::new(),
             schema_is_current: false,
         });
-        assert_names(&found, &[SCHEMA_FILE, "release groups schema"]);
+        assert_names(&found, &[SCHEMA_FILE, "generate schemas"]);
     }
 
     fn versions(declared: &[(&str, &str)]) -> BTreeMap<String, String> {

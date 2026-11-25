@@ -49,12 +49,11 @@ mod tasks {
             pub mod upload;
             pub mod withdraw;
         }
-        pub mod groups;
-        pub mod index;
         pub mod merge;
         pub mod open_series;
         pub mod plan;
         pub mod prepare;
+        pub mod record;
         pub mod tag;
     }
 
@@ -71,6 +70,8 @@ mod tasks {
         #[cfg(feature = "local-dev")]
         pub mod icons;
         pub mod notices;
+        pub mod schemas;
+        pub mod versions;
         pub mod workflows;
     }
 
@@ -129,16 +130,14 @@ enum Release {
     /// What a run does to what it distributes: rename, upload, commit the manifest, withdraw.
     #[command(subcommand)]
     Distributables(Distributables),
-    /// Writes a published tag's release-index entry for its pull request to land.
-    Index(tasks::release::index::Options),
+    /// Records a published tag in the release index, for its pull request to land.
+    Record(tasks::release::record::Options),
     /// Lands a bot's pull request: has GitHub merge it and, unless told not to, waits for the merge.
     Merge(tasks::release::merge::Options),
     /// Tags a merge commit with the app's tag, or every library tag a cut minted.
     Tag(tasks::release::tag::Options),
     /// Opens a cut's series at its main pull request's merge commit.
     OpenSeries(tasks::release::open_series::Options),
-    /// The group file: its generated schema, and its projection into the manifests.
-    Groups(tasks::release::groups::Options),
 }
 
 #[derive(Subcommand)]
@@ -174,11 +173,15 @@ enum Generate {
     Icons(tasks::generate::icons::Options),
     /// Regenerates the third-party notices from the registry and the lockfiles.
     Notices(tasks::generate::notices::Options),
+    /// Regenerates the group file's JSON Schema from the types it is derived from.
+    Schemas(tasks::generate::schemas::Options),
+    /// Writes every group's declared version into its member manifests and lockfile entries.
+    Versions(tasks::generate::versions::Options),
 }
 
 #[derive(Subcommand)]
 enum List {
-    /// The files devenv materializes into the working tree, one per line.
+    /// Every generated path the tree carries, one per line: the ledger's outputs, then devenv's files.
     Managed(tasks::ls::managed::Options),
 }
 
@@ -196,11 +199,10 @@ fn main() -> Result<()> {
                 Distributables::Commit(args) => release::distributables::commit::run(args),
                 Distributables::Withdraw(args) => release::distributables::withdraw::run(args),
             },
-            Release::Index(args) => release::index::run(args),
+            Release::Record(args) => release::record::run(args),
             Release::Merge(args) => release::merge::run(args),
             Release::Tag(args) => release::tag::run(args),
             Release::OpenSeries(args) => release::open_series::run(args),
-            Release::Groups(args) => release::groups::run(args),
         },
         Command::Check(command) => match command {
             Check::Licenses(args) => check::licenses::run(args),
@@ -213,6 +215,8 @@ fn main() -> Result<()> {
             #[cfg(feature = "local-dev")]
             Generate::Icons(args) => generate::icons::run(args),
             Generate::Notices(args) => generate::notices::run(args),
+            Generate::Schemas(args) => generate::schemas::run(args),
+            Generate::Versions(args) => generate::versions::run(args),
         },
         #[cfg(feature = "local-dev")]
         Command::Dev(args) => tasks::dev::run(args),

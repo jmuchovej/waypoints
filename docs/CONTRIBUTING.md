@@ -168,7 +168,7 @@ request:
   `tooling/release-groups.toml`, fails unless `wp-botswain[bot]` authored the
   pull request. The file declares each group's version and every member
   manifest projects it, and the check holds the two equal: a crate joining a
-  group runs `cargo xtask release groups project` so its manifest takes the
+  group runs `cargo xtask generate versions` so its manifest takes the
   group's version.
 
 Branch commits are not checked, but they stay conventional: the release notes are

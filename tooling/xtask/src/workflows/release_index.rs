@@ -52,9 +52,9 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
     // come from at the versions the tree pins. The tag reaches the command
     // through the environment — `github.ref_name` is free text as far as the
     // shell is concerned.
-    let record = Step::new("cargo ci-task release index")
+    let record = Step::new("cargo ci-task release record")
         .run(format!(
-            "devenv shell -- cargo ci-task release index --tag \"$TAG\" {DRY_RUN_ON_REQUEST}"
+            "devenv shell -- cargo ci-task release record --tag \"$TAG\" {DRY_RUN_ON_REQUEST}"
         ))
         .shell("bash")
         .id("release-index")

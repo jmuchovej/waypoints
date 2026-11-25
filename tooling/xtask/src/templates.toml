@@ -43,7 +43,7 @@
 # GitHub wraps it at 72 columns.
 [pull-request]
   plan  = "Written by `cargo xtask release plan`; merges when its checks pass."
-  index = "Written by `cargo xtask release index`; merges when its checks pass."
+  index = "Written by `cargo xtask release record`; merges when its checks pass."
 
 # What the planner says when it refuses to mint.
 [refusal]

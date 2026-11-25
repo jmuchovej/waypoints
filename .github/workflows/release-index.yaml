@@ -81,8 +81,8 @@ jobs:
           SCCACHE_REGION: auto
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: release-index
-        name: cargo ci-task release index
-        run: devenv shell -- cargo ci-task release index --tag "$TAG" ${{ inputs.dry_run == true && '--dry-run' || '' }}
+        name: cargo ci-task release record
+        run: devenv shell -- cargo ci-task release record --tag "$TAG" ${{ inputs.dry_run == true && '--dry-run' || '' }}
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
@@ -130,7 +130,7 @@ jobs:
           delete-branch: "true"
           sign-commits: "true"
           title: ${{ steps.release-index.outputs.title }}
-          body: Written by `cargo xtask release index`; merges when its checks pass.
+          body: Written by `cargo xtask release record`; merges when its checks pass.
           commit-message: ${{ steps.release-index.outputs.title }}
           add-paths: ${{ steps.release-index.outputs.paths }}
       - name: cargo ci-task release merge

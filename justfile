@@ -115,7 +115,7 @@ check-generated:
     devenv shell cargo xtask generate bindings
     devenv shell cargo xtask generate icons
     devenv shell cargo xtask generate notices
-    devenv shell cargo xtask release groups schema
+    devenv shell cargo xtask generate schemas
 
     # The globs are pathspecs: `set -f` keeps the shell from expanding them to
     # only the files that exist.

@@ -1146,7 +1146,7 @@ pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Render the index entry (dry run)")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo ci-task release index --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
+            r#"cargo ci-task release record --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
         )))
         .shell("bash")
         .if_condition(helpers::rehearsing(dry_run))
@@ -1154,7 +1154,7 @@ pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
         .add_env(("REV", "${{ github.sha }}"))
         .add_env((
             "SECRETSPEC_REASON",
-            "release index renders the entry a dry run would have recorded; no secret values are read",
+            "release record renders the entry a dry run would have recorded; no secret values are read",
         ))
         .id("dry-index")
 }

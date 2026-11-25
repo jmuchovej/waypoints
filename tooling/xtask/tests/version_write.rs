@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! What `release plan` leaves in a real working tree for the pull-request
-//! step, and what `release groups project` writes from the group file. The
+//! step, and what `generate versions` writes from the group file. The
 //! fixture has a real remote, because the planner fetches the branch it
 //! writes to and reads the tags the remote holds. Nothing here reaches the
 //! GitHub API: `advance` writes on its series, and a cut's first write lands
@@ -404,7 +404,7 @@ fn project_writes_a_hand_edited_file_into_its_manifests() {
         &group_file("0.3.0-nightly", "0.2.0"),
     );
 
-    let (output, _) = fixture.xtask(&["release", "groups", "project"]);
+    let (output, _) = fixture.xtask(&["generate", "versions"]);
     assert_succeeded(&output);
 
     assert_eq!(
@@ -462,7 +462,7 @@ fn project_gives_a_new_member_its_group_s_version() {
         &["commit", "-q", "-m", "feat(domain): a core crate"],
     );
 
-    let (output, _) = fixture.xtask(&["release", "groups", "project"]);
+    let (output, _) = fixture.xtask(&["generate", "versions"]);
     assert_succeeded(&output);
 
     assert_eq!(
@@ -488,7 +488,7 @@ fn project_gives_a_new_member_its_group_s_version() {
 fn project_on_an_agreeing_tree_changes_nothing() {
     let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
 
-    let (output, _) = fixture.xtask(&["release", "groups", "project"]);
+    let (output, _) = fixture.xtask(&["generate", "versions"]);
     assert_succeeded(&output);
 
     assert_eq!(fixture.changed(), Vec::<String>::new());
