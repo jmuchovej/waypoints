@@ -61,7 +61,7 @@
 
 ## 9. Integration
 
-- [ ] 9.1 Add a `just dist::check-all` recipe that runs `dist check`, renders every package channel for every release channel the registry lists against the fixture (`cargo xtask dist render-all`), and runs each channel's `check`; add a `Distribution` workflow in `tooling/xtask/src/workflows/distribution.rs` whose `dist` job runs it on `runners::MACOS`, kept out of `Tests` so it is not a required check; verify it passes locally, the generator tests pass, and the CI log shows `brew audit` ran and the AUR, winget, and Chocolatey checks skipped with their reasons
+- [x] 9.1 Add a `just dist::check-all` recipe that runs `dist check`, renders every package channel for every release channel the registry lists against the fixture (`cargo xtask dist render-all`), and runs each channel's `check`; add a `Distribution` workflow in `tooling/xtask/src/workflows/distribution.rs` whose `dist` job runs it on `runners::MACOS`, kept out of `Tests` so it is not a required check; verify it passes locally, the generator tests pass, and the CI log shows `brew audit` ran and the AUR, winget, and Chocolatey checks skipped with their reasons
 - [x] 9.2 Run `jj fix -s @`, the hook steps, `just check-generated`, `just dist::check-all`, and `just dist::kubernetes::lint`; verify all green
 
 ## Workflow follow-up
