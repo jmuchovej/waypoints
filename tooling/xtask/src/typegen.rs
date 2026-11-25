@@ -58,13 +58,14 @@ pub fn stamp(generated: &str, existing: Option<&str>, current_year: i32) -> Stri
 }
 
 /// The three generated files, held in memory until every export has
-/// succeeded so a failure writes nothing.
+/// succeeded so a failure writes nothing. Each is written to its path in
+/// [`crate::constants::BINDINGS`], in this order.
 pub struct Exports {
-    /// `crates/domain/typescript/types.g.ts`.
+    /// Domain's types.
     pub domain: String,
-    /// `crates/domain/typescript/schema.g.ts`.
+    /// Domain's JSON Schema.
     pub schema: String,
-    /// `crates/cartograph/typescript/types.g.ts`.
+    /// Cartograph's types.
     pub cartograph: String,
 }
 

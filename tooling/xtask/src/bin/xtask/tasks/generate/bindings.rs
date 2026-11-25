@@ -10,7 +10,7 @@ use anyhow::{Context as _, Result, bail};
 use chrono::{Datelike as _, Utc};
 use clap::{Parser, ValueEnum};
 use std::{fs, path::PathBuf, process::Command};
-use xtask::{typegen, workspace};
+use xtask::{constants::BINDINGS, typegen, workspace};
 
 #[derive(Parser)]
 pub struct Options {
@@ -27,28 +27,18 @@ enum Crate {
 }
 
 pub fn run(args: Options) -> Result<()> {
-    let metadata = workspace::load()?;
-    let typescript_dir = |package: &str| -> Result<PathBuf> {
-        metadata
-            .packages
-            .iter()
-            .find(|candidate| candidate.name.as_str() == package)
-            .and_then(|candidate| candidate.manifest_path.parent())
-            .map(|crate_dir| crate_dir.join("typescript").into_std_path_buf())
-            .with_context(|| format!("no `{package}` package in this workspace"))
-    };
-
+    let root = workspace::load()?.workspace_root.into_std_path_buf();
     let exports = typegen::exports()?;
 
+    // The ledger's paths, in its order.
+    let [domain, schema, cartograph] = BINDINGS;
     let mut written = Vec::new();
     if args.only != Some(Crate::Cartograph) {
-        let dir = typescript_dir("domain")?;
-        written.push(write(dir.join("types.g.ts"), &exports.domain)?);
-        written.push(write(dir.join("schema.g.ts"), &exports.schema)?);
+        written.push(write(root.join(domain), &exports.domain)?);
+        written.push(write(root.join(schema), &exports.schema)?);
     }
     if args.only != Some(Crate::Domain) {
-        let dir = typescript_dir("cartograph")?;
-        written.push(write(dir.join("types.g.ts"), &exports.cartograph)?);
+        written.push(write(root.join(cartograph), &exports.cartograph)?);
     }
 
     treefmt(&written)?;
