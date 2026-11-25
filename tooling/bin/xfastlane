@@ -184,12 +184,12 @@ def staged-package [platform: string, dir: path]: nothing -> path {
   let extension = (if $platform == "ios" { "ipa" } else { "aab" })
   let found = (glob $"($dir | path expand)/*.($extension)")
   if ($found | length) != 1 {
-    error make { msg: $"expected one .($extension) in ($dir), found ($found | length); stage it with `cargo xtask release stage --platform ($platform)`" }
+    error make { msg: $"expected one .($extension) in ($dir), found ($found | length); stage it with `cargo xtask release distributables rename --platform ($platform)`" }
   }
   $found | first
 }
 
-# Submits the package in `release stage`'s flat directory, never the build
+# Submits the package in `release distributables rename`'s flat directory, never the build
 # output: staging is what checks the export and names the file. The iOS build
 # stages AppStoreInfo.plist there too, beside the ipa, which is the one place
 # fastlane reads it from.

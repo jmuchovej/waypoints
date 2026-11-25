@@ -425,8 +425,8 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
-        name: Stage the release artifacts
-        run: cargo ci-task release stage --platform macos ${TAG:+--tag "${TAG}"}
+        name: Rename the distributables
+        run: cargo ci-task release distributables rename --platform macos ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -557,8 +557,8 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
-        name: Stage the release artifacts
-        run: cargo ci-task release stage --platform windows ${TAG:+--tag "${TAG}"}
+        name: Rename the distributables
+        run: cargo ci-task release distributables rename --platform windows ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -706,8 +706,8 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
-        name: Stage the release artifacts
-        run: cargo ci-task release stage --platform linux ${TAG:+--tag "${TAG}"}
+        name: Rename the distributables
+        run: cargo ci-task release distributables rename --platform linux ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -840,8 +840,8 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
-        name: Stage the release artifacts
-        run: cargo ci-task release stage --platform ios ${TAG:+--tag "${TAG}"}
+        name: Rename the distributables
+        run: cargo ci-task release distributables rename --platform ios ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -1040,8 +1040,8 @@ jobs:
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: stage-release
-        name: Stage the release artifacts
-        run: cargo ci-task release stage --platform android ${TAG:+--tag "${TAG}"}
+        name: Rename the distributables
+        run: cargo ci-task release distributables rename --platform android ${TAG:+--tag "${TAG}"}
         shell: bash
         env:
           TAG: v${{ needs.prepare.outputs.version }}
@@ -1161,13 +1161,13 @@ jobs:
         env:
           SECRETSPEC_REASON: xfastlane prepare renders store assets; no secret values are read
       - id: upload-to-store
-        name: Upload to the release store
+        name: Upload the distributables
         if: needs.prepare.outputs.dry_run != 'true'
-        run: devenv shell -- cargo ci-task release upload --from release --tag "${TAG}"
+        run: devenv shell -- cargo ci-task release distributables upload --from release --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_REASON: release upload derives a short-lived, channel-scoped store credential
+          SECRETSPEC_REASON: release distributables upload derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: publish-release
@@ -1201,13 +1201,13 @@ jobs:
           SECRETSPEC_REASON: fastlane submits the iOS build to its store with the iOS release scope
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: write-manifest
-        name: Write the channel manifest
+        name: Commit the channel manifest
         if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
-        run: devenv shell -- cargo ci-task release manifest --tag "${TAG}"
+        run: devenv shell -- cargo ci-task release distributables commit --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_REASON: release manifest derives a short-lived, channel-scoped store credential
+          SECRETSPEC_REASON: release distributables commit derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: dry-notes
@@ -1228,11 +1228,11 @@ jobs:
       - id: dry-manifest
         name: Render the channel manifest (dry run)
         if: needs.prepare.outputs.dry_run == 'true'
-        run: devenv shell -- cargo ci-task release manifest --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        run: devenv shell -- cargo ci-task release distributables commit --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_REASON: release manifest renders the manifest a dry run would have written; no secret values are read
+          SECRETSPEC_REASON: release distributables commit renders the manifest a dry run would have written; no secret values are read
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: dry-index
         name: Render the index entry (dry run)
@@ -1308,12 +1308,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.prepare.outputs.tag }}
       - id: withdraw-from-store
-        name: Withdraw uploaded artifacts
-        run: devenv shell -- cargo ci-task release withdraw --tag "${TAG}"
+        name: Withdraw the distributables
+        run: devenv shell -- cargo ci-task release distributables withdraw --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-          SECRETSPEC_REASON: release withdraw derives a short-lived, channel-scoped store credential
+          SECRETSPEC_REASON: release distributables withdraw derives a short-lived, channel-scoped store credential
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       - id: delete-minted-tag
         name: Delete the minted tag

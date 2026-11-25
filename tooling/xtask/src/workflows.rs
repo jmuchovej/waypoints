@@ -752,7 +752,7 @@ mod tests {
         assert_store_steps_name_no_transfer_tool(
             "synthetic",
             &json!({ "jobs": { "build": {
-                "steps": [{ "id": "upload-to-store", "run": "cargo ci-task release upload via rclone" }]
+                "steps": [{ "id": "upload-to-store", "run": "cargo ci-task release distributables upload via rclone" }]
             }}}),
         );
     }
@@ -782,8 +782,10 @@ mod tests {
                 // on a dry run, which builds no store client and resolves
                 // nothing.
                 let run = step["run"].as_str().unwrap_or("");
-                let store_task = ["upload", "manifest", "withdraw"].iter().any(|task| {
-                    run.starts_with(&format!("devenv shell -- cargo ci-task release {task} "))
+                let store_task = ["upload", "commit", "withdraw"].iter().any(|task| {
+                    run.starts_with(&format!(
+                        "devenv shell -- cargo ci-task release distributables {task} "
+                    ))
                 });
                 let provider = step["env"].get("SECRETSPEC_PROVIDER").is_some()
                     || run.contains("--provider op")

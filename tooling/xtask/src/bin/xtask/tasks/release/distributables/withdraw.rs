@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Best-effort cleanup of the artifacts a shortfall run uploaded. Atomicity
-//! never depends on this succeeding — no manifest ever named these keys,
-//! so they are unreferenced and unadvertised either way — which is what
-//! makes a failed delete safe to ignore rather than something that must
+//! Best-effort cleanup of the distributables a shortfall run uploaded.
+//! Atomicity never depends on this succeeding — no manifest ever named these
+//! keys, so they are unreferenced and unadvertised either way — which is
+//! what makes a failed delete safe to ignore rather than something that must
 //! fail the job. See the design's "A withdrawal deletes the keys it wrote,
 //! best-effort" decision.
 //!
 //! Attempts every key the channel's required targets could have produced
-//! (see [`xtask::releases::artifacts::published_keys`]), not only the ones
-//! this particular run actually wrote: deleting a key that was never
+//! (see [`xtask::releases::distributables::published_keys`]), not only the
+//! ones this particular run actually wrote: deleting a key that was never
 //! uploaded is an ordinary S3 no-op, not an error, so there is nothing to
 //! gain from tracking which targets actually succeeded before asking the
 //! store to remove them.
@@ -19,7 +19,7 @@ use anyhow::{Context as _, Result};
 use clap::Parser;
 use xtask::{
     releases::version::Version,
-    releases::{artifacts, store},
+    releases::{distributables, store},
 };
 
 #[derive(Parser)]
@@ -37,7 +37,7 @@ pub struct Options {
 
 pub fn run(args: Options) -> Result<()> {
     let channel = args.tag.parse::<Version>()?.channel();
-    let keys: Vec<String> = artifacts::published_keys(channel, &args.tag)?
+    let keys: Vec<String> = distributables::published_keys(channel, &args.tag)?
         .into_values()
         .collect();
 

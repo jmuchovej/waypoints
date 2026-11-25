@@ -67,7 +67,7 @@ pub mod planners {
 /// Staging, publishing, and recording a release, and the versions it is
 /// all keyed by.
 pub mod releases {
-    pub mod artifacts;
+    pub mod distributables;
     pub mod history;
     pub mod index;
     pub mod landing;

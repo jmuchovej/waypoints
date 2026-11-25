@@ -40,17 +40,20 @@ use clap::{Parser, Subcommand};
 mod tasks {
     pub mod test_plan;
 
-    /// The pipeline: planning, staging, publishing, and landing.
+    /// The pipeline: planning, distributing, publishing, and landing.
     pub mod release {
+        /// What a run does to what it distributes.
+        pub mod distributables {
+            pub mod commit;
+            pub mod rename;
+            pub mod upload;
+            pub mod withdraw;
+        }
         pub mod groups;
         pub mod index;
         pub mod land;
-        pub mod manifest;
         pub mod plan;
         pub mod prepare;
-        pub mod stage;
-        pub mod upload;
-        pub mod withdraw;
     }
 
     /// The checks a pull request must pass.
@@ -121,20 +124,27 @@ enum Release {
     Prepare(tasks::release::prepare::Options),
     /// Plans a release-cycle transition: cut, advance, promote, or patch.
     Plan(tasks::release::plan::Options),
-    /// Copies one platform's published artifacts into `release/` under their store keys.
-    Stage(tasks::release::stage::Options),
-    /// Uploads published artifacts to the releases bucket.
-    Upload(tasks::release::upload::Options),
-    /// Writes a channel's manifest after every required target has uploaded.
-    Manifest(tasks::release::manifest::Options),
-    /// Best-effort deletes the objects a shortfall run uploaded.
-    Withdraw(tasks::release::withdraw::Options),
+    /// What a run does to what it distributes: rename, upload, commit the manifest, withdraw.
+    #[command(subcommand)]
+    Distributables(Distributables),
     /// Writes a published tag's release-index entry for its pull request to land.
     Index(tasks::release::index::Options),
     /// Takes a bot's pull request from opened to landed, one step at a time.
     Land(tasks::release::land::Options),
     /// The group file: its generated schema, and its projection into the manifests.
     Groups(tasks::release::groups::Options),
+}
+
+#[derive(Subcommand)]
+enum Distributables {
+    /// Renames one platform's published and updater files into `release/` under their store keys.
+    Rename(tasks::release::distributables::rename::Options),
+    /// Uploads the renamed files to the releases bucket.
+    Upload(tasks::release::distributables::upload::Options),
+    /// Commits the channel's manifest once every required target has uploaded.
+    Commit(tasks::release::distributables::commit::Options),
+    /// Best-effort deletes the objects a shortfall run uploaded.
+    Withdraw(tasks::release::distributables::withdraw::Options),
 }
 
 #[derive(Subcommand)]
@@ -174,10 +184,12 @@ fn main() -> Result<()> {
         Command::Release(command) => match command {
             Release::Prepare(args) => release::prepare::run(args),
             Release::Plan(args) => release::plan::run(args),
-            Release::Stage(args) => release::stage::run(args),
-            Release::Upload(args) => release::upload::run(args),
-            Release::Manifest(args) => release::manifest::run(args),
-            Release::Withdraw(args) => release::withdraw::run(args),
+            Release::Distributables(command) => match command {
+                Distributables::Rename(args) => release::distributables::rename::run(args),
+                Distributables::Upload(args) => release::distributables::upload::run(args),
+                Distributables::Commit(args) => release::distributables::commit::run(args),
+                Distributables::Withdraw(args) => release::distributables::withdraw::run(args),
+            },
             Release::Index(args) => release::index::run(args),
             Release::Land(args) => release::land::run(args),
             Release::Groups(args) => release::groups::run(args),

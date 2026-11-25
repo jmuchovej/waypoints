@@ -1,24 +1,25 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Uploads the staged artifacts to the `releases` bucket through the shared
-//! client in [`xtask::releases::store`]. The channel is derived from the
-//! tag's version rather than accepted as an argument, and every staged file
-//! is checked against the keys the scheme produces (see
-//! [`xtask::releases::artifacts`]) before any credential is derived.
+//! Uploads the renamed distributables to the `releases` bucket through the
+//! shared client in [`xtask::releases::store`]. The channel is derived from
+//! the tag's version rather than accepted as an argument, and every staged
+//! file is checked against the keys the scheme produces (see
+//! [`xtask::releases::distributables`]) before any credential is derived.
 
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::path::PathBuf;
 use xtask::{
     releases::version::Version,
-    releases::{artifacts, store},
+    releases::{distributables, store},
 };
 
 #[derive(Parser)]
 pub struct Options {
-    /// The flat directory every build's `release stage` output merges into;
-    /// each file is uploaded to the key its name and extension determine.
+    /// The flat directory every build's `release distributables rename`
+    /// output merges into; each file is uploaded to the key its name and
+    /// extension determine.
     #[arg(long)]
     from: PathBuf,
 
@@ -35,7 +36,7 @@ pub struct Options {
 
 pub fn run(args: Options) -> Result<()> {
     let channel = args.tag.parse::<Version>()?.channel();
-    let files = artifacts::staged_files(&args.from, channel, &args.tag)?;
+    let files = distributables::staged_files(&args.from, channel, &args.tag)?;
 
     let client = store::create_r2_client(channel, args.ttl_seconds)?;
 

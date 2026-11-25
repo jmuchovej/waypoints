@@ -453,7 +453,7 @@ mod tests {
     }
 
     /// Every platform's stage merges into one flat directory that is
-    /// exactly what `release upload --from` accepts.
+    /// exactly what `release distributables upload --from` accepts.
     #[test]
     fn the_merged_stage_uploads_as_staged() {
         let tree = Scratch::new();

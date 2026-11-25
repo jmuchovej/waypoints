@@ -861,17 +861,17 @@ fn download_artifact_action() -> Action {
     )
 }
 
-/// Renames the platform's published and updater artifacts out of the
-/// bundler's nested output into the flat [`STAGE_DIR`], as
-/// `waypoints-{tag}.{ext}`. Every run stages, dry runs included, so a change
-/// in what Tauri exports fails the build that produced it. `tag` is the tag
-/// the files are named for — on a dry run, the one it would have published;
-/// when it is empty, `release stage` takes the app's own version. Needs no
+/// Renames the platform's published and updater files out of the bundler's
+/// nested output into the flat [`STAGE_DIR`], as `waypoints-{tag}.{ext}`.
+/// Every run renames, dry runs included, so a change in what Tauri exports
+/// fails the build that produced it. `tag` is the tag the files are named
+/// for — on a dry run, the one it would have published; when it is empty,
+/// `release distributables rename` takes the app's own version. Needs no
 /// credential.
 pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
-    Step::new("Stage the release artifacts")
+    Step::new("Rename the distributables")
         .run(format!(
-            r#"cargo ci-task release stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
+            r#"cargo ci-task release distributables rename --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
             slug = platform.slug(),
         ))
         .shell("bash")
@@ -915,19 +915,19 @@ pub fn prepare_listing(channel: Channel) -> Step<Run> {
         .id("prepare-listing")
 }
 
-/// Uploads the staged tree to the `releases` bucket; `release upload`
-/// derives its own store credential. Stands down on a dry run.
+/// Uploads the staged tree to the `releases` bucket; `release distributables
+/// upload` derives its own store credential. Stands down on a dry run.
 pub fn upload_to_store(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
-    let step = Step::new("Upload to the release store")
+    let step = Step::new("Upload the distributables")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo ci-task release upload --from {STAGE_DIR} --tag "${{TAG}}""#
+            r#"cargo ci-task release distributables upload --from {STAGE_DIR} --tag "${{TAG}}""#
         )))
         .shell("bash")
         .if_condition(helpers::not_rehearsing(dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release upload derives a short-lived, channel-scoped store credential",
+            "release distributables upload derives a short-lived, channel-scoped store credential",
         ))
         .id("upload-to-store");
     Tools::Devenv.resolving(step)
@@ -1069,21 +1069,21 @@ pub fn publish_release(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
         .id("publish-release")
 }
 
-/// Writes the channel's manifest — the single commit point a channel
+/// Commits the channel's manifest — the single commit point a channel
 /// advertises through. Ordered after [`publish_release`] in the same job,
 /// so it is the run's true last write: the reverse (a published record
 /// naming artifacts the manifest has not yet confirmed) cannot happen. One
 /// line dispatching to `xtask`, like every other store-touching step. Stands
 /// down on a dry run, whose manifest [`dry_manifest`] renders instead.
 pub fn write_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
-    let step = Step::new("Write the channel manifest")
-        .run(Tools::Devenv.command(r#"cargo ci-task release manifest --tag "${TAG}""#))
+    let step = Step::new("Commit the channel manifest")
+        .run(Tools::Devenv.command(r#"cargo ci-task release distributables commit --tag "${TAG}""#))
         .shell("bash")
         .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release manifest derives a short-lived, channel-scoped store credential",
+            "release distributables commit derives a short-lived, channel-scoped store credential",
         ))
         .id("write-manifest");
     Tools::Devenv.resolving(step)
@@ -1127,19 +1127,20 @@ pub fn dry_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
         .id("dry-notes")
 }
 
-/// A dry run's manifest, rendered into the dry directory. `release manifest`
-/// builds no store client for it, so the step resolves nothing.
+/// A dry run's manifest, rendered into the dry directory. `release
+/// distributables commit` builds no store client for it, so the step
+/// resolves nothing.
 pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Render the channel manifest (dry run)")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo ci-task release manifest --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
+            r#"cargo ci-task release distributables commit --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
         )))
         .shell("bash")
         .if_condition(helpers::rehearsing(dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release manifest renders the manifest a dry run would have written; no secret values are read",
+            "release distributables commit renders the manifest a dry run would have written; no secret values are read",
         ))
         .id("dry-manifest")
 }
@@ -1205,16 +1206,19 @@ pub fn discard_release(tag: &JobOutput) -> Step<Run> {
 /// to `xtask`, like every other store-touching step — see the design's "The
 /// store is reached through opendal in-process, from one client
 /// constructor" decision. A failed delete is caught and warned on inside
-/// `release withdraw` itself rather than propagated, so this step's exit
-/// code carries no information about whether every object was removed.
+/// `release distributables withdraw` itself rather than propagated, so this
+/// step's exit code carries no information about whether every object was
+/// removed.
 pub fn withdraw_from_store(tag: &JobOutput) -> Step<Run> {
-    let step = Step::new("Withdraw uploaded artifacts")
-        .run(Tools::Devenv.command(r#"cargo ci-task release withdraw --tag "${TAG}""#))
+    let step = Step::new("Withdraw the distributables")
+        .run(Tools::Devenv.command(
+            r#"cargo ci-task release distributables withdraw --tag "${TAG}""#,
+        ))
         .shell("bash")
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release withdraw derives a short-lived, channel-scoped store credential",
+            "release distributables withdraw derives a short-lived, channel-scoped store credential",
         ))
         .id("withdraw-from-store");
     Tools::Devenv.resolving(step)

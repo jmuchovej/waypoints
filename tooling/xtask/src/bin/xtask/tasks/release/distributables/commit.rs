@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Writes a channel's manifest once every required target has uploaded — or,
-//! on a dry run, renders it to a file instead. See
-//! [`xtask::releases::manifest`].
+//! Commits a channel's manifest — the single point a channel advertises
+//! through — once every required target has uploaded, or, on a dry run,
+//! renders it to a file instead. See [`xtask::releases::manifest`].
 
 use anyhow::{Context as _, Result};
 use clap::Parser;

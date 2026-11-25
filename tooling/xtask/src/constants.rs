@@ -101,8 +101,8 @@ pub const ABOUT_TEMPLATE: &str = ".config/about.hbs";
 
 /// The release index: one committed file per channel.
 pub const INDEX_DIR: &str = "nix/releases";
-/// The flat directory `release stage` fills and `release upload --from`
-/// reads.
+/// The flat directory `release distributables rename` fills and
+/// `release distributables upload --from` reads.
 pub const STAGE_DIR: &str = "release";
 /// Upload metadata the iOS build stages beside its ipa: TestFlight reads it
 /// off macOS, and it never becomes a store object.

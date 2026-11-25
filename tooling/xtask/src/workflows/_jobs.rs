@@ -464,7 +464,7 @@ pub fn withdraw_release(channel: Channel, prepare: &PrepareJob) -> NamedJob {
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(runners::LINUX)
         .cond(Expression::new(expr))
-        // `release withdraw` is a `cargo xtask`, so it needs the tree.
+        // `release distributables withdraw` is a `cargo xtask`, so it needs the tree.
         .add_step(steps::checkout());
     let job = with_devenv(job)
         .add_step(steps::discard_release(tag))
@@ -932,7 +932,7 @@ mod tests {
             step(&steps, "upload-to-store")["run"]
                 .as_str()
                 .unwrap()
-                .contains("cargo ci-task release upload --from release --tag")
+                .contains("cargo ci-task release distributables upload --from release --tag")
         );
         assert_eq!(step(&steps, "download-staged")["with"]["path"], "release");
         assert_eq!(
@@ -1040,7 +1040,11 @@ mod tests {
             let steps = value["steps"].as_array().expect("steps");
             for step in steps {
                 let run = step["run"].as_str().unwrap_or("");
-                for publishing in ["release upload", "release manifest", "xfastlane"] {
+                for publishing in [
+                    "release distributables upload",
+                    "release distributables commit",
+                    "xfastlane",
+                ] {
                     assert!(!run.contains(publishing), "{platform}: {run}");
                 }
             }
@@ -1071,8 +1075,8 @@ mod tests {
 
     /// Every channel names its staged files for the planner's version — the
     /// tag's on preview and stable, and on nightly the one it minted or would
-    /// mint — and `release stage` still takes the app's own version when the
-    /// planner hands it nothing.
+    /// mint — and `release distributables rename` still takes the app's own
+    /// version when the planner hands it nothing.
     #[test]
     fn the_staged_files_are_named_for_the_run_s_tag() {
         for channel in [Channel::Nightly, Channel::Stable] {
