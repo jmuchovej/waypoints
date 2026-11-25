@@ -35,7 +35,7 @@ A generator that computes its placements at run time SHALL refuse, before writin
 
 ### Requirement: The tooling's shared names and paths have one definition
 
-A path or name more than one module of the tooling reads — a branch, a bot identity, a manifest, a generated file — SHALL be defined once and imported by every reader; a second definition, or a literal spelled in a reader, SHALL be removed. A constant one module alone reads MAY stay beside that reader. A test fixture reproducing a file's content is not a reader.
+A path, name, or identity the tooling uses as a whole — a branch, the bot, a manifest, a generated file — SHALL be defined once, in one module, and imported by every reader; a second definition, or a literal spelled in a reader, SHALL be removed. A constant private to one module's implementation MAY stay beside it. A test fixture reproducing a file's content is not a reader.
 
 #### Scenario: A renamed branch
 
