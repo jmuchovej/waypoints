@@ -78,7 +78,10 @@ fn builds(dry_run: bool, no_build: bool) -> Result<bool> {
     Ok(!no_build)
 }
 
-fn plan_nightly(
+/// Decides the day's nightly from `manifest`'s target: skip when nothing
+/// landed, refuse a taken day, else mint it at `HEAD` — or, dry, report what
+/// it would have. Shared with `release bump --channel nightly`.
+pub(crate) fn plan_nightly(
     manifest: &Version,
     tag: Option<&str>,
     dry_run: bool,

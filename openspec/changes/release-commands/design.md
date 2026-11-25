@@ -86,6 +86,7 @@ See proposal.md — Why. Verified 2026-11-21 against the tree the xtask restruct
 - [`describe`, `record`, and `undo` have no caller until the next change] → they are dispatched by `main.rs` so no dead-code lint fires, and their tests are what proves them; the first workflow run that calls them is `tag-driven-releases`' audit.
 - [The renames touch every committed workflow] → spelling only; `just check-generated` after each task is the proof, and the diff of each workflow is read in review as the renamed hunks and nothing else.
 - [The in-flight refusal names a revert that does not yet exist] → until `tag-driven-releases` lands, nothing produces the state; the reader refuses on the version alone and names the pull request when it finds one.
+- [`bump` reads every open series' group file off the remote through `GroupFile::parse`] → a series opened before a key changed shape, or a `main` this stack has not reached, fails to parse and refuses every bump until the current shape lands there; that is a one-time landing — by a merge the checks are relaxed for, if it comes to that — rather than a second, looser parser, and the refusal names the file and line (decided 2026-11-25, when the first dry bump on this tree read an `origin/main` whose file still named the blame file by path).
 
 ## Migration Plan
 

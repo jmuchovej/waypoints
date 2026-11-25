@@ -8,7 +8,10 @@
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use indoc::formatdoc;
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use xtask::{
     constants::MAIN, planners::release as planner, release_groups, releases::version::Transition,
     tools::github, workspace,
@@ -53,13 +56,32 @@ pub fn run(args: Options) -> Result<()> {
     };
     let plan = planner::plan(args.transition, options)?;
     let groups = release_groups::load(&workspace::load()?)?;
-    let landing = plan.landing(&groups)?;
+    carry_out(
+        args.transition,
+        &plan,
+        &groups,
+        args.dry_run,
+        args.into.as_deref(),
+    )
+}
+
+/// Reports `plan`, then either renders it dry into `into` or writes it into
+/// the tree and publishes its landing — a cut's `main` landing with its body
+/// file, every other transition's series landing. Shared with `release
+/// bump`, which plans the same way once it has inferred the transition.
+pub(crate) fn carry_out(
+    transition: Transition,
+    plan: &planner::Plan,
+    groups: &release_groups::GroupFile,
+    dry_run: bool,
+    into: Option<&Path>,
+) -> Result<()> {
+    let landing = plan.landing(groups)?;
 
     match &landing {
         Some(landing) => {
             println!(
                 "{transition:?}: {version} on {branch} ({channel}); tag {tag}",
-                transition = args.transition,
                 version = plan.version,
                 branch = plan.branch,
                 channel = plan.channel,
@@ -67,18 +89,15 @@ pub fn run(args: Options) -> Result<()> {
             );
             println!("  {}", landing.describe(&plan.branch));
         }
-        None => println!(
-            "{transition:?}: one library on main, no series",
-            transition = args.transition
-        ),
+        None => println!("{transition:?}: one library on main, no series"),
     }
-    if let Some(main) = plan.main_landing(&groups)? {
+    if let Some(main) = plan.main_landing(groups)? {
         if !plan.next_main_version.is_empty() {
             println!("  main moves to {}", plan.next_main_version);
         }
         println!("  {}", main.describe(MAIN));
         if main.title.starts_with("summary:") {
-            for header in plan.summary_headers(&groups)? {
+            for header in plan.summary_headers(groups)? {
                 println!("    {header}");
             }
         }
@@ -90,11 +109,11 @@ pub fn run(args: Options) -> Result<()> {
         println!("  {}", pin.describe());
     }
 
-    if args.dry_run {
-        match &args.into {
+    if dry_run {
+        match into {
             Some(dir) => {
                 fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
-                for (name, content) in planner::rehearse(args.transition, &plan)? {
+                for (name, content) in planner::rehearse(transition, plan)? {
                     let file = dir.join(&name);
                     fs::write(&file, content)
                         .with_context(|| format!("writing {}", file.display()))?;
@@ -104,16 +123,16 @@ pub fn run(args: Options) -> Result<()> {
             }
             None => println!("  (dry run — nothing written)"),
         }
-        return github::set_outputs_if_available(&plan);
+        return github::set_outputs_if_available(plan);
     }
 
-    planner::execute(args.transition, &plan)?;
-    github::set_outputs_if_available(&plan)?;
+    planner::execute(transition, plan)?;
+    github::set_outputs_if_available(plan)?;
 
     // A cut lands on `main` first; its series opens from that merge commit,
     // in a later step that publishes the series' landing itself.
-    if args.transition == Transition::Cut {
-        let main = plan.main_landing(&groups)?.context("a cut lands on main")?;
+    if transition == Transition::Cut {
+        let main = plan.main_landing(groups)?.context("a cut lands on main")?;
         println!("  wrote the main-side manifests on main");
         let body = if main.title.starts_with("summary:") {
             formatdoc! { "
@@ -122,7 +141,7 @@ pub fn run(args: Options) -> Result<()> {
                 {headers}
                 ",
                 plan = planner::pull_request_body(),
-                headers = plan.summary_headers(&groups)?.join("\n"),
+                headers = plan.summary_headers(groups)?.join("\n"),
             }
         } else {
             planner::pull_request_body()

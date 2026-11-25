@@ -18,6 +18,7 @@
 //! claim about content. See [`super::nightly`].
 
 use crate::{
+    Channel,
     constants::{
         APP_MANIFEST, GROUP_FILE, LOCKFILE, MAIN, RELEASE_PLAN_HEAD_PREFIX, REPOSITORY,
         ROOT_MANIFEST,
@@ -1735,11 +1736,131 @@ pub fn open_revert(in_flight: &InFlight) -> Result<Option<u64>> {
     github::open_pull_request_from(&in_flight.revert_head())
 }
 
+/// What a bump reads about one open series: the app version its group file
+/// declares, whether a tag names that version, and whether counted work
+/// landed on the series since that tag.
+#[derive(Debug, PartialEq, Eq)]
+pub struct SeriesState {
+    pub branch: String,
+    pub declared: Version,
+    pub tagged: bool,
+    pub counted_since_tag: bool,
+}
+
+/// The transition `channel`'s bump makes, read off the `newest` series — or
+/// none, before the first cut. A preview advances a series in preview where
+/// counted work landed since its tag, refuses where only bookkeeping did,
+/// and cuts from `main` when the newest series is stable or there is none; a
+/// stable promotes a series in preview, with or without new work, patches a
+/// tagged stable series with counted cherry-picks, and refuses otherwise.
+/// `major` asks for a cut's major, so it is refused where the bump would
+/// advance instead. Presence of work is all that is read here; only a cut
+/// sizes from history, and nightly is not a transition.
+pub fn infer(channel: Channel, newest: Option<&SeriesState>, major: bool) -> Result<Transition> {
+    match channel {
+        Channel::Nightly => {
+            bail!("nightly is not a transition; a nightly bump mints the day's nightly")
+        }
+        Channel::Preview => match newest {
+            Some(series) if series.declared.is_preview() => {
+                if major {
+                    bail!(
+                        "`--major` asks for a cut, but {} is still in preview at {}; a preview bump advances it",
+                        series.branch,
+                        series.declared
+                    );
+                }
+                if !series.counted_since_tag {
+                    bail!(
+                        "nothing but bookkeeping landed on {} since `{}`; a bump moves no tag over bookkeeping alone",
+                        series.branch,
+                        series.declared.tag()
+                    );
+                }
+                Ok(Transition::Advance)
+            }
+            _ => Ok(Transition::Cut),
+        },
+        Channel::Stable => match newest {
+            Some(series) if series.declared.is_preview() => Ok(Transition::Promote),
+            Some(series) if series.counted_since_tag => Ok(Transition::Patch),
+            Some(series) => bail!(
+                "nothing to release on {}: no counted commit since `{}`",
+                series.branch,
+                series.declared.tag()
+            ),
+            None => bail!("no series to promote or patch; a preview bump cuts one"),
+        },
+    }
+}
+
+/// Plans `transition` on a series declaring `declared`, as a bump run from
+/// `main` plans it: the version's own arithmetic, and for a patch each pin's
+/// move along its line.
+pub fn plan_on_series(
+    transition: Transition,
+    declared: &Version,
+    groups: &GroupFile,
+    root: &Path,
+) -> Result<Plan> {
+    let plan = Plan::from_version(transition, declared.transition(transition, &[])?)?;
+    if transition != Transition::Patch {
+        return Ok(plan);
+    }
+    let moves = pin_moves(&plan.branch, groups, root)?;
+    Ok(plan.with_moves(moves))
+}
+
+/// Whether counted work landed on `branch`, as the remote has it, since the
+/// commit `since` — the one its tag names: the first-parent walk with
+/// bookkeeping excluded, read for presence and never for severity.
+pub fn counted_since(since: &str, branch: &str, groups: &GroupFile, root: &Path) -> Result<bool> {
+    let ignored = history::ignored_revisions(root, groups)?;
+    let range = format!("{since}..{}", remote_or_local(branch));
+    Ok(history::walk(&range, groups, &ignored)?
+        .iter()
+        .any(|commit| !commit.groups.is_empty()))
+}
+
+/// Each open series' state for a bump, from `series` as
+/// [`open_series_from_remote`] reads them and `tags` as the remote holds
+/// them, each with the commit it names — so no tag has to exist locally.
+pub fn series_states(
+    series: &[(String, Version)],
+    tags: &[(String, String)],
+    groups: &GroupFile,
+    root: &Path,
+) -> Result<Vec<SeriesState>> {
+    series
+        .iter()
+        .map(|(branch, declared)| {
+            let tag = declared.tag();
+            let named = tags.iter().find(|(name, _)| *name == tag);
+            let counted_since_tag = match named {
+                Some((_, sha)) => counted_since(sha, branch, groups, root)?,
+                None => false,
+            };
+            Ok(SeriesState {
+                branch: branch.clone(),
+                declared: declared.clone(),
+                tagged: named.is_some(),
+                counted_since_tag,
+            })
+        })
+        .collect()
+}
+
+/// The app version `branch`'s group file declares, as the remote has it.
+pub fn declared_on(branch: &str) -> Result<Version> {
+    let file = git::show(&remote_or_local(branch), GROUP_FILE)?;
+    GroupFile::parse(&file)?.app_version()
+}
+
 /// The newest stable tag, which is what a cut measures its work against.
 ///
 /// Previews and nightlies are excluded: both are views of a release that has
 /// not happened yet, so neither marks the end of a cycle.
-fn last_stable(tags: &[String]) -> Option<Version> {
+pub fn last_stable(tags: &[String]) -> Option<Version> {
     tags.iter()
         .filter_map(|tag| tag.parse::<Version>().ok())
         .filter(Version::is_stable)
@@ -1843,6 +1964,71 @@ mod tests {
             withdrawal_in_flight(&[], &[], &v("0.1.0-nightly"), None).unwrap(),
             None
         );
+    }
+
+    fn series(branch: &str, declared: &str, counted: bool) -> SeriesState {
+        SeriesState {
+            branch: branch.to_owned(),
+            declared: v(declared),
+            tagged: true,
+            counted_since_tag: counted,
+        }
+    }
+
+    /// Scenarios _A preview bump on an open preview_, _A preview bump after
+    /// a stable_, _A stable bump on a preview_, _A stable bump with nothing to
+    /// patch_, _A preview bump with nothing new_, and _A promotion needs no
+    /// new work_: the transition follows from the newest series' state, and
+    /// bookkeeping alone moves no tag.
+    #[test]
+    fn a_bump_infers_its_transition_from_the_newest_series() {
+        let preview = series("v0.2.x", "0.2.0-pre.3", true);
+        let quiet = series("v0.2.x", "0.2.0-pre.3", false);
+        let stable = series("v0.2.x", "0.2.0", false);
+        let patched = series("v0.2.x", "0.2.0", true);
+
+        assert_eq!(
+            infer(Channel::Preview, Some(&preview), false).unwrap(),
+            Transition::Advance
+        );
+        let error = infer(Channel::Preview, Some(&quiet), false)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("v0.2.0-pre.3"), "{error}");
+        assert_eq!(
+            infer(Channel::Preview, Some(&stable), false).unwrap(),
+            Transition::Cut
+        );
+        assert_eq!(
+            infer(Channel::Preview, None, true).unwrap(),
+            Transition::Cut
+        );
+        let error = infer(Channel::Preview, Some(&preview), true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("v0.2.x"), "{error}");
+
+        assert_eq!(
+            infer(Channel::Stable, Some(&preview), false).unwrap(),
+            Transition::Promote
+        );
+        assert_eq!(
+            infer(Channel::Stable, Some(&quiet), false).unwrap(),
+            Transition::Promote
+        );
+        assert_eq!(
+            infer(Channel::Stable, Some(&patched), false).unwrap(),
+            Transition::Patch
+        );
+        let error = infer(Channel::Stable, Some(&stable), false)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("v0.2.x") && error.contains("v0.2.0"),
+            "{error}"
+        );
+        assert!(infer(Channel::Stable, None, false).is_err());
+        assert!(infer(Channel::Nightly, None, false).is_err());
     }
 
     /// `git-cliff` runs under `require_conventional`, and it runs after the

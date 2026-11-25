@@ -42,6 +42,7 @@ mod tasks {
 
     /// The pipeline: planning, distributing, publishing, and landing.
     pub mod release {
+        pub mod bump;
         /// What a run does to what it distributes.
         pub mod distributables {
             pub mod commit;
@@ -125,6 +126,8 @@ enum Command {
 
 #[derive(Subcommand)]
 enum Release {
+    /// Plans a channel's or a library group's next release, inferring the transition from the open series.
+    Bump(tasks::release::bump::Options),
     /// Plans a channel's run: what it builds, whether it publishes, and the tag nightly mints.
     Prepare(tasks::release::prepare::Options),
     /// Reads a tag, or a tree, into the version, channel, flavor, and store build codes a build stamps.
@@ -197,6 +200,7 @@ fn main() -> Result<()> {
     match Args::parse().command {
         Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::Release(command) => match command {
+            Release::Bump(args) => release::bump::run(args),
             Release::Prepare(args) => release::prepare::run(args),
             Release::Describe(args) => release::describe::run(args),
             Release::Plan(args) => release::plan::run(args),
