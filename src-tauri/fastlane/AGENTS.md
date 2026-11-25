@@ -282,8 +282,14 @@ devenv shell -P emulator -- avdmanager create avd -n pixel_10_pro \
   file whose type is already right, so `capture` uses `chcon`.
 - The deep-link plugin writes `CFBundleURLTypes` and the manifest's intent
   filter from its build script, which a cached build skips. An app built so
-  cannot be opened by its link; `capture` refuses it on iOS and names the
+  cannot be opened by its link. `capture` cleans the plugin before building
+  one itself, and refuses a given iOS app that declares no scheme, naming the
   `cargo clean -p tauri-plugin-deep-link` that fixes it.
+- On the iOS 26.2 simulator, a release build's page sometimes crashes WebKit's
+  web-content process in JavaScriptCore (`JSRopeString::resolveToBuffer`,
+  SIGBUS) before its first paint, and every retry in that run stays blank.
+  A debug build has not done so. Rerun `capture`; the iPhone 17 Pro has no
+  device on the 27.x runtimes.
 - On Xcode 27, a release iOS build links only if swift-rs finds
   `llvm-objcopy` in the Rust sysroot; `rust-toolchain.toml` carries
   `llvm-tools` for it. Without it every Swift plugin symbol is undefined.

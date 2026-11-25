@@ -302,11 +302,20 @@ def ios-simulator [device?: string]: nothing -> string {
   $found | first | get udid
 }
 
+# The deep-link plugin writes the flavor's scheme into the platform project from
+# its build script, which a cached build skips (tauri-apps/plugins-workspace#3596).
+def rerun-deep-link-build-script [...triples: string] {
+  for triple in $triples {
+    ^cargo clean -p tauri-plugin-deep-link --release --target $triple
+  }
+}
+
 # Installs a fresh copy of the app and places the territory before its first
 # launch. Returns the bundle identifier.
 def ios-install [udid: string, flavor: string, territory: path, package?: path]: nothing -> string {
   let app = if $package != null { $package } else {
     check-simulator-runtime
+    rerun-deep-link-build-script aarch64-apple-ios-sim
     ^xtauri build ios --flavor $flavor -- --target aarch64-sim --no-sign
     $env.TAURI_IOS_PROJECT_PATH | path join build arm64-sim Waypoints.app
   }
@@ -356,6 +365,9 @@ def android-serial [device?: string]: nothing -> string {
 # launch. Returns the package name.
 def android-install [serial: string, flavor: string, territory: path, package?: path]: nothing -> string {
   let apk = if $package != null { $package } else {
+    # `xtauri build android` builds every Android triple the toolchain declares.
+    let triples = open ($env.PROJECT_ROOT | path join rust-toolchain.toml) | get toolchain.targets | where $it =~ '-linux-android'
+    rerun-deep-link-build-script ...$triples
     ^xtauri build android --flavor $flavor
     $env.TAURI_ANDROID_PROJECT_PATH | path join app build outputs apk universal release app-universal-release.apk
   }
