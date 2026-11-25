@@ -50,6 +50,20 @@ fn client() -> Result<Octocrab> {
     let token = env("GH_TOKEN")
         .or_else(|_| env("GITHUB_TOKEN"))
         .context("neither $GH_TOKEN nor $GITHUB_TOKEN is set")?;
+    with_token(token)
+}
+
+/// A client authenticated as the runner itself — `GITHUB_TOKEN`, which lasts
+/// the job — for a look that may outlast the App token the step was handed.
+/// Falls back to `GH_TOKEN` off a runner.
+fn runner_client() -> Result<Octocrab> {
+    let token = env("GITHUB_TOKEN")
+        .or_else(|_| env("GH_TOKEN"))
+        .context("neither $GITHUB_TOKEN nor $GH_TOKEN is set")?;
+    with_token(token)
+}
+
+fn with_token(token: String) -> Result<Octocrab> {
     Octocrab::builder()
         .personal_token(token)
         .build()
@@ -140,12 +154,13 @@ fn merge_commit(
 
 /// Blocks until pull request `number` merges, returning its merge commit. A tag
 /// made any earlier would name a commit the planners' first-parent walk never
-/// reaches.
+/// reaches. Looks as the runner, whose token outlasts the App token the step
+/// enabled the merge with.
 pub fn wait_for_merge(number: u64) -> Result<String> {
     let (owner, name) = owner_and_name()?;
     let look = || {
         block_on(async {
-            let pull = client()?
+            let pull = runner_client()?
                 .pulls(&owner, &name)
                 .get(number)
                 .await

@@ -118,14 +118,17 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let main =
         steps::land_write_from_file(&planner, &token, "main-pull-request").if_condition(cutting());
     let main_number = StepOutput::new_trusted(&main, "pull-request-number");
-    let auto_merge_main =
-        steps::auto_merge(&main_number, &token, Tools::Mise).if_condition(landing(&main_number));
-    let wait_main = steps::wait_for_merge(&main_number)
-        .id("wait-for-main")
-        .if_condition(cutting());
-    let main_commit = StepOutput::new_trusted(&wait_main, "merge_commit");
+    let merge_main = steps::merge(&main_number, &token, Tools::Mise)
+        .id("merge-main")
+        .if_condition(Expression::new(format!(
+            "!{} && {} == 'cut' && {} != ''",
+            dry_run.expr(),
+            transition.expr(),
+            main_number.expr()
+        )));
+    let main_commit = StepOutput::new_trusted(&merge_main, "merge_commit");
 
-    // The series phase runs under a token minted after the main wait, which
+    // The series phase runs under a token minted after the main merge, which
     // can outlast the first; the other transitions have no wait before it.
     let series_token = steps::app_token(&[("contents", "write"), ("pull-requests", "write")])
         .name("Mint a wp-botswain token for the series")
@@ -141,8 +144,9 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
             group_tags.expr()
         ))
     };
-    let tag_groups =
-        steps::tag_groups(&group_tags, &main_commit, &series_token_output).if_condition(minting());
+    let tag_groups = steps::tag(&group_tags, &main_commit, &series_token_output)
+        .id("tag-groups")
+        .if_condition(minting());
 
     // Every transition but a cut wrote on its series in the planner step; a
     // cut opens its series here, from the merge commit, and a cut scoped to
@@ -171,20 +175,20 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     .id("series-pull-request")
     .if_condition(on_a_series());
     let series_number = StepOutput::new_trusted(&series, "pull-request-number");
-    let auto_merge_series = steps::auto_merge(&series_number, &series_token_output, Tools::Mise)
+    let merge_series = steps::merge(&series_number, &series_token_output, Tools::Mise)
+        .id("merge-series")
         .if_condition(landing(&series_number));
-
-    let wait = steps::wait_for_merge(&series_number).if_condition(on_a_series());
-    let merge_commit = StepOutput::new_trusted(&wait, "merge_commit");
+    let merge_commit = StepOutput::new_trusted(&merge_series, "merge_commit");
     let tag_token = steps::app_token(&[("contents", "write")])
         .name("Mint a wp-botswain token for the tag")
         .id("tag-token")
         .if_condition(on_a_series());
-    let tag_step = steps::tag_merge_commit(
+    let tag_step = steps::tag(
         &tag,
         &merge_commit,
         &StepOutput::new_trusted(&tag_token, "token"),
     )
+    .id("tag-release")
     .if_condition(on_a_series());
 
     let upload = steps::upload_rendering("dry-run-release-plan".to_owned(), rehearsing());
@@ -227,14 +231,12 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .add_step(steps::cache_save(&registry, Tools::Mise))
         .add_step(upload)
         .add_step(main)
-        .add_step(auto_merge_main)
-        .add_step(wait_main)
+        .add_step(merge_main)
         .add_step(series_token)
         .add_step(tag_groups)
         .add_step(open_series)
         .add_step(series)
-        .add_step(auto_merge_series)
-        .add_step(wait)
+        .add_step(merge_series)
         .add_step(tag_token)
         .add_step(tag_step);
 
@@ -292,30 +294,36 @@ mod tests {
     #[test]
     fn the_tag_waits_for_the_merge_commit() {
         let steps = steps();
-        let tag = running(&steps, "release land tag --tags \"${TAG}\"");
+        let tag = position(&steps, "tag-release");
 
-        assert!(position(&steps, "wait-for-merge") < tag);
+        assert!(position(&steps, "merge-series") < tag);
         assert_eq!(
             steps[tag]["env"]["COMMIT"],
-            "${{ steps.wait-for-merge.outputs.merge_commit }}"
+            "${{ steps.merge-series.outputs.merge_commit }}"
         );
         assert_eq!(
-            steps[tag]["env"]["TAG"],
+            steps[tag]["env"]["TAGS"],
             "${{ steps.release-plan.outputs.tag }}"
         );
     }
 
     /// An App token lasts an hour, and the required checks can take most of it.
-    /// A token that expired mid-wait would land the write and lose the tag.
+    /// The merge enables under the App token and waits under the runner's own,
+    /// and the tag is minted under a token minted after the wait: one that
+    /// expired mid-wait would land the write and lose the tag.
     #[test]
     fn the_tag_gets_a_token_minted_after_the_wait() {
         let steps = steps();
-        let wait = position(&steps, "wait-for-merge");
-        assert_eq!(steps[wait]["env"]["GH_TOKEN"], helpers::GITHUB_TOKEN);
-
-        assert!(wait < position(&steps, "tag-token"));
+        let merge = position(&steps, "merge-series");
+        assert_eq!(steps[merge]["env"]["GITHUB_TOKEN"], helpers::GITHUB_TOKEN);
         assert_eq!(
-            steps[running(&steps, "release land tag --tags \"${TAG}\"")]["env"]["GH_TOKEN"],
+            steps[merge]["env"]["GH_TOKEN"],
+            "${{ steps.series-token.outputs.token }}"
+        );
+
+        assert!(merge < position(&steps, "tag-token"));
+        assert_eq!(
+            steps[position(&steps, "tag-release")]["env"]["GH_TOKEN"],
             "${{ steps.tag-token.outputs.token }}"
         );
     }
@@ -344,20 +352,20 @@ mod tests {
         let order = [
             position(&steps, "release-plan"),
             position(&steps, "main-pull-request"),
-            position(&steps, "wait-for-main"),
+            position(&steps, "merge-main"),
             position(&steps, "series-token"),
             position(&steps, "tag-groups"),
             position(&steps, "open-series"),
             position(&steps, "series-pull-request"),
-            position(&steps, "wait-for-merge"),
-            running(&steps, "release land tag --tags \"${TAG}\""),
+            position(&steps, "merge-series"),
+            position(&steps, "tag-release"),
         ];
         assert!(order.is_sorted(), "{order:?}");
 
         let tag_groups = &steps[position(&steps, "tag-groups")];
         assert_eq!(
             tag_groups["env"]["COMMIT"],
-            "${{ steps.wait-for-main.outputs.merge_commit }}"
+            "${{ steps.merge-main.outputs.merge_commit }}"
         );
         assert_eq!(
             tag_groups["env"]["TAGS"],
@@ -370,7 +378,7 @@ mod tests {
         let open = &steps[position(&steps, "open-series")];
         assert_eq!(
             open["env"]["COMMIT"],
-            "${{ steps.wait-for-main.outputs.merge_commit }}"
+            "${{ steps.merge-main.outputs.merge_commit }}"
         );
         assert_eq!(
             open["env"]["VERSION"],
@@ -386,7 +394,7 @@ mod tests {
         let steps = steps();
         for id in [
             "main-pull-request",
-            "wait-for-main",
+            "merge-main",
             "open-series",
             "tag-groups",
         ] {
@@ -435,7 +443,7 @@ mod tests {
         );
     }
 
-    /// Each pull request is landed by the auto-merge step reading its own number.
+    /// Each pull request is landed by a merge step reading its own number.
     #[test]
     fn each_pull_request_merges_itself() {
         let steps = steps();
@@ -444,7 +452,7 @@ mod tests {
             .filter(|step| {
                 step["run"]
                     .as_str()
-                    .is_some_and(|run| run.contains("release land auto-merge"))
+                    .is_some_and(|run| run.contains("release merge"))
             })
             .map(|step| step["env"]["PULL_REQUEST"].as_str().unwrap())
             .collect();
@@ -500,24 +508,20 @@ mod tests {
         let steps = steps();
         for id in [
             "main-pull-request",
-            "wait-for-main",
+            "merge-main",
             "series-token",
             "tag-groups",
             "open-series",
             "series-pull-request",
-            "wait-for-merge",
+            "merge-series",
             "tag-token",
+            "tag-release",
             "app-token",
         ] {
             let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
             assert!(cond.starts_with("!inputs.dry_run"), "{id}: {cond}");
         }
-        for command in [
-            "release land tag --tags \"${TAG}\"",
-            "release land tag --tags \"${TAGS}\"",
-            "release land open-series",
-            "release land auto-merge",
-        ] {
+        for command in ["release tag --tags", "release open-series", "release merge"] {
             let cond = steps[running(&steps, command)]["if"].as_str().unwrap_or("");
             assert!(cond.starts_with("!inputs.dry_run"), "{command}: {cond}");
         }

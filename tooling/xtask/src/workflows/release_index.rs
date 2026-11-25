@@ -77,7 +77,8 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
     let token = StepOutput::new_trusted(&app_token, "token");
     let pull_request =
         steps::land_write(&record, &token, "index-pull-request", &body()).if_condition(wrote());
-    let auto_merge = steps::auto_merge(
+    // Landed and left: nothing downstream waits on the entry.
+    let auto_merge = steps::merge_without_waiting(
         &StepOutput::new_trusted(&pull_request, "pull-request-number"),
         &token,
         Tools::Devenv,
@@ -232,7 +233,7 @@ mod tests {
             .find(|step| {
                 step["run"]
                     .as_str()
-                    .is_some_and(|run| run.contains("release land auto-merge"))
+                    .is_some_and(|run| run.contains("release merge"))
             })
             .unwrap();
         assert_eq!(
@@ -253,7 +254,7 @@ mod tests {
             .find(|step| {
                 step["run"]
                     .as_str()
-                    .is_some_and(|run| run.contains("release land auto-merge"))
+                    .is_some_and(|run| run.contains("release merge"))
             })
             .unwrap()
             .clone();

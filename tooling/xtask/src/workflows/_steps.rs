@@ -302,67 +302,62 @@ pub(crate) fn land_write_from_file<T>(writer: &Step<T>, token: &StepOutput, id: 
     .id(id)
 }
 
-/// One step of a bot pull request's landing. Its values travel through the
-/// environment rather than the command line.
-fn release_land(action: &str, flags: &str, tools: Tools) -> Step<Run> {
-    let step = Step::new(format!("{CI_TASK} release land {action}"))
-        .run(tools.command(&format!("{CI_TASK} release land {action} {flags}")))
+/// One landing command. Its values travel through the environment rather
+/// than the command line.
+fn release_command(command: &str, flags: &str, tools: Tools) -> Step<Run> {
+    let step = Step::new(format!("{CI_TASK} release {command}"))
+        .run(tools.command(&format!("{CI_TASK} release {command} {flags}")))
         .shell("bash");
     match tools {
         Tools::Mise => step,
         Tools::Devenv => step.add_env((
             "SECRETSPEC_REASON",
-            "release land drives a pull request through the GitHub API; no secret values are read",
+            format!(
+                "release {command} drives a pull request through the GitHub API; no secret values are read"
+            ),
         )),
     }
 }
 
-/// Has GitHub merge the pull request once its required checks pass. The number
-/// is empty when the pull-request step had nothing to commit or did not run.
-pub(crate) fn auto_merge(pull_request: &StepOutput, token: &StepOutput, tools: Tools) -> Step<Run> {
-    release_land("auto-merge", r#"--pull-request "${PULL_REQUEST}""#, tools)
+/// Lands the pull request: has GitHub merge it once its required checks pass,
+/// under the App token, then waits for the merge under the runner's own
+/// token — the checks can outlast an App token, and looking needs no more —
+/// and publishes the merge commit. Stands down when the number is empty: the
+/// pull-request step had nothing to commit, or did not run.
+pub(crate) fn merge(pull_request: &StepOutput, token: &StepOutput, tools: Tools) -> Step<Run> {
+    release_command("merge", r#"--pull-request "${PULL_REQUEST}""#, tools)
         .if_condition(Expression::new(format!("{} != ''", pull_request.expr())))
         .add_env(("PULL_REQUEST", pull_request.to_string()))
         .add_env(("GH_TOKEN", token.to_string()))
+        .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
 }
 
-/// Blocks until the pull request merges, under `GITHUB_TOKEN`: the required
-/// checks can outlast an App token, and looking needs no more than this.
-pub(crate) fn wait_for_merge(pull_request: &StepOutput) -> Step<Run> {
-    release_land("wait", r#"--pull-request "${PULL_REQUEST}""#, Tools::Mise)
-        .id("wait-for-merge")
-        .add_env(("PULL_REQUEST", pull_request.to_string()))
-        .add_env(("GH_TOKEN", GITHUB_TOKEN))
-}
-
-/// Tags the merge commit [`wait_for_merge`] found. The App token is what raises
-/// the tag's `push` event, and it must be one minted after the wait.
-pub(crate) fn tag_merge_commit(
-    tag: &StepOutput,
-    commit: &StepOutput,
+/// [`merge`] without the wait: the entry is landed and left.
+pub(crate) fn merge_without_waiting(
+    pull_request: &StepOutput,
     token: &StepOutput,
+    tools: Tools,
 ) -> Step<Run> {
-    release_land(
-        "tag",
-        r#"--tags "${TAG}" --commit "${COMMIT}""#,
-        Tools::Mise,
+    release_command(
+        "merge",
+        r#"--pull-request "${PULL_REQUEST}" --no-wait"#,
+        tools,
     )
-    .add_env(("TAG", tag.to_string()))
-    .add_env(("COMMIT", commit.to_string()))
+    .if_condition(Expression::new(format!("{} != ''", pull_request.expr())))
+    .add_env(("PULL_REQUEST", pull_request.to_string()))
     .add_env(("GH_TOKEN", token.to_string()))
 }
 
-/// Tags the merge commit [`wait_for_merge`] found with every library tag the
-/// cut minted, comma-separated as the planner published them, under a token
-/// minted after the wait. The same action as [`tag_merge_commit`]'s: a tag
-/// list of one or many.
-pub(crate) fn tag_groups(tags: &StepOutput, commit: &StepOutput, token: &StepOutput) -> Step<Run> {
-    release_land(
+/// Tags the merge commit [`merge`] found: one tag, or every library tag a cut
+/// minted, comma-separated as the planner publishes them. The App token is
+/// what raises each tag's `push` event, and it must be one minted after the
+/// wait.
+pub(crate) fn tag(tags: &StepOutput, commit: &StepOutput, token: &StepOutput) -> Step<Run> {
+    release_command(
         "tag",
         r#"--tags "${TAGS}" --commit "${COMMIT}""#,
         Tools::Mise,
     )
-    .id("tag-groups")
     .add_env(("TAGS", tags.to_string()))
     .add_env(("COMMIT", commit.to_string()))
     .add_env(("GH_TOKEN", token.to_string()))
@@ -376,7 +371,7 @@ pub(crate) fn open_series(
     commit: &StepOutput,
     token: &StepOutput,
 ) -> Step<Run> {
-    release_land(
+    release_command(
         "open-series",
         r#"--version "${VERSION}" --commit "${COMMIT}""#,
         Tools::Mise,

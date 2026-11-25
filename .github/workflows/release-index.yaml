@@ -133,12 +133,12 @@ jobs:
           body: Written by `cargo xtask release index`; merges when its checks pass.
           commit-message: ${{ steps.release-index.outputs.title }}
           add-paths: ${{ steps.release-index.outputs.paths }}
-      - name: cargo ci-task release land auto-merge
+      - name: cargo ci-task release merge
         if: steps.index-pull-request.outputs.pull-request-number != ''
-        run: devenv shell -- cargo ci-task release land auto-merge --pull-request "${PULL_REQUEST}"
+        run: devenv shell -- cargo ci-task release merge --pull-request "${PULL_REQUEST}" --no-wait
         shell: bash
         env:
-          SECRETSPEC_REASON: release land drives a pull request through the GitHub API; no secret values are read
+          SECRETSPEC_REASON: release merge drives a pull request through the GitHub API; no secret values are read
           PULL_REQUEST: ${{ steps.index-pull-request.outputs.pull-request-number }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 concurrency:

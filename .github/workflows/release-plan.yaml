@@ -144,21 +144,15 @@ jobs:
           body-path: ${{ steps.release-plan.outputs.body_path }}
           commit-message: ${{ steps.release-plan.outputs.title }}
           add-paths: ${{ steps.release-plan.outputs.paths }}
-      - name: cargo ci-task release land auto-merge
-        if: "!inputs.dry_run && steps.main-pull-request.outputs.pull-request-number != ''"
-        run: cargo ci-task release land auto-merge --pull-request "${PULL_REQUEST}"
+      - id: merge-main
+        name: cargo ci-task release merge
+        if: "!inputs.dry_run && inputs.transition == 'cut' && steps.main-pull-request.outputs.pull-request-number != ''"
+        run: cargo ci-task release merge --pull-request "${PULL_REQUEST}"
         shell: bash
         env:
           PULL_REQUEST: ${{ steps.main-pull-request.outputs.pull-request-number }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-      - id: wait-for-main
-        name: cargo ci-task release land wait
-        if: "!inputs.dry_run && inputs.transition == 'cut'"
-        run: cargo ci-task release land wait --pull-request "${PULL_REQUEST}"
-        shell: bash
-        env:
-          PULL_REQUEST: ${{ steps.main-pull-request.outputs.pull-request-number }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: series-token
         name: Mint a wp-botswain token for the series
         if: "!inputs.dry_run"
@@ -169,22 +163,22 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
       - id: tag-groups
-        name: cargo ci-task release land tag
+        name: cargo ci-task release tag
         if: "!inputs.dry_run && inputs.transition == 'cut' && steps.release-plan.outputs.group_tags != ''"
-        run: cargo ci-task release land tag --tags "${TAGS}" --commit "${COMMIT}"
+        run: cargo ci-task release tag --tags "${TAGS}" --commit "${COMMIT}"
         shell: bash
         env:
           TAGS: ${{ steps.release-plan.outputs.group_tags }}
-          COMMIT: ${{ steps.wait-for-main.outputs.merge_commit }}
+          COMMIT: ${{ steps.merge-main.outputs.merge_commit }}
           GH_TOKEN: ${{ steps.series-token.outputs.token }}
       - id: open-series
-        name: cargo ci-task release land open-series
+        name: cargo ci-task release open-series
         if: "!inputs.dry_run && inputs.transition == 'cut' && steps.release-plan.outputs.tag != ''"
-        run: cargo ci-task release land open-series --version "${VERSION}" --commit "${COMMIT}"
+        run: cargo ci-task release open-series --version "${VERSION}" --commit "${COMMIT}"
         shell: bash
         env:
           VERSION: ${{ steps.release-plan.outputs.version }}
-          COMMIT: ${{ steps.wait-for-main.outputs.merge_commit }}
+          COMMIT: ${{ steps.merge-main.outputs.merge_commit }}
           GH_TOKEN: ${{ steps.series-token.outputs.token }}
       - id: series-pull-request
         name: Open a pull request
@@ -199,21 +193,15 @@ jobs:
           body: Written by `cargo xtask release plan`; merges when its checks pass.
           commit-message: ${{ steps.open-series.outputs.title || steps.release-plan.outputs.title }}
           add-paths: ${{ steps.open-series.outputs.paths || steps.release-plan.outputs.paths }}
-      - name: cargo ci-task release land auto-merge
+      - id: merge-series
+        name: cargo ci-task release merge
         if: "!inputs.dry_run && steps.series-pull-request.outputs.pull-request-number != ''"
-        run: cargo ci-task release land auto-merge --pull-request "${PULL_REQUEST}"
+        run: cargo ci-task release merge --pull-request "${PULL_REQUEST}"
         shell: bash
         env:
           PULL_REQUEST: ${{ steps.series-pull-request.outputs.pull-request-number }}
           GH_TOKEN: ${{ steps.series-token.outputs.token }}
-      - id: wait-for-merge
-        name: cargo ci-task release land wait
-        if: "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
-        run: cargo ci-task release land wait --pull-request "${PULL_REQUEST}"
-        shell: bash
-        env:
-          PULL_REQUEST: ${{ steps.series-pull-request.outputs.pull-request-number }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: tag-token
         name: Mint a wp-botswain token for the tag
         if: "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
@@ -222,13 +210,14 @@ jobs:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
           private-key: ${{ env.WP_BOTSWAIN_PRIVATE_KEY }}
           permission-contents: write
-      - name: cargo ci-task release land tag
+      - id: tag-release
+        name: cargo ci-task release tag
         if: "!inputs.dry_run && steps.release-plan.outputs.tag != ''"
-        run: cargo ci-task release land tag --tags "${TAG}" --commit "${COMMIT}"
+        run: cargo ci-task release tag --tags "${TAGS}" --commit "${COMMIT}"
         shell: bash
         env:
-          TAG: ${{ steps.release-plan.outputs.tag }}
-          COMMIT: ${{ steps.wait-for-merge.outputs.merge_commit }}
+          TAGS: ${{ steps.release-plan.outputs.tag }}
+          COMMIT: ${{ steps.merge-series.outputs.merge_commit }}
           GH_TOKEN: ${{ steps.tag-token.outputs.token }}
 concurrency:
   group: release-plan

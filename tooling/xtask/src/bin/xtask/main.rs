@@ -51,9 +51,11 @@ mod tasks {
         }
         pub mod groups;
         pub mod index;
-        pub mod land;
+        pub mod merge;
+        pub mod open_series;
         pub mod plan;
         pub mod prepare;
+        pub mod tag;
     }
 
     /// The checks a pull request must pass.
@@ -129,8 +131,12 @@ enum Release {
     Distributables(Distributables),
     /// Writes a published tag's release-index entry for its pull request to land.
     Index(tasks::release::index::Options),
-    /// Takes a bot's pull request from opened to landed, one step at a time.
-    Land(tasks::release::land::Options),
+    /// Lands a bot's pull request: has GitHub merge it and, unless told not to, waits for the merge.
+    Merge(tasks::release::merge::Options),
+    /// Tags a merge commit with the app's tag, or every library tag a cut minted.
+    Tag(tasks::release::tag::Options),
+    /// Opens a cut's series at its main pull request's merge commit.
+    OpenSeries(tasks::release::open_series::Options),
     /// The group file: its generated schema, and its projection into the manifests.
     Groups(tasks::release::groups::Options),
 }
@@ -191,7 +197,9 @@ fn main() -> Result<()> {
                 Distributables::Withdraw(args) => release::distributables::withdraw::run(args),
             },
             Release::Index(args) => release::index::run(args),
-            Release::Land(args) => release::land::run(args),
+            Release::Merge(args) => release::merge::run(args),
+            Release::Tag(args) => release::tag::run(args),
+            Release::OpenSeries(args) => release::open_series::run(args),
             Release::Groups(args) => release::groups::run(args),
         },
         Command::Check(command) => match command {
