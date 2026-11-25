@@ -8,6 +8,21 @@ identifier  = "so.waypoints"
 [plugins.updater]
   endpoints = [ "https://waypoints.so/api/v1/update/stable.json" ]
 
+# Configs merge as a JSON merge patch, so `mobile` replaces the base's list
+# rather than extending it: the pairing host is restated in every flavor.
+# The waypoints.so entry upgrades https://waypoints.so/pair links on
+# iOS/Android (requires the .well-known files the website serves).
+[plugins.deep-link]
+  [plugins.deep-link.desktop]
+    schemes = [ "waypoints" ]
+
+  [[plugins.deep-link.mobile]]
+    host       = "waypoints.so"
+    pathPrefix = [ "/pair" ]
+
+  [[plugins.deep-link.mobile]]
+    scheme = [ "waypoints" ]
+
 [bundle]
   icon = [
     "assets/icons/app/stable-032.png",

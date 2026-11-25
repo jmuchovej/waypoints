@@ -37,9 +37,11 @@ mod platform;
 pub use channel::{Channel, Flavor};
 pub use platform::{Arch, Platform, PublishedTarget};
 
-/// The browser-dev HTTP backend: the runtime, its routes, and its errors.
+/// The browser-dev HTTP backend: the runtime, its routes, and its errors —
+/// and the demo app-data directory store screenshots are captured against.
 pub mod dev {
     pub mod commands;
+    pub mod demo;
     mod error;
     mod instance;
     mod registry;

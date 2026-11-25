@@ -56,12 +56,12 @@ The territory SHALL be placed on the device before the release build first launc
 
 A deep link's path SHALL be a route the application already serves. No parallel vocabulary of capture scenes SHALL be introduced, and a route SHALL require no registration to become linkable.
 
-The capture harness SHALL reach a screen by opening such a link. It SHALL NOT navigate the interface, address webview content, or depend on the structure of the DOM.
+The capture harness SHALL reach a screen by opening such a link. It SHALL NOT navigate the interface or depend on the structure of the DOM. It MAY wait on text the screen renders — the only webview content a flow names, named to wait and never to act.
 
 #### Scenario: Capturing a screen
 
 - **WHEN** the harness captures a screen
-- **THEN** it opens a link naming that screen's route, waits for the application to settle, and captures, naming no element inside the webview
+- **THEN** it opens a link naming that screen's route, waits until text that screen renders is visible, and captures, naming no other element inside the webview
 
 #### Scenario: Linking to a route
 

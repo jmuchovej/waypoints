@@ -73,17 +73,8 @@ identifier  = "so.waypoints"
 
     [bundle.windows.nsis]
 
-# Pairing links: the waypoints:// scheme opens the app everywhere it is
-# installed; the waypoints.so association upgrades https://waypoints.so/pair
-# links on iOS/Android (requires the .well-known files the website serves).
-[plugins.deep-link]
-  [plugins.deep-link.desktop]
-    schemes = [ "waypoints" ]
-
-  [[plugins.deep-link.mobile]]
-    host       = "waypoints.so"
-    pathPrefix = [ "/pair" ]
-
+# `[plugins.deep-link]` lives in each flavor config: the scheme names the
+# flavor, so no flavor-independent one is declared here.
 [plugins.updater]
   pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
 

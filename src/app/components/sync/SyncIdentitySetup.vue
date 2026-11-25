@@ -157,21 +157,26 @@
 
   // A deep link may have carried a setup code here (see plugins/deep-link):
   // prefill the matching input and let the user confirm — links never
-  // auto-submit an identity adoption.
+  // auto-submit an identity adoption. Watched rather than read once: the
+  // handler waits for the first render, so a link that launched the app — or
+  // one that arrives while onboarding is already showing — lands after mount.
   const pendingCode = useState<string | null>("sync-pending-setup-code", () => null);
-  onMounted(async () => {
-    const code = pendingCode.value;
-    if (!code) return;
-    pendingCode.value = null;
-    const classified = await ipc.sync.classifySetupCode(code);
-    if (classified.kind === "phrase") {
-      mode.value = "import";
-      phraseInput.value = code;
-    } else if (classified.kind === "pairing") {
-      mode.value = "pair";
-      pairingInput.value = code;
-    }
-  });
+  watch(
+    pendingCode,
+    async (code) => {
+      if (!code) return;
+      pendingCode.value = null;
+      const classified = await ipc.sync.classifySetupCode(code);
+      if (classified.kind === "phrase") {
+        mode.value = "import";
+        phraseInput.value = code;
+      } else if (classified.kind === "pairing") {
+        mode.value = "pair";
+        pairingInput.value = code;
+      }
+    },
+    { immediate: true },
+  );
 
   async function onScanned(code: string) {
     await submitSetupCode(code);

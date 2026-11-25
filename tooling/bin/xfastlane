@@ -11,6 +11,7 @@
 #   xfastlane clean
 #   xfastlane prepare  [flavor] [locale]
 #   xfastlane publish  <platform> [flavor] [--from <dir>]   (default: release)
+#   xfastlane capture  <platform> [flavor] [locale] [--package <app|apk>] [--device <id>]
 #
 # A release runs `prepare` once, then `publish` per store. `prepare` does
 # everything that touches nothing outside the machine — render, write, check,
@@ -49,6 +50,19 @@ def fit [text: string, limit: int]: nothing -> string {
   ($kept | str join "\n" | str trim) + "…"
 }
 
+# The frames and captures on disk, as root-relative paths, so the Typst can
+# name a missing one instead of failing with its own file-not-found.
+def present-inputs []: nothing -> list<string> {
+  let root = $env.TAURI_APP_PATH
+  let files = (
+    [res captures]
+      | each {|dir| glob (fastlane-root | path join $dir "**" "*.png") }
+      | flatten
+      | each {|p| "/" + ($p | path relative-to $root) }
+  )
+  ["--input" $"files=($files | to json --raw)"]
+}
+
 def "main build" [locale: string = "en-US"]: nothing -> nothing {
   cd (fastlane-root)
 
@@ -57,7 +71,7 @@ def "main build" [locale: string = "en-US"]: nothing -> nothing {
   # deliver read. 72 ppi makes a `pt` in the source a pixel on disk; the
   # default 144 would double every dimension.
   with-env { TYPST_ROOT: $env.TAURI_APP_PATH } {
-    ^typst compile --format bundle --ppi 72 $"($locale).typ" .
+    ^typst compile --format bundle --ppi 72 ...(present-inputs) $"($locale).typ" .
   }
 
   # Both stores reject alpha on screenshots and the feature graphic, and both
@@ -74,8 +88,9 @@ def "main build" [locale: string = "en-US"]: nothing -> nothing {
 
 def "main watch" [locale: string = "en-US"]: nothing -> nothing {
   cd (fastlane-root)
+  # The presence list is taken once, so a capture minted mid-watch needs a restart.
   with-env { TYPST_ROOT: $env.TAURI_APP_PATH } {
-    ^typst watch --format bundle --ppi 72 $"($locale).typ" .
+    ^typst watch --format bundle --ppi 72 ...(present-inputs) $"($locale).typ" .
   }
 }
 
@@ -232,6 +247,272 @@ def "main publish" [
   # metadata `prepare` wrote sits where supply and deliver look for it.
   cd $env.TAURI_APP_PATH
   with-env ($transporter | merge $xcode | merge $package) { ^fastlane $platform $flavor }
+}
+
+# ── capture ──────────────────────────────────────────────────────────────
+
+# The devices the listing depicts; the frames in `res/` are theirs.
+const CAPTURE_SIMULATOR = "iPhone 17 Pro"
+const CAPTURE_AVD = "pixel_10_pro"
+
+def captures-root [platform: string, locale: string]: nothing -> path {
+  fastlane-root | path join "captures" $platform $locale
+}
+
+# The custom scheme FLAVOR registers on mobile (not the pairing host's entry).
+def flavor-scheme [flavor: string]: nothing -> string {
+  open (flavor-config $flavor)
+    | get plugins."deep-link".mobile
+    | where {|entry| "scheme" in ($entry | columns) }
+    | first
+    | get scheme
+    | first
+}
+
+def xcode-dir []: nothing -> string { ^env -i PATH=/usr/bin:/bin xcode-select -p | str trim }
+
+# Tauri refuses a simulator build unless an installed runtime's version, as a
+# string, is at least the simulator SDK's. Checked first, in the same terms,
+# so the fix is named here rather than after the frontend has built.
+def check-simulator-runtime []: nothing -> nothing {
+  let sdk = (with-env { DEVELOPER_DIR: (xcode-dir) } { ^xcrun --sdk iphonesimulator --show-sdk-version | str trim })
+  let runtimes = (
+    ^xcrun simctl list runtimes --json | from json | get runtimes
+      | where {|r| $r.isAvailable and $r.platform == "iOS" }
+      | get version
+  )
+  if not ($runtimes | any {|v| $v == $sdk or $v >= $sdk }) {
+    error make { msg: $"no iOS ($sdk) simulator runtime, which Tauri requires to build for the simulator; install it with `xcodebuild -downloadPlatform iOS -buildVersion ($sdk)`" }
+  }
+}
+
+def ios-simulator [device?: string]: nothing -> string {
+  if $device != null { return $device }
+  let found = (
+    ^xcrun simctl list devices available --json | from json | get devices
+      | transpose runtime devices
+      | where runtime =~ "iOS"
+      | sort-by runtime --reverse
+      | each {|r| $r.devices | where name == $CAPTURE_SIMULATOR }
+      | flatten
+  )
+  if ($found | is-empty) {
+    error make { msg: $"no available ($CAPTURE_SIMULATOR) simulator; add one in Xcode › Window › Devices and Simulators" }
+  }
+  $found | first | get udid
+}
+
+# The deep-link plugin writes the flavor's scheme into the platform project from
+# its build script, which a cached build skips (tauri-apps/plugins-workspace#3596).
+def rerun-deep-link-build-script [...triples: string] {
+  for triple in $triples {
+    ^cargo clean -p tauri-plugin-deep-link --release --target $triple
+  }
+}
+
+# Installs a fresh copy of the app and places the territory before its first
+# launch. Returns the bundle identifier.
+def ios-install [udid: string, flavor: string, territory: path, package?: path]: nothing -> string {
+  let app = if $package != null { $package } else {
+    check-simulator-runtime
+    rerun-deep-link-build-script aarch64-apple-ios-sim
+    ^xtauri build ios --flavor $flavor -- --target aarch64-sim --no-sign
+    $env.TAURI_IOS_PROJECT_PATH | path join build arm64-sim Waypoints.app
+  }
+  let plist = ($app | path join Info.plist)
+  let bundle = (^/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" $plist | str trim)
+  # The deep-link plugin writes CFBundleURLTypes from its build script, which a
+  # cached build skips; an app built that way can never be opened by its link.
+  let scheme = (flavor-scheme $flavor)
+  let types = (^/usr/libexec/PlistBuddy -c "Print CFBundleURLTypes" $plist | complete)
+  if $types.exit_code != 0 or not ($types.stdout | lines | str trim | any {|l| $l == $scheme }) {
+    error make { msg: $"($app) declares no ($scheme):// scheme; rebuild after `cargo clean -p tauri-plugin-deep-link --target aarch64-apple-ios-sim`" }
+  }
+
+  do -i { ^xcrun simctl boot $udid }
+  ^xcrun simctl bootstatus $udid -b
+  # Uninstalling drops the data container, so no earlier run's data survives.
+  do -i { ^xcrun simctl uninstall $udid $bundle }
+  ^xcrun simctl install $udid $app
+
+  # Tauri's app_data_dir on iOS: Application Support, named by identifier.
+  let container = (^xcrun simctl get_app_container $udid $bundle data | str trim)
+  let data = ($container | path join Library "Application Support" $bundle)
+  mkdir $data
+  ls $territory | each {|entry| cp -r $entry.name $data }
+  if not ($data | path join settings.json | path exists) {
+    error make { msg: $"the demo territory is not where ($bundle) will look: ($data)" }
+  }
+  $bundle
+}
+
+def android-serial [device?: string]: nothing -> string {
+  if $device != null { return $device }
+  let running = { ^adb devices | lines | skip 1 | where $it =~ '^emulator-\S+\s+device' | each { split row -r '\s+' | first } }
+  if (do $running | is-empty) {
+    let avds = (^emulator -list-avds | lines)
+    if $CAPTURE_AVD not-in $avds {
+      error make { msg: $"no emulator running and no AVD named ($CAPTURE_AVD); create one on a Google APIs \(not Play\) image under `devenv shell -P emulator`" }
+    }
+    ^sh -c $"emulator -avd ($CAPTURE_AVD) -no-snapshot-save >/dev/null 2>&1 &"
+    ^adb wait-for-device
+    while (^adb shell getprop sys.boot_completed | str trim) != "1" { sleep 2sec }
+  }
+  do $running | first
+}
+
+# Installs a fresh copy of the apk and places the territory before its first
+# launch. Returns the package name.
+def android-install [serial: string, flavor: string, territory: path, package?: path]: nothing -> string {
+  let apk = if $package != null { $package } else {
+    # `xtauri build android` builds every Android triple the toolchain declares.
+    let triples = open ($env.PROJECT_ROOT | path join rust-toolchain.toml) | get toolchain.targets | where $it =~ '-linux-android'
+    rerun-deep-link-build-script ...$triples
+    ^xtauri build android --flavor $flavor
+    $env.TAURI_ANDROID_PROJECT_PATH | path join app build outputs apk universal release app-universal-release.apk
+  }
+  let aapt = (glob $"($env.ANDROID_HOME)/build-tools/*/aapt" | sort | last)
+  let name = (^$aapt dump badging $apk | lines | first | parse "package: name='{name}'{rest}" | get name.0)
+
+  do -i { ^adb -s $serial uninstall $name }
+  ^adb -s $serial install $apk
+  # A release apk is not debuggable, so only root can write into its data
+  # directory, and only a Google APIs (non-Play) image grants it.
+  let root = (^adb -s $serial root | complete)
+  if $root.exit_code != 0 or ($root.stdout =~ "cannot run as root") {
+    error make { msg: $"adb root refused on ($serial); capture needs a Google APIs \(not Play\) emulator image" }
+  }
+  ^adb -s $serial wait-for-device
+
+  # Tauri's app_data_dir on Android is the app's own data directory.
+  let data = $"/data/data/($name)"
+  let owner = (^adb -s $serial shell stat -c "%u:%g" $data | str trim)
+  ls $territory | each {|entry| ^adb -s $serial push $entry.name $data }
+  ^adb -s $serial shell chown -R $owner $data
+  # The pushed files must carry the data directory's own SELinux context, MLS
+  # categories included, or the app cannot read them. `restorecon` leaves a
+  # file whose type is already right but whose categories are not.
+  let context = (^adb -s $serial shell ls -Zd $data | str trim | split row " " | first)
+  ^adb -s $serial shell chcon -R $context $data
+  if (^adb -s $serial shell ls $"($data)/settings.json" | complete | get exit_code) != 0 {
+    error make { msg: $"the demo territory is not where ($name) will look: ($data)" }
+  }
+  $name
+}
+
+# Mints the app screenshots the listing composes. Run by hand; nothing in CI
+# calls it.
+#
+# Boots the device, installs a fresh build of FLAVOR, places the demo
+# territory (`cargo xtask demo-territory`) as a returning user's data before
+# the app first launches, then runs every flow under `flows/` — one per
+# screen, each opening its route link and waiting on text the screen renders —
+# and keeps `captures/<platform>/<locale>/<screen>.png`. Composing them is
+# `build`'s job; this invokes no Typst.
+def "main capture" [
+  platform: string,         # ios or android
+  flavor: string = "stable",
+  locale: string = "en-US", # keys the output only; the device's language is not changed
+  --package: path,          # the build to install instead of building one: a simulator .app (ios) or an apk (android)
+  --device: string,         # a simulator UDID or adb serial, instead of the default device
+]: nothing -> nothing {
+  if $platform not-in [ios android] {
+    error make { msg: $"unknown platform ($platform); expected ios or android" }
+  }
+
+  let territory = (mktemp -d | path join "app-data")
+  ^cargo xtask demo-territory $territory
+
+  let device = if $platform == "ios" { ios-simulator $device } else { android-serial $device }
+  let app_id = if $platform == "ios" {
+    ios-install $device $flavor $territory $package
+  } else {
+    android-install $device $flavor $territory $package
+  }
+
+  let out = (captures-root $platform $locale)
+  mkdir $out
+  let scheme = (flavor-scheme $flavor)
+  let flows = (glob (fastlane-root | path join flows "*.yaml"))
+
+  # Each screen starts from a fresh launch that has reached the library, which
+  # a placed territory lands on. Only then is the link opened: on iOS a link
+  # that itself launches the app never reaches the frontend (2026-11-23), and
+  # Maestro's own `openLink` raises a consent sheet that `simctl openurl` and
+  # `am start` do not.
+  let launch = (mktemp -d | path join "launch.yaml")
+  $"appId: ($app_id)\n---\n- extendedWaitUntil:\n    visible: \"Library\"\n    timeout: 20000\n" | save $launch
+  let maestro = {|flow: path, debug: path|
+    with-env { MAESTRO_CLI_NO_ANALYTICS: "1" } {
+      (^maestro --udid $device test -e $"APP_ID=($app_id)"
+        --debug-output $debug --flatten-debug-output $flow)
+    }
+  }
+  # When the library does not show, the app is usually there but hidden:
+  # - iOS: the webview stays blank once activated until something repaints it,
+  #   and a static library never does — a round trip through the other
+  #   appearance forces one (the simulator's own is restored); a fresh
+  #   install's first launch has also dropped behind the home screen.
+  # - Android: a freshly booted emulator can raise "System UI isn't
+  #   responding" over the app.
+  let reach_library = {|debug: path|
+    mut reached = (do $maestro $launch $debug | complete)
+    for _ in 1..2 {
+      if $reached.exit_code == 0 { break }
+      if $platform == "ios" {
+        let appearance = (^xcrun simctl ui $device appearance | str trim)
+        ^xcrun simctl launch $device $app_id | complete
+        ^xcrun simctl ui $device appearance (if $appearance == "dark" { "light" } else { "dark" })
+        sleep 1sec
+        ^xcrun simctl ui $device appearance $appearance
+      } else {
+        ^adb -s $device shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS | complete
+        let activity = (
+          ^adb -s $device shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER $app_id
+            | lines | last | str trim
+        )
+        ^adb -s $device shell am start -n $activity | complete
+        sleep 2sec
+      }
+      $reached = (do $maestro $launch $debug | complete)
+    }
+    if $reached.exit_code != 0 {
+      print $reached.stdout
+      error make { msg: $"($app_id) never reached the library; is the territory in place?" }
+    }
+  }
+
+  for flow in $flows {
+    let screen = ($flow | path parse | get stem)
+    let link = $"($scheme)://(^yq 'select(document_index == 0) | .env.LINK' $flow | str trim)"
+    let debug = (mktemp -d)
+    if $platform == "ios" {
+      do -i { ^xcrun simctl terminate $device $app_id } | complete
+      ^xcrun simctl launch $device $app_id
+    } else {
+      ^adb -s $device shell am force-stop $app_id
+      let activity = (
+        ^adb -s $device shell cmd package resolve-activity --brief -c android.intent.category.LAUNCHER $app_id
+          | lines | last | str trim
+      )
+      ^adb -s $device shell am start -W -n $activity
+    }
+    do $reach_library ($debug | path join launch)
+    if $platform == "ios" {
+      ^xcrun simctl openurl $device $link
+    } else {
+      ^adb -s $device shell am start -W -a android.intent.action.VIEW -d $"'($link)'" $app_id
+    }
+    do $maestro $flow $debug
+    let shots = (glob $"($debug)/**/takeScreenshot/($screen).png")
+    if ($shots | length) != 1 {
+      error make { msg: $"($flow | path basename) wrote no `takeScreenshot: ($screen)`" }
+    }
+    cp ($shots | first) ($out | path join $"($screen).png")
+    print $"captured ($screen) on ($platform)"
+    rm -rf $debug
+  }
+  rm -rf ($territory | path dirname) ($launch | path dirname)
 }
 
 def main []: nothing -> nothing {

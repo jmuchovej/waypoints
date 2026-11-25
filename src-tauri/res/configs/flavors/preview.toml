@@ -8,6 +8,18 @@ identifier  = "so.waypoints.preview"
 [plugins.updater]
   endpoints = [ "https://waypoints.so/api/v1/update/preview.json" ]
 
+# The whole table, as in stable.toml: `mobile` replaces the base's list.
+[plugins.deep-link]
+  [plugins.deep-link.desktop]
+    schemes = [ "waypoints-preview" ]
+
+  [[plugins.deep-link.mobile]]
+    host       = "waypoints.so"
+    pathPrefix = [ "/pair" ]
+
+  [[plugins.deep-link.mobile]]
+    scheme = [ "waypoints-preview" ]
+
 [bundle]
   icon = [
     "assets/icons/app/preview-032.png",
