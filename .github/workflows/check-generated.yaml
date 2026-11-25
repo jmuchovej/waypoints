@@ -22,12 +22,15 @@ on:
       - .config/about.hbs
       - .github/workflows/**
       - tooling/infra/github.auto.tfvars.json
-      - docs/licensing/THIRD-PARTY-NOTICES.md
-      - crates/domain/typescript/**
-      - crates/cartograph/typescript/**
+      - crates/domain/typescript/types.g.ts
+      - crates/domain/typescript/schema.g.ts
+      - crates/cartograph/typescript/types.g.ts
       - src-tauri/assets/icons/app/**
       - src-tauri/gen/apple/Assets.xcassets/*.appiconset/**
-      - src-tauri/gen/android/app/src/*/res/**/ic_launcher*
+      - src-tauri/gen/android/app/src/*/res/mipmap-*/ic_launcher*
+      - src-tauri/gen/android/app/src/*/res/values/ic_launcher_background.xml
+      - docs/licensing/THIRD-PARTY-NOTICES.md
+      - tooling/schemas/release-groups.schema.json
       - .config/mise/conf.d/tools.build-desktop.toml
       - .config/mise/conf.d/tools.build-mobile.toml
       - .config/mise/conf.d/tools.deploy.toml
@@ -57,12 +60,15 @@ on:
       - .config/about.hbs
       - .github/workflows/**
       - tooling/infra/github.auto.tfvars.json
-      - docs/licensing/THIRD-PARTY-NOTICES.md
-      - crates/domain/typescript/**
-      - crates/cartograph/typescript/**
+      - crates/domain/typescript/types.g.ts
+      - crates/domain/typescript/schema.g.ts
+      - crates/cartograph/typescript/types.g.ts
       - src-tauri/assets/icons/app/**
       - src-tauri/gen/apple/Assets.xcassets/*.appiconset/**
-      - src-tauri/gen/android/app/src/*/res/**/ic_launcher*
+      - src-tauri/gen/android/app/src/*/res/mipmap-*/ic_launcher*
+      - src-tauri/gen/android/app/src/*/res/values/ic_launcher_background.xml
+      - docs/licensing/THIRD-PARTY-NOTICES.md
+      - tooling/schemas/release-groups.schema.json
       - .config/mise/conf.d/tools.build-desktop.toml
       - .config/mise/conf.d/tools.build-mobile.toml
       - .config/mise/conf.d/tools.deploy.toml

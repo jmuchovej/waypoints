@@ -10,50 +10,31 @@
 //! the icons are among what it regenerates.
 
 use super::{WorkflowContext, helpers, runners, steps};
-use crate::constants::{
-    ABOUT_CONFIG, ABOUT_TEMPLATE, LOCKFILE, MAIN, NOTICES, TFVARS, THIRD_PARTY_REGISTRY,
-    WORKFLOWS_DIR,
-};
+use crate::constants::{GENERATED, MAIN};
 use gh_workflow::{Event, Job, Level, Permissions, PullRequest, Push, Workflow, WorkflowDispatch};
+use std::collections::BTreeSet;
 
-/// Sources whose change can invalidate something we generate. A change to any
-/// of these has to re-run the check.
-const SOURCES: &[&str] = &[
-    "devenv.nix",
-    "devenv.yaml",
-    "devenv.lock",
-    "tooling/xtask/**",
-    "crates/domain/**",
-    "crates/cartograph/**",
-    "src-tauri/res/**",
-    LOCKFILE,
-    "pnpm-lock.yaml",
-    THIRD_PARTY_REGISTRY,
-    ABOUT_CONFIG,
-    ABOUT_TEMPLATE,
-];
-
-/// Generated outputs, listed so that hand-editing one is caught, after the
-/// glob over [`WORKFLOWS_DIR`]. devenv's own come from the context at
-/// generation time.
-const OUTPUTS: &[&str] = &[
-    TFVARS,
-    NOTICES,
-    "crates/domain/typescript/**",
-    "crates/cartograph/typescript/**",
-    "src-tauri/assets/icons/app/**",
-    "src-tauri/gen/apple/Assets.xcassets/*.appiconset/**",
-    "src-tauri/gen/android/app/src/*/res/**/ic_launcher*",
-];
+/// What re-runs the check: every ledger entry's sources, then every entry's
+/// outputs — so a hand edit to one is caught — then devenv's files from the
+/// context, each once in first-seen order.
+fn watched_paths(context: &WorkflowContext) -> Vec<String> {
+    let mut seen = BTreeSet::new();
+    GENERATED
+        .iter()
+        .flat_map(|entry| entry.sources.iter().copied())
+        .chain(
+            GENERATED
+                .iter()
+                .flat_map(|entry| entry.outputs.iter().copied()),
+        )
+        .map(str::to_owned)
+        .chain(context.devenv_files.iter().cloned())
+        .filter(|path| seen.insert(path.clone()))
+        .collect()
+}
 
 pub fn workflow(context: &WorkflowContext) -> Workflow {
-    let paths: Vec<String> = SOURCES
-        .iter()
-        .map(|path| (*path).to_owned())
-        .chain([format!("{WORKFLOWS_DIR}/**")])
-        .chain(OUTPUTS.iter().map(|path| (*path).to_owned()))
-        .chain(context.devenv_files.iter().cloned())
-        .collect();
+    let paths = watched_paths(context);
 
     let check_generated = Job::new("check generated files match their sources")
         .permissions(Permissions::default().contents(Level::Read))
@@ -89,4 +70,40 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
             .workflow_dispatch(WorkflowDispatch::default()))
         .concurrency(helpers::one_run_per_ref("generated"))
         .add_job("check-generated", check_generated)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Scenarios _A generator is added_ and _The check and the listing agree_:
+    /// the trigger is the ledger and the context, each path once, and nothing
+    /// else.
+    #[test]
+    fn the_trigger_watches_the_ledger_and_the_context_and_nothing_else() {
+        let mut context = WorkflowContext::fixture();
+        // The first is also a ledger source, so it must appear once.
+        context.devenv_files = vec![
+            "devenv.lock".to_owned(),
+            ".config/mise/conf.d/tools.toml".to_owned(),
+        ];
+        let value = serde_json::to_value(workflow(&context)).unwrap();
+
+        let named: BTreeSet<&str> = GENERATED
+            .iter()
+            .flat_map(|entry| entry.sources.iter().chain(entry.outputs).copied())
+            .chain(context.devenv_files.iter().map(String::as_str))
+            .collect();
+        for event in ["pull_request", "push"] {
+            let watched: Vec<&str> = value["on"][event]["paths"]
+                .as_array()
+                .unwrap_or_else(|| panic!("{event} has no paths"))
+                .iter()
+                .map(|path| path.as_str().unwrap())
+                .collect();
+            let once: BTreeSet<&str> = watched.iter().copied().collect();
+            assert_eq!(once.len(), watched.len(), "{event}: {watched:?}");
+            assert_eq!(once, named, "{event}");
+        }
+    }
 }

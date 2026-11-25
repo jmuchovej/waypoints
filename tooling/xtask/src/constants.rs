@@ -59,8 +59,16 @@ pub const DEVENV_UPDATE_BRANCH: &str = "devenv/update";
 
 // The generated tree.
 
+// A macro rather than a `const`, so `concat!` can build the glob below from
+// the same spelling.
+macro_rules! workflows_dir {
+    () => {
+        ".github/workflows"
+    };
+}
+
 /// Where the generated workflows live.
-pub const WORKFLOWS_DIR: &str = ".github/workflows";
+pub const WORKFLOWS_DIR: &str = workflows_dir!();
 /// Where OpenTofu auto-loads `var.github`.
 pub const TFVARS: &str = "tooling/infra/github.auto.tfvars.json";
 /// The TypeScript bindings `generate bindings` writes.
@@ -105,3 +113,59 @@ pub const APP_STORE_INFO: &str = "AppStoreInfo.plist";
 /// Where the API floor's measurement builds, under the workspace's `target/`:
 /// the current tree's rustdoc, and a worktree per baseline tag with its own.
 pub const SEMVER_SCRATCH: &str = "target/semver-checks";
+
+// The ledger of generated outputs.
+
+/// One generator: the sources it reads and the outputs it owns, as globs —
+/// `*` within a component and `**` across, which GitHub's `paths:` filter,
+/// git's pathspec, and jj's `glob:` fileset all read — so the lockstep
+/// check's trigger, its diff, and `ls managed` derive from one list.
+pub struct Generated {
+    pub name: &'static str,
+    pub sources: &'static [&'static str],
+    pub outputs: &'static [&'static str],
+}
+
+/// The source of everything xtask itself generates.
+const XTASK: &str = "tooling/xtask/**";
+
+/// Every generator, in the order the check lists them. devenv's outputs come
+/// from `devenv info` at run time, so its entry declares none.
+pub const GENERATED: &[Generated] = &[
+    Generated {
+        name: "workflows",
+        sources: &["devenv.nix", "devenv.yaml", "devenv.lock", XTASK],
+        outputs: &[concat!(workflows_dir!(), "/**"), TFVARS],
+    },
+    Generated {
+        name: "bindings",
+        sources: &["crates/domain/**", "crates/cartograph/**"],
+        outputs: &BINDINGS,
+    },
+    Generated {
+        name: "icons",
+        sources: &["src-tauri/res/**"],
+        outputs: &ICON_ROOTS,
+    },
+    Generated {
+        name: "notices",
+        sources: &[
+            LOCKFILE,
+            "pnpm-lock.yaml",
+            THIRD_PARTY_REGISTRY,
+            ABOUT_CONFIG,
+            ABOUT_TEMPLATE,
+        ],
+        outputs: &[NOTICES],
+    },
+    Generated {
+        name: "schema",
+        sources: &[XTASK],
+        outputs: &[SCHEMA_FILE],
+    },
+    Generated {
+        name: "devenv",
+        sources: &["devenv.nix", "devenv.yaml", "devenv.lock"],
+        outputs: &[],
+    },
+];
