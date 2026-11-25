@@ -49,6 +49,7 @@ mod tasks {
             pub mod upload;
             pub mod withdraw;
         }
+        pub mod describe;
         pub mod merge;
         pub mod open_series;
         pub mod plan;
@@ -125,6 +126,8 @@ enum Command {
 enum Release {
     /// Plans a channel's run: what it builds, whether it publishes, and the tag nightly mints.
     Prepare(tasks::release::prepare::Options),
+    /// Reads a tag, or a tree, into the version, channel, flavor, and store build codes a build stamps.
+    Describe(tasks::release::describe::Options),
     /// Plans a release-cycle transition: cut, advance, promote, or patch.
     Plan(tasks::release::plan::Options),
     /// What a run does to what it distributes: rename, upload, commit the manifest, withdraw.
@@ -192,6 +195,7 @@ fn main() -> Result<()> {
         Command::TestPlan(args) => tasks::test_plan::run(args),
         Command::Release(command) => match command {
             Release::Prepare(args) => release::prepare::run(args),
+            Release::Describe(args) => release::describe::run(args),
             Release::Plan(args) => release::plan::run(args),
             Release::Distributables(command) => match command {
                 Distributables::Rename(args) => release::distributables::rename::run(args),
