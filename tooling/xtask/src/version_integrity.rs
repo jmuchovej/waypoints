@@ -841,6 +841,68 @@ mod tests {
         );
     }
 
+    /// A withdrawn release's revert moves a version backwards — the group
+    /// file, the manifests, and the lockfile together — under the bot's
+    /// subject on a series, and as a summary naming each restored group on
+    /// `main`. Both pass as the bot; the same write by a person is refused.
+    #[test]
+    fn a_bot_revert_passes_and_a_hand_made_backwards_write_does_not() {
+        let series = [
+            modified(GROUP_FILE),
+            modified("src-tauri/Cargo.toml"),
+            modified("Cargo.lock"),
+        ];
+        let writes = [GROUP_FILE.to_owned(), "src-tauri/Cargo.toml".to_owned()];
+        let revert = |title: &str, body: &str, author: &str, changes: &[Change]| {
+            violations(&Evidence {
+                pull_request: &pull_request(title, body, author),
+                groups: &groups(),
+                changes,
+                version_writes: &writes,
+                versions: &BTreeMap::new(),
+                schema_is_current: true,
+            })
+        };
+        assert_eq!(
+            revert(
+                "chore(release): revert 0.2.0-pre.2 on v0.2.x",
+                "",
+                RELEASE_BOT,
+                &series
+            ),
+            Vec::<String>::new()
+        );
+
+        let cut = [
+            modified(GROUP_FILE),
+            modified("src-tauri/Cargo.toml"),
+            modified("crates/bedrock/Cargo.toml"),
+            modified("Cargo.lock"),
+        ];
+        assert_eq!(
+            revert(
+                "summary: revert the cut of 0.2.0-pre.1",
+                "chore(bedrock): 0.1.0\nchore(waypoints): main now targets 0.2.0-nightly\n",
+                RELEASE_BOT,
+                &cut
+            ),
+            Vec::<String>::new()
+        );
+
+        let by_hand = revert(
+            "chore(release): revert 0.2.0-pre.2 on v0.2.x",
+            "",
+            "jmuchovej",
+            &series,
+        );
+        assert_names(&by_hand, &["chore(release):", RELEASE_BOT, "jmuchovej"]);
+        assert_names(&by_hand, &[GROUP_FILE, "a group's `version`", RELEASE_BOT]);
+        assert_names(
+            &by_hand,
+            &["src-tauri/Cargo.toml", "[package].version", RELEASE_BOT],
+        );
+    }
+
     fn writes_between(before: &str, after: &str, changes: &[Change]) -> Vec<String> {
         differing_versions(&groups(), changes, |_| {
             Ok((before.to_owned(), after.to_owned()))

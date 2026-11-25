@@ -1653,6 +1653,88 @@ fn set_locked_version(lock: &str, package: &str, version: &Version) -> Result<St
     Ok(lines.join("\n") + "\n")
 }
 
+/// A withdrawal in flight: a bump's write landed and the release built from
+/// it was withdrawn, so a branch declares a version no tag names until the
+/// revert `release undo` leaves lands. Either a series whose declared version
+/// has no tag, or `main` targeting more than one minor past the newest series
+/// — or, with none open, the last stable release — which is what a cut whose
+/// series is gone leaves behind. Every bump refuses while one is in flight.
+#[derive(Debug, PartialEq, Eq)]
+pub struct InFlight {
+    /// The branch carrying the write: a series, or `main`.
+    pub branch: String,
+    /// The version it declares.
+    pub version: Version,
+}
+
+impl InFlight {
+    /// The branch the revert lands from, which is how its open pull request
+    /// is found.
+    pub fn revert_head(&self) -> String {
+        format!(
+            "{}{}",
+            crate::constants::RELEASE_UNDO_HEAD_PREFIX,
+            self.branch
+        )
+    }
+}
+
+/// Reads a withdrawal in flight off the remote's refs: `series` as `(branch,
+/// declared app version)`, `tags` the published `v*` tags, `main` the version
+/// `main` declares, and `last_stable` the newest stable tag.
+pub fn withdrawal_in_flight(
+    series: &[(String, Version)],
+    tags: &[String],
+    main: &Version,
+    last_stable: Option<&Version>,
+) -> Result<Option<InFlight>> {
+    for (branch, declared) in series {
+        if !declared.is_nightly() && !tags.iter().any(|tag| *tag == declared.tag()) {
+            return Ok(Some(InFlight {
+                branch: branch.clone(),
+                version: declared.clone(),
+            }));
+        }
+    }
+    // After a cut, `main` targets one minor past the series it opened.
+    let newest = series
+        .iter()
+        .map(|(_, declared)| declared.target())
+        .max()
+        .or_else(|| last_stable.map(Version::target));
+    let Some(newest) = newest else {
+        return Ok(None);
+    };
+    if main.target() > newest.next_main()?.target() {
+        return Ok(Some(InFlight {
+            branch: MAIN.to_owned(),
+            version: main.clone(),
+        }));
+    }
+    Ok(None)
+}
+
+/// The open series as the remote has them: every `v*.x` branch with the app
+/// version its group file declares, read without a checkout.
+pub fn open_series_from_remote() -> Result<Vec<(String, Version)>> {
+    git::run(&[
+        "fetch",
+        "origin",
+        "+refs/heads/v*.x:refs/remotes/origin/v*.x",
+    ])?;
+    let mut series = Vec::new();
+    for branch in git::remote_branches_like("v*.x")? {
+        let file = git::show(&format!("origin/{branch}"), GROUP_FILE)?;
+        series.push((branch, GroupFile::parse(&file)?.app_version()?));
+    }
+    Ok(series)
+}
+
+/// The open pull request reverting `in_flight`'s write, if it exists yet.
+pub fn open_revert(in_flight: &InFlight) -> Result<Option<u64>> {
+    github::open_pull_request_from(&in_flight.revert_head())
+}
+
 /// The newest stable tag, which is what a cut measures its work against.
 ///
 /// Previews and nightlies are excluded: both are views of a release that has
@@ -1711,6 +1793,56 @@ mod tests {
     }
     fn plan(transition: Transition, from: &str, commits: &[&str]) -> Plan {
         Plan::new(transition, &v(from), &msgs(commits)).unwrap()
+    }
+
+    /// Scenario _A withdrawal in flight_ and _A cut's write without its
+    /// series_: a series declaring a version no tag names, or `main` targeting
+    /// past the series a cut should have opened, each naming the revert's
+    /// branch; a tagged series under a `main` one minor ahead is the normal
+    /// state.
+    #[test]
+    fn a_withdrawal_in_flight_is_read_off_the_refs() {
+        let series = [("v0.2.x".to_owned(), v("0.2.0-pre.2"))];
+        let stable = v("0.1.0");
+        let tagged = msgs(&["v0.1.0", "v0.2.0-pre.1", "v0.2.0-pre.2"]);
+        let main = v("0.3.0-nightly");
+        assert_eq!(
+            withdrawal_in_flight(&series, &tagged, &main, Some(&stable)).unwrap(),
+            None
+        );
+
+        let untagged = msgs(&["v0.1.0", "v0.2.0-pre.1"]);
+        let found = withdrawal_in_flight(&series, &untagged, &main, Some(&stable))
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.branch, "v0.2.x");
+        assert_eq!(found.version, v("0.2.0-pre.2"));
+        assert_eq!(found.revert_head(), "botswain/release-undo/v0.2.x");
+
+        let past = v("0.4.0-nightly");
+        let found = withdrawal_in_flight(&series, &tagged, &past, Some(&stable))
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.branch, "main");
+        assert_eq!(found.version, past);
+        assert_eq!(found.revert_head(), "botswain/release-undo/main");
+
+        // With no series open, the last stable release is the mark.
+        let only_stable = msgs(&["v0.1.0"]);
+        assert_eq!(
+            withdrawal_in_flight(&[], &only_stable, &v("0.2.0-nightly"), Some(&stable)).unwrap(),
+            None
+        );
+        assert!(
+            withdrawal_in_flight(&[], &only_stable, &v("0.3.0-nightly"), Some(&stable))
+                .unwrap()
+                .is_some()
+        );
+        // Before any release there is nothing to be in flight.
+        assert_eq!(
+            withdrawal_in_flight(&[], &[], &v("0.1.0-nightly"), None).unwrap(),
+            None
+        );
     }
 
     /// `git-cliff` runs under `require_conventional`, and it runs after the

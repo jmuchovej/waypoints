@@ -73,6 +73,7 @@ pub mod releases {
     pub mod landing;
     pub mod manifest;
     pub mod store;
+    pub mod undo;
     pub mod version;
 }
 

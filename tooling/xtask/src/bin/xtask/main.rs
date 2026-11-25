@@ -56,6 +56,7 @@ mod tasks {
         pub mod prepare;
         pub mod record;
         pub mod tag;
+        pub mod undo;
     }
 
     /// The checks a pull request must pass.
@@ -141,6 +142,8 @@ enum Release {
     Tag(tasks::release::tag::Options),
     /// Opens a cut's series at its main pull request's merge commit.
     OpenSeries(tasks::release::open_series::Options),
+    /// Reverts the bump a withdrawn release was minted from, for the pull-request action to land.
+    Undo(tasks::release::undo::Options),
 }
 
 #[derive(Subcommand)]
@@ -207,6 +210,7 @@ fn main() -> Result<()> {
             Release::Merge(args) => release::merge::run(args),
             Release::Tag(args) => release::tag::run(args),
             Release::OpenSeries(args) => release::open_series::run(args),
+            Release::Undo(args) => release::undo::run(args),
         },
         Command::Check(command) => match command {
             Check::Licenses(args) => check::licenses::run(args),

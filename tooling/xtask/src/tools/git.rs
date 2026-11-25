@@ -82,6 +82,34 @@ pub fn remote_tags_like(pattern: &str) -> Result<Vec<String>> {
     Ok(tag_names(&listed))
 }
 
+/// Every tag matching `pattern` as `origin` holds it, with the commit each
+/// points at, as `(name, sha)`.
+pub fn remote_tags_at(pattern: &str) -> Result<Vec<(String, String)>> {
+    let listed = run(&["ls-remote", "--tags", "--refs", "origin", pattern])
+        .context("listing origin's tags: a planner decides from what is published")?;
+    Ok(listed
+        .lines()
+        .filter_map(|line| line.split_once('\t'))
+        .filter_map(|(sha, reference)| {
+            let name = reference.strip_prefix("refs/tags/")?;
+            Some((name.to_owned(), sha.to_owned()))
+        })
+        .collect())
+}
+
+/// Every branch matching `pattern` as `origin` holds it — the series,
+/// `v*.x`.
+pub fn remote_branches_like(pattern: &str) -> Result<Vec<String>> {
+    let listed = run(&["ls-remote", "--heads", "origin", pattern])
+        .context("listing origin's branches: a planner decides from what is published")?;
+    Ok(listed
+        .lines()
+        .filter_map(|line| line.split('\t').nth(1))
+        .filter_map(|reference| reference.strip_prefix("refs/heads/"))
+        .map(str::to_owned)
+        .collect())
+}
+
 /// The tag names in `git ls-remote --tags --refs` output: one `<sha>\t<ref>`
 /// line per tag.
 fn tag_names(listed: &str) -> Vec<String> {

@@ -22,6 +22,12 @@
   summary = "summary: cut {{ version }}"
   # The release index's entry for a published tag.
   index   = "chore(release): record {{ tag }} as the published {{ channel }}"
+  # A withdrawn release's write, reverted: on its series, or on `main` for a
+  # cut that moved the app alone.
+  undo         = "chore(release): revert {{ version }} on {{ branch }}"
+  # A cut's `main` write reverted, where it moved libraries too: a summary
+  # whose headers name each version restored.
+  undo-summary = "summary: revert the cut of {{ version }}"
 
 # The headers a summary's body carries, scoped by group as the summary guard
 # requires, so each group's planner reads its own.
@@ -44,6 +50,7 @@
 [pull-request]
   plan  = "Written by `cargo xtask release plan`; merges when its checks pass."
   index = "Written by `cargo xtask release record`; merges when its checks pass."
+  undo  = "Written by `cargo xtask release undo`; merges when its checks pass."
 
 # What the planner says when it refuses to mint.
 [refusal]

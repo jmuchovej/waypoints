@@ -53,6 +53,10 @@ pub const RELEASE_PLAN_HEAD_PREFIX: &str = "botswain/release-plan/";
 /// A release-index entry lands from here, one branch per channel, so two
 /// channels publishing at once never overwrite each other's write.
 pub const RELEASE_INDEX_HEAD_PREFIX: &str = "botswain/release-index/";
+/// A withdrawn release's revert lands from here, one branch per target —
+/// the series it undoes, or `main` for a cut's write there — which is also
+/// how a bump finds the revert still open.
+pub const RELEASE_UNDO_HEAD_PREFIX: &str = "botswain/release-undo/";
 /// The weekly devenv update's branch, reused so a still-unmerged update is
 /// refreshed in place rather than stacking a second pull request.
 pub const DEVENV_UPDATE_BRANCH: &str = "devenv/update";

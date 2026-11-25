@@ -214,6 +214,47 @@ fn create_ref(reference: &Reference, sha: &str) -> Result<()> {
     })
 }
 
+/// Deletes `refs/heads/{name}`; the rulesets decide whether the token may.
+pub fn delete_branch(name: &str) -> Result<()> {
+    delete_ref(&Reference::Branch(name.to_owned()))
+}
+
+/// Deletes `refs/tags/{name}`; the rulesets decide whether the token may.
+pub fn delete_tag(name: &str) -> Result<()> {
+    delete_ref(&Reference::Tag(name.to_owned()))
+}
+
+fn delete_ref(reference: &Reference) -> Result<()> {
+    let (owner, name) = owner_and_name()?;
+    block_on(async {
+        client()?
+            .repos(&owner, &name)
+            .delete_ref(reference)
+            .await
+            .with_context(|| format!("Failed to delete {}", reference.full_ref_url()))?;
+        Ok(())
+    })
+}
+
+/// The number of the open pull request from the branch `head`, if one is
+/// open — the bot's branches carry one pull request each, reused across
+/// runs.
+pub fn open_pull_request_from(head: &str) -> Result<Option<u64>> {
+    let (owner, name) = owner_and_name()?;
+    block_on(async {
+        let page = client()?
+            .pulls(&owner, &name)
+            .list()
+            .state(octocrab::params::State::Open)
+            .head(format!("{owner}:{head}"))
+            .per_page(1)
+            .send()
+            .await
+            .with_context(|| format!("Failed to list the pull requests from {head}"))?;
+        Ok(page.items.first().map(|pull| pull.number))
+    })
+}
+
 // ── Step outputs ─────────────────────────────────────────────────────────────
 
 /// Publishes `outputs` as the current step's outputs.

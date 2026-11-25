@@ -313,6 +313,29 @@ pub(crate) mod fixture {
             self.git(&["commit", "-q", "-m", subject]);
         }
 
+        /// The repository's directory.
+        pub(crate) fn root(&self) -> &std::path::Path {
+            &self.dir
+        }
+
+        /// Writes `content` at `path`, uncommitted.
+        pub(crate) fn write(&self, path: &str, content: &str) {
+            let file = self.dir.join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(&file, content).unwrap();
+        }
+
+        /// The file at `path` as the working tree has it.
+        pub(crate) fn read(&self, path: &str) -> String {
+            fs::read_to_string(self.dir.join(path)).unwrap()
+        }
+
+        /// Commits every change in the working tree under `subject`.
+        pub(crate) fn commit_all(&self, subject: &str) {
+            self.git(&["add", "-A"]);
+            self.git(&["commit", "-q", "-m", subject]);
+        }
+
         /// A commit touching product code, under `subject`.
         pub(crate) fn product(&self, subject: &str) {
             self.commit("crates/domain/src/lib.rs", subject);
