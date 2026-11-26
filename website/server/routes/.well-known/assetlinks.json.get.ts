@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Android App Links association for https://waypoints.so/pair. The
 // signing-cert fingerprints come from runtimeConfig
 // (NUXT_APP_ASSOCIATION_ANDROID_CERT_FINGERPRINTS, comma-separated) so

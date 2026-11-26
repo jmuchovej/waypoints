@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Registration-driven, multi-Territory serving over real
 //! QUIC. A Station opened empty with only a storage directory learns
 //! Territories over the wire: a Vessel registers one (presenting its root),

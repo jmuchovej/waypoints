@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Station-scope storage: the records a *Station itself* owns, as opposed to the per-Territory
 //! records in a [`TerritoryHold`](crate::TerritoryHold). One bedrock database
 //! (`station.db`) beside the Territory holds.

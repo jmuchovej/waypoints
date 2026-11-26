@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Connection liveness for parked live-push sessions.
 //!
 //! A live [`Subscribe`] session can sit idle indefinitely — no reconcile,

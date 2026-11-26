@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The arbitration key: the content-derived total order the fold sorts by.
 //!
 //! Per-target last-write-wins needs every device to agree on which of two

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import * as tauriApp from "@tauri-apps/api/app";
 import * as tauriWebviewWindow from "@tauri-apps/api/webviewWindow";
 import * as tauriDialog from "@tauri-apps/plugin-dialog";

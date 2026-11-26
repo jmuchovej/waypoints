@@ -1,0 +1,84 @@
+#:tombi toml-version = "v1.0.0"
+#:schema ./schemas/release-groups.schema.json
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# every workspace crate outside of `tooling/` must be named, either as:
+# - a `member` crate (this will carry the group's version)
+# - an `internal` crate (this will be unversioned)
+#
+# `tooling/` is exempt because it's not part of the product.
+#
+# `waypoints` is the app's group while all others are libraries. this allows
+# app and library versions to move at separate paces.
+#
+# `version-integrity` enforces that `member` crates carry the version
+# written here. `paths` provides a list of other trees the group owns beyond its
+# `member` and `internal` crates and `fixtures`.
+#
+# commits count for groups whose owned paths change – unclaimed paths do not
+# count toward versioning of any group.
+
+[bookkeeping]
+  paths        = [ "distribution/nix/releases/" ]
+  # commits that count for no group – **use the full commit id**.
+  # this is in addition to `.git-blame-ignore-revs`
+  ignore-revs  = [
+    # `refactor(importer)!: delete the dormant crate`:
+    #   the break was the importer's own API; `domain` only had a doc line touched
+    "11798f95d76489e4aa1268828b28233e231cb87c",
+  ]
+  # reserved to botswain.
+  bot-subjects = [ "chore(release):" ]
+
+# the database backbone of Waypoints.
+[group.bedrock]
+  version  = "0.1.1"
+  members  = [ "crates/bedrock", "crates/bedrock-core", "crates/bedrock-derive" ]
+  tag      = "bedrock-v{version}"
+  fixtures = "covenant/fixtures/bedrock/"
+
+# the sync layer of Waypoints: protocol, transport, and record storage.
+[group.outpost]
+  version  = "0.2.0"
+  members  = [
+    "crates/outpost",
+    "crates/outpost-fabric",
+    "crates/outpost-hold",
+    "crates/outpost-protocol",
+  ]
+  tag      = "outpost-v{version}"
+  fixtures = "covenant/fixtures/outpost/"
+
+# the core datatypes of Waypoints and the foundation of the data covenant.
+[group.domain]
+  version  = "0.1.1"
+  members  = [ "crates/domain" ]
+  tag      = "domain-v{version}"
+  fixtures = "covenant/fixtures/domain/"
+
+# the Bundle format: export to legible markdown, re-ingest without loss.
+[group.transload]
+  version   = "0.1.1"
+  members   = [ "crates/transload" ]
+  # fixture importer plugins: test subjects for the SDK and harness, never shipped.
+  internals = [ "crates/transload-fixtures/plain-markdown" ]
+  tag       = "transload-v{version}"
+  fixtures  = "covenant/fixtures/transload/"
+
+[group.waypoints]
+  # the app version must carry the channel along with the version
+  version   = "0.2.0-nightly"
+  members   = [
+    # the app's backend
+    "src-tauri",
+    # the API surface whose version should move with the app
+    "crates/cartograph"
+  ]
+  internals = [ "crates/store" ]
+  tag       = "v{version}"
+  fixtures  = "covenant/fixtures/waypoints/"
+  paths     = [
+    # the app's frontend
+    "src/"
+  ]

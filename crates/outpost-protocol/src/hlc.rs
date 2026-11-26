@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Hybrid logical clock: the value carried by `EnvelopeHeader.timestamp`.
 //!
 //! The protocol never interprets the field — it is advisory, signed, and

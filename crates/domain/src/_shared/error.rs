@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use thiserror::Error;
 
 pub type DomainResult<T> = ::std::result::Result<T, DomainError>;

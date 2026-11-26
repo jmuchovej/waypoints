@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 {
   pkgs,
   lib,
@@ -8,13 +11,12 @@
 {
   stdenv = pkgs.clangStdenv;
 
-  imports = [ ./nix/devenv ];
+  imports = [ ./tooling/devenv ];
 
   waypoints.mise = {
-    # Units of work, not actors: a job names what it does, and `MISE_ENV` takes
-    # a comma-separated list, so a consumer composes the sets it needs. A
-    # contributor working without nix names the lanes they work in — there is no
-    # `development` union, because selection already composes.
+    # `MISE_ENV` targets **units of work** rather than actors. a contributor without `nix`
+    # names the lanes they work in (since there's no `development` union).
+    # this works because `MISE_ENV` takes a comma-separated list, allowing composition.
     environments = [
       "xtask"
       "test"
@@ -22,7 +24,7 @@
       "build-desktop"
       "build-mobile"
       "website"
-      "deploy"
+      "dist"
     ];
 
     tools = {
@@ -37,10 +39,7 @@
         spec = "aqua:casey/just";
       };
       typst = {
-        # `withPackages` builds an env with no `version`; mise pins the compiler's.
-        package = config.languages.typst.package // {
-          inherit (pkgs.typst) version;
-        };
+        package = config.languages.typst.package;
         spec = "aqua:typst/typst";
       };
       nixfmt = {
@@ -53,9 +52,9 @@
         spec = "github:facebook/ktfmt";
         envs = [ "devtools" ];
       };
-      rufo = {
-        package = pkgs.rufo;
-        spec = "gem:rufo";
+      rubocop = {
+        package = pkgs.rubocop;
+        spec = "gem:rubocop";
         depends = [ config.waypoints.mise.tools.ruby.spec ];
         envs = [ "devtools" ];
       };
@@ -100,8 +99,6 @@
         spec = "aqua:google/keep-sorted";
         envs = [ "devtools" ];
       };
-      # nix-only: in the shell, never in mise. treefmt's
-      # allow-missing-formatter lets mise users skip them.
       deadnix = {
         package = pkgs.deadnix;
         envs = null;
@@ -124,22 +121,23 @@
         envs = [ "devtools" ];
       };
 
-      # The deploy lane: validating the Station manifests under deploy/ and
-      # standing them up on kind (`just deploy::…`).
+      # The dist lane: validating the Station manifests under
+      # distribution/kubernetes/ and standing them up on kind
+      # (`just dist::kubernetes::…`).
       kubeconform = {
         package = pkgs.kubeconform;
         spec = "aqua:yannh/kubeconform";
-        envs = [ "deploy" ];
+        envs = [ "dist" ];
       };
       kubectl = {
         package = pkgs.kubectl;
         spec = "aqua:kubernetes/kubernetes/kubectl";
-        envs = [ "deploy" ];
+        envs = [ "dist" ];
       };
       kind = {
         package = pkgs.kind;
         spec = "aqua:kubernetes-sigs/kind";
-        envs = [ "deploy" ];
+        envs = [ "dist" ];
       };
 
       # Shell-only: the local development store for secrets. No CI lane
@@ -174,15 +172,11 @@
         spec = "aqua:cachix/secretspec";
       };
 
+      # Shell-only: the store submissions run it through devenv, and no build
+      # lane calls it.
       fastlane = {
         package = pkgs.fastlane;
-        spec = "gem:fastlane";
-        depends = [ config.waypoints.mise.tools.ruby.spec ];
-        os = [
-          "linux"
-          "macos"
-        ];
-        envs = [ "build-mobile" ];
+        envs = null;
       };
       xcodegen = {
         package = pkgs.xcodegen;
@@ -190,10 +184,8 @@
         os = [ "macos" ];
         envs = [ "build-mobile" ];
       };
-      # The Android project ships no gradlew (the wrapper jar is gitignored),
-      # so Tauri runs whichever `gradle` is on PATH. Projected so CI gets the
-      # same major as the shell: the runner image's own Gradle is a release
-      # ahead of what the pinned Android Gradle Plugin supports.
+      # since we don't ship a gradlew (its gitignored), we project it into `mise` so that
+      # CI will run the same major version as we do in devshells.
       gradle = {
         package = pkgs.gradle;
         spec = "aqua:gradle/gradle";
@@ -240,15 +232,26 @@
         spec = "aqua:EmbarkStudios/cargo-deny";
         envs = [ "devtools" ];
       };
+      # Shell-only: the notices regenerate under devenv, locally and in the
+      # lockstep job, and no mise lane needs them.
+      cargo-about = {
+        package = pkgs.cargo-about;
+        envs = null;
+      };
       mbx = {
         package = inputs.mbx.packages.${pkgs.stdenv.hostPlatform.system}.mbx;
         spec = "github:jdx/mr-boxington";
         envs = [ "devtools" ];
       };
+      # The test lane too: xtask's integration tests drive the built binary,
+      # and a dry-run bump renders the would-be tag's notes through it.
       git-cliff = {
         package = pkgs.git-cliff;
         spec = "aqua:orhun/git-cliff";
-        envs = [ "xtask" ];
+        envs = [
+          "test"
+          "xtask"
+        ];
       };
 
       node = {
@@ -265,16 +268,13 @@
         spec = "core:deno";
         envs = [ "website" ];
       };
-      # Not base: only `rufo` and `fastlane` run on it, so it rides with them.
+      # since only `rubocop` needs ruby, we don't need it in the base env.
       ruby = {
         package = config.languages.ruby.package;
         spec = "core:ruby";
-        envs = [
-          "devtools"
-          "build-mobile"
-        ];
+        envs = [ "devtools" ];
       };
-      # LOAD-BEARING, despite `envs = null`: nix/devenv/android.nix reads this
+      # LOAD-BEARING, despite `envs = null`: tooling/devenv/android.nix reads this
       # package's version into the generated `libs.versions.toml`, which is what
       # pins the Gradle Kotlin plugin. Gradle resolves `kotlin-compiler-embeddable`
       # from Maven at that version and runs it on the JDK — it never looks for
@@ -288,7 +288,7 @@
     };
   };
 
-  # `.env` and both of its substituters are owned by nix/devenv/default.nix.
+  # `.env` and both of its substituters are owned by tooling/devenv/default.nix.
   env.PROJECT_ROOT = config.devenv.root;
 
   delta.enable = true;
@@ -300,9 +300,7 @@
     sdk.compile.version = "36";
     platforms.extra = [ "30" ];
     ndk.version = "30.0.16138531";
-    # devenv writes `files."<project-path>/..."` relative to the root, while
-    # `.env` carries the absolute path both it and mise need. Re-relativize
-    # rather than restating the path in nix.
+    # re-relativize the project-path so that `files.${project-path}` writes sensibly
     project-path = lib.removePrefix "${config.devenv.root}/" config.env.TAURI_ANDROID_PROJECT_PATH;
   };
 
@@ -319,6 +317,7 @@
     git
     imagemagick
     jujutsu
+    maestro
     mise
     ripgrep
   ];
@@ -346,25 +345,22 @@
     enable = true;
     lsp.enable = true;
   };
-  # `.env` ignores system and embedded fonts, so every family a
-  # `docs/marketing` asset names must come from `TYPST_FONT_PATHS`.
   languages.typst = {
     enable = true;
-    # Universe packages from nixpkgs, so rendering never fetches.
-    package = pkgs.typst.withPackages (ps: [
-      ps.typewind_0_2_0
-      ps.xmlit_0_1_3
-    ]);
+    # universe packages from nixpkgs, so rendering never fetches.
+    # re-attach the `version` to `withPackages` so `mise` can pin the compiler's.
+    package =
+      pkgs.typst.withPackages (ps: [
+        ps.typewind_0_2_0
+        ps.xmlit_0_1_3
+      ])
+      // {
+        inherit (pkgs.typst) version;
+      };
     lsp.enable = true;
     fontPaths = [
       "${pkgs.google-fonts.override { fonts = [ "Albert Sans" ]; }}/share/fonts/truetype"
-      # Static instances only: the joined `pkgs.monaspace` also carries the
-      # frozen and variable builds, so typst would see each family thrice.
       "${pkgs.monaspace.static}/share/fonts/opentype"
-      # Two emoji faces, both of which typst renders in colour: Twemoji is
-      # SVG-in-OpenType and sits on the text baseline at the surrounding size,
-      # Noto is CBDT bitmap and draws oversized and high. Marketing asks for
-      # Twemoji by name; Noto is here for anything that wants Android's own set.
       "${pkgs.twemoji-color-font}/share/fonts/truetype"
       "${pkgs.noto-fonts-color-emoji}/share/fonts/noto"
     ];
@@ -378,6 +374,6 @@
       "rust-toolchain.toml"
       ".config/deny.toml"
     ];
-    exec = builtins.readFile ./nix/devenv/bin/sync-deny-targets;
+    exec = builtins.readFile ./tooling/devenv/bin/sync-deny-targets;
   };
 }

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Sync command handlers. Mirrors `src-tauri/src/commands/sync.rs`.
 
 use super::{ApiError, Instance};

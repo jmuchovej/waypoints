@@ -1,0 +1,28 @@
+# The AUR: check the rendered PKGBUILDs under target/dist/aur/.
+# Render first (`cargo xtask dist render aur --flavor <flavor>`).
+
+set script-interpreter := ["bash", "-euo", "pipefail"]
+
+[private]
+default:
+    @just --list
+
+[doc("Diffs each rendered .SRCINFO against `makepkg --printsrcinfo` and runs namcap on the PKGBUILD. Reports skipped where makepkg is not installed.")]
+[script]
+check:
+    if ! command -v makepkg >/dev/null; then
+      echo "skipped: makepkg is not installed (an Arch host checks the AUR package)"
+      exit 0
+    fi
+    shopt -s nullglob
+    renders=(../../target/dist/aur/*/)
+    if [ "${#renders[@]}" -eq 0 ]; then
+      echo "no rendered PKGBUILDs under target/dist/aur/; render them first" >&2
+      exit 1
+    fi
+    for dir in "${renders[@]}"; do
+      (cd "$dir" && diff -u .SRCINFO <(makepkg --printsrcinfo))
+      if command -v namcap >/dev/null; then
+        namcap "$dir/PKGBUILD"
+      fi
+    done

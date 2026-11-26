@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The buffer convention, guest side: linear memory is the guest's, so the
 //! guest allocates every buffer a host writes into and every buffer it
 //! returns, and a `u64` return packs `(ptr << 32) | len`.

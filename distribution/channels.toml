@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Which distribution channels each release channel reaches, and the package
+# identity it takes there. A release channel that omits a distribution channel
+# is not published to it. `cargo xtask dist render` reads `package.id` from
+# here; package manifests under `distribution/<channel>/` never spell one.
+
+[stable]
+  aur        = "waypoints-bin"
+  brew       = "waypoints"
+  chocolatey = "waypoints"
+  winget     = "Waypoints.Waypoints"
+
+[preview]
+  aur        = "waypoints-preview-bin"
+  brew       = "waypoints@preview"
+  chocolatey = "waypoints-preview"
+  winget     = "Waypoints.Waypoints.Preview"
+
+[nightly]
+  aur        = "waypoints-nightly-bin"
+  brew       = "waypoints@nightly"
+  chocolatey = "waypoints-nightly"
+  winget     = "Waypoints.Waypoints.Nightly"

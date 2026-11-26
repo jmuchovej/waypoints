@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! One reading of a version for every release task.
 //!
 //! A version names its own channel (a `nightly` prerelease is nightly, any
@@ -6,17 +9,19 @@
 //! both here means the uploader, the manifest writer, the index, and the
 //! planners can never disagree about the same tag — and, applied to a
 //! manifest rather than a tag, it is how a tree says which channel it ships
-//! as. `nix/channel.nix` is the same reading for the overlay.
+//! as. `distribution/nix/channel.nix` is the same reading for the overlay.
 //!
 //! A version also knows how to make each [`Transition`] of the release cycle:
-//! see [`Version::transition`].
+//! see [`Version::transition`]. A nightly is not a transition but a date:
+//! see [`Version::nightly`].
 
 use crate::Channel;
 use anyhow::{Context as _, Result, bail};
-use cargo_metadata::semver::{self, BuildMetadata, Prerelease};
+use cargo_metadata::semver::{self, Prerelease};
+use chrono::NaiveDate;
 use clap::ValueEnum;
 use derive_more::{AsMut, AsRef, Deref, From, Into};
-use next_version::VersionUpdater;
+use next_version::{NextVersion, VersionUpdater};
 use std::{fmt, str::FromStr};
 use strum::{EnumIter, IntoEnumIterator as _};
 
@@ -26,11 +31,6 @@ pub const PRE: &str = "pre";
 /// The prerelease identifier every nightly carries.
 pub const NIGHTLY: &str = "nightly";
 
-/// The manifest whose `version` is the app's — and, by its suffix, the
-/// channel the tree ships as. Tauri reads the version from here when
-/// `Tauri.toml` leaves it unset.
-pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
-
 /// The four ref-minting transitions of a release cycle, in the order a
 /// version meets them.
 ///
@@ -38,7 +38,10 @@ pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
 /// `main` as a preview, advances through `-pre.N` while it stabilises, is
 /// promoted in place to stable, and then takes patches until the next minor
 /// supersedes it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumIter, ValueEnum)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, EnumIter, ValueEnum, serde::Deserialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum Transition {
     /// Branch `main` into a new preview line.
     Cut,
@@ -48,17 +51,6 @@ pub enum Transition {
     Promote,
     /// Take the next patch on a stable branch.
     Patch,
-}
-
-/// Every transition, in the order a version meets them — the choices the
-/// dispatch input offers.
-///
-/// Derived from the enum rather than restated, so a new variant cannot be
-/// missing from the workflow that has to invoke it.
-pub fn transitions() -> Vec<String> {
-    Transition::iter()
-        .map(|transition| format!("{transition:?}").to_lowercase())
-        .collect()
 }
 
 /// A version read the way the release tasks read one. Dereferences to the
@@ -159,12 +151,36 @@ impl Version {
     /// only: the first candidate for the release `commits` add up to. `self`
     /// is the last stable release — `0.0.0` before there is one.
     pub fn cut(&self, commits: &[String]) -> Result<Self> {
-        let mut target = VersionUpdater::new()
-            .with_features_always_increment_minor(true)
-            .increment(self, commits);
+        let mut target = self.bumped(commits, true);
         target.pre = Prerelease::new(&format!("{PRE}.1"))
             .with_context(|| format!("`{PRE}.1` is not a valid prerelease"))?;
         Ok(Self(target))
+    }
+
+    /// `1.2.0` → `2.0.0-pre.1`: the first candidate of the next major, which
+    /// only a person asks for. `self` is the last stable release.
+    pub fn cut_major(&self) -> Result<Self> {
+        let mut target = semver::Version::new(self.major + 1, 0, 0);
+        target.pre = Prerelease::new(&format!("{PRE}.1"))
+            .with_context(|| format!("`{PRE}.1` is not a valid prerelease"))?;
+        Ok(Self(target))
+    }
+
+    /// A library line's next version after `commits`, as Cargo reads semver:
+    /// a feature moves the patch and a break the minor before `1.0`, the
+    /// minor and the major after. No prerelease — a library's tag is its
+    /// release.
+    pub fn next_library(&self, commits: &[String]) -> Self {
+        Self(self.bumped(commits, false))
+    }
+
+    /// The conventional-commit bump `commits` add up to, from this version.
+    /// `minor_for_features` is the app's rule: a feature moves the minor even
+    /// before `1.0`, where a library right-shifts.
+    fn bumped(&self, commits: &[String], minor_for_features: bool) -> semver::Version {
+        VersionUpdater::new()
+            .with_features_always_increment_minor(minor_for_features)
+            .increment(self, commits)
     }
 
     /// `0.2.0-pre.1` → `0.2.0-pre.2`: [`next_preview`](Self::next_preview),
@@ -173,7 +189,7 @@ impl Version {
         if !self.is_preview() {
             bail!("{self} is not a preview; `advance` only applies to one");
         }
-        self.next_preview()
+        Ok(self.next_preview())
     }
 
     /// `0.2.0-pre.7` → `0.2.0`. The branch keeps its identity; only its role
@@ -209,91 +225,69 @@ impl Version {
 
     /// `0.2.0-pre.1` → `0.2.0-pre.2`, `0.2.0-pre` → `0.2.0-pre.1`.
     ///
-    /// Counts the trailing identifier directly rather than going through a
+    /// Counts the trailing identifier rather than going through the
     /// commit-driven bumper: a backport's message describes the original
     /// change rather than its severity here, so advancing a preview is
-    /// mechanical by design. Contrast [`next_nightly`](Self::next_nightly),
-    /// where the commits are the whole point.
-    pub fn next_preview(&self) -> Result<Self> {
-        let pre = self.pre.as_str();
-        let (stem, index) = match pre.rsplit_once('.') {
-            Some((stem, index)) => match index.parse::<u64>() {
-                Ok(index) => (stem, index),
-                // A non-numeric tail is part of the name, not a counter.
-                Err(_) => (pre, 0),
-            },
-            None => (pre, 0),
-        };
-
-        let mut next = self.0.clone();
-        next.pre = Prerelease::new(&format!("{stem}.{}", index + 1))
-            .with_context(|| format!("`{stem}.{}` is not a valid prerelease", index + 1))?;
-        Ok(Self(next))
+    /// mechanical by design. `next_version` counts it the same way — a
+    /// numeric tail moves, any other tail gains `.1` — and panics only on an
+    /// empty prerelease, which [`advance`](Self::advance) refuses first. A
+    /// nightly is not counted at all: see [`nightly`](Self::nightly).
+    pub fn next_preview(&self) -> Self {
+        Self(self.0.increment_prerelease())
     }
 
-    /// The first nightly of the release this version is a view of:
-    /// `{target}-nightly.1`.
-    pub fn first_nightly(&self) -> Result<Self> {
+    /// The nightly of the release this version is a view of, dated `date`:
+    /// `{target}-nightly.{YYYYMMDD}`, with no build metadata. The date is the
+    /// whole identifier, so nightlies order by date and a day holds at most
+    /// one.
+    pub fn nightly(&self, date: NaiveDate) -> Result<Self> {
         let mut version: semver::Version = self.target().into();
-        version.pre = Prerelease::new(&format!("{NIGHTLY}.1"))
-            .with_context(|| format!("`{NIGHTLY}.1` is not a valid prerelease"))?;
+        let identifier = format!("{NIGHTLY}.{}", date.format("%Y%m%d"));
+        version.pre = Prerelease::new(&identifier)
+            .with_context(|| format!("`{identifier}` is not a valid prerelease"))?;
         Ok(Self(version))
     }
 
-    /// `0.2.0-nightly.3` → `0.2.0-nightly.4` when `commits` landed since
-    /// it, else `None`.
-    ///
-    /// `N` counts the nightlies shipped since the target last changed, and
-    /// is bumped by [`VersionUpdater`], which increments a trailing numeric
-    /// prerelease identifier and leaves build metadata alone — and,
-    /// usefully, returns the version *unchanged* when no commits landed, so
-    /// "is there anything new?" and "what is the next version?" are one
-    /// call. The date is the caller's to stamp: see
-    /// [`stamped`](Self::stamped).
-    pub fn next_nightly(&self, commits: &[String]) -> Result<Option<Self>> {
+    /// The date a published nightly is named by, refusing every other shape:
+    /// the prerelease is exactly `nightly.{YYYYMMDD}` and nothing is attached
+    /// as build metadata. A tag of the earlier `nightly.{N}+{date}` grammar
+    /// fails here by name rather than being read.
+    pub fn nightly_date(&self) -> Result<NaiveDate> {
         if !self.is_nightly() {
-            bail!("{self} is not a nightly; only a nightly has a next nightly");
+            bail!("{self} is not a nightly");
         }
-        let bumped = VersionUpdater::new().increment(self, commits);
-        Ok((bumped.pre != self.pre).then_some(Self(bumped)))
+        if !self.build.is_empty() {
+            bail!("{self} carries build metadata; a nightly is `{{target}}-{NIGHTLY}.YYYYMMDD`");
+        }
+        let date = match self.pre.as_str().split_once('.') {
+            Some((NIGHTLY, date))
+                if date.len() == 8 && date.bytes().all(|b| b.is_ascii_digit()) =>
+            {
+                date
+            }
+            _ => bail!("{self} is not dated; a nightly is `{{target}}-{NIGHTLY}.YYYYMMDD`"),
+        };
+        NaiveDate::parse_from_str(date, "%Y%m%d")
+            .with_context(|| format!("{self}: `{date}` is not a calendar date"))
     }
 
-    /// This version carrying `stamp` as its build metadata, replacing
-    /// whatever came through — a preserved date is a stale one.
-    pub fn stamped(&self, stamp: &str) -> Result<Self> {
-        let mut version = self.0.clone();
-        version.build = BuildMetadata::new(stamp)
-            .with_context(|| format!("\"{stamp}\" is not valid build metadata"))?;
-        Ok(Self(version))
-    }
-
-    /// The store build numbers a nightly's date stamp yields, as
-    /// `(android, ios)`.
+    /// The store build numbers a nightly's date yields, as `(android, ios)`.
     ///
-    /// Both are the date: Android's `versionCode` is a single integer, so the
-    /// separators are dropped; iOS's `CFBundleVersion` takes period-separated
-    /// components and keeps them. Both increase monotonically because dates
-    /// do, and 8 digits stays far under Android's 2_100_000_000 ceiling.
+    /// Android's `versionCode` is one integer, so it is the identifier itself;
+    /// iOS's `CFBundleVersion` takes period-separated components, so the date
+    /// is rebuilt as `YYYY.MM.DD`. Both climb with the date, and 8 digits
+    /// stays far under Android's 2_100_000_000 ceiling.
     ///
     /// ```text
-    /// 0.2.0-nightly.1+2026.08.29  ->  20260829   2026.08.29
-    /// 0.2.0-nightly.2+2026.08.30  ->  20260830   2026.08.30
+    /// 0.2.0-nightly.20260829  ->  20260829   2026.08.29
+    /// 0.2.0-nightly.20260830  ->  20260830   2026.08.30
     /// ```
     pub fn build_numbers(&self) -> Result<(String, String)> {
-        let stamp = self.build.as_str();
-        if stamp.is_empty() {
-            bail!("{self} carries no date; a nightly needs one for its build number");
-        }
-
-        let android: String = stamp.chars().filter(char::is_ascii_digit).collect();
-        if android.len() != 8 {
-            bail!(
-                "\"{stamp}\" is not a YYYY.MM.DD date; got {} digits",
-                android.len()
-            );
-        }
-
-        Ok((android, stamp.to_owned()))
+        let date = self.nightly_date()?;
+        Ok((
+            date.format("%Y%m%d").to_string(),
+            date.format("%Y.%m.%d").to_string(),
+        ))
     }
 }
 
@@ -322,6 +316,9 @@ mod tests {
     fn msgs(items: &[&str]) -> Vec<String> {
         items.iter().map(|s| (*s).to_owned()).collect()
     }
+    fn day(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
 
     #[test]
     fn a_version_names_its_own_channel() {
@@ -329,7 +326,8 @@ mod tests {
         assert_eq!(v("0.2.1").channel(), Channel::Stable);
         assert_eq!(v("0.2.0-pre.1").channel(), Channel::Preview);
         assert_eq!(v("0.2.0-pre").channel(), Channel::Preview);
-        assert_eq!(v("0.2.0-nightly.7+2026.08.29").channel(), Channel::Nightly);
+        assert_eq!(v("0.2.0-nightly").channel(), Channel::Nightly);
+        assert_eq!(v("0.2.0-nightly.20260829").channel(), Channel::Nightly);
     }
 
     #[test]
@@ -362,10 +360,7 @@ mod tests {
 
     #[test]
     fn the_target_strips_every_suffix() {
-        assert_eq!(
-            v("0.2.0-nightly.7+2026.08.29").target(),
-            Version::new(0, 2, 0)
-        );
+        assert_eq!(v("0.2.0-nightly.20260829").target(), Version::new(0, 2, 0));
         assert_eq!(v("0.2.0-pre.3").target(), Version::new(0, 2, 0));
     }
 
@@ -411,7 +406,7 @@ mod tests {
 
     #[test]
     fn advancing_a_preview_counts_up() {
-        assert_eq!(v("0.2.0-pre.1").next_preview().unwrap(), v("0.2.0-pre.2"));
+        assert_eq!(v("0.2.0-pre.1").next_preview(), v("0.2.0-pre.2"));
         assert_eq!(v("0.2.0-pre.1").advance().unwrap(), v("0.2.0-pre.2"));
         // Numeric, not lexical: the tenth candidate must outrank the ninth.
         assert_eq!(v("0.2.0-pre.9").advance().unwrap(), v("0.2.0-pre.10"));
@@ -438,32 +433,64 @@ mod tests {
     #[test]
     fn transitions_refuse_the_wrong_channel() {
         assert!(v("0.2.0").advance().is_err());
-        assert!(v("0.2.0-nightly.3+2026.08.29").advance().is_err());
+        assert!(v("0.2.0-nightly.20260829").advance().is_err());
         assert!(v("0.2.0").promote().is_err());
         assert!(v("0.2.0-pre.1").patch().is_err());
-        assert!(v("0.2.0-pre.1").next_nightly(&[]).is_err());
+        assert!(v("0.2.0-pre.1").nightly_date().is_err());
     }
 
+    /// Scenario _A date-named version_: the date is the whole identifier, and
+    /// nothing rides along as build metadata — from whatever view of the
+    /// target it is asked of.
     #[test]
-    fn the_first_nightly_of_a_target_starts_at_one() {
-        assert_eq!(v("0.2.0").first_nightly().unwrap(), v("0.2.0-nightly.1"));
-        // ...from whatever view of the target it is asked of.
+    fn a_nightly_is_named_by_its_date() {
+        let nightly = v("0.2.0").nightly(day(2026, 11, 9)).unwrap();
+        assert_eq!(nightly.to_string(), "0.2.0-nightly.20261109");
+        assert_eq!(nightly.tag(), "v0.2.0-nightly.20261109");
+        assert!(nightly.build.is_empty());
+        assert_eq!(nightly.channel(), Channel::Nightly);
         assert_eq!(
-            v("0.3.0-nightly").first_nightly().unwrap(),
-            v("0.3.0-nightly.1")
+            v("0.3.0-nightly").nightly(day(2026, 11, 9)).unwrap(),
+            v("0.3.0-nightly.20261109")
+        );
+        assert_eq!(nightly.nightly_date().unwrap(), day(2026, 11, 9));
+    }
+
+    /// Scenario _Dates order without a tie_: a later date is a greater
+    /// version under semver alone, and `main`'s undated `nightly` sorts
+    /// below every published one.
+    #[test]
+    fn dates_order_without_a_tie() {
+        assert!(v("0.2.0-nightly.20261108") < v("0.2.0-nightly.20261109"));
+        assert!(v("0.2.0-nightly.20261231") < v("0.2.0-nightly.20270101"));
+        assert!(v("0.2.0-nightly") < v("0.2.0-nightly.20261108"));
+        assert_ne!(
+            v("0.2.0-nightly.20261108").cmp(&v("0.2.0-nightly.20261109")),
+            std::cmp::Ordering::Equal
         );
     }
 
-    /// The bump and the "anything new?" check are the same call: a landed
-    /// commit advances the counter, an idle day yields nothing.
+    /// Scenario _An earlier-grammar tag is refused_: the counted-and-stamped
+    /// shape is not read as a nightly, and neither is any other dating.
     #[test]
-    fn a_nightly_advances_only_when_something_landed() {
-        let latest = v("0.2.0-nightly.1+2026.08.29");
-        let next = latest
-            .next_nightly(&msgs(&["fix: something landed"]))
-            .unwrap();
-        assert_eq!(next, Some(v("0.2.0-nightly.2+2026.08.29")));
-        assert_eq!(latest.next_nightly(&[]).unwrap(), None);
+    fn an_earlier_grammar_nightly_is_refused() {
+        for text in [
+            "0.1.0-nightly.2+2026.11.08",
+            "0.1.0-nightly.20261108+2026.11.08",
+            "0.2.0-nightly",
+            "0.2.0-nightly.2026",
+            "0.2.0-nightly.20261399",
+            "0.2.0-nightly.20261108.1",
+        ] {
+            assert!(
+                v(text).nightly_date().is_err(),
+                "{text} was read as a nightly"
+            );
+            assert!(
+                v(text).build_numbers().is_err(),
+                "{text} yielded build numbers"
+            );
+        }
     }
 
     /// `main` names its channel the way every branch does — in its version.
@@ -474,38 +501,25 @@ mod tests {
         let next = v("0.2.0").next_main().unwrap();
         assert_eq!(next.to_string(), "0.3.0-nightly");
         assert_eq!(next.channel(), Channel::Nightly);
-        assert!(next < v("0.3.0-nightly.1+2026.08.29"));
-        assert!(v("0.3.0-nightly.1+2026.08.29") < v("0.3.0-pre.1"));
+        assert!(next < v("0.3.0-nightly.20260829"));
+        assert!(v("0.3.0-nightly.20260829") < v("0.3.0-pre.1"));
         assert!(v("0.3.0-pre.1") < v("0.3.0"));
     }
 
+    /// Scenario _Build numbers come from the identifier_.
     #[test]
-    fn build_numbers_come_from_the_date() {
-        let (android, ios) = v("0.2.0-nightly.7+2026.08.29").build_numbers().unwrap();
+    fn build_numbers_come_from_the_identifier() {
+        let (android, ios) = v("0.2.0-nightly.20260829").build_numbers().unwrap();
         assert_eq!((android.as_str(), ios.as_str()), ("20260829", "2026.08.29"));
     }
 
     /// Android's `versionCode` is one integer and must only ever climb.
     #[test]
     fn version_codes_increase_with_the_date() {
-        let earlier = v("0.2.0-nightly.9+2026.08.29").build_numbers().unwrap().0;
-        let later = v("0.2.0-nightly.1+2026.09.01").build_numbers().unwrap().0;
+        let earlier = v("0.2.0-nightly.20260829").build_numbers().unwrap().0;
+        let later = v("0.3.0-nightly.20260901").build_numbers().unwrap().0;
         assert!(earlier.parse::<u64>().unwrap() < later.parse::<u64>().unwrap());
-        // ...even across a target bump, which restarts N but not the date.
+        // ...even across a target bump, and never near Android's ceiling.
         assert!(later.parse::<u64>().unwrap() < 2_100_000_000);
-    }
-
-    #[test]
-    fn a_nightly_without_a_date_is_rejected() {
-        assert!(v("0.2.0-nightly.1").build_numbers().is_err());
-    }
-
-    /// A preserved date would be the previous run's.
-    #[test]
-    fn stamping_replaces_the_build_metadata() {
-        let restamped = v("0.2.0-nightly.1+2026.08.29")
-            .stamped("2026.09.01")
-            .unwrap();
-        assert_eq!(restamped.to_string(), "0.2.0-nightly.1+2026.09.01");
     }
 }

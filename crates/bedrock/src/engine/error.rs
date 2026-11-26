@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use crate::core::{DecodeError, EncodeError, SpecError};
 
 /// Anything that can go wrong at the engine boundary.

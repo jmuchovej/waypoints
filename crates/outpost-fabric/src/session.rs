@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! One sync session, driven over a framed byte stream. Transport-
 //! generic: `send`/`recv` are any split async halves — iroh's
 //! `SendStream`/`RecvStream` in production, a split tokio duplex pipe in

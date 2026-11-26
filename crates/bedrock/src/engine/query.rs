@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use crate::core::{CompareOp, Filter, Query, ScalarValue, Update};
 
 /// Quote an identifier for SQL, escaping embedded quotes.

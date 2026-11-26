@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Convergence acceptance: two Vessels, a real Station over QUIC, and the
 //! full pipeline — apply + enqueue, publish as `waypoints.page.v1` Notices,
 //! reconcile, fold — ending in identical Mark/Terrain graphs.

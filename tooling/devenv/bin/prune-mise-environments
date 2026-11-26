@@ -1,0 +1,41 @@
+#!/usr/bin/env nu
+
+# Remove generated mise config fragments whose environment no longer has
+# members.
+#
+# devenv's own `files:cleanup` will not do this. It removes a file it has
+# stopped generating only when that file is a symlink into the nix store —
+# a deliberate rule, so it can never delete something a human edited. The
+# environment configs are `copyMode = "copy"` because CI has to read their
+# contents, so they are permanently exempt from it.
+#
+# Left alone, an emptied environment keeps its file, mise keeps loading it, and
+# `check-generated` cannot see the problem: it diffs the files devenv currently
+# declares, and a leftover is by definition no longer declared.
+#
+# WAYPOINTS_MISE_ENV_FILES is the set devenv expects to exist, projected from
+# the environments that have members.
+
+let root = $env.PROJECT_ROOT? | default (pwd)
+let config_dir = ($root | path join ".config" "mise" "conf.d")
+let expected = ($env.WAYPOINTS_MISE_ENV_FILES | split row "," | where {|f| $f != ""})
+
+# Only generated `tools*.toml` fragments live here. The hand-maintained config
+# (`.config/mise.toml`) and the lockfile (`.config/mise/mise.lock`) sit outside
+# this directory, so nothing here is ever a human's file.
+let strays = (
+  ls $config_dir
+  | get name
+  | path basename
+  | where {|f| $f not-in $expected }
+)
+
+if ($strays | is-empty) {
+  exit 0
+}
+
+for stray in $strays {
+  let path = ($config_dir | path join $stray)
+  print $"removing orphaned mise fragment: .config/mise/conf.d/($stray)"
+  rm --force $path
+}

@@ -87,7 +87,7 @@ Each package SHALL embed the flavor-matched frontend assets into the application
 
 ### Requirement: Store-installed builds notify about updates but never self-update
 
-A Nix-installed build SHALL NOT download, stage, or apply an update to itself under any circumstance. It SHALL still query its flavor's update endpoint and, when a newer version than the running one is available, surface a notification to the user. The notification SHALL NOT offer an in-place install action.
+A Nix-installed build SHALL NOT download, stage, or apply an update to itself under any circumstance. The package SHALL ensure this by passing `--no-self-update` from the wrapper it installs, capping the same binary a published artifact ships. It SHALL still query its flavor's update endpoint and, when a newer version is available, notify the user without offering an in-place install.
 
 #### Scenario: Newer version available
 
@@ -103,6 +103,11 @@ A Nix-installed build SHALL NOT download, stage, or apply an update to itself un
 
 - **WHEN** the update endpoint cannot be reached
 - **THEN** the app continues operating normally and no error interrupts the user
+
+#### Scenario: The cap comes from the wrapper
+
+- **WHEN** the package's wrapper on `PATH` or its desktop entry starts the app
+- **THEN** the app receives `--no-self-update`, and a user who selects `on` in settings is shown the managed-install notice rather than an in-place update
 
 ### Requirement: On `main`, each package builds its channel's published source
 

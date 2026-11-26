@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+
+PackageIdentifier: "{{ package.id }}"
+PackageVersion: "{{ release.version }}"
+InstallerType: nsis
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+UpgradeBehavior: install
+# Tauri's NSIS registers its uninstall entry under the product name, with the
+# version as built, so winget matches an installed copy by these.
+AppsAndFeaturesEntries:
+  - DisplayName: "{{ flavor.product_name }}"
+    DisplayVersion: "{{ release.version }}"
+Installers:
+  - Architecture: x64
+    InstallerUrl: "{{ artifact.windows_amd64.exe.url }}"
+    InstallerSha256: "{{ artifact.windows_amd64.exe.sha256 }}"
+ManifestType: installer
+ManifestVersion: 1.6.0

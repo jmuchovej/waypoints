@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Rich references with display mode information.
 //!
 //! This module provides RichReference, which combines a BlockID with display mode

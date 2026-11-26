@@ -1,3 +1,8 @@
+<!--
+  SPDX-FileCopyrightText: 2026 John Muchovej
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 <script setup lang="ts">
   import type { FormSubmitEvent } from "@nuxt/ui";
   import { open } from "@tauri-apps/plugin-dialog";

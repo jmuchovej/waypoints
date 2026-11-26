@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Project built-in type - A project with timeline and team.
 use super::{person, status_multi_select, tags_feature};
 use domain::{

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! End-to-end: vessel ↔ station ↔ vessel convergence over the whole stack
 //! One Vessel authors an *encrypted* Notice and pushes it
 //! to a Station over real iroh QUIC; a second Vessel pulls from the Station

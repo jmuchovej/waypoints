@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The exhaustiveness guard: a mirror that misses a data-model variant is a
 //! compile error, never a silent gap.
 use domain::Reading;

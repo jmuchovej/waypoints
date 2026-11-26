@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Unified select builder that handles all select types as specializations of grouped multi-select.
 use super::{FeatureKind, GlyphID};
 use crate::{Color, Icon};

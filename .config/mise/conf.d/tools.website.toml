@@ -1,0 +1,6 @@
+[tools]
+"core:deno" = "2.9.7"
+
+[tools."npm:wrangler"]
+depends = ["core:node"]
+version = "4.151.1"

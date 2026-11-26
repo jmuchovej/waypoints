@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Connection liveness: an idle-but-signalling subscription is retained,
 //! and a Vessel that reconnects resumes from its cursor — receiving what
 //! was authored while it was gone with no redundant resupply, reaching the

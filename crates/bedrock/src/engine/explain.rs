@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Query-plan diagnostics: the SQL a bedrock operation lowers to, together with
 //! the engine's `EXPLAIN QUERY PLAN` for it.
 //!

@@ -1,3 +1,25 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This file is part of Waypoints.
+//
+// Waypoints is free software: you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Waypoints is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with Waypoints. If not, see <https://www.gnu.org/licenses/>.
+//
+// Additional permission under GNU AGPL version 3 section 7: this Program
+// may be conveyed through application stores on the terms set out in
+// docs/licensing/COPYING.exceptions.
+
 //! `xtask` — the Rust-based dev-toolchain for Waypoints.
 //!
 //! This crate is the library: everything the `cargo xtask` tasks are built
@@ -7,6 +29,10 @@
 //! parsing, orchestration, and printing, nothing more. Nothing in this crate
 //! ships in a release artifact, so a module can depend on app crates (e.g.
 //! `cartograph`) without gating one.
+//!
+//! The `local-dev` feature, on by default, carries what only a workstation
+//! runs: the dev server and the icon renderer. `cargo ci-task` is the same
+//! binary without it, so no CI job compiles either.
 
 #![allow(clippy::disallowed_macros)]
 
@@ -15,9 +41,14 @@ mod platform;
 pub use channel::{Channel, Flavor};
 pub use platform::{Arch, Platform, PublishedTarget};
 
-/// The browser-dev HTTP backend: the runtime, its routes, and its errors.
+pub mod constants;
+
+/// The browser-dev HTTP backend: the runtime, its routes, and its errors —
+/// and the demo app-data directory store screenshots are captured against.
+#[cfg(feature = "local-dev")]
 pub mod dev {
     pub mod commands;
+    pub mod demo;
     mod error;
     mod instance;
     mod registry;
@@ -37,16 +68,72 @@ pub mod planners {
 
 /// Staging, publishing, and recording a release, and the versions it is
 /// all keyed by.
+pub mod distribution {
+    pub mod check;
+    pub mod context;
+    pub mod registry;
+    pub mod render;
+}
+
 pub mod releases {
-    pub mod artifacts;
+    pub mod distributables;
+    pub mod history;
     pub mod index;
+    pub mod landing;
     pub mod manifest;
     pub mod store;
+    pub mod undo;
     pub mod version;
 }
 
+#[cfg(feature = "local-dev")]
 pub mod icongen;
+pub mod license {
+    struct FrozenDocument {
+        path: &'static str,
+        checksum: &'static str,
+    }
+
+    impl FrozenDocument {
+        const fn new(path: &'static str, checksum: &'static str) -> Self {
+            Self { path, checksum }
+        }
+    }
+
+    /// The license of every first-party crate and source file.
+    pub const POLICY: &str = "AGPL-3.0-or-later";
+    /// The copyright holder a first-party source file names.
+    pub const HOLDER: &str = "John Muchovej";
+
+    /// The tag a copyright line opens with, comment syntax aside.
+    pub const SPDX_COPYRIGHT_TAG: &str = "SPDX-FileCopyrightText:";
+    /// The tag a license line opens with, comment syntax aside.
+    const SPDX_IDENTIFIER_TAG: &str = "SPDX-License-Identifier:";
+
+    const LICENSE: FrozenDocument = FrozenDocument::new(
+        "LICENSE",
+        "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+    );
+    const LICENSE_MD: FrozenDocument = FrozenDocument::new(
+        "docs/licensing/LICENSE.md",
+        "00352ab19865e23bb0ab7e0f45332206aba6a66d75b3f3cc962fdd6508d63ea4",
+    );
+
+    #[cfg(test)]
+    const CLA_PATH: &str = "docs/licensing/CLA.md";
+
+    mod headers;
+    mod notices;
+
+    pub use headers::{Entry, Kind, Registry};
+    pub use headers::{check as check_headers, copyright_year};
+    pub use notices::generate as generate_notices;
+}
+pub mod release_groups;
+pub mod semver_check;
+pub mod templates;
 pub mod tools;
 pub mod typegen;
+pub mod version_integrity;
 pub mod workflows;
 pub mod workspace;

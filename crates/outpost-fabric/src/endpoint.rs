@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! iroh wiring: QUIC, hole-punching, relays when NAT wins. Stations
 //! are always-reachable iroh endpoints listed in the Fleet config;
 //! Vessels dial them and drive [`session`](crate::session) over one

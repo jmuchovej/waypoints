@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The device registry (visibility + attribution + connection status)
 //! over real QUIC. Two devices of one identity touch a Territory through a
 //! Station; the owner asks the Station which devices have access and gets

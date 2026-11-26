@@ -1,3 +1,25 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This file is part of Waypoints.
+//
+// Waypoints is free software: you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Waypoints is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with Waypoints. If not, see <https://www.gnu.org/licenses/>.
+//
+// Additional permission under GNU AGPL version 3 section 7: this Program
+// may be conveyed through application stores on the terms set out in
+// docs/licensing/COPYING.exceptions.
+
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 /// Writes the build identity to stdout for `--version`.
@@ -20,26 +42,38 @@ fn print_build_identity(build: &cartograph::BuildInfo) {
     } else {
         format!(", built {}", build.built_at)
     };
+    // The library groups the binary carries, each at the version it was built
+    // from — a bug report names them all, not only the app's.
+    let groups = build
+        .groups
+        .iter()
+        .map(|group| format!("{} {}", group.group, group.version))
+        .collect::<Vec<_>>()
+        .join(", ");
     println!(
-        "waypoints {} ({}, {}{stamped})",
+        "waypoints {} ({}, {}{stamped}); {groups}",
         build.version, build.channel, build.sha,
     );
 }
 
 fn main() {
+    // The self-update flags are the only arguments read anywhere in argv; the
+    // launching package passes them. Everything else is handed on untouched.
+    let launch = waypoints::LaunchArgs::parse(std::env::args().skip(1));
+
     // Answered before any runtime starts, so a packaged build can be identified
     // without a display.
     //
-    // Matched as the *sole* argument rather than anywhere in argv: a Tauri app
-    // receives arguments it must not interpret — deep links arrive this way on
-    // Linux and Windows and are forwarded by the single-instance plugin, and
-    // macOS passes process serial numbers on some launch paths. Anything else,
-    // including `waypoints://… --version`, falls through to the app.
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if matches!(args.as_slice(), [flag] if flag == "--version" || flag == "-V") {
+    // Matched as the *sole* remaining argument rather than anywhere in argv: a
+    // Tauri app receives arguments it must not interpret — deep links arrive
+    // this way on Linux and Windows and are forwarded by the single-instance
+    // plugin, and macOS passes process serial numbers on some launch paths.
+    // Anything else, including `waypoints://… --version`, falls through to the
+    // app.
+    if launch.wants_version() {
         print_build_identity(&waypoints::build_info());
         return;
     }
 
-    waypoints::run();
+    waypoints::run(launch.cap);
 }

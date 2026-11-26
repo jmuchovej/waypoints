@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // The Waypoints Emergency Kit — a printable recovery document in the
 // spirit of 1Password's: the recovery phrase (words + QR), the member ID,
 // and how to recover, meant to be printed or stored somewhere safer than

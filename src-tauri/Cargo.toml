@@ -1,15 +1,18 @@
 # Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
 #:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [package]
   name                  = "Waypoints"
-  version               = "0.1.0-nightly"
+  version               = "0.2.0-nightly"
   edition.workspace     = true
   description.workspace = true
   readme.workspace      = true
   homepage.workspace    = true
   repository            = "https://dev.waypoints.so/lib"
   license.workspace     = true
+  publish.workspace     = true
 
 [lib]
   crate-type = [ "cdylib", "rlib", "staticlib" ]
@@ -61,9 +64,13 @@
   tauri-plugin-updater.workspace      = true
   wry.workspace                       = true
 
+[dev-dependencies]
+  tokio = { workspace = true, features = [ "macros", "rt" ] }
+
 [build-dependencies]
   chrono                = { workspace = true, features = [ "alloc" ] }
   tauri-build.workspace = true
+  toml.workspace        = true
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
   tauri-plugin-barcode-scanner.workspace = true
@@ -75,13 +82,15 @@
   objc2-app-kit.workspace = true
 
 [features]
-  default     = [ "desktop", "self-update" ]
+  default     = [ "desktop" ]
   desktop     = [ "tauri/tray-icon" ]
-  development = [ "store/development" ]
-  nightly     = [ "store/nightly" ]
-  preview     = [ "store/preview" ]
-  self-update = []
-  stable      = [ "store/stable" ]
+  # The flavors reach every group crate by forwarding along the dependency
+  # graph. Exactly one shipped flavor per build; `build.rs` checks it agrees
+  # with the version's channel.
+  development = [ "cartograph/development", "domain/development", "store/development" ]
+  nightly     = [ "cartograph/nightly", "domain/nightly", "store/nightly" ]
+  preview     = [ "cartograph/preview", "domain/preview", "store/preview" ]
+  stable      = [ "cartograph/stable", "domain/stable", "store/stable" ]
 
 [lints]
   workspace = true

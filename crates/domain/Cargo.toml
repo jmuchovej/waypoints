@@ -1,6 +1,11 @@
+# Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
+#:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name                    = "domain"
-  version                 = "0.1.0"
+  version                 = "0.1.1"
   edition.workspace       = true
   description             = "Core data structures for block-based thought tools"
   documentation.workspace = true
@@ -16,20 +21,17 @@
   bedrock.workspace = true
 
   chrono.workspace            = true
-  derive_more                 = {
-    workspace = true,
-    features  = [
-      "as_ref",
-      "debug",
-      "display",
-      "from_str",
-      "is_variant",
-      "try_unwrap",
-      "unwrap",
-    ]
-  }
+  chumsky                     = { workspace = true, optional = true }
+  derive_more                 = { workspace = true, features = [
+    "as_ref",
+    "debug",
+    "display",
+    "from_str",
+    "is_variant",
+    "try_unwrap",
+    "unwrap",
+  ] }
   indexmap.workspace          = true
-  pulldown-cmark              = { workspace = true, optional = true }
   serde.workspace             = true
   serde_json.workspace        = true
   sha2.workspace              = true
@@ -49,14 +51,18 @@
   uuid           = { workspace = true, features = [ "v4" ] }
 
 [features]
-  default     = []
-  development = []
-  preview     = []
-  stable      = []
-  # The markdown dialect `Content` and `TextMarkKind` project into: one module,
-  # both directions. Only `transload` needs it, so every other dependent pays
-  # neither the module nor `pulldown-cmark`.
-  syntax      = [ "dep:pulldown-cmark" ]
+  default = []
+
+  development = [ "bedrock/development" ]
+  nightly     = [ "bedrock/nightly" ]
+  preview     = [ "bedrock/preview" ]
+  stable      = [ "bedrock/stable" ]
+
+  # terse test builders. only enable from a dependent's `[dev-dependencies]`.
+  fixtures = []
+  # parsing/emitting for `Content` and `TextMarkKind`. kept as a feature so
+  # dependents don't need to pay for chumsky/etc.
+  syntax   = [ "dep:chumsky" ]
 
 [lints]
   workspace = true

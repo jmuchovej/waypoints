@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>{{ package.id }}</id>
+    <version>{{ release.version }}</version>
+    <title>{{ flavor.product_name }}</title>
+    <authors>John Muchovej</authors>
+    <projectUrl>https://waypoints.so</projectUrl>
+    <licenseUrl>https://github.com/jmuchovej/waypoints/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/jmuchovej/waypoints</projectSourceUrl>
+    <tags>notes knowledge-management markdown local-first</tags>
+    <summary>Local-first knowledge management</summary>
+    <description>Waypoints keeps your notes, tasks, and knowledge in blocks you can link, type, and sync between your own devices. After installation the app updates itself.</description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools"/>
+  </files>
+</package>

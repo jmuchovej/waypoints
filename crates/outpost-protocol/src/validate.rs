@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The validation function. This function *is* the protocol: every
 //! peer — Vessel or Station, identically — runs it on every
 //! Notice received, from anyone. Validity travels with the data, never

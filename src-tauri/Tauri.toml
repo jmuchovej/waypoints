@@ -1,5 +1,7 @@
 #:tombi toml-version = "v1.1.0"
 #:schema https://schema.tauri.app/config/2
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 productName = "Waypoints"
 identifier  = "so.waypoints"
@@ -22,7 +24,7 @@ identifier  = "so.waypoints"
   targets                = [ "app", "dmg", "nsis", "appimage", "deb", "rpm" ]
   createUpdaterArtifacts = true
   externalBin            = []
-  copyright              = ""
+  copyright              = "Copyright © 2026 John Muchovej"
   category               = "Productivity"
   shortDescription       = ""
   longDescription        = ""
@@ -33,6 +35,11 @@ identifier  = "so.waypoints"
     "assets/icons/app/stable.icns",
     "assets/icons/app/stable.ico",
   ]
+
+  [bundle.resources]
+    "../LICENSE"                               = "licenses/LICENSE"
+    "../docs/licensing/COPYING.exceptions"     = "licenses/COPYING.exceptions"
+    "../docs/licensing/THIRD-PARTY-NOTICES.md" = "licenses/THIRD-PARTY-NOTICES.md"
 
   [bundle.macOS]
     minimumSystemVersion = "15"
@@ -66,17 +73,8 @@ identifier  = "so.waypoints"
 
     [bundle.windows.nsis]
 
-# Pairing links: the waypoints:// scheme opens the app everywhere it is
-# installed; the waypoints.so association upgrades https://waypoints.so/pair
-# links on iOS/Android (requires the .well-known files the website serves).
-[plugins.deep-link]
-  [plugins.deep-link.desktop]
-    schemes = [ "waypoints" ]
-
-  [[plugins.deep-link.mobile]]
-    host       = "waypoints.so"
-    pathPrefix = [ "/pair" ]
-
+# `[plugins.deep-link]` lives in each flavor config: the scheme names the
+# flavor, so no flavor-independent one is declared here.
 [plugins.updater]
   pubkey = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyREIxRDEwQTBFRTc4NzUKUldSMWVPNmdFQjNiTWwyRWxsMFdFbVR0aWFjV01vQVJPV0YxMGd0cm9tNlRUSmZXdDhtUmFUR1IK"
 

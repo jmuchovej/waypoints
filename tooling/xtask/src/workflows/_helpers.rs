@@ -1,7 +1,13 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Shared expressions, secret handles, and concurrency groups.
 //! Trigger plumbing shared by workflow modules.
 
-use crate::Platform;
+use crate::{
+    Platform,
+    constants::{RELEASE_BOT, RELEASE_BOT_EMAIL},
+};
 use gh_workflow::{
     Concurrency, Environment as WorkflowEnvironment, Expression, JobOutput, Permissions, Run, Step,
     Workflow,
@@ -194,30 +200,48 @@ pub fn named_workflow(name: impl ToString) -> Workflow {
 
 // ── Release-run expressions ─────────────────────────────────────────────────
 
-/// The run's release tag, unwrapped for `if:` — already an expression
-/// context, so `${{ }}` there is an error.
-///
-/// A planner output means nightly, which mints its tag in the `prepare`
-/// job; without one the tag comes from the pushed ref or the dispatch
-/// input.
-fn tag_expr(tag: Option<&JobOutput>) -> String {
-    match tag {
-        Some(tag) => tag.expr(),
-        None => "github.event_name == 'push' && github.ref_name || inputs.tag".to_owned(),
-    }
+/// The tag the run was triggered with — the pushed ref, or the dispatch's
+/// `tag` input — unwrapped for `if:`, which is already an expression context.
+/// What preview's and stable's planner is handed, and what the index records.
+pub fn triggering_tag_expr() -> String {
+    "github.event_name == 'push' && github.ref_name || inputs.tag".to_owned()
 }
 
-/// The same tag, wrapped for use as a `with:` value.
-pub fn tag(tag: Option<&JobOutput>) -> String {
-    format!("${{{{ {tag} }}}}", tag = tag_expr(tag))
+/// [`triggering_tag_expr`], wrapped for use as a `with:` or `env:` value.
+pub fn triggering_tag() -> String {
+    format!("${{{{ {} }}}}", triggering_tag_expr())
 }
 
-/// True when this run should publish. A build-only run has an empty tag.
-pub fn tag_condition(tag: Option<&JobOutput>) -> Expression {
-    Expression::new(match tag {
-        Some(tag) => format!("{tag} != ''", tag = tag.expr()),
-        None => format!("({tag}) != ''", tag = tag_expr(None)),
-    })
+/// The planner's tag, wrapped for use as a `with:` or `env:` value.
+pub fn tag(tag: &JobOutput) -> String {
+    format!("${{{{ {} }}}}", tag.expr())
+}
+
+/// True when this run has a tag to publish, or to rehearse publishing: a
+/// quiet or taken nightly has none.
+pub fn tag_condition(tag: &JobOutput) -> Expression {
+    Expression::new(format!("{} != ''", tag.expr()))
+}
+
+/// True on a rehearsal: the gate on every dry counterpart.
+pub fn rehearsing(dry_run: &JobOutput) -> Expression {
+    Expression::new(format!("{} == 'true'", dry_run.expr()))
+}
+
+/// True on a real run: the gate on every write that reaches past the run's
+/// own artifacts.
+pub fn not_rehearsing(dry_run: &JobOutput) -> Expression {
+    Expression::new(format!("{} != 'true'", dry_run.expr()))
+}
+
+/// True when the run has a tag and is not a rehearsal: a real write that
+/// also needs something to publish.
+pub fn publishing(tag: &JobOutput, dry_run: &JobOutput) -> Expression {
+    Expression::new(format!(
+        "{} != '' && {} != 'true'",
+        tag.expr(),
+        dry_run.expr()
+    ))
 }
 
 /// The full set of choices offered by the `platforms` dispatch input.
@@ -227,12 +251,10 @@ pub fn dispatch_platforms() -> Vec<&'static str> {
     ]
 }
 
-/// Guards a job on the `platforms` dispatch input.
-///
-/// A job answers to `All`, its group (`Desktop`/`Mobile`), and its own
-/// label. Given a planner verdict it additionally waits on that, which is
-/// how a nightly with nothing new skips its builds.
-pub fn guard(platform: Platform, should_build: Option<&JobOutput>) -> Expression {
+/// Whether the `platforms` input selects `platform`: a job answers to `All`,
+/// its group (`Desktop`/`Mobile`), and its own label. The builder's whole
+/// gate, since it builds whatever its caller asks for.
+pub fn selected(platform: Platform) -> String {
     let group = match &platform {
         Platform::Android | Platform::iOS => "Mobile",
         Platform::Linux | Platform::macOS | Platform::Windows => "Desktop",
@@ -243,20 +265,25 @@ pub fn guard(platform: Platform, should_build: Option<&JobOutput>) -> Expression
         .map(|label| format!("\"{label}\""))
         .collect::<Vec<_>>()
         .join(",");
-    let selected = format!("contains(fromJson('[{choices}]'), inputs.platforms)");
-
-    Expression::new(match should_build {
-        Some(should_build) => format!(
-            "{planner} == 'true' && \
-             (github.event_name != 'workflow_dispatch' || {selected})",
-            planner = should_build.expr(),
-        ),
-        None => format!("github.event_name == 'push' || {selected}"),
-    })
+    format!("contains(fromJson('[{choices}]'), inputs.platforms)")
 }
 
-const BOTSWAIN_GIT_USERNAME: &str = "wp-botswain[bot]";
-const BOTSWAIN_GIT_EMAIL: &str = "3633092+wp-botswain[bot]@users.noreply.github.com";
+/// The ref a release run works on: the pushed tag, the dispatched tag, or
+/// the commit a rehearsal without a tag runs on. Wrapped for a `with:` value.
+pub fn release_ref() -> String {
+    format!("${{{{ {} || github.sha }}}}", triggering_tag_expr())
+}
+
+/// True when the run is a tag's own push: the one case a withdrawal deletes
+/// the tag and undoes the bump that minted it.
+pub fn pushed() -> Expression {
+    Expression::new("github.event_name == 'push'")
+}
+
+/// The concurrency group the bump and the release share: one release cycle
+/// runs at a time, queued rather than cancelled, so a scheduled nightly waits
+/// out a release and cannot mint from a `main` that run is about to revert.
+pub const RELEASE_CYCLE: &str = "release-cycle";
 
 pub(crate) trait BotswainGitIdentity {
     fn with_botswain_git_identity(self) -> Self;
@@ -264,10 +291,10 @@ pub(crate) trait BotswainGitIdentity {
 
 impl BotswainGitIdentity for Step<Run> {
     fn with_botswain_git_identity(self) -> Self {
-        self.add_env(("GIT_AUTHOR_NAME", BOTSWAIN_GIT_USERNAME))
-            .add_env(("GIT_COMMITTER_NAME", BOTSWAIN_GIT_USERNAME))
-            .add_env(("GIT_AUTHOR_EMAIL", BOTSWAIN_GIT_EMAIL))
-            .add_env(("GIT_COMMITTER_EMAIL", BOTSWAIN_GIT_EMAIL))
+        self.add_env(("GIT_AUTHOR_NAME", RELEASE_BOT))
+            .add_env(("GIT_COMMITTER_NAME", RELEASE_BOT))
+            .add_env(("GIT_AUTHOR_EMAIL", RELEASE_BOT_EMAIL))
+            .add_env(("GIT_COMMITTER_EMAIL", RELEASE_BOT_EMAIL))
     }
 }
 

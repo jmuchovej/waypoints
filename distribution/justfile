@@ -1,0 +1,35 @@
+# Distribution: one module per distribution channel that has recipes.
+
+[private]
+default:
+    @just --list --list-submodules
+
+[doc("Fails if any package manifest under distribution/ is stamped with a release's tag, digest, or versioned URL.")]
+check:
+    cd .. && cargo xtask dist check
+
+[doc("Refuses stamped package manifests, renders every channel for every release channel against the fixture release manifest, and runs each channel's check.")]
+check-all: check
+    cd .. && cargo xtask dist render-all --manifest tooling/xtask/tests/fixtures/release-manifest.json
+    cd .. && just dist::brew::audit
+    cd .. && just dist::aur::check
+    cd .. && just dist::winget::check
+    cd .. && just dist::chocolatey::check
+
+# Station deployment: manifest validation and a kind cluster
+mod kubernetes "kubernetes/justfile"
+
+# The Nix channel: refreshing the hashes the app recipe pins
+mod nix "nix/justfile"
+
+# Homebrew: style and audit the rendered casks
+mod brew "brew/justfile"
+
+# The AUR: check the rendered PKGBUILDs on an Arch host
+mod aur "aur/justfile"
+
+# winget: validate the rendered manifests on a Windows host
+mod winget "winget/justfile"
+
+# Chocolatey: pack the rendered packages on a Windows host
+mod chocolatey "chocolatey/justfile"

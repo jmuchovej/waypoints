@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Release notes, read server-side from the forge rather than the store —
  * see the design's "Notes stay in the forge; enumeration moves to the

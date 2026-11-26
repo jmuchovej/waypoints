@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Field-level updates: `$set` assignments and `$unset` (set-to-NULL) columns,
 //! the mutation counterpart to the [`Filter`](crate::Filter) query DSL. Built as
 //! a typed value or parsed from a MongoDB-style update document.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * The scan seam: one "get me a decoded QR string" surface with two
  * implementations. Mobile uses the platform's native scanner

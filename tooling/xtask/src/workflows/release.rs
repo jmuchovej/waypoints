@@ -1,134 +1,113 @@
-//! Builds a channel's release workflow — one shape for all three, differing
-//! only in flavor strings, tag pattern, and whether iOS is in scope.
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
-use super::{TestSuite, WorkflowInput};
-use super::{WorkflowContext, helpers, jobs};
-use crate::{Channel, Platform};
+//! The release: one workflow for every channel, started by the push of a
+//! release tag — the one `bump` minted for it minutes before — by a dispatch
+//! naming an existing tag, or by a call. It plans nothing and mints nothing:
+//! the tag carries the channel, the version, the flavor, and the store build
+//! codes, which the builder's `describe` job reads from it, and a rehearsal
+//! dispatched without a tag describes the day's nightly from the commit it
+//! runs on. The builder tests and builds the tree; this workflow drafts the
+//! record, publishes in order of retractability with the manifest the last
+//! write to the store, and records the index entry after it, on a real run
+//! only, so a withdrawn tag is never recorded.
+//!
+//! A run that fails or falls short before a store holds the build withdraws:
+//! the draft, the objects it uploaded, and — when the run was the tag's own
+//! push — the tag and the bump that minted it, the write reverted through a
+//! pull request the bot opens and waits on, so the files and the tags
+//! disagree for no longer than a revert takes to land. A dispatched
+//! re-publication leaves the tag and its write, since that release may
+//! already be out.
+//!
+//! One queued concurrency group, shared with `bump`: one release cycle runs
+//! at a time, so a scheduled nightly waits out a release and cannot mint from
+//! a `main` that run is about to revert. The dispatch's inputs are read where
+//! the event is a dispatch; a caller's inputs are read on the same terms, so
+//! the first caller settles how its own event reads them.
+
+use super::{ReleaseRun, WorkflowContext, WorkflowInput, helpers, jobs};
 use gh_workflow::{
-    Event, Expression, FluentBuilder, NamedJob, Push, Schedule, Workflow, WorkflowDispatch,
+    Event, Expression, FluentBuilder, NamedJob, Push, Workflow, WorkflowCall, WorkflowDispatch,
 };
-use heck::ToTitleCase;
-use strum::IntoEnumIterator;
 
-/// Nightly runs at 07:00 UTC (~03:00 US Eastern). `schedule` only fires on the
-/// default branch, which is what a nightly should track.
-const NIGHTLY_CRON: &str = "0 7 * * *";
+/// Every release tag; the task tells the channels apart from the version. A
+/// library's `<group>-v…` tag matches neither this nor a channel's pattern,
+/// so a group bump starts no release.
+pub(super) const TAG_PATTERN: &str = "v*";
 
-pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
-    // Built once and lent to everything that depends on it; only nightly has
-    // a planner.
-    let prepare = channel.is_nightly().then(|| jobs::prepare(context));
+/// Becomes the record's merge commit body, so it says what the merge commit
+/// is.
+pub(super) fn body() -> String {
+    jobs::record_body()
+}
 
-    // Nothing ships until the release suite passes on every desktop platform.
-    let tests: Vec<NamedJob> = Platform::iter()
-        .filter(|platform| platform.is_desktop())
-        .map(|platform| {
-            // A nightly that finds nothing new skips its builds, so its gates
-            // skip with them.
-            jobs::test(TestSuite::Release, platform, context).map(|job| {
-                job.when_some(prepare.as_ref(), |job, prepare| {
-                    let expr = format!("{} == 'true'", prepare.should_build.expr());
-                    job.add_needs(prepare.name().to_owned())
-                        .cond(Expression::new(expr))
-                })
-            })
-        })
-        .collect();
-
-    // Named up front so every build can wait on the whole set.
-    let gates: Vec<String> = tests.iter().map(|named| named.name.clone()).collect();
-
-    // The draft the builds upload into — behind the same gates, so a failed
-    // suite never drafts a release.
-    let create = jobs::create_release(channel, prepare.as_ref(), context).map(|job| {
-        gates
-            .iter()
-            .fold(job, |job, gate| job.add_needs(gate.clone()))
-    });
-
+pub fn workflow(context: &WorkflowContext) -> Workflow {
+    // Defaulted to empty, not unset: an input with no default is `required`,
+    // and a dry run may leave it blank to describe the commit it runs on.
+    let tag = WorkflowInput::string("tag", Some(String::new())).description(
+        "The existing tag to publish; a dry run left blank describes the day's nightly",
+    );
+    // Every dispatch rehearses unless it says otherwise, so a forgotten flag
+    // never re-publishes.
+    let dry_run = WorkflowInput::bool("dry_run", Some(true)).description(
+        "Rehearse: build as asked, write only to the run's artifacts, publish nothing",
+    );
+    let build = WorkflowInput::bool("build", Some(true))
+        .description("Run the test and build stages; off, the run only guards and reports");
     let platforms =
         WorkflowInput::choices("platforms", helpers::dispatch_platforms(), "All".into())
             .description("Platforms to build");
 
-    // Defaulted to empty, not unset: an input with no default is `required`,
-    // and blank is how a build-only run is asked for.
-    let tag = WorkflowInput::string("tag", Some(String::new()))
-        .description("Release tag (leave empty for build-only, no release)");
+    let guard = jobs::guard(&tag, &platforms, &dry_run, &build);
+    // The tree the builder works on: the pushed tag, the dispatched tag, or
+    // the commit a rehearsal without one runs on. `platforms` is `All` on a
+    // push, where the inputs are empty.
+    let builder = jobs::call_builder(
+        &helpers::release_ref(),
+        &format!("${{{{ {} || 'All' }}}}", platforms.expr()),
+        &guard,
+        Expression::new(format!(
+            "github.event_name != 'workflow_dispatch' || {}",
+            build.expr()
+        )),
+    );
+    let run = ReleaseRun::new(&guard, &builder);
 
-    // Only the tag-driven channels can hit the contradiction this guards:
-    // nightly takes no `tag` dispatch input, since it mints its own.
-    let guard = (!channel.is_nightly()).then(|| jobs::guard_dispatch(&tag, &platforms));
-
-    // Builds wait on the test gates, the draft, and the guard; `build` wires
-    // their planner dependency.
-    let builds: Vec<NamedJob> = Platform::iter()
-        .map(|platform| {
-            jobs::build(channel, context, platform, prepare.as_ref()).map(|job| {
-                let job = gates
-                    .iter()
-                    .fold(job, |job, gate| job.add_needs(gate.clone()))
-                    .add_needs(create.name.clone());
-                match &guard {
-                    Some(guard) => job.add_needs(guard.name.clone()),
-                    None => job,
-                }
-            })
-        })
-        .collect();
-
-    // Uploads, publishes, and submits once every required target has
-    // recorded in.
-    let publish = jobs::publish(channel, prepare.as_ref()).map(|job| {
-        builds
-            .iter()
-            .fold(job, |job, build| job.add_needs(build.name.clone()))
-            .add_needs(create.name.clone())
-    });
-
+    let create = jobs::create_release(&run, context);
+    let publish = jobs::publish(&run).map(|job| job.add_needs(create.name.clone()));
+    let record = jobs::record(&run, context);
     // Cleans up a run that failed or fell short, on the same `needs` as the
     // publish it mirrors, and on the publish itself for its point of no
     // return.
-    let withdraw = jobs::withdraw_release(channel, prepare.as_ref()).map(|job| {
-        builds
-            .iter()
-            .fold(job, |job, build| job.add_needs(build.name.clone()))
-            .add_needs(create.name.clone())
+    let withdraw = jobs::withdraw_release(&run).map(|job| {
+        job.add_needs(create.name.clone())
             .add_needs(publish.name.clone())
     });
 
-    // Nightly mints its own tag, so only the tag-driven channels take one.
-    let dispatch = WorkflowDispatch::default()
-        .inputs([(platforms.name.into(), platforms.input())])
-        .when(!channel.is_nightly(), |mut dispatch| {
-            dispatch.inputs.insert(tag.name.into(), tag.input());
-            dispatch
-        });
+    let dispatch = WorkflowDispatch::default().inputs([
+        (tag.name.into(), tag.input()),
+        (dry_run.name.into(), dry_run.input()),
+        (build.name.into(), build.input()),
+        (platforms.name.into(), platforms.input()),
+    ]);
+    let call = WorkflowCall::default()
+        .add_input(tag.name, tag.call_input())
+        .add_input(dry_run.name, dry_run.call_input())
+        .add_input(build.name, build.call_input())
+        .add_input(platforms.name, platforms.call_input());
 
-    helpers::named_workflow(channel.flavor().to_title_case())
+    let guard: NamedJob = guard.into();
+    helpers::named_workflow("Release")
         .on(Event::default()
+            .push(Push::default().add_tag(TAG_PATTERN))
             .workflow_dispatch(dispatch)
-            .when_some(channel.tag_pattern(), |event, pattern| {
-                event.push(Push::default().add_tag(pattern))
-            })
-            .when(channel.is_nightly(), |event| {
-                event.schedule(vec![Schedule::new(NIGHTLY_CRON)])
-            }))
-        // A scheduled run and a manual or tag run must never bundle at once,
-        // and cancelling one mid-publish would strand release artifacts.
-        .when_some(prepare, |workflow, prepare| {
-            let prepare: NamedJob = prepare.into();
-            workflow
-                .concurrency(helpers::serialize("nightly"))
-                .add_job(prepare.name, prepare.job)
-        })
+            .workflow_call(call))
+        .concurrency(helpers::serialize(helpers::RELEASE_CYCLE))
+        .add_job(guard.name, guard.job)
         .map(|workflow| {
-            tests
+            [builder, create, publish, record, withdraw]
                 .into_iter()
-                .chain([create])
-                .chain(guard)
-                .chain(builds)
-                .chain([publish])
-                .chain([withdraw])
                 .fold(workflow, |workflow, named| {
                     workflow.add_job(named.name, named.job)
                 })
@@ -138,123 +117,205 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Platform;
+    use serde_json::Value;
+    use strum::IntoEnumIterator as _;
 
-    /// Preview and stable take a `tag` dispatch input, so a subset
-    /// `platforms` dispatch alongside it is a contradiction the guard job
-    /// must catch before any build starts. Nightly takes no `tag` input, so
-    /// the contradiction cannot arise there and the guard is absent.
+    fn rendered() -> Value {
+        serde_json::to_value(workflow(&WorkflowContext::fixture())).expect("workflow serializes")
+    }
+
+    fn needs(job: &Value) -> Vec<&str> {
+        job["needs"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|need| need.as_str().unwrap())
+            .collect()
+    }
+
+    /// Scenario _A pushed tag starts its release_: the one push trigger is
+    /// every release tag, the dispatch names an existing tag and rehearses
+    /// by default, and a call takes the same four.
     #[test]
-    fn every_build_waits_on_the_dispatch_guard_where_one_exists() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Preview, Channel::Stable] {
-            let workflow = workflow(channel, &context);
-            let value = serde_json::to_value(&workflow).expect("workflow serializes");
-            let jobs = value["jobs"].as_object().expect("jobs");
+    fn a_pushed_tag_starts_its_release() {
+        let value = rendered();
+        let on = value["on"].as_object().expect("triggers");
+        let mut triggers: Vec<&str> = on.keys().map(String::as_str).collect();
+        triggers.sort_unstable();
+        assert_eq!(triggers, ["push", "workflow_call", "workflow_dispatch"]);
+        assert_eq!(on["push"]["tags"], serde_json::json!([TAG_PATTERN]));
+        assert!(on["push"].get("branches").is_none(), "{}", on["push"]);
 
-            assert!(
-                jobs.contains_key("guard-dispatch"),
-                "{channel}: no guard-dispatch job"
-            );
+        let inputs = on["workflow_dispatch"]["inputs"]
+            .as_object()
+            .expect("inputs");
+        let mut names: Vec<&str> = inputs.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        assert_eq!(names, ["build", "dry_run", "platforms", "tag"]);
+        let default = |name: &str| inputs[name]["default"].to_string().replace('"', "");
+        assert_eq!(default("dry_run"), "true");
+        assert_eq!(default("build"), "true");
+        assert_eq!(default("platforms"), "All");
+        assert_eq!(default("tag"), "");
 
-            for platform in Platform::iter() {
-                let name = format!("build-{}", platform.slug());
-                let needs = jobs[&name]["needs"]
-                    .as_array()
-                    .unwrap_or_else(|| panic!("{channel}/{name}: no needs"));
-                assert!(
-                    needs.iter().any(|need| need == "guard-dispatch"),
-                    "{channel}/{name}: does not need guard-dispatch"
-                );
-            }
-        }
+        let called = on["workflow_call"]["inputs"]
+            .as_object()
+            .expect("call inputs");
+        let mut names: Vec<&str> = called.keys().map(String::as_str).collect();
+        names.sort_unstable();
+        assert_eq!(names, ["build", "dry_run", "platforms", "tag"]);
+        assert_eq!(called["platforms"]["type"], "string");
 
-        let nightly = workflow(Channel::Nightly, &context);
-        let value = serde_json::to_value(&nightly).expect("workflow serializes");
+        assert_eq!(value["concurrency"]["group"], helpers::RELEASE_CYCLE);
+        assert_eq!(value["concurrency"]["cancel-in-progress"], false);
+    }
+
+    /// Scenario _A rehearsal without a tag describes the day's nightly_: the
+    /// builder is called on the pushed tag, the dispatched tag, or the commit
+    /// the run is on, with the platforms asked for, and only when the
+    /// dispatch did not turn the build off.
+    #[test]
+    fn the_builder_is_called_on_the_release_s_ref() {
+        let value = rendered();
+        let build = &value["jobs"]["build"];
+        assert_eq!(
+            build["uses"],
+            "$/.github/workflows/build-distributables.yaml"
+        );
+        assert_eq!(build["with"]["ref"], helpers::release_ref());
         assert!(
-            !value["jobs"]
-                .as_object()
-                .expect("jobs")
-                .contains_key("guard-dispatch"),
-            "nightly takes no tag dispatch input, so the contradiction cannot arise"
+            helpers::release_ref().contains("github.ref_name")
+                && helpers::release_ref().contains("inputs.tag")
+                && helpers::release_ref().ends_with("github.sha }}"),
+            "{}",
+            helpers::release_ref()
+        );
+        assert_eq!(
+            build["with"]["platforms"],
+            "${{ inputs.platforms || 'All' }}"
+        );
+        assert_eq!(
+            build["if"],
+            "github.event_name != 'workflow_dispatch' || inputs.build"
+        );
+        assert_eq!(needs(build), ["guard"]);
+        assert_eq!(build["secrets"], "inherit");
+        assert!(build.get("runs-on").is_none(), "{build}");
+        assert!(build.get("steps").is_none(), "{build}");
+    }
+
+    /// The jobs wait on what they read: the draft and the publication on the
+    /// builder, the publication on the draft and the guard, the record on
+    /// the publication, and the withdrawal on everything the publication
+    /// waits on and the publication itself, for its point of no return.
+    #[test]
+    fn the_jobs_wait_on_what_they_read() {
+        let value = rendered();
+        let jobs = value["jobs"].as_object().expect("jobs");
+        let mut ids: Vec<&str> = jobs.keys().map(String::as_str).collect();
+        ids.sort_unstable();
+        assert_eq!(
+            ids,
+            [
+                "build",
+                "create-release",
+                "guard",
+                "publish",
+                "record",
+                "withdraw-release"
+            ]
+        );
+
+        let mut create = needs(&jobs["create-release"]);
+        create.sort_unstable();
+        assert_eq!(create, ["build", "guard"]);
+        let mut publish = needs(&jobs["publish"]);
+        publish.sort_unstable();
+        assert_eq!(publish, ["build", "create-release", "guard"]);
+        let mut record = needs(&jobs["record"]);
+        record.sort_unstable();
+        assert_eq!(record, ["guard", "publish"]);
+        let mut withdraw = needs(&jobs["withdraw-release"]);
+        withdraw.sort_unstable();
+        assert_eq!(withdraw, ["build", "create-release", "guard", "publish"]);
+    }
+
+    /// Scenario _The caller counts the builder's targets_: the publishing
+    /// gate reads each target through the calling job's outputs, and the
+    /// manifest is written in that job alone.
+    #[test]
+    fn the_publication_counts_the_builder_s_targets() {
+        let value = rendered();
+        let jobs = value["jobs"].as_object().expect("jobs");
+        let cond = jobs["publish"]["if"].as_str().expect("if");
+        for platform in Platform::iter() {
+            let slug = platform.slug();
+            assert!(
+                cond.contains(&format!("needs.build.outputs.{slug} == '{slug}'")),
+                "{slug}: {cond}"
+            );
+        }
+        let writers: Vec<&String> = jobs
+            .iter()
+            .filter(|(_, job)| {
+                job["steps"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .any(|step| step["id"] == "write-manifest")
+            })
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(writers, [jobs::PUBLISH_JOB]);
+    }
+
+    /// Scenario _A failed first preview undoes the cut_, as the workflow
+    /// sees it: one `release undo` step with the tag and the commit the push
+    /// was for, whose own logic deletes the series and reverts `main` for a
+    /// `-pre.1`; the workflow wires nothing more for it.
+    #[test]
+    fn the_withdrawal_hands_the_cut_to_undo() {
+        let value = rendered();
+        let steps = value["jobs"]["withdraw-release"]["steps"]
+            .as_array()
+            .expect("steps");
+        let undos: Vec<&Value> = steps
+            .iter()
+            .filter(|step| {
+                step["run"]
+                    .as_str()
+                    .is_some_and(|run| run.contains("release undo"))
+            })
+            .collect();
+        assert_eq!(undos.len(), 1);
+        assert_eq!(undos[0]["env"]["COMMIT"], "${{ github.sha }}");
+        assert!(
+            steps.iter().all(|step| {
+                let run = step["run"].as_str().unwrap_or("");
+                !run.contains("release open-series") && !run.contains("release tag")
+            }),
+            "the withdrawal mints nothing"
         );
     }
 
-    /// The job writing the manifest is the same `publish-release` job, which
-    /// `needs` every build — so the manifest can never be written before
-    /// every required target has reported its success.
+    /// Scenario _A library tag starts nothing_: a library's tag matches
+    /// neither the push trigger nor a channel's shape.
     #[test]
-    fn the_manifest_write_depends_on_every_build_job() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let workflow = workflow(channel, &context);
-            let value = serde_json::to_value(&workflow).expect("workflow serializes");
-            let jobs = value["jobs"].as_object().expect("jobs");
+    fn a_group_tag_triggers_no_release() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let text = std::fs::read_to_string(root.join(crate::constants::GROUP_FILE)).unwrap();
+        let file = crate::release_groups::GroupFile::parse(&text).unwrap();
+        assert!(TAG_PATTERN.starts_with('v'));
 
-            let (job_name, job) = jobs
-                .iter()
-                .find(|(_, job)| {
-                    job["steps"]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .any(|step| step["id"] == "write-manifest")
-                })
-                .unwrap_or_else(|| panic!("{channel}: no job writes the manifest"));
-            assert_eq!(job_name, jobs::PUBLISH_JOB, "{channel}");
-            assert!(
-                !jobs.contains_key("publish-release"),
-                "{channel}: the publishing job replaces publish-release"
-            );
-
-            let needs: Vec<&str> = job["needs"]
-                .as_array()
-                .unwrap_or_else(|| panic!("{channel}/{job_name}: no needs"))
-                .iter()
-                .map(|need| need.as_str().unwrap())
-                .collect();
-
-            for platform in Platform::iter() {
-                let build_name = format!("build-{}", platform.slug());
-                assert!(
-                    needs.contains(&build_name.as_str()),
-                    "{channel}/{job_name}: does not need {build_name}"
-                );
+        for (name, group) in &file.group {
+            if group.tag == "v{version}" {
+                continue;
             }
-        }
-    }
-
-    /// The withdraw job reads every build's recorded target the same way
-    /// the publish job does — to know whether there was a shortfall — so
-    /// it must wait on the same set.
-    #[test]
-    fn the_withdraw_depends_on_every_build_job() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let workflow = workflow(channel, &context);
-            let value = serde_json::to_value(&workflow).expect("workflow serializes");
-            let jobs = value["jobs"].as_object().expect("jobs");
-
-            let needs: Vec<&str> = jobs["withdraw-release"]["needs"]
-                .as_array()
-                .unwrap_or_else(|| panic!("{channel}: withdraw-release has no needs"))
-                .iter()
-                .map(|need| need.as_str().unwrap())
-                .collect();
-
-            for platform in Platform::iter() {
-                let build_name = format!("build-{}", platform.slug());
-                assert!(
-                    needs.contains(&build_name.as_str()),
-                    "{channel}: withdraw-release does not need {build_name}"
-                );
-            }
+            let tag = group.tag.replace("{version}", "0.2.0");
             assert!(
-                needs.contains(&"create-release"),
-                "{channel}: withdraw-release does not need create-release"
-            );
-            assert!(
-                needs.contains(&jobs::PUBLISH_JOB),
-                "{channel}: withdraw-release cannot read the point of no return"
+                !tag.starts_with('v'),
+                "{name}: {tag} would match the `{TAG_PATTERN}` trigger"
             );
         }
     }

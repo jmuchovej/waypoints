@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Optional timestamps in the one spelling a Bundle uses: ISO-8601 UTC with an
 //! explicit `Z` and millisecond precision. `#[serde(with = "timestamp")]`.
 

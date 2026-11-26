@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #![allow(clippy::disallowed_macros)]
 
 use crate::utils::{load_identity, territory_db};

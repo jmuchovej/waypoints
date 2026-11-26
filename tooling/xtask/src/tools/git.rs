@@ -1,8 +1,154 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! git, read from the checkout.
 
-use anyhow::Result;
+use anyhow::{Context as _, Result, bail};
+use std::{
+    io::Write,
+    process::{Command, Stdio},
+};
 
 /// Runs `git` with `args` and returns its trimmed stdout.
 pub fn run(args: &[&str]) -> Result<String> {
     super::run("git", args)
+}
+
+/// The file at `path` in the tree `reference` names, byte for byte: untrimmed,
+/// so a file's final newline survives into a diff of it.
+pub fn show(reference: &str, path: &str) -> Result<String> {
+    let spec = format!("{reference}:{path}");
+    let output = Command::new("git")
+        .args(["show", &spec])
+        .output()
+        .with_context(|| format!("running `git show {spec}`"))?;
+    if !output.status.success() {
+        bail!(
+            "`git show {spec}` failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    String::from_utf8(output.stdout).with_context(|| format!("{spec} is not UTF-8"))
+}
+
+/// The trailers of `message` as git reads them — the `Key: value` lines of
+/// its last paragraph, continuation lines unfolded — each as `(key, value)`.
+/// The one trailer engine: what `git log` reports for a landed commit is what
+/// this reports for the message about to land.
+pub fn trailers(message: &str) -> Result<Vec<(String, String)>> {
+    let mut child = Command::new("git")
+        .args(["interpret-trailers", "--parse"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("running `git interpret-trailers`")?;
+    child
+        .stdin
+        .take()
+        .context("`git interpret-trailers` takes its message on stdin")?
+        .write_all(message.as_bytes())
+        .context("writing the message to `git interpret-trailers`")?;
+    let output = child
+        .wait_with_output()
+        .context("waiting for `git interpret-trailers`")?;
+    if !output.status.success() {
+        bail!(
+            "`git interpret-trailers` failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+    let parsed = String::from_utf8(output.stdout).context("the trailers are not UTF-8")?;
+    Ok(parsed
+        .lines()
+        .filter_map(|line| line.split_once(':'))
+        .map(|(key, value)| (key.trim().to_owned(), value.trim().to_owned()))
+        .collect())
+}
+
+/// Every `v*` tag as `origin` holds it: what is published, rather than what
+/// this checkout happens to have fetched or kept. Fails when the remote
+/// cannot be reached, since deciding from local tags would be deciding from
+/// stale ones.
+pub fn remote_tags() -> Result<Vec<String>> {
+    remote_tags_like("v*")
+}
+
+/// Every tag matching `pattern` as `origin` holds it — a group's
+/// `bedrock-v*`, or the app's `v*`.
+pub fn remote_tags_like(pattern: &str) -> Result<Vec<String>> {
+    let listed = run(&["ls-remote", "--tags", "--refs", "origin", pattern])
+        .context("listing origin's tags: a planner decides from what is published")?;
+    Ok(tag_names(&listed))
+}
+
+/// Every tag matching `pattern` as `origin` holds it, with the commit each
+/// points at, as `(name, sha)`.
+pub fn remote_tags_at(pattern: &str) -> Result<Vec<(String, String)>> {
+    let listed = run(&["ls-remote", "--tags", "--refs", "origin", pattern])
+        .context("listing origin's tags: a planner decides from what is published")?;
+    Ok(listed
+        .lines()
+        .filter_map(|line| line.split_once('\t'))
+        .filter_map(|(sha, reference)| {
+            let name = reference.strip_prefix("refs/tags/")?;
+            Some((name.to_owned(), sha.to_owned()))
+        })
+        .collect())
+}
+
+/// Every branch matching `pattern` as `origin` holds it — the series,
+/// `v*.x`.
+pub fn remote_branches_like(pattern: &str) -> Result<Vec<String>> {
+    let listed = run(&["ls-remote", "--heads", "origin", pattern])
+        .context("listing origin's branches: a planner decides from what is published")?;
+    Ok(listed
+        .lines()
+        .filter_map(|line| line.split('\t').nth(1))
+        .filter_map(|reference| reference.strip_prefix("refs/heads/"))
+        .map(str::to_owned)
+        .collect())
+}
+
+/// The tag names in `git ls-remote --tags --refs` output: one `<sha>\t<ref>`
+/// line per tag.
+fn tag_names(listed: &str) -> Vec<String> {
+    listed
+        .lines()
+        .filter_map(|line| line.split('\t').nth(1))
+        .filter_map(|reference| reference.strip_prefix("refs/tags/"))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Puts the working tree on `branch` as the remote has it.
+///
+/// Fetched first because a cut creates its branch after the job checked out,
+/// and `main` can move while a job runs. A named branch rather than a detached
+/// HEAD, because the pull-request step takes the checked-out branch as its base
+/// and refuses to guess from a commit.
+pub fn check_out_latest(branch: &str) -> Result<()> {
+    let remote = format!("refs/remotes/origin/{branch}");
+    run(&["fetch", "origin", &format!("+refs/heads/{branch}:{remote}")])?;
+    run(&["checkout", "-B", branch, &remote])?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `ls-remote` prints `<sha>\t<ref>`; only the tag names matter, and a
+    /// line that is not a tag ref contributes nothing.
+    #[test]
+    fn the_listing_yields_tag_names() {
+        let listed = "48f4fef5c0000000000000000000000000000000\trefs/tags/v0.1.0-nightly.20261025\n\
+                      4444c8a593bf57e16e0ddca8fd05cdbbf7106c19\trefs/tags/v0.1.0-nightly.20261108\n\
+                      0000000000000000000000000000000000000000\trefs/heads/v0.1.x\n";
+        assert_eq!(
+            tag_names(listed),
+            ["v0.1.0-nightly.20261025", "v0.1.0-nightly.20261108"]
+        );
+        assert!(tag_names("").is_empty());
+    }
 }

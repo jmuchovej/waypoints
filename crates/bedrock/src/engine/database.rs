@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use super::{ddl, durability, explain, migrate, pool::Pool, query, value};
 use crate::{
     BedrockError, Config, FlushMode, QueryPlan, ReadTx, WriteTx,

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use derive_more::{Debug, Display};
 use serde::{Deserialize, Serialize};
 use specta::Type;

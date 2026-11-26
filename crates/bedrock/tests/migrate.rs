@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use bedrock::{BedrockError, Database, MigrationError};
 use bedrock_core::{CollectionSpec, ColumnType, FieldKind, FieldSpec, IdSpec};
 

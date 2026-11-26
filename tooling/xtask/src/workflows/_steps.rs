@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Step constructors shared across workflows. Each returns a labelled step
 //! ready to drop into a job.
 
@@ -6,9 +9,12 @@ use super::helpers::{
     WP_BOTSWAIN_PRIVATE_KEY,
 };
 use super::{Artifact, TestSuite};
-use crate::{Channel, Platform, releases::artifacts::STAGE_DIR};
+use crate::{
+    Platform,
+    constants::{ACTIONS_DIR, GITHUB_DIR, LOCKFILE, STAGE_DIR},
+};
 use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
-use indoc::indoc;
+use indoc::{formatdoc, indoc};
 
 /// A `uses:` reference — `{owner}/{repo}@{sha}`. Pinning to the hash rather
 /// than a tag means a retagged (compromised) release cannot reach CI on its
@@ -36,6 +42,15 @@ impl From<Action> for Step<Use> {
     fn from(a: Action) -> Self {
         Step::new(a.repo).uses(a.owner, a.repo, a.sha)
     }
+}
+
+/// A `uses:` reference to a generated action under [`ACTIONS_DIR`], in the
+/// self-repository form: it resolves to the running commit, so no checkout
+/// has to precede it and no ref can point it elsewhere.
+pub fn local_action(name: &str, label: impl ToString) -> Step<Use> {
+    Step::new(label)
+        .uses_path(format!("$/{ACTIONS_DIR}/{name}"))
+        .id(name)
 }
 
 pub fn checkout() -> Step<Use> {
@@ -72,17 +87,21 @@ pub fn cachix(cache: &str) -> Step<Use> {
 }
 
 /// Installs flake outputs into the ambient profile, for tools needed *before*
-/// the devenv shell can be entered.
-pub fn nix_profile_install(packages: &[&str]) -> Step<Run> {
-    let refs = packages
-        .iter()
-        .map(|package| format!("nixpkgs#{package}"))
-        .collect::<Vec<_>>()
-        .join(" ");
+/// the devenv shell can be entered. The package list is the setup action's
+/// input: it reaches the install through the environment, space-separated,
+/// so no name is spliced into the command line.
+pub fn nix_profile_install(packages: &str) -> Step<Run> {
+    let script = indoc! {r#"
+        refs=()
+        for package in ${PACKAGES}; do refs+=("nixpkgs#${package}"); done
+        nix profile install "${refs[@]}"
+    "#}
+    .trim_end();
 
-    Step::new(format!("Install {}", packages.join(" and ")))
-        .run(format!("nix profile install {refs}"))
+    Step::new("Install the profile packages")
+        .run(script)
         .shell("bash")
+        .add_env(("PACKAGES", packages))
         .id("setup-nix-profile")
 }
 
@@ -102,25 +121,37 @@ pub fn just(recipe: &str) -> Step<Run> {
         .id(recipe)
 }
 
-/// Audits every workflow with zizmor, the check `hk` runs locally. The token
-/// lets its online audits (impostor commits, known-vulnerable actions) query
-/// GitHub.
+/// Audits every workflow and every generated action with zizmor, the check
+/// `hk` runs locally. The token lets its online audits (impostor commits,
+/// known-vulnerable actions) query GitHub.
 pub fn zizmor() -> Step<Run> {
     Step::new("Audit the workflows")
-        .run("zizmor .github/workflows")
+        .run(format!("zizmor {GITHUB_DIR}"))
         .shell("bash")
         .id("zizmor")
         .add_env(("GH_TOKEN", "${{ github.token }}"))
 }
 
-/// Runs an `xtask` subcommand via the `cargo xtask` alias in
-/// `.cargo/config.toml`.
+pub fn cargo_deny_licenses() -> Step<Run> {
+    Step::new("Check dependency licenses")
+        .run("cargo deny check licenses")
+        .shell("bash")
+        .id("cargo-deny-licenses")
+}
+
+/// How a workflow step invokes an `xtask` subcommand: the `cargo ci-task`
+/// alias in `.cargo/config.toml`, the same binary as `cargo ci-task` without
+/// the `local-dev` feature, so no job compiles the dev server or the icon
+/// renderer.
+pub const CI_TASK: &str = "cargo ci-task";
+
+/// Runs an `xtask` subcommand via [`CI_TASK`].
 ///
 /// Values are quoted: several carry a `${{ }}` expression, which is substituted
 /// before the shell sees the line.
 pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run> {
     let command = args.iter().fold(
-        format!("cargo xtask {subcommand}"),
+        format!("{CI_TASK} {subcommand}"),
         |command, (flag, value)| {
             if let Some(arg) = value {
                 format!("{command} {flag} \"{arg}\"")
@@ -130,7 +161,7 @@ pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run>
         },
     );
 
-    Step::new(format!("cargo xtask {subcommand}"))
+    Step::new(format!("{CI_TASK} {subcommand}"))
         .run(command)
         .shell("bash")
 }
@@ -141,13 +172,13 @@ pub fn cargo_xtask(subcommand: &str, args: &[(&str, Option<&str>)]) -> Step<Run>
 /// `devenv update` moves `devenv.lock`, which moves tool versions, which moves
 /// devenv's own generated files — and, because `WorkflowContext` reads the
 /// Android NDK and JDK versions back out of devenv, the workflows too. Entering
-/// the shell is what regenerates devenv's outputs, so the `cargo xtask` call
+/// the shell is what regenerates devenv's outputs, so the `cargo ci-task` call
 /// covers both halves. Committing the lockfile alone would open a pull request
 /// that fails its own `check-generated`.
 pub fn devenv_update() -> Step<Run> {
     let cmd = indoc! {r#"
         devenv update
-        devenv shell cargo xtask workflows
+        devenv shell cargo ci-task generate workflows
     "#}
     .trim_end();
 
@@ -184,16 +215,18 @@ pub fn app_token(permissions: &[(&str, &str)]) -> Step<Use> {
 
 /// Publishes the wp-botswain App credentials into the job environment, for
 /// [`app_token`] to read. Resolves the `ci` profile's `botswain` scope and
-/// nothing else. For jobs whose `secretspec` and `op` come from mise; one
-/// entered through devenv runs the same export `inside_devenv`, as
-/// `devenv_update` does.
-pub fn botswain_credentials() -> Step<Run> {
-    SecretSpec::export()
+/// nothing else.
+pub(crate) fn botswain_credentials(tools: Tools) -> Step<Run> {
+    let spec = SecretSpec::export()
         .resolving(Resolution::Ci(CiScope::Botswain))
         .with_reason(
             "CI resolves the ci profile's botswain scope to authenticate as the App it names",
-        )
-        .into()
+        );
+    match tools {
+        Tools::Mise => spec,
+        Tools::Devenv => spec.inside_devenv(),
+    }
+    .into()
 }
 
 /// Opens a pull request from whatever the preceding steps left in the tree,
@@ -210,6 +243,28 @@ pub fn create_pull_request(
     body: &str,
     paths: &[String],
 ) -> Step<Use> {
+    pull_request(token, branch, title, ("body", body), paths)
+}
+
+/// [`create_pull_request`] with its body read from a file at `body_path`: a
+/// summary's per-group headers span lines, which a step output cannot carry.
+pub fn create_pull_request_from_file(
+    token: &StepOutput,
+    branch: &str,
+    title: &str,
+    body_path: &str,
+    paths: &[String],
+) -> Step<Use> {
+    pull_request(token, branch, title, ("body-path", body_path), paths)
+}
+
+fn pull_request(
+    token: &StepOutput,
+    branch: &str,
+    title: &str,
+    body: (&str, &str),
+    paths: &[String],
+) -> Step<Use> {
     Action::new(
         "peter-evans",
         "create-pull-request",
@@ -222,36 +277,147 @@ pub fn create_pull_request(
     .add_with(("delete-branch", true))
     .add_with(("sign-commits", true))
     .add_with(("title", title))
-    .add_with(("body", body))
+    .add_with(body)
     .add_with(("commit-message", title))
     .add_with(("add-paths", paths.join("\n")))
+}
+
+/// The pull request a bot write left for [`create_pull_request`], as the outputs
+/// `xtask` publishes for it: `head`, `title`, and `paths`.
+pub(crate) fn land_write<T>(
+    writer: &Step<T>,
+    token: &StepOutput,
+    id: &str,
+    body: &str,
+) -> Step<Use> {
+    let output = |name| StepOutput::new_trusted(writer, name).to_string();
+    create_pull_request(
+        token,
+        &output("head"),
+        &output("title"),
+        body,
+        &[output("paths")],
+    )
+    .id(id)
+}
+
+/// [`land_write`] with the body read from the file `writer` published as
+/// `body_path`.
+pub(crate) fn land_write_from_file<T>(writer: &Step<T>, token: &StepOutput, id: &str) -> Step<Use> {
+    let output = |name| StepOutput::new_trusted(writer, name).to_string();
+    create_pull_request_from_file(
+        token,
+        &output("head"),
+        &output("title"),
+        &output("body_path"),
+        &[output("paths")],
+    )
+    .id(id)
+}
+
+/// One landing command. Its values travel through the environment rather
+/// than the command line.
+fn release_command(command: &str, flags: &str, tools: Tools) -> Step<Run> {
+    let step = Step::new(format!("{CI_TASK} release {command}"))
+        .run(tools.command(&format!("{CI_TASK} release {command} {flags}")))
+        .shell("bash");
+    match tools {
+        Tools::Mise => step,
+        Tools::Devenv => step.add_env((
+            "SECRETSPEC_REASON",
+            format!(
+                "release {command} drives a pull request through the GitHub API; no secret values are read"
+            ),
+        )),
+    }
+}
+
+/// Lands the pull request: has GitHub merge it once its required checks pass,
+/// under the App token, then waits for the merge under the runner's own
+/// token — the checks can outlast an App token, and looking needs no more —
+/// and publishes the merge commit. Stands down when the number is empty: the
+/// pull-request step had nothing to commit, or did not run.
+pub(crate) fn merge(pull_request: &StepOutput, token: &StepOutput, tools: Tools) -> Step<Run> {
+    release_command("merge", r#"--pull-request "${PULL_REQUEST}""#, tools)
+        .if_condition(Expression::new(format!("{} != ''", pull_request.expr())))
+        .add_env(("PULL_REQUEST", pull_request.to_string()))
+        .add_env(("GH_TOKEN", token.to_string()))
+        .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
+}
+
+/// [`merge`] without the wait: the entry is landed and left.
+pub(crate) fn merge_without_waiting(
+    pull_request: &StepOutput,
+    token: &StepOutput,
+    tools: Tools,
+) -> Step<Run> {
+    release_command(
+        "merge",
+        r#"--pull-request "${PULL_REQUEST}" --no-wait"#,
+        tools,
+    )
+    .if_condition(Expression::new(format!("{} != ''", pull_request.expr())))
+    .add_env(("PULL_REQUEST", pull_request.to_string()))
+    .add_env(("GH_TOKEN", token.to_string()))
+}
+
+/// Tags the merge commit [`merge`] found: one tag, or every library tag a cut
+/// minted, comma-separated as the planner publishes them. The App token is
+/// what raises each tag's `push` event, and it must be one minted after the
+/// wait.
+pub(crate) fn tag(tags: &StepOutput, commit: &StepOutput, token: &StepOutput) -> Step<Run> {
+    release_command(
+        "tag",
+        r#"--tags "${TAGS}" --commit "${COMMIT}""#,
+        Tools::Mise,
+    )
+    .add_env(("TAGS", tags.to_string()))
+    .add_env(("COMMIT", commit.to_string()))
+    .add_env(("GH_TOKEN", token.to_string()))
+}
+
+/// Opens a cut's series at the merge commit its main pull request landed as,
+/// with the app's version written on it, and publishes the series' landing
+/// for the pull-request step.
+pub(crate) fn open_series(
+    version: &StepOutput,
+    commit: &StepOutput,
+    token: &StepOutput,
+) -> Step<Run> {
+    release_command(
+        "open-series",
+        r#"--version "${VERSION}" --commit "${COMMIT}""#,
+        Tools::Mise,
+    )
+    .id("open-series")
+    .add_env(("VERSION", version.to_string()))
+    .add_env(("COMMIT", commit.to_string()))
+    .add_env(("GH_TOKEN", token.to_string()))
 }
 
 /// Installs the whole toolchain — node, pnpm, just, sops, age, yq, nu, and
 /// rust with every cross-compilation target, read from `rust-toolchain.toml`.
 ///
 /// Pinned to the mise devenv provides — the one that writes
-/// `.config/mise.lock`. Unpinned, the action installs whatever released most
+/// `.config/mise/mise.lock`. Unpinned, the action installs whatever released most
 /// recently, so a committed lockfile is only as reproducible as an upstream
-/// release schedule.
-pub fn setup_mise(with_cache: Option<bool>, version: &str) -> Step<Use> {
-    let cache = with_cache.unwrap_or(true);
-    let step = Action::new(
+/// release schedule. The version and the cache switch are the setup action's
+/// inputs; the cache is an expression here, so the suppression it may need
+/// is always carried.
+pub fn setup_mise(version: &str, cache: &str) -> Step<Use> {
+    Action::new(
         "jdx",
         "mise-action",
         "c2a87611a18de5b3828c5652fe268e992400cb5c", // v4.3.0
     )
     .step("Setup mise")
-    .add_with(("version", version.to_owned()))
-    .add_with(("cache", cache));
-    if cache {
-        step.id("setup-mise").zizmor_ignore(
-            "cache-poisoning",
-            "mise's install cache under GitHub's default write rules, tools pinned by mise.lock",
-        )
-    } else {
-        step
-    }
+    .id("setup-mise")
+    .add_with(("version", version))
+    .add_with(("cache", cache))
+    .zizmor_ignore(
+        "cache-poisoning",
+        "mise's install cache under GitHub's default write rules, tools pinned by mise.lock",
+    )
 }
 
 /// Restores compiled registry dependencies between runs.
@@ -322,7 +488,8 @@ pub(crate) fn pin_pnpm_store() -> Step<Run> {
 ///
 /// `drop_android` is a parameter rather than an assumption: the Android build
 /// job also runs on Linux, and the runtime this removes is exactly what it
-/// needs. Callers that build for Android pass `false`.
+/// needs. Callers that build for Android pass `false`; the setup action
+/// passes the expression over its input.
 ///
 /// Every input is set explicitly rather than left to the action's defaults, so
 /// bumping the pin cannot change what gets deleted without the diff saying so.
@@ -337,7 +504,7 @@ pub(crate) fn pin_pnpm_store() -> Step<Run> {
 ///
 /// `large-packages` costs a couple of minutes of apt removals. Worth it while
 /// the alternative is a job that cannot finish.
-pub fn free_disk_space(drop_android: bool) -> Step<Use> {
+pub fn free_disk_space(drop_android: impl ToString) -> Step<Use> {
     Action::new(
         "jlumbroso",
         "free-disk-space",
@@ -406,14 +573,17 @@ pub fn install_ndk(version: &str) -> Step<Run> {
 /// CI supplies just the credential that unlocks the vault, through the
 /// environment — the only channel that reaches a `secretspec` call inside a
 /// justfile.
-pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
+///
+/// `flavor` is a channel's name, or an expression over the describing job's
+/// outputs; either way it reaches the recipe through the environment.
+pub fn build(platform: Platform, flavor: &str) -> Step<Run> {
     let step = Step::new(format!("Build {platform}"))
         .run(format!(
-            "just tauri::build {slug} {flavor}",
+            r#"just tauri::build {slug} "${{FLAVOR}}""#,
             slug = platform.slug(),
-            flavor = channel.flavor(),
         ))
         .shell("bash")
+        .add_env(("FLAVOR", flavor))
         .id("build-recipe");
     helpers::resolving(step)
 }
@@ -591,7 +761,7 @@ pub(crate) fn cargo_registry(cargo_home: &str) -> CachedDir {
     CachedDir {
         name: "cargo-registry",
         path: format!("{cargo_home}/registry"),
-        key: CacheKey::Files(&["Cargo.lock"]),
+        key: CacheKey::Files(&[LOCKFILE]),
     }
 }
 
@@ -701,17 +871,17 @@ fn download_artifact_action() -> Action {
     )
 }
 
-/// Renames the platform's published and updater artifacts out of the
-/// bundler's nested output into the flat [`STAGE_DIR`], as
-/// `waypoints-{tag}.{ext}`. Every run stages, build-only included, so a
-/// change in what Tauri exports fails the build that produced it. `tag` is
-/// the tag the files are named for — on a build-only run, the one it would
-/// have published; when it is empty, `release-stage` takes the app's own
-/// version. Needs no credential.
+/// Renames the platform's published and updater files out of the bundler's
+/// nested output into the flat [`STAGE_DIR`], as `waypoints-{tag}.{ext}`.
+/// Every run renames, dry runs included, so a change in what Tauri exports
+/// fails the build that produced it. `tag` is the tag the files are named
+/// for — on a dry run, the one it would have published; when it is empty,
+/// `release distributables rename` takes the app's own version. Needs no
+/// credential.
 pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
-    Step::new("Stage the release artifacts")
+    Step::new("Rename the distributables")
         .run(format!(
-            r#"cargo xtask release-stage --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
+            r#"cargo ci-task release distributables rename --platform {slug} ${{TAG:+--tag "${{TAG}}"}}"#,
             slug = platform.slug(),
         ))
         .shell("bash")
@@ -720,19 +890,21 @@ pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
 }
 
 /// Uploads the flat staged directory, under a name naming both the platform
-/// and the channel. A directory path, so the artifact holds the files alone
-/// and every platform's merges into one directory.
-pub fn upload_staged(channel: Channel, platform: Platform) -> Step<Use> {
+/// and the channel — a name, or an expression over the describing job's
+/// outputs. A directory path, so the artifact holds the files alone and every
+/// platform's merges into one directory.
+pub fn upload_staged(channel: &str, platform: Platform) -> Step<Use> {
     upload_artifact_action()
         .step("Upload artifacts")
-        .add_with(("name", Artifact(channel, platform).to_string()))
+        .add_with(("name", Artifact(channel.to_owned(), platform).to_string()))
         .add_with(("path", STAGE_DIR))
         .add_with(("if-no-files-found", "error"))
         .id("upload-artifacts")
 }
 
-/// Merges every platform's staged files into one flat [`STAGE_DIR`].
-pub fn download_staged(channel: Channel) -> Step<Use> {
+/// Merges every platform's staged files into one flat [`STAGE_DIR`]: the
+/// channel's, by the name the builder read.
+pub fn download_staged(channel: &str) -> Step<Use> {
     download_artifact_action()
         .step("Download the staged release")
         .add_with(("pattern", format!("waypoints-*-{channel}")))
@@ -743,11 +915,13 @@ pub fn download_staged(channel: Channel) -> Step<Use> {
 
 /// Renders the store assets and listing copy, and on Linux fetches
 /// Transporter: everything both submissions need that touches nothing
-/// outside the runner. Resolves no credential.
-pub fn prepare_listing(channel: Channel) -> Step<Run> {
+/// outside the runner. Resolves no credential. The flavor reaches the
+/// command through the environment, as every expression does.
+pub fn prepare_listing(flavor: &str) -> Step<Run> {
     Step::new("Prepare the store listings")
-        .run(Tools::Devenv.command(&format!("xfastlane prepare {}", channel.flavor())))
+        .run(Tools::Devenv.command(r#"xfastlane prepare "${FLAVOR}""#))
         .shell("bash")
+        .add_env(("FLAVOR", flavor))
         .add_env((
             "SECRETSPEC_REASON",
             "xfastlane prepare renders store assets; no secret values are read",
@@ -755,18 +929,19 @@ pub fn prepare_listing(channel: Channel) -> Step<Run> {
         .id("prepare-listing")
 }
 
-/// Uploads the staged tree to the `releases` bucket; `release-upload`
-/// derives its own store credential.
-pub fn upload_to_store(tag: Option<&JobOutput>) -> Step<Run> {
-    let step = Step::new("Upload to the release store")
+/// Uploads the staged tree to the `releases` bucket; `release distributables
+/// upload` derives its own store credential. Stands down on a dry run.
+pub fn upload_to_store(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    let step = Step::new("Upload the distributables")
         .run(Tools::Devenv.command(&format!(
-            r#"cargo xtask release-upload --from {STAGE_DIR} --tag "${{TAG}}""#
+            r#"cargo ci-task release distributables upload --from {STAGE_DIR} --tag "${{TAG}}""#
         )))
         .shell("bash")
+        .if_condition(helpers::not_rehearsing(dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-upload derives a short-lived, channel-scoped store credential",
+            "release distributables upload derives a short-lived, channel-scoped store credential",
         ))
         .id("upload-to-store");
     Tools::Devenv.resolving(step)
@@ -774,23 +949,26 @@ pub fn upload_to_store(tag: Option<&JobOutput>) -> Step<Run> {
 
 /// Marks the point of no return: everything after this submits to a store,
 /// which cannot be withdrawn. Immediately before the first submission, so
-/// one that fails partway still counts as past it.
-pub fn mark_submitted() -> Step<Run> {
+/// one that fails partway still counts as past it. A dry run never marks
+/// it, having nothing to submit.
+pub fn mark_submitted(dry_run: &JobOutput) -> Step<Run> {
     Step::new("Mark the point of no return")
         .run(r#"echo "submitted=true" >> "$GITHUB_OUTPUT""#)
         .shell("bash")
+        .if_condition(helpers::not_rehearsing(dry_run))
         .id("mark-submitted")
 }
 
 /// Submits the staged package to the platform's store, with the platform's
 /// release scope resolved for that one command. Every fastlane concern —
 /// the lane, Transporter, where the package and its plist sit — stays
-/// inside `xfastlane`.
-pub fn submit(platform: Platform, channel: Channel) -> Step<Run> {
+/// inside `xfastlane`; the flavor reaches it through the environment. Stands
+/// down on a dry run: neither store offers a rehearsal that consumes no
+/// build number.
+pub fn submit(platform: Platform, flavor: &str, dry_run: &JobOutput) -> Step<Run> {
     let command = format!(
-        "xfastlane publish {lane} {flavor} --from {STAGE_DIR}",
+        r#"xfastlane publish {lane} "${{FLAVOR}}" --from {STAGE_DIR}"#,
         lane = platform.slug(),
-        flavor = channel.flavor()
     );
     let spec = SecretSpec::run(command)
         .resolving(Resolution::Release(platform))
@@ -800,6 +978,8 @@ pub fn submit(platform: Platform, channel: Channel) -> Step<Run> {
         ));
 
     Into::<Step<Run>>::into(spec)
+        .if_condition(helpers::not_rehearsing(dry_run))
+        .add_env(("FLAVOR", flavor))
         .when(platform.is_android(), |step| {
             step.name("Submit to the Play Store")
         })
@@ -809,19 +989,27 @@ pub fn submit(platform: Platform, channel: Channel) -> Step<Run> {
         .id(format!("submit-{}", platform.slug()))
 }
 
-/// Fails the run with a clear message when a dispatch pairs a non-empty
-/// `tag` with a `platforms` subset. Wrapped in a job gated on exactly that
-/// contradiction by `jobs::guard_dispatch`.
-pub fn reject_tag_with_platforms_subset() -> Step<Run> {
-    Step::new("Reject a tag with a platforms subset")
-        .run(concat!(
-            "echo \"::error::A release tag cannot be combined with a platforms subset — ",
-            "a subset can never satisfy every required target, so the run would build ",
-            "without ever publishing. Dispatch again with platforms left at All, or leave ",
-            "tag empty for a build-only run.\" && exit 1"
-        ))
+/// Fails the run with `message`, for a job to gate on the contradiction it
+/// names: the condition sits on the step, since a job skipped by its own
+/// `if` skips everything that needs it. Single quotes around the message:
+/// an escaped double quote inside a YAML scalar is rewritten by the
+/// formatter, which would leave the generated file never in sync.
+pub fn refuse(id: &str, name: &str, message: &str) -> Step<Run> {
+    Step::new(name)
+        .run(format!("echo '::error::{message}' && exit 1"))
         .shell("bash")
-        .id("reject-contradiction")
+        .id(id)
+}
+
+/// Publishes whether the run rehearses, as `dry_run`, from the expression
+/// `rehearsing` — read off the event once, so every later gate reads one
+/// output rather than restating the event logic.
+pub fn read_rehearsal_flag(rehearsing: &str) -> Step<Run> {
+    Step::new("Read the rehearsal flag")
+        .run(r#"echo "dry_run=${DRY_RUN}" >> "$GITHUB_OUTPUT""#)
+        .shell("bash")
+        .add_env(("DRY_RUN", rehearsing))
+        .id("rehearsal")
 }
 
 /// Records this platform's slug as a job output, so the publish gate can
@@ -842,16 +1030,17 @@ pub fn record_target(platform: Platform) -> Step<Run> {
 }
 
 /// Renders the notes for `tag` with git-cliff: everything since the previous
-/// tag, grouped straight from the Conventional Commit history.
+/// tag, grouped straight from the Conventional Commit history. Stands down on
+/// a dry run, whose notes [`dry_notes`] renders into the run's artifact.
 ///
 /// The token is for the template's first-time-contributor section, which
 /// asks the GitHub API who opened each pull request; without it git-cliff
 /// gets a 404 from the private repository and renders nothing.
-pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn release_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Generate release notes")
         .run(r#"git-cliff --latest --output "${RUNNER_TEMP}/notes.md""#)
         .shell("bash")
-        .if_condition(helpers::tag_condition(tag))
+        .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
         .id("gen-release-notes")
 }
@@ -861,62 +1050,161 @@ pub fn release_notes(tag: Option<&JobOutput>) -> Step<Run> {
 /// A draft: the platform builds upload into it, and it goes public only when
 /// [`publish_release`] flips it — so a failed build never leaves a
 /// half-populated release visible. The `view` guard makes a re-run reuse the
-/// draft it left behind; `gh` resolves drafts by tag name.
-pub fn create_release(channel: Channel, tag: Option<&JobOutput>) -> Step<Run> {
+/// draft it left behind; `gh` resolves drafts by tag name. Stands down on a
+/// dry run, which creates and edits no record. `prerelease` is the
+/// `--prerelease` flag or nothing, as an expression over the channel the
+/// builder read; it reaches the command through the environment.
+pub fn create_release(tag: &JobOutput, dry_run: &JobOutput, prerelease: &str) -> Step<Run> {
     let view = r#"gh release view "${TAG}" >/dev/null 2>&1"#;
     let create =
         r#"gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md""#;
-    let create = format!(
-        "{view} \\\n|| {create}{prerelease}",
-        prerelease = if channel.prerelease() {
-            " --prerelease"
-        } else {
-            ""
-        },
-    );
+    let create = format!("{view} \\\n|| {create} ${{PRERELEASE}}");
 
     Step::new("Create the draft")
         .run(create)
         .shell("bash")
-        .if_condition(helpers::tag_condition(tag))
+        .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("PRERELEASE", prerelease))
         .id("draft-release")
 }
 
-/// Flips the draft public. When this runs is the publish job's decision.
+/// Flips the draft public. When this runs is the publish job's decision;
+/// never on a dry run.
 ///
 /// `GH_REPO` because this is the one `gh` call in a job that checks nothing
 /// out, and `gh` otherwise reads the repository from the checkout's git
 /// remote. The job only runs when every build succeeded, so the gap survived
 /// until the first release where that happened.
-pub fn publish_release(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn publish_release(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
     Step::new("Publish the release")
         .run(r#"gh release edit "${TAG}" --draft=false"#)
         .shell("bash")
+        .if_condition(helpers::not_rehearsing(dry_run))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("GH_REPO", "${{ github.repository }}"))
         .add_env(("TAG", helpers::tag(tag)))
         .id("publish-release")
 }
 
-/// Writes the channel's manifest — the single commit point a channel
+/// Commits the channel's manifest — the single commit point a channel
 /// advertises through. Ordered after [`publish_release`] in the same job,
 /// so it is the run's true last write: the reverse (a published record
 /// naming artifacts the manifest has not yet confirmed) cannot happen. One
-/// line dispatching to `xtask`, like every other store-touching step.
-pub fn write_manifest(tag: Option<&JobOutput>) -> Step<Run> {
-    let step = Step::new("Write the channel manifest")
-        .run(Tools::Devenv.command(r#"cargo xtask release-manifest --tag "${TAG}""#))
+/// line dispatching to `xtask`, like every other store-touching step. Stands
+/// down on a dry run, whose manifest [`dry_manifest`] renders instead.
+pub fn write_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    let step = Step::new("Commit the channel manifest")
+        .run(Tools::Devenv.command(&format!(
+            r#"cargo ci-task release distributables commit --from {STAGE_DIR} --tag "${{TAG}}""#
+        )))
         .shell("bash")
-        .if_condition(helpers::tag_condition(tag))
+        .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("TAG", helpers::tag(tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-manifest derives a short-lived, channel-scoped store credential",
+            "release distributables commit derives a short-lived, channel-scoped store credential",
         ))
         .id("write-manifest");
     Tools::Devenv.resolving(step)
+}
+
+/// Where a dry run renders what the real run would have written: one
+/// directory, one upload.
+pub const DRY_RUN_DIR: &str = "${RUNNER_TEMP}/dry-run";
+
+/// A dry run's release notes. For a tag that does not exist yet, everything
+/// since the latest tag under the would-be tag's name; for one that does — a
+/// preview or stable rehearsed against its tag — `--latest`, as the real
+/// draft renders. Rendered here rather than in the draft job, so the run's
+/// dry artifact is one upload from one runner.
+pub fn dry_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    let latest = Tools::Devenv.command(&format!(
+        r#"git-cliff --latest --output "{DRY_RUN_DIR}/notes.md""#
+    ));
+    let unreleased = Tools::Devenv.command(&format!(
+        r#"git-cliff --unreleased --tag "${{TAG}}" --output "{DRY_RUN_DIR}/notes.md""#
+    ));
+    let run = formatdoc! { r#"
+        mkdir -p "{DRY_RUN_DIR}"
+        if git rev-parse -q --verify "refs/tags/${{TAG}}" >/dev/null; then
+          {latest}
+        else
+          {unreleased}
+        fi"#
+    };
+
+    Step::new("Render the release notes (dry run)")
+        .run(run)
+        .shell("bash")
+        .if_condition(helpers::rehearsing(dry_run))
+        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("GITHUB_TOKEN", GITHUB_TOKEN))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "git-cliff renders the notes a dry run would have published; no secret values are read",
+        ))
+        .id("dry-notes")
+}
+
+/// A dry run's manifest, rendered into the dry directory. `release
+/// distributables commit` builds no store client for it, so the step
+/// resolves nothing.
+pub fn dry_manifest(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    Step::new("Render the channel manifest (dry run)")
+        .run(Tools::Devenv.command(&format!(
+            r#"cargo ci-task release distributables commit --from {STAGE_DIR} --tag "${{TAG}}" --dry-run --into "{DRY_RUN_DIR}""#
+        )))
+        .shell("bash")
+        .if_condition(helpers::rehearsing(dry_run))
+        .add_env(("TAG", helpers::tag(tag)))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release distributables commit renders the manifest a dry run would have written; no secret values are read",
+        ))
+        .id("dry-manifest")
+}
+
+/// A dry run's index entry for the tag it would have, from the commit the run
+/// is on — where a real tag would point. The channel-agreement check runs as
+/// for a real write; the index itself is untouched, and no pull request opens.
+pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+    Step::new("Render the index entry (dry run)")
+        .run(Tools::Devenv.command(&format!(
+            r#"cargo ci-task release record --tag "${{TAG}}" --rev "${{REV}}" --dry-run --into "{DRY_RUN_DIR}""#
+        )))
+        .shell("bash")
+        .if_condition(helpers::rehearsing(dry_run))
+        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("REV", "${{ github.sha }}"))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release record renders the entry a dry run would have recorded; no secret values are read",
+        ))
+        .id("dry-index")
+}
+
+/// The one artifact a dry run leaves — everything it rendered — named for
+/// the channel the builder read and kept a week.
+pub fn upload_dry_run(channel: &str, dry_run: &JobOutput) -> Step<Use> {
+    upload_rendering(format!("dry-run-{channel}"), helpers::rehearsing(dry_run))
+}
+
+/// [`DRY_RUN_DIR`] as the upload action reads it: `with` values are not
+/// shell-expanded, so `${RUNNER_TEMP}` there is a literal path.
+pub const DRY_RUN_ARTIFACT_PATH: &str = "${{ runner.temp }}/dry-run";
+
+/// Uploads [`DRY_RUN_DIR`] as `name` when `rehearsing` holds, kept a week.
+pub fn upload_rendering(name: String, rehearsing: Expression) -> Step<Use> {
+    upload_artifact_action()
+        .step("Upload the dry run")
+        .add_with(("name", name))
+        .add_with(("path", DRY_RUN_ARTIFACT_PATH))
+        .add_with(("if-no-files-found", "error"))
+        .add_with(("retention-days", 7))
+        .if_condition(rehearsing)
+        .id("upload-dry-run")
 }
 
 /// Discards the drafted release. Tolerant of there being none to discard —
@@ -926,13 +1214,13 @@ pub fn write_manifest(tag: Option<&JobOutput>) -> Step<Run> {
 /// absorb that case, rather than gating the step, keeps the withdraw job's
 /// later steps on their ordinary default `if: success()` instead of each
 /// needing `always()` to survive this one's absence.
-pub fn discard_release(tag: Option<&JobOutput>) -> Step<Run> {
+pub fn discard_release(tag: &str) -> Step<Run> {
     Step::new("Discard the drafted release")
         .run(r#"gh release delete "${TAG}" --yes || true"#)
         .shell("bash")
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("GH_REPO", "${{ github.repository }}"))
-        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("TAG", tag))
         .id("discard-release")
 }
 
@@ -940,46 +1228,65 @@ pub fn discard_release(tag: Option<&JobOutput>) -> Step<Run> {
 /// to `xtask`, like every other store-touching step — see the design's "The
 /// store is reached through opendal in-process, from one client
 /// constructor" decision. A failed delete is caught and warned on inside
-/// `release-withdraw` itself rather than propagated, so this step's exit
-/// code carries no information about whether every object was removed.
-pub fn withdraw_from_store(tag: Option<&JobOutput>) -> Step<Run> {
-    let step = Step::new("Withdraw uploaded artifacts")
-        .run(Tools::Devenv.command(r#"cargo xtask release-withdraw --tag "${TAG}""#))
+/// `release distributables withdraw` itself rather than propagated, so this
+/// step's exit code carries no information about whether every object was
+/// removed.
+pub fn withdraw_from_store(tag: &str) -> Step<Run> {
+    let step = Step::new("Withdraw the distributables")
+        .run(Tools::Devenv.command(
+            r#"cargo ci-task release distributables withdraw --tag "${TAG}""#,
+        ))
         .shell("bash")
-        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("TAG", tag))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-withdraw derives a short-lived, channel-scoped store credential",
+            "release distributables withdraw derives a short-lived, channel-scoped store credential",
         ))
         .id("withdraw-from-store");
     Tools::Devenv.resolving(step)
 }
 
-/// Deletes the tag this run minted, via the refs API. Conditioned on the
-/// planner's own record of having created it: preview and stable's tags
-/// predate the run and may already be fetched elsewhere, so deleting them
-/// would move a ref out from under whoever has it — see the design's "A run
-/// deletes only a tag it minted" decision.
-pub fn delete_minted_tag(tag: &JobOutput, tag_minted: &JobOutput) -> Step<Run> {
-    Step::new("Delete the minted tag")
+/// Deletes the tag that started the run, via the refs API: it was minted for
+/// this publication minutes before, nothing has recorded it, and the tag
+/// ruleset lets a run delete one. The caller gates it on the run being the
+/// tag's own push; a dispatched re-publication leaves its tag.
+pub fn delete_tag(tag: &str) -> Step<Run> {
+    Step::new("Delete the tag")
         .run(r#"gh api -X DELETE "repos/${GH_REPO}/git/refs/tags/${TAG}""#)
         .shell("bash")
-        .if_condition(Expression::new(format!(
-            "{tag_minted} == 'true'",
-            tag_minted = tag_minted.expr()
-        )))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("GH_REPO", "${{ github.repository }}"))
-        .add_env(("TAG", helpers::tag(Some(tag))))
-        .id("delete-minted-tag")
+        .add_env(("TAG", tag))
+        .id("delete-tag")
+}
+
+/// Undoes the bump that minted `tag`: reverts the write's merge — the commit
+/// the push was for — into the working tree and publishes the landing for the
+/// pull-request step; for a cut's `-pre.1` it also deletes the series and the
+/// library tags through the API and reverts `main`'s write instead. Inside
+/// the devenv shell, as the withdraw job's other `xtask` runs; the token
+/// deletes refs and reads the pull requests, which `GITHUB_TOKEN` may.
+pub fn undo(tag: &str) -> Step<Run> {
+    release_command(
+        "undo",
+        r#"--tag "${TAG}" --commit "${COMMIT}""#,
+        Tools::Devenv,
+    )
+    .id("undo")
+    .add_env(("TAG", tag))
+    .add_env(("COMMIT", "${{ github.sha }}"))
+    .add_env(("GH_TOKEN", GITHUB_TOKEN))
 }
 
 pub(crate) struct Nextest(Step<Run>);
 
-pub(crate) fn cargo_nextest(suite: TestSuite) -> Nextest {
+/// The suite, under `flavor`: the channel flavor `test-plan` reads from the
+/// tree, so what is tested is what the tree ships as.
+pub(crate) fn cargo_nextest(suite: TestSuite, flavor: &str) -> Nextest {
     let step = Step::new(format!("Run {} tests", suite.describe()))
-        .run("cargo nextest run --workspace --no-fail-fast")
+        .run(r#"cargo nextest run --workspace --no-fail-fast --features "${FLAVOR}""#)
         .shell("bash")
+        .add_env(("FLAVOR", flavor))
         // The release suite compiles the whole workspace cold, and the hosted
         // Linux runner has run out of disk doing it. Debuginfo and incremental
         // artifacts are most of `target/`, and neither is worth anything here.
@@ -1166,6 +1473,27 @@ mod tests {
         "AWS_SECRET_ACCESS_KEY",
         "SCCACHE_ENDPOINT",
     ];
+
+    /// This runs under `GITHUB_TOKEN`, which is no bypass actor on the tag
+    /// ruleset, so the flag is what stops `gh` trying to create a missing tag;
+    /// the prerelease flag reaches it through the environment.
+    #[test]
+    fn the_draft_never_creates_its_tag() {
+        let tag = JobOutput::new("build".to_owned(), "tag");
+        let dry_run = JobOutput::new("guard".to_owned(), "dry_run");
+        let step = rendered(create_release(
+            &tag,
+            &dry_run,
+            "${{ true && '--prerelease' }}",
+        ));
+        let run = step["run"].as_str().expect("run");
+        assert!(run.contains("gh release create"), "{run}");
+        assert!(run.contains("--verify-tag"), "{run}");
+        assert!(run.ends_with("${PRERELEASE}"), "{run}");
+        assert!(!run.contains("--prerelease"), "{run}");
+        assert_eq!(step["env"]["GH_TOKEN"], GITHUB_TOKEN);
+        assert_eq!(step["env"]["PRERELEASE"], "${{ true && '--prerelease' }}");
+    }
 
     /// Profile and scope travel as one value, so every rendering carries both.
     #[test]

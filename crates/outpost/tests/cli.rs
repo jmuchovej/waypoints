@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The operator-facing shape of the binary: the probe routes answer on TCP
 //! at the Station's own port number, a port it cannot have is refused by
 //! name, and `keygen` writes a key exactly once.

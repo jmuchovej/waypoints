@@ -1,0 +1,13 @@
+Device frames live here: in the tree, out of history.
+
+`*.png` is ignored by `../.gitignore`, so this file is the only thing committed.
+Each frame is a straight-on Mockuuups Studio export of the real device with its
+screen keyed to transparent by `alpha-key.nu`, which also prints the screen
+rect and radius for `lib/devices.typ`. "Device frames" in `../AGENTS.md` has
+the export settings and the licence terms that keep them untracked.
+`exports/` holds the un-keyed originals.
+
+Expected by `lib/devices.typ`:
+
+  apple-iphone-17-pro.png
+  google-pixel-10-pro.png

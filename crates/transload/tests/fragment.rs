@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The Fragment grammar: source-keyed mirrors of the data model's entities.
 //!
 //! - every type round-trips through serde, and an SDK-written output is a

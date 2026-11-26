@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The app-facing pairing primitives over real QUIC: a Station can be
 //! probed for liveness (§9: does it serve this Territory?), and a brand-new
 //! device that knows only the TerritoryID + Station address can fetch the

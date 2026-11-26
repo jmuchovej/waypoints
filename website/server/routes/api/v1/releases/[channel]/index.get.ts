@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { isChannel, compareVersionsDescending } from "#shared/utils/releases";
 
 import { fetchReleaseNotes } from "../../../../../utils/notes";

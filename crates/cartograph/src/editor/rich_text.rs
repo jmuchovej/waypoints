@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use domain::{InlineMark, RichText, TextSegment};
 
 /// Split a `RichText` at the given byte offset into two halves.

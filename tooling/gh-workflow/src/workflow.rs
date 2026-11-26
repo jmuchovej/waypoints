@@ -154,3 +154,9 @@ impl Workflow {
         self
     }
 }
+
+/// Renders any value through the YAML backend [`Workflow::to_string`] uses,
+/// for the other files a repository's Actions tree holds.
+pub fn to_yaml<T: Serialize>(value: &T) -> Result<String> {
+    Ok(noyalib::to_string(value)?)
+}

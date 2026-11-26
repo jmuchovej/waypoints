@@ -1,3 +1,8 @@
+<!--
+  SPDX-FileCopyrightText: 2026 John Muchovej
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 <script lang="ts">
   import type { Chart, Feature, FeatureID, Reading } from "@waypoints/domain";
   type OnUpdate = (id: FeatureID, reading: Reading) => void | Promise<void>;

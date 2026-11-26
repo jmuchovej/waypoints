@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! `#[bedrock(discriminant)]` drives materialized-view scoping. The annotation
 //! records which document field is the discriminant (and its serde tag), so a
 //! collection can hand back a correctly-typed `ViewScope` without the caller

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Builder pattern for creating date/time field configurations with chainable methods.
 use super::{ChartID, FeatureKind};
 use chrono::{NaiveDate, NaiveTime};

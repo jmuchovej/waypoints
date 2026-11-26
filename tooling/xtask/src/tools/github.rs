@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! GitHub, from inside a workflow run: the Actions environment a job is
 //! handed, the step outputs it writes back, and the repository API.
 //!
@@ -7,15 +10,20 @@
 //! (falling back to `GITHUB_TOKEN`), the same variable `gh` would read, and
 //! addresses the repository the runner names in `GITHUB_REPOSITORY`.
 //!
-//! Every repository write goes through the Contents and Refs APIs, which
-//! commit as the token's identity — so a planner needs no `user.name`, no
-//! `user.email`, and no push credentials on the checkout.
+//! A planner writes only refs and pull-request state here. File writes reach
+//! `main` and the series branches through a pull request instead, committed by
+//! the step that opens it, so a planner needs no `user.name`, no `user.email`,
+//! and no push credentials on the checkout.
 
 use anyhow::{Context as _, Result, bail};
-use octocrab::{Octocrab, params::repos::Reference};
+use octocrab::{
+    Octocrab,
+    models::IssueState,
+    params::{pulls::MergeMethod, repos::Reference},
+};
 use serde::Serialize;
 use serde_json::Value;
-use std::{fs, io::Write as _, path::Path};
+use std::{fs, io::Write as _, path::Path, time::Duration};
 
 /// A variable the Actions runner sets, read as an error when it is absent
 /// rather than as an empty string.
@@ -42,6 +50,20 @@ fn client() -> Result<Octocrab> {
     let token = env("GH_TOKEN")
         .or_else(|_| env("GITHUB_TOKEN"))
         .context("neither $GH_TOKEN nor $GITHUB_TOKEN is set")?;
+    with_token(token)
+}
+
+/// A client authenticated as the runner itself — `GITHUB_TOKEN`, which lasts
+/// the job — for a look that may outlast the App token the step was handed.
+/// Falls back to `GH_TOKEN` off a runner.
+fn runner_client() -> Result<Octocrab> {
+    let token = env("GITHUB_TOKEN")
+        .or_else(|_| env("GH_TOKEN"))
+        .context("neither $GITHUB_TOKEN nor $GH_TOKEN is set")?;
+    with_token(token)
+}
+
+fn with_token(token: String) -> Result<Octocrab> {
     Octocrab::builder()
         .personal_token(token)
         .build()
@@ -57,52 +79,117 @@ fn block_on<T>(future: impl Future<Output = Result<T>>) -> Result<T> {
         .block_on(future)
 }
 
-/// One file as it is on `branch`: its blob sha (needed to replace it) and
-/// its decoded text.
-pub fn file(path: &str, branch: &str) -> Result<(String, String)> {
-    let (owner, name) = owner_and_name()?;
-    block_on(async {
-        let mut items = client()?
-            .repos(&owner, &name)
-            .get_content()
-            .path(path)
-            .r#ref(branch)
-            .send()
-            .await
-            .with_context(|| format!("Failed to read {path} on {branch}"))?;
-        let item = items
-            .take_items()
-            .into_iter()
-            .next()
-            .with_context(|| format!("{path} on {branch} is not a file"))?;
-        let content = item
-            .decoded_content()
-            .with_context(|| format!("{path} on {branch} has no decodable content"))?;
-        Ok((item.sha, content))
+/// The mutation that has GitHub merge a pull request once it can. The REST API
+/// has no auto-merge endpoint.
+fn auto_merge_request(pull_request_id: &str) -> Value {
+    serde_json::json!({
+        "query": "mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: MERGE }) { clientMutationId } }",
+        "variables": { "id": pull_request_id },
     })
 }
 
-/// Commits `content` over `path` on `branch`, returning the new commit's sha.
+/// Has GitHub merge pull request `number` as soon as its required checks allow.
 ///
-/// The Contents API writes a file and commits it in one call, authored by
-/// the token's identity. The file must already exist: its current blob sha
-/// is what the API replaces.
-pub fn update_file(path: &str, branch: &str, content: &str, message: &str) -> Result<String> {
+/// GitHub refuses the mutation when there is nothing left to wait for, so a
+/// refusal falls through to merging directly. Either way the landing is
+/// GitHub's: the merge call answers to the same rulesets, and refuses a pull
+/// request whose required checks have not passed.
+pub fn enable_auto_merge(number: u64) -> Result<()> {
     let (owner, name) = owner_and_name()?;
-    let (sha, _) = file(path, branch)?;
     block_on(async {
-        let update = client()?
-            .repos(&owner, &name)
-            .update_file(path, message, content, sha)
-            .branch(branch)
+        let client = client()?;
+        let pulls = client.pulls(&owner, &name);
+        let pull = pulls
+            .get(number)
+            .await
+            .with_context(|| format!("Failed to read pull request #{number}"))?;
+        // A refreshed pull request keeps what it already had.
+        if pull.auto_merge.is_some() {
+            return Ok(());
+        }
+        let id = pull
+            .node_id
+            .with_context(|| format!("Pull request #{number} has no node id"))?;
+
+        let refusal = match client.graphql::<Value>(&auto_merge_request(&id)).await {
+            Ok(_) => return Ok(()),
+            Err(error) => error,
+        };
+        pulls
+            .merge(number)
+            .method(MergeMethod::Merge)
             .send()
             .await
-            .with_context(|| format!("Failed to commit {path} on {branch}"))?;
-        update
-            .commit
-            .sha
-            .with_context(|| format!("GitHub reported no commit for {path} on {branch}"))
+            .with_context(|| {
+                format!("GitHub refused auto-merge on #{number} ({refusal}) and the merge itself")
+            })?;
+        Ok(())
     })
+}
+
+/// How often [`wait_for_merge`] looks, and how many looks in a row may fail. The
+/// checks take tens of minutes, and a merged pull request nobody saw leaves a
+/// release without its tag, so one bad response must not end the wait.
+const MERGE_POLL: Duration = Duration::from_secs(30);
+const MERGE_POLL_FAILURES: u32 = 10;
+
+/// What a look at a pull request found: its merge commit, or nothing yet. A pull
+/// request closed unmerged will never have one.
+fn merge_commit(
+    number: u64,
+    merged: bool,
+    closed: bool,
+    merge_commit_sha: Option<String>,
+) -> Result<Option<String>> {
+    if merged {
+        return merge_commit_sha
+            .map(Some)
+            .with_context(|| format!("Pull request #{number} merged with no merge commit"));
+    }
+    if closed {
+        bail!("Pull request #{number} closed without merging");
+    }
+    Ok(None)
+}
+
+/// Blocks until pull request `number` merges, returning its merge commit. A tag
+/// made any earlier would name a commit the planners' first-parent walk never
+/// reaches. Looks as the runner, whose token outlasts the App token the step
+/// enabled the merge with.
+pub fn wait_for_merge(number: u64) -> Result<String> {
+    let (owner, name) = owner_and_name()?;
+    let look = || {
+        block_on(async {
+            let pull = runner_client()?
+                .pulls(&owner, &name)
+                .get(number)
+                .await
+                .with_context(|| format!("Failed to read pull request #{number}"))?;
+            Ok((
+                pull.merged_at.is_some(),
+                pull.state == Some(IssueState::Closed),
+                pull.merge_commit_sha,
+            ))
+        })
+    };
+
+    let mut failures = 0;
+    loop {
+        match look() {
+            Ok((merged, closed, sha)) => {
+                failures = 0;
+                if let Some(commit) = merge_commit(number, merged, closed, sha)? {
+                    return Ok(commit);
+                }
+            }
+            Err(error) if failures + 1 < MERGE_POLL_FAILURES => {
+                failures += 1;
+                println!("::warning::{error:#}");
+            }
+            Err(error) => return Err(error),
+        }
+        std::thread::sleep(MERGE_POLL);
+    }
 }
 
 /// Creates `refs/heads/{name}` at `sha`.
@@ -127,6 +214,47 @@ fn create_ref(reference: &Reference, sha: &str) -> Result<()> {
     })
 }
 
+/// Deletes `refs/heads/{name}`; the rulesets decide whether the token may.
+pub fn delete_branch(name: &str) -> Result<()> {
+    delete_ref(&Reference::Branch(name.to_owned()))
+}
+
+/// Deletes `refs/tags/{name}`; the rulesets decide whether the token may.
+pub fn delete_tag(name: &str) -> Result<()> {
+    delete_ref(&Reference::Tag(name.to_owned()))
+}
+
+fn delete_ref(reference: &Reference) -> Result<()> {
+    let (owner, name) = owner_and_name()?;
+    block_on(async {
+        client()?
+            .repos(&owner, &name)
+            .delete_ref(reference)
+            .await
+            .with_context(|| format!("Failed to delete {}", reference.full_ref_url()))?;
+        Ok(())
+    })
+}
+
+/// The number of the open pull request from the branch `head`, if one is
+/// open — the bot's branches carry one pull request each, reused across
+/// runs.
+pub fn open_pull_request_from(head: &str) -> Result<Option<u64>> {
+    let (owner, name) = owner_and_name()?;
+    block_on(async {
+        let page = client()?
+            .pulls(&owner, &name)
+            .list()
+            .state(octocrab::params::State::Open)
+            .head(format!("{owner}:{head}"))
+            .per_page(1)
+            .send()
+            .await
+            .with_context(|| format!("Failed to list the pull requests from {head}"))?;
+        Ok(page.items.first().map(|pull| pull.number))
+    })
+}
+
 // ── Step outputs ─────────────────────────────────────────────────────────────
 
 /// Publishes `outputs` as the current step's outputs.
@@ -142,6 +270,20 @@ pub fn set_outputs_if_available<T: Serialize>(outputs: &T) -> Result<()> {
         Some(_) => set_outputs(outputs),
         None => Ok(()),
     }
+}
+
+/// Appends `markdown` to the step's job summary — a no-op off a runner, where
+/// nothing is listening.
+pub fn add_summary(markdown: &str) -> Result<()> {
+    let Some(path) = std::env::var_os("GITHUB_STEP_SUMMARY") else {
+        return Ok(());
+    };
+    fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .and_then(|mut file| file.write_all(markdown.as_bytes()))
+        .with_context(|| format!("Failed to append to {}", Path::new(&path).display()))
 }
 
 /// Appends to the file GitHub hands the step.
@@ -269,6 +411,45 @@ mod tests {
     fn refuses_a_value_that_is_not_an_object() {
         let error = render(&["a", "b"]).unwrap_err();
         assert!(error.to_string().contains("JSON object"), "{error}");
+    }
+
+    /// `MERGE`, because the rulesets allow nothing else, and the planners'
+    /// first-parent walk needs a merge commit to read.
+    #[test]
+    fn auto_merge_lands_as_a_merge_commit() {
+        let request = auto_merge_request("PR_abc");
+        assert!(
+            request["query"].as_str().unwrap().contains(
+                "enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: MERGE })"
+            ),
+            "{request}"
+        );
+        assert_eq!(request["variables"]["id"], "PR_abc");
+    }
+
+    #[test]
+    fn a_merged_pull_request_names_its_merge_commit() {
+        let found = merge_commit(7, true, true, Some("abc".to_owned())).unwrap();
+        assert_eq!(found.as_deref(), Some("abc"));
+    }
+
+    /// An open pull request has a `merge_commit_sha` too: GitHub's trial merge,
+    /// which is not the commit that lands. Only `merged_at` makes it real.
+    #[test]
+    fn an_open_pull_request_keeps_the_wait_going() {
+        let found = merge_commit(7, false, false, Some("trial-merge".to_owned())).unwrap();
+        assert_eq!(found, None);
+    }
+
+    #[test]
+    fn a_pull_request_closed_unmerged_ends_the_wait() {
+        let error = merge_commit(7, false, true, None).unwrap_err();
+        assert!(error.to_string().contains("#7"), "{error}");
+    }
+
+    #[test]
+    fn a_merge_with_no_commit_is_an_error_rather_than_a_longer_wait() {
+        assert!(merge_commit(7, true, true, None).is_err());
     }
 
     /// The refs API takes `heads/…` and `tags/…`; a bare name would be read

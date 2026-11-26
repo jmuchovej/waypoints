@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The JSONL sidecars: one Rust type per line shape, written by export and
 //! read back by ingest, so the two directions cannot drift apart.
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import type { JSONContent, EditorOptions as TipTapEditorOptions } from "@tiptap/core";
 import TipTapDocument from "@tiptap/extension-document";
 import TipTapEmoji from "@tiptap/extension-emoji";

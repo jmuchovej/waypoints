@@ -1,6 +1,7 @@
 # distribution/release-planning Specification
 
 ## Purpose
+
 Defines where a build's version comes from and how it names the channel, how versions move across the release branches, what a series branch may contain, and the invariants the release and nightly planners must hold when deciding whether and what to publish — so that the bookkeeping a release produces cannot itself be mistaken for the product work that justifies the next release, and so that any tagged tree builds the release its tag names.
 
 ## Requirements
@@ -11,7 +12,7 @@ Every build's version SHALL be read from the app manifest (`src-tauri/Cargo.toml
 
 This governs every distribution channel, not any single packaging mechanism: the bundler pipeline's platform artifacts, the store build numbers, the identity a build reports about itself, and the Nix packages alike.
 
-A publish MAY append prerelease and build-metadata suffixes that exist only at publish time — a nightly's counter and date stamp are assigned by the planner and appear in no manifest. Such a suffix SHALL extend the manifest's version rather than replace it, so the base version of a published artifact always equals the manifest version of the commit it was built from.
+A publish MAY append a prerelease suffix that exists only at publish time — a nightly's date-stamped identifier is assigned by the planner and appears in no manifest. Such a suffix SHALL extend the manifest's version rather than replace it, so the base version of a published artifact always equals the manifest version of the commit it was built from.
 
 #### Scenario: Version comes from the built commit's manifest
 
@@ -21,11 +22,13 @@ A publish MAY append prerelease and build-metadata suffixes that exist only at p
 #### Scenario: Publish-time suffix extends rather than replaces
 
 - **WHEN** a nightly is published from a commit whose manifest declares `X`
-- **THEN** its version is `X` plus the planner's prerelease counter and date stamp, and stripping that suffix yields exactly `X`
+- **THEN** its version is `X` plus the planner's date-stamped prerelease identifier, and stripping that suffix yields exactly `X`
 
 ### Requirement: The manifest version names the channel
 
 Every tree's channel SHALL be readable from its app manifest's version alone: a version whose prerelease begins with `nightly` is the nightly line, a version with any other prerelease is a preview, and a version with no prerelease is stable. `main` SHALL declare `X.Y.Z-nightly`. A series branch SHALL declare `X.Y.Z-pre.N` from the commit that cuts it and a bare `X.Y.Z` from the commit that promotes it. No other file SHALL declare a channel.
+
+A versioned member of a release group other than the app SHALL mirror its group's anchor version exactly, prerelease included, and SHALL NOT be read as a version or channel source by anything. Mirroring the app's prerelease is therefore not a channel declaration: the app manifest remains the only manifest any build, planner, or package consults.
 
 Because a tag is minted from the manifest it points at, a tag's version and its tree's manifest version SHALL classify as the same channel.
 
@@ -48,6 +51,11 @@ Because a tag is minted from the manifest it points at, a tag's version and its 
 
 - **WHEN** a tag's version classifies as one channel and the tagged tree's manifest version classifies as another
 - **THEN** the release index refuses to record it
+
+#### Scenario: A lockstep member mirrors the app's prerelease
+
+- **WHEN** `main`'s app manifest declares `0.3.0-nightly` and `crates/cartograph` mirrors it
+- **THEN** the tree's channel is still read from the app manifest alone, and `cartograph`'s version declares nothing
 
 ### Requirement: Version tracks the branch a commit sits on
 
@@ -83,6 +91,8 @@ Until `v1`, divergence between the stable and preview lines is confined to the p
 
 A series branch SHALL be cut from `main` and SHALL thereafter receive only the planner's version commits and cherry-picks of commits already on `main`, in the order those commits landed on `main`. No change SHALL land on a series branch first. A series branch's tree therefore always carries a recipe, lockfiles, and pins that some commit of `main` was built with, which is what lets a tagged tree build itself.
 
+Where the branch is protected, the planner's version commit SHALL arrive as the merge commit of a pull request the release bot opened, gated by the same required checks as any other pull request. Such a merge commit SHALL carry only that version write, and SHALL NOT introduce any change that is not already on `main`, so the invariant above is unchanged by how the commit lands.
+
 #### Scenario: A fix reaches a series
 
 - **WHEN** a fix merged on `main` is needed on `v0.2.x`
@@ -92,6 +102,11 @@ A series branch SHALL be cut from `main` and SHALL thereafter receive only the p
 
 - **WHEN** any `v*` tag is checked out and built under the channel its manifest version names
 - **THEN** the build succeeds using only that tree's recipe, lockfiles, and pins
+
+#### Scenario: A version commit lands on a protected series branch
+
+- **WHEN** the planner advances `v0.2.x` and the branch is protected
+- **THEN** the version write lands as the merge commit of the release bot's pull request, carries no other change, and the tag points at that merge commit
 
 ### Requirement: Release refs are minted so their pushes are observable
 
@@ -115,6 +130,35 @@ The nightly planner SHALL publish a nightly only when product work landed since 
 
 - **WHEN** the nightly planner runs and product work landed since the last published nightly
 - **THEN** it publishes the next nightly of that target, stamped with the run's date
+
+### Requirement: A nightly is named by its UTC date
+
+A nightly's version SHALL be `{target}-nightly.{YYYYMMDD}`, where the identifier is the planner's UTC date, and SHALL carry no build metadata. Nightlies of one target therefore order by date under semantic versioning alone, and at most one nightly SHALL exist per UTC day. The store build numbers SHALL be derived from that identifier. A nightly SHALL be read only in that shape: a nightly tag that does not fit it SHALL fail the planner, naming the tag, rather than be read or ignored.
+
+#### Scenario: A date-named version
+
+- **WHEN** the planner publishes a nightly of target `0.1.0` on 2026-11-09 UTC
+- **THEN** the version is `0.1.0-nightly.20261109`, the tag is `v0.1.0-nightly.20261109`, and no build metadata is attached
+
+#### Scenario: Dates order without a tie
+
+- **WHEN** `0.1.0-nightly.20261109` and `0.1.0-nightly.20261108` are compared
+- **THEN** the later date is the greater version, with no build metadata to break a tie
+
+#### Scenario: An earlier-grammar tag is refused
+
+- **WHEN** the published tags include `v0.1.0-nightly.2+2026.11.08`
+- **THEN** the planner fails naming that tag, and no decision is reported
+
+#### Scenario: A second run on a taken day
+
+- **WHEN** the planner runs on a day whose nightly tag already exists for the target, and product work landed since it
+- **THEN** it mints no tag and publishes nothing, reporting that the day's nightly exists and the work ships with the next scheduled nightly
+
+#### Scenario: Build numbers come from the identifier
+
+- **WHEN** a nightly's version is `0.2.0-nightly.20260829`
+- **THEN** Android's `versionCode` is `20260829` and iOS's `CFBundleVersion` is `2026.08.29`
 
 ### Requirement: Release-bookkeeping commits are not product work
 
@@ -150,3 +194,190 @@ Consequently, any consumer that needs a published version — including Nix buil
 
 - **WHEN** the nightly planner is run on a later date against the same commit that a previous nightly was published from
 - **THEN** the version it computes differs in its date stamp from the published one, and the published version is obtainable only from the tag
+
+### Requirement: A channel's release is built and tested under its own flavor
+
+Every release on every channel SHALL be a fresh build under that channel's flavor; a promotion SHALL rebuild under the stable flavor rather than relabel the preview build. The release test suite SHALL run under the same flavor the build enables, so the compiled combination that ships is the one that was tested. A shipped flavor MAY gate behaviour at compile time; what distinguishes channels is for each channel's own build to carry.
+
+#### Scenario: Promotion rebuilds
+
+- **WHEN** `v0.2.x` is promoted from `0.2.0-pre.7` to `0.2.0`
+- **THEN** the stable artifacts come from a build under the stable flavor, after the release suite has run under that flavor, and no preview artifact is relabelled
+
+#### Scenario: The suite runs under the shipped flavor
+
+- **WHEN** the nightly release suite gates the nightly builds
+- **THEN** it ran with the nightly flavor enabled on every crate that declares one, and a nightly-only code path is exercised by it
+
+#### Scenario: A pull request is tested under its branch's channel
+
+- **WHEN** a pull request targets `main`, whose manifest declares a nightly version
+- **THEN** its test suite runs with the nightly flavor enabled; a pull request against a series branch runs with that branch's channel flavor
+
+#### Scenario: Gates form a staircase
+
+- **WHEN** an item is gated to the preview flavor and another to the nightly flavor
+- **THEN** a nightly build compiles both, a preview build compiles the preview-gated item alone, and a stable build compiles neither
+
+### Requirement: A build enables exactly one shipped flavor
+
+A build SHALL enable exactly one shipped flavor, and a crate that gates on flavors SHALL refuse to compile with two shipped flavors enabled, since Cargo features are additive and flavors are not. The development flavor is not a channel: it MAY be enabled beside a shipped flavor by test and development builds, SHALL only add to a channel's behaviour and never override a channel gate, and SHALL NOT reach a released artifact.
+
+#### Scenario: Two flavors refused
+
+- **WHEN** feature unification would enable both `preview` and `stable` on one crate
+- **THEN** the crate fails to compile, naming the conflict
+
+#### Scenario: The wrong flavor for the tree
+
+- **WHEN** `main` declares `0.3.0-nightly` and a build enables `stable` alone
+- **THEN** the build is refused, naming `stable` and the nightly channel the manifest declares
+
+#### Scenario: Development beside a shipped flavor
+
+- **WHEN** `main` declares `0.3.0-nightly` and a workstation build enables `development` and `stable`
+- **THEN** the build compiles stable's baseline with the development additions, and nothing treats it as a release
+
+#### Scenario: A release build without a shipped flavor
+
+- **WHEN** a release build enables no shipped flavor
+- **THEN** the build is refused, naming the flavors it accepts
+
+#### Scenario: A test build without a shipped flavor
+
+- **WHEN** `cargo test` or a dev server compiles the app with no shipped flavor enabled
+- **THEN** the compile succeeds on the ungated baseline, since it produces no release build
+
+### Requirement: Every workspace crate is named in the group file
+
+Every workspace member outside `tooling/` SHALL be named in `tooling/release-groups.toml` as a versioned member of exactly one group or an unversioned internal of exactly one group. Members under `tooling/` build the repository, not the product, and SHALL NOT be named. Each group SHALL name an anchor whose `[package].version` is the group's version. A planner SHALL refuse to run while any member outside `tooling/` is unnamed, any member is named twice, or any member under `tooling/` is named.
+
+#### Scenario: Unnamed crate
+
+- **WHEN** `crates/importer` is a workspace member and the file does not name it
+- **THEN** the planner refuses to run and names the crate
+
+#### Scenario: Crate in two groups
+
+- **WHEN** one crate is named by two groups
+- **THEN** the planner refuses to run and names both groups
+
+#### Scenario: Tooling crates are out of scope
+
+- **WHEN** `tooling/xtask` and `tooling/gh-workflow` are workspace members and the file names neither
+- **THEN** the planner runs; and if the file did name one, it would refuse and name the crate
+
+#### Scenario: New crate joins the workspace
+
+- **WHEN** a crate such as `crates/transload` becomes a workspace member
+- **THEN** every planner run refuses until the file names it
+
+### Requirement: A dry run decides as a real run and mints nothing
+
+A dry run SHALL reach the decision a real run would reach on the same tree, tags, and date, SHALL create no ref, and SHALL report the tag and version it would have minted. Asked to build, it SHALL build the day's version whatever it decided. A run that does not build SHALL only be a dry run, since a tag with no artifacts behind it must not be minted. A dry run SHALL happen only by dispatch, never on a schedule.
+
+#### Scenario: A dry run reports the would-be tag
+
+- **WHEN** the nightly planner runs dry on a day with product work since the latest nightly
+- **THEN** it reports `v{target}-nightly.{date}` as the tag it would mint, marks it as not minted, and no ref is created
+
+#### Scenario: A dry run builds when asked, whatever the decision
+
+- **WHEN** the nightly planner runs dry with building asked for, and no product work landed since the latest nightly
+- **THEN** it reports that a scheduled run would skip, and the day's version is built all the same
+
+#### Scenario: No-build without dry-run is refused
+
+- **WHEN** a planner is asked not to build without being asked for a dry run
+- **THEN** it refuses before reading the tree, and nothing is decided, minted, or built
+
+#### Scenario: A nightly dispatch is always dry
+
+- **WHEN** the nightly workflow is dispatched by hand
+- **THEN** the planner runs dry; only the schedule publishes a nightly
+
+#### Scenario: A dispatch defaults to dry
+
+- **WHEN** the preview, stable, release-plan, or release-index workflow is dispatched without choosing otherwise
+- **THEN** the run is a dry run, and a real run has to be asked for explicitly
+
+### Requirement: A dry-run transition reports its refs and renders its writes
+
+A release-cycle transition run dry SHALL name the series branch, the tag, and each pull request it would open (head, title, body), SHALL render the version writes it would commit and the release notes for the would-be tag as artifacts of the run, and SHALL create no branch, pull request, or tag, leaving the working tree unchanged.
+
+#### Scenario: A dry cut
+
+- **WHEN** `cut` runs dry from `main` at `0.1.0-nightly` with a feature landed since the last stable
+- **THEN** it names `v0.2.x`, `v0.2.0-pre.1`, and the series and `main` pull requests, renders both version-write diffs and the notes, and the remote gains no branch, pull request, or tag
+
+#### Scenario: The tree is clean afterwards
+
+- **WHEN** a dry transition finishes
+- **THEN** no manifest or lockfile in the working tree differs from the checked-out commit
+
+### Requirement: Planners discover tags from the remote
+
+A planner SHALL read the published tags from the repository's remote rather than from the local tag list, so a run from a workstation and a run in the pipeline see one set of tags and decide alike. A planner that cannot reach the remote SHALL fail rather than decide on local tags.
+
+#### Scenario: Stale local tags do not vote
+
+- **WHEN** a workstation holds nightly tags the remote has deleted and the planner runs dry
+- **THEN** it decides from the remote's tags and names the same latest nightly the pipeline would
+
+#### Scenario: An unreachable remote
+
+- **WHEN** the remote cannot be reached
+- **THEN** the planner fails naming the remote, and no decision is reported
+
+### Requirement: A bump infers the transition from the series
+
+A bump SHALL be asked for a channel or a library group, never a transition. For a channel it SHALL read the open series from the remote and infer: a preview bump advances a series in preview, cuts one when the newest is stable, and refuses a cut while a preview is open; a stable bump promotes a preview, patches a stable series with new cherry-picks, and refuses otherwise. A declared version no tag names is a withdrawal in flight, and SHALL be refused. Only a cut SHALL size from history.
+
+#### Scenario: A preview bump on an open preview
+
+- **WHEN** the newest series declares `0.2.0-pre.3`, tagged, counted work landed since that tag, and a preview bump runs
+- **THEN** it advances the series to `0.2.0-pre.4`
+
+#### Scenario: A preview bump after a stable
+
+- **WHEN** the newest series is stable and a preview bump runs
+- **THEN** it cuts the next series from `main`, sized from `main`'s history since the last stable
+
+#### Scenario: A stable bump on a preview
+
+- **WHEN** the newest series declares a preview and a stable bump runs
+- **THEN** it promotes the series in place
+
+#### Scenario: A stable bump with nothing to patch
+
+- **WHEN** the newest series is stable, tagged, and carries no counted cherry-pick since its tag
+- **THEN** the bump refuses, naming the series and its tag
+
+#### Scenario: A withdrawal in flight
+
+- **WHEN** a series' group file declares a version no tag names, because a withdrawal's revert has not landed
+- **THEN** the bump refuses, naming the version and the open revert, and moves nothing
+
+#### Scenario: A cut's write without its series
+
+- **WHEN** `main` declares a nightly target two minors above the newest series, because a withdrawn cut's revert has not landed
+- **THEN** every bump, nightly included, refuses until the revert lands
+
+#### Scenario: A library bump
+
+- **WHEN** a bump is asked for a library group with a floor
+- **THEN** it mints the group's tag on `main`, raises the bump to the floor, and opens no series
+
+### Requirement: Bookkeeping alone moves no tag
+
+A bump SHALL move or create a channel's tag only when counted product work landed since the channel's previous tag: on `main` since the last nightly, on a series since its last tag. A bump that finds only bookkeeping, or nothing, SHALL refuse or skip, naming the tag it would have moved, and SHALL create no ref. A promotion is exempt: it declares a candidate final and moves no work. The refusal is the bump's alone; nothing downstream is told.
+
+#### Scenario: A preview bump with nothing new
+
+- **WHEN** the newest series declares `0.2.0-pre.3`, tagged, and only bookkeeping commits landed since that tag
+- **THEN** the bump refuses naming `v0.2.0-pre.3`, and no ref is created
+
+#### Scenario: A promotion needs no new work
+
+- **WHEN** the newest series declares a preview, tagged, with nothing landed since, and a stable bump runs
+- **THEN** it promotes the series

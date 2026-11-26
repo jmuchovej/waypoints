@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The membership ceremony driven through real Vessel APIs: an owner
 //! creates a Territory, invites a user, the user joins, the owner approves,
 //! and the new member reads history — no hand-built ACL records. Then

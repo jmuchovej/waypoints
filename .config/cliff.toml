@@ -1,4 +1,6 @@
 #:schema https://www.schemastore.org/git-cliff.json
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [changelog]
   header = """
@@ -69,6 +71,12 @@
   require_conventional     = true
   protect_breaking_commits = true
   commit_parsers           = [
+    # Merge commits are not authored content: a feature branch merging `main`
+    # back into itself leaves a bare "Merge branch …" in the history, which
+    # `require_conventional` would otherwise refuse. The body template already
+    # excludes them (`merge_commit = false`); skip them here too, before the
+    # conventional check, so a cut's notes render over real history.
+    { field = "merge_commit", pattern = "true", skip = true },
     { message = "^feat", group = "<!-- 0 -->⛰️ Features" },
     { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
     { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
@@ -78,6 +86,7 @@
     { message = "^style", group = "<!-- 5 -->🎨 Styling" },
     { message = "^test", group = "<!-- 6 -->🧪 Testing" },
     { message = "^chore\\(release\\):", skip = true },
+    { message = "^summary:", skip = true },
     { message = "^chore: release", skip = true },
     { message = "^chore\\(deps.*\\)", skip = true },
     { message = "^chore\\(pr\\)", skip = true },

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A trap keeps its message. The target has no standard error, so a panic's
 //! text would be lost; the hook stores it, and `wp_panic` hands it back.
 

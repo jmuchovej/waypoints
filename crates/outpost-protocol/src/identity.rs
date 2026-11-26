@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Identity: a keypair, not an account.
 //!
 //! Everything a user has derives from a BIP-39 mnemonic through SLIP-10

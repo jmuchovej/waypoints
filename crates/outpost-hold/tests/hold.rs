@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Real-engine tests for the per-Territory hold. Everything runs
 //! against a live bedrock database — no SQL-string assertions, which would
 //! be circular (they never prove valid turso SQL). The end-to-end append →

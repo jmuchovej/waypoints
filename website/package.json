@@ -20,6 +20,7 @@
     "@nuxt/kit": "catalog:website",
     "@nuxt/scripts": "catalog:website",
     "@nuxt/ui": "catalog:website",
+    "@nuxtjs/color-mode": "catalog:website",
     "@nuxtjs/i18n": "catalog:website",
     "@nuxtjs/mcp-toolkit": "catalog:website",
     "@nuxtjs/mdc": "catalog:website",

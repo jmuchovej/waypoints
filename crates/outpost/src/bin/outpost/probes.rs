@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The probe routes: `/healthz` and `/readyz` over plain HTTP, on TCP at the
 //! Station's own port number. A UDP/QUIC server offers an orchestrator
 //! nothing it can probe, so this listener is what a supervisor sees. It is

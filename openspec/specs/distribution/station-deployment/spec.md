@@ -41,7 +41,7 @@ The image SHALL run the Station as a non-root user and SHALL work with a read-on
 
 ### Requirement: Reference manifests describe a one-Station Fleet that survives pod replacement
 
-The repository SHALL carry reference Kubernetes manifests for a one-Station Fleet under `deploy/kubernetes/`. The manifests SHALL give the Station a single-writer block persistent volume at `/data`, SHALL supply its identity key and fleet key from Secrets rather than from the volume or the image, SHALL declare the Station's port for both UDP and TCP, SHALL route the UDP side through a Service, SHALL wire the pod's startup, readiness, and liveness probes to the TCP side of that same port, and SHALL grant a termination grace period long enough for the Station's orderly close. The manifests SHALL run the container as a non-root user with a read-only root filesystem.
+The repository SHALL carry reference Kubernetes manifests for a one-Station Fleet under `distribution/kubernetes/`. The manifests SHALL give the Station a single-writer block persistent volume at `/data`, SHALL supply its identity key and fleet key from Secrets, not from the volume or the image, SHALL declare the Station's port for both UDP and TCP, SHALL route the UDP side through a Service, SHALL wire the pod's startup, readiness, and liveness probes to the TCP side of that same port, and SHALL grant a termination grace period long enough for the Station's orderly close. The manifests SHALL run the container as a non-root user with a read-only root filesystem.
 
 #### Scenario: Pod replacement preserves identity and data
 
@@ -67,6 +67,11 @@ The repository SHALL carry reference Kubernetes manifests for a one-Station Flee
 
 - **WHEN** the pod is terminated by the orchestrator while a Vessel holds a live subscription
 - **THEN** the Vessel observes an orderly session close, and the container exits within the grace period without being killed
+
+#### Scenario: The overlay finds the base
+
+- **WHEN** the kind overlay under `distribution/kubernetes/kind/` is rendered with kustomize
+- **THEN** it resolves the base manifests from `distribution/kubernetes/base/` by relative path and renders without error
 
 ### Requirement: The advertised address is the commodore's to supply
 

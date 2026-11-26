@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The module backend: the compiled plugin under `wasmi`, instantiated with
 //! an empty linker, driven through the real exports.
 

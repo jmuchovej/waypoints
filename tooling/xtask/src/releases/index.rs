@@ -1,37 +1,33 @@
-//! The release index: one committed file per channel under `nix/releases/`,
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+//! The release index: one committed file per channel under `distribution/nix/releases/`,
 //! recording the tag that channel last published and what a Nix build needs
 //! to fetch exactly that tree. See `distribution/release-index`.
 //!
-//! `cargo xtask release-index --tag v…` records a tag that already exists.
+//! `cargo xtask release record --tag v…` records a tag that already exists.
 //! It classifies the channel from the version, checks that the tagged tree's
-//! manifest names the same channel, prefetches the tree's hash, and commits the
-//! channel's file to `main` through the Contents API — the cross-branch
-//! write a cut already performs. The write is a blind replace of one file,
-//! so it needs no checkout of `main` and no committer identity. Nothing is
-//! built: the tree carries its own recipe and dependency pins.
+//! manifest names the same channel, prefetches the tree's hash, and writes the
+//! channel's file to the working tree, for a pull request to land on `main`.
+//! The write is a blind replace of one file. Nothing is built: the tree carries
+//! its own recipe and dependency pins.
 //!
 //! An entry lands on `main` strictly after the tag it describes, so to the
 //! planners it looks like work that landed. [`product_commits`] is the one
-//! `git log` both planners read, with that bookkeeping excluded.
+//! history walk both planners read, with that bookkeeping excluded: the group
+//! file names the index directory as bookkeeping, and [`history`] drops it.
 
 use crate::{
     Channel,
-    releases::version::{APP_MANIFEST, Version},
+    constants::{APP_MANIFEST, INDEX_DIR, RELEASE_INDEX_HEAD_PREFIX},
+    releases::{history, landing::Landing, version::Version},
     tools::{git, github, nix},
 };
 use anyhow::{Context as _, Result, bail};
 
-/// Where the index lives, relative to the repository root.
-pub const INDEX_DIR: &str = "nix/releases";
-
-/// The pathspec that drops index-only commits. A list of exclusions alone
-/// matches nothing in git; the positive `.` is what gives it anything to
-/// exclude from.
-const PRODUCT_PATHSPEC: [&str; 3] = ["--", ".", ":(exclude)nix/releases/"];
-
 /// One channel's entry, serialized field-for-field as its file.
 ///
-/// The field order is the file's key order, and `nix/releases/default.nix`
+/// The field order is the file's key order, and `distribution/nix/releases/default.nix`
 /// requires exactly these keys — there is one writer and one reader, and a
 /// change to the shape changes both.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
@@ -54,9 +50,22 @@ impl Entry {
 
     /// The commit that records this entry on `main`.
     pub fn commit_message(&self, channel: Channel) -> String {
-        format!(
-            "chore(release): record {tag} as the published {channel}",
-            tag = self.tag
+        crate::templates::must(
+            "commit.index",
+            tera::context! {
+                tag => &self.tag,
+                channel => &channel.to_string(),
+            },
+        )
+    }
+
+    /// The pull request that lands this entry. One branch per channel, so two
+    /// channels publishing at once never overwrite each other's write.
+    pub fn landing(&self, channel: Channel) -> Landing {
+        Landing::new(
+            format!("{RELEASE_INDEX_HEAD_PREFIX}{channel}"),
+            self.commit_message(channel),
+            &[Self::path(channel)],
         )
     }
 }
@@ -80,7 +89,7 @@ pub fn classify(tag: &str, version: &Version, manifest: &str) -> Result<Channel>
 }
 
 /// The `[package] version` of an app manifest's text.
-fn manifest_version(manifest: &str) -> Result<Version> {
+pub fn manifest_version(manifest: &str) -> Result<Version> {
     let table: toml::Table = manifest
         .parse()
         .with_context(|| format!("{APP_MANIFEST} is not TOML"))?;
@@ -92,11 +101,12 @@ fn manifest_version(manifest: &str) -> Result<Version> {
     Version::parse(version).with_context(|| format!("{APP_MANIFEST} version is not semver"))
 }
 
-/// The commit `tag` points at, and the app manifest in that tree.
-pub fn tagged_manifest(tag: &str) -> Result<(String, String)> {
-    let rev = git::run(&["rev-parse", &format!("{tag}^{{commit}}")])?;
+/// The commit `reference` resolves to — a tag, or for a tag that does not
+/// exist yet the commit it would point at — and the app manifest in that tree.
+pub fn manifest_at(reference: &str) -> Result<(String, String)> {
+    let rev = git::run(&["rev-parse", &format!("{reference}^{{commit}}")])?;
     let manifest = git::run(&["show", &format!("{rev}:{APP_MANIFEST}")])
-        .with_context(|| format!("{tag} carries no {APP_MANIFEST}"))?;
+        .with_context(|| format!("{reference} carries no {APP_MANIFEST}"))?;
     Ok((rev, manifest))
 }
 
@@ -120,28 +130,27 @@ pub fn source_hash(rev: &str) -> Result<String> {
         .with_context(|| format!("`nix flake prefetch` reported no hash for {rev}"))
 }
 
-/// Conventional-commit subjects in `range`, oldest first, skipping commits
-/// that touch only the release index.
+/// The subjects of the commits in `range` that count for any group, oldest
+/// first: [`history::walk`] over `main`'s first-parent history, with the
+/// bookkeeping the group file names left out.
 ///
 /// Filtered by path rather than by message: whether a commit is bookkeeping
 /// is a question about what it touched, and a path answer survives any
 /// change to how the index commit is worded.
 pub fn product_commits(range: &str) -> Result<Vec<String>> {
-    Ok(git::run(&log_args(range))?
-        .lines()
-        .map(str::to_owned)
-        .collect())
+    let metadata = crate::workspace::load()?;
+    let groups = crate::release_groups::load(&metadata)?;
+    let ignored = history::ignored_revisions(metadata.workspace_root.as_std_path(), &groups)?;
+    Ok(history::product_subjects(&history::walk(
+        range, &groups, &ignored,
+    )?))
 }
 
-fn log_args(range: &str) -> [&str; 7] {
-    let [sep, all, exclude] = PRODUCT_PATHSPEC;
-    ["log", "--format=%s", "--reverse", range, sep, all, exclude]
-}
-
-/// A throwaway git repository, for proving what the planners' `git log` sees.
+/// A throwaway git repository, for proving what the planners' walk sees.
 #[cfg(test)]
 pub(crate) mod fixture {
-    use super::{INDEX_DIR, log_args};
+    use super::{INDEX_DIR, history};
+    use crate::{constants::BLAME_IGNORE_FILE, release_groups::GroupFile};
     use std::{
         fs,
         path::PathBuf,
@@ -149,11 +158,113 @@ pub(crate) mod fixture {
         sync::atomic::{AtomicUsize, Ordering},
     };
 
+    /// Groups for a fixture tree: three libraries, and the app owning `src/`
+    /// beside its crates. Parsed rather than loaded, so nothing has to exist
+    /// on disk.
+    pub(crate) const GROUPS: &str = r#"
+        [bookkeeping]
+        paths = [ "distribution/nix/releases/" ]
+        bot-subjects = [ "chore(release):" ]
+
+        [group.bedrock]
+        version = "0.1.0"
+        members = [ "crates/bedrock", "crates/bedrock-core" ]
+        tag = "bedrock-v{version}"
+        fixtures = "covenant/fixtures/bedrock/"
+
+        [group.outpost]
+        version = "0.1.0"
+        members = [ "crates/outpost" ]
+        tag = "outpost-v{version}"
+        fixtures = "covenant/fixtures/outpost/"
+
+        [group.domain]
+        version = "0.1.0"
+        members = [ "crates/domain" ]
+        tag = "domain-v{version}"
+        fixtures = "covenant/fixtures/domain/"
+
+        [group.waypoints]
+        version = "0.1.0-nightly"
+        members = [ "src-tauri" ]
+        internals = [ "crates/store" ]
+        tag = "v{version}"
+        fixtures = "covenant/fixtures/waypoints/"
+        paths = [ "src/" ]
+    "#;
+
     pub(crate) struct Repo {
         dir: PathBuf,
     }
 
     impl Repo {
+        /// The commit `HEAD` names.
+        pub(crate) fn head(&self) -> String {
+            self.git(&["rev-parse", "HEAD"])
+        }
+
+        /// Starts `name` at `HEAD` and checks it out.
+        pub(crate) fn branch(&self, name: &str) {
+            self.git(&["checkout", "-q", "-b", name]);
+        }
+
+        /// Lands `branch` on `main` the way a pull request does: a merge
+        /// commit carrying `message`.
+        pub(crate) fn merge(&self, branch: &str, message: &str) {
+            self.git(&["checkout", "-q", "main"]);
+            self.git(&["merge", "-q", "--no-ff", "-m", message, branch]);
+        }
+
+        /// Lists `sha` as a treewide pass.
+        pub(crate) fn ignore(&self, sha: &str) {
+            let file = self.dir.join(BLAME_IGNORE_FILE);
+            let mut text = fs::read_to_string(&file).unwrap_or_default();
+            text.push_str(sha);
+            text.push('\n');
+            fs::write(&file, text).unwrap();
+        }
+
+        /// A commit of `path` under `message`, which may carry a body and
+        /// trailers.
+        pub(crate) fn commit_with(&self, path: &str, message: &str) {
+            self.commit_as("xtask", path, message);
+        }
+
+        /// A commit of `path` under `message`, authored by `author`.
+        pub(crate) fn commit_as(&self, author: &str, path: &str, message: &str) {
+            let file = self.dir.join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(&file, message).unwrap();
+            self.git(&["add", path]);
+            self.git(&[
+                "-c",
+                &format!("user.name={author}"),
+                "commit",
+                "-q",
+                "-m",
+                message,
+            ]);
+        }
+
+        /// What [`history::walk`] sees here for `range`, under [`GROUPS`].
+        pub(crate) fn walk(&self, range: &str) -> Vec<history::Commit> {
+            self.walk_under(range, GROUPS)
+        }
+
+        /// What [`history::walk`] sees here for `range`, under the group file
+        /// `toml`, with the revisions it and the blame file list left out.
+        pub(crate) fn walk_under(&self, range: &str, toml: &str) -> Vec<history::Commit> {
+            let groups = GroupFile::parse(toml).unwrap();
+            let ignored = history::ignored_revisions(&self.dir, &groups).unwrap();
+            let args = history::log_args(range);
+            let args: Vec<&str> = args.iter().map(String::as_str).collect();
+            let output = self.git(&args);
+            history::parse(&output)
+                .into_iter()
+                .map(|raw| history::attribute(raw, &groups, &ignored))
+                .collect()
+        }
+
         pub(crate) fn new() -> Self {
             // Unique per call: the runner reuses threads, so a thread id would
             // let two tests collide.
@@ -164,6 +275,7 @@ pub(crate) mod fixture {
                 n = NEXT.fetch_add(1, Ordering::Relaxed),
             ));
             fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join(BLAME_IGNORE_FILE), "").unwrap();
 
             let repo = Self { dir };
             repo.git(&["init", "-q", "-b", "main"]);
@@ -193,11 +305,34 @@ pub(crate) mod fixture {
             String::from_utf8(output.stdout).unwrap().trim().to_owned()
         }
 
-        fn commit(&self, path: &str, subject: &str) {
+        pub(crate) fn commit(&self, path: &str, subject: &str) {
             let file = self.dir.join(path);
             fs::create_dir_all(file.parent().unwrap()).unwrap();
             fs::write(&file, subject).unwrap();
             self.git(&["add", path]);
+            self.git(&["commit", "-q", "-m", subject]);
+        }
+
+        /// The repository's directory.
+        pub(crate) fn root(&self) -> &std::path::Path {
+            &self.dir
+        }
+
+        /// Writes `content` at `path`, uncommitted.
+        pub(crate) fn write(&self, path: &str, content: &str) {
+            let file = self.dir.join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(&file, content).unwrap();
+        }
+
+        /// The file at `path` as the working tree has it.
+        pub(crate) fn read(&self, path: &str) -> String {
+            fs::read_to_string(self.dir.join(path)).unwrap()
+        }
+
+        /// Commits every change in the working tree under `subject`.
+        pub(crate) fn commit_all(&self, subject: &str) {
+            self.git(&["add", "-A"]);
             self.git(&["commit", "-q", "-m", subject]);
         }
 
@@ -222,10 +357,7 @@ pub(crate) mod fixture {
 
         /// What [`super::product_commits`] would return here for `range`.
         pub(crate) fn product_commits(&self, range: &str) -> Vec<String> {
-            self.git(&log_args(range))
-                .lines()
-                .map(str::to_owned)
-                .collect()
+            history::product_subjects(&self.walk(range))
         }
     }
 
@@ -249,14 +381,18 @@ mod tests {
 
     fn entry() -> Entry {
         Entry {
-            tag: "v0.2.0-nightly.7+2026.08.29".to_owned(),
+            tag: "v0.2.0-nightly.20260829".to_owned(),
             rev: "9f3c1a".to_owned(),
             hash: "sha256-source=".to_owned(),
         }
     }
 
     fn manifest(version: &str) -> String {
-        format!("[package]\nname = \"Waypoints\"\nversion = \"{version}\"\n")
+        indoc::formatdoc! { r#"
+            [package]
+            name = "Waypoints"
+            version = "{version}"
+        "# }
     }
 
     /// Each channel's tag is recorded under its own file when the manifest
@@ -264,10 +400,10 @@ mod tests {
     /// nowhere.
     #[test]
     fn a_tag_is_filed_by_the_channel_its_manifest_names() {
-        let nightly = v("0.2.0-nightly.7+2026.08.29");
+        let nightly = v("0.2.0-nightly.20260829");
         assert_eq!(
             classify(
-                "v0.2.0-nightly.7+2026.08.29",
+                "v0.2.0-nightly.20260829",
                 &nightly,
                 &manifest("0.2.0-nightly")
             )
@@ -297,13 +433,19 @@ mod tests {
 
     #[test]
     fn an_entry_renders_as_its_file() {
-        assert_eq!(Entry::path(Channel::Nightly), "nix/releases/nightly.json");
-        assert_eq!(Entry::path(Channel::Stable), "nix/releases/stable.json");
+        assert_eq!(
+            Entry::path(Channel::Nightly),
+            "distribution/nix/releases/nightly.json"
+        );
+        assert_eq!(
+            Entry::path(Channel::Stable),
+            "distribution/nix/releases/stable.json"
+        );
         assert_eq!(
             entry().render().unwrap(),
             indoc! {r#"
                 {
-                  "tag": "v0.2.0-nightly.7+2026.08.29",
+                  "tag": "v0.2.0-nightly.20260829",
                   "rev": "9f3c1a",
                   "hash": "sha256-source="
                 }
@@ -327,32 +469,18 @@ mod tests {
         }
     }
 
-    /// The exclusion and the directory the index lives in are stated
-    /// separately; this is what keeps them the same directory.
-    #[test]
-    fn the_pathspec_excludes_the_index_directory() {
-        let [sep, all, exclude] = PRODUCT_PATHSPEC;
-        assert_eq!(sep, "--");
-        assert_eq!(all, ".");
-        assert_eq!(exclude, format!(":(exclude){INDEX_DIR}/"));
-
-        let args = log_args("v0.1.0..HEAD");
-        assert_eq!(args[3], "v0.1.0..HEAD");
-        assert_eq!(&args[4..], &PRODUCT_PATHSPEC);
-    }
-
-    /// The whole reason the pathspec exists: a history of nothing but index
+    /// The whole reason the exclusion exists: a history of nothing but index
     /// commits reads as empty.
     #[test]
     fn a_history_of_only_index_commits_is_empty() {
         let repo = Repo::new();
         repo.product("feat: the nightly's work");
-        repo.tag("v0.2.0-nightly.1+2026.08.29");
-        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.tag("v0.2.0-nightly.20260829");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
         repo.index("stable", "v0.1.0");
 
         assert_eq!(
-            repo.product_commits("v0.2.0-nightly.1+2026.08.29..HEAD"),
+            repo.product_commits("v0.2.0-nightly.20260829..HEAD"),
             Vec::<String>::new()
         );
     }
@@ -366,7 +494,7 @@ mod tests {
         repo.tag("v0.1.0");
         repo.index("stable", "v0.1.0");
         repo.product("fix: a bug");
-        repo.index("nightly", "v0.2.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
         repo.product("feat: landmarks");
 
         assert_eq!(
@@ -375,12 +503,67 @@ mod tests {
         );
     }
 
+    /// An entry now lands as a merge commit over a branch commit. Neither may
+    /// read as work, or the quiet-repository skip never fires again.
+    #[test]
+    fn a_merged_index_pull_request_is_not_product_work() {
+        let repo = Repo::new();
+        repo.product("feat: the nightly's work");
+        repo.tag("v0.2.0-nightly.20260829");
+
+        repo.branch("botswain/release-index/nightly");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
+        repo.merge(
+            "botswain/release-index/nightly",
+            "feat(release): record v0.2.0-nightly.20260829 as the published nightly (#7)",
+        );
+
+        assert_eq!(
+            repo.product_commits("v0.2.0-nightly.20260829..HEAD"),
+            Vec::<String>::new()
+        );
+    }
+
+    /// Work that lands while the entry's pull request waits on its checks still
+    /// counts, and the entry still does not.
+    #[test]
+    fn work_landing_beside_a_merged_entry_still_counts() {
+        let repo = Repo::new();
+        repo.product("feat: the nightly's work");
+        repo.tag("v0.2.0-nightly.20260829");
+
+        repo.branch("botswain/release-index/nightly");
+        repo.index("nightly", "v0.2.0-nightly.20260829");
+        repo.git(&["checkout", "-q", "main"]);
+        repo.commit("crates/domain/src/other.rs", "fix: landed meanwhile");
+        repo.merge(
+            "botswain/release-index/nightly",
+            "feat(release): record v0.2.0-nightly.20260829 as the published nightly (#7)",
+        );
+
+        assert_eq!(
+            repo.product_commits("v0.2.0-nightly.20260829..HEAD"),
+            ["fix: landed meanwhile"]
+        );
+    }
+
+    /// One pull request per channel, so one channel's stalled entry cannot be
+    /// overwritten by another's.
+    #[test]
+    fn each_channel_lands_from_its_own_branch() {
+        let landing = entry().landing(Channel::Nightly);
+        assert_eq!(landing.head, "botswain/release-index/nightly");
+        assert_eq!(landing.paths, "distribution/nix/releases/nightly.json");
+        assert_eq!(landing.title, entry().commit_message(Channel::Nightly));
+        assert_ne!(landing.head, entry().landing(Channel::Stable).head,);
+    }
+
     /// Before the first tag the range is the whole history, and the
     /// exclusion applies there too.
     #[test]
     fn the_whole_history_is_filtered_the_same_way() {
         let repo = Repo::new();
-        repo.index("nightly", "v0.1.0-nightly.1+2026.08.29");
+        repo.index("nightly", "v0.1.0-nightly.20260829");
         repo.product("feat: first");
 
         assert_eq!(repo.product_commits("HEAD"), ["feat: first"]);

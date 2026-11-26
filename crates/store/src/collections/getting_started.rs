@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The getting-started collection (`mock` feature only): a Bundle under
 //! `getting-started/`, embedded at build time and ingested on first open.
 //!

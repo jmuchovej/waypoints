@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use cartograph::{EditorResult, MarkResult, WaypointsRuntime};
 use domain::{Chart, ChartID, Mark};
 use std::sync::Arc;

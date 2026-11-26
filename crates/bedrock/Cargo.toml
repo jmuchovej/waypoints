@@ -1,6 +1,11 @@
+# Must use TOML v1.0.0 because of nix's `builtins.fromTOML`
+#:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 [package]
   name               = "bedrock"
-  version            = "0.1.0"
+  version            = "0.1.1"
   edition.workspace  = true
   description        = """
 Bedrock — the database engine for Waypoints, built on Turso.
@@ -68,6 +73,13 @@ Bedrock — the database engine for Waypoints, built on Turso.
     "dep:turso",
     "dep:turso_core",
   ]
+
+  # The app's flavors, forwarded to every workspace dependency that declares
+  # them. Exactly one shipped flavor per build.
+  development = [ "bedrock-core/development", "bedrock-derive/development" ]
+  nightly     = [ "bedrock-core/nightly", "bedrock-derive/nightly" ]
+  preview     = [ "bedrock-core/preview", "bedrock-derive/preview" ]
+  stable      = [ "bedrock-core/stable", "bedrock-derive/stable" ]
 
 [lints]
   workspace = true

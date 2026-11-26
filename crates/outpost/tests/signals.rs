@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The Station under a supervisor: a termination signal ends it cleanly —
 //! connected Vessels see a close, not a timeout — and what it held comes
 //! back on restart: the Territories, the identity, and the orderer's

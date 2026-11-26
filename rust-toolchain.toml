@@ -1,8 +1,13 @@
 #:tombi toml-version = "v1.1.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [toolchain]
-  channel = "1.98.1"
-  targets = [
+  channel    = "1.98.1"
+  # `llvm-objcopy`, which swift-rs uses to re-export the Swift plugins' @_cdecl
+  # symbols that Xcode 27 internalizes; without it a release iOS build cannot link.
+  components = [ "llvm-tools" ]
+  targets    = [
     # macOS
     "aarch64-apple-darwin",
 

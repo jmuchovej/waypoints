@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Lazy singleton for the typst.ts WASM compiler, shared by every consumer
  * (math rendering, emergency-kit PDF export) so the app only ever

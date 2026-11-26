@@ -1,4 +1,6 @@
 #:tombi toml-version = "v1.0.0"
+# SPDX-FileCopyrightText: 2025 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 [workspace]
   resolver = "3"
@@ -14,7 +16,7 @@
     "crates/outpost-protocol",
     "crates/store",
     "crates/transload",
-    "crates/transload/fixtures/plain-markdown",
+    "crates/transload-fixtures/plain-markdown",
     "src-tauri",
     "tooling/gh-workflow",
     "tooling/xtask",
@@ -24,10 +26,10 @@
     edition       = "2024"
     description   = "Oh the places we'll go on this non-linear thought journey!"
     documentation = "https://docs.waypoints.so"
-    readme        = ".github/README.md"
+    readme        = "docs/README.md"
     homepage      = "https://waypoints.so"
     repository    = "https://dev.waypoints.so/"
-    license       = "Apache-2.0"
+    license       = "AGPL-3.0-or-later"
     publish       = false
 
   [workspace.dependencies]
@@ -59,6 +61,10 @@
     chrono             = { version = "0.4.45", default-features = false, features = [
       "serde"
     ] }
+    # `stacker` is left out: every grammar bounds its own recursion.
+    chumsky            = { version = "0.13", default-features = false, features = [
+      "std"
+    ] }
     clap               = { version = "4.6.1", features = [ "derive", "env" ] }
     derive_more        = "2.1.1"
     derive_setters     = "0.1.9"
@@ -72,6 +78,7 @@
       "pngio"
     ] }
     ico                = "0.5.0"
+    ignore             = "0.4"
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
@@ -95,7 +102,6 @@
     ] }
     pretty_assertions  = "1.4.1"
     proc-macro2        = "1"
-    pulldown-cmark     = { version = "0.13", default-features = false }
     quote              = "1"
     resvg              = "0.47.0"
     rqrr               = "0.10.1"
@@ -105,8 +111,6 @@
     rustls             = { version = "0.23", default-features = false, features = [
       "ring"
     ] }
-    # Bundles are UTF-8 by definition, so the `encoding` default is dead weight.
-    saphyr             = { version = "0.2.2", default-features = false }
     # JSON Schema Draft-07 from a plugin's configuration type (transload `sdk`).
     schemars           = "1"
     serde              = { version = "1.0.228", features = [ "derive" ] }
@@ -117,6 +121,7 @@
       "raw_value",
     ] }
     sha2               = "0.11"
+    spdx               = "0.13"
     strum              = { version = "0.28.0", features = [ "derive" ] }
     syn                = { version = "2", features = [ "full" ] }
     tempfile           = "3"

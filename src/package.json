@@ -87,6 +87,7 @@
     "eslint-plugin-storybook": "catalog:storybook",
     "happy-dom": "catalog:app",
     "nuxt-mcp-dev": "catalog:app",
+    "rollup-license-plugin": "catalog:app",
     "storybook": "catalog:storybook",
     "typescript": "catalog:app",
     "uuid": "catalog:app",

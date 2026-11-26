@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use serde::{Deserialize, Serialize};
 
 /// The identity of a compiled build — what it is, where it came from, and when.
@@ -22,4 +25,20 @@ pub struct BuildInfo {
     /// Git ref the build was produced from (branch name, or the tag on a tagged
     /// release build).
     pub branch: String,
+    /// The version of every library group the binary carries, by group.
+    pub groups: Vec<GroupVersion>,
+}
+
+/// One library group's version in a build: the tag it was built from — the
+/// pin on a series, the tag or a `git describe` past it on `main` — or, where
+/// the source carries no tags, the value injected into the build, else the
+/// bare version its manifest declares.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupVersion {
+    /// `bedrock`, `outpost`, `domain`, `transload`.
+    pub group: String,
+    /// `bedrock-v0.4.0`; `bedrock-v0.4.0-3-gabc1234` three commits past the
+    /// tag on `main`; `0.4.0` where only the manifest could say.
+    pub version: String,
 }

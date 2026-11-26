@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use super::{MarkID, Reading, ReferenceDisplayMode, RichText};
 use crate::{ChartID, Color, FeatureID, Icon};
 use derive_more::{IsVariant, Unwrap};

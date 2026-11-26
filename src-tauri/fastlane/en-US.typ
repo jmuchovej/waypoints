@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #import "/fastlane/lib/lib.typ": *
 
 // Typst cannot see its own filename, so the locale is declared rather than
@@ -65,17 +68,8 @@
     slug: "local-first",
     headline: [Your device, \ and nowhere else],
     sub: [No cloud account, no API key, no telemetry. The database is a file you own.],
-    body: {
-      v(1fr)
-      align(center, {
-        logo(width: 13.75em)
-        v(3em)
-        text(size: 2.125em, weight: 600)[Stored on this device]
-        v(1em)
-        text(size: 1.625em, fill: muted)[No account to create, nothing to sign in to]
-      })
-      v(1fr)
-    },
+    // `flows/library.yaml`'s capture: the library over the demo territory.
+    capture: "library",
   ),
   (
     slug: "charts",

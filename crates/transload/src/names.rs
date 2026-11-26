@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! What a mention's `[[…]]` holds: a Landmark's title, and for a block, an id
 //! prefix within the file it is written in.
 //!
@@ -201,10 +204,7 @@ impl Links for KeepLabels<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn id(n: u128) -> MarkID {
-        MarkID(uuid::Uuid::from_u128(n))
-    }
+    use domain::fixtures::mark_id as id;
 
     fn names(titles: &[(u128, &str)], files: &[(u128, &[u128])]) -> Names {
         Names::new(

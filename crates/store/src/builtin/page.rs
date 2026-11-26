@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Page built-in type - A container for other blocks.
 use super::tags_feature;
 use domain::{Chart, ChartID, Feature, Reference, icon_presets};

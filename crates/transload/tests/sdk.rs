@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! The SDK on the host: one test importer through the `importer!` macro,
 //! driven by the `Runtime` the exports wrap. The exports themselves exist
 //! only on wasm32; the fixture plugin's tests exercise them through a module.

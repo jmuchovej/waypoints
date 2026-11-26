@@ -1,4 +1,6 @@
 #:tombi toml-version = "v1.1.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Listing copy for every store, in one place. The app name is deliberately
 # absent: it is `productName` from the shipping flavor's Tauri config, so

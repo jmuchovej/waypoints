@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Hand-run audits against a *deployed* Station — a pod on kind, a
 //! container — where a Vessel has to come from somewhere and the app is not
 //! installed. Ignored by default; `OUTPOST_AUDIT_ADDR` names the Station as

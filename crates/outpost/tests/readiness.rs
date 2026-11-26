@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A Station with many stored Territories answers its probes *while* it
 //! loads them: `/healthz` 200 and `/readyz` 503 through the scan, then 200.
 //! The holds are real — homed over loopback by an in-process Station — so

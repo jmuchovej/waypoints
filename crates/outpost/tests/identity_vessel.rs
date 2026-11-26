@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! A Vessel opened from a mnemonic-derived identity authors and reads
 //! its own encrypted history — proving the identity layer plugs into the
 //! Vessel end to end, without hand-fed raw keys.

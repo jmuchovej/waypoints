@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GroupFile",
+  "description": "Which workspace crates version together, and what each group owns.",
+  "type": "object",
+  "properties": {
+    "bookkeeping": {
+      "$ref": "#/definitions/Bookkeeping"
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Group"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "bookkeeping",
+    "group"
+  ],
+  "definitions": {
+    "Bookkeeping": {
+      "description": "What is never product work, for any group or planner.",
+      "type": "object",
+      "properties": {
+        "paths": {
+          "description": "Commits touching only these paths count for nothing.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ignore-revs": {
+          "description": "Commits that count for nothing, by full id: a change whose paths\nmisattribute it, such as a break scoped to a crate that is gone,\ntouching a group by one doc line. Kept apart from\n[`BLAME_IGNORE_FILE`], which the walk also reads, so `git blame`\nstill credits the lines to it.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "bot-subjects": {
+          "description": "Subject prefixes reserved to the release bot.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "paths",
+        "bot-subjects"
+      ]
+    },
+    "Group": {
+      "description": "One versioned line of crates.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "description": "The group's version, which every member's `[package].version`\nprojects: bare for a library, with its channel suffix for the app.",
+          "type": "string"
+        },
+        "members": {
+          "description": "Crates carrying the group's version.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "internals": {
+          "description": "Crates the group owns and never versions.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "tag": {
+          "description": "The group's tag, with `{version}` standing in for its version.",
+          "type": "string"
+        },
+        "fixtures": {
+          "description": "The group's append-only corpus.",
+          "type": "string"
+        },
+        "paths": {
+          "description": "Directories the group owns beyond its crates and fixtures.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "members",
+        "tag",
+        "fixtures"
+      ]
+    }
+  }
+}

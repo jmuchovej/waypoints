@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 John Muchovej
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 use bedrock::Database;
 use bedrock_core::{Collection, ColumnType, StoredValue, ViewColumn, ViewScope, ViewSpec};
 use bedrock_derive::{Collection, Document, Scalar};

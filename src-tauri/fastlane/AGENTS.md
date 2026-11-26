@@ -17,10 +17,14 @@ they ship the app, not describe it.
 | `lib/palette.typ`     | colours and font families, all from typewind           |
 | `lib/logo.typ`        | the logo painter                                       |
 | `lib/parts.typ`       | chips, rows, callouts — every size in `em`             |
-| `lib/screen.typ`      | `brand-page`, `device`, `screen`                       |
+| `lib/screen.typ`      | `brand-page`, `slab`, `device`, `screen`               |
 | `lib/surfaces.typ`    | the store surfaces, and the screens × surfaces fan-out |
+| `lib/devices.typ`     | each frame's image, screen rect, radius and scale      |
 | `lib/sheet.typ`       | the `index.html` contact sheet and its CSS             |
 | `logo/{md,xs}.svg`    | the bare logo, quadrant ids painted at render time     |
+| `res/`                | device frames — in the tree, never in history          |
+| `flows/<screen>.yaml` | one Maestro flow per captured screen                   |
+| `captures/`           | generated — `xfastlane capture`'s PNGs, by hand only   |
 | `<locale>.typ`        | that locale's screens and fixed slots                  |
 | `<locale>.toml`       | listing copy, every store in one file                  |
 | `metadata/`           | generated — supply's tree, and deliver's `.txt`        |
@@ -78,8 +82,14 @@ the heights off.
 #import "/fastlane/lib/lib.typ": *
 #import "/fastlane/en-US.typ": screens
 #set page(width: 811.2pt, height: auto, margin: 0pt)  // 84% of 1080, less 2×3em
-#for (i, s) in screens.enumerate() { s.body; if i < screens.len() - 1 { pagebreak() } }
+#let drawn = screens.filter(s => "body" in s)  // a captured screen has no body
+#for (i, s) in drawn.enumerate() { s.body; if i < drawn.len() - 1 { pagebreak() } }
 ```
+
+A screen names either a `body`, drawn into a slab, or a `capture`, framed in
+its surface's device. `local-first` is the one captured screen so far; the
+other three stay drawn until the change that decides what each screen shows,
+and no listing ships before then, so the mixture is interim.
 
 ## Listing copy
 
@@ -166,11 +176,11 @@ On Linux, `prepare` fetches Apple's current Transporter build into
 and `publish ios` points fastlane at it. TestFlight uploads off macOS also need
 the `AppStoreInfo.plist` the iOS export writes beside the ipa.
 
-`publish` submits the one aab or ipa in a `release-stage` directory
-(`--from`, default `release/`), handing it to the Fastfile as
+`publish` submits the one aab or ipa in a `release distributables rename`
+directory (`--from`, default `release/`), handing it to the Fastfile as
 `WAYPOINTS_STORE_PACKAGE`; the lanes never read the build output. To submit a
-local build, stage it first: `cargo xtask release-stage --platform ios`, then
-`xfastlane publish ios <flavor>`. The iOS build stages its plist in the same
+local build, stage it first: `cargo xtask release distributables rename
+--platform ios`, then `xfastlane publish ios <flavor>`. The iOS build stages its plist in the same
 flat directory, beside the ipa, where fastlane looks for it.
 
 Inside the devenv shell on macOS, `DEVELOPER_DIR` points at a nix-store SDK
@@ -200,6 +210,132 @@ rendered without appearing on the sheet.
 Open `index-<locale>.html` to review a build: every asset linked and previewed
 on a chequerboard, with its store requirement beside it. It sits at the output
 root so its `<img src>` paths resolve against the same tree the stores read.
+
+## Capture
+
+Captured screens are minted by hand; nothing in CI calls it, and whether the
+PNGs are ever committed is undecided — `**/*.png` ignores them meanwhile.
+
+```bash
+xfastlane capture ios     [flavor] [locale] [--package Waypoints.app] [--device <udid>]
+xfastlane capture android [flavor] [locale] [--package app.apk]       [--device <serial>]
+```
+
+It writes the demo territory (`cargo xtask demo-territory`), installs a fresh
+build of the flavor, places the territory in the app's data directory before
+the app ever launches, then for each `flows/<screen>.yaml` opens the screen's
+link, runs the flow, and keeps `captures/<platform>/<locale>/<screen>.png`.
+`xfastlane build` frames them; a screen whose capture is missing fails the
+render by name.
+
+**The territory is a returning user's app-data directory**, written on the host
+by the app's own code: `settings.json` (the territory registry),
+`territories/<id>/waypoints.db`, and `sync/` holding a throwaway identity with
+no Station. The identity matters as much as the store — the app's routing gate
+sends anyone without one to onboarding. A release build seeds nothing; `xtask`
+builds `store` with `mock`, which is where the corpus comes from.
+
+| platform | data directory                                                  | written with     |
+| -------- | --------------------------------------------------------------- | ---------------- |
+| iOS      | `<simctl data container>/Library/Application Support/<bundle>/` | `cp` on the host |
+| Android  | `/data/data/<package>/`                                         | `adb root`, push |
+
+**A flow is one screen.** Its `env` names the screen's `LINK` (route and pose,
+no scheme) and `READY` (text only that screen over the placed territory
+renders); `capture` passes `APP_ID`. Three rules, each learned the hard way:
+
+- **`capture` opens the link, not the flow.** Maestro's `openLink` raises an
+  "Open in …?" sheet on iOS whose button cannot be told apart from the
+  webview's own "Open" buttons; `simctl openurl` and `adb am start` raise none.
+  It launches the app first and waits for the library: on iOS a link that
+  itself launches the app never reaches the frontend.
+- **Settle on `READY`, never on `waitForAnimationToEnd` alone.** The latter
+  returns on the webview before its first paint and captures a white screen.
+- **`READY` must exclude onboarding.** "Welcome to Waypoints" is both the
+  getting-started page's title and onboarding's headline. The library flow
+  waits on the territory's name, which heads the open navigation.
+
+**Devices.** iOS: the newest-runtime "iPhone 17 Pro" simulator. Android: an AVD
+named `pixel_10_pro` on a Google APIs image — a Play image refuses `adb root`,
+and a release apk's data directory is root-only. `avdmanager` has no Pixel 10
+Pro profile; the Pixel 9 Pro's has the same 1280×2856 panel:
+
+```bash
+devenv shell -P emulator -- avdmanager create avd -n pixel_10_pro \
+  -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_9_pro
+```
+
+**Traps.**
+
+- Tauri refuses a simulator build unless an installed runtime's version is at
+  least the Xcode SDK's; `capture` checks first and names the
+  `xcodebuild -downloadPlatform iOS` to run.
+- The iOS webview sometimes stays blank after the app is activated — Maestro's
+  `launchApp` reliably, a plain launch now and then — until something
+  repaints it, which a static page never does. `capture` launches with
+  `simctl` and, if the library does not show, flips the simulator's appearance
+  and back to force a repaint. On Android the same retry closes system
+  dialogs: a freshly booted emulator can raise "System UI isn't responding"
+  over the app.
+- Pushed files on Android need the data directory's SELinux context, MLS
+  categories included, or the app cannot read them; `restorecon` leaves a
+  file whose type is already right, so `capture` uses `chcon`.
+- The deep-link plugin writes `CFBundleURLTypes` and the manifest's intent
+  filter from its build script, which a cached build skips. An app built so
+  cannot be opened by its link. `capture` cleans the plugin before building
+  one itself, and refuses a given iOS app that declares no scheme, naming the
+  `cargo clean -p tauri-plugin-deep-link` that fixes it.
+- On the iOS 26.2 simulator, a release build's page sometimes crashes WebKit's
+  web-content process in JavaScriptCore (`JSRopeString::resolveToBuffer`,
+  SIGBUS) before its first paint, and every retry in that run stays blank.
+  A debug build has not done so. Rerun `capture`; the iPhone 17 Pro has no
+  device on the 27.x runtimes.
+- On Xcode 27, a release iOS build links only if swift-rs finds
+  `llvm-objcopy` in the Rust sysroot; `rust-toolchain.toml` carries
+  `llvm-tools` for it. Without it every Swift plugin symbol is undefined.
+
+## Device frames
+
+`res/` holds the frames the phone screenshots are composed into. They are in
+the tree and never in history: `**/*.png` ignores them, `res/.gitkeep` is the
+only tracked file, and whoever renders obtains the exports under their own
+plan.
+
+**Source.** Mockuuups Studio, straight-on template, one per device. The
+exports are licensed, not owned: the commercial licence (paid plan) permits
+editing them and incorporating them into marketing material, apps and online
+platforms with no attribution (§4.2, §4.3), and exports stay usable after the
+plan ends (§1.2, §6). It forbids redistributing a mockup standalone, modified
+or not (§5, §5.1) — which is what a committed PNG would be in any tree that
+could be published. The device makers' own rights in their hardware are
+separate from that licence and apply to any render from any vendor.
+`https://mockuuups.studio/license/`, last updated 2025-04-24.
+
+**Export.** Mockuuups fills the screen with opaque black, so export with a
+white screen background and key the white out afterwards. Keep the export
+under `res/exports/<device>.png` and run `res/alpha-key.nu` on it:
+
+```bash
+cd src-tauri/fastlane/res
+./alpha-key.nu exports/apple-iphone-17-pro.png   # writes ./apple-iphone-17-pro.png
+```
+
+It keys in two passes, because the screen edge is anti-aliased against white:
+a flood fill from the screen's centre finds the pure-white interior (never key
+by colour — the bezel highlights are also pure white), then a white-matte
+removal on a 3px ring around it turns the grey edge pixels back into bezel
+colour at partial alpha instead of leaving a pale halo. Across the boundary
+alpha should ramp ≈0.97, 0.50, 0.03, 0. The script prints the screen rect and
+corner radius, which are what `lib/devices.typ` records.
+
+| device                | export    | screen rect          | radius | vs. native     |
+| --------------------- | --------- | -------------------- | ------ | -------------- |
+| `apple-iphone-17-pro` | 1317×2716 | 1202×2619 at 58,49   | 222 px | 1206×2622 — 1× |
+| `google-pixel-10-pro` | 2781×5854 | 2519×5615 at 121,120 | 338 px | 1280×2856 — 2× |
+
+Composition layers the capture under the frame: clip the capture to the
+rounded screen rect, draw the frame over it, and the island or punch hole
+occludes the capture as the hardware does.
 
 ## Brand
 

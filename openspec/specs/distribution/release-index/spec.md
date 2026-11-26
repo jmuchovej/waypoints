@@ -1,6 +1,7 @@
 # distribution/release-index Specification
 
 ## Purpose
+
 Defines the committed record of what Waypoints most recently published on each release channel — the tag, the commit, and the hash needed to fetch that release's source — so that a build from `main` at any later time reconstructs a published release rather than whatever the current tree happens to contain.
 
 ## Requirements
@@ -34,14 +35,14 @@ Each channel's index entry SHALL record, for the most recent release published o
 - the commit the tag points at;
 - the source hash that pins the fetched content of that tag.
 
-The recorded tag SHALL be the sole source of the published version, including a nightly's build-metadata date stamp. An index entry SHALL NOT record a version separately from its tag, because two fields naming one value can disagree.
+The recorded tag SHALL be the sole source of the published version, including a nightly's date stamp. An index entry SHALL NOT record a version separately from its tag, because two fields naming one value can disagree.
 
 An entry SHALL NOT record dependency hashes. The tree it names carries its own, and is built with its own recipe.
 
 #### Scenario: Version comes from the recorded tag
 
-- **WHEN** an index entry records tag `v0.2.0-nightly.7+2026.08.29`
-- **THEN** the version attributed to that channel's release is `0.2.0-nightly.7+2026.08.29`, date stamp included, regardless of the date on which the build runs
+- **WHEN** an index entry records tag `v0.2.0-nightly.20260829`
+- **THEN** the version attributed to that channel's release is `0.2.0-nightly.20260829`, date stamp included, regardless of the date on which the build runs
 
 #### Scenario: Recorded hash pins the tag's source
 
@@ -105,3 +106,17 @@ Until a channel has published at least one release recorded in the index, that c
 
 - **WHEN** a channel's index entry is absent or unreadable
 - **THEN** no build is produced under that channel's identity by any other means
+
+### Requirement: A dry run renders the entry it would record
+
+A dry run SHALL render the index entry its tag would receive — the would-be tag, the commit it would point at, and that commit's source hash — as an artifact of the run, applying the same channel-agreement check as a real write, and SHALL write no index file and open no pull request.
+
+#### Scenario: Rendered, not recorded
+
+- **WHEN** a nightly dry run completes its publishing steps
+- **THEN** its artifacts hold the nightly entry as the real run would have committed it, and the index on `main` is unchanged
+
+#### Scenario: The channel check still applies
+
+- **WHEN** a dry run's would-be tag classifies as one channel and the commit's manifest as another
+- **THEN** the render fails naming both channels, as a real write would
