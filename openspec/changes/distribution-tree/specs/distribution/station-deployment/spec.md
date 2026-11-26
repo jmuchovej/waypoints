@@ -4,7 +4,7 @@
 
 ### Requirement: Reference manifests describe a one-Station Fleet that survives pod replacement
 
-The repository SHALL carry reference Kubernetes manifests for a one-Station Fleet under `distribution/kubernetes/`, the base manifests and the kind overlay that exercises them nested within it. The manifests SHALL give the Station a single-writer block persistent volume at `/data`, SHALL supply its identity key and fleet key from Secrets rather than from the volume or the image, SHALL declare the Station's port for both UDP and TCP, SHALL route the UDP side through a Service, SHALL wire the pod's startup, readiness, and liveness probes to the TCP side of that same port, and SHALL grant a termination grace period long enough for the Station's orderly close. The manifests SHALL run the container as a non-root user with a read-only root filesystem.
+The repository SHALL carry reference Kubernetes manifests for a one-Station Fleet under `distribution/kubernetes/`. The manifests SHALL give the Station a single-writer block persistent volume at `/data`, SHALL supply its identity key and fleet key from Secrets, not from the volume or the image, SHALL declare the Station's port for both UDP and TCP, SHALL route the UDP side through a Service, SHALL wire the pod's startup, readiness, and liveness probes to the TCP side of that same port, and SHALL grant a termination grace period long enough for the Station's orderly close. The manifests SHALL run the container as a non-root user with a read-only root filesystem.
 
 #### Scenario: Pod replacement preserves identity and data
 
