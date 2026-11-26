@@ -3,7 +3,7 @@
 
 [package]
   name               = "bedrock-core"
-  version            = "0.1.0"
+  version            = "0.1.1"
   edition.workspace  = true
   description        = """
 Bedrock's core schema vocabulary.

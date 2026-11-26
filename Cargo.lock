@@ -10,7 +10,7 @@ checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
 name = "Waypoints"
-version = "0.1.0-nightly"
+version = "0.2.0-nightly"
 dependencies = [
  "async-trait",
  "cartograph",
@@ -793,7 +793,7 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bedrock"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bedrock-core",
  "bedrock-derive",
@@ -814,7 +814,7 @@ dependencies = [
 
 [[package]]
 name = "bedrock-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "indexmap 2.14.2",
@@ -826,7 +826,7 @@ dependencies = [
 
 [[package]]
 name = "bedrock-derive"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -1396,7 +1396,7 @@ dependencies = [
 
 [[package]]
 name = "cartograph"
-version = "0.1.0-nightly"
+version = "0.2.0-nightly"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2622,7 +2622,7 @@ dependencies = [
 
 [[package]]
 name = "domain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bedrock",
  "chrono",
@@ -7707,7 +7707,7 @@ dependencies = [
 
 [[package]]
 name = "outpost"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -7732,7 +7732,7 @@ dependencies = [
 
 [[package]]
 name = "outpost-fabric"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "ed25519-dalek 3.0.0-rc.0",
@@ -7748,7 +7748,7 @@ dependencies = [
 
 [[package]]
 name = "outpost-hold"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bedrock",
  "blake3",
@@ -7763,7 +7763,7 @@ dependencies = [
 
 [[package]]
 name = "outpost-protocol"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bip39",
  "blake3",
@@ -12199,7 +12199,7 @@ dependencies = [
 
 [[package]]
 name = "transload"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bedrock",
  "chrono",

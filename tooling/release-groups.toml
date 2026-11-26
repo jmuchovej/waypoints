@@ -33,14 +33,14 @@
 
 # the database backbone of Waypoints.
 [group.bedrock]
-  version  = "0.1.0"
+  version  = "0.1.1"
   members  = [ "crates/bedrock", "crates/bedrock-core", "crates/bedrock-derive" ]
   tag      = "bedrock-v{version}"
   fixtures = "covenant/fixtures/bedrock/"
 
 # the sync layer of Waypoints: protocol, transport, and record storage.
 [group.outpost]
-  version  = "0.1.0"
+  version  = "0.2.0"
   members  = [
     "crates/outpost",
     "crates/outpost-fabric",
@@ -52,21 +52,21 @@
 
 # the core datatypes of Waypoints and the foundation of the data covenant.
 [group.domain]
-  version  = "0.1.0"
+  version  = "0.1.1"
   members  = [ "crates/domain" ]
   tag      = "domain-v{version}"
   fixtures = "covenant/fixtures/domain/"
 
 # the Bundle format: export to legible markdown, re-ingest without loss.
 [group.transload]
-  version  = "0.1.0"
+  version  = "0.1.1"
   members  = [ "crates/transload" ]
   tag      = "transload-v{version}"
   fixtures = "covenant/fixtures/transload/"
 
 [group.waypoints]
   # the app version must carry the channel along with the version
-  version   = "0.1.0-nightly"
+  version   = "0.2.0-nightly"
   members   = [
     # the app's backend
     "src-tauri",
