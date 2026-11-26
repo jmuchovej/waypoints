@@ -17,9 +17,11 @@
   name = "xtask"
 
 [dependencies]
-  cartograph       = { workspace = true, features = [ "development" ] }
-  domain.workspace = true
-  next_version     = "0.2"
+  cartograph          = { workspace = true, features = [ "development" ] }
+  domain.workspace    = true
+  next_version        = "0.2"
+  store.workspace     = true
+  transload.workspace = true
 
   anyhow.workspace               = true
   async-trait.workspace          = true
@@ -67,6 +69,12 @@
     ]
   }
   opendal-http-transport-reqwest = { version = "0.59.5", default-features = false }
+  regex                          = "1.13.1"
+  reqwest                        = {
+    version          = "0.13.5",
+    default-features = false,
+    features         = [ "rustls-no-provider" ]
+  }
   rustls.workspace               = true
   schemars                       = "1.2.2"
   secretspec                     = { version = "0.21.1", default-features = false }

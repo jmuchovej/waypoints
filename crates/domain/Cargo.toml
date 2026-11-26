@@ -19,6 +19,7 @@
   bedrock.workspace = true
 
   chrono.workspace            = true
+  chumsky                     = { workspace = true, optional = true }
   derive_more                 = { workspace = true, features = [
     "as_ref",
     "debug",
@@ -29,7 +30,6 @@
     "unwrap",
   ] }
   indexmap.workspace          = true
-  pulldown-cmark              = { workspace = true, optional = true }
   rand.workspace              = true
   serde.workspace             = true
   serde_json.workspace        = true
@@ -42,17 +42,18 @@
   validator.workspace         = true
 
 [features]
-  default     = []
-  # The app's flavors, forwarded to every workspace dependency that declares
-  # them. Exactly one shipped flavor per build.
+  default = []
+
   development = [ "bedrock/development" ]
   nightly     = [ "bedrock/nightly" ]
   preview     = [ "bedrock/preview" ]
   stable      = [ "bedrock/stable" ]
-  # The markdown dialect `Content` and `TextMarkKind` project into: one module,
-  # both directions. Only `transload` needs it, so every other dependent pays
-  # neither the module nor `pulldown-cmark`.
-  syntax      = [ "dep:pulldown-cmark" ]
+
+  # terse test builders. only enable from a dependent's `[dev-dependencies]`.
+  fixtures = []
+  # parsing/emitting for `Content` and `TextMarkKind`. kept as a feature so
+  # dependents don't need to pay for chumsky/etc.
+  syntax   = [ "dep:chumsky" ]
 
 [lints]
   workspace = true

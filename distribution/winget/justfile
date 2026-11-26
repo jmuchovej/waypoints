@@ -1,0 +1,25 @@
+# winget: validate the rendered manifest sets under target/dist/winget/.
+# Render first (`cargo xtask dist render winget --flavor <flavor>`).
+
+set script-interpreter := ["bash", "-euo", "pipefail"]
+
+[private]
+default:
+    @just --list
+
+[doc("Runs `winget validate` on each rendered manifest set. Reports skipped where winget is not installed.")]
+[script]
+check:
+    if ! command -v winget >/dev/null; then
+      echo "skipped: winget is not installed (a Windows host validates the manifests)"
+      exit 0
+    fi
+    shopt -s nullglob
+    renders=(../../target/dist/winget/*/)
+    if [ "${#renders[@]}" -eq 0 ]; then
+      echo "no rendered manifests under target/dist/winget/; render them first" >&2
+      exit 1
+    fi
+    for dir in "${renders[@]}"; do
+      winget validate --manifest "$dir"
+    done

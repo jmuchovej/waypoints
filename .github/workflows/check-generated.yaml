@@ -34,8 +34,8 @@ on:
       - tooling/schemas/release-groups.schema.json
       - .config/mise/conf.d/tools.build-desktop.toml
       - .config/mise/conf.d/tools.build-mobile.toml
-      - .config/mise/conf.d/tools.deploy.toml
       - .config/mise/conf.d/tools.devtools.toml
+      - .config/mise/conf.d/tools.dist.toml
       - .config/mise/conf.d/tools.test.toml
       - .config/mise/conf.d/tools.toml
       - .config/mise/conf.d/tools.website.toml
@@ -73,8 +73,8 @@ on:
       - tooling/schemas/release-groups.schema.json
       - .config/mise/conf.d/tools.build-desktop.toml
       - .config/mise/conf.d/tools.build-mobile.toml
-      - .config/mise/conf.d/tools.deploy.toml
       - .config/mise/conf.d/tools.devtools.toml
+      - .config/mise/conf.d/tools.dist.toml
       - .config/mise/conf.d/tools.test.toml
       - .config/mise/conf.d/tools.toml
       - .config/mise/conf.d/tools.website.toml

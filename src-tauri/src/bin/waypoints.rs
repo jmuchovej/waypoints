@@ -57,19 +57,23 @@ fn print_build_identity(build: &cartograph::BuildInfo) {
 }
 
 fn main() {
+    // The self-update flags are the only arguments read anywhere in argv; the
+    // launching package passes them. Everything else is handed on untouched.
+    let launch = waypoints::LaunchArgs::parse(std::env::args().skip(1));
+
     // Answered before any runtime starts, so a packaged build can be identified
     // without a display.
     //
-    // Matched as the *sole* argument rather than anywhere in argv: a Tauri app
-    // receives arguments it must not interpret — deep links arrive this way on
-    // Linux and Windows and are forwarded by the single-instance plugin, and
-    // macOS passes process serial numbers on some launch paths. Anything else,
-    // including `waypoints://… --version`, falls through to the app.
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if matches!(args.as_slice(), [flag] if flag == "--version" || flag == "-V") {
+    // Matched as the *sole* remaining argument rather than anywhere in argv: a
+    // Tauri app receives arguments it must not interpret — deep links arrive
+    // this way on Linux and Windows and are forwarded by the single-instance
+    // plugin, and macOS passes process serial numbers on some launch paths.
+    // Anything else, including `waypoints://… --version`, falls through to the
+    // app.
+    if launch.wants_version() {
         print_build_identity(&waypoints::build_info());
         return;
     }
 
-    waypoints::run();
+    waypoints::run(launch.cap);
 }

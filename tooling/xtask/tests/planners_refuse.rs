@@ -14,7 +14,7 @@ use tempfile::TempDir;
 
 const GROUP_FILE: &str = r#"
 [bookkeeping]
-  paths        = [ "nix/releases/" ]
+  paths        = [ "distribution/nix/releases/" ]
   bot-subjects = [ "chore(release):" ]
 
 [group.waypoints]
@@ -52,7 +52,7 @@ fn workspace_with_an_unnamed_member() -> TempDir {
     member(root, "crates/importer", "importer");
     write(root, "tooling/release-groups.toml", GROUP_FILE);
     write(root, "covenant/fixtures/waypoints/README.md", "");
-    write(root, "nix/releases/stable.json", "");
+    write(root, "distribution/nix/releases/stable.json", "");
     write(root, ".git-blame-ignore-revs", "");
     dir
 }
@@ -82,7 +82,7 @@ fn workspace_with_a_stale_projection() -> TempDir {
         &GROUP_FILE.replace("0.1.0-nightly", "0.2.0-nightly"),
     );
     write(root, "covenant/fixtures/waypoints/README.md", "");
-    write(root, "nix/releases/stable.json", "");
+    write(root, "distribution/nix/releases/stable.json", "");
     write(root, ".git-blame-ignore-revs", "");
     dir
 }

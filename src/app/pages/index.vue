@@ -4,9 +4,11 @@
 -->
 
 <script setup lang="ts">
-  // The root index redirects to /library/recents — the library is the
-  // default landing surface.
-  navigateTo("/library/recents", { replace: true });
+  // The root redirects to /library/recents — the library is the default
+  // landing surface. A route-level redirect, not a navigation from setup, so it
+  // resolves within the initial navigation and a deep link that launched the
+  // app is never overtaken by it.
+  definePageMeta({ redirect: "/library/recents" });
 </script>
 
 <template />

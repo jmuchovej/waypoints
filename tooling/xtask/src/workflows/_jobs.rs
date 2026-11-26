@@ -272,6 +272,33 @@ pub fn license(context: &WorkflowContext) -> NamedJob {
     NamedJob::new("license", job)
 }
 
+/// Renders every package manifest against the fixture release manifest and
+/// runs each distribution channel's check. On macOS, the one runner with
+/// Homebrew, so `brew audit` runs; the AUR, winget, and Chocolatey checks
+/// report skipped. On mise until the project has a cachix.
+pub fn dist(context: &WorkflowContext) -> NamedJob {
+    let job = mise_env(Job::default(), &[MiseEnv::Devtools])
+        .name("Check the package manifests")
+        .permissions(Permissions::default().contents(Level::Read))
+        .runs_on(runners::MACOS)
+        .add_step(steps::checkout())
+        .add_step(actions::setup_mise(
+            MiseSetup {
+                rust_cache: true,
+                ..MiseSetup::default()
+            },
+            &context.mise_version,
+        ))
+        .add_step(
+            Step::new("just dist::check-all")
+                .run("just dist::check-all")
+                .shell("bash")
+                .id("check-all"),
+        );
+
+    NamedJob::new("dist", job)
+}
+
 /// Guards the release run's inputs and reads its one flag. The refusals are
 /// expressions over the event and the dispatch's inputs: a real dispatch
 /// that names no tag, a real dispatch pairing a tag with a platforms subset
@@ -564,7 +591,7 @@ pub fn record(run: &ReleaseRun, context: &WorkflowContext) -> NamedJob {
         .add_env(("TAG", helpers::tag(&run.tag)))
         .add_env((
             "SECRETSPEC_REASON",
-            "release record records a published tag in nix/releases; no secret values are read",
+            "release record records a published tag in distribution/nix/releases; no secret values are read",
         ));
 
     // The task publishes these only when it wrote.

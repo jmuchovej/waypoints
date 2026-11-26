@@ -79,6 +79,9 @@ mod tasks {
     #[cfg(feature = "local-dev")]
     pub mod dev;
 
+    /// The package manifests under `distribution/`, rendered from a release manifest.
+    pub mod dist;
+
     /// What the tree carries that is generated rather than written.
     pub mod ls {
         pub mod managed;
@@ -117,6 +120,8 @@ enum Command {
     /// Serves the Waypoints web UI's HTTP backend, so the app runs in a plain browser.
     #[cfg(feature = "local-dev")]
     Dev(tasks::dev::Options),
+    /// Renders package manifests from a release manifest, and refuses stamped ones.
+    Dist(tasks::dist::Options),
     /// Lists what the tree carries that is generated rather than written.
     #[command(subcommand, name = "ls")]
     List(List),
@@ -224,6 +229,7 @@ fn main() -> Result<()> {
         },
         #[cfg(feature = "local-dev")]
         Command::Dev(args) => tasks::dev::run(args),
+        Command::Dist(args) => tasks::dist::run(args),
         Command::List(List::Managed(args)) => ls::managed::run(args),
     }
 }

@@ -122,15 +122,12 @@ catalogs:
     "@vueuse/nuxt": "^14.2.1"
     zod: "^4.4.3"
 
-  # FIXME: core is 9.x while the addons and the eslint plugin are 10.x. This
-  # skew predates the catalog and is left as-is deliberately; resolve it as its
-  # own change (either core -> ^10 or addons -> ^9), not as a drive-by edit.
   storybook:
-    "@nuxtjs/storybook": "^9.0.1"
-    "@storybook/addon-a11y": "^10.3.5"
-    "@storybook/addon-docs": "^10.3.5"
-    eslint-plugin-storybook: "^10.3.5"
-    storybook: "^10.5.8"
+    "@nuxtjs/storybook": "^10.0.3"
+    "@storybook/addon-a11y": "^10.6.8"
+    "@storybook/addon-docs": "^10.6.8"
+    eslint-plugin-storybook: "^10.6.8"
+    storybook: "^10.6.8"
 
   tauri:
     "@tauri-apps/api": "^2.10.1"

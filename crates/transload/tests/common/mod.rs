@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 use bedrock::Database;
-use chrono::{NaiveDate, NaiveDateTime};
+pub use domain::fixtures::at;
 use domain::{
     Chart, ChartID, Content, Feature, FeatureID, FeatureKind, Landmark, Mark, MarkData, MarkID,
     Reading, RichText, Terrain, TerrainID, TerrainKind,
@@ -12,14 +12,9 @@ use domain::{
 use indexmap::IndexMap;
 use transload::ExportMeta;
 
-pub const CHART: &str = "c4d8";
+pub mod generate;
 
-pub fn at(milli: u32) -> NaiveDateTime {
-    NaiveDate::from_ymd_opt(2026, 8, 2)
-        .unwrap()
-        .and_hms_milli_opt(9, 41, 0, milli)
-        .unwrap()
-}
+pub const CHART: &str = "c4d8";
 
 pub fn meta() -> ExportMeta {
     ExportMeta {

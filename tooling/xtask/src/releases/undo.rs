@@ -204,7 +204,7 @@ mod tests {
         format!(
             r#"
             [bookkeeping]
-            paths = [ "nix/releases/" ]
+            paths = [ "distribution/nix/releases/" ]
             bot-subjects = [ "chore(release):" ]
 
             [group.bedrock]

@@ -40,6 +40,13 @@
         to: "/settings/app/licenses",
       },
     ],
+    [
+      {
+        label: "Updates",
+        icon: "i-lucide-refresh-cw",
+        to: "/settings/app/updates",
+      },
+    ],
   ];
 
   useHead({

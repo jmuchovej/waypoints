@@ -16,9 +16,9 @@
 os = ["linux", "macos"]
 version = "2.6.0"
 
-[tools."gem:rufo"]
+[tools."gem:rubocop"]
 depends = ["core:ruby"]
-version = "0.18.1"
+version = "1.80.2"
 
 [tools."npm:oxfmt"]
 depends = ["core:node"]

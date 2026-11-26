@@ -9,7 +9,7 @@
 //! both here means the uploader, the manifest writer, the index, and the
 //! planners can never disagree about the same tag — and, applied to a
 //! manifest rather than a tag, it is how a tree says which channel it ships
-//! as. `nix/channel.nix` is the same reading for the overlay.
+//! as. `distribution/nix/channel.nix` is the same reading for the overlay.
 //!
 //! A version also knows how to make each [`Transition`] of the release cycle:
 //! see [`Version::transition`]. A nightly is not a transition but a date:

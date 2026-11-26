@@ -2822,7 +2822,7 @@ version = \"ignored\"
 
     const SERIES_GROUPS: &str = r#"
         [bookkeeping]
-        paths = [ "nix/releases/" ]
+        paths = [ "distribution/nix/releases/" ]
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]

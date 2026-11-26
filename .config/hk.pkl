@@ -56,7 +56,7 @@ local formatting = new Mapping<String, Step> {
 /// generated-config steps whose drift has a mechanical remedy.
 local syncing = new Mapping<String, Step> {
   // the lockfiles are refreshed over the network, so this must never run on
-  // shell entry — see nix/AGENTS.md. `hk fix` is explicit and `pre-push` runs
+  // shell entry — see tooling/devenv/AGENTS.md. `hk fix` is explicit and `pre-push` runs
   // `check` only, so the write stays something a person asked for.
   ["mise-lock"] {
     glob = List(

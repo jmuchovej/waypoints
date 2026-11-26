@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Maintainer: John Muchovej <5000729+jmuchovej@users.noreply.github.com>
+#
+# Repackages the published deb. pacman owns the installed files, so the app
+# launches with `--no-self-update`: it tells the user about a newer release
+# and leaves the upgrade to pacman.
+
+pkgname="{{ package.id }}"
+pkgver="{{ release.tag | pkgver }}"
+pkgrel=1
+pkgdesc="Local-first knowledge management ({{ flavor.product_name }})"
+arch=("x86_64")
+url="https://waypoints.so"
+license=("AGPL-3.0-or-later")
+depends=("gtk3" "libayatana-appindicator" "webkit2gtk-4.1")
+options=("!debug" "!strip")
+source=("{{ artifact.linux_amd64.deb.file_name }}::{{ artifact.linux_amd64.deb.url }}")
+noextract=("{{ artifact.linux_amd64.deb.file_name }}")
+sha256sums=("{{ artifact.linux_amd64.deb.sha256 }}")
+
+package() {
+  bsdtar -xOf "{{ artifact.linux_amd64.deb.file_name }}" "data.tar.*" | bsdtar -xf - -C "${pkgdir}"
+
+  install -d "${pkgdir}/usr/lib/{{ package.id }}"
+  mv "${pkgdir}/usr/bin/{{ flavor.executable }}" "${pkgdir}/usr/lib/{{ package.id }}/{{ flavor.executable }}"
+  printf '#!/bin/sh\nexec /usr/lib/%s/%s --no-self-update "$@"\n' "{{ package.id }}" "{{ flavor.executable }}" \
+    > "${pkgdir}/usr/bin/{{ flavor.executable }}"
+  chmod 755 "${pkgdir}/usr/bin/{{ flavor.executable }}"
+
+  sed -i -E "s|^Exec=[^ ]+|Exec=/usr/bin/{{ flavor.executable }}|" "${pkgdir}"/usr/share/applications/*.desktop
+}

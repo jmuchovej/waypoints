@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! The release index: one committed file per channel under `nix/releases/`,
+//! The release index: one committed file per channel under `distribution/nix/releases/`,
 //! recording the tag that channel last published and what a Nix build needs
 //! to fetch exactly that tree. See `distribution/release-index`.
 //!
@@ -27,7 +27,7 @@ use anyhow::{Context as _, Result, bail};
 
 /// One channel's entry, serialized field-for-field as its file.
 ///
-/// The field order is the file's key order, and `nix/releases/default.nix`
+/// The field order is the file's key order, and `distribution/nix/releases/default.nix`
 /// requires exactly these keys — there is one writer and one reader, and a
 /// change to the shape changes both.
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
@@ -163,7 +163,7 @@ pub(crate) mod fixture {
     /// on disk.
     pub(crate) const GROUPS: &str = r#"
         [bookkeeping]
-        paths = [ "nix/releases/" ]
+        paths = [ "distribution/nix/releases/" ]
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
@@ -433,8 +433,14 @@ mod tests {
 
     #[test]
     fn an_entry_renders_as_its_file() {
-        assert_eq!(Entry::path(Channel::Nightly), "nix/releases/nightly.json");
-        assert_eq!(Entry::path(Channel::Stable), "nix/releases/stable.json");
+        assert_eq!(
+            Entry::path(Channel::Nightly),
+            "distribution/nix/releases/nightly.json"
+        );
+        assert_eq!(
+            Entry::path(Channel::Stable),
+            "distribution/nix/releases/stable.json"
+        );
         assert_eq!(
             entry().render().unwrap(),
             indoc! {r#"
@@ -547,7 +553,7 @@ mod tests {
     fn each_channel_lands_from_its_own_branch() {
         let landing = entry().landing(Channel::Nightly);
         assert_eq!(landing.head, "botswain/release-index/nightly");
-        assert_eq!(landing.paths, "nix/releases/nightly.json");
+        assert_eq!(landing.paths, "distribution/nix/releases/nightly.json");
         assert_eq!(landing.title, entry().commit_message(Channel::Nightly));
         assert_ne!(landing.head, entry().landing(Channel::Stable).head,);
     }

@@ -4,7 +4,11 @@
 -->
 
 <script setup lang="ts">
-  navigateTo("/library/recents", { replace: true });
+  // Route-level, and carrying the query and hash, so a posed link to /library
+  // arrives posed even when it is the link that launched the app.
+  definePageMeta({
+    redirect: (to) => ({ path: "/library/recents", query: to.query, hash: to.hash }),
+  });
 </script>
 
 <template />

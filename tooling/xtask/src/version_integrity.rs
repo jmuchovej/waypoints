@@ -527,7 +527,7 @@ mod tests {
 
     const GROUPS: &str = r#"
         [bookkeeping]
-        paths = [ "nix/releases/" ]
+        paths = [ "distribution/nix/releases/" ]
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
@@ -800,7 +800,7 @@ mod tests {
 
     #[test]
     fn the_bookkeeping_subject_is_reserved_to_the_bot() {
-        let changes = [modified("nix/releases/nightly.json")];
+        let changes = [modified("distribution/nix/releases/nightly.json")];
         let title = "chore(release): record v0.2.0";
         assert_names(
             &by_a_person(title, "", &changes),

@@ -43,4 +43,4 @@ None.
 - `crates/outpost/src/bin/outpost/commands/{fleet.rs,station.rs,sync.rs}` — the `fleet` subcommand group, `station id`, `--roster`.
 - `crates/cartograph/src/sync/{service.rs,types.rs}` and the pairing payload — the trusted Fleet in `SyncConfig`, verification on every dial, roster refresh, the payload field; TypeScript bindings regenerate.
 - `crates/outpost/tests/` — roster round-trip, Station start-up refusals, the roster request, fleeted holds rejecting a forged proof over sync, and a Vessel refusing an unrostered Station on every path.
-- `deploy/kubernetes/base` — a `--roster` mount from a ConfigMap, optional in the one-Station base.
+- `distribution/kubernetes/base` — a `--roster` mount from a ConfigMap, optional in the one-Station base.

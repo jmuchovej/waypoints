@@ -28,15 +28,14 @@
 const TARGETS = [macos linux windows ios android]
 const SCRUBBED = [macos ios android]
 
-# Ahead of everything else inside the clean room on the Apple targets, so
-# /usr/bin/clang wins over Nix's wrapper. Android gets its compilers by name
-# (the CC_*/CARGO_TARGET_*_LINKER table), so it keeps the ambient order —
-# putting /usr/bin first there would let a runner image's preinstalled gradle
-# shadow the one mise pins. The ambient PATH is kept whole either way: every
-# tool the build shells out to (yq, deno, pnpm, …) stays reachable without
-# maintaining a list.
+# Ahead of everything else inside the clean room, so /usr/bin/cc wins over
+# Nix's wrapper, which finds libiconv only through the NIX_* variables the
+# scrub drops. Android names its target compilers (the CC_*/CARGO_TARGET_*_LINKER
+# table), but its host build scripts still link through `cc`. The ambient PATH
+# is kept whole after it: every tool the build shells out to (yq, deno, pnpm,
+# …) stays reachable without maintaining a list.
 const SYSTEM_PATH = ["/usr/bin" "/bin" "/usr/sbin" "/sbin"]
-const SYSTEM_FIRST = [macos ios]
+const SYSTEM_FIRST = [macos ios android]
 
 # Carried into the build when set. The tool manager's own state crosses the
 # scrub: under mise, `cargo` is a shim that refuses an untrusted config, and the
@@ -56,6 +55,7 @@ const FORWARDED = [
   SECRETSPEC_PROVIDER OP_SERVICE_ACCOUNT_TOKEN SOPS_AGE_KEY_FILE SOPS_AGE_KEY
   GITHUB_SHA GITHUB_REF_NAME WAYPOINTS_BUILD_CODE WAYPOINTS_VERSION
   CARGO_BUILD_RUSTC_WRAPPER
+  XDG_CONFIG_HOME XDG_DATA_HOME XDG_CACHE_HOME PNPM_HOME
 ]
 
 # The app version for a mobile build, as a `--config` fragment. Tauri writes
@@ -75,7 +75,7 @@ def version-config [target: string]: nothing -> list<string> {
   let version = if $target == ios { $version | str replace -r "[-+].*$" "" } else { $version }
   ["--config" ({ version: $version } | to json --raw)]
 }
-const FORWARDED_PREFIXES = ["MISE_"]
+const FORWARDED_PREFIXES = ["MISE_" "TAURI_"]
 
 def configs-root []: nothing -> path { $env.TAURI_APP_PATH | path join "res" "configs" }
 def flavor-config [flavor: string]: nothing -> path { configs-root | path join "flavors" $"($flavor).toml" }
@@ -181,8 +181,12 @@ def run-build [
   let vars = wrap-c-compilers $target (
     (forwarded) | merge $extra | merge { WAYPOINTS_FLAVOR: $flavor, WAYPOINTS_BUILD: "1" }
   )
+  # `cargo-tauri`, not `cargo tauri`: mbx's cargo shim probes `cargo metadata`
+  # with the CLI's arguments, and cargo cannot parse Tauri's inline JSON
+  # `--config` as its own. Rust still compiles through the shim, because the
+  # Xcode and Gradle build steps call back through `cargo tauri`.
   let build = [
-    cargo tauri ...(tauri-subcommand $target) build
+    cargo-tauri ...(tauri-subcommand $target) build
     --features $flavor
     --config (flavor-config $flavor)
     ...$args
@@ -286,7 +290,7 @@ def build-android [flavor: string, rest: list<string>] {
   }
 
   # The NDK names its cross-compilers' directory after the build host; the
-  # same table lives in nix/devenv/android.nix.
+  # same table lives in tooling/devenv/android.nix.
   let hosts = {
     # NOTE: Android doesn't support building from arm64-linux
     "x86_64-linux": "linux-x86_64"
@@ -323,12 +327,18 @@ def build-android [flavor: string, rest: list<string>] {
 
   # cc-rs keys off the snake-cased triple, cargo off the upper-cased one. The NDK
   # names armv7's driver `armv7a-...`. Derived so that it matches `rust-toolchain.toml`
+  # The versioned `--target` is restated in CFLAGS because cc-rs reads the API
+  # level off the compiler's name, which a compiler wrapper (mbx) hides; without
+  # it cc-rs passes an unversioned triple that the NDK's headers reject.
   let compilers = $triples | each { |triple|
-      let clang = $"($ndk_bin)/($triple | str replace 'armv7-' 'armv7a-')($api)-clang"
+      let versioned = $"($triple | str replace 'armv7-' 'armv7a-')($api)"
+      let clang = $"($ndk_bin)/($versioned)-clang"
       let snake = $triple | str replace --all '-' '_'
       {
         $"CC_($snake)": $clang
         $"CXX_($snake)": $"($clang)++"
+        $"CFLAGS_($snake)": $"--target=($versioned)"
+        $"CXXFLAGS_($snake)": $"--target=($versioned)"
         $"AR_($snake)": $"($ndk_bin)/llvm-ar"
         $"CARGO_TARGET_($snake | str uppercase)_LINKER": $clang
       }

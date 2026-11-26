@@ -29,7 +29,7 @@ pub struct Options {
     #[arg(long)]
     dry_run: bool,
     /// The directory a dry run writes the entry under, at its path in the
-    /// tree: `nix/releases/{channel}.json`.
+    /// tree: `distribution/nix/releases/{channel}.json`.
     #[arg(long, requires = "dry_run")]
     into: Option<PathBuf>,
 }

@@ -149,8 +149,8 @@ fn domain_types() -> Types {
 fn cartograph_types() -> Types {
     use cartograph::{
         BuildInfo, CreateResult, CursorState, GroupVersion, IdentityCreated, MutationResult,
-        PairingCode, RenderNode, SetupCode, SplitResult, StationStatus, SyncDevice, SyncState,
-        SyncStatus, Territory, TerritoryKind, UndoRedoResult,
+        PairingCode, RenderNode, SelfUpdatePolicy, SelfUpdateStatus, SetupCode, SplitResult,
+        StationStatus, SyncDevice, SyncState, SyncStatus, Territory, TerritoryKind, UndoRedoResult,
     };
 
     let mut collection = Types::default();
@@ -158,6 +158,10 @@ fn cartograph_types() -> Types {
     // build info
     collection.register_mut::<BuildInfo>();
     collection.register_mut::<GroupVersion>();
+
+    // self-update
+    collection.register_mut::<SelfUpdatePolicy>();
+    collection.register_mut::<SelfUpdateStatus>();
 
     // territory
     collection.register_mut::<Territory>();

@@ -43,10 +43,12 @@ pub use platform::{Arch, Platform, PublishedTarget};
 
 pub mod constants;
 
-/// The browser-dev HTTP backend: the runtime, its routes, and its errors.
+/// The browser-dev HTTP backend: the runtime, its routes, and its errors —
+/// and the demo app-data directory store screenshots are captured against.
 #[cfg(feature = "local-dev")]
 pub mod dev {
     pub mod commands;
+    pub mod demo;
     mod error;
     mod instance;
     mod registry;
@@ -66,6 +68,13 @@ pub mod planners {
 
 /// Staging, publishing, and recording a release, and the versions it is
 /// all keyed by.
+pub mod distribution {
+    pub mod check;
+    pub mod context;
+    pub mod registry;
+    pub mod render;
+}
+
 pub mod releases {
     pub mod distributables;
     pub mod history;

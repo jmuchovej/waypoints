@@ -49,6 +49,6 @@ None.
 - `crates/outpost/Cargo.toml` — `jiff` joins the `cli` feature for the duration grammar; it is already in the build graph through `serde_with`, so nothing new compiles.
 - `crates/outpost/tests/` — every kind in the spec's table asserted as a row and as a line with a matching sequence; the sentinel; retention across a restart; the floor at default and at debug; coalescing; a storage-less Station recording nothing.
 - `.agents/skills/waypoints-architecture/references/architecture.md` — the event table and the terms.
-- `deploy/kubernetes/base/statefulset.yaml` — commented `RUST_LOG` and `OUTPOST_STATION_RETENTION_PERIOD` entries.
+- `distribution/kubernetes/base/statefulset.yaml` — commented `RUST_LOG` and `OUTPOST_STATION_RETENTION_PERIOD` entries.
 - Depends on the `OUTPOST_STATION_*` rename of the five existing station options, which landed on the implementation branch (`worktree/deployable-station`) and is not part of this change.
 - Privacy note, recorded in the spec: events name members and devices by public key, in the table on the volume and in whatever retains the stream; the hosted tier's retention policy has to account for both.

@@ -165,6 +165,33 @@ export type RenderNode_Serialize = {
   is_leaf_landmark: boolean;
 };
 
+/**
+ *  What the app may do about a newer version: nothing, say so, or install it.
+ *
+ *  Ordered from least to most permissive so the effective policy is a `min`:
+ *  the user's stored setting against the ceiling the launching package set.
+ */
+export type SelfUpdatePolicy =
+  /**  Never contact the update endpoint. */
+  | "off"
+  /**  Check, and announce a newer version without downloading or installing. */
+  | "notify"
+  /**  Check, download, install, restart. */
+  | "on";
+
+/**
+ *  The policy as the settings page sees it: what the user chose, the ceiling
+ *  the launch set, and what the app does.
+ */
+export type SelfUpdateStatus = {
+  /**  The stored setting; never written by the launch flag. */
+  setting: SelfUpdatePolicy;
+  /**  `notify` when launched with `--no-self-update`, `on` otherwise. */
+  cap: SelfUpdatePolicy;
+  /**  `min(setting, cap)`. */
+  effective: SelfUpdatePolicy;
+};
+
 /**  Where a setup code should be routed. */
 export type SetupCode =
   /**  A pairing payload (JSON string) for `pairing_join`. */

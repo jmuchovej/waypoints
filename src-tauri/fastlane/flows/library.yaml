@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The library over the demo territory, posed with the navigation open.
+#
+# `xfastlane capture` launches the app, waits for the library, opens
+# `<flavor scheme>://${LINK}` itself (`simctl openurl`, `adb am start`), then
+# runs this flow against APP_ID. Maestro's own `openLink` raises an "Open in …?"
+# sheet on iOS whose button cannot be told apart from the webview's own, so it
+# is not used.
+#
+# READY is text only this screen over the placed territory renders — its name
+# heads the open navigation — so onboarding or an empty install never settles.
+appId: ${APP_ID}
+env:
+  LINK: library?sidebar=open
+  READY: Demo
+---
+# Never `waitForAnimationToEnd` alone: it settles on the webview before first
+# paint. After READY it lets the menu finish sliding in.
+- extendedWaitUntil:
+    visible: ${READY}
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: library

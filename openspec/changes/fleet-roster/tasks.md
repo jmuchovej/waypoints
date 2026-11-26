@@ -20,7 +20,7 @@
 
 ## 4. Deployment and close-out
 
-- [ ] 4.1 Add the optional roster ConfigMap mount and `OUTPOST_ROSTER` to `deploy/kubernetes/base`, and extend `deploy/justfile`'s `kind-apply` to derive the Station identity and sign a one-entry roster for the kind overlay; verify `just deploy::lint` passes and a kind run logs the roster revision and serves it to the audit harness
+- [ ] 4.1 Add the optional roster ConfigMap mount and `OUTPOST_ROSTER` to `distribution/kubernetes/base`, and extend `distribution/kubernetes/justfile`'s `kind-apply` to derive the Station identity and sign a one-entry roster for the kind overlay; verify `just dist::kubernetes::lint` passes and a kind run logs the roster revision and serves it to the audit harness
 - [ ] 4.2 Add `register_and_sync_with_fleet` to `tests/audit.rs` driven by `OUTPOST_AUDIT_ROSTER`; verify it passes against the kind pod and fails against a Station started without the roster
 - [ ] 4.3 Update the sync section of `.agents/skills/waypoints-architecture/references/architecture.md` for the roster, the fleeted Station, and the pairing field; verify it names the file format and the request
 - [ ] 4.4 Run `jj fix -s @`, the hook steps, and `just check-generated` (the bindings); verify all green

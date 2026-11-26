@@ -13,6 +13,9 @@
   (
     store: "Google Play — phone",
     dir: loc => "metadata/android/" + loc + "/images/phoneScreenshots",
+    // Whose captures this surface composes, and the frame they go in.
+    platform: "android",
+    device: "pixel-10-pro",
     width: 1080pt,
     height: 1920pt,
     // The longest screen's body measures 1163pt at this card's interior width,
@@ -26,6 +29,8 @@
     // deliver reads every image under the locale and picks the device class
     // from the resolution, so 1320×2868 lands as 6.9-inch on its own.
     dir: loc => "metadata/ios/screenshots/" + loc,
+    platform: "ios",
+    device: "iphone-17-pro",
     width: 1320pt,
     height: 2868pt,
     // Taller than 9:16 while type only grows with width, so the same content
@@ -36,19 +41,32 @@
   ),
 )
 
+// Where `xfastlane capture` keeps a screen's capture for a surface's platform.
+#let capture-path(surface, locale, name) = (
+  "/fastlane/captures/" + surface.platform + "/" + locale + "/" + name + ".png"
+)
+
 // Every screen onto every surface, so a new store is a row above rather than a
 // second set of screens to keep in step. Both stores order screenshots by
-// filename, hence the numeric prefix.
+// filename, hence the numeric prefix. A screen naming a `capture` is framed
+// from that capture; one without still draws its `body`.
 #let phone-assets(screens, locale, surfaces: phone-surfaces) = {
   let out = ()
   for surface in surfaces {
     for (i, s) in screens.enumerate(start: 1) {
       let nn = if i < 10 { "0" + str(i) } else { str(i) }
+      let capture = s.at("capture", default: none)
       out.push((
         group: surface.store,
         path: (surface.dir)(locale) + "/" + nn + "-" + s.slug + ".png",
         spec: surface.spec,
-        body: screen(surface, s.headline, s.sub, s.body),
+        body: screen(
+          surface,
+          s.headline,
+          s.sub,
+          s.at("body", default: none),
+          capture: if capture == none { none } else { capture-path(surface, locale, capture) },
+        ),
       ))
     }
   }

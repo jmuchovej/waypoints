@@ -342,7 +342,7 @@ mod tests {
         let repo = Repo::new();
         repo.commit("website/content/index.md", "docs(website): a page");
         repo.commit("docs/CONTRIBUTING.md", "docs: a rule");
-        repo.commit("nix/overlay.nix", "build(nix): a thing");
+        repo.commit("distribution/nix/overlay.nix", "build(nix): a thing");
         let walked = repo.walk("HEAD");
         assert!(
             walked.iter().all(|commit| commit.groups.is_empty()),

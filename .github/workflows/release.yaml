@@ -268,7 +268,7 @@ jobs:
       - id: write-manifest
         name: Commit the channel manifest
         if: needs.build.outputs.tag != '' && needs.guard.outputs.dry_run != 'true'
-        run: devenv shell -- cargo ci-task release distributables commit --tag "${TAG}"
+        run: devenv shell -- cargo ci-task release distributables commit --from release --tag "${TAG}"
         shell: bash
         env:
           TAG: ${{ needs.build.outputs.tag }}
@@ -293,7 +293,7 @@ jobs:
       - id: dry-manifest
         name: Render the channel manifest (dry run)
         if: needs.guard.outputs.dry_run == 'true'
-        run: devenv shell -- cargo ci-task release distributables commit --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
+        run: devenv shell -- cargo ci-task release distributables commit --from release --tag "${TAG}" --dry-run --into "${RUNNER_TEMP}/dry-run"
         shell: bash
         env:
           TAG: ${{ needs.build.outputs.tag }}
@@ -365,7 +365,7 @@ jobs:
         shell: bash
         env:
           TAG: ${{ needs.build.outputs.tag }}
-          SECRETSPEC_REASON: release record records a published tag in nix/releases; no secret values are read
+          SECRETSPEC_REASON: release record records a published tag in distribution/nix/releases; no secret values are read
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
         name: Report the compiler cache

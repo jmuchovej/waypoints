@@ -21,7 +21,7 @@ use xtask::constants::GROUP_FILE;
 fn group_file(app: &str, domain: &str) -> String {
     format!(
         r#"[bookkeeping]
-  paths        = [ "nix/releases/" ]
+  paths        = [ "distribution/nix/releases/" ]
   bot-subjects = [ "chore(release):" ]
 
 [group.domain]
@@ -111,7 +111,7 @@ impl Fixture {
         write(&root, "crates/domain/src/lib.rs", "");
         write(&root, "covenant/fixtures/waypoints/README.md", "");
         write(&root, "covenant/fixtures/domain/README.md", "");
-        write(&root, "nix/releases/stable.json", "");
+        write(&root, "distribution/nix/releases/stable.json", "");
         write(&root, ".git-blame-ignore-revs", "");
         write(&root, ".gitignore", "target/\n");
 

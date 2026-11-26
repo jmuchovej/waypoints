@@ -114,7 +114,7 @@ pub const ABOUT_TEMPLATE: &str = ".config/about.hbs";
 // The release store.
 
 /// The release index: one committed file per channel.
-pub const INDEX_DIR: &str = "nix/releases";
+pub const INDEX_DIR: &str = "distribution/nix/releases";
 /// The flat directory `release distributables rename` fills and
 /// `release distributables upload --from` reads.
 pub const STAGE_DIR: &str = "release";

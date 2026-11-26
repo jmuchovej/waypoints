@@ -9,6 +9,7 @@ use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::{fs, path::PathBuf};
 use xtask::{
+    constants::STAGE_DIR,
     releases::version::Version,
     releases::{manifest::Manifest, store},
 };
@@ -19,6 +20,11 @@ pub struct Options {
     /// derived from it, never supplied — the same rule the uploader follows.
     #[arg(long)]
     tag: String,
+
+    /// The staged directory the upload read; every file it holds for the
+    /// tag is hashed into the manifest.
+    #[arg(long, default_value = STAGE_DIR)]
+    from: PathBuf,
 
     /// How long the derived store credential stays valid, in seconds.
     #[arg(long, default_value_t = store::DEFAULT_TTL_SECONDS)]
@@ -37,7 +43,7 @@ pub struct Options {
 pub fn run(args: Options) -> Result<()> {
     let version: Version = args.tag.parse()?;
     let channel = version.channel();
-    let manifest = Manifest::build(channel, &version);
+    let manifest = Manifest::build(channel, &version, &args.from)?;
     let body = manifest.render()?;
 
     if args.dry_run {
@@ -75,13 +81,34 @@ pub fn run(args: Options) -> Result<()> {
 mod tests {
     use super::*;
 
-    /// The rendered file is the body the store would have received.
+    /// The rendered file is the body the store would have received, digests
+    /// read from the stage included.
     #[test]
     fn a_dry_run_renders_the_manifest_to_the_directory() {
         let dir = tempfile::tempdir().unwrap();
+        let tag = "v0.2.0-nightly.20261109";
+        let staged = dir.path().join(STAGE_DIR);
+        fs::create_dir_all(&staged).unwrap();
+        let channel = tag.parse::<Version>().unwrap().channel();
+        for platform in channel.required_targets() {
+            for extension in platform
+                .published_target()
+                .extensions
+                .iter()
+                .chain(platform.updater_extensions())
+            {
+                fs::write(
+                    staged.join(xtask::releases::distributables::file_name(tag, extension)),
+                    extension,
+                )
+                .unwrap();
+            }
+        }
+
         let into = dir.path().join("dry-run");
         run(Options {
-            tag: "v0.2.0-nightly.20261109".to_owned(),
+            tag: tag.to_owned(),
+            from: staged,
             ttl_seconds: store::DEFAULT_TTL_SECONDS,
             dry_run: true,
             into: Some(into.clone()),
@@ -89,7 +116,14 @@ mod tests {
         .unwrap();
         let written: serde_json::Value =
             serde_json::from_slice(&fs::read(into.join("manifest.json")).unwrap()).unwrap();
-        assert_eq!(written["version"], "v0.2.0-nightly.20261109");
+        assert_eq!(written["version"], tag);
         assert_eq!(written["series"], "v0.2.x");
+        assert!(
+            written["targets"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|target| target["digests"].as_object().is_some_and(|d| !d.is_empty()))
+        );
     }
 }

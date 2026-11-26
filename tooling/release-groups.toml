@@ -20,7 +20,7 @@
 # count toward versioning of any group.
 
 [bookkeeping]
-  paths        = [ "nix/releases/" ]
+  paths        = [ "distribution/nix/releases/" ]
   # commits that count for no group – **use the full commit id**.
   # this is in addition to `.git-blame-ignore-revs`
   ignore-revs  = [

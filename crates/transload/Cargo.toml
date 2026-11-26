@@ -20,15 +20,18 @@
   domain            = { workspace = true, features = [ "syntax" ] }
 
   chrono.workspace     = true
+  chumsky.workspace    = true
+  derive_more          = { workspace = true, features = [ "display" ] }
   indexmap.workspace   = true
+  indoc.workspace      = true
   jsonschema.workspace = true
-  saphyr.workspace     = true
   serde.workspace      = true
   serde_json.workspace = true
   thiserror.workspace  = true
   uuid.workspace       = true
 
 [dev-dependencies]
+  domain             = { workspace = true, features = [ "fixtures" ] }
   rand.workspace     = true
   tempfile.workspace = true
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
