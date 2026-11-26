@@ -429,7 +429,7 @@ pub(crate) fn build_job_name(platform: Platform) -> String {
     format!("build-{}", platform.slug())
 }
 
-/// The `needs.<build>.outputs.<slug> == '<slug>'` clauses, ANDed together,
+/// The `needs.<build>.outputs.<slug> == '<slug>'` clauses, joined with `&&`,
 /// that assert every required target has recorded in through the builder.
 /// Shared between the publish gate and the withdraw gate, which assert the
 /// fact and its negation respectively. Every channel requires every platform
