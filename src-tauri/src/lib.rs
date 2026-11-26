@@ -20,6 +20,7 @@
 // may be conveyed through application stores on the terms set out in
 // docs/licensing/COPYING.exceptions.
 
+use cartograph::SelfUpdatePolicy;
 use tauri::{App, Builder as TauriBuilder};
 
 // Features are additive and flavors are not: one shipped flavor per build.
@@ -37,6 +38,7 @@ compile_error!(
     "Waypoints: the `preview` and `stable` flavors are both enabled; a build takes exactly one"
 );
 
+mod launch;
 mod registry_store;
 mod settings;
 
@@ -53,6 +55,7 @@ mod commands {
     pub mod editor;
     pub mod mark;
     pub mod meta;
+    pub mod self_update;
     pub mod sync;
     pub mod territory;
 }
@@ -60,9 +63,18 @@ mod commands {
 /// This build's identity, readable without starting the app — backs the
 /// `--version` flag so a packaged build can be identified headlessly.
 pub use commands::meta::info as build_info;
+pub use launch::LaunchArgs;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+/// Mobile has no argv, and no updater: it launches uncapped.
+#[cfg(mobile)]
+#[tauri::mobile_entry_point]
+fn mobile_run() {
+    run(SelfUpdatePolicy::default());
+}
+
+/// Starts the app under the self-update ceiling its launcher set — `notify`
+/// when the package passed `--no-self-update`, `on` otherwise.
+pub fn run(cap: SelfUpdatePolicy) {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
@@ -72,14 +84,15 @@ pub fn run() {
     #[allow(clippy::disallowed_macros)]
     let context = tauri::generate_context!();
 
-    tracing::info!("waypoints starting");
+    tracing::info!(self_update_cap = ?cap, "waypoints starting");
 
     let builder = TauriBuilder::default();
 
     // Single-instance must be registered before every other plugin so a
     // second launch (e.g. from a waypoints:// link) forwards to the running
     // app; its deep-link feature re-emits forwarded URLs as deep-link
-    // events.
+    // events. The forwarded argv is used for nothing else: the launch policy
+    // was recorded once, below, and stays.
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}));
 
@@ -89,9 +102,13 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_barcode_scanner::init());
 
     builder
+        .manage(launch::Instance::launched(cap))
         .invoke_handler(tauri::generate_handler![
             // meta
             commands::meta::build_info,
+            // self-update
+            commands::self_update::self_update_status,
+            commands::self_update::self_update_set,
             // chart
             commands::chart::chart_list,
             commands::chart::chart_get,

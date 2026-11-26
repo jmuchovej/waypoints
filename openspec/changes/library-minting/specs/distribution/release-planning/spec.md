@@ -2,7 +2,7 @@
 
 ### Requirement: Groups own disjoint paths, and the app counts what it ships
 
-Each group SHALL own a disjoint set of paths. A library group SHALL count commits that change its own paths; the app SHALL count commits that change its own paths or any group's. Commits under `nix/releases/` only, commits listed in `.git-blame-ignore-revs`, and the release bot's `chore(release):` commits SHALL count toward no group.
+Each group SHALL own a disjoint set of paths. A library group SHALL count commits that change its own paths; the app SHALL count commits that change its own paths or any group's. Commits under `distribution/nix/releases/` only, commits listed in `.git-blame-ignore-revs`, and the release bot's `chore(release):` commits SHALL count toward no group.
 
 #### Scenario: Library-only change
 

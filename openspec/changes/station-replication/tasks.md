@@ -23,9 +23,9 @@ Depends on `fleet-roster`. Groups 1 to 3 are shippable on their own; groups 4 to
 
 ## 4. Manifests and recipes
 
-- [ ] 4.1 Add `statefulset-orderer.yaml` (one replica, its own key Secret, the fleet key, `--roster`, Service `outpost-orderer`) and make the storage StatefulSet `replicas: N` with the pool Secret and advertise ConfigMap mounted by `subPathExpr: $(POD_NAME)…` and `POD_NAME` from the downward API; verify `just deploy::lint` passes at N = 1 and N = 3 (a patch sets `replicas`)
+- [ ] 4.1 Add `statefulset-orderer.yaml` (one replica, its own key Secret, the fleet key, `--roster`, Service `outpost-orderer`) and make the storage StatefulSet `replicas: N` with the pool Secret and advertise ConfigMap mounted by `subPathExpr: $(POD_NAME)…` and `POD_NAME` from the downward API; verify `just dist::kubernetes::lint` passes at N = 1 and N = 3 (a patch sets `replicas`)
 - [ ] 4.2 Add per-ordinal Services `outpost-0 … outpost-{N-1}` selecting `statefulset.kubernetes.io/pod-name` (LoadBalancer in the base; NodePort in the kind overlay with host ports 6782 orderer, 6783 and 6784 storage in `kind-config.yaml`); verify the rendered overlay has no Service selecting more than one pod
-- [ ] 4.3 Add `deploy/justfile` recipes `fleet-keys N` (N storage keys, the orderer key, the fleet key), `fleet-roster` (derive identities with `outpost station id`, assign sockets, sign with `outpost fleet roster sign`), and extend `kind-apply` to create the pool Secret, the advertise ConfigMap, and the roster ConfigMap; verify `just deploy::kind-apply` on a fresh cluster brings up three Ready pods, each logging a distinct identity that matches its roster entry
+- [ ] 4.3 Add `distribution/kubernetes/justfile` recipes `fleet-keys N` (N storage keys, the orderer key, the fleet key), `fleet-roster` (derive identities with `outpost station id`, assign sockets, sign with `outpost fleet roster sign`), and extend `kind-apply` to create the pool Secret, the advertise ConfigMap, and the roster ConfigMap; verify `just dist::kubernetes::kind-apply` on a fresh cluster brings up three Ready pods, each logging a distinct identity that matches its roster entry
 - [ ] 4.4 Rewrite the kustomization's header for the N-Station layout: the pool, `replicas ≤ N`, the per-Station sockets, the orderer; verify it reads correctly against the rendered output
 
 ## 5. Audit on kind
@@ -38,4 +38,4 @@ Depends on `fleet-roster`. Groups 1 to 3 are shippable on their own; groups 4 to
 ## 6. Close-out
 
 - [ ] 6.1 Update the Station module docs (replication now exists; the roster-peer "arm" is a check), the sync section of `.agents/skills/waypoints-architecture/references/architecture.md`, and the design's open questions from the audit; verify the docs no longer promise a future replication
-- [ ] 6.2 Run `jj fix -s @`, the hook steps, `just check-generated`, and `just deploy::lint`; verify all green
+- [ ] 6.2 Run `jj fix -s @`, the hook steps, `just check-generated`, and `just dist::kubernetes::lint`; verify all green

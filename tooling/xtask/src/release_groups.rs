@@ -323,7 +323,7 @@ mod tests {
 
     const GROUPS: &str = r#"
         [bookkeeping]
-        paths = [ "nix/releases/" ]
+        paths = [ "distribution/nix/releases/" ]
         ignore-revs = ".git-blame-ignore-revs"
         bot-subjects = [ "chore(release):" ]
 
@@ -446,7 +446,7 @@ mod tests {
         let file = GroupFile::parse(GROUPS).unwrap();
         for missing in [
             "covenant/fixtures/waypoints/",
-            "nix/releases/",
+            "distribution/nix/releases/",
             ".git-blame-ignore-revs",
         ] {
             let found = file.problems(&directories(&tree(&[])), |path| path != missing);

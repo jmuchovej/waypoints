@@ -86,7 +86,7 @@ jobs:
         shell: bash
         env:
           TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-          SECRETSPEC_REASON: release-index records a published tag in nix/releases; no secret values are read
+          SECRETSPEC_REASON: release-index records a published tag in distribution/nix/releases; no secret values are read
           CARGO_BUILD_RUSTC_WRAPPER: sccache
       - id: sccache-stats
         name: Report the compiler cache

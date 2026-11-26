@@ -10406,6 +10406,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tera"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61e0cadeeb54426080b4c5395d59769ce8293f542cc25511c167c742b2175809"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12616,6 +12625,8 @@ dependencies = [
  "octocrab",
  "opendal",
  "opendal-http-transport-reqwest",
+ "regex",
+ "reqwest",
  "rustls",
  "schemars 1.2.2",
  "secretspec",
@@ -12629,6 +12640,7 @@ dependencies = [
  "store",
  "strum 0.28.0",
  "tempfile",
+ "tera",
  "tokio",
  "toml 0.9.12+spec-1.1.0",
  "tower-http 0.7.1",

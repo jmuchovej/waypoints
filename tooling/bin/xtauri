@@ -290,7 +290,7 @@ def build-android [flavor: string, rest: list<string>] {
   }
 
   # The NDK names its cross-compilers' directory after the build host; the
-  # same table lives in nix/devenv/android.nix.
+  # same table lives in tooling/devenv/android.nix.
   let hosts = {
     # NOTE: Android doesn't support building from arm64-linux
     "x86_64-linux": "linux-x86_64"

@@ -102,6 +102,18 @@ impl From<Channel> for Flavor {
     }
 }
 
+impl Flavor {
+    /// The binary this flavor builds — a `[[bin]]` in `src-tauri/Cargo.toml`.
+    pub fn executable(self) -> &'static str {
+        match self {
+            Flavor::Stable => "waypoints",
+            Flavor::Preview => "waypoints-preview",
+            Flavor::Nightly => "waypoints-nightly",
+            Flavor::Development => "waypoints-development",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,5 +142,32 @@ mod tests {
         assert_eq!(flavors.len(), 4);
         assert!(flavors.contains(&Flavor::Development));
         assert_eq!(Flavor::Development.to_string(), "development");
+    }
+
+    /// Each flavor's executable is the `[[bin]]` that requires its feature.
+    #[test]
+    fn every_executable_is_the_app_manifest_s_bin() {
+        #[derive(serde::Deserialize)]
+        struct Manifest {
+            bin: Vec<Bin>,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "kebab-case")]
+        struct Bin {
+            name: String,
+            required_features: Vec<String>,
+        }
+
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src-tauri/Cargo.toml");
+        let manifest: Manifest = toml::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        for flavor in Flavor::iter() {
+            let bin = manifest
+                .bin
+                .iter()
+                .find(|bin| bin.required_features.contains(&flavor.to_string()))
+                .unwrap_or_else(|| panic!("no [[bin]] requires `{flavor}`"));
+            assert_eq!(flavor.executable(), bin.name, "{flavor}");
+        }
     }
 }

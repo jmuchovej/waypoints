@@ -35,5 +35,5 @@ Depends on the `OUTPOST_STATION_*` rename of the five existing station options o
 ## 5. Reference, manifests, close-out
 
 - [ ] 5.1 Add the table of kinds, the events-versus-diagnostics rule, the metadata-only rule, the retention period, and the definitions of commodore and the `OUTPOST_STATION_*` convention to the sync section of `.agents/skills/waypoints-architecture/references/architecture.md`; verify the table matches the spec row for row
-- [ ] 5.2 Add commented `RUST_LOG` and `OUTPOST_STATION_RETENTION_PERIOD` entries with their defaults to `deploy/kubernetes/base/statefulset.yaml`; verify `just deploy::lint` passes
+- [ ] 5.2 Add commented `RUST_LOG` and `OUTPOST_STATION_RETENTION_PERIOD` entries with their defaults to `distribution/kubernetes/base/statefulset.yaml`; verify `just dist::kubernetes::lint` passes
 - [ ] 5.3 Run `jj fix -s @` and the hook steps (clippy, cargo-test across `bedrock`, `outpost-hold`, `outpost`, treefmt, typos); verify all green

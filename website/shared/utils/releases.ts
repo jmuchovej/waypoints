@@ -20,6 +20,10 @@ export interface ReleaseTarget {
   os: string;
   arch: string;
   extensions: string[];
+  /** Extension → SHA-256 hex of every file the target published, updater
+   * payloads and signatures included. Absent from manifests written before
+   * digests were recorded. */
+  digests?: Record<string, string>;
 }
 
 /** Every target a channel's manifest can name — see `Channel::required_targets`. */

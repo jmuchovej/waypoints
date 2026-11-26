@@ -1,0 +1,17 @@
+pkgbase = {{ package.id }}
+	pkgdesc = Local-first knowledge management ({{ flavor.product_name }})
+	pkgver = {{ release.tag | pkgver }}
+	pkgrel = 1
+	url = https://waypoints.so
+	arch = x86_64
+	license = AGPL-3.0-or-later
+	depends = gtk3
+	depends = libayatana-appindicator
+	depends = webkit2gtk-4.1
+	noextract = {{ artifact.linux_amd64.deb.file_name }}
+	options = !debug
+	options = !strip
+	source = {{ artifact.linux_amd64.deb.file_name }}::{{ artifact.linux_amd64.deb.url }}
+	sha256sums = {{ artifact.linux_amd64.deb.sha256 }}
+
+pkgname = {{ package.id }}

@@ -60,7 +60,7 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
         .add_env(("TAG", helpers::triggering_tag()))
         .add_env((
             "SECRETSPEC_REASON",
-            "release-index records a published tag in nix/releases; no secret values are read",
+            "release-index records a published tag in distribution/nix/releases; no secret values are read",
         ));
 
     // The task publishes these only when it wrote, so a dry run opens nothing.

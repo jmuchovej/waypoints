@@ -11,7 +11,7 @@
 {
   stdenv = pkgs.clangStdenv;
 
-  imports = [ ./nix/devenv ];
+  imports = [ ./tooling/devenv ];
 
   waypoints.mise = {
     # `MISE_ENV` targets **units of work** rather than actors. a contributor without `nix`
@@ -24,7 +24,7 @@
       "build-desktop"
       "build-mobile"
       "website"
-      "deploy"
+      "dist"
     ];
 
     tools = {
@@ -52,9 +52,9 @@
         spec = "github:facebook/ktfmt";
         envs = [ "devtools" ];
       };
-      rufo = {
-        package = pkgs.rufo;
-        spec = "gem:rufo";
+      rubocop = {
+        package = pkgs.rubocop;
+        spec = "gem:rubocop";
         depends = [ config.waypoints.mise.tools.ruby.spec ];
         envs = [ "devtools" ];
       };
@@ -121,22 +121,23 @@
         envs = [ "devtools" ];
       };
 
-      # The deploy lane: validating the Station manifests under deploy/ and
-      # standing them up on kind (`just deploy::…`).
+      # The dist lane: validating the Station manifests under
+      # distribution/kubernetes/ and standing them up on kind
+      # (`just dist::kubernetes::…`).
       kubeconform = {
         package = pkgs.kubeconform;
         spec = "aqua:yannh/kubeconform";
-        envs = [ "deploy" ];
+        envs = [ "dist" ];
       };
       kubectl = {
         package = pkgs.kubectl;
         spec = "aqua:kubernetes/kubernetes/kubectl";
-        envs = [ "deploy" ];
+        envs = [ "dist" ];
       };
       kind = {
         package = pkgs.kind;
         spec = "aqua:kubernetes-sigs/kind";
-        envs = [ "deploy" ];
+        envs = [ "dist" ];
       };
 
       # Shell-only: the local development store for secrets. No CI lane
@@ -262,13 +263,13 @@
         spec = "core:deno";
         envs = [ "website" ];
       };
-      # since only `rufo` needs ruby, we don't need it in the base env.
+      # since only `rubocop` needs ruby, we don't need it in the base env.
       ruby = {
         package = config.languages.ruby.package;
         spec = "core:ruby";
         envs = [ "devtools" ];
       };
-      # LOAD-BEARING, despite `envs = null`: nix/devenv/android.nix reads this
+      # LOAD-BEARING, despite `envs = null`: tooling/devenv/android.nix reads this
       # package's version into the generated `libs.versions.toml`, which is what
       # pins the Gradle Kotlin plugin. Gradle resolves `kotlin-compiler-embeddable`
       # from Maven at that version and runs it on the JDK — it never looks for
@@ -282,7 +283,7 @@
     };
   };
 
-  # `.env` and both of its substituters are owned by nix/devenv/default.nix.
+  # `.env` and both of its substituters are owned by tooling/devenv/default.nix.
   env.PROJECT_ROOT = config.devenv.root;
 
   delta.enable = true;
@@ -368,6 +369,6 @@
       "rust-toolchain.toml"
       ".config/deny.toml"
     ];
-    exec = builtins.readFile ./nix/devenv/bin/sync-deny-targets;
+    exec = builtins.readFile ./tooling/devenv/bin/sync-deny-targets;
   };
 }

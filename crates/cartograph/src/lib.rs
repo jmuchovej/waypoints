@@ -43,6 +43,9 @@ pub type Database = Arc<Mutex<Option<store::Store>>>;
 pub(crate) mod build_info;
 pub use build_info::BuildInfo;
 
+pub(crate) mod self_update;
+pub use self_update::{SelfUpdatePolicy, SelfUpdateStatus};
+
 pub(crate) mod editor {
     pub(crate) mod error;
     mod handle;

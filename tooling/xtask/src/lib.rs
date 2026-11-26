@@ -61,6 +61,13 @@ pub mod planners {
 
 /// Staging, publishing, and recording a release, and the versions it is
 /// all keyed by.
+pub mod distribution {
+    pub mod check;
+    pub mod context;
+    pub mod registry;
+    pub mod render;
+}
+
 pub mod releases {
     pub mod artifacts;
     pub mod index;

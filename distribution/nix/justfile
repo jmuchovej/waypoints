@@ -1,0 +1,14 @@
+# The Nix channel: the hashes the app recipe cannot derive from the tree.
+# `nix-pins` reads the tree from the repository root, so both recipes run there.
+
+[private]
+default:
+    @just --list
+
+[doc("Refreshes the hashes nix cannot derive from the tree, after a lockfile change.")]
+pins pin="":
+    cd ../.. && nix-pins {{ pin }}
+
+[doc("Reports what those hashes would become, writing nothing.")]
+pins-check pin="":
+    cd ../.. && nix-pins {{ pin }} --dry-run

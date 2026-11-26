@@ -12,7 +12,7 @@
 
 # Never product work, for any group or planner.
 [bookkeeping]
-  paths        = [ "nix/releases/" ]
+  paths        = [ "distribution/nix/releases/" ]
   ignore-revs  = ".git-blame-ignore-revs"
   # Reserved to botswain.
   bot-subjects = [ "chore(release):" ]

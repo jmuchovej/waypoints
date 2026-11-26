@@ -9,56 +9,83 @@
 //! the GitHub release record itself is flipped public, so the reverse (a
 //! published record naming artifacts that never arrived) cannot happen.
 //!
+//! Every file a target uploads is recorded with its SHA-256, hashed from the
+//! staged file the upload read, so a package manifest derives its checksums
+//! from this record without a store credential or a re-download.
+//!
 //! Unlike an artifact upload, this write is a plain overwrite: a channel has
 //! exactly one current manifest, and each publish replaces it.
 
-use crate::{Channel, releases::version::Version};
+use crate::{
+    Channel,
+    releases::{artifacts, version::Version},
+};
 use anyhow::{Context as _, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest as _, Sha256};
+use std::{collections::BTreeMap, path::Path};
 
 /// What a channel's manifest guarantees to a reader: its current version
 /// and the targets published for it. Field names are the wire format every
-/// reader (the download surface, an updater) agrees on.
-#[derive(Serialize)]
+/// reader (the download surface, an updater, a package manifest) agrees on.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Manifest {
     pub version: String,
     pub series: String,
     pub targets: Vec<ManifestTarget>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ManifestTarget {
     pub os: String,
     pub arch: String,
-    pub extensions: &'static [&'static str],
+    pub extensions: Vec<String>,
+    /// Extension → SHA-256 hex, for every file the target uploads:
+    /// installers and updater payloads and signatures alike.
+    pub digests: BTreeMap<String, String>,
 }
 
 impl Manifest {
     /// Every platform in `channel.required_targets()`, in its published-target
-    /// shape. Today that is every platform there is, for every channel, but
-    /// the manifest is built from the channel's own required set rather than
-    /// a bare enumeration so a channel narrowing it later changes what gets
-    /// published without this file needing to change too.
-    pub fn build(channel: Channel, version: &Version) -> Self {
+    /// shape, with each uploaded file's digest read from `staged` — the flat
+    /// directory `release-upload --from` reads. Today that is every platform
+    /// there is, for every channel, but the manifest is built from the
+    /// channel's own required set rather than a bare enumeration so a channel
+    /// narrowing it later changes what gets published without this file
+    /// needing to change too.
+    pub fn build(channel: Channel, version: &Version, staged: &Path) -> Result<Self> {
+        let tag = version.tag();
         let targets = channel
             .required_targets()
             .iter()
             .copied()
             .map(|platform| {
                 let target = platform.published_target();
-                ManifestTarget {
+                let digests = target
+                    .extensions
+                    .iter()
+                    .chain(platform.updater_extensions())
+                    .map(|extension| {
+                        let path = staged.join(artifacts::file_name(&tag, extension));
+                        let bytes = std::fs::read(&path)
+                            .with_context(|| format!("hashing {}", path.display()))?;
+                        Ok(((*extension).to_owned(), hex::encode(Sha256::digest(&bytes))))
+                    })
+                    .collect::<Result<_>>()?;
+                Ok(ManifestTarget {
                     os: target.os,
                     arch: target.arch.to_string(),
-                    extensions: target.extensions,
-                }
+                    extensions: target.extensions.iter().map(|e| (*e).to_owned()).collect(),
+                    digests,
+                })
             })
-            .collect();
+            .collect::<Result<_>>()?;
 
-        Self {
-            version: version.tag(),
+        Ok(Self {
+            version: tag,
             series: version.series(),
             targets,
-        }
+        })
     }
 
     /// The bytes written to the store.
@@ -68,11 +95,45 @@ impl Manifest {
 }
 
 #[cfg(test)]
+pub(crate) mod fixture {
+    use crate::{Channel, releases::artifacts};
+    use std::path::Path;
+
+    /// The bytes a scratch stage holds for an extension — distinct per file,
+    /// so a digest filed under the wrong extension is caught.
+    pub fn contents(extension: &str) -> Vec<u8> {
+        format!("staged {extension}").into_bytes()
+    }
+
+    /// Fills `dir` with every file `channel` publishes for `tag`, as
+    /// `release-stage` would have.
+    pub fn stage(dir: &Path, channel: Channel, tag: &str) {
+        for platform in channel.required_targets() {
+            let target = platform.published_target();
+            for extension in target
+                .extensions
+                .iter()
+                .chain(platform.updater_extensions())
+            {
+                std::fs::write(
+                    dir.join(artifacts::file_name(tag, extension)),
+                    contents(extension),
+                )
+                .unwrap();
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Platform;
 
     fn manifest(channel: Channel, tag: &str) -> Manifest {
-        Manifest::build(channel, &tag.parse().unwrap())
+        let dir = tempfile::tempdir().unwrap();
+        fixture::stage(dir.path(), channel, tag);
+        Manifest::build(channel, &tag.parse().unwrap(), dir.path()).unwrap()
     }
 
     #[test]
@@ -104,6 +165,86 @@ mod tests {
             target["os"] == "macos"
                 && target["arch"] == "arm64"
                 && target["extensions"] == serde_json::json!(["dmg"])
+                && target["digests"]["dmg"].is_string()
         }));
+    }
+
+    #[test]
+    fn every_uploaded_file_of_a_target_has_its_own_digest() {
+        let manifest = manifest(Channel::Nightly, "v0.2.0-nightly.20261019");
+        for (platform, target) in Channel::Nightly
+            .required_targets()
+            .iter()
+            .zip(&manifest.targets)
+        {
+            let expected: Vec<&str> = target
+                .extensions
+                .iter()
+                .map(String::as_str)
+                .chain(platform.updater_extensions().iter().copied())
+                .collect();
+            assert_eq!(
+                target
+                    .digests
+                    .keys()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>(),
+                {
+                    let mut sorted = expected.clone();
+                    sorted.sort_unstable();
+                    sorted
+                },
+                "{platform}"
+            );
+            for extension in expected {
+                assert_eq!(
+                    target.digests[extension],
+                    hex::encode(Sha256::digest(fixture::contents(extension))),
+                    "{platform} {extension}"
+                );
+            }
+        }
+        let macos = Channel::Nightly
+            .required_targets()
+            .iter()
+            .position(|platform| *platform == Platform::macOS)
+            .expect("macOS target");
+        assert!(
+            manifest.targets[macos]
+                .digests
+                .contains_key("app.tar.gz.sig")
+        );
+    }
+
+    /// The fixture the renderer's tests read is what this module writes.
+    #[test]
+    fn the_fixture_round_trips() {
+        let text = include_str!("../../tests/fixtures/release-manifest.json");
+        let parsed: Manifest = serde_json::from_str(text).unwrap();
+        assert_eq!(parsed.version, "v0.1.0-nightly.20261116");
+        assert!(
+            parsed
+                .targets
+                .iter()
+                .all(|target| !target.digests.is_empty())
+        );
+        let original: serde_json::Value = serde_json::from_str(text).unwrap();
+        let rendered: serde_json::Value =
+            serde_json::from_slice(&parsed.render().unwrap()).unwrap();
+        assert_eq!(rendered, original);
+    }
+
+    #[test]
+    fn a_file_missing_from_the_stage_fails_naming_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let tag = "v0.1.1";
+        fixture::stage(dir.path(), Channel::Stable, tag);
+        std::fs::remove_file(dir.path().join(artifacts::file_name(tag, "deb.sig"))).unwrap();
+        let error = Manifest::build(Channel::Stable, &tag.parse().unwrap(), dir.path())
+            .expect_err("a missing file is refused");
+        assert!(
+            format!("{error:#}").contains("waypoints-v0.1.1.deb.sig"),
+            "{error:#}"
+        );
     }
 }

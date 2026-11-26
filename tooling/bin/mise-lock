@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Refresh `.config/mise/mise.lock`, or with `--check` report whether it still
-# agrees with the config fragments. Hand-invoked — see nix/AGENTS.md for why no
+# agrees with the config fragments. Hand-invoked — see tooling/devenv/AGENTS.md for why no
 # devenv task writes the lockfile on shell entry.
 #
 # `mise lock` refreshes the platforms the lockfile already carries and will not

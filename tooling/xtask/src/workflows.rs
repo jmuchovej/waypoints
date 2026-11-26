@@ -22,6 +22,7 @@ use strum::IntoEnumIterator;
 // an underscore, so a bare name in this directory is always a workflow.
 mod check_generated;
 mod devenv_update;
+mod distribution;
 mod pull_request;
 mod release;
 mod release_index;
@@ -128,6 +129,7 @@ pub fn workflows() -> Vec<WorkflowFile> {
     vec![
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
+        WorkflowFile::waypoints("distribution", distribution::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
         WorkflowFile::waypoints("release_index", release_index::workflow),
         WorkflowFile::waypoints("release_plan", release_plan::workflow),
@@ -377,6 +379,7 @@ mod tests {
                 check_generated::workflow(context),
             ),
             ("devenv_update".to_owned(), devenv_update::workflow(context)),
+            ("distribution".to_owned(), distribution::workflow(context)),
             ("pull_request".to_owned(), pull_request::workflow(context)),
             ("release_index".to_owned(), release_index::workflow(context)),
             ("release_plan".to_owned(), release_plan::workflow(context)),
