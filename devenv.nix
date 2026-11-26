@@ -243,10 +243,15 @@
         spec = "github:jdx/mr-boxington";
         envs = [ "devtools" ];
       };
+      # The test lane too: xtask's integration tests drive the built binary,
+      # and a dry-run bump renders the would-be tag's notes through it.
       git-cliff = {
         package = pkgs.git-cliff;
         spec = "aqua:orhun/git-cliff";
-        envs = [ "xtask" ];
+        envs = [
+          "test"
+          "xtask"
+        ];
       };
 
       node = {
