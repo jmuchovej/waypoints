@@ -10,17 +10,21 @@
 //! in flight. For a group it is today's group-scoped cut. Run from `main`;
 //! see [`xtask::planners::release`].
 
-use super::{plan::carry_out, prepare::plan_nightly};
+use super::plan::carry_out;
 use anyhow::{Result, bail};
+use chrono::Utc;
 use clap::{ArgGroup, Parser, ValueEnum as _};
 use serde::Serialize;
 use std::path::PathBuf;
 use xtask::{
     Channel,
     constants::MAIN,
-    planners::release as planner,
+    planners::{
+        nightly::{self, Decision, Plan},
+        release as planner,
+    },
     release_groups,
-    releases::version::Transition,
+    releases::version::{Transition, Version},
     tools::{git, github},
     workspace,
 };
@@ -119,12 +123,15 @@ pub fn run(args: Options) -> Result<()> {
             bail!("`--major` asks for a cut; a nightly bump has no transition");
         }
         let declared = groups.app_version()?;
-        let (plan, report) = plan_nightly(&declared, None, args.dry_run, true)?;
+        let (plan, report) = plan_nightly(&declared, args.dry_run)?;
         println!("{report}");
         github::set_outputs_if_available(&Inferred {
             transition: "nightly".to_owned(),
         })?;
-        return github::set_outputs_if_available(&plan);
+        return match plan {
+            Some(plan) => github::set_outputs_if_available(&plan),
+            None => Ok(()),
+        };
     }
 
     let states = planner::series_states(&series, &tagged, &groups, root)?;
@@ -166,6 +173,45 @@ pub fn run(args: Options) -> Result<()> {
         args.dry_run,
         args.into.as_deref(),
     )
+}
+
+/// Decides the day's nightly from `manifest`'s target: skip when nothing
+/// landed, refuse a taken day, else mint it at `HEAD` — or, dry, report what
+/// it would have. The plan is `None` where nothing is minted, or would be.
+fn plan_nightly(manifest: &Version, dry_run: bool) -> Result<(Option<Plan>, String)> {
+    let target = manifest.target();
+    let tags = nightly::nightly_tags()?;
+    let latest = nightly::latest_nightly(&target, &tags)?;
+    let commits = nightly::commits_since(latest.as_ref())?;
+    let today = Utc::now().date_naive();
+    let decision = nightly::decide(latest.as_ref(), &commits, &target, today)?;
+
+    let verdict = match &decision {
+        Decision::New(version) => format!("Work landed since the last nightly; {version} is next."),
+        Decision::Current(version) => {
+            format!("Nothing landed since the last nightly {version}; nothing new to publish.")
+        }
+        Decision::Taken(version) => format!(
+            "Today's nightly {version} already exists; the work since it ships with the next scheduled nightly."
+        ),
+    };
+
+    match (dry_run, decision) {
+        (true, Decision::New(version)) => {
+            let plan = Plan::of(&version)?;
+            let report = format!("Dry run: {verdict} Would mint {}.", plan.tag);
+            Ok((Some(plan), report))
+        }
+        (true, _) => Ok((None, format!("Dry run: {verdict}"))),
+        (false, Decision::New(version)) => {
+            let head = git::run(&["rev-parse", "HEAD"])?;
+            let plan = Plan::of(&version)?;
+            github::create_tag(&plan.tag, &head)?;
+            let report = format!("Tagged nightly {tag} at {head}.", tag = plan.tag);
+            Ok((Some(plan), report))
+        }
+        (false, _) => Ok((None, verdict)),
+    }
 }
 
 /// The transition as the command line spells it.

@@ -126,7 +126,7 @@ fn the_release_planner_refuses_an_unnamed_crate() {
 
 #[test]
 fn the_nightly_planner_refuses_an_unnamed_crate() {
-    assert_refuses_naming_the_crate(&["release", "prepare", "nightly", "--dry-run", "--no-build"]);
+    assert_refuses_naming_the_crate(&["release", "bump", "--channel", "nightly", "--dry-run"]);
 }
 
 #[test]
@@ -138,9 +138,9 @@ fn the_release_planner_refuses_a_stale_projection() {
 fn the_nightly_planner_refuses_a_stale_projection() {
     assert_refuses_naming_the_manifest_and_the_file(&[
         "release",
-        "prepare",
+        "bump",
+        "--channel",
         "nightly",
         "--dry-run",
-        "--no-build",
     ]);
 }

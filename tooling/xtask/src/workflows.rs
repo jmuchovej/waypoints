@@ -29,7 +29,6 @@ mod check_generated;
 mod devenv_update;
 mod pull_request;
 mod release;
-mod release_index;
 mod release_plan;
 mod version_integrity;
 
@@ -48,7 +47,7 @@ pub(crate) use _steps as steps;
 mod _suppressions;
 pub(crate) mod _types;
 pub(crate) use crate::tools::mise::MiseEnv;
-pub(crate) use _types::{Artifact, DescribeJob, PrepareJob, TestSuite, WorkflowInput};
+pub(crate) use _types::{Artifact, DescribeJob, GuardJob, ReleaseRun, TestSuite, WorkflowInput};
 
 /// Where a workflow lives, which is also who is allowed to consume it.
 #[derive(PartialEq, Eq, strum::EnumIter)]
@@ -162,24 +161,14 @@ fn all_generated_files(root: &Path) -> Result<Vec<PathBuf>> {
 
 /// Every workflow this crate emits.
 pub fn workflows() -> Vec<WorkflowFile> {
-    /// One `release-<channel>.yaml` per channel, all from [`release::workflow`].
-    fn release_file(channel: Channel) -> WorkflowFile {
-        WorkflowFile::waypoints("release", move |context| {
-            release::workflow(channel, context)
-        })
-        .stem(format!("release-{flavor}", flavor = channel.flavor()))
-    }
     vec![
         WorkflowFile::waypoints("build", build::workflow).stem("build-distributables"),
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
-        WorkflowFile::waypoints("release_index", release_index::workflow),
+        WorkflowFile::waypoints("release", release::workflow),
         WorkflowFile::waypoints("release_plan", release_plan::workflow),
         WorkflowFile::waypoints("version_integrity", version_integrity::workflow),
-        release_file(Channel::Nightly),
-        release_file(Channel::Preview),
-        release_file(Channel::Stable),
     ]
 }
 
@@ -479,7 +468,7 @@ mod tests {
 
     /// Every workflow [`generate`] emits, built against the fixture context.
     fn every_workflow(context: &WorkflowContext) -> Vec<(String, Workflow)> {
-        let mut workflows = vec![
+        vec![
             ("build-distributables".to_owned(), build::workflow(context)),
             (
                 "check_generated".to_owned(),
@@ -487,20 +476,13 @@ mod tests {
             ),
             ("devenv_update".to_owned(), devenv_update::workflow(context)),
             ("pull_request".to_owned(), pull_request::workflow(context)),
-            ("release_index".to_owned(), release_index::workflow(context)),
+            ("release".to_owned(), release::workflow(context)),
             ("release_plan".to_owned(), release_plan::workflow(context)),
             (
                 "version_integrity".to_owned(),
                 version_integrity::workflow(context),
             ),
-        ];
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            workflows.push((
-                format!("release-{}", channel.flavor()),
-                release::workflow(channel, context),
-            ));
-        }
-        workflows
+        ]
     }
 
     /// `workflow` as JSON with every `$/.github/actions/<name>` step replaced
@@ -1186,7 +1168,10 @@ mod tests {
                 }
             }
         }
-        assert_eq!(opened, 4, "devenv-update, the index, and a cut's two");
+        assert_eq!(
+            opened, 5,
+            "devenv-update, a cut's two, the record, and the revert"
+        );
     }
 
     /// `check-generated` is path-filtered and not required, so this is what catches
@@ -1219,7 +1204,7 @@ mod tests {
     /// GitHub wraps a merge commit's body at 72 columns, and these land unread.
     #[test]
     fn the_bots_merge_messages_land_unwrapped() {
-        for body in [release_plan::body(), release_index::body()] {
+        for body in [release_plan::body(), release::body()] {
             assert!(body.len() <= 72, "{}: {body}", body.len());
         }
     }
@@ -1283,10 +1268,7 @@ mod tests {
         for (name, workflow) in every_workflow(&context) {
             let value = expanded(&name, &workflow);
             let suites = assert_suites_take_the_flavor(&name, &value);
-            if name == "pull_request"
-                || name == "build-distributables"
-                || name.starts_with("release-")
-            {
+            if name == "pull_request" || name == "build-distributables" {
                 assert!(suites > 0, "{name}: no test suite");
             }
         }
@@ -1327,72 +1309,68 @@ mod tests {
         );
     }
 
-    /// Each channel is its own build: every platform builds under the
-    /// channel's flavor and the publish job merges only that channel's
-    /// artifacts, so a promotion is a fresh stable build, never a relabelled
-    /// preview.
+    /// Every publishing act reads the channel and the flavor the builder read
+    /// from the tag — the listing, both submissions, the artifacts it merges,
+    /// the draft's prerelease flag — so a promotion is a fresh stable build,
+    /// never a relabelled preview, and the workflow names no channel of its
+    /// own. The builder's own reading is held in `build.rs`.
     #[test]
-    fn every_channel_builds_and_publishes_its_own_flavor() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let value = serde_json::to_value(release::workflow(channel, &context)).unwrap();
-            assert_channel_builds_its_own_flavor(channel, &value);
-        }
+    fn the_release_reads_its_channel_from_the_builder() {
+        let value = serde_json::to_value(release::workflow(&WorkflowContext::fixture())).unwrap();
+        assert_publishing_reads_the_builder(&value);
     }
 
-    fn assert_channel_builds_its_own_flavor(channel: Channel, value: &Value) {
-        use crate::Platform;
-
-        let flavor = channel.flavor();
-        let mut built = Vec::new();
-        let mut published = false;
+    fn assert_publishing_reads_the_builder(value: &Value) {
+        let flavor = "${{ needs.build.outputs.flavor }}";
+        let channel = "${{ needs.build.outputs.channel }}";
+        let mut read = 0;
         for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
             for step in job["steps"].as_array().into_iter().flatten() {
+                let label = format!("{job_name}: {}", step["id"]);
                 match step["id"].as_str() {
-                    Some("build-recipe") => {
-                        let run = step["run"].as_str().unwrap_or("");
-                        let platform = Platform::iter().find(|platform| {
-                            run == format!(r#"just tauri::build {} "${{FLAVOR}}""#, platform.slug())
-                        });
+                    Some("prepare-listing" | "submit-android" | "submit-ios") => {
                         assert!(
-                            platform.is_some() && step["env"]["FLAVOR"] == flavor,
-                            "{flavor}/{job_name}: builds `{run}` under `{}`, not this channel's flavor",
+                            step["env"]["FLAVOR"] == flavor,
+                            "{label}: names a flavor of its own: {}",
                             step["env"]["FLAVOR"]
                         );
-                        built.extend(platform);
+                        read += 1;
                     }
                     Some("download-staged") => {
-                        assert_eq!(
-                            step["with"]["pattern"],
-                            format!("waypoints-*-{flavor}"),
-                            "{flavor}/{job_name}: merges another channel's artifacts"
+                        assert!(
+                            step["with"]["pattern"] == format!("waypoints-*-{channel}"),
+                            "{label}: names a channel of its own: {}",
+                            step["with"]["pattern"]
                         );
-                        published = true;
+                        read += 1;
+                    }
+                    Some("draft-release") => {
+                        assert!(
+                            step["env"]["PRERELEASE"]
+                                == "${{ needs.build.outputs.channel != 'stable' && '--prerelease' || '' }}",
+                            "{label}: names a channel of its own: {}",
+                            step["env"]["PRERELEASE"]
+                        );
+                        read += 1;
                     }
                     _ => {}
                 }
             }
         }
-        for platform in Platform::iter() {
-            assert!(
-                built.contains(&platform),
-                "{flavor}: no build for {platform}"
-            );
-        }
-        assert!(published, "{flavor}: no job merges the staged artifacts");
+        assert_eq!(
+            read, 5,
+            "the listing, two submissions, the merge, and the draft"
+        );
     }
 
     #[test]
-    #[should_panic(expected = "not this channel's flavor")]
-    fn a_build_under_another_channel_s_flavor_is_refused() {
-        assert_channel_builds_its_own_flavor(
-            Channel::Stable,
-            &json!({ "jobs": { "build-macos": { "steps": [{
-                "id": "build-recipe",
-                "run": "just tauri::build macos \"${FLAVOR}\"",
-                "env": { "FLAVOR": "preview" }
-            }]}}}),
-        );
+    #[should_panic(expected = "names a flavor of its own")]
+    fn a_submission_under_a_flavor_of_its_own_is_refused() {
+        assert_publishing_reads_the_builder(&json!({ "jobs": { "publish": { "steps": [{
+            "id": "submit-ios",
+            "run": "xfastlane publish ios \"${FLAVOR}\" --from release",
+            "env": { "FLAVOR": "stable" }
+        }]}}}));
     }
 
     /// The two prefixes are the two actions, each rendered into its own

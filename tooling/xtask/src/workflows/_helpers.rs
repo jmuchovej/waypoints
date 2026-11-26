@@ -268,17 +268,22 @@ pub fn selected(platform: Platform) -> String {
     format!("contains(fromJson('[{choices}]'), inputs.platforms)")
 }
 
-/// Guards a build on the planner's verdict and the `platforms` dispatch
-/// input: it waits on the verdict, which is how a run with nothing to build
-/// — a quiet nightly, a dry run asked not to build — skips its builds.
-pub fn guard(platform: Platform, should_build: &JobOutput) -> Expression {
-    Expression::new(format!(
-        "{planner} == 'true' && \
-         (github.event_name != 'workflow_dispatch' || {selected})",
-        planner = should_build.expr(),
-        selected = selected(platform),
-    ))
+/// The ref a release run works on: the pushed tag, the dispatched tag, or
+/// the commit a rehearsal without a tag runs on. Wrapped for a `with:` value.
+pub fn release_ref() -> String {
+    format!("${{{{ {} || github.sha }}}}", triggering_tag_expr())
 }
+
+/// True when the run is a tag's own push: the one case a withdrawal deletes
+/// the tag and undoes the bump that minted it.
+pub fn pushed() -> Expression {
+    Expression::new("github.event_name == 'push'")
+}
+
+/// The concurrency group the bump and the release share: one release cycle
+/// runs at a time, queued rather than cancelled, so a scheduled nightly waits
+/// out a release and cannot mint from a `main` that run is about to revert.
+pub const RELEASE_CYCLE: &str = "release-cycle";
 
 pub(crate) trait BotswainGitIdentity {
     fn with_botswain_git_identity(self) -> Self;

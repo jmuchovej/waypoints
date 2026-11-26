@@ -55,7 +55,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let builds: Vec<NamedJob> = Platform::iter()
         .map(|platform| {
             let inputs = BuildInputs::described(&describe, &reference, platform);
-            jobs::build_with(context, platform, &inputs).map(|job| {
+            jobs::build(context, platform, &inputs).map(|job| {
                 gate_names
                     .iter()
                     .fold(job, |job, gate| job.add_needs(gate.clone()))

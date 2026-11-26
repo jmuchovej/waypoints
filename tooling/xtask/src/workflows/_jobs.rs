@@ -5,18 +5,23 @@
 //! and wires their `needs:`.
 
 use super::{
-    DescribeJob, MiseEnv, PrepareJob, TestSuite, WorkflowContext, WorkflowInput, actions,
+    DescribeJob, GuardJob, MiseEnv, ReleaseRun, TestSuite, WorkflowContext, WorkflowInput, actions,
     actions::{FreeDisk, MiseSetup},
     helpers,
-    helpers::{ANDROID_HOME, Environment},
+    helpers::{ANDROID_HOME, Environment, GITHUB_TOKEN},
     runners, steps,
     steps::Tools,
 };
-use crate::{Channel, Platform};
+use crate::{
+    Platform,
+    constants::{MAIN, WORKFLOWS_DIR},
+    templates,
+};
 use gh_workflow::{
     Environment as GhEnvironment, Expression, FluentBuilder, Job, JobOutput, Level, NamedJob,
     Permissions, Step, StepOutput,
 };
+use strum::IntoEnumIterator as _;
 
 /// The environment variable a build reads its store build number from. One
 /// name; [`build_code`] decides which value fills it.
@@ -29,14 +34,13 @@ pub const BUILD_CODE_ENV: &str = "WAYPOINTS_BUILD_CODE";
 /// the Gradle project renders Android's `versionName` the same way.
 pub const VERSION_ENV: &str = "WAYPOINTS_VERSION";
 
-/// What a build job reads from the job that planned or described its run:
-/// whom to wait on, when to run, what to check out, and what to stamp and
-/// name.
+/// What a build job reads from the job that described its run: whom to wait
+/// on, when to run, what to check out, and what to stamp and name.
 pub struct BuildInputs {
     pub needs: String,
     pub cond: Expression,
-    /// The ref to check out; the run's own when `None`.
-    pub reference: Option<String>,
+    /// The ref to check out.
+    pub reference: String,
     /// The flavor the build enables.
     pub flavor: String,
     /// The channel the staged artifact is named for.
@@ -49,24 +53,6 @@ pub struct BuildInputs {
 }
 
 impl BuildInputs {
-    /// From a channel's planner: the channel is the workflow's, the gate is
-    /// the planner's verdict with the dispatch's platforms, and the staged
-    /// files are named `v` and the planner's version — the tag's, or on
-    /// nightly the one it minted or would mint.
-    pub fn planned(channel: Channel, prepare: &PrepareJob, platform: Platform) -> Self {
-        Self {
-            needs: prepare.name().to_owned(),
-            cond: helpers::guard(platform, &prepare.should_build),
-            reference: None,
-            flavor: channel.flavor(),
-            channel: channel.to_string(),
-            tag: format!("v{}", prepare.version),
-            version: prepare.version.clone(),
-            version_code: prepare.version_code.clone(),
-            bundle_version: prepare.bundle_version.clone(),
-        }
-    }
-
     /// From the builder's `describe`: everything is what it read from
     /// `reference`, and the gate is the caller's platforms alone.
     pub fn described(
@@ -77,7 +63,7 @@ impl BuildInputs {
         Self {
             needs: describe.name().to_owned(),
             cond: Expression::new(helpers::selected(platform)),
-            reference: Some(reference.to_string()),
+            reference: reference.to_string(),
             flavor: describe.flavor.to_string(),
             channel: describe.channel.to_string(),
             tag: describe.tag.to_string(),
@@ -106,23 +92,6 @@ fn app_version(inputs: &BuildInputs, platform: Platform) -> Option<&JobOutput> {
     platform.is_mobile().then_some(&inputs.version)
 }
 
-/// Nightly rehearses on every dispatch: only its schedule publishes, since the
-/// date is the store build number and a day holds one nightly.
-const DRY_RUN_ON_DISPATCH: &str =
-    "${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }}";
-
-/// Preview and stable rehearse when the dispatch asks for it, which its
-/// `dry_run` input does by default. The event guard leads: on a push `inputs`
-/// is empty.
-const DRY_RUN_WHEN_ASKED: &str =
-    "${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '--dry-run' || '' }}";
-
-/// Decide and report only, when the dispatch turns `build` off. The event
-/// guard leads for the same reason: on a push `inputs.build` is null, and
-/// `!null` is true.
-const NO_BUILD_WHEN_ASKED: &str =
-    "${{ github.event_name == 'workflow_dispatch' && !inputs.build && '--no-build' || '' }}";
-
 /// Names the mise config environments a job installs. Additive: each one adds
 /// its `[tools]` to the base, so a job declares what it does and gets exactly
 /// that. Replaced a deny-list of tool specs, which named what to skip and so
@@ -132,73 +101,39 @@ fn mise_env(job: Job, envs: &[MiseEnv]) -> Job {
     job.add_env(MiseEnv::select(envs))
 }
 
-/// Plans the run. On nightly: derive the tag from the workspace version, skip
-/// when nothing landed since the last nightly, and mint it. On preview and
-/// stable: take the pushed tag, or the one the dispatch names. A dispatch
-/// rehearses — nightly's always, the others' unless asked otherwise — and may
-/// decide without building.
-///
-/// Nightly's tag is minted with the wp-botswain App token rather than
-/// `GITHUB_TOKEN`: a ref created with the latter raises no `push` event, so
-/// nothing downstream of the tag — the release index — would ever run. The
-/// other channels mint nothing and authenticate as nobody.
-pub fn prepare(channel: Channel, context: &WorkflowContext) -> PrepareJob {
-    let app_token = steps::app_token(&[("contents", "write")]);
-    let token = StepOutput::new_trusted(&app_token, "token");
-
-    let flavor = channel.flavor();
-    let dry_run = if channel.is_nightly() {
-        DRY_RUN_ON_DISPATCH
-    } else {
-        DRY_RUN_WHEN_ASKED
-    };
-    let mut args: Vec<(&str, Option<&str>)> = vec![(flavor.as_str(), None)];
-    if !channel.is_nightly() {
-        // Through the environment: a ref name is free text as far as the
-        // shell is concerned.
-        args.push(("--tag", Some("$TAG")));
-    }
-    args.extend([(dry_run, None), (NO_BUILD_WHEN_ASKED, None)]);
-    let planner = steps::cargo_xtask("release prepare", &args)
-        .id("prepare")
-        .when(channel.is_nightly(), |step| {
-            step.add_env(("GH_TOKEN", token.to_string()))
-        })
-        .when(!channel.is_nightly(), |step| {
-            step.add_env(("TAG", helpers::triggering_tag()))
-        });
-
-    let p_tag = StepOutput::new_trusted(&planner, "tag");
-    let p_tag_minted = StepOutput::new_trusted(&planner, "tag_minted");
-    let p_dry_run = StepOutput::new_trusted(&planner, "dry_run");
-    let p_build = StepOutput::new_trusted(&planner, "should_build");
-    let p_app_version = StepOutput::new_trusted(&planner, "version");
-    let p_version = StepOutput::new_trusted(&planner, "version_code");
-    let p_bundle = StepOutput::new_trusted(&planner, "bundle_version");
-
+/// Reads the ref into the build's identity — the tag, the version, the
+/// channel, the flavor, and the store build codes — as `release describe`
+/// publishes them. Everything downstream stamps what this read; nothing else
+/// is told the ref.
+pub fn describe(context: &WorkflowContext, reference: &WorkflowInput) -> DescribeJob {
     let registry = steps::cargo_registry(steps::CARGO_HOME);
+    // Through the environment: a ref is free text as far as the shell is
+    // concerned.
+    let describe = steps::cargo_xtask("release describe", &[("--ref", Some("$REF"))])
+        .id("describe")
+        .add_env(("REF", reference.to_string()));
+    let output = |name| StepOutput::new_trusted(&describe, name);
+    let tag = output("tag");
+    let version = output("version");
+    let channel = output("channel");
+    let flavor = output("flavor");
+    let version_code = output("version_code");
+    let bundle_version = output("bundle_version");
 
     let job = NamedJob::new(
-        "prepare",
-        // The planner is a `cargo xtask` run and nothing more.
+        "describe",
         mise_env(Job::default(), &[MiseEnv::Xtask])
-            .name(format!("Plan the {channel} release"))
-            // Only what `checkout` needs: nightly's tag ref is created with
-            // the App token, which carries its own write scope.
+            .name("Describe the build")
             .permissions(Permissions::default().contents(Level::Read))
-            // Compiles through the CI cache, and on nightly authenticates as
-            // the App, so the vault credential comes from the automation
-            // environment.
+            // Compiles through the CI cache, so the vault credential comes
+            // from the automation environment.
             .environment(GhEnvironment::from(Environment::Ci))
             .runs_on(runners::LINUX)
-            // Tags and the history between them: the nightly planner walks
-            // from the last nightly to HEAD with a pathspec that drops the
-            // index directory. In a shallow clone the tip is a root commit
-            // diffed against the empty tree, so every path looks changed and
-            // the exclusion cannot bite — nightly.5 was minted from an
-            // index-only commit exactly so.
+            // The ref's tree, and the tags, so a tag resolves whatever the
+            // caller named.
             .add_step(
                 steps::checkout()
+                    .add_with(("ref", reference.to_string()))
                     .add_with(("fetch-depth", 0))
                     .add_with(("fetch-tags", true)),
             )
@@ -206,38 +141,30 @@ pub fn prepare(channel: Channel, context: &WorkflowContext) -> PrepareJob {
                 MiseSetup::default(),
                 &context.mise_version,
             ))
-            // Compiling the planner is the whole job: 5m25s of a 6m10s run,
-            // against 39s to install its tools. The registry snapshot and the
-            // compiler cache are the ones the build jobs fill, under the same
-            // keys, so the compile is mostly hits.
+            // Compiling xtask is the whole job; the registry snapshot and the
+            // compiler cache the build jobs fill answer most of it.
             .add_step(steps::cache_restore(&registry, Tools::Mise))
             .add_step(steps::sccache_start(Tools::Mise))
-            .when(channel.is_nightly(), |job| {
-                job.add_step(steps::botswain_credentials(Tools::Mise))
-                    .add_step(app_token)
-            })
-            .add_step(steps::with_sccache(planner))
+            .add_step(steps::with_sccache(describe))
             .add_step(steps::sccache_stats(Tools::Mise))
             .add_step(steps::cache_save(&registry, Tools::Mise))
             .outputs([
-                p_tag.clone().as_output(),
-                p_tag_minted.clone().as_output(),
-                p_dry_run.clone().as_output(),
-                p_build.clone().as_output(),
-                p_app_version.clone().as_output(),
-                p_version.clone().as_output(),
-                p_bundle.clone().as_output(),
+                tag.clone().as_output(),
+                version.clone().as_output(),
+                channel.clone().as_output(),
+                flavor.clone().as_output(),
+                version_code.clone().as_output(),
+                bundle_version.clone().as_output(),
             ]),
     );
 
-    PrepareJob::new(
-        p_tag.as_job_output(&job),
-        p_tag_minted.as_job_output(&job),
-        p_dry_run.as_job_output(&job),
-        p_build.as_job_output(&job),
-        p_app_version.as_job_output(&job),
-        p_version.as_job_output(&job),
-        p_bundle.as_job_output(&job),
+    DescribeJob::new(
+        tag.as_job_output(&job),
+        version.as_job_output(&job),
+        channel.as_job_output(&job),
+        flavor.as_job_output(&job),
+        version_code.as_job_output(&job),
+        bundle_version.as_job_output(&job),
         job,
     )
 }
@@ -345,19 +272,115 @@ pub fn license(context: &WorkflowContext) -> NamedJob {
     NamedJob::new("license", job)
 }
 
+/// Guards the release run's inputs and reads its one flag. The refusals are
+/// expressions over the event and the dispatch's inputs: a real dispatch
+/// that names no tag, a real dispatch pairing a tag with a platforms subset
+/// — which can never satisfy the required-target count, so the run would
+/// build without ever publishing — and `build` off without `dry_run`, since a
+/// tag with no artifacts behind it must not be published. The flag is whether
+/// the run rehearses, read off the event once here so every later gate reads
+/// one output: a dispatch rehearses unless it says otherwise, and a push is
+/// the real thing.
+///
+/// The conditions sit on the steps, not the job: the builder `need`s this
+/// job, and a job skipped by its own `if` skips everything that needs it.
+pub fn guard(
+    tag: &WorkflowInput,
+    platforms: &WorkflowInput,
+    dry_run: &WorkflowInput,
+    build: &WorkflowInput,
+) -> GuardJob {
+    let dispatched = "github.event_name == 'workflow_dispatch'";
+    let real = format!("{dispatched} && !{}", dry_run.expr());
+
+    let flag =
+        steps::read_rehearsal_flag(&format!("${{{{ {dispatched} && {} }}}}", dry_run.expr()));
+    let rehearsing = StepOutput::new_trusted(&flag, "dry_run");
+
+    let job = NamedJob::new(
+        "guard",
+        Job::default()
+            .name("Guard the run")
+            .permissions(Permissions::default())
+            .runs_on(runners::LINUX)
+            .add_step(flag)
+            .add_step(
+                steps::refuse(
+                    "reject-untagged-run",
+                    "Refuse a real run without a tag",
+                    "A real run names the tag it publishes. Dispatch again with `tag`, or as a dry run.",
+                )
+                .if_condition(Expression::new(format!("{real} && {} == ''", tag.expr()))),
+            )
+            .add_step(
+                steps::refuse(
+                    "reject-contradiction",
+                    "Refuse a tag with a platforms subset",
+                    "A release tag cannot be combined with a platforms subset — a subset can never satisfy every required target, so the run would build without ever publishing. Dispatch again with platforms left at All, or as a dry run.",
+                )
+                .if_condition(Expression::new(format!(
+                    "{real} && {} != '' && {} != 'All'",
+                    tag.expr(),
+                    platforms.expr()
+                ))),
+            )
+            .add_step(
+                steps::refuse(
+                    "reject-no-build",
+                    "Refuse no build without a dry run",
+                    "A run that does not build can only be a dry run — a tag with no artifacts behind it must not be published. Dispatch again with `dry_run`, or with `build`.",
+                )
+                .if_condition(Expression::new(format!(
+                    "{dispatched} && !{} && !{}",
+                    build.expr(),
+                    dry_run.expr()
+                ))),
+            )
+            .outputs([rehearsing.clone().as_output()]),
+    );
+
+    GuardJob::new(rehearsing.as_job_output(&job), job)
+}
+
+/// Calls the builder on `reference`'s tree for `platforms`, as one job. Its
+/// permissions are the union of the builder's jobs', and its secrets are
+/// inherited: the vault credential the builds resolve is an environment
+/// secret, which reaches a called workflow only this way and through the
+/// called job's own environment — the one finding zizmor cannot see past,
+/// suppressed on the job.
+pub fn call_builder(
+    reference: &str,
+    platforms: &str,
+    guard: &GuardJob,
+    cond: Expression,
+) -> NamedJob {
+    let mut job = Job::default()
+        .name("Build")
+        .permissions(Permissions::default().contents(Level::Write))
+        .add_needs(guard.name().to_owned())
+        .cond(cond)
+        .uses(format!("$/{WORKFLOWS_DIR}/build-distributables.yaml"))
+        .add_with(("ref", reference))
+        .add_with(("platforms", platforms))
+        .inherit_secrets()
+        .zizmor_ignore(
+            "secrets-inherit",
+            "the vault credential the builds resolve is an environment secret, which reaches a called workflow only by inheritance and the called job's own environment",
+        );
+    // A calling job runs nowhere itself.
+    job.runs_on = None;
+
+    NamedJob::new("build", job)
+}
+
 /// Drafts the release every build uploads into, with git-cliff notes.
 ///
-/// The tag guards sit on the steps, not the job: the builds `need` this job,
-/// and a skipped job would drag them down with it — a run with nothing to
-/// publish lets every step no-op, and so does a dry run, whose notes the
-/// publish job renders into the run's artifact instead.
-pub fn create_release(
-    channel: Channel,
-    prepare: &PrepareJob,
-    context: &WorkflowContext,
-) -> NamedJob {
-    let tag = &prepare.tag;
-    let dry_run = &prepare.dry_run;
+/// The tag guards sit on the steps, not the job: the publishing job `need`s
+/// this one, and a skipped job would drag it down with it — a dry run lets
+/// every step no-op, and renders its notes into the run's artifact instead.
+pub fn create_release(run: &ReleaseRun, context: &WorkflowContext) -> NamedJob {
+    let tag = &run.tag;
+    let dry_run = &run.dry_run;
     let publishing = || helpers::publishing(tag, dry_run);
 
     // `git-cliff` is the only tool this job runs through mise, and it lives in
@@ -370,16 +393,14 @@ pub fn create_release(
                 .pull_requests(Level::Read),
         )
         .runs_on(runners::LINUX)
-        // A run that builds nothing drafts nothing; the builds skip on the
-        // same verdict.
-        .add_needs(prepare.name().to_owned())
-        .cond(Expression::new(format!(
-            "{} == 'true'",
-            prepare.should_build.expr()
-        )))
+        // Reads the builder's identity and the guard's flag, so it waits on
+        // both.
+        .add_needs(run.build.clone())
+        .add_needs(run.guard.clone())
         // git-cliff walks from the release tag back to the tag before it.
         .add_step(
             steps::checkout()
+                .add_with(("ref", helpers::release_ref()))
                 .add_with(("fetch-depth", 0))
                 .add_with(("fetch-tags", true))
                 .if_condition(publishing()),
@@ -389,33 +410,33 @@ pub fn create_release(
                 .if_condition(publishing()),
         )
         .add_step(steps::release_notes(tag, dry_run))
-        .add_step(steps::create_release(channel, tag, dry_run));
+        .add_step(steps::create_release(
+            tag,
+            dry_run,
+            &format!(
+                "${{{{ {} != 'stable' && '--prerelease' || '' }}}}",
+                run.channel.expr()
+            ),
+        ));
 
     NamedJob::new("create-release", job)
 }
 
 /// The job id a platform's build runs under. Shared between [`build`], which
-/// names the job, and [`publish`], which reads its recorded-target output
+/// names the job, and the builder's outputs, which read its recorded target
 /// back — so the convention is stated once.
 pub(crate) fn build_job_name(platform: Platform) -> String {
     format!("build-{}", platform.slug())
 }
 
-/// The `needs.<job>.outputs.target == '<slug>'` clauses, ANDead together,
-/// that assert every required target has recorded in. Shared between the
-/// publish gate and the withdraw gate, which assert the fact and its
-/// negation respectively.
-fn completeness_expr(channel: Channel) -> String {
-    channel
-        .required_targets()
-        .iter()
-        .map(|platform| {
-            format!(
-                "needs.{job}.outputs.target == '{slug}'",
-                job = build_job_name(*platform),
-                slug = platform.slug(),
-            )
-        })
+/// The `needs.<build>.outputs.<slug> == '<slug>'` clauses, ANDed together,
+/// that assert every required target has recorded in through the builder.
+/// Shared between the publish gate and the withdraw gate, which assert the
+/// fact and its negation respectively. Every channel requires every platform
+/// today, so the count is the full set.
+fn completeness_expr(run: &ReleaseRun) -> String {
+    Platform::iter()
+        .map(|platform| format!("{} == '{}'", run.target(platform), platform.slug()))
         .collect::<Vec<_>>()
         .join(" && ")
 }
@@ -440,14 +461,15 @@ fn with_devenv(job: Job) -> Job {
 /// is uploaded as the run's artifact.
 ///
 /// Completeness is counted, not inferred from the absence of failure: a
-/// target skipped by a `platforms` subset dispatch blocks the gate exactly
-/// as one that failed, because neither writes the output this reads — see
-/// the design's "The counted gate stays" decision. The tag guard skips a
-/// nightly that built nothing.
-pub fn publish(channel: Channel, prepare: &PrepareJob) -> NamedJob {
-    let tag = &prepare.tag;
-    let dry_run = &prepare.dry_run;
-    let completeness = completeness_expr(channel);
+/// target skipped by a `platforms` subset blocks the gate exactly as one that
+/// failed, because neither records the output the builder hands back — see
+/// the design's "The counted gate stays" decision.
+pub fn publish(run: &ReleaseRun) -> NamedJob {
+    let tag = &run.tag;
+    let dry_run = &run.dry_run;
+    let channel = run.channel.to_string();
+    let flavor = run.flavor.to_string();
+    let completeness = completeness_expr(run);
     let expr = format!(
         "({completeness}) && ({tag})",
         tag = helpers::tag_condition(tag).0
@@ -476,10 +498,11 @@ pub fn publish(channel: Channel, prepare: &PrepareJob) -> NamedJob {
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(runners::LINUX)
         .cond(Expression::new(expr))
-        // `prepare` renders the release notes with git-cliff, which walks
-        // from the tag back to the one before it.
+        // The release's tree, with the history and tags the dry notes'
+        // git-cliff walks back to the previous tag.
         .add_step(
             steps::checkout()
+                .add_with(("ref", helpers::release_ref()))
                 .add_with(("fetch-depth", 0))
                 .add_with(("fetch-tags", true)),
         );
@@ -492,13 +515,13 @@ pub fn publish(channel: Channel, prepare: &PrepareJob) -> NamedJob {
         .add_step(steps::with_sccache(compile))
         .add_step(steps::sccache_stats(Tools::Devenv))
         .add_step(steps::cache_save(&registry, Tools::Devenv))
-        .add_step(steps::download_staged(channel))
-        .add_step(steps::prepare_listing(channel))
+        .add_step(steps::download_staged(&channel))
+        .add_step(steps::prepare_listing(&flavor))
         .add_step(steps::with_sccache(steps::upload_to_store(tag, dry_run)))
         .add_step(steps::publish_release(tag, dry_run))
         .add_step(mark)
-        .add_step(steps::submit(Platform::Android, channel, dry_run))
-        .add_step(steps::submit(Platform::iOS, channel, dry_run))
+        .add_step(steps::submit(Platform::Android, &flavor, dry_run))
+        .add_step(steps::submit(Platform::iOS, &flavor, dry_run))
         // Last: the manifest is what the updater and the download links
         // read, and it is idempotent, so a failure here is repaired by
         // running it again.
@@ -507,39 +530,153 @@ pub fn publish(channel: Channel, prepare: &PrepareJob) -> NamedJob {
         .add_step(steps::dry_notes(tag, dry_run))
         .add_step(steps::with_sccache(steps::dry_manifest(tag, dry_run)))
         .add_step(steps::with_sccache(steps::dry_index(tag, dry_run)))
-        .add_step(steps::upload_dry_run(channel, dry_run))
+        .add_step(steps::upload_dry_run(&channel, dry_run))
         .outputs([submitted.as_output()])
-        // Reads the planner's tag, so it waits on the planner.
-        .add_needs(prepare.name().to_owned());
+        // Reads the builder's identity and the guard's flag, so it waits on
+        // both.
+        .add_needs(run.build.clone())
+        .add_needs(run.guard.clone());
 
     NamedJob::new(PUBLISH_JOB, job)
 }
 
-/// Cleans up a run that failed or fell short before reaching a store:
-/// discards the drafted record always, best-effort deletes the objects this
-/// run uploaded, and deletes the tag only when this run minted it — which
-/// only nightly's planner does; see the design's "Withdrawal reads the point
-/// of no return" decision. Never on a dry run, which created nothing to
-/// withdraw and may be rehearsing against a tag whose release is published.
+/// Becomes the record's merge commit body, so it says what the merge commit
+/// is.
+pub(crate) fn record_body() -> String {
+    templates::must("pull-request.index", tera::Context::new())
+}
+
+/// Records the published tag in the release index, after the manifest: the
+/// entry exists only for a tag whose release was committed, and a run that
+/// withdrew never reaches this job. On a real run only; a dry run renders its
+/// entry into the run's artifact from [`publish`]. `main` is protected, so
+/// the entry lands through a pull request that merges itself once its checks
+/// pass; the job does not wait for it.
+pub fn record(run: &ReleaseRun, context: &WorkflowContext) -> NamedJob {
+    // Inside the devenv shell, as `check-generated` runs: the task drives
+    // `nix`, `git`, and `cargo`, and the shell is where they come from at the
+    // versions the tree pins. The tag reaches the command through the
+    // environment.
+    let record = Step::new("cargo ci-task release record")
+        .run("devenv shell -- cargo ci-task release record --tag \"$TAG\"")
+        .shell("bash")
+        .id("record")
+        .add_env(("TAG", helpers::tag(&run.tag)))
+        .add_env((
+            "SECRETSPEC_REASON",
+            "release record records a published tag in nix/releases; no secret values are read",
+        ));
+
+    // The task publishes these only when it wrote.
+    let wrote = || {
+        Expression::new(format!(
+            "{} != ''",
+            StepOutput::new_trusted(&record, "title").expr()
+        ))
+    };
+    let credentials = steps::botswain_credentials(Tools::Devenv).if_condition(wrote());
+    let app_token = steps::app_token(&[("contents", "write"), ("pull-requests", "write")])
+        .if_condition(wrote());
+    let token = StepOutput::new_trusted(&app_token, "token");
+    let pull_request = steps::land_write(&record, &token, "index-pull-request", &record_body())
+        .if_condition(wrote());
+    // Landed and left: nothing downstream waits on the entry.
+    let auto_merge = steps::merge_without_waiting(
+        &StepOutput::new_trusted(&pull_request, "pull-request-number"),
+        &token,
+        Tools::Devenv,
+    );
+
+    // The devenv shell leaves `CARGO_HOME` unset, so cargo keeps its registry
+    // at its default; the snapshot has to land there.
+    let registry = steps::cargo_registry("${HOME}/.cargo");
+
+    let job = Job::default()
+        .name("Record the release")
+        // Only what `checkout` needs: the entry lands with the App token, which
+        // carries its own scope.
+        .permissions(Permissions::default().contents(Level::Read))
+        // Compiles through the CI cache and authenticates as the App, so the
+        // vault credential comes from the automation environment.
+        .environment(GhEnvironment::from(Environment::Ci))
+        .runs_on(runners::LINUX)
+        .cond(helpers::not_rehearsing(&run.dry_run))
+        // On the branch the entry lands on, whatever ref started the run: the
+        // pull-request step commits against what is checked out. The tag
+        // resolves to its commit here; nothing walks history.
+        .add_step(
+            steps::checkout()
+                .add_with(("ref", MAIN))
+                .add_with(("fetch-tags", true)),
+        );
+    let job = with_devenv(job)
+        // The task is a `cargo ci-task` compile before it is anything else; the
+        // build jobs' registry snapshot and compiler cache pay for most of it.
+        .add_step(steps::cache_restore(&registry, Tools::Devenv))
+        .add_step(steps::sccache_start(Tools::Devenv))
+        .add_step(steps::with_sccache(record))
+        .add_step(steps::sccache_stats(Tools::Devenv))
+        .add_step(steps::cache_save(&registry, Tools::Devenv))
+        // Minted after the compile, which is most of this job's time.
+        .add_step(credentials)
+        .add_step(app_token)
+        .add_step(pull_request)
+        .add_step(auto_merge)
+        // Waits on the publication it records, and on the guard whose flag
+        // it reads.
+        .add_needs(PUBLISH_JOB.to_owned())
+        .add_needs(run.guard.clone());
+
+    NamedJob::new("record", job)
+}
+
+/// Cleans up a run that failed or fell short before reaching a store, and
+/// undoes the bump that minted its tag: discards the drafted record,
+/// best-effort deletes the objects this run uploaded, and — when the run was
+/// the tag's own push, so the tag was minted for this publication minutes
+/// before and nothing has recorded it — deletes the tag and reverts the write
+/// it was minted from through a pull request the bot opens and merges, so no
+/// branch declares a version no tag names. A dispatched re-publication of an
+/// existing tag leaves both the tag and its write, since that release may
+/// already be out. Never on a dry run, which created nothing to withdraw.
 ///
 /// Gated on the negation of the completeness count, ORed with `failure()`:
 /// a skipped build already leaves its target unrecorded, which the negated
 /// count alone catches, but `failure()` is kept explicit so a failure
-/// elsewhere in the job's dependency chain — `create-release`, or
-/// [`publish`] itself — still triggers cleanup. Never past the point of no
-/// return: once [`publish`] has marked `submitted`, a store already has the
-/// build. An explicit `if:` is required either way: the job's own `needs`
-/// may have failed, and GitHub's default implicit gate would skip this job
-/// exactly when it is needed.
-pub fn withdraw_release(channel: Channel, prepare: &PrepareJob) -> NamedJob {
-    let tag = &prepare.tag;
-    let completeness = completeness_expr(channel);
+/// elsewhere in the job's dependency chain — the builder, `create-release`,
+/// or [`publish`] itself — still triggers cleanup. Never past the point of
+/// no return: once [`publish`] has marked `submitted`, a store already has
+/// the build. An explicit `if:` is required either way: the job's own
+/// `needs` may have failed, and GitHub's default implicit gate would skip
+/// this job exactly when it is needed.
+pub fn withdraw_release(run: &ReleaseRun) -> NamedJob {
+    // The tag the run was started by, not the builder's reading of it: the
+    // builder may be what failed.
+    let tag = helpers::triggering_tag();
+    let completeness = completeness_expr(run);
     let expr = format!(
-        "({tag}) && ({real}) && (failure() || !({completeness})) && \
+        "(({triggering}) != '') && ({real}) && (failure() || !({completeness})) && \
          needs.{PUBLISH_JOB}.outputs.submitted != 'true'",
-        tag = helpers::tag_condition(tag).0,
-        real = helpers::not_rehearsing(&prepare.dry_run).0,
+        triggering = helpers::triggering_tag_expr(),
+        real = helpers::not_rehearsing(&run.dry_run).0,
     );
+
+    let pushed = helpers::pushed;
+    let undo = steps::undo(&tag).if_condition(pushed());
+    let credentials = steps::botswain_credentials(Tools::Devenv).if_condition(pushed());
+    let app_token = steps::app_token(&[("contents", "write"), ("pull-requests", "write")])
+        .if_condition(pushed());
+    let token = StepOutput::new_trusted(&app_token, "token");
+    let revert =
+        steps::land_write_from_file(&undo, &token, "revert-pull-request").if_condition(pushed());
+    // Waited for: the shared concurrency group holds the cycle until the
+    // tree is consistent again.
+    let merge = steps::merge(
+        &StepOutput::new_trusted(&revert, "pull-request-number"),
+        &token,
+        Tools::Devenv,
+    )
+    .id("merge-revert");
 
     let job = Job::default()
         .name("Withdraw the release")
@@ -550,134 +687,32 @@ pub fn withdraw_release(channel: Channel, prepare: &PrepareJob) -> NamedJob {
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(runners::LINUX)
         .cond(Expression::new(expr))
-        // `release distributables withdraw` is a `cargo xtask`, so it needs the tree.
-        .add_step(steps::checkout());
+        // `release undo` reads the write's merge and its parent, and checks
+        // the branch it reverts on out afresh.
+        .add_step(
+            steps::checkout()
+                .add_with(("fetch-depth", 0))
+                .add_with(("fetch-tags", true)),
+        );
     let job = with_devenv(job)
-        .add_step(steps::discard_release(tag))
-        .add_step(steps::withdraw_from_store(tag))
-        .add_step(steps::delete_minted_tag(&prepare.tag, &prepare.tag_minted))
-        .add_needs(prepare.name().to_owned());
+        .add_step(steps::discard_release(&tag))
+        .add_step(steps::withdraw_from_store(&tag))
+        .add_step(steps::delete_tag(&tag).if_condition(pushed()))
+        .add_step(undo)
+        .add_step(credentials)
+        .add_step(app_token)
+        .add_step(revert)
+        .add_step(merge)
+        .add_needs(run.build.clone())
+        .add_needs(run.guard.clone());
 
     NamedJob::new("withdraw-release", job)
-}
-
-/// Fails fast when a real dispatch pairs a non-empty `tag` with a `platforms`
-/// subset. The combination can never satisfy a channel's required-target
-/// count — [`publish`]'s gate — so letting it proceed would burn a full build
-/// matrix on a run that looks green but quietly never publishes. A dry run
-/// may build a subset: its publish job then skips on the same count, as it
-/// would for real. Only wired for the tag-driven channels: nightly takes no
-/// `tag` dispatch input, since it mints its own.
-///
-/// The condition sits on the step, not the job: the builds `need` this job,
-/// and a job skipped by its own `if` skips everything that needs it.
-pub fn guard_dispatch(
-    tag: &WorkflowInput,
-    platforms: &WorkflowInput,
-    dry_run: &WorkflowInput,
-) -> NamedJob {
-    let contradiction = Expression::new(format!(
-        "github.event_name == 'workflow_dispatch' && !{dry_run} && {tag} != '' && {platforms} != 'All'",
-        dry_run = dry_run.expr(),
-        tag = tag.expr(),
-        platforms = platforms.expr(),
-    ));
-
-    let job = Job::default()
-        .name("Guard the dispatch inputs")
-        .permissions(Permissions::default())
-        .runs_on(runners::LINUX)
-        .add_step(steps::reject_tag_with_platforms_subset().if_condition(contradiction));
-
-    NamedJob::new("guard-dispatch", job)
-}
-
-/// Reads the ref into the build's identity — the tag, the version, the
-/// channel, the flavor, and the store build codes — as `release describe`
-/// publishes them. Everything downstream stamps what this read; nothing else
-/// is told the ref.
-pub fn describe(context: &WorkflowContext, reference: &WorkflowInput) -> DescribeJob {
-    let registry = steps::cargo_registry(steps::CARGO_HOME);
-    // Through the environment: a ref is free text as far as the shell is
-    // concerned.
-    let describe = steps::cargo_xtask("release describe", &[("--ref", Some("$REF"))])
-        .id("describe")
-        .add_env(("REF", reference.to_string()));
-    let output = |name| StepOutput::new_trusted(&describe, name);
-    let tag = output("tag");
-    let version = output("version");
-    let channel = output("channel");
-    let flavor = output("flavor");
-    let version_code = output("version_code");
-    let bundle_version = output("bundle_version");
-
-    let job = NamedJob::new(
-        "describe",
-        mise_env(Job::default(), &[MiseEnv::Xtask])
-            .name("Describe the build")
-            .permissions(Permissions::default().contents(Level::Read))
-            // Compiles through the CI cache, so the vault credential comes
-            // from the automation environment.
-            .environment(GhEnvironment::from(Environment::Ci))
-            .runs_on(runners::LINUX)
-            // The ref's tree, and the tags, so a tag resolves whatever the
-            // caller named.
-            .add_step(
-                steps::checkout()
-                    .add_with(("ref", reference.to_string()))
-                    .add_with(("fetch-depth", 0))
-                    .add_with(("fetch-tags", true)),
-            )
-            .add_step(actions::setup_mise(
-                MiseSetup::default(),
-                &context.mise_version,
-            ))
-            // Compiling xtask is the whole job; the registry snapshot and the
-            // compiler cache the build jobs fill answer most of it.
-            .add_step(steps::cache_restore(&registry, Tools::Mise))
-            .add_step(steps::sccache_start(Tools::Mise))
-            .add_step(steps::with_sccache(describe))
-            .add_step(steps::sccache_stats(Tools::Mise))
-            .add_step(steps::cache_save(&registry, Tools::Mise))
-            .outputs([
-                tag.clone().as_output(),
-                version.clone().as_output(),
-                channel.clone().as_output(),
-                flavor.clone().as_output(),
-                version_code.clone().as_output(),
-                bundle_version.clone().as_output(),
-            ]),
-    );
-
-    DescribeJob::new(
-        tag.as_job_output(&job),
-        version.as_job_output(&job),
-        channel.as_job_output(&job),
-        flavor.as_job_output(&job),
-        version_code.as_job_output(&job),
-        bundle_version.as_job_output(&job),
-        job,
-    )
-}
-
-/// A channel workflow's build, from its planner.
-pub fn build(
-    channel: Channel,
-    context: &WorkflowContext,
-    platform: Platform,
-    prepare: &PrepareJob,
-) -> NamedJob {
-    build_with(
-        context,
-        platform,
-        &BuildInputs::planned(channel, prepare, platform),
-    )
 }
 
 /// Builds one platform from `inputs`: checks the tree out, builds and signs
 /// under the flavor, renames the distributables for the tag, and hands them
 /// on as one artifact named for the channel, recording its target.
-pub fn build_with(context: &WorkflowContext, platform: Platform, inputs: &BuildInputs) -> NamedJob {
+pub fn build(context: &WorkflowContext, platform: Platform, inputs: &BuildInputs) -> NamedJob {
     // Absent off nightly, where the tag's own semver suffices.
     let build_code = build_code(inputs, platform);
     let version = app_version(inputs, platform);
@@ -708,9 +743,9 @@ pub fn build_with(context: &WorkflowContext, platform: Platform, inputs: &BuildI
     let job = mise_env(Job::default(), envs)
         .permissions(Permissions::default().contents(Level::Write))
         .name(format!("Build {platform}"))
-        // Builds, signs, and publishes, so the vault credential comes from the
-        // release environment — for the signing scope the build resolves and
-        // the cache scope the store steps resolve alike.
+        // Builds and signs, so the vault credential comes from the release
+        // environment — for the signing scope the build resolves and the
+        // cache scope the snapshot steps resolve alike.
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(platform.runner())
         .cond(inputs.cond.clone())
@@ -719,9 +754,7 @@ pub fn build_with(context: &WorkflowContext, platform: Platform, inputs: &BuildI
         // name — it would fall back to the manifests' bare versions.
         .add_step(
             steps::checkout()
-                .when_some(inputs.reference.clone(), |step, reference| {
-                    step.add_with(("ref", reference))
-                })
+                .add_with(("ref", inputs.reference.clone()))
                 .add_with(("fetch-depth", 0))
                 .add_with(("fetch-tags", true)),
         )
@@ -802,7 +835,7 @@ pub fn build_with(context: &WorkflowContext, platform: Platform, inputs: &BuildI
         .add_step(steps::upload_staged(&inputs.channel, platform))
         .add_step(record_target)
         .outputs([target.clone().as_output()])
-        // Reads the planning or describing job's outputs, so it waits on it.
+        // Reads the describing job's outputs, so it waits on it.
         .add_needs(inputs.needs.clone());
 
     NamedJob::new(build_job_name(platform), job)
@@ -812,21 +845,40 @@ pub fn build_with(context: &WorkflowContext, platform: Platform, inputs: &BuildI
 mod tests {
     use super::*;
     use std::{fs, path::Path};
-    use strum::IntoEnumIterator as _;
 
-    fn planned(channel: Channel) -> PrepareJob {
-        prepare(channel, &WorkflowContext::fixture())
+    fn reference() -> WorkflowInput {
+        WorkflowInput::string("ref", None)
     }
 
-    /// A channel's build inputs, from its planner.
-    fn inputs(channel: Channel) -> BuildInputs {
-        BuildInputs::planned(channel, &planned(channel), Platform::Linux)
+    /// A build's inputs, as the builder's `describe` hands them.
+    fn inputs(platform: Platform) -> BuildInputs {
+        let reference = reference();
+        BuildInputs::described(
+            &describe(&WorkflowContext::fixture(), &reference),
+            &reference,
+            platform,
+        )
+    }
+
+    fn built(platform: Platform) -> NamedJob {
+        build(&WorkflowContext::fixture(), platform, &inputs(platform))
+    }
+
+    /// The release run's handles, as `release.rs` wires them.
+    fn run() -> ReleaseRun {
+        let tag = WorkflowInput::string("tag", Some(String::new()));
+        let platforms = WorkflowInput::string("platforms", Some("All".to_owned()));
+        let dry_run = WorkflowInput::bool("dry_run", Some(true));
+        let build = WorkflowInput::bool("build", Some(true));
+        let guard = guard(&tag, &platforms, &dry_run, &build);
+        let builder = call_builder("ref", "All", &guard, Expression::new("true"));
+        ReleaseRun::new(&guard, &builder)
     }
 
     /// Swapping these would hand Play a value it cannot parse.
     #[test]
     fn each_platform_draws_its_own_build_code() {
-        let inputs = inputs(Channel::Nightly);
+        let inputs = inputs(Platform::Linux);
 
         assert_eq!(
             build_code(&inputs, Platform::Android).map(JobOutput::expr),
@@ -865,7 +917,7 @@ mod tests {
     /// from the crate, and the stores are what reject the fallbacks.
     #[test]
     fn only_mobile_builds_receive_the_version() {
-        let inputs = inputs(Channel::Nightly);
+        let inputs = inputs(Platform::Linux);
 
         for platform in [Platform::Android, Platform::iOS] {
             assert_eq!(
@@ -879,44 +931,38 @@ mod tests {
         }
     }
 
-    /// Only nightly mints a ref, so only nightly's planner authenticates as
-    /// the App; the others run under the token the job already has.
+    /// `describe` republishes exactly the outputs `release describe` writes,
+    /// under the names the builds and the caller read.
     #[test]
-    fn only_the_nightly_planner_authenticates_as_the_app() {
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let named: NamedJob = planned(channel).into();
-            let value = serde_json::to_value(&named.job).expect("job serializes");
-            let steps = value["steps"].as_array().expect("steps");
-            let mints = steps.iter().any(|step| {
-                step["uses"]
-                    .as_str()
-                    .is_some_and(|uses| uses.starts_with("actions/create-github-app-token@"))
-            });
-            assert_eq!(mints, channel.is_nightly(), "{channel}");
-            let planner = step(steps, "prepare");
-            assert_eq!(
-                planner["env"].get("GH_TOKEN").is_some(),
-                channel.is_nightly(),
-                "{channel}"
-            );
-            assert_eq!(
-                planner["env"].get("TAG").is_some(),
-                !channel.is_nightly(),
-                "{channel}"
-            );
-        }
+    fn describe_republishes_the_description_s_fields() {
+        let named: NamedJob = describe(&WorkflowContext::fixture(), &reference()).into();
+        let mut outputs: Vec<&str> = named
+            .job
+            .outputs
+            .as_ref()
+            .expect("outputs")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        outputs.sort_unstable();
+        assert_eq!(
+            outputs,
+            [
+                "bundle_version",
+                "channel",
+                "flavor",
+                "tag",
+                "version",
+                "version_code"
+            ]
+        );
     }
 
     /// Each build records its own slug; the build job's `outputs:` has to
-    /// expose it for [`publish`] to read back through `needs`.
+    /// expose it for the builder's outputs to read back.
     #[test]
     fn a_build_records_its_target_as_a_job_output() {
-        let named = build(
-            Channel::Stable,
-            &WorkflowContext::fixture(),
-            Platform::macOS,
-            &planned(Channel::Stable),
-        );
+        let named = built(Platform::macOS);
         let value = serde_json::to_value(&named.job).expect("job serializes");
         assert_eq!(
             value["outputs"]["target"],
@@ -930,19 +976,19 @@ mod tests {
         assert_eq!(record["run"], r#"echo "target=macos" >> "$GITHUB_OUTPUT""#);
     }
 
-    /// Completeness is counted against every required target, by name, and
-    /// never falls back to inferring it from `failure()`/`cancelled()` — see
-    /// the design's "Completeness is counted, not inferred" decision.
+    /// Scenario _The caller counts the builder's targets_: completeness is
+    /// counted against every target the builder hands back, by name, and
+    /// never falls back to inferring it from `failure()`/`cancelled()`.
     #[test]
-    fn publish_counts_every_required_target() {
-        let named = publish(Channel::Stable, &planned(Channel::Stable));
+    fn publish_counts_every_target_the_builder_hands_back() {
+        let named = publish(&run());
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let cond = value["if"].as_str().expect("if");
 
-        for platform in Channel::Stable.required_targets() {
+        for platform in Platform::iter() {
             assert!(
                 cond.contains(&format!(
-                    "needs.build-{slug}.outputs.target == '{slug}'",
+                    "needs.build.outputs.{slug} == '{slug}'",
                     slug = platform.slug()
                 )),
                 "{platform}: {cond}"
@@ -958,24 +1004,16 @@ mod tests {
     /// override (library-minting design D7).
     #[test]
     fn a_build_fetches_a_series_pin_with_nothing_configured() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let prepare = planned(channel);
-            for platform in Platform::iter() {
-                let named = build(channel, &context, platform, &prepare);
-                let job = serde_json::to_string(&named.job).expect("job serializes");
-                for forbidden in [
-                    "CARGO_NET_GIT_FETCH_WITH_CLI",
-                    "GIT_CONFIG",
-                    "GIT_ASKPASS",
-                    "insteadOf",
-                    "git-credential",
-                ] {
-                    assert!(
-                        !job.contains(forbidden),
-                        "{channel} {platform}: {forbidden}"
-                    );
-                }
+        for platform in Platform::iter() {
+            let job = serde_json::to_string(&built(platform).job).expect("job serializes");
+            for forbidden in [
+                "CARGO_NET_GIT_FETCH_WITH_CLI",
+                "GIT_CONFIG",
+                "GIT_ASKPASS",
+                "insteadOf",
+                "git-credential",
+            ] {
+                assert!(!job.contains(forbidden), "{platform}: {forbidden}");
             }
         }
     }
@@ -984,29 +1022,21 @@ mod tests {
     /// build job checks out the history and the tags a `git describe` reads.
     #[test]
     fn every_build_checks_out_full_history_and_tags() {
-        let context = WorkflowContext::fixture();
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let prepare = planned(channel);
-            for platform in Platform::iter() {
-                let named = build(channel, &context, platform, &prepare);
-                let job = serde_json::to_value(&named.job).expect("job serializes");
-                let checkout = job["steps"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .find(|step| step["id"] == "checkout")
-                    .unwrap_or_else(|| panic!("{channel} {platform}: no checkout"));
-                assert_eq!(checkout["with"]["fetch-depth"], "0", "{channel} {platform}");
-                assert_eq!(
-                    checkout["with"]["fetch-tags"], "true",
-                    "{channel} {platform}"
-                );
-            }
+        for platform in Platform::iter() {
+            let job = serde_json::to_value(&built(platform).job).expect("job serializes");
+            let checkout = job["steps"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|step| step["id"] == "checkout")
+                .unwrap_or_else(|| panic!("{platform}: no checkout"));
+            assert_eq!(checkout["with"]["fetch-depth"], "0", "{platform}");
+            assert_eq!(checkout["with"]["fetch-tags"], "true", "{platform}");
         }
     }
 
     fn publish_steps() -> Vec<serde_json::Value> {
-        let named = publish(Channel::Stable, &planned(Channel::Stable));
+        let named = publish(&run());
         let value = serde_json::to_value(&named.job).expect("job serializes");
         assert_eq!(value["environment"]["name"], "App Release");
         value["steps"].as_array().expect("steps").clone()
@@ -1036,7 +1066,8 @@ mod tests {
     /// Ordered by retractability: everything that only touches the runner,
     /// then the store, the record, the mark, the submissions, and the
     /// manifest last — nothing between them. The dry counterparts follow,
-    /// after every write they stand in for.
+    /// after every write they stand in for; the index entry follows in its
+    /// own job, which needs this one.
     #[test]
     fn the_publish_steps_run_in_order_of_retractability() {
         let order: Vec<&str> = ["download-staged", "prepare-listing"]
@@ -1051,17 +1082,75 @@ mod tests {
             .skip_while(|id| *id != order[0])
             .collect::<Vec<_>>();
         assert_eq!(ids, order);
+
+        let record = record(&run(), &WorkflowContext::fixture());
+        assert!(
+            record
+                .job
+                .needs
+                .as_ref()
+                .is_some_and(|needs| needs.contains(&PUBLISH_JOB.to_owned())),
+            "{:?}",
+            record.job.needs
+        );
+    }
+
+    /// Scenario _The entry follows the manifest_ and _A withdrawn tag is not
+    /// recorded_: the record runs after the publishing job, on a real run
+    /// only, checks `main` out with the tags, and lands its entry with the
+    /// App token without waiting; a run that withdrew never reaches it.
+    #[test]
+    fn the_record_follows_the_manifest_on_a_real_run() {
+        let run = run();
+        let named = record(&run, &WorkflowContext::fixture());
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        assert_eq!(value["if"], format!("{} != 'true'", run.dry_run.expr()));
+        assert_eq!(value["environment"]["name"], "CI");
+        assert_eq!(value["permissions"]["contents"], "read");
+
+        let steps = value["steps"].as_array().expect("steps");
+        let checkout = step(steps, "checkout");
+        assert_eq!(checkout["with"]["ref"], "main");
+        assert_eq!(checkout["with"]["fetch-tags"], "true");
+
+        let record = step(steps, "record");
+        assert_eq!(
+            record["run"],
+            "devenv shell -- cargo ci-task release record --tag \"$TAG\""
+        );
+        assert_eq!(record["env"]["TAG"], run.tag.to_string());
+
+        let wrote = "steps.record.outputs.title != ''";
+        for id in ["app-token", "index-pull-request"] {
+            assert_eq!(step(steps, id)["if"], wrote, "{id}");
+        }
+        assert_eq!(
+            step(steps, "index-pull-request")["with"]["token"],
+            "${{ steps.app-token.outputs.token }}"
+        );
+        let merge = steps
+            .iter()
+            .find(|step| {
+                step["run"]
+                    .as_str()
+                    .is_some_and(|run| run.contains("release merge"))
+            })
+            .expect("the merge");
+        assert!(
+            merge["run"].as_str().unwrap().ends_with("--no-wait"),
+            "{merge}"
+        );
     }
 
     /// Every real write stands down on a dry run, and every counterpart runs
     /// only then — in the publish job and in the draft job alike.
     #[test]
     fn every_real_write_stands_down_on_a_dry_run_and_its_counterpart_runs_only_then() {
-        let prepare = planned(Channel::Stable);
-        let real = format!("{} != 'true'", prepare.dry_run.expr());
-        let dry = format!("{} == 'true'", prepare.dry_run.expr());
+        let run = run();
+        let real = format!("{} != 'true'", run.dry_run.expr());
+        let dry = format!("{} == 'true'", run.dry_run.expr());
 
-        let named = publish(Channel::Stable, &prepare);
+        let named = publish(&run);
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let steps = value["steps"].as_array().expect("steps");
         for id in REAL_WRITES {
@@ -1072,17 +1161,25 @@ mod tests {
             assert_eq!(step(steps, id)["if"], dry, "{id}");
         }
 
-        let named = create_release(Channel::Stable, &prepare, &WorkflowContext::fixture());
+        let named = create_release(&run, &WorkflowContext::fixture());
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let steps = value["steps"].as_array().expect("steps");
         for id in ["gen-release-notes", "draft-release"] {
             let cond = step(steps, id)["if"].as_str().unwrap_or("");
             assert!(cond.contains(&real), "{id}: {cond}");
         }
+        assert_eq!(
+            step(steps, "draft-release")["env"]["PRERELEASE"],
+            format!(
+                "${{{{ {} != 'stable' && '--prerelease' || '' }}}}",
+                run.channel.expr()
+            )
+        );
     }
 
     /// The dry counterparts render into one directory and leave one artifact,
-    /// kept a week; the index entry is rendered for the commit the run is on.
+    /// named for the channel the builder read and kept a week; the index
+    /// entry is rendered for the commit the run is on.
     #[test]
     fn a_dry_run_leaves_one_artifact() {
         let steps = publish_steps();
@@ -1098,13 +1195,16 @@ mod tests {
         );
         assert_eq!(step(&steps, "dry-index")["env"]["REV"], "${{ github.sha }}");
         let upload = step(&steps, "upload-dry-run");
-        assert_eq!(upload["with"]["name"], "dry-run-stable");
+        assert_eq!(
+            upload["with"]["name"],
+            "dry-run-${{ needs.build.outputs.channel }}"
+        );
         assert_eq!(upload["with"]["path"], steps::DRY_RUN_ARTIFACT_PATH);
         assert_eq!(upload["with"]["retention-days"], "7");
     }
 
     /// The upload reads the merged staged directory, and the submissions
-    /// take their packages from it.
+    /// take their packages from it, under the flavor the builder read.
     #[test]
     fn the_publish_job_works_from_the_staged_tree() {
         let steps = publish_steps();
@@ -1120,16 +1220,20 @@ mod tests {
             "true"
         );
         // The plist is staged beside the ipa, where fastlane looks for it.
-        let ios = step(&steps, "submit-ios")["run"].as_str().unwrap();
-        assert!(
-            ios.contains("xfastlane publish ios stable --from release"),
-            "{ios}"
-        );
-        let android = step(&steps, "submit-android")["run"].as_str().unwrap();
-        assert!(
-            android.contains("xfastlane publish android stable --from release"),
-            "{android}"
-        );
+        for (id, lane) in [("submit-ios", "ios"), ("submit-android", "android")] {
+            let submit = step(&steps, id);
+            let run = submit["run"].as_str().unwrap();
+            assert!(
+                run.contains(&format!(
+                    r#"xfastlane publish {lane} "${{FLAVOR}}" --from release"#
+                )),
+                "{run}"
+            );
+            assert_eq!(
+                submit["env"]["FLAVOR"], "${{ needs.build.outputs.flavor }}",
+                "{id}"
+            );
+        }
     }
 
     /// Each step resolves only its own credential: the store on the upload
@@ -1182,12 +1286,13 @@ mod tests {
         }
     }
 
-    /// `prepare` reads the release notes from git-cliff, which needs the
+    /// The dry notes read git-cliff over the release's tree, which needs the
     /// history back to the previous tag.
     #[test]
-    fn the_publish_job_checks_out_full_history_and_tags() {
+    fn the_publish_job_checks_out_the_release_with_full_history_and_tags() {
         let steps = publish_steps();
         let checkout = step(&steps, "checkout");
+        assert_eq!(checkout["with"]["ref"], helpers::release_ref());
         assert_eq!(checkout["with"]["fetch-depth"], "0");
         assert_eq!(checkout["with"]["fetch-tags"], "true");
     }
@@ -1196,7 +1301,7 @@ mod tests {
     /// read across jobs.
     #[test]
     fn the_publish_job_exposes_its_point_of_no_return() {
-        let named = publish(Channel::Stable, &planned(Channel::Stable));
+        let named = publish(&run());
         let value = serde_json::to_value(&named.job).expect("job serializes");
         assert_eq!(
             value["outputs"]["submitted"],
@@ -1208,14 +1313,8 @@ mod tests {
     /// submission themselves.
     #[test]
     fn no_build_job_publishes() {
-        let prepare = planned(Channel::Stable);
         for platform in Platform::iter() {
-            let named = build(
-                Channel::Stable,
-                &WorkflowContext::fixture(),
-                platform,
-                &prepare,
-            );
+            let named = built(platform);
             let value = serde_json::to_value(&named.job).expect("job serializes");
             let steps = value["steps"].as_array().expect("steps");
             for step in steps {
@@ -1248,61 +1347,49 @@ mod tests {
             assert_eq!(uploads[0]["with"]["path"], "release", "{platform}");
             assert_eq!(
                 uploads[0]["with"]["name"],
-                format!("waypoints-{}-stable", platform.slug())
+                format!(
+                    "waypoints-{}-${{{{ needs.describe.outputs.channel }}}}",
+                    platform.slug()
+                )
             );
         }
     }
 
-    /// Every channel names its staged files for the planner's version — the
-    /// tag's on preview and stable, and on nightly the one it minted or would
-    /// mint — and `release distributables rename` still takes the app's own
-    /// version when the planner hands it nothing.
+    /// The staged files are named for the tag `describe` read — the ref's,
+    /// or the one its tree would be tagged as — and `release distributables
+    /// rename` still takes the app's own version when handed nothing.
     #[test]
     fn the_staged_files_are_named_for_the_run_s_tag() {
-        for channel in [Channel::Nightly, Channel::Stable] {
-            let prepare = planned(channel);
-            let named = build(
-                channel,
-                &WorkflowContext::fixture(),
-                Platform::Linux,
-                &prepare,
-            );
-            let value = serde_json::to_value(&named.job).expect("job serializes");
-            let steps = value["steps"].as_array().expect("steps");
-            let stage = step(steps, "stage-release");
-            assert_eq!(
-                stage["env"]["TAG"],
-                format!("v{}", prepare.version),
-                "{channel}"
-            );
-            assert!(
-                stage["run"]
-                    .as_str()
-                    .unwrap()
-                    .ends_with(r#"${TAG:+--tag "${TAG}"}"#),
-                "{channel}"
-            );
-        }
+        let named = built(Platform::Linux);
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        let steps = value["steps"].as_array().expect("steps");
+        let stage = step(steps, "stage-release");
+        assert_eq!(stage["env"]["TAG"], "${{ needs.describe.outputs.tag }}");
+        assert!(
+            stage["run"]
+                .as_str()
+                .unwrap()
+                .ends_with(r#"${TAG:+--tag "${TAG}"}"#)
+        );
     }
 
-    /// The publishing job merges exactly this channel's builds.
+    /// The publishing job merges exactly the channel's builds, by the name
+    /// the builder read.
     #[test]
     fn the_publish_job_merges_its_own_channel_s_artifacts() {
         let steps = publish_steps();
         let download = step(&steps, "download-staged");
-        assert_eq!(download["with"]["pattern"], "waypoints-*-stable");
+        assert_eq!(
+            download["with"]["pattern"],
+            "waypoints-*-${{ needs.build.outputs.channel }}"
+        );
     }
 
     /// The record carries no bytes: a release build's artifacts reach only
     /// the store, never a GitHub release asset.
     #[test]
     fn the_build_job_has_no_github_release_asset_upload() {
-        let named = build(
-            Channel::Stable,
-            &WorkflowContext::fixture(),
-            Platform::macOS,
-            &planned(Channel::Stable),
-        );
+        let named = built(Platform::macOS);
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let steps = value["steps"].as_array().expect("steps");
         assert!(
@@ -1314,42 +1401,169 @@ mod tests {
         );
     }
 
-    /// A withdraw deletes only a tag its own run minted, which only nightly's
-    /// planner does — preview's and stable's tags predate the run, and
-    /// deleting them would move a ref out from under whoever already fetched
-    /// it. The step is on every channel; the planner's `tag_minted` is what
-    /// gates it. See the design's "A run deletes only a tag it minted"
-    /// decision.
+    /// The calling job carries only what a call may: `uses`, `with`,
+    /// `secrets`, `permissions`, `needs`, and `if` — no runner, steps, or
+    /// environment of its own — and inherits the secrets under the one
+    /// suppression that inheritance earns.
     #[test]
-    fn a_withdraw_deletes_only_a_tag_its_run_minted() {
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let prepare = planned(channel);
-            let named = withdraw_release(channel, &prepare);
-            let value = serde_json::to_value(&named.job).expect("job serializes");
-            let steps = value["steps"].as_array().expect("steps");
-            let tag_delete = step(steps, "delete-minted-tag");
-            assert_eq!(
-                tag_delete["if"].as_str().unwrap(),
-                format!("{} == 'true'", prepare.tag_minted.expr()),
-                "{channel}"
+    fn the_calling_job_carries_only_what_a_call_may() {
+        let run = run();
+        let guard = guard(
+            &WorkflowInput::string("tag", Some(String::new())),
+            &WorkflowInput::string("platforms", Some("All".to_owned())),
+            &WorkflowInput::bool("dry_run", Some(true)),
+            &WorkflowInput::bool("build", Some(true)),
+        );
+        let named = call_builder("ref", "All", &guard, Expression::new("true"));
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        let mut keys: Vec<&str> = value
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(
+            keys,
+            [
+                "if",
+                "name",
+                "needs",
+                "permissions",
+                "secrets",
+                "uses",
+                "with"
+            ]
+        );
+        assert_eq!(
+            value["uses"],
+            "$/.github/workflows/build-distributables.yaml"
+        );
+        assert_eq!(value["secrets"], "inherit");
+        assert_eq!(value["with"]["ref"], "ref");
+        assert_eq!(value["needs"], serde_json::json!([run.guard]));
+        let rules: Vec<&str> = named
+            .job
+            .lint_ignores
+            .iter()
+            .map(|ignore| ignore.rule.as_str())
+            .collect();
+        assert_eq!(rules, ["secrets-inherit"]);
+    }
+
+    /// The guard reads the rehearsal flag off the event — a dispatch
+    /// rehearses unless it says otherwise, a push is real — and refuses the
+    /// three contradictions on their steps, never on the job.
+    #[test]
+    fn the_guard_reads_the_flag_and_refuses_on_its_steps() {
+        let guard = guard(
+            &WorkflowInput::string("tag", Some(String::new())),
+            &WorkflowInput::string("platforms", Some("All".to_owned())),
+            &WorkflowInput::bool("dry_run", Some(true)),
+            &WorkflowInput::bool("build", Some(true)),
+        );
+        let named: NamedJob = guard.into();
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        assert!(value.get("if").is_none(), "{value}");
+        assert_eq!(
+            value["outputs"]["dry_run"],
+            "${{ steps.rehearsal.outputs.dry_run }}"
+        );
+        let steps = value["steps"].as_array().expect("steps");
+        assert_eq!(
+            step(steps, "rehearsal")["env"]["DRY_RUN"],
+            "${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}"
+        );
+        for (id, needle) in [
+            ("reject-untagged-run", "inputs.tag == ''"),
+            ("reject-contradiction", "inputs.platforms != 'All'"),
+            ("reject-no-build", "!inputs.build && !inputs.dry_run"),
+        ] {
+            let cond = step(steps, id)["if"].as_str().unwrap();
+            assert!(
+                cond.starts_with("github.event_name == 'workflow_dispatch'"),
+                "{id}: {cond}"
             );
+            assert!(cond.contains(needle), "{id}: {cond}");
         }
+    }
+
+    /// Scenarios _A pushed tag is withdrawn_, _The write is reverted_, and
+    /// _A re-published tag survives_: the drafted record and the store
+    /// objects go on every withdrawal; the tag, and the bump that minted it,
+    /// go only when the run was the tag's own push — the revert as a pull
+    /// request the bot opens, signs, and waits on.
+    #[test]
+    fn a_pushed_tag_is_withdrawn_with_its_write_and_a_dispatched_one_is_not() {
+        let named = withdraw_release(&run());
+        let value = serde_json::to_value(&named.job).expect("job serializes");
+        assert_eq!(value["environment"]["name"], "App Release");
+        let steps = value["steps"].as_array().expect("steps");
+
+        let triggering = helpers::triggering_tag();
+        for id in ["discard-release", "withdraw-from-store"] {
+            let step = step(steps, id);
+            assert!(step.get("if").is_none(), "{id}: {step}");
+            assert_eq!(step["env"]["TAG"], triggering, "{id}");
+        }
+        for id in ["delete-tag", "undo", "app-token", "revert-pull-request"] {
+            assert_eq!(step(steps, id)["if"], "github.event_name == 'push'", "{id}");
+        }
+        let credentials = steps
+            .iter()
+            .find(|step| step["name"] == "Resolve the botswain secrets")
+            .expect("the credentials step");
+        assert_eq!(credentials["if"], "github.event_name == 'push'");
+
+        let undo = step(steps, "undo");
+        assert_eq!(
+            undo["run"],
+            r#"devenv shell -- cargo ci-task release undo --tag "${TAG}" --commit "${COMMIT}""#
+        );
+        assert_eq!(undo["env"]["TAG"], triggering);
+        assert_eq!(undo["env"]["COMMIT"], "${{ github.sha }}");
+        let revert = step(steps, "revert-pull-request");
+        assert_eq!(
+            revert["with"]["body-path"],
+            "${{ steps.undo.outputs.body_path }}"
+        );
+        assert_eq!(revert["with"]["branch"], "${{ steps.undo.outputs.head }}");
+        assert_eq!(revert["with"]["sign-commits"], "true");
+        // The merge stands on the pull request's number, which the push-only
+        // step before it leaves empty on a dispatch.
+        let merge = step(steps, "merge-revert");
+        assert_eq!(
+            merge["if"],
+            "steps.revert-pull-request.outputs.pull-request-number != ''"
+        );
+        assert!(
+            !merge["run"].as_str().unwrap().contains("--no-wait"),
+            "the withdrawal waits for the revert to land"
+        );
+        assert_eq!(
+            merge["env"]["PULL_REQUEST"],
+            "${{ steps.revert-pull-request.outputs.pull-request-number }}"
+        );
     }
 
     /// The withdraw gate is the negation of the publish gate's completeness,
     /// ORed with `failure()` — an explicit `if:`, since the job's own
     /// `needs` may have failed and GitHub's default implicit gate would
-    /// skip it exactly when it is needed — and never on a dry run, which
-    /// created nothing to withdraw.
+    /// skip it exactly when it is needed — on a run started with a tag, and
+    /// never on a dry run, which created nothing to withdraw.
     #[test]
     fn withdraw_gates_on_failure_or_shortfall() {
-        let prepare = planned(Channel::Stable);
-        let named = withdraw_release(Channel::Stable, &prepare);
+        let run = run();
+        let named = withdraw_release(&run);
         let value = serde_json::to_value(&named.job).expect("job serializes");
         let cond = value["if"].as_str().expect("if");
         assert!(cond.contains("failure()"), "{cond}");
         assert!(
-            cond.contains(&format!("({} != 'true')", prepare.dry_run.expr())),
+            cond.starts_with(&format!("(({}) != '')", helpers::triggering_tag_expr())),
+            "{cond}"
+        );
+        assert!(
+            cond.contains(&format!("({} != 'true')", run.dry_run.expr())),
             "{cond}"
         );
         // A top-level conjunct, so neither a failure nor a shortfall can
@@ -1358,33 +1572,13 @@ mod tests {
             cond.ends_with(") && needs.publish.outputs.submitted != 'true'"),
             "{cond}"
         );
-        for platform in Channel::Stable.required_targets() {
+        for platform in Platform::iter() {
             assert!(
                 cond.contains(&format!(
-                    "needs.build-{slug}.outputs.target == '{slug}'",
+                    "needs.build.outputs.{slug} == '{slug}'",
                     slug = platform.slug()
                 )),
                 "{platform}: {cond}"
-            );
-        }
-    }
-
-    /// Every channel's withdraw discards the drafted record and best-effort
-    /// cleans up the store, regardless of whether it may also delete a tag.
-    #[test]
-    fn every_channel_s_withdraw_discards_the_record_and_the_store() {
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let named = withdraw_release(channel, &planned(channel));
-            let value = serde_json::to_value(&named.job).expect("job serializes");
-            assert_eq!(value["environment"]["name"], "App Release");
-            let steps = value["steps"].as_array().expect("steps");
-            assert!(
-                steps.iter().any(|step| step["id"] == "discard-release"),
-                "{channel}: no discard-release step"
-            );
-            assert!(
-                steps.iter().any(|step| step["id"] == "withdraw-from-store"),
-                "{channel}: no withdraw-from-store step"
             );
         }
     }

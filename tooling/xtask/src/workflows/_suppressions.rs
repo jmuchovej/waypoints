@@ -132,18 +132,54 @@ fn rejoin(lines: Vec<String>, content: &str) -> String {
     placed
 }
 
+/// The line a job's own finding spans: `secrets: inherit`, the one key a job
+/// earns a suppression for today.
+const JOB_FINDING_LINE: &str = "    secrets: inherit";
+
 /// Appends each step's suppression to its `id:` line in `content`, the
-/// rendering of `workflow`.
+/// rendering of `workflow`, and a job's own to the line its finding spans.
 pub(crate) fn place(workflow: &Workflow, content: &str) -> Result<String> {
     let mut lines: Vec<String> = content.lines().map(str::to_owned).collect();
     let mut placed = false;
     for (job, value) in workflow.jobs.iter().flat_map(|jobs| jobs.iter()) {
         let owner = format!("job `{job}`");
+        let header = format!("  {job}:");
         let directives = directives(&owner, value.steps.iter().flatten())?;
-        if directives.is_empty() {
+        if !directives.is_empty() {
+            place_in_block(&mut lines, &owner, &header, &directives)?;
+            placed = true;
+        }
+        if value.lint_ignores.is_empty() {
             continue;
         }
-        place_in_block(&mut lines, &owner, &format!("  {job}:"), &directives)?;
+        let Some(start) = lines.iter().position(|line| line.trim_end() == header) else {
+            bail!("{owner}: no `{header}` block in the rendered text");
+        };
+        let end = lines[start + 1..]
+            .iter()
+            .position(|line| !line.trim().is_empty() && indent(line) <= indent(&header))
+            .map(|offset| start + 1 + offset)
+            .unwrap_or(lines.len());
+        let Some(at) = (start + 1..end).find(|&at| lines[at].trim_end() == JOB_FINDING_LINE) else {
+            bail!(
+                "{owner}: carries a suppression of its own but no `{}` line to place it on",
+                JOB_FINDING_LINE.trim()
+            );
+        };
+        let directive = Directive {
+            step_id: String::new(),
+            rules: value
+                .lint_ignores
+                .iter()
+                .map(|ignore| ignore.rule.clone())
+                .collect(),
+            reasons: value
+                .lint_ignores
+                .iter()
+                .map(|ignore| ignore.reason.clone())
+                .collect(),
+        };
+        lines[at].push_str(&directive.comment());
         placed = true;
     }
     Ok(if placed {

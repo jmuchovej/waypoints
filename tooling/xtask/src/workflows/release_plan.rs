@@ -554,7 +554,7 @@ mod tests {
         let patterns: Vec<&str> = [Channel::Nightly, Channel::Preview, Channel::Stable]
             .into_iter()
             .filter_map(|channel| channel.tag_pattern())
-            .chain([super::super::release_index::TAG_PATTERN])
+            .chain([super::super::release::TAG_PATTERN])
             .collect();
         assert!(!patterns.is_empty());
         for pattern in &patterns {

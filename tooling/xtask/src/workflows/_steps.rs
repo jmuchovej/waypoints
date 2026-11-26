@@ -10,7 +10,7 @@ use super::helpers::{
 };
 use super::{Artifact, TestSuite};
 use crate::{
-    Channel, Platform,
+    Platform,
     constants::{ACTIONS_DIR, GITHUB_DIR, LOCKFILE, STAGE_DIR},
 };
 use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
@@ -902,8 +902,9 @@ pub fn upload_staged(channel: &str, platform: Platform) -> Step<Use> {
         .id("upload-artifacts")
 }
 
-/// Merges every platform's staged files into one flat [`STAGE_DIR`].
-pub fn download_staged(channel: Channel) -> Step<Use> {
+/// Merges every platform's staged files into one flat [`STAGE_DIR`]: the
+/// channel's, by the name the builder read.
+pub fn download_staged(channel: &str) -> Step<Use> {
     download_artifact_action()
         .step("Download the staged release")
         .add_with(("pattern", format!("waypoints-*-{channel}")))
@@ -914,11 +915,13 @@ pub fn download_staged(channel: Channel) -> Step<Use> {
 
 /// Renders the store assets and listing copy, and on Linux fetches
 /// Transporter: everything both submissions need that touches nothing
-/// outside the runner. Resolves no credential.
-pub fn prepare_listing(channel: Channel) -> Step<Run> {
+/// outside the runner. Resolves no credential. The flavor reaches the
+/// command through the environment, as every expression does.
+pub fn prepare_listing(flavor: &str) -> Step<Run> {
     Step::new("Prepare the store listings")
-        .run(Tools::Devenv.command(&format!("xfastlane prepare {}", channel.flavor())))
+        .run(Tools::Devenv.command(r#"xfastlane prepare "${FLAVOR}""#))
         .shell("bash")
+        .add_env(("FLAVOR", flavor))
         .add_env((
             "SECRETSPEC_REASON",
             "xfastlane prepare renders store assets; no secret values are read",
@@ -959,13 +962,13 @@ pub fn mark_submitted(dry_run: &JobOutput) -> Step<Run> {
 /// Submits the staged package to the platform's store, with the platform's
 /// release scope resolved for that one command. Every fastlane concern —
 /// the lane, Transporter, where the package and its plist sit — stays
-/// inside `xfastlane`. Stands down on a dry run: neither store offers a
-/// rehearsal that consumes no build number.
-pub fn submit(platform: Platform, channel: Channel, dry_run: &JobOutput) -> Step<Run> {
+/// inside `xfastlane`; the flavor reaches it through the environment. Stands
+/// down on a dry run: neither store offers a rehearsal that consumes no
+/// build number.
+pub fn submit(platform: Platform, flavor: &str, dry_run: &JobOutput) -> Step<Run> {
     let command = format!(
-        "xfastlane publish {lane} {flavor} --from {STAGE_DIR}",
+        r#"xfastlane publish {lane} "${{FLAVOR}}" --from {STAGE_DIR}"#,
         lane = platform.slug(),
-        flavor = channel.flavor()
     );
     let spec = SecretSpec::run(command)
         .resolving(Resolution::Release(platform))
@@ -976,6 +979,7 @@ pub fn submit(platform: Platform, channel: Channel, dry_run: &JobOutput) -> Step
 
     Into::<Step<Run>>::into(spec)
         .if_condition(helpers::not_rehearsing(dry_run))
+        .add_env(("FLAVOR", flavor))
         .when(platform.is_android(), |step| {
             step.name("Submit to the Play Store")
         })
@@ -985,19 +989,27 @@ pub fn submit(platform: Platform, channel: Channel, dry_run: &JobOutput) -> Step
         .id(format!("submit-{}", platform.slug()))
 }
 
-/// Fails the run with a clear message when a dispatch pairs a non-empty
-/// `tag` with a `platforms` subset. Wrapped in a job gated on exactly that
-/// contradiction by `jobs::guard_dispatch`.
-pub fn reject_tag_with_platforms_subset() -> Step<Run> {
-    Step::new("Reject a tag with a platforms subset")
-        .run(concat!(
-            "echo \"::error::A release tag cannot be combined with a platforms subset — ",
-            "a subset can never satisfy every required target, so the run would build ",
-            "without ever publishing. Dispatch again with platforms left at All, or as ",
-            "a dry run.\" && exit 1"
-        ))
+/// Fails the run with `message`, for a job to gate on the contradiction it
+/// names: the condition sits on the step, since a job skipped by its own
+/// `if` skips everything that needs it. Single quotes around the message:
+/// an escaped double quote inside a YAML scalar is rewritten by the
+/// formatter, which would leave the generated file never in sync.
+pub fn refuse(id: &str, name: &str, message: &str) -> Step<Run> {
+    Step::new(name)
+        .run(format!("echo '::error::{message}' && exit 1"))
         .shell("bash")
-        .id("reject-contradiction")
+        .id(id)
+}
+
+/// Publishes whether the run rehearses, as `dry_run`, from the expression
+/// `rehearsing` — read off the event once, so every later gate reads one
+/// output rather than restating the event logic.
+pub fn read_rehearsal_flag(rehearsing: &str) -> Step<Run> {
+    Step::new("Read the rehearsal flag")
+        .run(r#"echo "dry_run=${DRY_RUN}" >> "$GITHUB_OUTPUT""#)
+        .shell("bash")
+        .add_env(("DRY_RUN", rehearsing))
+        .id("rehearsal")
 }
 
 /// Records this platform's slug as a job output, so the publish gate can
@@ -1039,19 +1051,14 @@ pub fn release_notes(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
 /// [`publish_release`] flips it — so a failed build never leaves a
 /// half-populated release visible. The `view` guard makes a re-run reuse the
 /// draft it left behind; `gh` resolves drafts by tag name. Stands down on a
-/// dry run, which creates and edits no record.
-pub fn create_release(channel: Channel, tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
+/// dry run, which creates and edits no record. `prerelease` is the
+/// `--prerelease` flag or nothing, as an expression over the channel the
+/// builder read; it reaches the command through the environment.
+pub fn create_release(tag: &JobOutput, dry_run: &JobOutput, prerelease: &str) -> Step<Run> {
     let view = r#"gh release view "${TAG}" >/dev/null 2>&1"#;
     let create =
         r#"gh release create "${TAG}" --draft --verify-tag --notes-file "${RUNNER_TEMP}/notes.md""#;
-    let create = format!(
-        "{view} \\\n|| {create}{prerelease}",
-        prerelease = if channel.prerelease() {
-            " --prerelease"
-        } else {
-            ""
-        },
-    );
+    let create = format!("{view} \\\n|| {create} ${{PRERELEASE}}");
 
     Step::new("Create the draft")
         .run(create)
@@ -1059,6 +1066,7 @@ pub fn create_release(channel: Channel, tag: &JobOutput, dry_run: &JobOutput) ->
         .if_condition(helpers::publishing(tag, dry_run))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("PRERELEASE", prerelease))
         .id("draft-release")
 }
 
@@ -1175,8 +1183,9 @@ pub fn dry_index(tag: &JobOutput, dry_run: &JobOutput) -> Step<Run> {
         .id("dry-index")
 }
 
-/// The one artifact a dry run leaves — everything it rendered — kept a week.
-pub fn upload_dry_run(channel: Channel, dry_run: &JobOutput) -> Step<Use> {
+/// The one artifact a dry run leaves — everything it rendered — named for
+/// the channel the builder read and kept a week.
+pub fn upload_dry_run(channel: &str, dry_run: &JobOutput) -> Step<Use> {
     upload_rendering(format!("dry-run-{channel}"), helpers::rehearsing(dry_run))
 }
 
@@ -1203,13 +1212,13 @@ pub fn upload_rendering(name: String, rehearsing: Expression) -> Step<Use> {
 /// absorb that case, rather than gating the step, keeps the withdraw job's
 /// later steps on their ordinary default `if: success()` instead of each
 /// needing `always()` to survive this one's absence.
-pub fn discard_release(tag: &JobOutput) -> Step<Run> {
+pub fn discard_release(tag: &str) -> Step<Run> {
     Step::new("Discard the drafted release")
         .run(r#"gh release delete "${TAG}" --yes || true"#)
         .shell("bash")
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("GH_REPO", "${{ github.repository }}"))
-        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("TAG", tag))
         .id("discard-release")
 }
 
@@ -1220,13 +1229,13 @@ pub fn discard_release(tag: &JobOutput) -> Step<Run> {
 /// `release distributables withdraw` itself rather than propagated, so this
 /// step's exit code carries no information about whether every object was
 /// removed.
-pub fn withdraw_from_store(tag: &JobOutput) -> Step<Run> {
+pub fn withdraw_from_store(tag: &str) -> Step<Run> {
     let step = Step::new("Withdraw the distributables")
         .run(Tools::Devenv.command(
             r#"cargo ci-task release distributables withdraw --tag "${TAG}""#,
         ))
         .shell("bash")
-        .add_env(("TAG", helpers::tag(tag)))
+        .add_env(("TAG", tag))
         .add_env((
             "SECRETSPEC_REASON",
             "release distributables withdraw derives a short-lived, channel-scoped store credential",
@@ -1235,23 +1244,36 @@ pub fn withdraw_from_store(tag: &JobOutput) -> Step<Run> {
     Tools::Devenv.resolving(step)
 }
 
-/// Deletes the tag this run minted, via the refs API. Conditioned on the
-/// planner's own record of having created it: preview and stable's tags
-/// predate the run and may already be fetched elsewhere, so deleting them
-/// would move a ref out from under whoever has it — see the design's "A run
-/// deletes only a tag it minted" decision.
-pub fn delete_minted_tag(tag: &JobOutput, tag_minted: &JobOutput) -> Step<Run> {
-    Step::new("Delete the minted tag")
+/// Deletes the tag that started the run, via the refs API: it was minted for
+/// this publication minutes before, nothing has recorded it, and the tag
+/// ruleset lets a run delete one. The caller gates it on the run being the
+/// tag's own push; a dispatched re-publication leaves its tag.
+pub fn delete_tag(tag: &str) -> Step<Run> {
+    Step::new("Delete the tag")
         .run(r#"gh api -X DELETE "repos/${GH_REPO}/git/refs/tags/${TAG}""#)
         .shell("bash")
-        .if_condition(Expression::new(format!(
-            "{tag_minted} == 'true'",
-            tag_minted = tag_minted.expr()
-        )))
         .add_env(("GH_TOKEN", GITHUB_TOKEN))
         .add_env(("GH_REPO", "${{ github.repository }}"))
-        .add_env(("TAG", helpers::tag(tag)))
-        .id("delete-minted-tag")
+        .add_env(("TAG", tag))
+        .id("delete-tag")
+}
+
+/// Undoes the bump that minted `tag`: reverts the write's merge — the commit
+/// the push was for — into the working tree and publishes the landing for the
+/// pull-request step; for a cut's `-pre.1` it also deletes the series and the
+/// library tags through the API and reverts `main`'s write instead. Inside
+/// the devenv shell, as the withdraw job's other `xtask` runs; the token
+/// deletes refs and reads the pull requests, which `GITHUB_TOKEN` may.
+pub fn undo(tag: &str) -> Step<Run> {
+    release_command(
+        "undo",
+        r#"--tag "${TAG}" --commit "${COMMIT}""#,
+        Tools::Devenv,
+    )
+    .id("undo")
+    .add_env(("TAG", tag))
+    .add_env(("COMMIT", "${{ github.sha }}"))
+    .add_env(("GH_TOKEN", GITHUB_TOKEN))
 }
 
 pub(crate) struct Nextest(Step<Run>);
@@ -1451,20 +1473,24 @@ mod tests {
     ];
 
     /// This runs under `GITHUB_TOKEN`, which is no bypass actor on the tag
-    /// ruleset, so the flag is what stops `gh` trying to create a missing tag.
+    /// ruleset, so the flag is what stops `gh` trying to create a missing tag;
+    /// the prerelease flag reaches it through the environment.
     #[test]
     fn the_draft_never_creates_its_tag() {
-        for channel in [Channel::Nightly, Channel::Preview, Channel::Stable] {
-            let prepare = crate::workflows::jobs::prepare(
-                channel,
-                &crate::workflows::WorkflowContext::fixture(),
-            );
-            let step = rendered(create_release(channel, &prepare.tag, &prepare.dry_run));
-            let run = step["run"].as_str().expect("run");
-            assert!(run.contains("gh release create"), "{run}");
-            assert!(run.contains("--verify-tag"), "{run}");
-            assert_eq!(step["env"]["GH_TOKEN"], GITHUB_TOKEN);
-        }
+        let tag = JobOutput::new("build".to_owned(), "tag");
+        let dry_run = JobOutput::new("guard".to_owned(), "dry_run");
+        let step = rendered(create_release(
+            &tag,
+            &dry_run,
+            "${{ true && '--prerelease' }}",
+        ));
+        let run = step["run"].as_str().expect("run");
+        assert!(run.contains("gh release create"), "{run}");
+        assert!(run.contains("--verify-tag"), "{run}");
+        assert!(run.ends_with("${PRERELEASE}"), "{run}");
+        assert!(!run.contains("--prerelease"), "{run}");
+        assert_eq!(step["env"]["GH_TOKEN"], GITHUB_TOKEN);
+        assert_eq!(step["env"]["PRERELEASE"], "${{ true && '--prerelease' }}");
     }
 
     /// Profile and scope travel as one value, so every rendering carries both.
