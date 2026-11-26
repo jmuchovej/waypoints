@@ -53,17 +53,6 @@ pub enum Transition {
     Patch,
 }
 
-/// Every transition, in the order a version meets them — the choices the
-/// dispatch input offers.
-///
-/// Derived from the enum rather than restated, so a new variant cannot be
-/// missing from the workflow that has to invoke it.
-pub fn transitions() -> Vec<String> {
-    Transition::iter()
-        .map(|transition| format!("{transition:?}").to_lowercase())
-        .collect()
-}
-
 /// A version read the way the release tasks read one. Dereferences to the
 /// [`semver::Version`] it wraps, so the semver fields stay reachable.
 ///

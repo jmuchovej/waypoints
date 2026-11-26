@@ -10,12 +10,15 @@
 //! in flight. For a group it is today's group-scoped cut. Run from `main`;
 //! see [`xtask::planners::release`].
 
-use super::plan::carry_out;
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 use chrono::Utc;
 use clap::{ArgGroup, Parser, ValueEnum as _};
+use indoc::formatdoc;
 use serde::Serialize;
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use xtask::{
     Channel,
     constants::MAIN,
@@ -103,6 +106,9 @@ pub fn run(args: Options) -> Result<()> {
             floor: args.floor,
         };
         let plan = planner::plan(Transition::Cut, options)?;
+        let headline = format!("`{group}` bump: {}", name(Transition::Cut));
+        println!("{headline}");
+        github::add_summary(&summary(&headline))?;
         github::set_outputs_if_available(&Inferred {
             transition: name(Transition::Cut),
         })?;
@@ -125,6 +131,10 @@ pub fn run(args: Options) -> Result<()> {
         let declared = groups.app_version()?;
         let (plan, report) = plan_nightly(&declared, args.dry_run)?;
         println!("{report}");
+        github::add_summary(&summary(&report))?;
+        if let Some(dir) = args.into.as_deref() {
+            render_nightly(dir, plan.as_ref(), &report)?;
+        }
         github::set_outputs_if_available(&Inferred {
             transition: "nightly".to_owned(),
         })?;
@@ -137,15 +147,17 @@ pub fn run(args: Options) -> Result<()> {
     let states = planner::series_states(&series, &tagged, &groups, root)?;
     let newest = states.iter().max_by_key(|state| state.declared.target());
     let transition = planner::infer(channel, newest, args.major)?;
-    match newest {
-        Some(state) => println!(
+    let headline = match newest {
+        Some(state) => format!(
             "{channel} bump: {} — the newest series {} declares {}",
             name(transition),
             state.branch,
             state.declared
         ),
-        None => println!("{channel} bump: {} — no series is open", name(transition)),
-    }
+        None => format!("{channel} bump: {} — no series is open", name(transition)),
+    };
+    println!("{headline}");
+    github::add_summary(&summary(&headline))?;
     github::set_outputs_if_available(&Inferred {
         transition: name(transition),
     })?;
@@ -214,6 +226,148 @@ fn plan_nightly(manifest: &Version, dry_run: bool) -> Result<(Option<Plan>, Stri
     }
 }
 
+/// A nightly dry run's one rendering: the refs it would mint, or the verdict
+/// that it would mint none, so the run leaves the artifact every rehearsal
+/// leaves.
+fn render_nightly(dir: &Path, plan: Option<&Plan>, report: &str) -> Result<()> {
+    fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
+    let refs = match plan {
+        Some(plan) => formatdoc! { "
+            # Refs
+
+            {report}
+
+            - tag `{tag}` on `HEAD`, not minted
+            ",
+            tag = plan.tag,
+        },
+        None => formatdoc! { "
+            # Refs
+
+            {report}
+
+            No tag would be minted.
+            "
+        },
+    };
+    let file = dir.join("refs.md");
+    fs::write(&file, refs).with_context(|| format!("writing {}", file.display()))?;
+    println!("  rendered {}", file.display());
+    Ok(())
+}
+
+/// The job summary's heading and verdict; what a dry run rendered is the
+/// run's artifact.
+fn summary(headline: &str) -> String {
+    formatdoc! { "
+        ### Bump
+
+        {headline}
+
+        "
+    }
+}
+
+/// Reports `plan`, then either renders it dry into `into` or writes it into
+/// the tree and publishes its landing — a cut's `main` landing with its body
+/// file, every other transition's series landing.
+fn carry_out(
+    transition: Transition,
+    plan: &planner::Plan,
+    groups: &release_groups::GroupFile,
+    dry_run: bool,
+    into: Option<&Path>,
+) -> Result<()> {
+    let landing = plan.landing(groups)?;
+
+    match &landing {
+        Some(landing) => {
+            println!(
+                "{transition:?}: {version} on {branch} ({channel}); tag {tag}",
+                version = plan.version,
+                branch = plan.branch,
+                channel = plan.channel,
+                tag = plan.tag,
+            );
+            println!("  {}", landing.describe(&plan.branch));
+        }
+        None => println!("{transition:?}: one library on main, no series"),
+    }
+    if let Some(main) = plan.main_landing(groups)? {
+        if !plan.next_main_version.is_empty() {
+            println!("  main moves to {}", plan.next_main_version);
+        }
+        println!("  {}", main.describe(MAIN));
+        if main.title.starts_with("summary:") {
+            for header in plan.summary_headers(groups)? {
+                println!("    {header}");
+            }
+        }
+    }
+    for group in &plan.groups {
+        println!("  {}", group.describe());
+    }
+    for pin in &plan.moves {
+        println!("  {}", pin.describe());
+    }
+
+    if dry_run {
+        match into {
+            Some(dir) => {
+                fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
+                for (name, content) in planner::rehearse(transition, plan)? {
+                    let file = dir.join(&name);
+                    fs::write(&file, content)
+                        .with_context(|| format!("writing {}", file.display()))?;
+                    println!("  rendered {}", file.display());
+                }
+                println!("  (dry run — nothing written to the tree)");
+            }
+            None => println!("  (dry run — nothing written)"),
+        }
+        return github::set_outputs_if_available(plan);
+    }
+
+    planner::execute(transition, plan)?;
+    github::set_outputs_if_available(plan)?;
+
+    // A cut lands on `main` first; its series opens from that merge commit,
+    // in a later step that publishes the series' landing itself.
+    if transition == Transition::Cut {
+        let main = plan.main_landing(groups)?.context("a cut lands on main")?;
+        println!("  wrote the main-side manifests on main");
+        let body = if main.title.starts_with("summary:") {
+            formatdoc! { "
+                {plan}
+
+                {headers}
+                ",
+                plan = planner::pull_request_body(),
+                headers = plan.summary_headers(groups)?.join("\n"),
+            }
+        } else {
+            planner::pull_request_body()
+        };
+        let body_path = std::env::temp_dir().join("release-bump-body.md");
+        fs::write(&body_path, body).with_context(|| format!("writing {}", body_path.display()))?;
+        github::set_outputs_if_available(&main)?;
+        return github::set_outputs_if_available(&BodyPath {
+            body_path: body_path.to_string_lossy().into_owned(),
+        });
+    }
+
+    let landing = landing.context("a transition on a series has a landing")?;
+    println!("  wrote {} on {}", plan.version, plan.branch);
+    github::set_outputs_if_available(&landing)
+}
+
+/// Where the main pull request's body was written: a summary's headers span
+/// lines, which a step output cannot carry.
+#[derive(serde::Serialize)]
+struct BodyPath {
+    body_path: String,
+}
+
 /// The transition as the command line spells it.
 fn name(transition: Transition) -> String {
     transition
@@ -245,5 +399,21 @@ mod tests {
         ] {
             assert!(parse(refused).is_err(), "{refused:?} parsed");
         }
+    }
+
+    /// A nightly rehearsal renders the refs it would mint, or that it would
+    /// mint none, so the run's artifact exists either way.
+    #[test]
+    fn a_nightly_rehearsal_renders_its_refs() {
+        let dir = tempfile::tempdir().unwrap();
+        let plan = Plan::of(&Version::parse("0.2.0-nightly.20261125").unwrap()).unwrap();
+        render_nightly(dir.path(), Some(&plan), "Dry run: work landed.").unwrap();
+        let refs = fs::read_to_string(dir.path().join("refs.md")).unwrap();
+        assert!(refs.contains("`v0.2.0-nightly.20261125`"), "{refs}");
+        assert!(refs.contains("not minted"), "{refs}");
+
+        render_nightly(dir.path(), None, "Dry run: nothing landed.").unwrap();
+        let refs = fs::read_to_string(dir.path().join("refs.md")).unwrap();
+        assert!(refs.contains("No tag would be minted."), "{refs}");
     }
 }

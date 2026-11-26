@@ -1902,7 +1902,6 @@ fn commits_since(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::releases::version::transitions;
     use clap::ValueEnum;
     use strum::IntoEnumIterator as _;
 
@@ -2213,7 +2212,7 @@ mod tests {
         let refusal = app_unmoved("waypoints", Some(&v("0.1.0")), &planned);
         assert_eq!(
             refusal,
-            "nothing to cut for `waypoints`: no counted commit since `v0.1.0`; `bedrock` moved, and `release plan cut --group <name>` mints one alone"
+            "nothing to cut for `waypoints`: no counted commit since `v0.1.0`; `bedrock` moved, and `release bump --group <name>` mints one alone"
         );
         let first = app_unmoved("waypoints", None, &planned);
         assert!(first.contains("in its history"), "{first}");
@@ -3426,28 +3425,6 @@ source = \"registry+https://github.com/rust-lang/crates.io-index\"
         let out = set_package_version(manifest, &Version::parse(&plan.version).unwrap()).unwrap();
         assert!(out.contains("version = \"0.2.1\""));
         assert_eq!(plan.tag, "v0.2.1");
-    }
-
-    /// The dispatch input offers exactly the values clap accepts, so a run
-    /// cannot ask for a transition the CLI cannot parse.
-    #[test]
-    fn every_offered_transition_is_a_real_cli_value() {
-        let offered = transitions();
-        assert_eq!(offered.len(), Transition::iter().count());
-
-        let accepted: Vec<String> = Transition::value_variants()
-            .iter()
-            .filter_map(ValueEnum::to_possible_value)
-            .map(|value| value.get_name().to_owned())
-            .collect();
-
-        for transition in &offered {
-            assert!(
-                accepted.contains(transition),
-                "the workflow offers `{transition}`, which `release plan` cannot parse; \
-                 clap knows {accepted:?}"
-            );
-        }
     }
 
     /// The staircase must hold: nightly < preview < stable, then the next cut

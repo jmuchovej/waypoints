@@ -187,7 +187,7 @@ series that changes a file under a pinned group's paths fails
 > from `bedrock-v0.2.0`; a library change reaches a series by moving its pin
 
 A library fix reaches a series in two steps: it lands on `main`, a cut scoped
-to its group (`release plan cut --group bedrock`) mints the next tag on its
+to its group (`release bump --group bedrock`) mints the next tag on its
 line, and `patch` on the series moves the pin to that tag and bumps the app in
 one pull request. Where `main` has broken the group's line since the pin, no
 tag on that line can carry the fix: `patch` holds the pin, names the breaking

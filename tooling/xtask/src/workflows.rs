@@ -25,11 +25,11 @@ use strum::IntoEnumIterator;
 // One module per workflow. Everything they are assembled from is prefixed with
 // an underscore, so a bare name in this directory is always a workflow.
 mod build;
+mod bump;
 mod check_generated;
 mod devenv_update;
 mod pull_request;
 mod release;
-mod release_plan;
 mod version_integrity;
 
 pub(crate) mod _actions;
@@ -163,11 +163,11 @@ fn all_generated_files(root: &Path) -> Result<Vec<PathBuf>> {
 pub fn workflows() -> Vec<WorkflowFile> {
     vec![
         WorkflowFile::waypoints("build", build::workflow).stem("build-distributables"),
+        WorkflowFile::waypoints("bump", bump::workflow),
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
         WorkflowFile::waypoints("release", release::workflow),
-        WorkflowFile::waypoints("release_plan", release_plan::workflow),
         WorkflowFile::waypoints("version_integrity", version_integrity::workflow),
     ]
 }
@@ -319,24 +319,36 @@ pub struct WorkflowContext {
     /// The mise that writes the lockfile, for CI to install the same one.
     /// See [`crate::tools::mise::version`].
     pub mise_version: String,
+    /// The library groups the group file names, in its order: the bump's
+    /// dispatch offers each as a target, so a new group is a choice on the
+    /// next regeneration.
+    pub groups: Vec<String>,
 }
 
 impl WorkflowContext {
-    /// Reads everything from devenv and mise. Shells out, so it needs the
-    /// project root as the working directory.
+    /// Reads everything from devenv, mise, and the group file. Shells out, so
+    /// it needs the project root as the working directory.
     pub fn load() -> Result<Self> {
+        let groups = crate::release_groups::load(&crate::workspace::load()?)?;
+        let app = groups.app_group()?.to_owned();
         Ok(Self {
             devenv_files: crate::tools::devenv::managed_files()?,
             android_ndk: crate::tools::devenv::android_ndk_version()?,
             android_jdk: crate::tools::devenv::android_jdk_major()?,
             mise_version: crate::tools::mise::version()?,
+            groups: groups
+                .group
+                .keys()
+                .filter(|name| **name != app)
+                .cloned()
+                .collect(),
         })
     }
 
-    /// Stands in for the devenv and mise lookups [`WorkflowContext::load`]
-    /// performs, which shell out and so cannot run under test. Job-wiring
-    /// tests assert over step and output structure, never over these values
-    /// — treat them as opaque.
+    /// Stands in for the devenv, mise, and group-file lookups
+    /// [`WorkflowContext::load`] performs, which shell out and so cannot run
+    /// under test. Job-wiring tests assert over step and output structure,
+    /// never over these values — treat them as opaque.
     #[cfg(test)]
     pub fn fixture() -> Self {
         Self {
@@ -344,6 +356,7 @@ impl WorkflowContext {
             android_ndk: "00.0.00000000".to_owned(),
             android_jdk: "00".to_owned(),
             mise_version: "0.0.0".to_owned(),
+            groups: vec!["alpha".to_owned(), "beta".to_owned()],
         }
     }
 }
@@ -470,6 +483,7 @@ mod tests {
     fn every_workflow(context: &WorkflowContext) -> Vec<(String, Workflow)> {
         vec![
             ("build-distributables".to_owned(), build::workflow(context)),
+            ("bump".to_owned(), bump::workflow(context)),
             (
                 "check_generated".to_owned(),
                 check_generated::workflow(context),
@@ -477,7 +491,6 @@ mod tests {
             ("devenv_update".to_owned(), devenv_update::workflow(context)),
             ("pull_request".to_owned(), pull_request::workflow(context)),
             ("release".to_owned(), release::workflow(context)),
-            ("release_plan".to_owned(), release_plan::workflow(context)),
             (
                 "version_integrity".to_owned(),
                 version_integrity::workflow(context),
@@ -1037,10 +1050,9 @@ mod tests {
             for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
                 let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
                 let plans = steps.iter().any(|step| {
-                    step["run"].as_str().is_some_and(|run| {
-                        run.contains("cargo ci-task release prepare")
-                            || run.contains("cargo ci-task release plan")
-                    })
+                    step["run"]
+                        .as_str()
+                        .is_some_and(|run| run.contains("cargo ci-task release bump"))
                 });
                 if !plans {
                     continue;
@@ -1204,7 +1216,7 @@ mod tests {
     /// GitHub wraps a merge commit's body at 72 columns, and these land unread.
     #[test]
     fn the_bots_merge_messages_land_unwrapped() {
-        for body in [release_plan::body(), release::body()] {
+        for body in [bump::body(), release::body()] {
             assert!(body.len() <= 72, "{}: {body}", body.len());
         }
     }

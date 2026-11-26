@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! What `release plan` leaves in a real working tree for the pull-request
+//! What `release bump` leaves in a real working tree for the pull-request
 //! step, and what `generate versions` writes from the group file. The
-//! fixture has a real remote, because the planner fetches the branch it
-//! writes to and reads the tags the remote holds. Nothing here reaches the
-//! GitHub API: `advance` writes on its series, and a cut's first write lands
-//! on `main` before any ref is minted.
+//! fixture has a real remote, because the planner reads the open series and
+//! the tags off it and fetches the branch it writes to. Nothing here reaches
+//! the GitHub API: an advance writes on its series, and a cut's first write
+//! lands on `main` before any ref is minted.
 
 use std::{
     fs,
@@ -41,6 +41,10 @@ fn group_file(app: &str, domain: &str) -> String {
 
 /// The library's version in every fixture: a cut moves it from here.
 const DOMAIN: &str = "0.1.0";
+
+/// The one series a fixture may open, at the version it declares.
+const SERIES: &str = "v0.2.x";
+const SERIES_VERSION: &str = "0.2.0-pre.1";
 
 fn write(root: &Path, path: &str, text: &str) {
     let path = root.join(path);
@@ -87,9 +91,11 @@ struct Fixture {
 }
 
 impl Fixture {
-    /// A checkout with `main` at `main_version` and `v0.2.x` at `series_version`,
-    /// both also on the remote it was cloned from, and a library at [`DOMAIN`].
-    fn new(main_version: &str, series_version: &str) -> Self {
+    /// A checkout with `main` at `main_version`, a library at [`DOMAIN`], and
+    /// — when `series` — `v0.2.x` declaring [`SERIES_VERSION`], tagged, with
+    /// counted work landed on it since, so a preview bump advances it. Every
+    /// ref is also on the remote the checkout was cloned from.
+    fn new(main_version: &str, series: bool) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join("checkout");
         let remote = dir.path().join("remote.git");
@@ -113,9 +119,29 @@ impl Fixture {
         let fixture = Self { _dir: dir, root };
         fixture.commit_versions(main_version, "feat: the tree");
 
-        git(&fixture.root, &["checkout", "-q", "-b", "v0.2.x"]);
-        fixture.commit_versions(series_version, "chore(release): cut");
-        git(&fixture.root, &["checkout", "-q", "main"]);
+        let mut refs = vec!["main"];
+        if series {
+            git(&fixture.root, &["checkout", "-q", "-b", SERIES]);
+            fixture.commit_versions(SERIES_VERSION, "chore(release): cut");
+            // A plain ref, not `git tag`: a workstation's git may insist on a
+            // message or a signature for one.
+            git(
+                &fixture.root,
+                &[
+                    "update-ref",
+                    &format!("refs/tags/v{SERIES_VERSION}"),
+                    "HEAD",
+                ],
+            );
+            write(&fixture.root, "src-tauri/src/lib.rs", "// counted work\n");
+            git(&fixture.root, &["add", "-A"]);
+            git(
+                &fixture.root,
+                &["commit", "-q", "-m", "feat: work on the series"],
+            );
+            git(&fixture.root, &["checkout", "-q", "main"]);
+            refs.extend([SERIES, "--tags"]);
+        }
 
         git(
             remote.parent().unwrap(),
@@ -125,7 +151,9 @@ impl Fixture {
             &fixture.root,
             &["remote", "add", "origin", remote.to_str().unwrap()],
         );
-        git(&fixture.root, &["push", "-q", "origin", "main", "v0.2.x"]);
+        let mut push = vec!["push", "-q", "origin"];
+        push.extend(refs);
+        git(&fixture.root, &push);
         fixture
     }
 
@@ -210,24 +238,18 @@ fn assert_published(published: &str, lines: &[&str]) {
     }
 }
 
-/// Scenario _An advance writes the app alone_: the group file's app version
-/// and the app's manifests move together, and the library's line stays.
+/// Scenario _An advance writes the app alone_: a preview bump run from `main`
+/// finds the series in preview with counted work since its tag, infers an
+/// advance, and writes it on the series — the group file's app version and
+/// the app's manifests move together, and the library's line stays.
 #[test]
 fn advance_writes_the_whole_group_on_its_series() {
-    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
+    let fixture = Fixture::new("0.3.0-nightly", true);
 
-    let (output, published) = fixture.xtask(&["release", "plan", "advance"]);
-
-    // `advance` reads the version from the tree it runs in, so a dispatch runs
-    // it from the series.
-    assert!(!output.status.success(), "main is not a preview");
-    assert!(published.is_empty(), "{published}");
-
-    git(&fixture.root, &["checkout", "-q", "v0.2.x"]);
-    let (output, published) = fixture.xtask(&["release", "plan", "advance"]);
+    let (output, published) = fixture.xtask(&["release", "bump", "--channel", "preview"]);
     assert_succeeded(&output);
 
-    assert_eq!(git(&fixture.root, &["branch", "--show-current"]), "v0.2.x");
+    assert_eq!(git(&fixture.root, &["branch", "--show-current"]), SERIES);
     assert_eq!(
         fixture.changed(),
         [
@@ -252,6 +274,7 @@ fn advance_writes_the_whole_group_on_its_series() {
     assert_published(
         &published,
         &[
+            "transition=advance",
             "tag=v0.2.0-pre.2",
             "head=botswain/release-plan/v0.2.x",
             "title=chore(release): v0.2.x preview 0.2.0-pre.2",
@@ -263,20 +286,19 @@ fn advance_writes_the_whole_group_on_its_series() {
 /// The series moved after this job checked out, as a merged cherry-pick does.
 #[test]
 fn the_write_lands_on_the_series_as_the_remote_has_it() {
-    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
-    git(&fixture.root, &["checkout", "-q", "v0.2.x"]);
+    let fixture = Fixture::new("0.3.0-nightly", true);
 
     let other = fixture.root.parent().unwrap().join("other");
     git(
         fixture.root.parent().unwrap(),
-        &["clone", "-q", "-b", "v0.2.x", "remote.git", "other"],
+        &["clone", "-q", "-b", SERIES, "remote.git", "other"],
     );
     write(&other, "landed-meanwhile.txt", "");
     git(&other, &["add", "-A"]);
     git(&other, &["commit", "-q", "-m", "fix: landed meanwhile"]);
-    git(&other, &["push", "-q", "origin", "v0.2.x"]);
+    git(&other, &["push", "-q", "origin", SERIES]);
 
-    let (output, _) = fixture.xtask(&["release", "plan", "advance"]);
+    let (output, _) = fixture.xtask(&["release", "bump", "--channel", "preview"]);
     assert_succeeded(&output);
     assert!(fixture.root.join("landed-meanwhile.txt").exists());
 }
@@ -286,14 +308,14 @@ fn the_write_lands_on_the_series_as_the_remote_has_it() {
 /// was.
 #[test]
 fn a_dry_run_names_the_pull_request_and_leaves_the_tree_clean() {
-    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
-    git(&fixture.root, &["checkout", "-q", "v0.2.x"]);
+    let fixture = Fixture::new("0.3.0-nightly", true);
     let into = fixture.root.join("target/dry-run");
 
     let (output, published) = fixture.xtask(&[
         "release",
-        "plan",
-        "advance",
+        "bump",
+        "--channel",
+        "preview",
         "--dry-run",
         "--into",
         into.to_str().unwrap(),
@@ -302,6 +324,7 @@ fn a_dry_run_names_the_pull_request_and_leaves_the_tree_clean() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     for named in [
+        "preview bump: advance",
         "chore(release): v0.2.x preview 0.2.0-pre.2",
         "botswain/release-plan/v0.2.x",
         "tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
@@ -320,23 +343,22 @@ fn a_dry_run_names_the_pull_request_and_leaves_the_tree_clean() {
     }
     assert!(!patch.contains("crates/domain"), "{patch}");
     assert_eq!(fixture.changed(), Vec::<String>::new());
+    assert_eq!(git(&fixture.root, &["branch", "--show-current"]), "main");
     // Without a landing the pull-request step has nothing to open.
     assert!(!published.contains("head="), "{published}");
 }
 
-/// Scenario _A cut writes the file with the manifests_: a cut's first write
-/// is the main-side projection on `main` — the library the history moved and
-/// the app's bump, in the group file and every member manifest — under a
-/// summary whose headers the planner wrote to a body file for the
-/// pull-request step. The series is opened later, from that write's merge
-/// commit, so nothing touches it here.
+/// Scenario _A cut writes the file with the manifests_: with no series open,
+/// a preview bump cuts, and a cut's first write is the main-side projection
+/// on `main` — the library the history moved and the app's bump, in the
+/// group file and every member manifest — under a summary whose headers the
+/// planner wrote to a body file for the pull-request step. The series is
+/// opened later, from that write's merge commit, so nothing touches it here.
 #[test]
 fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
-    let fixture = Fixture::new("0.1.0-nightly", "0.2.0-pre.1");
-    // Wherever the job happened to be: the write goes to `main`.
-    git(&fixture.root, &["checkout", "-q", "v0.2.x"]);
+    let fixture = Fixture::new("0.1.0-nightly", false);
 
-    let (output, published) = fixture.xtask(&["release", "plan", "cut"]);
+    let (output, published) = fixture.xtask(&["release", "bump", "--channel", "preview"]);
     assert_succeeded(&output);
 
     assert_eq!(git(&fixture.root, &["branch", "--show-current"]), "main");
@@ -372,6 +394,7 @@ fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
     assert_published(
         &published,
         &[
+            "transition=cut",
             "tag=v0.1.0-pre.1",
             "branch=v0.1.x",
             "next_main_version=0.2.0-nightly",
@@ -397,7 +420,7 @@ fn a_cut_writes_the_main_side_manifests_on_main_as_a_summary() {
 /// moves.
 #[test]
 fn project_writes_a_hand_edited_file_into_its_manifests() {
-    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
+    let fixture = Fixture::new("0.3.0-nightly", true);
     write(
         &fixture.root,
         GROUP_FILE,
@@ -428,7 +451,7 @@ fn project_writes_a_hand_edited_file_into_its_manifests() {
 /// group at some other version is written to the group's.
 #[test]
 fn project_gives_a_new_member_its_group_s_version() {
-    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
+    let fixture = Fixture::new("0.3.0-nightly", true);
     write(
         &fixture.root,
         "Cargo.toml",
@@ -486,7 +509,7 @@ fn project_gives_a_new_member_its_group_s_version() {
 /// Scenario _An agreeing tree is untouched_.
 #[test]
 fn project_on_an_agreeing_tree_changes_nothing() {
-    let fixture = Fixture::new("0.3.0-nightly", "0.2.0-pre.1");
+    let fixture = Fixture::new("0.3.0-nightly", true);
 
     let (output, _) = fixture.xtask(&["generate", "versions"]);
     assert_succeeded(&output);

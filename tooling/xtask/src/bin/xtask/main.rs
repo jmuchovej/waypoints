@@ -53,7 +53,6 @@ mod tasks {
         pub mod describe;
         pub mod merge;
         pub mod open_series;
-        pub mod plan;
         pub mod record;
         pub mod tag;
         pub mod undo;
@@ -129,8 +128,6 @@ enum Release {
     Bump(tasks::release::bump::Options),
     /// Reads a tag, or a tree, into the version, channel, flavor, and store build codes a build stamps.
     Describe(tasks::release::describe::Options),
-    /// Plans a release-cycle transition: cut, advance, promote, or patch.
-    Plan(tasks::release::plan::Options),
     /// What a run does to what it distributes: rename, upload, commit the manifest, withdraw.
     #[command(subcommand)]
     Distributables(Distributables),
@@ -199,7 +196,6 @@ fn main() -> Result<()> {
         Command::Release(command) => match command {
             Release::Bump(args) => release::bump::run(args),
             Release::Describe(args) => release::describe::run(args),
-            Release::Plan(args) => release::plan::run(args),
             Release::Distributables(command) => match command {
                 Distributables::Rename(args) => release::distributables::rename::run(args),
                 Distributables::Upload(args) => release::distributables::upload::run(args),

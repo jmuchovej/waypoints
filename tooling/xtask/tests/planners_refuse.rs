@@ -121,7 +121,7 @@ fn assert_refuses_naming_the_manifest_and_the_file(args: &[&str]) {
 
 #[test]
 fn the_release_planner_refuses_an_unnamed_crate() {
-    assert_refuses_naming_the_crate(&["release", "plan", "cut", "--dry-run"]);
+    assert_refuses_naming_the_crate(&["release", "bump", "--channel", "preview", "--dry-run"]);
 }
 
 #[test]
@@ -131,7 +131,13 @@ fn the_nightly_planner_refuses_an_unnamed_crate() {
 
 #[test]
 fn the_release_planner_refuses_a_stale_projection() {
-    assert_refuses_naming_the_manifest_and_the_file(&["release", "plan", "cut", "--dry-run"]);
+    assert_refuses_naming_the_manifest_and_the_file(&[
+        "release",
+        "bump",
+        "--channel",
+        "preview",
+        "--dry-run",
+    ]);
 }
 
 #[test]
