@@ -10,12 +10,12 @@ checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
 name = "Waypoints"
-version = "0.2.0-nightly"
+version = "0.1.0-pre.1"
 dependencies = [
  "async-trait",
  "cartograph",
  "chrono",
- "domain",
+ "domain 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1)",
  "objc2-app-kit",
  "resvg",
  "rustls",
@@ -794,27 +794,118 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 [[package]]
 name = "bedrock"
 version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
- "bedrock-core",
- "bedrock-derive",
+ "bedrock-core 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.1.1)",
+ "bedrock-derive 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.1.1)",
  "cargo-lock",
- "chrono",
  "indoc",
  "mimalloc",
- "serde",
  "serde_json",
  "thiserror 2.0.20",
  "tokio",
  "tracing",
- "trybuild",
  "turso",
  "turso_core",
+]
+
+[[package]]
+name = "bedrock"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "bedrock-core 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1)",
+ "bedrock-derive 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1)",
+ "cargo-lock",
+ "indoc",
+ "mimalloc",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "turso",
+ "turso_core",
+]
+
+[[package]]
+name = "bedrock"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "bedrock-core 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0)",
+ "bedrock-derive 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0)",
+ "cargo-lock",
+ "indoc",
+ "mimalloc",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "turso",
+ "turso_core",
+]
+
+[[package]]
+name = "bedrock"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "bedrock-core 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1)",
+ "bedrock-derive 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1)",
+ "cargo-lock",
+ "indoc",
+ "mimalloc",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "turso",
+ "turso_core",
+]
+
+[[package]]
+name = "bedrock-core"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "chrono",
+ "indexmap 2.14.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
  "uuid",
 ]
 
 [[package]]
 name = "bedrock-core"
 version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "chrono",
+ "indexmap 2.14.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "uuid",
+]
+
+[[package]]
+name = "bedrock-core"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "chrono",
+ "indexmap 2.14.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "uuid",
+]
+
+[[package]]
+name = "bedrock-core"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
  "chrono",
  "indexmap 2.14.2",
@@ -827,6 +918,40 @@ dependencies = [
 [[package]]
 name = "bedrock-derive"
 version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "bedrock-derive"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "bedrock-derive"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "bedrock-derive"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -1396,13 +1521,13 @@ dependencies = [
 
 [[package]]
 name = "cartograph"
-version = "0.2.0-nightly"
+version = "0.1.0-pre.1"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
  "cartograph",
  "chrono",
- "domain",
+ "domain 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1)",
  "ed25519-dalek 3.0.0-rc.0",
  "fast_qr",
  "hex",
@@ -2623,8 +2748,30 @@ dependencies = [
 [[package]]
 name = "domain"
 version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
- "bedrock",
+ "bedrock 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1)",
+ "chrono",
+ "derive_more",
+ "indexmap 2.14.2",
+ "rand 0.10.3",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "specta",
+ "specta-typescript",
+ "thiserror 2.0.20",
+ "typed-builder",
+ "uuid",
+ "validator",
+]
+
+[[package]]
+name = "domain"
+version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
+dependencies = [
+ "bedrock 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1)",
  "chrono",
  "chumsky",
  "derive_more",
@@ -7708,36 +7855,29 @@ dependencies = [
 [[package]]
 name = "outpost"
 version = "0.2.0"
+source = "git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
- "anyhow",
  "async-trait",
- "axum",
- "clap",
  "ed25519-dalek 3.0.0-rc.0",
  "hex",
- "libc",
- "outpost",
  "outpost-fabric",
  "outpost-hold",
  "outpost-protocol",
- "rand 0.10.3",
  "serde",
  "serde_json",
- "tempfile",
  "thiserror 2.0.20",
  "tokio",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
 name = "outpost-fabric"
 version = "0.2.0"
+source = "git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
  "async-trait",
  "ed25519-dalek 3.0.0-rc.0",
  "iroh",
- "outpost-hold",
  "outpost-protocol",
  "postcard",
  "serde",
@@ -7749,21 +7889,21 @@ dependencies = [
 [[package]]
 name = "outpost-hold"
 version = "0.2.0"
+source = "git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
- "bedrock",
+ "bedrock 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0)",
  "blake3",
  "bytes",
  "ed25519-dalek 3.0.0-rc.0",
  "outpost-protocol",
  "postcard",
- "tempfile",
  "thiserror 2.0.20",
- "tokio",
 ]
 
 [[package]]
 name = "outpost-protocol"
 version = "0.2.0"
+source = "git+https://github.com/jmuchovej/waypoints?tag=outpost-v0.2.0#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
  "bip39",
  "blake3",
@@ -7771,11 +7911,8 @@ dependencies = [
  "chacha20poly1305",
  "derive_more",
  "ed25519-dalek 3.0.0-rc.0",
- "hex",
  "hmac 0.13.0",
  "postcard",
- "pretty_assertions",
- "rand 0.10.3",
  "rand_core 0.10.1",
  "serde",
  "sha2 0.11.0",
@@ -10623,10 +10760,10 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "store"
 version = "0.0.0"
 dependencies = [
- "bedrock",
+ "bedrock 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.1.1)",
  "chrono",
  "derive_more",
- "domain",
+ "domain 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1)",
  "outpost-protocol",
  "rstest",
  "serde",
@@ -11158,12 +11295,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
-name = "target-tuple"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876fef147edbcbddc8ac5cbbba92c7b86519e314e86638596c09673b2ed01e7f"
-
-[[package]]
 name = "tauri"
 version = "2.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11634,15 +11765,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61e0cadeeb54426080b4c5395d59769ce8293f542cc25511c167c742b2175809"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "termcolor"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
-dependencies = [
- "winapi-util",
 ]
 
 [[package]]
@@ -12167,16 +12289,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-serde"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "704b1aeb7be0d0a84fc9828cae51dab5970fee5088f83d1dd7ee6f6246fc6ff1"
-dependencies = [
- "serde",
- "tracing-core",
-]
-
-[[package]]
 name = "tracing-subscriber"
 version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12186,36 +12298,30 @@ dependencies = [
  "nu-ansi-term",
  "once_cell",
  "regex-automata",
- "serde",
- "serde_json",
  "sharded-slab",
  "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
  "tracing-log",
- "tracing-serde",
 ]
 
 [[package]]
 name = "transload"
 version = "0.1.1"
+source = "git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1#5c50d3a9af5542be84fc42b4d9780c247069236f"
 dependencies = [
- "bedrock",
+ "bedrock 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1)",
  "chrono",
  "chumsky",
  "derive_more",
- "domain",
+ "domain 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=transload-v0.1.1)",
  "indexmap 2.14.2",
  "indoc",
  "jsonschema",
- "rand 0.10.3",
  "serde",
  "serde_json",
- "tempfile",
  "thiserror 2.0.20",
- "tokio",
- "trybuild",
  "uuid",
 ]
 
@@ -12348,21 +12454,6 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "trybuild"
-version = "1.0.121"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0cabaa10be1917331a313866bd94526343e03c77bcf69144b62b072ad35d47c"
-dependencies = [
- "glob",
- "serde",
- "serde_derive",
- "serde_json",
- "target-tuple",
- "termcolor",
- "toml 1.1.6+spec-1.1.0",
-]
 
 [[package]]
 name = "ttf-parser"
@@ -14027,7 +14118,7 @@ dependencies = [
  "clap",
  "derive_more",
  "directories",
- "domain",
+ "domain 0.1.1 (git+https://github.com/jmuchovej/waypoints?tag=domain-v0.1.1)",
  "gh-workflow",
  "git-conventional",
  "glob",

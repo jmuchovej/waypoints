@@ -4,18 +4,13 @@
 
 [workspace]
   resolver = "3"
+  # On a series the library groups are pinned, below, to the tags the cut minted.
+  # Their crates stay on disk so a cherry-pick from main applies, and build
+  # nothing: a library change reaches this series only by a pin that `patch`
+  # moves (docs/CONTRIBUTING.md).
   members  = [
-    "crates/bedrock",
-    "crates/bedrock-core",
-    "crates/bedrock-derive",
     "crates/cartograph",
-    "crates/domain",
-    "crates/outpost",
-    "crates/outpost-fabric",
-    "crates/outpost-hold",
-    "crates/outpost-protocol",
     "crates/store",
-    "crates/transload",
     "src-tauri",
     "tooling/gh-workflow",
     "tooling/xtask",
@@ -32,18 +27,18 @@
     publish       = false
 
   [workspace.dependencies]
-    bedrock          = { path = "crates/bedrock" }
-    bedrock-core     = { path = "crates/bedrock-core" }
-    bedrock-derive   = { path = "crates/bedrock-derive" }
+    bedrock          = { git = "https://github.com/jmuchovej/waypoints", tag = "bedrock-v0.1.1" }
+    bedrock-core     = { git = "https://github.com/jmuchovej/waypoints", tag = "bedrock-v0.1.1" }
+    bedrock-derive   = { git = "https://github.com/jmuchovej/waypoints", tag = "bedrock-v0.1.1" }
     cartograph       = { path = "crates/cartograph" }
-    domain           = { path = "crates/domain" }
+    domain           = { git = "https://github.com/jmuchovej/waypoints", tag = "domain-v0.1.1" }
     gh-workflow      = { path = "tooling/gh-workflow" }
-    outpost          = { path = "crates/outpost", default-features = false }
-    outpost-fabric   = { path = "crates/outpost-fabric" }
-    outpost-hold     = { path = "crates/outpost-hold" }
-    outpost-protocol = { path = "crates/outpost-protocol" }
+    outpost          = { git = "https://github.com/jmuchovej/waypoints", tag = "outpost-v0.2.0", default-features = false }
+    outpost-fabric   = { git = "https://github.com/jmuchovej/waypoints", tag = "outpost-v0.2.0" }
+    outpost-hold     = { git = "https://github.com/jmuchovej/waypoints", tag = "outpost-v0.2.0" }
+    outpost-protocol = { git = "https://github.com/jmuchovej/waypoints", tag = "outpost-v0.2.0" }
     store            = { path = "crates/store" }
-    transload        = { path = "crates/transload" }
+    transload        = { git = "https://github.com/jmuchovej/waypoints", tag = "transload-v0.1.1" }
 
     anyhow             = "1.0.103"
     async-trait        = "0.1.89"
