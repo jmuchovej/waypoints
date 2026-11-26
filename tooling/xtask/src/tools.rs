@@ -12,6 +12,7 @@ pub mod mise;
 pub mod nix;
 
 use anyhow::{Context as _, Result};
+use indoc::formatdoc;
 use std::process::Command;
 
 /// Runs `program` with `args` and returns its trimmed stdout. A non-zero
@@ -24,11 +25,13 @@ fn run(program: &str, args: &[&str]) -> Result<String> {
         .with_context(|| format!("Failed to run `{program}` — is it on PATH?"))?;
 
     if !output.status.success() {
-        anyhow::bail!(
-            "`{program} {}` failed:\n{}",
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr).trim()
-        );
+        anyhow::bail!(formatdoc! { "
+          `{program} {params}` failed:
+          {stderr}
+          ",
+            params = args.join(" "),
+            stderr = String::from_utf8_lossy(&output.stderr).trim()
+        });
     }
 
     Ok(String::from_utf8(output.stdout)

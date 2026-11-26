@@ -28,10 +28,9 @@ const PINS_FILE = "distribution/nix/packages/waypoints/hashes.json"
 # build. `drv` names the derivation whose mismatch holds the answer, so a
 # mismatch elsewhere in the build is never mistaken for this pin's.
 #
-# `cargoOutputHashes` is deliberately absent. Its entries are per-git-crate,
-# `buildRustPackage` exposes no attribute to build one on its own, they move
-# only when a dependency's revision does, and cargo's mismatch error already
-# names the exact key to change.
+# No cargo hash lives here: crane vendors the lockfile's registry crates by
+# their checksums and a series' git pins by their locked revisions, so a pin
+# bump moves nothing in this file.
 const PINNED = [
   {
     name: "pnpm-deps"

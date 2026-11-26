@@ -213,3 +213,24 @@ A library group's released versions SHALL be addressable by tag, `<group>-v{vers
 
 - **WHEN** a series builds the app
 - **THEN** every crate the app ships resolves each group from the same tag, so the binary carries one copy of each group
+
+## MODIFIED Requirements
+
+### Requirement: A dry-run transition reports its refs and renders its writes
+
+A release-cycle transition run dry SHALL name the series branch, the tag, each library group's current and next version and the tag it would mint, and each pull request it would open (head, title, body), SHALL render the version writes it would commit — the app's and every changed group's — and the release notes for the would-be tag as artifacts of the run, and SHALL create no branch, pull request, or tag, leaving the working tree unchanged.
+
+#### Scenario: A dry cut
+
+- **WHEN** `cut` runs dry from `main` at `0.1.0-nightly` with a feature landed since the last stable
+- **THEN** it names `v0.2.x`, `v0.2.0-pre.1`, and the series and `main` pull requests, renders both version-write diffs and the notes, and the remote gains no branch, pull request, or tag
+
+#### Scenario: The tree is clean afterwards
+
+- **WHEN** a dry transition finishes
+- **THEN** no manifest or lockfile in the working tree differs from the checked-out commit
+
+#### Scenario: A dry cut names every group it would mint
+
+- **WHEN** `cut` runs dry and `bedrock` has counted commits since `bedrock-v0.3.0` while `outpost` has none
+- **THEN** the refs name `bedrock-v{next}` beside the app's tag and no `outpost` tag, and the rendered write carries every `bedrock` member's manifest and lockfile entry

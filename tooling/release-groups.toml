@@ -1,88 +1,82 @@
-#:tombi toml-version = "v1.1.0"
+#:tombi toml-version = "v1.0.0"
 #:schema ./schemas/release-groups.schema.json
 # SPDX-FileCopyrightText: 2026 John Muchovej
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Every workspace crate outside tooling/ is named: as a member or an internal.
-# tooling/ builds the repository, not the product, and must not appear.
+# every workspace crate outside of `tooling/` must be named, either as:
+# - a `member` crate (this will carry the group's version)
+# - an `internal` crate (this will be unversioned)
 #
-# `anchor` is the member whose version is the group's: every member == anchor.
-# `breaking = "header"` is `!` in the group's own header. `minted = [ "cut" ]`
-# mints on main only; a series pins a library, never builds it in-tree.
+# `tooling/` is exempt because it's not part of the product.
+#
+# `waypoints` is the app's group while all others are libraries. this allows
+# app and library versions to move at separate paces.
+#
+# `version-integrity` enforces that `member` crates carry the version
+# written here. `paths` provides a list of other trees the group owns beyond its
+# `member` and `internal` crates and `fixtures`.
+#
+# commits count for groups whose owned paths change – unclaimed paths do not
+# count toward versioning of any group.
 
-# Never product work, for any group or planner.
 [bookkeeping]
   paths        = [ "distribution/nix/releases/" ]
-  ignore-revs  = ".git-blame-ignore-revs"
-  # Reserved to botswain.
+  # commits that count for no group – **use the full commit id**.
+  # this is in addition to `.git-blame-ignore-revs`
+  ignore-revs  = [
+    # `refactor(importer)!: delete the dormant crate`:
+    #   the break was the importer's own API; `domain` only had a doc line touched
+    "11798f95d76489e4aa1268828b28233e231cb87c",
+  ]
+  # reserved to botswain.
   bot-subjects = [ "chore(release):" ]
 
-# bedrock-derive's floor is declared-only.
+# the database backbone of Waypoints.
 [group.bedrock]
+  version  = "0.1.0"
   members  = [ "crates/bedrock", "crates/bedrock-core", "crates/bedrock-derive" ]
-  anchor   = "crates/bedrock"
   tag      = "bedrock-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/bedrock/"
-  minted   = [ "cut" ]
 
-# The wire (ALPN outpost/sync/v1 + session negotiation) is not this number.
-# A wire break is an interop break: it needs the covenant trailer.
+# the sync layer of Waypoints: protocol, transport, and record storage.
 [group.outpost]
+  version  = "0.1.0"
   members  = [
     "crates/outpost",
     "crates/outpost-fabric",
     "crates/outpost-hold",
     "crates/outpost-protocol",
   ]
-  anchor   = "crates/outpost"
   tag      = "outpost-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/outpost/"
-  minted   = [ "cut" ]
 
-# Core of the data covenant.
+# the core datatypes of Waypoints and the foundation of the data covenant.
 [group.domain]
+  version  = "0.1.0"
   members  = [ "crates/domain" ]
-  anchor   = "crates/domain"
   tag      = "domain-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/domain/"
-  minted   = [ "cut" ]
 
+# the Bundle format: export to legible markdown, re-ingest without loss.
 [group.transload]
+  version  = "0.1.0"
   members  = [ "crates/transload" ]
-  anchor   = "crates/transload"
   tag      = "transload-v{version}"
-  breaking = "header"
-  floors   = [ "cargo-semver-checks", "covenant-fixtures" ]
   fixtures = "covenant/fixtures/transload/"
-  minted   = [ "cut" ]
 
-# cartograph is the API surface, so it moves with the app. store is an internal:
-# owned and counted, never versioned.
 [group.waypoints]
-  members                         = [ "src-tauri", "crates/cartograph" ]
-  internals                       = [ "crates/store" ]
-  anchor                          = "src-tauri"
-  tag                             = "v{version}"
-  owns                            = "remainder"
-  counts                          = "closure"
-  breaking                        = "trailer:Covenant: break"
-  features-always-increment-minor = true
-  floors                          = [ "covenant-fixtures" ]
-  fixtures                        = "covenant/fixtures/waypoints/"
-  minted                          = [ "cut", "advance", "promote", "patch" ]
-  channels                        = [ "nightly", "preview", "stable" ]
-  flavors                         = [ "nightly", "preview", "stable", "development" ]
-
-# The pull-request checks `version-integrity` carries.
-[enforce]
-  commits        = "conventional"
-  summary-type   = "summary"
-  version-writes = "botswain"
-  fixtures       = "append-only"
-  schema         = "current"
+  # the app version must carry the channel along with the version
+  version   = "0.1.0-nightly"
+  members   = [
+    # the app's backend
+    "src-tauri",
+    # the API surface whose version should move with the app
+    "crates/cartograph"
+  ]
+  internals = [ "crates/store" ]
+  tag       = "v{version}"
+  fixtures  = "covenant/fixtures/waypoints/"
+  paths     = [
+    # the app's frontend
+    "src/"
+  ]

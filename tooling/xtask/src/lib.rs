@@ -29,6 +29,10 @@
 //! parsing, orchestration, and printing, nothing more. Nothing in this crate
 //! ships in a release artifact, so a module can depend on app crates (e.g.
 //! `cartograph`) without gating one.
+//!
+//! The `local-dev` feature, on by default, carries what only a workstation
+//! runs: the dev server and the icon renderer. `cargo ci-task` is the same
+//! binary without it, so no CI job compiles either.
 
 #![allow(clippy::disallowed_macros)]
 
@@ -37,8 +41,11 @@ mod platform;
 pub use channel::{Channel, Flavor};
 pub use platform::{Arch, Platform, PublishedTarget};
 
+pub mod constants;
+
 /// The browser-dev HTTP backend: the runtime, its routes, and its errors —
 /// and the demo app-data directory store screenshots are captured against.
+#[cfg(feature = "local-dev")]
 pub mod dev {
     pub mod commands;
     pub mod demo;
@@ -69,14 +76,17 @@ pub mod distribution {
 }
 
 pub mod releases {
-    pub mod artifacts;
+    pub mod distributables;
+    pub mod history;
     pub mod index;
     pub mod landing;
     pub mod manifest;
     pub mod store;
+    pub mod undo;
     pub mod version;
 }
 
+#[cfg(feature = "local-dev")]
 pub mod icongen;
 pub mod license {
     struct FrozenDocument {
@@ -112,9 +122,6 @@ pub mod license {
     #[cfg(test)]
     const CLA_PATH: &str = "docs/licensing/CLA.md";
 
-    /// Where the notices are committed, relative to the workspace root.
-    pub const NOTICES_PATH: &str = "docs/licensing/THIRD-PARTY-NOTICES.md";
-
     mod headers;
     mod notices;
 
@@ -123,6 +130,8 @@ pub mod license {
     pub use notices::generate as generate_notices;
 }
 pub mod release_groups;
+pub mod semver_check;
+pub mod templates;
 pub mod tools;
 pub mod typegen;
 pub mod version_integrity;

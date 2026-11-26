@@ -43,7 +43,7 @@ mod dist "distribution/justfile"
 
 # Generate TypeScript types from Rust models
 typegen:
-    cargo xtask typegen
+    cargo xtask generate bindings
 
 # Validate TypeScript types on the app & website
 typecheck:
@@ -81,41 +81,36 @@ mise-lock-check:
     export SECRETSPEC_REASON="just mise-lock-check compares the mise lockfiles against their configs; no secret values are read"
     devenv shell -- mise-lock --check
 
-[doc("Verifies that devenv-managed files, the TypeScript bindings, the app icons, and xtask-generated workflows don't differ from committed files.")]
+[doc("Verifies that every generated file — devenv's, the TypeScript bindings, the app icons, the notices, the group-file schema, and the workflows — matches what its sources produce.")]
 [script]
 check-generated:
     # devenv's secretspec integration gates evaluation behind a stated reason.
-    # This recipe reads generated file lists and regenerates bindings and
-    # workflows; it never reads a secret value.
+    # This recipe reads the generated file list and regenerates outputs; it
+    # never reads a secret value.
     export SECRETSPEC_REASON="just check-generated compares devenv- and xtask-generated files against the committed tree; no secret values are read"
 
     # Entering the devenv shell is what regenerates devenv's outputs, so the
     # baseline cannot be a pre-run snapshot of the tree — asking xtask for the
     # file list would already have rewritten it. Git holds the baseline anyway:
-    # the question is whether what is *committed* matches what devenv produces.
-    files="$(devenv shell cargo xtask devenv-files --copied)"
+    # the question is whether what is *committed* matches what the generators
+    # produce. The list is the ledger's outputs — globs over the locations each
+    # generator owns, so a committed output it no longer produces shows up as a
+    # deletion — followed by devenv's copied files.
+    files="$(devenv shell cargo xtask ls managed --copied)"
     if [ -z "$files" ]; then
-      echo "devenv reported no copied files." >&2
+      echo "xtask listed no generated files." >&2
       exit 1
     fi
 
-    # The TypeScript bindings are regenerated in place the same way, and
-    # diffed against the same baseline.
-    bindings="crates/domain/typescript/types.g.ts crates/domain/typescript/schema.g.ts crates/cartograph/typescript/types.g.ts"
-    devenv shell cargo xtask typegen
-    files="$files $bindings"
+    # Each generator is regenerated in place and diffed against the same
+    # baseline; the workflows are compared by `--check` below.
+    devenv shell cargo xtask generate bindings
+    devenv shell cargo xtask generate icons
+    devenv shell cargo xtask generate notices
+    devenv shell cargo xtask generate schemas
 
-    # App icons are diffed by the locations the generator owns, not the files
-    # it writes, so a committed output it no longer produces shows up as a
-    # deletion. The globs are pathspecs: `set -f` keeps the shell from
-    # expanding them to only the files that exist.
-    icons='src-tauri/assets/icons/app src-tauri/gen/apple/Assets.xcassets/*.appiconset src-tauri/gen/android/app/src/*/res/mipmap-*/ic_launcher* src-tauri/gen/android/app/src/*/res/values/ic_launcher_background.xml'
-    devenv shell cargo xtask icongen
-    files="$files $icons"
-
-    # The notices are regenerated from the lockfiles and the third-party registry.
-    devenv shell cargo xtask license notices
-    files="$files docs/licensing/THIRD-PARTY-NOTICES.md"
+    # The globs are pathspecs: `set -f` keeps the shell from expanding them to
+    # only the files that exist.
     set -f
 
     rc=0
@@ -138,15 +133,15 @@ check-generated:
         rc=1
       fi
     fi
-    devenv shell cargo xtask workflows --check || rc=1
+    devenv shell cargo xtask generate workflows --check || rc=1
 
     if [ "$rc" -ne 0 ]; then
-      echo "Generated files are stale. Any devenv output or binding diffed above has" >&2
-      echo "already been regenerated; for workflows, run \`cargo xtask workflows\`." >&2
+      echo "Generated files are stale. Anything diffed above has already been" >&2
+      echo "regenerated; for workflows, run \`cargo xtask generate workflows\`." >&2
       echo "Review and commit the result." >&2
       exit 1
     fi
-    echo "$(echo $files) and .github/workflows are in sync with their sources."
+    echo "$(echo $files) are in sync with their sources."
 
 [doc("Dry-runs Renovate against the working tree. MODE is extract, lookup, or full.")]
 [script]
@@ -186,7 +181,7 @@ deny: deny-targets
 [script]
 license:
     export SECRETSPEC_REASON="just license checks license declarations against the tree; no secret values are read"
-    devenv shell cargo xtask license check
+    devenv shell cargo xtask check licenses
     devenv shell cargo deny check licenses
 
 [doc("Fails if .cargo/deny.toml graph.targets drifted from rust-toolchain.toml's targets.")]

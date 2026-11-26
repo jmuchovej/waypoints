@@ -42,8 +42,16 @@ fn print_build_identity(build: &cartograph::BuildInfo) {
     } else {
         format!(", built {}", build.built_at)
     };
+    // The library groups the binary carries, each at the version it was built
+    // from — a bug report names them all, not only the app's.
+    let groups = build
+        .groups
+        .iter()
+        .map(|group| format!("{} {}", group.group, group.version))
+        .collect::<Vec<_>>()
+        .join(", ");
     println!(
-        "waypoints {} ({}, {}{stamped})",
+        "waypoints {} ({}, {}{stamped}); {groups}",
         build.version, build.channel, build.sha,
     );
 }

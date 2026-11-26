@@ -4,7 +4,10 @@
 //! Shared expressions, secret handles, and concurrency groups.
 //! Trigger plumbing shared by workflow modules.
 
-use crate::Platform;
+use crate::{
+    Platform,
+    constants::{RELEASE_BOT, RELEASE_BOT_EMAIL},
+};
 use gh_workflow::{
     Concurrency, Environment as WorkflowEnvironment, Expression, JobOutput, Permissions, Run, Step,
     Workflow,
@@ -248,13 +251,10 @@ pub fn dispatch_platforms() -> Vec<&'static str> {
     ]
 }
 
-/// Guards a build on the planner's verdict and the `platforms` dispatch
-/// input.
-///
-/// A job answers to `All`, its group (`Desktop`/`Mobile`), and its own
-/// label; and it waits on the verdict, which is how a run with nothing to
-/// build — a quiet nightly, a dry run asked not to build — skips its builds.
-pub fn guard(platform: Platform, should_build: &JobOutput) -> Expression {
+/// Whether the `platforms` input selects `platform`: a job answers to `All`,
+/// its group (`Desktop`/`Mobile`), and its own label. The builder's whole
+/// gate, since it builds whatever its caller asks for.
+pub fn selected(platform: Platform) -> String {
     let group = match &platform {
         Platform::Android | Platform::iOS => "Mobile",
         Platform::Linux | Platform::macOS | Platform::Windows => "Desktop",
@@ -265,17 +265,25 @@ pub fn guard(platform: Platform, should_build: &JobOutput) -> Expression {
         .map(|label| format!("\"{label}\""))
         .collect::<Vec<_>>()
         .join(",");
-    let selected = format!("contains(fromJson('[{choices}]'), inputs.platforms)");
-
-    Expression::new(format!(
-        "{planner} == 'true' && \
-         (github.event_name != 'workflow_dispatch' || {selected})",
-        planner = should_build.expr(),
-    ))
+    format!("contains(fromJson('[{choices}]'), inputs.platforms)")
 }
 
-const BOTSWAIN_GIT_USERNAME: &str = "wp-botswain[bot]";
-const BOTSWAIN_GIT_EMAIL: &str = "3633092+wp-botswain[bot]@users.noreply.github.com";
+/// The ref a release run works on: the pushed tag, the dispatched tag, or
+/// the commit a rehearsal without a tag runs on. Wrapped for a `with:` value.
+pub fn release_ref() -> String {
+    format!("${{{{ {} || github.sha }}}}", triggering_tag_expr())
+}
+
+/// True when the run is a tag's own push: the one case a withdrawal deletes
+/// the tag and undoes the bump that minted it.
+pub fn pushed() -> Expression {
+    Expression::new("github.event_name == 'push'")
+}
+
+/// The concurrency group the bump and the release share: one release cycle
+/// runs at a time, queued rather than cancelled, so a scheduled nightly waits
+/// out a release and cannot mint from a `main` that run is about to revert.
+pub const RELEASE_CYCLE: &str = "release-cycle";
 
 pub(crate) trait BotswainGitIdentity {
     fn with_botswain_git_identity(self) -> Self;
@@ -283,10 +291,10 @@ pub(crate) trait BotswainGitIdentity {
 
 impl BotswainGitIdentity for Step<Run> {
     fn with_botswain_git_identity(self) -> Self {
-        self.add_env(("GIT_AUTHOR_NAME", BOTSWAIN_GIT_USERNAME))
-            .add_env(("GIT_COMMITTER_NAME", BOTSWAIN_GIT_USERNAME))
-            .add_env(("GIT_AUTHOR_EMAIL", BOTSWAIN_GIT_EMAIL))
-            .add_env(("GIT_COMMITTER_EMAIL", BOTSWAIN_GIT_EMAIL))
+        self.add_env(("GIT_AUTHOR_NAME", RELEASE_BOT))
+            .add_env(("GIT_COMMITTER_NAME", RELEASE_BOT))
+            .add_env(("GIT_AUTHOR_EMAIL", RELEASE_BOT_EMAIL))
+            .add_env(("GIT_COMMITTER_EMAIL", RELEASE_BOT_EMAIL))
     }
 }
 

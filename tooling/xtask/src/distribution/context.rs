@@ -16,7 +16,7 @@
 
 use crate::{
     Channel, Flavor,
-    releases::{artifacts, manifest::Manifest},
+    releases::{distributables, manifest::Manifest},
 };
 use anyhow::{Context as _, Result, anyhow};
 use serde::Deserialize;
@@ -96,12 +96,12 @@ fn value(root: &Path, channel: Channel, package_id: &str, manifest: &Manifest) -
                 .filter(|extension| !target.extensions.contains(extension)),
         );
         for extension in listed {
-            let file_name = artifacts::file_name(tag, extension);
+            let file_name = distributables::file_name(tag, extension);
             let sha256 = target
                 .digests
                 .get(extension)
                 .ok_or_else(|| anyhow!("the release manifest records no digest for {file_name}"))?;
-            let key = artifacts::object_key(channel, &manifest.series, &published, tag, extension);
+            let key = distributables::object_key(channel, &manifest.series, &published, tag, extension);
             extensions.insert(
                 extension.replace('.', "_"),
                 json!({

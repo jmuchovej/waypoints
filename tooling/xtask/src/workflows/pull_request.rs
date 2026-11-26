@@ -6,18 +6,18 @@
 
 use super::TestSuite;
 use super::{WorkflowContext, helpers, jobs};
-use crate::Platform;
+use crate::{Platform, constants::MAIN};
 use gh_workflow::{Event, PullRequest, Push, Workflow};
 
 pub(crate) fn workflow(context: &WorkflowContext) -> Workflow {
-    let job = jobs::test(TestSuite::Changed, Platform::Linux, context);
+    let job = jobs::test(TestSuite::Changed, Platform::Linux, context, None);
     let audit = jobs::zizmor(context);
     let license = jobs::license(context);
 
     helpers::named_workflow("Tests")
         .on(Event::default()
             .pull_request(PullRequest::default().add_branch("**"))
-            .push(Push::default().add_branch("main")))
+            .push(Push::default().add_branch(MAIN)))
         .concurrency(helpers::one_run_per_ref("tests"))
         .add_job(job.name, job.job)
         .add_job(audit.name, audit.job)

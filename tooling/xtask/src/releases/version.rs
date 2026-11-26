@@ -21,7 +21,7 @@ use cargo_metadata::semver::{self, Prerelease};
 use chrono::NaiveDate;
 use clap::ValueEnum;
 use derive_more::{AsMut, AsRef, Deref, From, Into};
-use next_version::VersionUpdater;
+use next_version::{NextVersion, VersionUpdater};
 use std::{fmt, str::FromStr};
 use strum::{EnumIter, IntoEnumIterator as _};
 
@@ -30,11 +30,6 @@ pub const PRE: &str = "pre";
 
 /// The prerelease identifier every nightly carries.
 pub const NIGHTLY: &str = "nightly";
-
-/// The manifest whose `version` is the app's — and, by its suffix, the
-/// channel the tree ships as. Tauri reads the version from here when
-/// `Tauri.toml` leaves it unset.
-pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
 
 /// The four ref-minting transitions of a release cycle, in the order a
 /// version meets them.
@@ -56,17 +51,6 @@ pub enum Transition {
     Promote,
     /// Take the next patch on a stable branch.
     Patch,
-}
-
-/// Every transition, in the order a version meets them — the choices the
-/// dispatch input offers.
-///
-/// Derived from the enum rather than restated, so a new variant cannot be
-/// missing from the workflow that has to invoke it.
-pub fn transitions() -> Vec<String> {
-    Transition::iter()
-        .map(|transition| format!("{transition:?}").to_lowercase())
-        .collect()
 }
 
 /// A version read the way the release tasks read one. Dereferences to the
@@ -167,12 +151,36 @@ impl Version {
     /// only: the first candidate for the release `commits` add up to. `self`
     /// is the last stable release — `0.0.0` before there is one.
     pub fn cut(&self, commits: &[String]) -> Result<Self> {
-        let mut target = VersionUpdater::new()
-            .with_features_always_increment_minor(true)
-            .increment(self, commits);
+        let mut target = self.bumped(commits, true);
         target.pre = Prerelease::new(&format!("{PRE}.1"))
             .with_context(|| format!("`{PRE}.1` is not a valid prerelease"))?;
         Ok(Self(target))
+    }
+
+    /// `1.2.0` → `2.0.0-pre.1`: the first candidate of the next major, which
+    /// only a person asks for. `self` is the last stable release.
+    pub fn cut_major(&self) -> Result<Self> {
+        let mut target = semver::Version::new(self.major + 1, 0, 0);
+        target.pre = Prerelease::new(&format!("{PRE}.1"))
+            .with_context(|| format!("`{PRE}.1` is not a valid prerelease"))?;
+        Ok(Self(target))
+    }
+
+    /// A library line's next version after `commits`, as Cargo reads semver:
+    /// a feature moves the patch and a break the minor before `1.0`, the
+    /// minor and the major after. No prerelease — a library's tag is its
+    /// release.
+    pub fn next_library(&self, commits: &[String]) -> Self {
+        Self(self.bumped(commits, false))
+    }
+
+    /// The conventional-commit bump `commits` add up to, from this version.
+    /// `minor_for_features` is the app's rule: a feature moves the minor even
+    /// before `1.0`, where a library right-shifts.
+    fn bumped(&self, commits: &[String], minor_for_features: bool) -> semver::Version {
+        VersionUpdater::new()
+            .with_features_always_increment_minor(minor_for_features)
+            .increment(self, commits)
     }
 
     /// `0.2.0-pre.1` → `0.2.0-pre.2`: [`next_preview`](Self::next_preview),
@@ -181,7 +189,7 @@ impl Version {
         if !self.is_preview() {
             bail!("{self} is not a preview; `advance` only applies to one");
         }
-        self.next_preview()
+        Ok(self.next_preview())
     }
 
     /// `0.2.0-pre.7` → `0.2.0`. The branch keeps its identity; only its role
@@ -217,26 +225,15 @@ impl Version {
 
     /// `0.2.0-pre.1` → `0.2.0-pre.2`, `0.2.0-pre` → `0.2.0-pre.1`.
     ///
-    /// Counts the trailing identifier directly rather than going through a
+    /// Counts the trailing identifier rather than going through the
     /// commit-driven bumper: a backport's message describes the original
     /// change rather than its severity here, so advancing a preview is
-    /// mechanical by design. A nightly is not counted at all: see
-    /// [`nightly`](Self::nightly).
-    pub fn next_preview(&self) -> Result<Self> {
-        let pre = self.pre.as_str();
-        let (stem, index) = match pre.rsplit_once('.') {
-            Some((stem, index)) => match index.parse::<u64>() {
-                Ok(index) => (stem, index),
-                // A non-numeric tail is part of the name, not a counter.
-                Err(_) => (pre, 0),
-            },
-            None => (pre, 0),
-        };
-
-        let mut next = self.0.clone();
-        next.pre = Prerelease::new(&format!("{stem}.{}", index + 1))
-            .with_context(|| format!("`{stem}.{}` is not a valid prerelease", index + 1))?;
-        Ok(Self(next))
+    /// mechanical by design. `next_version` counts it the same way — a
+    /// numeric tail moves, any other tail gains `.1` — and panics only on an
+    /// empty prerelease, which [`advance`](Self::advance) refuses first. A
+    /// nightly is not counted at all: see [`nightly`](Self::nightly).
+    pub fn next_preview(&self) -> Self {
+        Self(self.0.increment_prerelease())
     }
 
     /// The nightly of the release this version is a view of, dated `date`:
@@ -409,7 +406,7 @@ mod tests {
 
     #[test]
     fn advancing_a_preview_counts_up() {
-        assert_eq!(v("0.2.0-pre.1").next_preview().unwrap(), v("0.2.0-pre.2"));
+        assert_eq!(v("0.2.0-pre.1").next_preview(), v("0.2.0-pre.2"));
         assert_eq!(v("0.2.0-pre.1").advance().unwrap(), v("0.2.0-pre.2"));
         // Numeric, not lexical: the tenth candidate must outrank the ninth.
         assert_eq!(v("0.2.0-pre.9").advance().unwrap(), v("0.2.0-pre.10"));

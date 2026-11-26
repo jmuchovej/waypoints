@@ -1,12 +1,12 @@
 # App icons: rendered by Typst from `src-tauri/res/`, packed and placed by
-# `cargo xtask icongen`.
+# `cargo xtask generate icons`.
 
 [private]
 default: all
 
 # Regenerate every flavor's icons
 all:
-    cargo xtask icongen
+    cargo xtask generate icons
 
 # Regenerate the development flavor's icons
 dev: (generate "development")
@@ -22,4 +22,4 @@ stable: (generate "stable")
 
 [private]
 generate flavor:
-    cargo xtask icongen --flavor {{ flavor }}
+    cargo xtask generate icons --flavor {{ flavor }}

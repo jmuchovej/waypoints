@@ -41,7 +41,7 @@ compile_error!(
 pub type Database = Arc<Mutex<Option<store::Store>>>;
 
 pub(crate) mod build_info;
-pub use build_info::BuildInfo;
+pub use build_info::{BuildInfo, GroupVersion};
 
 pub(crate) mod self_update;
 pub use self_update::{SelfUpdatePolicy, SelfUpdateStatus};

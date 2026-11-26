@@ -1,0 +1,93 @@
+#:tombi toml-version = "v1.1.0"
+# SPDX-FileCopyrightText: 2026 John Muchovej
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Every message xtask writes on the forge, as Tera templates: commit subjects,
+# the summary's per-group headers, pull-request bodies, and what a dry run
+# renders for a reader. `templates::render` takes a name — the table path,
+# dotted — and a context. One place to read them all, and one place to change
+# one.
+
+# The subject of each commit the planners land. Every one starts with the
+# prefix reserved to the release bot, or is a `summary:` whose body carries one
+# header per group; `.config/cliff.toml` keeps both out of the notes.
+[commit]
+  # The app's version write on its series.
+  series       = "chore(release): {{ branch }} {{ channel }} {{ version }}"
+  # `main`'s provisional bump after a cut that moves no library.
+  main         = "chore(release): main now targets {{ next }}"
+  # One library minted alone.
+  library      = "chore(release): {{ group }} {{ version }}"
+  # A cut that moves at least one library: the summary's subject.
+  summary      = "summary: cut {{ version }}"
+  # The release index's entry for a published tag.
+  index        = "chore(release): record {{ tag }} as the published {{ channel }}"
+  # A withdrawn release's write, reverted: on its series, or on `main` for a
+  # cut that moved the app alone.
+  undo         = "chore(release): revert {{ version }} on {{ branch }}"
+  # A cut's `main` write reverted, where it moved libraries too: a summary
+  # whose headers name each version restored.
+  undo-summary = "summary: revert the cut of {{ version }}"
+
+# The headers a summary's body carries, scoped by group as the summary guard
+# requires, so each group's planner reads its own.
+[header]
+  group = "chore({{ group }}): {{ version }}"
+  main  = "chore({{ app }}): main now targets {{ next }}"
+
+# What a cut writes into its series' root manifest, above the members it
+# pinned away.
+[manifest]
+  pinned = """
+# On a series the library groups are pinned, below, to the tags the cut minted.
+# Their crates stay on disk so a cherry-pick from main applies, and build
+# nothing: a library change reaches this series only by a pin that `patch`
+# moves (docs/CONTRIBUTING.md).
+"""
+
+# Each becomes a merge commit's body, so it says what the merge commit is;
+# GitHub wraps it at 72 columns.
+[pull-request]
+  plan  = "Written by `cargo xtask release bump`; merges when its checks pass."
+  index = "Written by `cargo xtask release record`; merges when its checks pass."
+  undo  = "Written by `cargo xtask release undo`; merges when its checks pass."
+
+# What the planner says when it refuses to mint.
+[refusal]
+  # A cut whose cycle holds no commit counting for the app.
+  app-unmoved = "nothing to cut for `{{ app }}`: no counted commit {{ since }}{% if moved %}; {{ moved | join(sep=\", \") }} moved, and `release bump --group <name>` mints one alone{% else %}; no library moved either{% endif %}"
+
+# What a dry run renders for a reader to audit before anything is minted.
+[dry-run]
+  # One library group's part of a cut.
+  group-minted    = "`{{ group }}`: `{{ current }}` → `{{ next }}`, tag `{{ tag }}` on the merge commit of the main pull request ({{ counted }} commits {{ since }}{{ evidence }})"
+  group-unchanged = "`{{ group }}`: `{{ current }}`, unchanged (no counted commit {{ since }})"
+  # One pinned library group's part of a patch: moved along its line, held
+  # with nothing newer, or held because main broke the line.
+  pin-moved       = "`{{ group }}`: `{{ from }}` → `{{ to }}`{% if breaking %}; main broke the line after it ({{ breaking | join(sep=\", \") }}), so a later fix needs a new cut{% endif %}"
+  pin-held        = "`{{ group }}`: `{{ from }}`, nothing newer on its line"
+  pin-refused     = "`{{ group }}`: stays at `{{ from }}` — main broke the line since ({{ breaking | join(sep=\", \") }}); a new cut is the way to ship a fix"
+  # The refs a transition would mint and the pull requests it would open.
+  refs            = """
+# Dry run: {{ transition }}
+
+{% if series -%}
+- series branch: `{{ series.branch }}`{% if series.created %}, created from the commit this run is on{% endif %}
+- tag: `{{ series.tag }}`, on the merge commit of the series pull request
+- series pull request: {{ series.landing }}
+  body: {{ body }}
+{% endif -%}
+{% if main -%}
+{% if main.next %}- main moves to `{{ main.next }}`
+{% endif -%}
+- main pull request: {{ main.landing }}
+  body: {{ body }}
+{% for header in main.headers %}    {{ header }}
+{% endfor -%}
+{% endif -%}
+{% if groups -%}
+- groups:
+{% for group in groups %}  - {{ group }}
+{% endfor -%}
+{% endif -%}
+"""

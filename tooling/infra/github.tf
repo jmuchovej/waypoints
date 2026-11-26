@@ -59,7 +59,7 @@ resource "github_repository" "waypoints" {
   }
 }
 
-# `cargo xtask workflows` writes this to `github.auto.tfvars.json`.
+# `cargo xtask generate workflows` writes this to `github.auto.tfvars.json`.
 variable "github" {
   type = object({
     required-pr-checks = list(string)
@@ -106,7 +106,9 @@ resource "github_repository_ruleset" "protected-main" {
 }
 
 # apply the same `main` protections to series branches. don't supply a creation rule since
-# cuts are made through the API with `xtask`.
+# cuts are made through the API with `xtask`, nor a deletion rule: a first preview that
+# fails to release withdraws the series its cut opened, and every commit on a series stays
+# reachable from its tags.
 resource "github_repository_ruleset" "protected-versions" {
   name        = "protected-versions"
   repository  = github_repository.waypoints.name
@@ -121,7 +123,6 @@ resource "github_repository_ruleset" "protected-versions" {
   }
 
   rules {
-    deletion            = true
     non_fast_forward    = true
     required_signatures = true
 

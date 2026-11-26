@@ -18,7 +18,7 @@
 
 use crate::{
     Channel,
-    releases::{artifacts, version::Version},
+    releases::{distributables, version::Version},
 };
 use anyhow::{Context as _, Result};
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ impl Manifest {
                     .iter()
                     .chain(platform.updater_extensions())
                     .map(|extension| {
-                        let path = staged.join(artifacts::file_name(&tag, extension));
+                        let path = staged.join(distributables::file_name(&tag, extension));
                         let bytes = std::fs::read(&path)
                             .with_context(|| format!("hashing {}", path.display()))?;
                         Ok(((*extension).to_owned(), hex::encode(Sha256::digest(&bytes))))
@@ -96,7 +96,7 @@ impl Manifest {
 
 #[cfg(test)]
 pub(crate) mod fixture {
-    use crate::{Channel, releases::artifacts};
+    use crate::{Channel, releases::distributables};
     use std::path::Path;
 
     /// The bytes a scratch stage holds for an extension — distinct per file,
@@ -116,7 +116,7 @@ pub(crate) mod fixture {
                 .chain(platform.updater_extensions())
             {
                 std::fs::write(
-                    dir.join(artifacts::file_name(tag, extension)),
+                    dir.join(distributables::file_name(tag, extension)),
                     contents(extension),
                 )
                 .unwrap();
@@ -239,7 +239,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let tag = "v0.1.1";
         fixture::stage(dir.path(), Channel::Stable, tag);
-        std::fs::remove_file(dir.path().join(artifacts::file_name(tag, "deb.sig"))).unwrap();
+        std::fs::remove_file(dir.path().join(distributables::file_name(tag, "deb.sig"))).unwrap();
         let error = Manifest::build(Channel::Stable, &tag.parse().unwrap(), dir.path())
             .expect_err("a missing file is refused");
         assert!(

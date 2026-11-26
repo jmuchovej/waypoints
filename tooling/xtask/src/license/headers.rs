@@ -9,6 +9,7 @@
 //! Every check reports all it finds, so one run names every failure.
 
 use super::{LICENSE, LICENSE_MD, POLICY, SPDX_COPYRIGHT_TAG, SPDX_IDENTIFIER_TAG};
+use crate::constants::THIRD_PARTY_REGISTRY;
 use anyhow::{Context as _, Result};
 use cargo_metadata::{DependencyKind, Metadata, MetadataCommand};
 use serde::Deserialize;
@@ -34,9 +35,6 @@ const SCRIPT_DIR: &str = "tooling/bin";
 /// First-party paths without headers: platform scaffolding, and the mise
 /// fragments devenv rewrites on shell entry. Third-party paths come from the registry.
 const EXEMPT: &[&str] = &["src-tauri/gen", ".config/mise/conf.d"];
-
-/// The third-party registry, relative to the workspace root.
-const REGISTRY: &str = ".config/third-party.toml";
 
 /// The cargo-deny configuration holding the canonical allowlist.
 const DENY: &str = ".config/deny.toml";
@@ -87,7 +85,7 @@ pub enum Kind {
 
 impl Registry {
     pub fn load(root: &Path) -> Result<Self> {
-        let path = root.join(REGISTRY);
+        let path = root.join(THIRD_PARTY_REGISTRY);
         let text = fs::read_to_string(&path)
             .with_context(|| format!("Failed to read {}", path.display()))?;
         Self::parse(&text).with_context(|| format!("Failed to parse {}", path.display()))
@@ -242,7 +240,7 @@ fn check_manifests(
             }
         } else if expression.to_string() != POLICY {
             findings.push(format!(
-                "{name}: declares `{license}`, not `{POLICY}`; register it as third-party in {REGISTRY}, or inherit the policy with `license.workspace = true`"
+                "{name}: declares `{license}`, not `{POLICY}`; register it as third-party in {THIRD_PARTY_REGISTRY}, or inherit the policy with `license.workspace = true`"
             ));
         }
     }
@@ -564,11 +562,11 @@ fn check_registry(root: &Path, registry: &Registry, allowlist: &[String]) -> Res
         match Expression::parse(&entry.license) {
             Ok(expression) if satisfied_by_allowlist(&expression, allowlist)? => {}
             Ok(_) => findings.push(format!(
-                "{REGISTRY}: {path} is `{}`, which no allowlisted identifier satisfies",
+                "{THIRD_PARTY_REGISTRY}: {path} is `{}`, which no allowlisted identifier satisfies",
                 entry.license
             )),
             Err(error) => findings.push(format!(
-                "{REGISTRY}: {path} has an unparsable license `{}`: {error}",
+                "{THIRD_PARTY_REGISTRY}: {path} has an unparsable license `{}`: {error}",
                 entry.license
             )),
         }
@@ -582,7 +580,7 @@ fn check_registry(root: &Path, registry: &Registry, allowlist: &[String]) -> Res
         for text in &entry.texts {
             if !dir.join(text).is_file() {
                 findings.push(format!(
-                    "{REGISTRY}: {path} names the license text {text}, which does not exist"
+                    "{THIRD_PARTY_REGISTRY}: {path} names the license text {text}, which does not exist"
                 ));
             }
         }
@@ -787,7 +785,7 @@ mod tests {
     fn an_unregistered_crate_is_told_both_remedies() {
         let findings = manifests(&krate("a", "crates/a", Some("MIT")));
         assert_eq!(findings.len(), 1, "{findings:?}");
-        assert!(findings[0].contains(REGISTRY), "{findings:?}");
+        assert!(findings[0].contains(THIRD_PARTY_REGISTRY), "{findings:?}");
         assert!(findings[0].contains("license.workspace"), "{findings:?}");
     }
 

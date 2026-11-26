@@ -22,7 +22,11 @@ use anyhow::{Context as _, Result, bail, ensure};
 use glob::{MatchOptions, Pattern};
 use serde::Deserialize;
 
-use crate::{Flavor, workspace};
+use crate::{Flavor, constants::ICON_ROOTS, workspace};
+
+/// What [`ICON_ROOTS`] prefixes the manifest's paths with: the roots are
+/// spelled from the workspace root, the manifest from the app directory.
+const APP_DIR: &str = "src-tauri/";
 
 /// What `icons.typ` asks of this task. Every path is relative to both the
 /// staging root and `src-tauri/`, which share a layout.
@@ -117,6 +121,13 @@ pub fn generate(flavors: &[Flavor]) -> Result<Generated> {
             "`{output}` matches no owned pattern, so a later run could never prune it"
         );
     }
+    within_roots(
+        outputs.iter().copied().chain(
+            owned_files(&app, &manifest.owned)?
+                .iter()
+                .map(String::as_str),
+        ),
+    )?;
 
     let pruned = prune(&app, &manifest.owned)?;
     for output in &outputs {
@@ -134,6 +145,25 @@ pub fn generate(flavors: &[Flavor]) -> Result<Generated> {
         placed: outputs.len(),
         orphans,
     })
+}
+
+/// Refuses any path — relative to the app directory, as the manifest spells
+/// them — that no root in [`ICON_ROOTS`] covers: the lockstep check diffs the
+/// roots, so an output or a pruned file outside them would never be seen.
+fn within_roots<'a>(paths: impl IntoIterator<Item = &'a str>) -> Result<()> {
+    let roots = ICON_ROOTS
+        .iter()
+        .map(|root| Pattern::new(root))
+        .collect::<Result<Vec<_>, _>>()?;
+    for path in paths {
+        let full = format!("{APP_DIR}{path}");
+        ensure!(
+            roots.iter().any(|root| root.matches_with(&full, MATCH)),
+            "`{full}` is outside the icon roots the lockstep check watches: {}",
+            ICON_ROOTS.join(", ")
+        );
+    }
+    Ok(())
 }
 
 fn render(app: &Path, staging: &Path, flavors: &[Flavor]) -> Result<()> {
@@ -212,21 +242,29 @@ fn pack(staging: &Path, manifest: &Manifest) -> Result<()> {
     Ok(())
 }
 
-/// Removes every existing file under `app` matching an owned pattern, and
-/// returns them relative to `app`.
-fn prune(app: &Path, owned: &[String]) -> Result<Vec<String>> {
+/// Every existing file under `app` an owned pattern matches, relative to
+/// `app`: what [`prune`] removes.
+fn owned_files(app: &Path, owned: &[String]) -> Result<Vec<String>> {
     let base = Pattern::escape(app.to_str().context("the app path is not UTF-8")?);
-    let mut removed = Vec::new();
+    let mut files = Vec::new();
     for pattern in owned {
         for path in glob::glob_with(&format!("{base}/{pattern}"), MATCH)? {
             let path = path?;
-            if !path.is_file() {
-                continue;
+            if path.is_file() {
+                files.push(relative(app, &path)?);
             }
-            fs::remove_file(&path)
-                .with_context(|| format!("Failed to prune {}", path.display()))?;
-            removed.push(relative(app, &path)?);
         }
+    }
+    Ok(files)
+}
+
+/// Removes every existing file under `app` matching an owned pattern, and
+/// returns them relative to `app`.
+fn prune(app: &Path, owned: &[String]) -> Result<Vec<String>> {
+    let removed = owned_files(app, owned)?;
+    for file in &removed {
+        let path = app.join(file);
+        fs::remove_file(&path).with_context(|| format!("Failed to prune {}", path.display()))?;
     }
     Ok(removed)
 }
@@ -349,6 +387,79 @@ mod tests {
             mipmap,
             "gen/android/app/src/stable/res/mipmap-hdpi/nested/ic_launcher_x.webp"
         ));
+    }
+
+    /// Scenario _A placement outside the roots_: refused by name, roots
+    /// named, before anything is written.
+    #[test]
+    fn a_placement_outside_the_roots_is_refused_by_name() {
+        let error =
+            within_roots(["assets/icons/app/dev-032.png", "assets/icons/other.png"]).unwrap_err();
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("src-tauri/assets/icons/other.png"),
+            "{message}"
+        );
+        assert!(message.contains(ICON_ROOTS[0]), "{message}");
+        within_roots([
+            "gen/android/app/src/stable/res/values/ic_launcher_background.xml",
+            "gen/apple/Assets.xcassets/stable.appiconset/Contents.json",
+        ])
+        .unwrap();
+    }
+
+    /// The roots cover what `sizes.toml` lays out for every flavor, as the
+    /// render names its outputs — so CI, which does not render, still proves
+    /// the ledger covers the data.
+    #[test]
+    fn the_roots_cover_every_layout_in_sizes_toml() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src-tauri/res/sizes.toml");
+        let sizes: toml::Value = toml::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        let text = |value: &toml::Value| value.as_str().unwrap().to_owned();
+
+        let files: Vec<String> = sizes["linux"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|entry| text(&entry["file"]))
+            .chain([
+                text(&sizes["macOS"]["file"]),
+                text(&sizes["windows"]["file"]),
+            ])
+            .collect();
+        let ios = text(&sizes["iOS"]["dir"]);
+        let android = text(&sizes["android"]["dir"]);
+        let densities: Vec<String> = sizes["android"]["densities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|entry| text(&entry["density"]))
+            .collect();
+
+        for (flavor, short) in sizes["short"].as_table().unwrap() {
+            let short = text(short);
+            let expand = |template: &str| {
+                template
+                    .replace("{short}", &short)
+                    .replace("{flavor}", flavor)
+            };
+            let res = expand(&android);
+            let placed: Vec<String> =
+                files
+                    .iter()
+                    .map(|file| expand(file))
+                    .chain([format!("{}/Contents.json", expand(&ios))])
+                    .chain(densities.iter().map(|density| {
+                        format!("{res}/mipmap-{density}/ic_launcher_foreground.webp")
+                    }))
+                    .chain([
+                        format!("{res}/mipmap-anydpi-v26/ic_launcher.xml"),
+                        format!("{res}/values/ic_launcher_background.xml"),
+                    ])
+                    .collect();
+            within_roots(placed.iter().map(String::as_str))
+                .unwrap_or_else(|error| panic!("{flavor}: {error:#}"));
+        }
     }
 
     #[test]

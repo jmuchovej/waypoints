@@ -4,7 +4,7 @@
 //! Types the workflow modules are assembled from: inputs, outputs, and the
 //! names jobs and artifacts agree on.
 
-use crate::{Channel, Platform};
+use crate::Platform;
 use derive_more::Display;
 use gh_workflow::{
     JobOutput, NamedJob, WorkflowCallInput, WorkflowCallSecret, WorkflowDispatchInput,
@@ -35,49 +35,39 @@ impl TestSuite {
     }
 }
 
-/// The `upload-artifact` name for one build: `waypoints-{platform}-{channel}`.
+/// The `upload-artifact` name for one build: `waypoints-{platform}-{channel}`,
+/// the channel a name or an expression over the describing job's outputs.
 ///
-/// A newtype rather than a plain `(Channel, Platform)`: the orphan rule counts
-/// tuples as foreign, so `Display` cannot be implemented on one.
+/// A newtype rather than a plain tuple: the orphan rule counts tuples as
+/// foreign, so `Display` cannot be implemented on one.
 #[derive(Display)]
 #[display("waypoints-{}-{}", _1.slug(), _0)]
-pub struct Artifact(pub Channel, pub Platform);
+pub struct Artifact(pub String, pub Platform);
 
-/// A channel's planner, together with the outputs its dependents read back.
-///
-/// Built once and lent to the jobs that depend on it. Each output already
-/// carries the job name, so nothing downstream respells either that or the
-/// output keys — and a typo becomes a missing field rather than an expression
-/// that silently resolves to an empty string.
-pub struct PrepareJob {
+/// The builder's first job, together with the outputs its dependents read
+/// back: the build's identity, as `release describe` read it from the ref.
+pub struct DescribeJob {
     job: NamedJob,
     pub tag: JobOutput,
-    /// Whether this run itself created `tag`'s ref. True only on nightly's
-    /// publish path — the withdraw job reads it back to decide whether it
-    /// may delete the tag.
-    pub tag_minted: JobOutput,
-    /// Whether this run is a rehearsal: its writes go to the run's own
-    /// artifacts, and nothing is published.
-    pub dry_run: JobOutput,
-    pub should_build: JobOutput,
     pub version: JobOutput,
+    pub channel: JobOutput,
+    pub flavor: JobOutput,
     pub version_code: JobOutput,
     pub bundle_version: JobOutput,
 }
 
-impl PrepareJob {
+impl DescribeJob {
     /// Outputs first: each is derived from `job`, so they have to be built
     /// before it is moved in.
     #[allow(
         clippy::too_many_arguments,
-        reason = "one parameter per planner output, the fields the struct carries"
+        reason = "one parameter per output, the fields the struct carries"
     )]
     pub fn new(
         tag: JobOutput,
-        tag_minted: JobOutput,
-        dry_run: JobOutput,
-        should_build: JobOutput,
         version: JobOutput,
+        channel: JobOutput,
+        flavor: JobOutput,
         version_code: JobOutput,
         bundle_version: JobOutput,
         job: NamedJob,
@@ -85,10 +75,9 @@ impl PrepareJob {
         Self {
             job,
             tag,
-            tag_minted,
-            dry_run,
-            should_build,
             version,
+            channel,
+            flavor,
             version_code,
             bundle_version,
         }
@@ -100,9 +89,65 @@ impl PrepareJob {
     }
 }
 
-impl From<PrepareJob> for NamedJob {
-    fn from(prepare: PrepareJob) -> Self {
-        prepare.job
+impl From<DescribeJob> for NamedJob {
+    fn from(describe: DescribeJob) -> Self {
+        describe.job
+    }
+}
+
+/// The release run's guard, together with the one flag it reads off the
+/// event: whether the run rehearses.
+pub struct GuardJob {
+    job: NamedJob,
+    pub dry_run: JobOutput,
+}
+
+impl GuardJob {
+    pub fn new(dry_run: JobOutput, job: NamedJob) -> Self {
+        Self { job, dry_run }
+    }
+
+    /// The job id, for wiring `needs:` without consuming the job.
+    pub fn name(&self) -> &str {
+        &self.job.name
+    }
+}
+
+impl From<GuardJob> for NamedJob {
+    fn from(guard: GuardJob) -> Self {
+        guard.job
+    }
+}
+
+/// What the release workflow's jobs read of the run: the identity the
+/// builder hands back through the job that called it, the guard's rehearsal
+/// flag, and the two job ids to wait on.
+pub struct ReleaseRun {
+    pub guard: String,
+    pub build: String,
+    pub tag: JobOutput,
+    pub channel: JobOutput,
+    pub flavor: JobOutput,
+    pub dry_run: JobOutput,
+}
+
+impl ReleaseRun {
+    pub fn new(guard: &GuardJob, build: &NamedJob) -> Self {
+        let output = |name| JobOutput::new(build.name.clone(), name);
+        Self {
+            guard: guard.name().to_owned(),
+            build: build.name.clone(),
+            tag: output("tag"),
+            channel: output("channel"),
+            flavor: output("flavor"),
+            dry_run: guard.dry_run.clone(),
+        }
+    }
+
+    /// The builder's output carrying `platform`'s recorded target, as an
+    /// expression.
+    pub fn target(&self, platform: Platform) -> String {
+        format!("needs.{}.outputs.{}", self.build, platform.slug())
     }
 }
 
@@ -168,11 +213,21 @@ impl WorkflowInput {
         }
     }
 
+    /// The same input as a called workflow takes it. A call has no choice
+    /// type, so a choice is a string there, and the caller's dispatch offers
+    /// the list.
     pub fn call_input(&self) -> WorkflowCallInput {
         WorkflowCallInput {
-            description: self.name.to_owned(),
+            description: self
+                .description
+                .clone()
+                .unwrap_or_else(|| self.name.to_owned()),
             required: self.default.is_none(),
-            input_type: self.input_type.to_owned(),
+            input_type: if self.input_type == "choice" {
+                "string".to_owned()
+            } else {
+                self.input_type.to_owned()
+            },
             default: self.default.clone(),
         }
     }

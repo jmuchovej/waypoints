@@ -18,6 +18,7 @@
 //! [nextest filterset]: https://nexte.st/docs/filtersets/
 
 use crate::{
+    constants::{APP, LOCKFILE, ROOT_MANIFEST},
     releases::index,
     tools::{git, github},
 };
@@ -30,13 +31,13 @@ use std::collections::BTreeSet;
 ///
 /// Anything absent — `transload`, `importer-sdk`, the importer plugins,
 /// `xtask` — ships in nothing and so cannot gate a release.
-const RELEASE_ROOTS: [&str; 2] = ["Waypoints", "cartograph"];
+const RELEASE_ROOTS: [&str; 2] = [APP, "cartograph"];
 
 /// Paths that invalidate every crate. `.github/` is excluded — a workflow edit
 /// cannot change how Rust behaves.
 const GLOBAL_PATHS: [&str; 4] = [
-    "Cargo.toml",
-    "Cargo.lock",
+    ROOT_MANIFEST,
+    LOCKFILE,
     "rust-toolchain.toml",
     ".config/cargo.toml",
 ];
@@ -235,8 +236,13 @@ mod tests {
     /// A suite runs under the flavor its tree ships as.
     #[test]
     fn the_suite_takes_the_manifest_s_channel_flavor() {
-        let manifest =
-            |version: &str| format!("[package]\nname = \"Waypoints\"\nversion = \"{version}\"\n");
+        let manifest = |version: &str| {
+            indoc::formatdoc! { r#"
+                [package]
+                name = "Waypoints"
+                version = "{version}"
+            "# }
+        };
         assert_eq!(flavor(&manifest("0.3.0-nightly")).unwrap(), "nightly");
         assert_eq!(flavor(&manifest("0.3.0-pre.2")).unwrap(), "preview");
         assert_eq!(flavor(&manifest("0.3.0")).unwrap(), "stable");

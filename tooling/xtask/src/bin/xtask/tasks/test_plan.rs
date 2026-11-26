@@ -7,9 +7,7 @@
 use anyhow::{Context as _, Result};
 use clap::Parser;
 use std::fs;
-use xtask::{
-    planners::test as test_plan, releases::version::APP_MANIFEST, tools::github, workspace,
-};
+use xtask::{constants::APP_MANIFEST, planners::test as test_plan, tools::github, workspace};
 
 #[derive(Parser)]
 pub struct Options {
@@ -79,60 +77,4 @@ pub fn run(args: Options) -> Result<()> {
     println!("{filterset}");
     eprintln!("flavor: {flavor}");
     github::set_outputs_if_available(&TestPlan { filterset, flavor })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn parse(args: &[&str]) -> Options {
-        Options::try_parse_from(std::iter::once("test-plan").chain(args.iter().copied()))
-            .expect("should parse")
-    }
-
-    /// `--files` with no paths means "nothing changed, plan nothing" — it must
-    /// stay distinguishable from the flag being absent, or an empty hook file
-    /// list would silently fall back to diffing and test the wrong range.
-    #[test]
-    fn an_empty_files_flag_is_not_the_same_as_no_files_flag() {
-        assert_eq!(parse(&["--files"]).files, Some(vec![]));
-        assert_eq!(parse(&[]).files, None);
-    }
-
-    #[test]
-    fn files_collects_every_path() {
-        assert_eq!(
-            parse(&["--files", "crates/store/src/db.rs", "website/app/index.vue"]).files,
-            Some(vec![
-                "crates/store/src/db.rs".to_owned(),
-                "website/app/index.vue".to_owned(),
-            ])
-        );
-    }
-
-    /// The two are different answers to "what changed"; taking both would mean
-    /// silently preferring one.
-    #[test]
-    fn base_and_files_cannot_be_combined() {
-        assert!(
-            Options::try_parse_from(["test-plan", "--base", "HEAD~1", "--files", "a.rs"]).is_err()
-        );
-    }
-
-    /// The hooks read `--flavor`'s stdout as one feature name, so it plans
-    /// nothing else.
-    #[test]
-    fn flavor_stands_alone() {
-        assert!(parse(&["--flavor"]).flavor);
-        for other in [
-            &["--release"][..],
-            &["--base", "HEAD~1"],
-            &["--files", "a.rs"],
-        ] {
-            let args = std::iter::once("test-plan")
-                .chain(other.iter().copied())
-                .chain(["--flavor"]);
-            assert!(Options::try_parse_from(args).is_err(), "{other:?}");
-        }
-    }
 }

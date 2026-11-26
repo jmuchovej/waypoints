@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::concurrency::Concurrency;
-use crate::step::{Step, StepType, StepValue};
+use crate::step::{LintIgnore, Step, StepType, StepValue};
 use crate::{
     Artifacts, Container, Defaults, Env, Expression, Input, Permissions, RetryStrategy, Secrets,
     Strategy,
@@ -76,6 +76,13 @@ pub struct Job {
     pub artifacts: Option<Artifacts>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub with: Option<Input>,
+
+    /// Lint suppressions for a finding that is the job's own — a key of the
+    /// job rather than of any step. Never serialized: a renderer places them
+    /// as comments on the line the finding spans.
+    #[serde(skip)]
+    #[setters(skip)]
+    pub lint_ignores: Vec<LintIgnore>,
 }
 
 impl Default for Job {
@@ -103,11 +110,22 @@ impl Default for Job {
             retry: None,
             artifacts: None,
             with: None,
+            lint_ignores: Vec::new(),
         }
     }
 }
 
 impl Job {
+    /// Suppresses a zizmor `rule` on this job, for a finding on one of the
+    /// job's own keys.
+    pub fn zizmor_ignore(mut self, rule: impl ToString, reason: impl ToString) -> Self {
+        self.lint_ignores.push(LintIgnore {
+            rule: rule.to_string(),
+            reason: reason.to_string(),
+        });
+        self
+    }
+
     /// Creates a new `Job` with the specified name and default settings.
     pub fn new<T: ToString>(name: T) -> Self {
         Self {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! The pull-request check in front of every version claim: who wrote a
-//! version, whether a group's members agree with its anchor, whether the
+//! version, whether a group's members agree with the group file, whether the
 //! landing message is conventional and, for a multi-group change, complete, and
 //! whether a frozen fixture was rewritten undeclared.
 //!
@@ -11,7 +11,8 @@
 //! commits underneath are not checked.
 
 use crate::{
-    release_groups::{self, GroupFile, SCHEMA_FILE},
+    constants::{GROUP_FILE, RELEASE_BOT, SCHEMA_FILE},
+    release_groups::{self, GroupFile, declared_versions, tag_prefix},
     tools::git,
 };
 use anyhow::{Context as _, Result};
@@ -22,9 +23,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
 };
-
-/// The only author who writes a version or a bookkeeping subject.
-const RELEASE_BOT: &str = "wp-botswain[bot]";
 
 /// Frozen inputs: append-only unless the merge message declares otherwise.
 const FIXTURES: &str = "covenant/fixtures/";
@@ -46,6 +44,10 @@ pub struct PullRequest {
     /// Null when the description was left empty.
     pub body: Option<String>,
     pub user: User,
+    /// Whether the message carries the `Covenant: break` trailer, as git
+    /// reads trailers; read from the message once it is assembled.
+    #[serde(skip)]
+    pub covenant_break: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,12 +63,14 @@ impl PullRequest {
         }
         let event: Event =
             serde_json::from_str(payload).context("The event payload carries no pull request")?;
-        Ok(event.pull_request)
+        let mut pull_request = event.pull_request;
+        pull_request.covenant_break = declares_covenant_break(&pull_request.message())?;
+        Ok(pull_request)
     }
 
     /// GitHub's web form submits CRLF, which the parsers below would read as
     /// part of each line.
-    fn description(&self) -> String {
+    pub(crate) fn description(&self) -> String {
         self.body
             .as_deref()
             .unwrap_or_default()
@@ -76,7 +80,7 @@ impl PullRequest {
     }
 
     /// The message the merge commit will carry.
-    fn message(&self) -> String {
+    pub(crate) fn message(&self) -> String {
         format!("{}\n\n{}", self.title.trim(), self.description())
             .trim_end()
             .to_owned()
@@ -126,9 +130,11 @@ pub fn changes(base: &str) -> Result<Vec<Change>> {
     Ok(parse_changes(&git::run(&diff_args(base))?))
 }
 
-/// The versioned members' manifests whose `[package].version` differs between
-/// `sides(path)`'s two texts. A manifest that appears or disappears is a crate
-/// joining or leaving, not a version write.
+/// The version writes among `changes`, read from `sides(path)`'s two texts: a
+/// versioned member's manifest whose `[package].version` differs, and the
+/// group file where a group's `version` differs — a key's introduction aside,
+/// which is the lockstep rule's to bound. A manifest that appears or
+/// disappears is a crate joining or leaving, not a version write.
 fn differing_versions(
     groups: &GroupFile,
     changes: &[Change],
@@ -141,7 +147,21 @@ fn differing_versions(
 
     let mut writes = Vec::new();
     for change in changes {
-        if change.status != Status::Modified || !manifests.contains(&change.path) {
+        if change.status != Status::Modified {
+            continue;
+        }
+        if change.path == GROUP_FILE {
+            let (before, after) = sides(&change.path)?;
+            let (before, after) = (group_versions(&before)?, group_versions(&after)?);
+            let moved = after
+                .iter()
+                .any(|(group, version)| before.get(group).is_some_and(|was| was != version));
+            if moved {
+                writes.push(change.path.clone());
+            }
+            continue;
+        }
+        if !manifests.contains(&change.path) {
             continue;
         }
         let (before, after) = sides(&change.path)?;
@@ -162,8 +182,26 @@ fn package_version(manifest: &str) -> Result<Option<toml::Value>> {
         .cloned())
 }
 
+/// Each group's `version` in a group file's text, where it declares one —
+/// read as plain TOML, since a merge base may predate the key.
+fn group_versions(file: &str) -> Result<BTreeMap<String, String>> {
+    let table: toml::Table = file
+        .parse()
+        .with_context(|| format!("{GROUP_FILE} is not TOML"))?;
+    Ok(table
+        .get("group")
+        .and_then(toml::Value::as_table)
+        .into_iter()
+        .flatten()
+        .filter_map(|(name, group)| {
+            let version = group.get("version")?.as_str()?;
+            Some((name.clone(), version.to_owned()))
+        })
+        .collect())
+}
+
 /// Every versioned member's manifest whose `[package].version` moved since
-/// `base`.
+/// `base`, and the group file where a group's `version` did.
 pub fn version_writes(groups: &GroupFile, changes: &[Change], base: &str) -> Result<Vec<String>> {
     let show = |revision: &str, path: &str| git::run(&["show", &format!("{revision}:{path}")]);
     differing_versions(groups, changes, |path| {
@@ -171,47 +209,10 @@ pub fn version_writes(groups: &GroupFile, changes: &[Change], base: &str) -> Res
     })
 }
 
-/// Every workspace crate's declared version, by its directory.
-fn declared_versions(metadata: &Metadata) -> BTreeMap<String, String> {
-    let root = metadata.workspace_root.as_std_path();
-    metadata
-        .workspace_packages()
-        .iter()
-        .filter_map(|package| {
-            let dir = package.manifest_path.as_std_path().parent()?;
-            let relative = dir.strip_prefix(root).ok()?;
-            Some((
-                relative.to_string_lossy().into_owned(),
-                package.version.to_string(),
-            ))
-        })
-        .collect()
-}
-
-/// Every member declaring anything but its anchor's exact version, prerelease
-/// included.
-fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
-    let mut found = Vec::new();
-    for group in groups.group.values() {
-        let Some(expected) = versions.get(&group.anchor) else {
-            continue;
-        };
-        for member in &group.members {
-            if let Some(declared) = versions.get(member).filter(|v| *v != expected) {
-                found.push(format!(
-                    "`{member}/Cargo.toml` declares {declared}, but its group's anchor `{anchor}/Cargo.toml` declares {expected}",
-                    anchor = group.anchor,
-                ));
-            }
-        }
-    }
-    found
-}
-
 /// Whether `path` is frozen. A group's own README describes its directory, so
 /// it is not; a `README.md` any deeper is data, since import corpora are
 /// Markdown.
-fn is_fixture(path: &str) -> bool {
+pub(crate) fn is_fixture(path: &str) -> bool {
     path.strip_prefix(FIXTURES).is_some_and(|rest| {
         !rest
             .split_once('/')
@@ -219,11 +220,15 @@ fn is_fixture(path: &str) -> bool {
     })
 }
 
-/// Whether the message carries the `Covenant: break` trailer.
-fn declares_covenant_break(commit: &Commit<'_>) -> bool {
-    commit.footers().iter().any(|footer| {
-        footer.token().as_str() == "Covenant" && footer.value().lines().next() == Some("break")
-    })
+/// Whether `message` carries the `Covenant: break` trailer, read by git's
+/// trailer engine — the one the history walk reads a landed merge commit
+/// with — so what this check accepts is what the cut will see. A
+/// conventional-commit footer parser accepts the line anywhere after the
+/// body; git takes only the last paragraph, and the walk follows git.
+pub(crate) fn declares_covenant_break(message: &str) -> Result<bool> {
+    Ok(git::trailers(message)?
+        .iter()
+        .any(|(key, value)| key == "Covenant" && value == "break"))
 }
 
 /// What's wrong with a summary's subject and headers, against what it touched.
@@ -281,12 +286,111 @@ fn summary_violations(
     found
 }
 
+/// A pin is read by the group file, whose tag templates it is read against;
+/// the check's callers find it here.
+pub use crate::release_groups::{Pin, pins_in};
+
+/// Every pin the checkout declares: the root manifest's workspace table and
+/// each member's own.
+pub fn pins(metadata: &Metadata, groups: &GroupFile) -> Result<Vec<Pin>> {
+    let root = metadata.workspace_root.as_std_path();
+    let mut manifests = vec!["Cargo.toml".to_owned()];
+    manifests.extend(metadata.workspace_packages().iter().filter_map(|package| {
+        let relative = package
+            .manifest_path
+            .as_std_path()
+            .strip_prefix(root)
+            .ok()?;
+        Some(relative.to_string_lossy().into_owned())
+    }));
+
+    let mut found = Vec::new();
+    for manifest in manifests {
+        let text = fs::read_to_string(root.join(&manifest))
+            .with_context(|| format!("Failed to read {manifest}"))?;
+        found.extend(pins_in(&manifest, &text, groups)?);
+    }
+    Ok(found)
+}
+
+/// What's wrong with a pull request against a tree that pins library groups.
+///
+/// A pinned group's own paths are inert — the series builds the tag — so a
+/// change under them could never reach the artifacts, and is refused naming
+/// the pin, unless the release bot is moving the pin. Every manifest pins one
+/// tag per group, since a binary carries one copy of each. And the group file
+/// says what the series ships: a pinned group's `version` there is the one
+/// its pin's tag names. A tree that pins nothing builds its libraries
+/// in-tree, and passes.
+pub fn pin_violations(
+    groups: &GroupFile,
+    changes: &[Change],
+    pins: &[Pin],
+    author: &str,
+) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut by_group: BTreeMap<&str, BTreeMap<&str, Vec<&str>>> = BTreeMap::new();
+    for pin in pins {
+        by_group
+            .entry(pin.group.as_str())
+            .or_default()
+            .entry(pin.tag.as_str())
+            .or_default()
+            .push(pin.manifest.as_str());
+    }
+
+    for (group, tags) in &by_group {
+        if tags.len() > 1 {
+            let listed: Vec<String> = tags
+                .iter()
+                .map(|(tag, manifests)| format!("`{tag}` in `{}`", manifests.join("`, `")))
+                .collect();
+            found.push(format!(
+                "`{group}` is pinned to {}; one binary carries one copy of a group",
+                listed.join(" and ")
+            ));
+        }
+        let Some(declared) = groups.group.get(*group) else {
+            continue;
+        };
+        let Ok(prefix) = tag_prefix(&declared.tag) else {
+            continue;
+        };
+        for tag in tags.keys() {
+            if tag.strip_prefix(prefix) != Some(declared.version.as_str()) {
+                found.push(format!(
+                    "`{GROUP_FILE}` declares {version} for `{group}`, which this series pins to `{tag}`; the file names what the series ships",
+                    version = declared.version,
+                ));
+            }
+        }
+    }
+
+    if author != RELEASE_BOT {
+        for change in changes {
+            let Some(group) = groups.owner_of(&change.path) else {
+                continue;
+            };
+            let Some(tags) = by_group.get(group) else {
+                continue;
+            };
+            found.push(format!(
+                "`{path}` is `{group}` code, which this series builds from `{tag}`; a library change reaches a series by moving its pin",
+                path = change.path,
+                tag = tags.keys().copied().collect::<Vec<_>>().join("`, `"),
+            ));
+        }
+    }
+    found
+}
+
 /// What the check decides from.
 pub struct Evidence<'a> {
     pub pull_request: &'a PullRequest,
     pub groups: &'a GroupFile,
     pub changes: &'a [Change],
-    /// Versioned manifests whose `[package].version` moved.
+    /// Versioned manifests whose `[package].version` moved, and the group
+    /// file where a group's `version` did.
     pub version_writes: &'a [String],
     /// Every workspace crate's declared version, by its directory.
     pub versions: &'a BTreeMap<String, String>,
@@ -350,16 +454,21 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
                 "`{subject}` is reserved to {RELEASE_BOT}; this pull request is by {author}"
             ));
         }
-        for manifest in *version_writes {
+        for path in *version_writes {
+            let key = if path == GROUP_FILE {
+                "a group's `version`"
+            } else {
+                "`[package].version`"
+            };
             found.push(format!(
-                "`{manifest}` changes `[package].version`; only {RELEASE_BOT} writes versions"
+                "`{path}` changes {key}; only {RELEASE_BOT} writes versions"
             ));
         }
     }
 
-    found.extend(lockstep_violations(groups, versions));
+    found.extend(groups.lockstep_problems(versions));
 
-    if !commit.as_ref().is_ok_and(declares_covenant_break) {
+    if !pull_request.covenant_break {
         let rewritten = changes
             .iter()
             .filter(|change| is_fixture(&change.path) && change.status != Status::Added);
@@ -373,7 +482,7 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
 
     if !schema_is_current {
         found.push(format!(
-            "{SCHEMA_FILE} is stale; run `cargo xtask release-groups schema`"
+            "{SCHEMA_FILE} is stale; run `cargo xtask generate schemas`"
         ));
     }
 
@@ -381,9 +490,10 @@ pub fn violations(evidence: &Evidence<'_>) -> Vec<String> {
 }
 
 /// Gathers the evidence from the checkout and the event `payload`, then checks
-/// it. A group file that does not describe the workspace refuses here.
+/// it. A group file that does not describe the workspace refuses here; one
+/// the manifests disagree with is a violation the check reports.
 pub fn run(metadata: &Metadata, payload: &str, base: &str) -> Result<Vec<String>> {
-    let groups = release_groups::load(metadata)?;
+    let groups = release_groups::load_unprojected(metadata)?;
     let pull_request = PullRequest::from_event(payload)?;
     let changes = changes(base)?;
     let version_writes = version_writes(&groups, &changes, base)?;
@@ -392,14 +502,21 @@ pub fn run(metadata: &Metadata, payload: &str, base: &str) -> Result<Vec<String>
         release_groups::schema().is_ok_and(|generated| committed == generated)
     });
 
-    Ok(violations(&Evidence {
+    let mut found = violations(&Evidence {
         pull_request: &pull_request,
         groups: &groups,
         changes: &changes,
         version_writes: &version_writes,
         versions: &declared_versions(metadata),
         schema_is_current,
-    }))
+    });
+    found.extend(pin_violations(
+        &groups,
+        &changes,
+        &pins(metadata, &groups)?,
+        &pull_request.user.login,
+    ));
+    Ok(found)
 }
 
 #[cfg(test)]
@@ -411,52 +528,33 @@ mod tests {
     const GROUPS: &str = r#"
         [bookkeeping]
         paths = [ "distribution/nix/releases/" ]
-        ignore-revs = ".git-blame-ignore-revs"
         bot-subjects = [ "chore(release):" ]
 
         [group.bedrock]
+        version = "0.1.0"
         members = [ "crates/bedrock", "crates/bedrock-core" ]
-        anchor = "crates/bedrock"
         tag = "bedrock-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/bedrock/"
-        minted = [ "cut" ]
 
         [group.domain]
+        version = "0.1.0"
         members = [ "crates/domain" ]
-        anchor = "crates/domain"
         tag = "domain-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/domain/"
-        minted = [ "cut" ]
 
         [group.outpost]
+        version = "0.1.0"
         members = [ "crates/outpost" ]
-        anchor = "crates/outpost"
         tag = "outpost-v{version}"
-        breaking = "header"
-        floors = [ "cargo-semver-checks" ]
         fixtures = "covenant/fixtures/outpost/"
-        minted = [ "cut" ]
 
         [group.waypoints]
+        version = "0.1.0-nightly"
         members = [ "src-tauri", "crates/cartograph" ]
         internals = [ "crates/store" ]
-        anchor = "src-tauri"
         tag = "v{version}"
-        breaking = "trailer:Covenant: break"
-        floors = [ "covenant-fixtures" ]
         fixtures = "covenant/fixtures/waypoints/"
-        minted = [ "cut" ]
-
-        [enforce]
-        commits = "conventional"
-        summary-type = "summary"
-        version-writes = "botswain"
-        fixtures = "append-only"
-        schema = "current"
+        paths = [ "src/" ]
     "#;
 
     fn groups() -> GroupFile {
@@ -464,13 +562,16 @@ mod tests {
     }
 
     fn pull_request(title: &str, body: &str, author: &str) -> PullRequest {
-        PullRequest {
+        let mut pull_request = PullRequest {
             title: title.to_owned(),
             body: Some(body.to_owned()),
             user: User {
                 login: author.to_owned(),
             },
-        }
+            covenant_break: false,
+        };
+        pull_request.covenant_break = declares_covenant_break(&pull_request.message()).unwrap();
+        pull_request
     }
 
     fn modified(path: &str) -> Change {
@@ -546,13 +647,45 @@ mod tests {
         assert_names(&found, &["bedrock", "domain", "summary"]);
     }
 
+    /// Scenarios _Frontend and library in one pull request_ and _An unlisted
+    /// path beside a library_: `src/` is the app's, so it joins a library
+    /// change into a summary; `website/` is nobody's, so it does not.
+    #[test]
+    fn the_frontend_is_the_app_s_and_an_unlisted_path_is_nobody_s() {
+        let found = by_a_person(
+            "feat(app): take the new filter",
+            "",
+            &[
+                modified("src/app/a.vue"),
+                modified("crates/bedrock/src/lib.rs"),
+            ],
+        );
+        assert_names(&found, &["waypoints", "bedrock", "summary"]);
+        assert_eq!(
+            by_a_person(
+                "fix(bedrock): a bug",
+                "",
+                &[
+                    modified("website/a.md"),
+                    modified("crates/bedrock/src/lib.rs"),
+                ],
+            ),
+            Vec::<String>::new()
+        );
+    }
+
     #[test]
     fn a_complete_summary_passes() {
         let changes = [
             modified("crates/bedrock/src/lib.rs"),
             modified("crates/outpost/src/lib.rs"),
         ];
-        let body = "Why this moved together.\n\nfeat(bedrock)!: rename Filter::eq\nrefactor(outpost): follow the rename\n";
+        let body = indoc::indoc! {"
+            Why this moved together.
+
+            feat(bedrock)!: rename Filter::eq
+            refactor(outpost): follow the rename
+        "};
         assert_eq!(
             by_a_person("summary: rename the filter", body, &changes),
             Vec::<String>::new()
@@ -615,7 +748,12 @@ mod tests {
     #[test]
     fn a_summary_body_may_carry_prose() {
         let changes = [modified("crates/bedrock/src/lib.rs")];
-        let body = "Note: this took a while.\n\nfeat(bedrock): rename\n\nSigned-off-by: someone";
+        let body = indoc::indoc! {"
+            Note: this took a while.
+
+            feat(bedrock): rename
+
+            Signed-off-by: someone"};
         assert_eq!(
             by_a_person("summary: rename", body, &changes),
             Vec::<String>::new()
@@ -703,6 +841,68 @@ mod tests {
         );
     }
 
+    /// A withdrawn release's revert moves a version backwards — the group
+    /// file, the manifests, and the lockfile together — under the bot's
+    /// subject on a series, and as a summary naming each restored group on
+    /// `main`. Both pass as the bot; the same write by a person is refused.
+    #[test]
+    fn a_bot_revert_passes_and_a_hand_made_backwards_write_does_not() {
+        let series = [
+            modified(GROUP_FILE),
+            modified("src-tauri/Cargo.toml"),
+            modified("Cargo.lock"),
+        ];
+        let writes = [GROUP_FILE.to_owned(), "src-tauri/Cargo.toml".to_owned()];
+        let revert = |title: &str, body: &str, author: &str, changes: &[Change]| {
+            violations(&Evidence {
+                pull_request: &pull_request(title, body, author),
+                groups: &groups(),
+                changes,
+                version_writes: &writes,
+                versions: &BTreeMap::new(),
+                schema_is_current: true,
+            })
+        };
+        assert_eq!(
+            revert(
+                "chore(release): revert 0.2.0-pre.2 on v0.2.x",
+                "",
+                RELEASE_BOT,
+                &series
+            ),
+            Vec::<String>::new()
+        );
+
+        let cut = [
+            modified(GROUP_FILE),
+            modified("src-tauri/Cargo.toml"),
+            modified("crates/bedrock/Cargo.toml"),
+            modified("Cargo.lock"),
+        ];
+        assert_eq!(
+            revert(
+                "summary: revert the cut of 0.2.0-pre.1",
+                "chore(bedrock): 0.1.0\nchore(waypoints): main now targets 0.2.0-nightly\n",
+                RELEASE_BOT,
+                &cut
+            ),
+            Vec::<String>::new()
+        );
+
+        let by_hand = revert(
+            "chore(release): revert 0.2.0-pre.2 on v0.2.x",
+            "",
+            "jmuchovej",
+            &series,
+        );
+        assert_names(&by_hand, &["chore(release):", RELEASE_BOT, "jmuchovej"]);
+        assert_names(&by_hand, &[GROUP_FILE, "a group's `version`", RELEASE_BOT]);
+        assert_names(
+            &by_hand,
+            &["src-tauri/Cargo.toml", "[package].version", RELEASE_BOT],
+        );
+    }
+
     fn writes_between(before: &str, after: &str, changes: &[Change]) -> Vec<String> {
         differing_versions(&groups(), changes, |_| {
             Ok((before.to_owned(), after.to_owned()))
@@ -728,9 +928,12 @@ mod tests {
     fn a_dependency_s_version_is_not_a_write() {
         let changes = [modified("crates/domain/Cargo.toml")];
         let manifest = |serde: &str| {
-            format!(
-                "[package]\nversion = \"0.1.0\"\n[dependencies]\nserde = {{ version = \"{serde}\" }}\n"
-            )
+            indoc::formatdoc! { r#"
+                [package]
+                version = "0.1.0"
+                [dependencies]
+                serde = {{ version = "{serde}" }}
+            "# }
         };
         assert!(writes_between(&manifest("1.0"), &manifest("1.1"), &changes).is_empty());
     }
@@ -779,9 +982,44 @@ mod tests {
     #[test]
     fn modifying_a_fixture_with_the_trailer_passes() {
         let changes = [modified("covenant/fixtures/domain/a.json")];
-        let body = "The old reading was wrong.\n\nCovenant: break\n";
+        let body = indoc::indoc! {"
+            The old reading was wrong.
+
+            Covenant: break
+        "};
         assert_eq!(
             by_a_person("fix(domain): reread it", body, &changes),
+            Vec::<String>::new()
+        );
+    }
+
+    /// The trailer is read as git reads it, which is how the walk will read
+    /// the merge commit: only the last paragraph is trailers, so a
+    /// `Covenant: break` followed by prose declares nothing, and the check
+    /// refuses the fixture change it would otherwise have let through.
+    #[test]
+    fn a_trailer_before_prose_is_not_a_break() {
+        let fixture = [modified("covenant/fixtures/domain/a.json")];
+        assert_names(
+            &by_a_person(
+                "fix(domain): reread it",
+                indoc::indoc! {"
+                    Covenant: break
+
+                    More explanation after the trailer."},
+                &fixture,
+            ),
+            &["covenant/fixtures/domain/a.json", "Covenant: break"],
+        );
+        assert_eq!(
+            by_a_person(
+                "fix(domain): reread it",
+                indoc::indoc! {"
+                    More explanation before the trailer.
+
+                    Covenant: break"},
+                &fixture,
+            ),
             Vec::<String>::new()
         );
     }
@@ -855,7 +1093,7 @@ mod tests {
             versions: &BTreeMap::new(),
             schema_is_current: false,
         });
-        assert_names(&found, &[SCHEMA_FILE, "release-groups schema"]);
+        assert_names(&found, &[SCHEMA_FILE, "generate schemas"]);
     }
 
     fn versions(declared: &[(&str, &str)]) -> BTreeMap<String, String> {
@@ -865,18 +1103,23 @@ mod tests {
             .collect()
     }
 
+    /// The group file is the version; a member declaring another has drifted,
+    /// whichever member it is, and the message names the file.
     #[test]
-    fn a_drifted_member_fails_naming_both_manifests() {
+    fn a_drifted_member_fails_naming_its_manifest_and_the_file() {
         let declared = versions(&[("src-tauri", "0.2.0"), ("crates/cartograph", "0.1.9")]);
+        let found = lockstep_violations(&groups(), &declared);
+        assert_eq!(found.len(), 2);
         assert_names(
-            &lockstep_violations(&groups(), &declared),
-            &["crates/cartograph/Cargo.toml", "src-tauri/Cargo.toml"],
+            &found,
+            &["crates/cartograph/Cargo.toml", "0.1.9", "0.1.0-nightly"],
         );
+        assert_names(&found, &["src-tauri/Cargo.toml", "0.2.0", GROUP_FILE]);
     }
 
     /// The prerelease is part of the version: `main`'s `-nightly` is mirrored.
     #[test]
-    fn a_member_missing_the_anchor_s_prerelease_has_drifted() {
+    fn a_member_missing_the_file_s_prerelease_has_drifted() {
         let declared = versions(&[
             ("src-tauri", "0.1.0-nightly"),
             ("crates/cartograph", "0.1.0"),
@@ -885,6 +1128,12 @@ mod tests {
             &lockstep_violations(&groups(), &declared),
             &["crates/cartograph/Cargo.toml", "0.1.0-nightly"],
         );
+    }
+
+    /// The group file at the version the bot wrote; its members are held to
+    /// it, so the bot writes the file and every member in one commit.
+    fn groups_at(app_version: &str) -> GroupFile {
+        GroupFile::parse(&GROUPS.replace("0.1.0-nightly", app_version)).unwrap()
     }
 
     /// Being the release bot's does not excuse drift, so the planner has to
@@ -902,7 +1151,7 @@ mod tests {
                     "",
                     RELEASE_BOT,
                 ),
-                groups: &groups(),
+                groups: &groups_at("0.2.0-pre.2"),
                 changes: &[
                     modified("src-tauri/Cargo.toml"),
                     modified("crates/cartograph/Cargo.toml"),
@@ -925,20 +1174,20 @@ mod tests {
         ]);
         assert_names(
             &check_bot_write(&one),
-            &["crates/cartograph/Cargo.toml", "src-tauri/Cargo.toml"],
+            &["crates/cartograph/Cargo.toml", GROUP_FILE],
         );
     }
 
     /// `store` is an internal, so it carries nothing to compare.
     #[test]
-    fn an_internal_is_not_held_to_its_anchor() {
+    fn an_internal_is_not_held_to_the_file() {
         let declared = versions(&[
             ("src-tauri", "0.2.0"),
             ("crates/cartograph", "0.2.0"),
             ("crates/store", "0.0.0"),
         ]);
         assert_eq!(
-            lockstep_violations(&groups(), &declared),
+            lockstep_violations(&groups_at("0.2.0"), &declared),
             Vec::<String>::new()
         );
     }
@@ -989,6 +1238,200 @@ mod tests {
             .collect();
         assert_eq!(listed, TYPES);
         assert!(contributing.contains("Covenant: break"));
+    }
+
+    fn pin(group: &str, tag: &str, manifest: &str) -> Pin {
+        Pin {
+            group: group.to_owned(),
+            tag: tag.to_owned(),
+            manifest: manifest.to_owned(),
+        }
+    }
+
+    /// Scenario _Library code cherry-picked onto a series_: the change names
+    /// the file and the pin the series builds from.
+    #[test]
+    fn library_code_on_a_pinned_series_fails_naming_the_pin() {
+        let pins = [pin("bedrock", "bedrock-v0.2.0", "Cargo.toml")];
+        let found = pin_violations(
+            &groups(),
+            &[modified("crates/bedrock/src/query.rs")],
+            &pins,
+            "jmuchovej",
+        );
+        assert_names(
+            &found,
+            &["crates/bedrock/src/query.rs", "bedrock", "bedrock-v0.2.0"],
+        );
+    }
+
+    /// The group file with `bedrock` — the first group, so the first
+    /// `version` line — declared at `version`.
+    fn bedrock_at(version: &str) -> GroupFile {
+        GroupFile::parse(&GROUPS.replacen(
+            "version = \"0.1.0\"",
+            &format!("version = \"{version}\""),
+            1,
+        ))
+        .unwrap()
+    }
+
+    fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
+        groups.lockstep_problems(versions)
+    }
+
+    /// Scenario _Pin moved by the release bot_: the file's `bedrock` moved
+    /// with the pin, in the same write.
+    #[test]
+    fn the_release_bot_moving_a_pin_passes() {
+        let pins = [pin("bedrock", "bedrock-v0.2.1", "Cargo.toml")];
+        let changes = [
+            modified(GROUP_FILE),
+            modified("Cargo.toml"),
+            modified("Cargo.lock"),
+            modified("crates/bedrock/src/lib.rs"),
+        ];
+        let groups = bedrock_at("0.2.1");
+        assert_eq!(
+            pin_violations(&groups, &changes, &pins, RELEASE_BOT),
+            Vec::<String>::new()
+        );
+        assert_names(
+            &pin_violations(&groups, &changes, &pins, "jmuchovej"),
+            &["crates/bedrock/src/lib.rs"],
+        );
+    }
+
+    /// Scenarios _A series' file names its pins_ and _A pinned group has no
+    /// manifest to compare_: the file's `bedrock` is held to the pin's tag,
+    /// naming both, and `bedrock`'s own crates, out of the workspace, are not
+    /// compared.
+    #[test]
+    fn a_series_file_is_held_to_its_pins() {
+        let pins = [pin("bedrock", "bedrock-v0.2.0", "Cargo.toml")];
+        let found = pin_violations(&bedrock_at("0.1.0"), &[], &pins, "jmuchovej");
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_names(&found, &["bedrock-v0.2.0", "0.1.0", GROUP_FILE]);
+
+        let at_pin = bedrock_at("0.2.0");
+        assert_eq!(
+            pin_violations(&at_pin, &[], &pins, "jmuchovej"),
+            Vec::<String>::new()
+        );
+        let declared = versions(&[
+            ("src-tauri", "0.1.0-nightly"),
+            ("crates/cartograph", "0.1.0-nightly"),
+        ]);
+        assert_eq!(
+            lockstep_violations(&at_pin, &declared),
+            Vec::<String>::new()
+        );
+    }
+
+    /// Scenarios _Hand-edited group version_ and _Release bot writes the
+    /// file_, and the key's introduction: a group's `version` moving in the
+    /// file is a write a person may not land, while one appearing where the
+    /// merge base declared none is not a write.
+    #[test]
+    fn a_group_s_version_in_the_file_is_a_write_once_declared() {
+        let changes = [modified(GROUP_FILE)];
+        let before = indoc::indoc! {r#"
+            [group.domain]
+            version = "0.1.0"
+
+            [group.bedrock]
+            version = "0.1.0"
+        "#};
+        assert_eq!(
+            writes_between(before, &before.replacen("0.1.0", "0.2.0", 1), &changes),
+            [GROUP_FILE]
+        );
+        assert_eq!(
+            writes_between(
+                indoc::indoc! {"
+                    [group.domain]
+                    members = []
+                "},
+                indoc::indoc! {r#"
+                    [group.domain]
+                    version = "0.1.0"
+                    members = []
+                "#},
+                &changes
+            ),
+            Vec::<String>::new()
+        );
+
+        let writes = [GROUP_FILE.to_owned()];
+        assert_names(
+            &with_version_writes("jmuchovej", &writes),
+            &[GROUP_FILE, "a group's `version`", RELEASE_BOT],
+        );
+        assert_eq!(
+            with_version_writes(RELEASE_BOT, &writes),
+            Vec::<String>::new()
+        );
+    }
+
+    /// Scenario _Pins diverge_: one binary cannot carry two copies of a
+    /// group, so both manifests are named.
+    #[test]
+    fn diverging_pins_name_both_manifests() {
+        let pins = [
+            pin("bedrock", "bedrock-v0.2.0", "src-tauri/Cargo.toml"),
+            pin("bedrock", "bedrock-v0.1.0", "crates/store/Cargo.toml"),
+        ];
+        assert_names(
+            &pin_violations(&groups(), &[], &pins, "jmuchovej"),
+            &[
+                "bedrock",
+                "src-tauri/Cargo.toml",
+                "crates/store/Cargo.toml",
+                "one copy",
+            ],
+        );
+    }
+
+    /// Scenario _A series that still builds in-tree_: `main`'s own root
+    /// manifest — what a series cut before minting inherits — declares every
+    /// group by path, so it pins nothing and a library change passes.
+    #[test]
+    fn a_path_dependency_series_passes_library_changes() {
+        let groups = release_groups::load(&crate::workspace::load().unwrap()).unwrap();
+        let pins = pins_in("Cargo.toml", &repository_file("Cargo.toml"), &groups).unwrap();
+        assert_eq!(pins, Vec::<Pin>::new());
+        assert_eq!(
+            pin_violations(
+                &groups,
+                &[modified("crates/bedrock/src/query.rs")],
+                &pins,
+                "jmuchovej"
+            ),
+            Vec::<String>::new()
+        );
+    }
+
+    /// A git dependency is a pin on the group whose tag template it fits;
+    /// a path dependency and a registry crate are not.
+    #[test]
+    fn a_git_dependency_is_a_pin_on_the_group_its_tag_names() {
+        let manifest = "[workspace.dependencies]\n\
+            bedrock = { git = \"https://github.com/jmuchovej/waypoints\", tag = \"bedrock-v0.2.0\" }\n\
+            bedrock-core = { git = \"https://github.com/jmuchovej/waypoints\", tag = \"bedrock-v0.2.0\" }\n\
+            domain = { path = \"crates/domain\" }\n\
+            serde = \"1\"\n\
+            [dev-dependencies]\n\
+            outpost = { git = \"https://github.com/jmuchovej/waypoints\", tag = \"outpost-v0.3.1\" }\n";
+        let pins = pins_in("Cargo.toml", manifest, &groups()).unwrap();
+        assert_eq!(
+            pins,
+            [
+                pin("bedrock", "bedrock-v0.2.0", "Cargo.toml"),
+                pin("bedrock", "bedrock-v0.2.0", "Cargo.toml"),
+                pin("outpost", "outpost-v0.3.1", "Cargo.toml"),
+            ]
+        );
+        assert!(pins_in("Cargo.toml", "not = = toml", &groups()).is_err());
     }
 
     /// A summary's per-group headers live in a body cliff does not parse as

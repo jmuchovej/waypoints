@@ -1,7 +1,7 @@
 opt_out_usage
 
 # The aab or ipa `xfastlane publish` found in the staged directory. Only ever
-# a staged package: `release-stage` has already required exactly one.
+# a staged package: `release distributables rename` has already required exactly one.
 def staged_package
   ENV.fetch("WAYPOINTS_STORE_PACKAGE") do
     UI.user_error!("No staged package — run the lane through `xfastlane publish`")

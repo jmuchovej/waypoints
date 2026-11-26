@@ -20,8 +20,6 @@
 {
   lib,
   stdenv,
-  rustPlatform,
-  makeRustPlatform,
   callPackage,
   cargo-tauri,
   makeWrapper,
@@ -39,6 +37,9 @@
   # Escape hatch (see distribution/nix/overlay.nix): a rustc/cargo-bearing toolchain drv,
   # e.g. from rust-overlay. Default: the consumer nixpkgs' rustPlatform.
   rustToolchain ? null,
+  # The crane library to build with. Default: the one the tree's `flake.lock`
+  # pins — see ../crane.nix.
+  craneLib ? null,
   # Commit stamped into build metadata (the flake passes self.rev/dirtyRev,
   # the overlay a release's recorded rev; build.rs falls back to "unknown"
   # when absent).
@@ -68,10 +69,10 @@ let
   # the version: a Tauri config `version` would override the manifest's.
   flavor-config = fromTOML (read "/src-tauri/res/configs/flavors/${flavor}.toml");
 
-  # The single source of the version, tracking the branch this tree sits on.
-  # Kept parseable by `builtins.fromTOML` (strict TOML 1.0) — see the
-  # nix-flake-overlay design, D10.
-  manifest-version = (fromTOML (read "/src-tauri/Cargo.toml")).package.version;
+  # The version the app's group declares in the group file, tracking the
+  # branch this tree sits on; the manifest is its projection. Read through
+  # `channel.nix`, the one reader of that declaration.
+  manifest-version = (import ../../channel.nix workingTree).version;
 
   # A publish-time suffix extends the manifest's version; it never replaces
   # it: `0.3.0-nightly` becomes `0.3.0-nightly.20260829`, never anything
@@ -94,10 +95,11 @@ let
         "waypoints.${flavor}: version ${version} does not extend the manifest version ${manifest-version}";
       version;
 
-  # Hashes nix cannot derive from the tree: the pnpm dependency closure and the
-  # git-sourced cargo crates. They live in data rather than in these
-  # expressions so `nix-pins` refreshes one by writing a JSON key — see the
-  # header of `tooling/bin/nix-pins`.
+  # The one hash nix cannot derive from the tree: the pnpm dependency
+  # closure. It lives in data rather than in these expressions so `nix-pins`
+  # refreshes it by writing a JSON key — see the header of
+  # `tooling/bin/nix-pins`. The cargo side needs none: crane vendors the
+  # lockfile's crates by their checksums and its git pins by their revisions.
   pins = lib.importJSON ./hashes.json;
 
   frontend = callPackage ./_frontend.nix {
@@ -134,19 +136,33 @@ let
     )
   );
 
-  rust-platform =
-    if rustToolchain != null then
-      makeRustPlatform {
-        cargo = rustToolchain;
-        rustc = rustToolchain;
-      }
-    else
-      rustPlatform;
+  crane = callPackage ../crane.nix { inherit workingTree craneLib rustToolchain; };
 
   # Each flavor's executable carries its name (see src-tauri/Cargo.toml).
   main-program = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
+
+  # Each library group's version, injected as `build.rs` reads it first — a
+  # fetched tree carries no git metadata to describe one from: the tag the
+  # lockfile pins the group to on a series, the version the group file
+  # declares on `main` (library-minting design D6). The pin is read by the
+  # tag's shape, so no manifest is opened.
+  group-versions =
+    let
+      # Every group but the app's, by the name `release_groups::APP_GROUP`
+      # gives it.
+      groups = (fromTOML (read "/tooling/release-groups.toml")).group;
+      libraries = lib.filterAttrs (name: _: name != "waypoints") groups;
+      pins = import ../../lockfile.nix workingTree;
+      version =
+        group:
+        let
+          pin = pins.pinWithTag (lib.removeSuffix "{version}" group.tag);
+        in
+        if pin == null then group.version else pin.tag;
+    in
+    lib.concatStringsSep "," (lib.mapAttrsToList (name: group: "${name}=${version group}") libraries);
 in
-rust-platform.buildRustPackage (_finalAttrs: {
+crane.buildPackage {
   pname = main-program;
   version = app-version;
 
@@ -168,20 +184,32 @@ rust-platform.buildRustPackage (_finalAttrs: {
       ];
     };
 
-  cargoLock = {
-    lockFile = workingTree + "/Cargo.lock";
-  };
-
   buildAndTestSubdir = "src-tauri";
 
-  # The flavor is an additive cargo feature over the defaults. This must be
-  # `buildFeatures`, not the `cargoBuildFeatures` the build hook reads:
-  # `buildRustPackage` *computes* the `cargo*` attrs from these, so setting the
-  # `cargo*` name directly is silently overwritten by the default (`[]`) and
-  # the build quietly gets no flavor.
-  buildFeatures = [ flavor ];
+  # The flavor is an additive cargo feature over the defaults — `self-update`
+  # among them: the store path is the same binary as a published artifact,
+  # and `postInstall` caps the updater at notify by launch flag instead. The
+  # features go to tauri (`tauriBuildFlags`, below) rather than to cargo
+  # behind `--`: tauri-cli forwards them to cargo either way, but reads only
+  # its own `--features` to pick the `[[bin]]` whose `required-features` they
+  # enable — each flavor's executable, `waypoints-<flavor>` — and bundles the
+  # package's name otherwise, which no binary carries.
+  #
+  # The tauri hook drives cargo, not crane: crane sets both phases itself, so
+  # the hook's own defaults never apply and are named here. No
+  # dependency-only pass precedes it — a dummy-source build cannot run `cargo
+  # tauri build`, and see ../crane.nix. crane still vendors the lockfile and
+  # configures the offline sources the hook's `--offline` build reads.
+  cargoArtifacts = null;
+  buildPhase = "tauriBuildHook";
+  installPhase = "tauriInstallHook";
+  # crane's own install reads a cargo build log the tauri hook never writes;
+  # the bundle is what gets installed.
+  doNotPostBuildInstallCargoBinaries = true;
 
   tauriBuildFlags = [
+    "--features"
+    "desktop,${flavor}"
     "--config"
     "res/configs/flavors/${flavor}.toml"
     "--config"
@@ -245,11 +273,14 @@ rust-platform.buildRustPackage (_finalAttrs: {
 
   # `WAYPOINTS_FLAVOR` is what build.rs reads for the channel it stamps, and
   # `src-tauri/justfile` exports the same — without it every package reports
-  # itself as `development`, whatever its cargo features say. `WAYPOINTS_BUILD`
-  # stays unset on purpose: it only enables a wall-clock timestamp, and the
-  # store path already identifies the build.
+  # itself as `development`, whatever its cargo features say.
+  # `WAYPOINTS_GROUP_VERSIONS` is what it reads for each library group's
+  # version before anything else, since a fetched tree has no tags to
+  # describe. `WAYPOINTS_BUILD` stays unset on purpose: it only enables a
+  # wall-clock timestamp, and the store path already identifies the build.
   env = {
     WAYPOINTS_FLAVOR = flavor;
+    WAYPOINTS_GROUP_VERSIONS = group-versions;
   }
   // lib.optionalAttrs (rev != null) {
     GITHUB_SHA = rev;
@@ -268,4 +299,4 @@ rust-platform.buildRustPackage (_finalAttrs: {
     ];
     mainProgram = main-program;
   };
-})
+}

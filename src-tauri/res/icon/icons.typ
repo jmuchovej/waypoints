@@ -3,7 +3,7 @@
 
 // Bundle entry point: renders every icon for the selected flavors into a
 // staging tree that mirrors `src-tauri/`, plus `manifest.json` telling
-// `cargo xtask icongen` what to pack and where it may prune. Run from the app
+// `cargo xtask generate icons` what to pack and where it may prune. Run from the app
 // directory as root:
 //
 //   typst compile --root src-tauri --format bundle --ppi 72 \

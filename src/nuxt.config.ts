@@ -4,7 +4,7 @@
 import { defineNuxtConfig } from "nuxt/config";
 import { createViteLicensePlugin } from "rollup-license-plugin";
 
-// The licenses a bundled package may carry. `cargo xtask license` holds this
+// The licenses a bundled package may carry. `cargo xtask check licenses` holds this
 // equal to `[licenses].allow` in `.config/deny.toml`: one list, two ecosystems.
 const LICENSE_ALLOWLIST = [
   "MIT",
@@ -98,7 +98,7 @@ export default defineNuxtConfig({
   ssr: false,
 
   // Dev-only: forward IPC calls from the Nuxt dev server (:9297) to the
-  // `cargo xtask dev-server` HTTP backend, so the app runs in a plain browser
+  // `cargo xtask dev` HTTP backend, so the app runs in a plain browser
   // with HMR and same-origin `/ipc` requests. Has no effect on production
   // builds.
   nitro: {

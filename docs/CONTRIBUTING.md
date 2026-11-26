@@ -143,7 +143,9 @@ request:
 
 - **The title is a conventional commit**, with a type from the table above.
 - **One release group:** the scope stays free-form. The changed paths decide the
-  group, not the scope. `tooling/release-groups.toml` names the groups.
+  group, not the scope. `tooling/release-groups.toml` names the groups and what
+  each owns; a path the file lists for no group — `website/`, `docs/`, `nix/`,
+  the workflows — counts for no release.
 - **More than one release group:** the title is `summary: …`, with no scope and
   no `!`, and the description carries exactly one header per touched group,
   scoped by the group's name:
@@ -161,11 +163,39 @@ request:
   that or it lands split across two lines.
 
 - **`chore(release):` and version writes belong to the release bot.** A subject
-  starting `chore(release):`, or a change to a versioned crate's
-  `[package].version`, fails unless `wp-botswain[bot]` authored the pull request.
+  starting `chore(release):`, a change to a versioned crate's
+  `[package].version`, or a change to a group's `version` in
+  `tooling/release-groups.toml`, fails unless `wp-botswain[bot]` authored the
+  pull request. The file declares each group's version and every member
+  manifest projects it, and the check holds the two equal: a crate joining a
+  group runs `cargo xtask generate versions` so its manifest takes the
+  group's version.
 
 Branch commits are not checked, but they stay conventional: the release notes are
 rendered from them, and one unconventional commit fails the notes.
+
+### A series branch takes library code only by pin
+
+A `v{major}.{minor}.x` series pins each library group — `bedrock`, `outpost`,
+`domain`, `transload` — to a tag minted on `main`, in the root `Cargo.toml`'s
+`[workspace.dependencies]`. Its in-tree copies of those crates stay on disk so
+cherry-picks from `main` apply, and build nothing. A pull request against a
+series that changes a file under a pinned group's paths fails
+`version-integrity`:
+
+> `crates/bedrock/src/query.rs` is `bedrock` code, which this series builds
+> from `bedrock-v0.2.0`; a library change reaches a series by moving its pin
+
+A library fix reaches a series in two steps: it lands on `main`, a cut scoped
+to its group (`release bump --group bedrock`) mints the next tag on its
+line, and `patch` on the series moves the pin to that tag and bumps the app in
+one pull request. Where `main` has broken the group's line since the pin, no
+tag on that line can carry the fix: `patch` holds the pin, names the breaking
+commit, and the fix ships as a new series.
+
+A cherry-pick whose summary touches both app and library paths is split: the
+app-group half is cherry-picked, and the library half reaches the series by
+pin.
 
 ### `Covenant: break`
 

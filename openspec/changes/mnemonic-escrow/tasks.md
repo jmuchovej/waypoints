@@ -41,7 +41,7 @@ Every Rust task runs its checks inside the devenv shell with a stated reason, e.
 
 ## 7. App surfaces
 
-- [ ] 7.1 Add the escrow section to `src/app/pages/settings/sync.vue`: one card per tier with the consent copy from the `sync` spec, generated-by-default passphrase with reveal-and-confirm, chosen-passphrase entry with the core's refusal reasons, last-fetched-at, disable, and change passphrase; verify `just app::typecheck` introduces no new errors and the cards render against the dev server (`cargo xtask dev-server`) with each tier enabled and disabled
+- [ ] 7.1 Add the escrow section to `src/app/pages/settings/sync.vue`: one card per tier with the consent copy from the `sync` spec, generated-by-default passphrase with reveal-and-confirm, chosen-passphrase entry with the core's refusal reasons, last-fetched-at, disable, and change passphrase; verify `just app::typecheck` introduces no new errors and the cards render against the dev server (`cargo xtask dev`) with each tier enabled and disabled
 - [ ] 7.2 Add "Restore from escrow" to the identity step of onboarding (`SyncIdentitySetup.vue`) beside create and recovery-phrase entry, and verify `just app::typecheck` introduces no new errors and a restore against a local website round-trips an identity created on another sync root
 - [ ] 7.3 Verify by reading the IPC payloads in the dev server's request log that no escrow command response contains a phrase, seed, KEM seed or key, and that the passphrase appears only in the request that needs it
 
