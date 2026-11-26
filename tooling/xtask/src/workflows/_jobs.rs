@@ -5,7 +5,7 @@
 //! and wires their `needs:`.
 
 use super::{
-    MiseEnv, PrepareJob, TestSuite, WorkflowContext, WorkflowInput, actions,
+    DescribeJob, MiseEnv, PrepareJob, TestSuite, WorkflowContext, WorkflowInput, actions,
     actions::{FreeDisk, MiseSetup},
     helpers,
     helpers::{ANDROID_HOME, Environment},
@@ -29,22 +29,81 @@ pub const BUILD_CODE_ENV: &str = "WAYPOINTS_BUILD_CODE";
 /// the Gradle project renders Android's `versionName` the same way.
 pub const VERSION_ENV: &str = "WAYPOINTS_VERSION";
 
-/// The planner output carrying `platform`'s build number, or `None` where the
+/// What a build job reads from the job that planned or described its run:
+/// whom to wait on, when to run, what to check out, and what to stamp and
+/// name.
+pub struct BuildInputs {
+    pub needs: String,
+    pub cond: Expression,
+    /// The ref to check out; the run's own when `None`.
+    pub reference: Option<String>,
+    /// The flavor the build enables.
+    pub flavor: String,
+    /// The channel the staged artifact is named for.
+    pub channel: String,
+    /// The tag the staged files are named for.
+    pub tag: String,
+    pub version: JobOutput,
+    pub version_code: JobOutput,
+    pub bundle_version: JobOutput,
+}
+
+impl BuildInputs {
+    /// From a channel's planner: the channel is the workflow's, the gate is
+    /// the planner's verdict with the dispatch's platforms, and the staged
+    /// files are named `v` and the planner's version — the tag's, or on
+    /// nightly the one it minted or would mint.
+    pub fn planned(channel: Channel, prepare: &PrepareJob, platform: Platform) -> Self {
+        Self {
+            needs: prepare.name().to_owned(),
+            cond: helpers::guard(platform, &prepare.should_build),
+            reference: None,
+            flavor: channel.flavor(),
+            channel: channel.to_string(),
+            tag: format!("v{}", prepare.version),
+            version: prepare.version.clone(),
+            version_code: prepare.version_code.clone(),
+            bundle_version: prepare.bundle_version.clone(),
+        }
+    }
+
+    /// From the builder's `describe`: everything is what it read from
+    /// `reference`, and the gate is the caller's platforms alone.
+    pub fn described(
+        describe: &DescribeJob,
+        reference: &WorkflowInput,
+        platform: Platform,
+    ) -> Self {
+        Self {
+            needs: describe.name().to_owned(),
+            cond: Expression::new(helpers::selected(platform)),
+            reference: Some(reference.to_string()),
+            flavor: describe.flavor.to_string(),
+            channel: describe.channel.to_string(),
+            tag: describe.tag.to_string(),
+            version: describe.version.clone(),
+            version_code: describe.version_code.clone(),
+            bundle_version: describe.bundle_version.clone(),
+        }
+    }
+}
+
+/// The output carrying `platform`'s build number, or `None` where the
 /// platform's store has no such concept. Android's `versionCode` is a single
 /// integer; iOS's `CFBundleVersion` is dotted.
-fn build_code(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
+fn build_code(inputs: &BuildInputs, platform: Platform) -> Option<&JobOutput> {
     match platform {
-        Platform::Android => Some(&prepare.version_code),
-        Platform::iOS => Some(&prepare.bundle_version),
+        Platform::Android => Some(&inputs.version_code),
+        Platform::iOS => Some(&inputs.bundle_version),
         _ => None,
     }
 }
 
-/// The planner output carrying the app version, for the platforms that stamp
-/// it: the mobile ones, whose stores reject Tauri's fallbacks. The desktop
-/// bundles take their version from the crate.
-fn app_version(prepare: &PrepareJob, platform: Platform) -> Option<&JobOutput> {
-    platform.is_mobile().then_some(&prepare.version)
+/// The output carrying the app version, for the platforms that stamp it: the
+/// mobile ones, whose stores reject Tauri's fallbacks. The desktop bundles
+/// take their version from the crate.
+fn app_version(inputs: &BuildInputs, platform: Platform) -> Option<&JobOutput> {
+    platform.is_mobile().then_some(&inputs.version)
 }
 
 /// Nightly rehearses on every dispatch: only its schedule publishes, since the
@@ -184,8 +243,15 @@ pub fn prepare(channel: Channel, context: &WorkflowContext) -> PrepareJob {
 }
 
 /// Runs the suite on one platform, as two steps: the plan resolves the
-/// filterset, and the run is skipped when it comes back empty.
-pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> NamedJob {
+/// filterset, and the run is skipped when it comes back empty. The tree is
+/// `reference`'s where one is given — the builder's ref — and the run's own
+/// otherwise.
+pub fn test(
+    suite: TestSuite,
+    platform: Platform,
+    context: &WorkflowContext,
+    reference: Option<&str>,
+) -> NamedJob {
     // The command publishes its own step output, so no shell redirection and
     // nothing spelled differently for PowerShell on Windows.
     let plan = steps::cargo_xtask("test-plan", &[(suite.flag(), None)]).id("test-plan");
@@ -201,7 +267,13 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
         .runs_on(platform.runner())
         // The change-scoped plan diffs against the merge base, which a shallow
         // clone does not contain.
-        .add_step(steps::checkout().add_with(("fetch-depth", 0)))
+        .add_step(
+            steps::checkout()
+                .when_some(reference, |step, reference| {
+                    step.add_with(("ref", reference))
+                })
+                .add_with(("fetch-depth", 0)),
+        )
         // The disk goes first on Linux: the workspace's debug test build
         // exhausts a stock image on its own, and this job never builds for
         // Android. mise's own cache stays off for the release suite, which
@@ -325,7 +397,7 @@ pub fn create_release(
 /// The job id a platform's build runs under. Shared between [`build`], which
 /// names the job, and [`publish`], which reads its recorded-target output
 /// back — so the convention is stated once.
-fn build_job_name(platform: Platform) -> String {
+pub(crate) fn build_job_name(platform: Platform) -> String {
     format!("build-{}", platform.slug())
 }
 
@@ -520,18 +592,95 @@ pub fn guard_dispatch(
     NamedJob::new("guard-dispatch", job)
 }
 
+/// Reads the ref into the build's identity — the tag, the version, the
+/// channel, the flavor, and the store build codes — as `release describe`
+/// publishes them. Everything downstream stamps what this read; nothing else
+/// is told the ref.
+pub fn describe(context: &WorkflowContext, reference: &WorkflowInput) -> DescribeJob {
+    let registry = steps::cargo_registry(steps::CARGO_HOME);
+    // Through the environment: a ref is free text as far as the shell is
+    // concerned.
+    let describe = steps::cargo_xtask("release describe", &[("--ref", Some("$REF"))])
+        .id("describe")
+        .add_env(("REF", reference.to_string()));
+    let output = |name| StepOutput::new_trusted(&describe, name);
+    let tag = output("tag");
+    let version = output("version");
+    let channel = output("channel");
+    let flavor = output("flavor");
+    let version_code = output("version_code");
+    let bundle_version = output("bundle_version");
+
+    let job = NamedJob::new(
+        "describe",
+        mise_env(Job::default(), &[MiseEnv::Xtask])
+            .name("Describe the build")
+            .permissions(Permissions::default().contents(Level::Read))
+            // Compiles through the CI cache, so the vault credential comes
+            // from the automation environment.
+            .environment(GhEnvironment::from(Environment::Ci))
+            .runs_on(runners::LINUX)
+            // The ref's tree, and the tags, so a tag resolves whatever the
+            // caller named.
+            .add_step(
+                steps::checkout()
+                    .add_with(("ref", reference.to_string()))
+                    .add_with(("fetch-depth", 0))
+                    .add_with(("fetch-tags", true)),
+            )
+            .add_step(actions::setup_mise(
+                MiseSetup::default(),
+                &context.mise_version,
+            ))
+            // Compiling xtask is the whole job; the registry snapshot and the
+            // compiler cache the build jobs fill answer most of it.
+            .add_step(steps::cache_restore(&registry, Tools::Mise))
+            .add_step(steps::sccache_start(Tools::Mise))
+            .add_step(steps::with_sccache(describe))
+            .add_step(steps::sccache_stats(Tools::Mise))
+            .add_step(steps::cache_save(&registry, Tools::Mise))
+            .outputs([
+                tag.clone().as_output(),
+                version.clone().as_output(),
+                channel.clone().as_output(),
+                flavor.clone().as_output(),
+                version_code.clone().as_output(),
+                bundle_version.clone().as_output(),
+            ]),
+    );
+
+    DescribeJob::new(
+        tag.as_job_output(&job),
+        version.as_job_output(&job),
+        channel.as_job_output(&job),
+        flavor.as_job_output(&job),
+        version_code.as_job_output(&job),
+        bundle_version.as_job_output(&job),
+        job,
+    )
+}
+
+/// A channel workflow's build, from its planner.
 pub fn build(
     channel: Channel,
     context: &WorkflowContext,
     platform: Platform,
     prepare: &PrepareJob,
 ) -> NamedJob {
+    build_with(
+        context,
+        platform,
+        &BuildInputs::planned(channel, prepare, platform),
+    )
+}
+
+/// Builds one platform from `inputs`: checks the tree out, builds and signs
+/// under the flavor, renames the distributables for the tag, and hands them
+/// on as one artifact named for the channel, recording its target.
+pub fn build_with(context: &WorkflowContext, platform: Platform, inputs: &BuildInputs) -> NamedJob {
     // Absent off nightly, where the tag's own semver suffices.
-    let build_code = build_code(prepare, platform);
-    let version = app_version(prepare, platform);
-    // What the staged files are named for: `v` and the planner's version —
-    // the tag's, or on nightly the one it minted or would mint.
-    let stage_tag = format!("v{}", prepare.version);
+    let build_code = build_code(inputs, platform);
+    let version = app_version(inputs, platform);
 
     // The mobile lanes need `xcodegen` and the nushell the `_build` recipes are
     // written in; the desktop ones do not.
@@ -564,12 +713,15 @@ pub fn build(
         // the cache scope the store steps resolve alike.
         .environment(GhEnvironment::from(Environment::AppRelease))
         .runs_on(platform.runner())
-        .cond(helpers::guard(platform, &prepare.should_build))
+        .cond(inputs.cond.clone())
         // The build stamps each library group's version from its tags on
         // `main` (`git describe`), which a shallow, tagless checkout cannot
         // name — it would fall back to the manifests' bare versions.
         .add_step(
             steps::checkout()
+                .when_some(inputs.reference.clone(), |step, reference| {
+                    step.add_with(("ref", reference))
+                })
                 .add_with(("fetch-depth", 0))
                 .add_with(("fetch-tags", true)),
         )
@@ -622,7 +774,7 @@ pub fn build(
         // follows runs with none and reaches the store only through it.
         .add_step(steps::sccache_start(Tools::Mise))
         .add_step(
-            steps::with_sccache(steps::build(channel, platform))
+            steps::with_sccache(steps::build(platform, &inputs.flavor))
                 .when_some(build_code, |step, code| {
                     step.add_env((BUILD_CODE_ENV, code.to_string()))
                 })
@@ -646,12 +798,12 @@ pub fn build(
         // publishing job uploads and submits once every build has recorded
         // in. Every run stages, dry runs included, so a dry run exercises the
         // rename too.
-        .add_step(steps::stage_release(platform, stage_tag))
-        .add_step(steps::upload_staged(channel, platform))
+        .add_step(steps::stage_release(platform, inputs.tag.clone()))
+        .add_step(steps::upload_staged(&inputs.channel, platform))
         .add_step(record_target)
         .outputs([target.clone().as_output()])
-        // Reads the planner's outputs, so it waits on the planner.
-        .add_needs(prepare.name().to_owned());
+        // Reads the planning or describing job's outputs, so it waits on it.
+        .add_needs(inputs.needs.clone());
 
     NamedJob::new(build_job_name(platform), job)
 }
@@ -666,22 +818,27 @@ mod tests {
         prepare(channel, &WorkflowContext::fixture())
     }
 
+    /// A channel's build inputs, from its planner.
+    fn inputs(channel: Channel) -> BuildInputs {
+        BuildInputs::planned(channel, &planned(channel), Platform::Linux)
+    }
+
     /// Swapping these would hand Play a value it cannot parse.
     #[test]
     fn each_platform_draws_its_own_build_code() {
-        let prepare = planned(Channel::Nightly);
+        let inputs = inputs(Channel::Nightly);
 
         assert_eq!(
-            build_code(&prepare, Platform::Android).map(JobOutput::expr),
-            Some(prepare.version_code.expr())
+            build_code(&inputs, Platform::Android).map(JobOutput::expr),
+            Some(inputs.version_code.expr())
         );
         assert_eq!(
-            build_code(&prepare, Platform::iOS).map(JobOutput::expr),
-            Some(prepare.bundle_version.expr())
+            build_code(&inputs, Platform::iOS).map(JobOutput::expr),
+            Some(inputs.bundle_version.expr())
         );
 
         for platform in [Platform::macOS, Platform::Linux, Platform::Windows] {
-            assert!(build_code(&prepare, platform).is_none(), "{platform}");
+            assert!(build_code(&inputs, platform).is_none(), "{platform}");
         }
     }
 
@@ -708,17 +865,17 @@ mod tests {
     /// from the crate, and the stores are what reject the fallbacks.
     #[test]
     fn only_mobile_builds_receive_the_version() {
-        let prepare = planned(Channel::Nightly);
+        let inputs = inputs(Channel::Nightly);
 
         for platform in [Platform::Android, Platform::iOS] {
             assert_eq!(
-                app_version(&prepare, platform).map(JobOutput::expr),
-                Some(prepare.version.expr()),
+                app_version(&inputs, platform).map(JobOutput::expr),
+                Some(inputs.version.expr()),
                 "{platform}"
             );
         }
         for platform in [Platform::macOS, Platform::Linux, Platform::Windows] {
-            assert!(app_version(&prepare, platform).is_none(), "{platform}");
+            assert!(app_version(&inputs, platform).is_none(), "{platform}");
         }
     }
 

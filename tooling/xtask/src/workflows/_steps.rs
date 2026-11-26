@@ -573,14 +573,17 @@ pub fn install_ndk(version: &str) -> Step<Run> {
 /// CI supplies just the credential that unlocks the vault, through the
 /// environment — the only channel that reaches a `secretspec` call inside a
 /// justfile.
-pub fn build(channel: Channel, platform: Platform) -> Step<Run> {
+///
+/// `flavor` is a channel's name, or an expression over the describing job's
+/// outputs; either way it reaches the recipe through the environment.
+pub fn build(platform: Platform, flavor: &str) -> Step<Run> {
     let step = Step::new(format!("Build {platform}"))
         .run(format!(
-            "just tauri::build {slug} {flavor}",
+            r#"just tauri::build {slug} "${{FLAVOR}}""#,
             slug = platform.slug(),
-            flavor = channel.flavor(),
         ))
         .shell("bash")
+        .add_env(("FLAVOR", flavor))
         .id("build-recipe");
     helpers::resolving(step)
 }
@@ -887,12 +890,13 @@ pub fn stage_release(platform: Platform, tag: String) -> Step<Run> {
 }
 
 /// Uploads the flat staged directory, under a name naming both the platform
-/// and the channel. A directory path, so the artifact holds the files alone
-/// and every platform's merges into one directory.
-pub fn upload_staged(channel: Channel, platform: Platform) -> Step<Use> {
+/// and the channel — a name, or an expression over the describing job's
+/// outputs. A directory path, so the artifact holds the files alone and every
+/// platform's merges into one directory.
+pub fn upload_staged(channel: &str, platform: Platform) -> Step<Use> {
     upload_artifact_action()
         .step("Upload artifacts")
-        .add_with(("name", Artifact(channel, platform).to_string()))
+        .add_with(("name", Artifact(channel.to_owned(), platform).to_string()))
         .add_with(("path", STAGE_DIR))
         .add_with(("if-no-files-found", "error"))
         .id("upload-artifacts")

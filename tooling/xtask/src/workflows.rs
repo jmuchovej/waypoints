@@ -24,6 +24,7 @@ use strum::IntoEnumIterator;
 
 // One module per workflow. Everything they are assembled from is prefixed with
 // an underscore, so a bare name in this directory is always a workflow.
+mod build;
 mod check_generated;
 mod devenv_update;
 mod pull_request;
@@ -47,7 +48,7 @@ pub(crate) use _steps as steps;
 mod _suppressions;
 pub(crate) mod _types;
 pub(crate) use crate::tools::mise::MiseEnv;
-pub(crate) use _types::{Artifact, PrepareJob, TestSuite, WorkflowInput};
+pub(crate) use _types::{Artifact, DescribeJob, PrepareJob, TestSuite, WorkflowInput};
 
 /// Where a workflow lives, which is also who is allowed to consume it.
 #[derive(PartialEq, Eq, strum::EnumIter)]
@@ -169,6 +170,7 @@ pub fn workflows() -> Vec<WorkflowFile> {
         .stem(format!("release-{flavor}", flavor = channel.flavor()))
     }
     vec![
+        WorkflowFile::waypoints("build", build::workflow).stem("build-distributables"),
         WorkflowFile::waypoints("check_generated", check_generated::workflow),
         WorkflowFile::waypoints("devenv_update", devenv_update::workflow),
         WorkflowFile::waypoints("pull_request", pull_request::workflow),
@@ -478,6 +480,7 @@ mod tests {
     /// Every workflow [`generate`] emits, built against the fixture context.
     fn every_workflow(context: &WorkflowContext) -> Vec<(String, Workflow)> {
         let mut workflows = vec![
+            ("build-distributables".to_owned(), build::workflow(context)),
             (
                 "check_generated".to_owned(),
                 check_generated::workflow(context),
@@ -1280,7 +1283,10 @@ mod tests {
         for (name, workflow) in every_workflow(&context) {
             let value = expanded(&name, &workflow);
             let suites = assert_suites_take_the_flavor(&name, &value);
-            if name == "pull_request" || name.starts_with("release-") {
+            if name == "pull_request"
+                || name == "build-distributables"
+                || name.starts_with("release-")
+            {
                 assert!(suites > 0, "{name}: no test suite");
             }
         }
@@ -1346,11 +1352,12 @@ mod tests {
                     Some("build-recipe") => {
                         let run = step["run"].as_str().unwrap_or("");
                         let platform = Platform::iter().find(|platform| {
-                            run == format!("just tauri::build {} {flavor}", platform.slug())
+                            run == format!(r#"just tauri::build {} "${{FLAVOR}}""#, platform.slug())
                         });
                         assert!(
-                            platform.is_some(),
-                            "{flavor}/{job_name}: builds `{run}`, not this channel's flavor"
+                            platform.is_some() && step["env"]["FLAVOR"] == flavor,
+                            "{flavor}/{job_name}: builds `{run}` under `{}`, not this channel's flavor",
+                            step["env"]["FLAVOR"]
                         );
                         built.extend(platform);
                     }
@@ -1382,7 +1389,8 @@ mod tests {
             Channel::Stable,
             &json!({ "jobs": { "build-macos": { "steps": [{
                 "id": "build-recipe",
-                "run": "just tauri::build macos preview"
+                "run": "just tauri::build macos \"${FLAVOR}\"",
+                "env": { "FLAVOR": "preview" }
             }]}}}),
         );
     }

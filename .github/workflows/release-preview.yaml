@@ -379,9 +379,10 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build macOS
-        run: just tauri::build macos preview
+        run: just tauri::build macos "${FLAVOR}"
         shell: bash
         env:
+          FLAVOR: preview
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
@@ -511,9 +512,10 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Windows
-        run: just tauri::build windows preview
+        run: just tauri::build windows "${FLAVOR}"
         shell: bash
         env:
+          FLAVOR: preview
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
@@ -650,9 +652,10 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Linux
-        run: just tauri::build linux preview
+        run: just tauri::build linux "${FLAVOR}"
         shell: bash
         env:
+          FLAVOR: preview
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
@@ -782,9 +785,10 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build iOS
-        run: just tauri::build ios preview
+        run: just tauri::build ios "${FLAVOR}"
         shell: bash
         env:
+          FLAVOR: preview
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
@@ -951,9 +955,10 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
       - id: build-recipe
         name: Build Android
-        run: just tauri::build android preview
+        run: just tauri::build android "${FLAVOR}"
         shell: bash
         env:
+          FLAVOR: preview
           SECRETSPEC_PROVIDER: op
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache

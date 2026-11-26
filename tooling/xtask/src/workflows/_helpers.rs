@@ -251,13 +251,10 @@ pub fn dispatch_platforms() -> Vec<&'static str> {
     ]
 }
 
-/// Guards a build on the planner's verdict and the `platforms` dispatch
-/// input.
-///
-/// A job answers to `All`, its group (`Desktop`/`Mobile`), and its own
-/// label; and it waits on the verdict, which is how a run with nothing to
-/// build — a quiet nightly, a dry run asked not to build — skips its builds.
-pub fn guard(platform: Platform, should_build: &JobOutput) -> Expression {
+/// Whether the `platforms` input selects `platform`: a job answers to `All`,
+/// its group (`Desktop`/`Mobile`), and its own label. The builder's whole
+/// gate, since it builds whatever its caller asks for.
+pub fn selected(platform: Platform) -> String {
     let group = match &platform {
         Platform::Android | Platform::iOS => "Mobile",
         Platform::Linux | Platform::macOS | Platform::Windows => "Desktop",
@@ -268,12 +265,18 @@ pub fn guard(platform: Platform, should_build: &JobOutput) -> Expression {
         .map(|label| format!("\"{label}\""))
         .collect::<Vec<_>>()
         .join(",");
-    let selected = format!("contains(fromJson('[{choices}]'), inputs.platforms)");
+    format!("contains(fromJson('[{choices}]'), inputs.platforms)")
+}
 
+/// Guards a build on the planner's verdict and the `platforms` dispatch
+/// input: it waits on the verdict, which is how a run with nothing to build
+/// — a quiet nightly, a dry run asked not to build — skips its builds.
+pub fn guard(platform: Platform, should_build: &JobOutput) -> Expression {
     Expression::new(format!(
         "{planner} == 'true' && \
          (github.event_name != 'workflow_dispatch' || {selected})",
         planner = should_build.expr(),
+        selected = selected(platform),
     ))
 }
 

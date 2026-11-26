@@ -27,7 +27,7 @@ pub fn workflow(channel: Channel, context: &WorkflowContext) -> Workflow {
         .map(|platform| {
             // A run that builds nothing — a quiet nightly, or a dry run asked
             // not to build — skips its gates with its builds.
-            jobs::test(TestSuite::Release, platform, context).map(|job| {
+            jobs::test(TestSuite::Release, platform, context, None).map(|job| {
                 let expr = format!("{} == 'true'", prepare.should_build.expr());
                 job.add_needs(prepare.name().to_owned())
                     .cond(Expression::new(expr))

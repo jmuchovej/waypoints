@@ -35,13 +35,65 @@ impl TestSuite {
     }
 }
 
-/// The `upload-artifact` name for one build: `waypoints-{platform}-{channel}`.
+/// The `upload-artifact` name for one build: `waypoints-{platform}-{channel}`,
+/// the channel a name or an expression over the describing job's outputs.
 ///
-/// A newtype rather than a plain `(Channel, Platform)`: the orphan rule counts
-/// tuples as foreign, so `Display` cannot be implemented on one.
+/// A newtype rather than a plain tuple: the orphan rule counts tuples as
+/// foreign, so `Display` cannot be implemented on one.
 #[derive(Display)]
 #[display("waypoints-{}-{}", _1.slug(), _0)]
-pub struct Artifact(pub Channel, pub Platform);
+pub struct Artifact(pub String, pub Platform);
+
+/// The builder's first job, together with the outputs its dependents read
+/// back: the build's identity, as `release describe` read it from the ref.
+pub struct DescribeJob {
+    job: NamedJob,
+    pub tag: JobOutput,
+    pub version: JobOutput,
+    pub channel: JobOutput,
+    pub flavor: JobOutput,
+    pub version_code: JobOutput,
+    pub bundle_version: JobOutput,
+}
+
+impl DescribeJob {
+    /// Outputs first: each is derived from `job`, so they have to be built
+    /// before it is moved in.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "one parameter per output, the fields the struct carries"
+    )]
+    pub fn new(
+        tag: JobOutput,
+        version: JobOutput,
+        channel: JobOutput,
+        flavor: JobOutput,
+        version_code: JobOutput,
+        bundle_version: JobOutput,
+        job: NamedJob,
+    ) -> Self {
+        Self {
+            job,
+            tag,
+            version,
+            channel,
+            flavor,
+            version_code,
+            bundle_version,
+        }
+    }
+
+    /// The job id, for wiring `needs:` without consuming the job.
+    pub fn name(&self) -> &str {
+        &self.job.name
+    }
+}
+
+impl From<DescribeJob> for NamedJob {
+    fn from(describe: DescribeJob) -> Self {
+        describe.job
+    }
+}
 
 /// A channel's planner, together with the outputs its dependents read back.
 ///
@@ -170,7 +222,10 @@ impl WorkflowInput {
 
     pub fn call_input(&self) -> WorkflowCallInput {
         WorkflowCallInput {
-            description: self.name.to_owned(),
+            description: self
+                .description
+                .clone()
+                .unwrap_or_else(|| self.name.to_owned()),
             required: self.default.is_none(),
             input_type: self.input_type.to_owned(),
             default: self.default.clone(),
