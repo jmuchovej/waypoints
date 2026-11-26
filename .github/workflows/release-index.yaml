@@ -36,31 +36,11 @@ jobs:
           persist-credentials: "false"
           ref: main
           fetch-tags: "true"
-      - id: free-disk
-        name: Free runner disk space
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
-        with:
-          android: "true"
-          dotnet: "true"
-          haskell: "true"
-          large-packages: "true"
-          docker-images: "true"
-          preinstalled-runtimes: "false"
-          swap-storage: "false"
       - id: setup-nix
-        name: Install Nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+        name: Set up Nix
+        uses: $/.github/actions/setup-nix
         with:
-          extra_nix_config: access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-      - id: setup-devenv-cachix
-        name: Use the devenv binary cache
-        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
-        with:
-          name: devenv
-      - id: setup-nix-profile
-        name: Install devenv
-        run: nix profile install nixpkgs#devenv
-        shell: bash
+          extra-nix-config: access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: devenv shell -- xcache restore "${CACHE_KEY}" "${HOME}/.cargo/registry"

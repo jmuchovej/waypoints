@@ -10,7 +10,7 @@
 
 use super::steps;
 use crate::constants::ACTIONS_DIR;
-use gh_workflow::{Expression, FluentBuilder as _, Step, StepType, StepValue};
+use gh_workflow::{Expression, FluentBuilder as _, Step, StepType, StepValue, Use};
 use indexmap::IndexMap;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -23,7 +23,7 @@ pub const ACTION_FILE: &str = "action.yaml";
 
 /// Every action the generator emits.
 pub fn all() -> Vec<CompositeAction> {
-    vec![setup_mise(), setup_nix()]
+    vec![mise_action(), nix_action()]
 }
 
 /// One `action.yaml`: the metadata GitHub reads, and the steps that were a
@@ -103,7 +103,7 @@ fn input(name: &str) -> String {
 /// Frees the runner's disk as asked, installs the mise the lockfile was
 /// written by, and restores the compiled registry dependencies for a job that
 /// publishes nothing.
-fn setup_mise() -> CompositeAction {
+fn mise_action() -> CompositeAction {
     CompositeAction::new(
         SETUP_MISE,
         "Sets up the mise toolchain: frees the runner's disk as asked, installs the mise release the lockfile was written by, and restores the compiled Rust dependencies for a job that publishes nothing",
@@ -128,14 +128,14 @@ fn setup_mise() -> CompositeAction {
         steps::free_disk_space("${{ inputs.free-disk == 'all' }}")
             .if_condition(Expression::new("inputs.free-disk != 'none'")),
     )
-    .add_step(steps::setup_mise_from(&input("mise-version"), &input("cache")))
+    .add_step(steps::setup_mise(&input("mise-version"), &input("cache")))
     .add_step(steps::rust_cache().if_condition(Expression::new("inputs.rust-cache == 'true'")))
 }
 
 /// Frees the runner's disk — entering the devenv shell realises an
 /// environment a stock image cannot hold — then installs Nix with the devenv
 /// binary cache and the profile packages a job needs before its shell exists.
-fn setup_nix() -> CompositeAction {
+fn nix_action() -> CompositeAction {
     CompositeAction::new(
         SETUP_NIX,
         "Sets up Nix for a job entered through the devenv shell: frees the runner's disk, installs Nix with the devenv binary cache, and installs the profile packages the job's first command needs",
@@ -149,7 +149,61 @@ fn setup_nix() -> CompositeAction {
     .add_step(steps::free_disk_space(true))
     .add_step(steps::install_nix().add_with(("extra_nix_config", input("extra-nix-config"))))
     .add_step(steps::cachix("devenv"))
-    .add_step(steps::nix_profile_install_from(&input("packages")))
+    .add_step(steps::nix_profile_install(&input("packages")))
+}
+
+/// What `setup-mise` does to the runner's disk before anything is installed.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub enum FreeDisk {
+    #[default]
+    None,
+    /// Everything the image carries that this workspace never uses.
+    All,
+    /// The same, keeping the Android runtime a build for Android needs.
+    KeepAndroid,
+}
+
+impl FreeDisk {
+    fn value(self) -> &'static str {
+        match self {
+            FreeDisk::None => "none",
+            FreeDisk::All => "all",
+            FreeDisk::KeepAndroid => "keep-android",
+        }
+    }
+}
+
+/// What a job asks of `setup-mise` beyond the mise it installs. The default
+/// is the bare install.
+#[derive(Clone, Copy, Default)]
+pub struct MiseSetup {
+    /// Keep mise's own install cache between runs, for a job whose tools are
+    /// most of its time.
+    pub cache: bool,
+    pub free_disk: FreeDisk,
+    /// Restore the compiled registry dependencies: for a job that publishes
+    /// nothing, since the cache is written from `main` by any run there.
+    pub rust_cache: bool,
+}
+
+/// The one step a job runs its mise prefix as, passing only what differs
+/// from the action's defaults.
+pub fn setup_mise(setup: MiseSetup, version: &str) -> Step<Use> {
+    steps::local_action(SETUP_MISE, "Set up mise")
+        .add_with(("mise-version", version))
+        .when(setup.cache, |step| step.add_with(("cache", true)))
+        .when(setup.free_disk != FreeDisk::None, |step| {
+            step.add_with(("free-disk", setup.free_disk.value()))
+        })
+        .when(setup.rust_cache, |step| step.add_with(("rust-cache", true)))
+}
+
+/// The one step a job runs its Nix prefix as, installing `packages` into the
+/// profile; `devenv` alone is the action's default.
+pub fn setup_nix(packages: &[&str]) -> Step<Use> {
+    steps::local_action(SETUP_NIX, "Set up Nix").when(packages != ["devenv"], |step| {
+        step.add_with(("packages", packages.join(" ")))
+    })
 }
 
 #[cfg(test)]
@@ -164,6 +218,10 @@ mod tests {
             .iter()
             .map(|step| serde_json::to_value(step).expect("step serializes"))
             .collect()
+    }
+
+    fn rendered(step: Step<Use>) -> Value {
+        serde_json::to_value(step).expect("step serializes")
     }
 
     /// Scenario _A checkout precedes the setup_, the action's half: no
@@ -212,7 +270,7 @@ mod tests {
     /// the lockfile was written by.
     #[test]
     fn the_mise_action_wires_its_inputs() {
-        let action = super::setup_mise();
+        let action = mise_action();
         let required: Vec<&str> = action
             .inputs
             .iter()
@@ -237,7 +295,7 @@ mod tests {
     /// name is never spliced into the command line.
     #[test]
     fn the_nix_action_installs_its_packages_from_the_environment() {
-        let action = super::setup_nix();
+        let action = nix_action();
         let steps = steps_of(&action);
         let install = steps
             .iter()
@@ -250,5 +308,37 @@ mod tests {
             install["run"]
         );
         assert_eq!(action.inputs["packages"].default.as_deref(), Some("devenv"));
+    }
+
+    /// A job's reference is the self-repository form, and it passes only
+    /// what differs from the action's defaults, so a bare install is one
+    /// input.
+    #[test]
+    fn a_reference_passes_only_what_differs_from_the_defaults() {
+        let bare = rendered(setup_mise(MiseSetup::default(), "1.2.3"));
+        assert_eq!(bare["uses"], "$/.github/actions/setup-mise");
+        assert_eq!(
+            bare["with"],
+            serde_json::json!({ "mise-version": "1.2.3" }),
+            "{bare}"
+        );
+
+        let full = rendered(setup_mise(
+            MiseSetup {
+                cache: true,
+                free_disk: FreeDisk::KeepAndroid,
+                rust_cache: true,
+            },
+            "1.2.3",
+        ));
+        assert_eq!(full["with"]["cache"], "true");
+        assert_eq!(full["with"]["free-disk"], "keep-android");
+        assert_eq!(full["with"]["rust-cache"], "true");
+
+        let nix = rendered(setup_nix(&["devenv"]));
+        assert_eq!(nix["uses"], "$/.github/actions/setup-nix");
+        assert!(nix.get("with").is_none(), "{nix}");
+        let more = rendered(setup_nix(&["devenv", "just"]));
+        assert_eq!(more["with"]["packages"], "devenv just");
     }
 }

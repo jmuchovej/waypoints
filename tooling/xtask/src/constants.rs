@@ -71,6 +71,9 @@ macro_rules! workflows_dir {
     };
 }
 
+/// The tree GitHub reads workflows and actions from, which the workflow
+/// linter audits whole.
+pub const GITHUB_DIR: &str = ".github";
 /// Where the generated workflows live.
 pub const WORKFLOWS_DIR: &str = workflows_dir!();
 macro_rules! actions_dir {
@@ -146,7 +149,11 @@ pub const GENERATED: &[Generated] = &[
     Generated {
         name: "workflows",
         sources: &["devenv.nix", "devenv.yaml", "devenv.lock", XTASK],
-        outputs: &[concat!(workflows_dir!(), "/**"), TFVARS],
+        outputs: &[
+            concat!(workflows_dir!(), "/**"),
+            concat!(actions_dir!(), "/**"),
+            TFVARS,
+        ],
     },
     Generated {
         name: "bindings",

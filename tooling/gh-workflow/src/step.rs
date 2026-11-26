@@ -265,6 +265,15 @@ impl Step<()> {
         }
     }
 
+    /// Uses an action by path: see [`StepValue::uses_path`].
+    pub fn uses_path(mut self, path: impl ToString) -> Step<Use> {
+        self.value.merge(StepValue::uses_path(path));
+        Step {
+            value: self.value,
+            marker: Default::default(),
+        }
+    }
+
     pub fn run(mut self, cmd: impl ToString) -> Step<Run> {
         self.value.merge(StepValue::run(cmd));
         Step {

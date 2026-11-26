@@ -5,7 +5,9 @@
 //! and wires their `needs:`.
 
 use super::{
-    MiseEnv, PrepareJob, TestSuite, WorkflowContext, WorkflowInput, helpers,
+    MiseEnv, PrepareJob, TestSuite, WorkflowContext, WorkflowInput, actions,
+    actions::{FreeDisk, MiseSetup},
+    helpers,
     helpers::{ANDROID_HOME, Environment},
     runners, steps,
     steps::Tools,
@@ -141,7 +143,10 @@ pub fn prepare(channel: Channel, context: &WorkflowContext) -> PrepareJob {
                     .add_with(("fetch-depth", 0))
                     .add_with(("fetch-tags", true)),
             )
-            .add_step(steps::setup_mise(false.into(), &context.mise_version))
+            .add_step(actions::setup_mise(
+                MiseSetup::default(),
+                &context.mise_version,
+            ))
             // Compiling the planner is the whole job: 5m25s of a 6m10s run,
             // against 39s to install its tools. The registry snapshot and the
             // compiler cache are the ones the build jobs fill, under the same
@@ -197,24 +202,25 @@ pub fn test(suite: TestSuite, platform: Platform, context: &WorkflowContext) -> 
         // The change-scoped plan diffs against the merge base, which a shallow
         // clone does not contain.
         .add_step(steps::checkout().add_with(("fetch-depth", 0)))
-        // Before mise and before the build: the workspace's debug test build
-        // exhausts a stock Linux image on its own, and reclaiming afterwards
-        // would be too late. Safe to drop the SDK here — this job tests, it
-        // never builds for Android.
-        .when(platform.is_linux(), |job| {
-            job.add_step(steps::free_disk_space(true))
-        })
-        // mise's own cache stays off for the release suite, which runs cold
-        // alongside the build jobs that publish.
-        .add_step(steps::setup_mise(
-            matches!(suite, TestSuite::Changed).into(),
+        // The disk goes first on Linux: the workspace's debug test build
+        // exhausts a stock image on its own, and this job never builds for
+        // Android. mise's own cache stays off for the release suite, which
+        // runs cold alongside the build jobs that publish. The compiled-
+        // dependency cache applies to both suites: a test job publishes
+        // nothing, and compiling the workspace is what makes these runs
+        // 20–33 minutes.
+        .add_step(actions::setup_mise(
+            MiseSetup {
+                cache: matches!(suite, TestSuite::Changed),
+                free_disk: if platform.is_linux() {
+                    FreeDisk::All
+                } else {
+                    FreeDisk::None
+                },
+                rust_cache: true,
+            },
             &context.mise_version,
         ))
-        // The compiled-dependency cache, however, applies to both suites: a
-        // test job publishes nothing, and compiling the workspace is what makes
-        // these runs 20–33 minutes. After mise, because the cache key
-        // fingerprints the resolved rustc version.
-        .add_step(steps::rust_cache())
         // Tauri links WebKitGTK on Linux, so even a library test build needs it.
         .when(platform.is_linux(), |job| {
             job.add_step(steps::install_linux_deps())
@@ -236,7 +242,10 @@ pub fn zizmor(context: &WorkflowContext) -> NamedJob {
         .permissions(Permissions::default().contents(Level::Read))
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
-        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(actions::setup_mise(
+            MiseSetup::default(),
+            &context.mise_version,
+        ))
         .add_step(steps::zizmor());
 
     NamedJob::new("zizmor", job)
@@ -251,8 +260,13 @@ pub fn license(context: &WorkflowContext) -> NamedJob {
         .permissions(Permissions::default().contents(Level::Read))
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
-        .add_step(steps::setup_mise(false.into(), &context.mise_version))
-        .add_step(steps::rust_cache())
+        .add_step(actions::setup_mise(
+            MiseSetup {
+                rust_cache: true,
+                ..MiseSetup::default()
+            },
+            &context.mise_version,
+        ))
         .add_step(steps::cargo_xtask("check licenses", &[]))
         .add_step(steps::cargo_deny_licenses());
 
@@ -298,7 +312,10 @@ pub fn create_release(
                 .add_with(("fetch-tags", true))
                 .if_condition(publishing()),
         )
-        .add_step(steps::setup_mise(false.into(), &context.mise_version).if_condition(publishing()))
+        .add_step(
+            actions::setup_mise(MiseSetup::default(), &context.mise_version)
+                .if_condition(publishing()),
+        )
         .add_step(steps::release_notes(tag, dry_run))
         .add_step(steps::create_release(channel, tag, dry_run));
 
@@ -340,10 +357,7 @@ pub const PUBLISH_JOB: &str = "publish";
 /// else. Entering realises the whole environment, which a stock image
 /// cannot hold.
 fn with_devenv(job: Job) -> Job {
-    job.add_step(steps::free_disk_space(true))
-        .add_step(steps::install_nix())
-        .add_step(steps::cachix("devenv"))
-        .add_step(steps::nix_profile_install(&["devenv"]))
+    job.add_step(actions::setup_nix(&["devenv"]))
 }
 
 /// Publishes a complete run, in order of retractability: the store upload,
@@ -559,13 +573,28 @@ pub fn build(
                 .add_with(("fetch-depth", 0))
                 .add_with(("fetch-tags", true)),
         )
-        // Both of these build on an Ubuntu runner, and both are large enough to
-        // be worth the reclaim. It runs before `setup-android` so nothing is
-        // removed after being installed — and Android keeps its runtime, since
-        // `setup-android` configures the image's SDK rather than fetching one.
-        .when(platform.is_linux() || platform.is_android(), |job| {
-            job.add_step(steps::free_disk_space(!platform.is_android()))
-        })
+        // The Ubuntu runners build Linux and Android, and both are large
+        // enough to be worth the reclaim — before `setup-android`, so nothing
+        // is removed after being installed, and Android keeps its runtime,
+        // since `setup-android` configures the image's SDK rather than
+        // fetching one. mise's own install cache is the one third-party cache
+        // in this job: the credential resolver is itself a mise tool, so
+        // nothing from the bucket can be restored before mise has run.
+        // GitHub's default write rules keep low-trust triggers out of it, and
+        // `mise.lock` pins what it holds, so it is sound on the same terms as
+        // the snapshots below.
+        .add_step(actions::setup_mise(
+            MiseSetup {
+                cache: true,
+                free_disk: match platform {
+                    Platform::Linux => FreeDisk::All,
+                    Platform::Android => FreeDisk::KeepAndroid,
+                    _ => FreeDisk::None,
+                },
+                rust_cache: false,
+            },
+            &context.mise_version,
+        ))
         .when(platform.is_android(), |job| {
             job.add_step(steps::setup_java(&context.android_jdk))
                 .add_step(steps::setup_android_sdk())
@@ -574,12 +603,6 @@ pub fn build(
             // Tauri's Linux backend is WebKitGTK, absent from the runner image.
             job.add_step(steps::install_linux_deps())
         })
-        // mise's own install cache is the one third-party cache in this job:
-        // the credential resolver is itself a mise tool, so nothing from the
-        // bucket can be restored before mise has run. GitHub's default write
-        // rules keep low-trust triggers out of it, and `mise.lock` pins what
-        // it holds, so it is sound on the same terms as the snapshots below.
-        .add_step(steps::setup_mise(true.into(), &context.mise_version))
         .when(platform.is_android(), |job| {
             // `setup-android` installs the SDK but not an NDK. The snapshot
             // restores the version devenv pins; `sdkmanager` then finds it in

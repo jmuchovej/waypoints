@@ -63,11 +63,11 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
-          cache: "false"
+          mise-version: 2026.10.3
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: xcache restore "${CACHE_KEY}" "${CARGO_HOME}/registry"
@@ -130,16 +130,12 @@ jobs:
         with:
           persist-credentials: "false"
           fetch-depth: "0"
-      - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
-          cache: "false"
-      - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
-        name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          mise-version: 2026.10.3
+          rust-cache: "true"
       - id: test-plan
         name: cargo ci-task test-plan
         run: cargo ci-task test-plan  --release
@@ -171,16 +167,12 @@ jobs:
         with:
           persist-credentials: "false"
           fetch-depth: "0"
-      - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
-          cache: "false"
-      - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
-        name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          mise-version: 2026.10.3
+          rust-cache: "true"
       - id: test-plan
         name: cargo ci-task test-plan
         run: cargo ci-task test-plan  --release
@@ -212,27 +204,13 @@ jobs:
         with:
           persist-credentials: "false"
           fetch-depth: "0"
-      - id: free-disk
-        name: Free runner disk space
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          android: "true"
-          dotnet: "true"
-          haskell: "true"
-          large-packages: "true"
-          docker-images: "true"
-          preinstalled-runtimes: "false"
-          swap-storage: "false"
-      - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
-        with:
-          version: 2026.10.3
-          cache: "false"
-      - id: rust-cache # zizmor: ignore[cache-poisoning] written only from main (save-if), restored by test jobs that publish nothing
-        name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          mise-version: 2026.10.3
+          free-disk: all
+          rust-cache: "true"
       - id: linux-deps
         name: Install system deps (Linux)
         run: |-
@@ -276,12 +254,12 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - name: Setup mise
+      - id: setup-mise
+        name: Set up mise
         if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
-          cache: "false"
+          mise-version: 2026.10.3
       - id: gen-release-notes
         name: Generate release notes
         if: needs.prepare.outputs.tag != '' && needs.prepare.outputs.dry_run != 'true'
@@ -336,11 +314,11 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
-        name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
+          mise-version: 2026.10.3
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -468,11 +446,11 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
-        name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
+          mise-version: 2026.10.3
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -600,29 +578,19 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - id: free-disk
-        name: Free runner disk space
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          android: "true"
-          dotnet: "true"
-          haskell: "true"
-          large-packages: "true"
-          docker-images: "true"
-          preinstalled-runtimes: "false"
-          swap-storage: "false"
+          mise-version: 2026.10.3
+          cache: "true"
+          free-disk: all
       - id: linux-deps
         name: Install system deps (Linux)
         run: |-
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         shell: bash
-      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
-        name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
-        with:
-          version: 2026.10.3
-          cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
         run: |-
@@ -749,11 +717,11 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
-        name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
+          mise-version: 2026.10.3
           cache: "true"
       - id: pnpm-store-dir
         name: Pin the pnpm store
@@ -883,17 +851,13 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - id: free-disk
-        name: Free runner disk space
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          android: "false"
-          dotnet: "true"
-          haskell: "true"
-          large-packages: "true"
-          docker-images: "true"
-          preinstalled-runtimes: "false"
-          swap-storage: "false"
+          mise-version: 2026.10.3
+          cache: "true"
+          free-disk: keep-android
       - id: setup-java
         name: Setup Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
@@ -907,12 +871,6 @@ jobs:
           accept-android-sdk-licenses: "true"
           log-accepted-android-sdk-licenses: "true"
           packages: platform-tools
-      - id: setup-mise # zizmor: ignore[cache-poisoning] mise's install cache under GitHub's default write rules, tools pinned by mise.lock
-        name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
-        with:
-          version: 2026.10.3
-          cache: "true"
       - id: cache-restore-gradle
         name: Restore gradle
         run: xcache restore "${CACHE_KEY}" "${HOME}/.gradle/caches/modules-2"
@@ -1082,29 +1040,9 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - id: free-disk
-        name: Free runner disk space
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
-        with:
-          android: "true"
-          dotnet: "true"
-          haskell: "true"
-          large-packages: "true"
-          docker-images: "true"
-          preinstalled-runtimes: "false"
-          swap-storage: "false"
       - id: setup-nix
-        name: Install Nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
-      - id: setup-devenv-cachix
-        name: Use the devenv binary cache
-        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
-        with:
-          name: devenv
-      - id: setup-nix-profile
-        name: Install devenv
-        run: nix profile install nixpkgs#devenv
-        shell: bash
+        name: Set up Nix
+        uses: $/.github/actions/setup-nix
       - id: cache-restore-cargo-registry
         name: Restore cargo-registry
         run: devenv shell -- xcache restore "${CACHE_KEY}" "${HOME}/.cargo/registry"
@@ -1276,29 +1214,9 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: "false"
-      - id: free-disk
-        name: Free runner disk space
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
-        with:
-          android: "true"
-          dotnet: "true"
-          haskell: "true"
-          large-packages: "true"
-          docker-images: "true"
-          preinstalled-runtimes: "false"
-          swap-storage: "false"
       - id: setup-nix
-        name: Install Nix
-        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
-      - id: setup-devenv-cachix
-        name: Use the devenv binary cache
-        uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71
-        with:
-          name: devenv
-      - id: setup-nix-profile
-        name: Install devenv
-        run: nix profile install nixpkgs#devenv
-        shell: bash
+        name: Set up Nix
+        uses: $/.github/actions/setup-nix
       - id: discard-release
         name: Discard the drafted release
         run: gh release delete "${TAG}" --yes || true

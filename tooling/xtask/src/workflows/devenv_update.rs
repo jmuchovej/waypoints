@@ -7,8 +7,10 @@
 //! Renovate covers the language ecosystems on the same Monday cadence but has
 //! no manager for `devenv.lock`, so nothing else moves these inputs.
 
-use super::{WorkflowContext, helpers, helpers::Environment, runners, steps, steps::Tools};
-use crate::constants::{DEVENV_UPDATE_BRANCH, WORKFLOWS_DIR};
+use super::{
+    WorkflowContext, actions, helpers, helpers::Environment, runners, steps, steps::Tools,
+};
+use crate::constants::{ACTIONS_DIR, DEVENV_UPDATE_BRANCH, WORKFLOWS_DIR};
 use gh_workflow::{
     Environment as GhEnvironment, Event, Job, Level, Permissions, Schedule, StepOutput, Workflow,
     WorkflowDispatch,
@@ -35,7 +37,7 @@ const BODY: &str = concat!(
 /// Sources and outputs the update is allowed to touch. Anything else the run
 /// happens to dirty stays out of the commit.
 fn paths(context: &WorkflowContext) -> Vec<String> {
-    ["devenv.lock", WORKFLOWS_DIR]
+    ["devenv.lock", WORKFLOWS_DIR, ACTIONS_DIR]
         .iter()
         .map(|path| (*path).to_owned())
         .chain(context.devenv_files.iter().cloned())
@@ -65,15 +67,8 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .environment(GhEnvironment::from(Environment::Ci))
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
-        // `devenv update` evaluates and realises the whole environment,
-        // Android SDK and all, which a stock image cannot hold: the first run
-        // died with the runner's own diagnostics unable to write. Nothing here
-        // uses the image's Android SDK, so it goes too.
-        .add_step(steps::free_disk_space(true))
-        .add_step(steps::install_nix())
-        .add_step(steps::cachix("devenv"))
         // devenv provides us with secretspec already.
-        .add_step(steps::nix_profile_install(&["devenv"]))
+        .add_step(actions::setup_nix(&["devenv"]))
         .add_step(steps::devenv_update())
         // Through the shell: `secretspec` and `op` are both devenv's here, and
         // nothing installs them any other way.

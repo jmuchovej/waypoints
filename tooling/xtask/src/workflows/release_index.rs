@@ -18,7 +18,9 @@
 //! run. The dispatch is for a tag that predates this, or a run that failed.
 
 use super::WorkflowInput;
-use super::{WorkflowContext, helpers, helpers::Environment, runners, steps, steps::Tools};
+use super::{
+    WorkflowContext, actions, helpers, helpers::Environment, runners, steps, steps::Tools,
+};
 use crate::{Channel, constants::MAIN};
 use gh_workflow::{
     Environment as WorkflowEnvironment, Event, Expression, Job, Level, Permissions, Push, Step,
@@ -104,14 +106,7 @@ pub fn workflow(_context: &WorkflowContext) -> Workflow {
                 .add_with(("ref", MAIN))
                 .add_with(("fetch-tags", true)),
         )
-        // Entering the shell realises the whole environment, Android SDK and
-        // all, which a stock image cannot hold.
-        .add_step(steps::free_disk_space(true))
-        .add_step(steps::install_nix().add_with(("extra_nix_config", ACCESS_TOKEN)))
-        // A Nix binary cache, not an Actions cache: nothing a workflow run
-        // could have written into it, so no poisoning surface.
-        .add_step(steps::cachix("devenv"))
-        .add_step(steps::nix_profile_install(&["devenv"]))
+        .add_step(actions::setup_nix(&["devenv"]).add_with(("extra-nix-config", ACCESS_TOKEN)))
         // The task is a `cargo ci-task` compile before it is anything else; the
         // build jobs' registry snapshot and compiler cache pay for most of it.
         .add_step(steps::cache_restore(&registry, Tools::Devenv))

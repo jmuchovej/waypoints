@@ -35,7 +35,7 @@
 //! token, so a wait looks under `GITHUB_TOKEN` and the steps after it mint a
 //! fresh token.
 
-use super::{MiseEnv, WorkflowInput};
+use super::{MiseEnv, WorkflowInput, actions, actions::MiseSetup};
 use super::{WorkflowContext, helpers, helpers::Environment, runners, steps, steps::Tools};
 use gh_workflow::{
     Environment as GhEnvironment, Event, Expression, Job, Level, Permissions, StepOutput, Workflow,
@@ -215,7 +215,10 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
                 .add_with(("fetch-depth", 0))
                 .add_with(("fetch-tags", true)),
         )
-        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(actions::setup_mise(
+            MiseSetup::default(),
+            &context.mise_version,
+        ))
         // As with the nightly planner: the cost here is compiling xtask, and
         // the build jobs' registry snapshot and compiler cache answer most of
         // it.

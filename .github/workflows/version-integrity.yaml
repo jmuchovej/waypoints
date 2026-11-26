@@ -30,11 +30,11 @@ jobs:
         with:
           persist-credentials: "false"
           fetch-depth: "0"
-      - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
-          cache: "false"
+          mise-version: 2026.10.3
       - id: version-integrity
         name: cargo ci-task check version-integrity
         run: cargo ci-task check version-integrity
@@ -54,11 +54,11 @@ jobs:
           persist-credentials: "false"
           fetch-depth: "0"
           fetch-tags: "true"
-      - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+      - id: setup-mise
+        name: Set up mise
+        uses: $/.github/actions/setup-mise
         with:
-          version: 2026.10.3
-          cache: "false"
+          mise-version: 2026.10.3
       - id: semver-check
         name: cargo ci-task check semver
         run: cargo ci-task check semver

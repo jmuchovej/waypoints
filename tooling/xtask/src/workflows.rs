@@ -500,6 +500,144 @@ mod tests {
         workflows
     }
 
+    /// `workflow` as JSON with every `$/.github/actions/<name>` step replaced
+    /// by that action's steps, so a per-step audit reads a job's effective
+    /// steps — what runs, wherever it is declared — and no invariant is
+    /// escaped by moving a step into an action.
+    fn expanded(name: &str, workflow: &Workflow) -> Value {
+        let actions: Vec<(String, Vec<Value>)> = actions::all()
+            .iter()
+            .map(|action| {
+                let steps = action
+                    .runs
+                    .steps
+                    .iter()
+                    .map(|step| serde_json::to_value(step).expect(&action.name))
+                    .collect();
+                (format!("$/{ACTIONS_DIR}/{}", action.name), steps)
+            })
+            .collect();
+
+        let mut value = serde_json::to_value(workflow).expect(name);
+        for (job_name, job) in value["jobs"].as_object_mut().into_iter().flatten() {
+            let Some(steps) = job.get_mut("steps").and_then(Value::as_array_mut) else {
+                continue;
+            };
+            let mut effective = Vec::new();
+            for step in steps.drain(..) {
+                let uses = step["uses"].as_str().unwrap_or("");
+                if uses.starts_with(&format!("$/{ACTIONS_DIR}/")) {
+                    let (_, action_steps) = actions
+                        .iter()
+                        .find(|(reference, _)| reference == uses)
+                        .unwrap_or_else(|| {
+                            panic!("{name}/{job_name}: `{uses}` names no generated action")
+                        });
+                    effective.extend(action_steps.iter().cloned());
+                } else {
+                    effective.push(step);
+                }
+            }
+            *steps = effective;
+        }
+        value
+    }
+
+    /// Scenarios _A job's setup is one generated step_ and _A checkout
+    /// precedes the setup_: every job that checks out runs a generated action
+    /// as its next step, and no job carries a bare step an action performs.
+    #[test]
+    fn every_job_sets_up_through_an_action() {
+        const BARE: [&str; 5] = [
+            "jlumbroso/free-disk-space@",
+            "jdx/mise-action@",
+            "Swatinem/rust-cache@",
+            "cachix/install-nix-action@",
+            "cachix/cachix-action@",
+        ];
+        let context = WorkflowContext::fixture();
+        let mut set_up = 0;
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+                let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
+                for step in &steps {
+                    let uses = step["uses"].as_str().unwrap_or("");
+                    assert!(
+                        !BARE.iter().any(|bare| uses.starts_with(bare)),
+                        "{name}/{job_name}: bare setup step `{uses}`"
+                    );
+                    assert!(
+                        !step["run"]
+                            .as_str()
+                            .unwrap_or("")
+                            .contains("nix profile install"),
+                        "{name}/{job_name}: bare profile install"
+                    );
+                }
+                let Some(checkout) = steps.iter().position(|step| step["id"] == "checkout") else {
+                    continue;
+                };
+                let next = steps
+                    .get(checkout + 1)
+                    .unwrap_or_else(|| panic!("{name}/{job_name}: nothing follows the checkout"));
+                let uses = next["uses"].as_str().unwrap_or("");
+                assert!(
+                    uses.starts_with(&format!("$/{ACTIONS_DIR}/")),
+                    "{name}/{job_name}: `{uses}` follows the checkout, not a generated action"
+                );
+                set_up += 1;
+            }
+        }
+        assert!(set_up > 0, "no job checks out");
+    }
+
+    /// Scenario _A cache behind an action is held by the generator_: a job
+    /// that declares an environment publishes, and may restore only what a
+    /// run it trusts wrote. zizmor would flag the Rust cache in the job's own
+    /// steps and cannot see it behind the action, so the generator holds it.
+    #[test]
+    fn a_job_under_an_environment_asks_for_no_rust_cache() {
+        let context = WorkflowContext::fixture();
+        for (name, workflow) in every_workflow(&context) {
+            let value = serde_json::to_value(&workflow).expect(&name);
+            assert_no_rust_cache_under_an_environment(&name, &value);
+        }
+    }
+
+    fn assert_no_rust_cache_under_an_environment(name: &str, value: &Value) {
+        for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
+            if job.get("environment").is_none() {
+                continue;
+            }
+            for step in job["steps"].as_array().into_iter().flatten() {
+                let uses = step["uses"].as_str().unwrap_or("");
+                if !uses.starts_with(&format!("$/{ACTIONS_DIR}/")) {
+                    continue;
+                }
+                assert!(
+                    step["with"]["rust-cache"] != "true",
+                    "{name}/{job_name}: declares an environment and restores the Rust cache"
+                );
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "restores the Rust cache")]
+    fn a_rust_cache_under_an_environment_is_refused() {
+        assert_no_rust_cache_under_an_environment(
+            "synthetic",
+            &json!({ "jobs": { "publish": {
+                "environment": { "name": "App Release" },
+                "steps": [{
+                    "uses": "$/.github/actions/setup-mise",
+                    "with": { "mise-version": "1", "rust-cache": "true" }
+                }]
+            }}}),
+        );
+    }
+
     /// The hand-written list above and the one [`workflows`] ships must not
     /// drift apart, or a workflow could escape every audit below.
     #[test]
@@ -533,7 +671,7 @@ mod tests {
     fn environments_follow_the_vault_credential() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             assert_environments_follow_the_vault_credential(&name, &value);
         }
     }
@@ -703,7 +841,7 @@ mod tests {
     fn the_ci_profile_is_never_resolved_unscoped() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             let steps = value["jobs"]
                 .as_object()
                 .into_iter()
@@ -733,7 +871,7 @@ mod tests {
     fn every_gh_call_knows_its_repository() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
                 let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
                 let checks_out = steps.iter().any(|step| step["id"] == "checkout");
@@ -763,7 +901,7 @@ mod tests {
     fn a_publishing_job_never_gates_on_bare_failure_or_cancelled() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             assert_publish_gate_counts_targets(&name, &value);
         }
     }
@@ -813,7 +951,7 @@ mod tests {
     fn every_store_touching_step_is_a_bare_xtask_dispatch() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             assert_store_steps_name_no_transfer_tool(&name, &value);
         }
     }
@@ -868,7 +1006,7 @@ mod tests {
     fn provider_and_credential_are_set_together() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             let steps = value["jobs"]
                 .as_object()
                 .into_iter()
@@ -910,7 +1048,7 @@ mod tests {
     fn planners_check_out_the_history_they_walk() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
                 let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
                 let plans = steps.iter().any(|step| {
@@ -948,7 +1086,7 @@ mod tests {
         let context = WorkflowContext::fixture();
         let mut tokens = 0;
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             tokens += assert_tokens_stay_narrow(&name, &value);
         }
         assert!(tokens > 0, "no workflow mints a token");
@@ -1017,7 +1155,7 @@ mod tests {
         let context = WorkflowContext::fixture();
         let mut opened = 0;
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             for (job_name, job) in value["jobs"].as_object().into_iter().flatten() {
                 let steps: Vec<&Value> = job["steps"].as_array().into_iter().flatten().collect();
                 for step in &steps {
@@ -1140,7 +1278,7 @@ mod tests {
     fn every_suite_runs_under_the_tree_s_flavor() {
         let context = WorkflowContext::fixture();
         for (name, workflow) in every_workflow(&context) {
-            let value = serde_json::to_value(&workflow).expect(&name);
+            let value = expanded(&name, &workflow);
             let suites = assert_suites_take_the_flavor(&name, &value);
             if name == "pull_request" || name.starts_with("release-") {
                 assert!(suites > 0, "{name}: no test suite");

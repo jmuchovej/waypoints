@@ -9,7 +9,7 @@
 //! recipe runs at a workstation's `cargo xtask`, `local-dev` included, since
 //! the icons are among what it regenerates.
 
-use super::{WorkflowContext, helpers, runners, steps};
+use super::{WorkflowContext, actions, helpers, runners, steps};
 use crate::constants::{GENERATED, MAIN};
 use gh_workflow::{Event, Job, Level, Permissions, PullRequest, Push, Workflow, WorkflowDispatch};
 use std::collections::BTreeSet;
@@ -40,18 +40,12 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         .permissions(Permissions::default().contents(Level::Read))
         .runs_on(runners::LINUX)
         .add_step(steps::checkout())
-        // The recipe evaluates and realises the whole environment, Android
-        // SDK and all, which a stock image cannot hold. Nothing here uses
-        // the image's Android SDK, so it goes too.
-        .add_step(steps::free_disk_space(true))
-        .add_step(steps::install_nix())
-        .add_step(steps::cachix("devenv"))
         // `just` as well as `devenv`, because the recipe is invoked as
         // `devenv shell -- just …` and something has to launch that. The recipe
         // body also shells into devenv for its `cargo xtask` calls, which is
         // redundant inside the outer shell but harmless, and keeps the recipe
         // runnable on its own.
-        .add_step(steps::nix_profile_install(&["devenv", "just"]))
+        .add_step(actions::setup_nix(&["devenv", "just"]))
         .add_step(steps::just("check-generated").name("Check generated files"));
 
     helpers::named_workflow("assert generated files remain in lockstep")

@@ -21,7 +21,7 @@
 //! a group with no tag yet is skipped by name, so it is inert until the
 //! first cut mints a baseline (D8).
 
-use super::{MiseEnv, WorkflowContext, helpers, runners, steps};
+use super::{MiseEnv, WorkflowContext, actions, actions::MiseSetup, helpers, runners, steps};
 use gh_workflow::{Event, Job, Level, Permissions, PullRequest, PullRequestType, Workflow};
 
 pub fn workflow(context: &WorkflowContext) -> Workflow {
@@ -32,7 +32,10 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
         // The diff is taken from the merge base, which a shallow clone does
         // not contain.
         .add_step(steps::checkout().add_with(("fetch-depth", 0)))
-        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(actions::setup_mise(
+            MiseSetup::default(),
+            &context.mise_version,
+        ))
         .add_step(steps::cargo_xtask("check version-integrity", &[]).id("version-integrity"));
 
     let semver = Job::new("semver")
@@ -46,7 +49,10 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
                 .add_with(("fetch-depth", 0))
                 .add_with(("fetch-tags", true)),
         )
-        .add_step(steps::setup_mise(false.into(), &context.mise_version))
+        .add_step(actions::setup_mise(
+            MiseSetup::default(),
+            &context.mise_version,
+        ))
         .add_step(steps::cargo_xtask("check semver", &[]).id("semver-check"));
 
     helpers::named_workflow("check what a pull request claims about versions")

@@ -11,7 +11,7 @@ use super::helpers::{
 use super::{Artifact, TestSuite};
 use crate::{
     Channel, Platform,
-    constants::{LOCKFILE, STAGE_DIR, WORKFLOWS_DIR},
+    constants::{ACTIONS_DIR, GITHUB_DIR, LOCKFILE, STAGE_DIR},
 };
 use gh_workflow::{Expression, FluentBuilder, JobOutput, Run, Step, StepOutput, Use};
 use indoc::{formatdoc, indoc};
@@ -42,6 +42,15 @@ impl From<Action> for Step<Use> {
     fn from(a: Action) -> Self {
         Step::new(a.repo).uses(a.owner, a.repo, a.sha)
     }
+}
+
+/// A `uses:` reference to a generated action under [`ACTIONS_DIR`], in the
+/// self-repository form: it resolves to the running commit, so no checkout
+/// has to precede it and no ref can point it elsewhere.
+pub fn local_action(name: &str, label: impl ToString) -> Step<Use> {
+    Step::new(label)
+        .uses_path(format!("$/{ACTIONS_DIR}/{name}"))
+        .id(name)
 }
 
 pub fn checkout() -> Step<Use> {
@@ -78,24 +87,10 @@ pub fn cachix(cache: &str) -> Step<Use> {
 }
 
 /// Installs flake outputs into the ambient profile, for tools needed *before*
-/// the devenv shell can be entered.
-pub fn nix_profile_install(packages: &[&str]) -> Step<Run> {
-    let refs = packages
-        .iter()
-        .map(|package| format!("nixpkgs#{package}"))
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    Step::new(format!("Install {}", packages.join(" and ")))
-        .run(format!("nix profile install {refs}"))
-        .shell("bash")
-        .id("setup-nix-profile")
-}
-
-/// [`nix_profile_install`] for the setup action, whose package list is an
+/// the devenv shell can be entered. The package list is the setup action's
 /// input: it reaches the install through the environment, space-separated,
 /// so no name is spliced into the command line.
-pub fn nix_profile_install_from(packages: &str) -> Step<Run> {
+pub fn nix_profile_install(packages: &str) -> Step<Run> {
     let script = indoc! {r#"
         refs=()
         for package in ${PACKAGES}; do refs+=("nixpkgs#${package}"); done
@@ -126,12 +121,12 @@ pub fn just(recipe: &str) -> Step<Run> {
         .id(recipe)
 }
 
-/// Audits every workflow with zizmor, the check `hk` runs locally. The token
-/// lets its online audits (impostor commits, known-vulnerable actions) query
-/// GitHub.
+/// Audits every workflow and every generated action with zizmor, the check
+/// `hk` runs locally. The token lets its online audits (impostor commits,
+/// known-vulnerable actions) query GitHub.
 pub fn zizmor() -> Step<Run> {
     Step::new("Audit the workflows")
-        .run(format!("zizmor {WORKFLOWS_DIR}"))
+        .run(format!("zizmor {GITHUB_DIR}"))
         .shell("bash")
         .id("zizmor")
         .add_env(("GH_TOKEN", "${{ github.token }}"))
@@ -406,31 +401,10 @@ pub(crate) fn open_series(
 /// Pinned to the mise devenv provides — the one that writes
 /// `.config/mise/mise.lock`. Unpinned, the action installs whatever released most
 /// recently, so a committed lockfile is only as reproducible as an upstream
-/// release schedule.
-pub fn setup_mise(with_cache: Option<bool>, version: &str) -> Step<Use> {
-    let cache = with_cache.unwrap_or(true);
-    let step = Action::new(
-        "jdx",
-        "mise-action",
-        "c2a87611a18de5b3828c5652fe268e992400cb5c", // v4.3.0
-    )
-    .step("Setup mise")
-    .add_with(("version", version.to_owned()))
-    .add_with(("cache", cache));
-    if cache {
-        step.id("setup-mise").zizmor_ignore(
-            "cache-poisoning",
-            "mise's install cache under GitHub's default write rules, tools pinned by mise.lock",
-        )
-    } else {
-        step
-    }
-}
-
-/// [`setup_mise`] for the setup action, whose version and cache switch are
-/// its inputs. The cache is an expression here, so the suppression it may
-/// need is always carried.
-pub fn setup_mise_from(version: &str, cache: &str) -> Step<Use> {
+/// release schedule. The version and the cache switch are the setup action's
+/// inputs; the cache is an expression here, so the suppression it may need
+/// is always carried.
+pub fn setup_mise(version: &str, cache: &str) -> Step<Use> {
     Action::new(
         "jdx",
         "mise-action",
