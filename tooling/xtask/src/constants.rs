@@ -73,6 +73,13 @@ macro_rules! workflows_dir {
 
 /// Where the generated workflows live.
 pub const WORKFLOWS_DIR: &str = workflows_dir!();
+macro_rules! actions_dir {
+    () => {
+        ".github/actions"
+    };
+}
+/// Where the generated composite actions live, one directory per action.
+pub const ACTIONS_DIR: &str = actions_dir!();
 /// Where OpenTofu auto-loads `var.github`.
 pub const TFVARS: &str = "tooling/infra/github.auto.tfvars.json";
 /// The TypeScript bindings `generate bindings` writes.

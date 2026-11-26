@@ -1,18 +1,19 @@
 // SPDX-FileCopyrightText: 2026 John Muchovej
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Places step-scoped `zizmor` suppressions in rendered workflow text.
+//! Places step-scoped `zizmor` suppressions in rendered YAML.
 //!
 //! The YAML serializer cannot emit comments, so a step carries its
 //! suppressions as typed data (`Step::zizmor_ignore`) and this pass appends
-//! them to the step's `id:` line after serialization.
+//! them to the step's `id:` line after serialization — within its job's block
+//! of a workflow, or under `runs:` of a composite action.
 
+use super::actions::CompositeAction;
 use anyhow::{Result, bail};
-use gh_workflow::Workflow;
+use gh_workflow::{StepValue, Workflow};
 
-/// What one step asks to have suppressed, and where to find it.
+/// What one step asks to have suppressed.
 struct Directive {
-    job: String,
     step_id: String,
     rules: Vec<String>,
     reasons: Vec<String>,
@@ -28,44 +29,41 @@ impl Directive {
     }
 }
 
-fn directives(workflow: &Workflow) -> Result<Vec<Directive>> {
+/// The directives `steps` declare; `owner` names the job or action an error
+/// is about.
+fn directives<'a>(
+    owner: &str,
+    steps: impl Iterator<Item = &'a StepValue>,
+) -> Result<Vec<Directive>> {
     let mut found = Vec::new();
-    let Some(jobs) = workflow.jobs.as_ref() else {
-        return Ok(found);
-    };
-    for (job, value) in jobs.iter() {
-        for step in value.steps.iter().flatten() {
-            if step.lint_ignores.is_empty() {
-                continue;
-            }
-            let Some(step_id) = step.id.clone() else {
-                let what = step
-                    .name
-                    .as_deref()
-                    .or(step.uses.as_deref())
-                    .or(step.run.as_deref())
-                    .unwrap_or("<unnamed>");
-                bail!(
-                    "job `{job}`: step `{what}` has a zizmor suppression but no `id` to carry it"
-                );
-            };
-            let mut rules: Vec<String> = Vec::new();
-            let mut reasons: Vec<String> = Vec::new();
-            for ignore in &step.lint_ignores {
-                if !rules.contains(&ignore.rule) {
-                    rules.push(ignore.rule.clone());
-                }
-                if !reasons.contains(&ignore.reason) {
-                    reasons.push(ignore.reason.clone());
-                }
-            }
-            found.push(Directive {
-                job: job.clone(),
-                step_id,
-                rules,
-                reasons,
-            });
+    for step in steps {
+        if step.lint_ignores.is_empty() {
+            continue;
         }
+        let Some(step_id) = step.id.clone() else {
+            let what = step
+                .name
+                .as_deref()
+                .or(step.uses.as_deref())
+                .or(step.run.as_deref())
+                .unwrap_or("<unnamed>");
+            bail!("{owner}: step `{what}` has a zizmor suppression but no `id` to carry it");
+        };
+        let mut rules: Vec<String> = Vec::new();
+        let mut reasons: Vec<String> = Vec::new();
+        for ignore in &step.lint_ignores {
+            if !rules.contains(&ignore.rule) {
+                rules.push(ignore.rule.clone());
+            }
+            if !reasons.contains(&ignore.reason) {
+                reasons.push(ignore.reason.clone());
+            }
+        }
+        found.push(Directive {
+            step_id,
+            rules,
+            reasons,
+        });
     }
     Ok(found)
 }
@@ -88,45 +86,84 @@ fn declares_id(line: &str, step_id: &str) -> bool {
     .any(|candidate| key == candidate)
 }
 
-/// Appends each step's suppression to its `id:` line in `content`, the
-/// rendering of `workflow`.
-pub(crate) fn place(workflow: &Workflow, content: &str) -> Result<String> {
-    let directives = directives(workflow)?;
-    if directives.is_empty() {
-        return Ok(content.to_owned());
-    }
+/// Appends each directive to its step's `id:` line within the block `header`
+/// opens — a job's `  <job>:` line, or an action's `runs:` — which runs to
+/// the next non-empty line at or above the header's indentation.
+fn place_in_block(
+    lines: &mut [String],
+    owner: &str,
+    header: &str,
+    directives: &[Directive],
+) -> Result<()> {
+    let Some(start) = lines.iter().position(|line| line.trim_end() == header) else {
+        bail!("{owner}: no `{header}` block in the rendered text");
+    };
+    let depth = indent(header);
+    let end = lines[start + 1..]
+        .iter()
+        .position(|line| !line.trim().is_empty() && indent(line) <= depth)
+        .map(|offset| start + 1 + offset)
+        .unwrap_or(lines.len());
 
-    let mut lines: Vec<String> = content.lines().map(str::to_owned).collect();
-    for directive in &directives {
-        let Directive { job, step_id, .. } = directive;
-        let header = format!("  {job}:");
-        let Some(start) = lines.iter().position(|line| line.trim_end() == header) else {
-            bail!("job `{job}`: no `{header}` block in the rendered workflow");
-        };
-        let end = lines[start + 1..]
-            .iter()
-            .position(|line| !line.trim().is_empty() && indent(line) <= 2)
-            .map(|offset| start + 1 + offset)
-            .unwrap_or(lines.len());
-
+    for directive in directives {
         let hits: Vec<usize> = (start + 1..end)
-            .filter(|&at| declares_id(&lines[at], step_id))
+            .filter(|&at| declares_id(&lines[at], &directive.step_id))
             .collect();
         match hits.as_slice() {
-            [at] => {
-                let comment = directive.comment();
-                lines[*at].push_str(&comment);
-            }
-            [] => bail!("job `{job}`: no step with `id: {step_id}` in the rendered workflow"),
-            _ => bail!("job `{job}`: `id: {step_id}` appears on more than one step"),
+            [at] => lines[*at].push_str(&directive.comment()),
+            [] => bail!(
+                "{owner}: no step with `id: {}` in the rendered text",
+                directive.step_id
+            ),
+            _ => bail!(
+                "{owner}: `id: {}` appears on more than one step",
+                directive.step_id
+            ),
         }
     }
+    Ok(())
+}
 
+fn rejoin(lines: Vec<String>, content: &str) -> String {
     let mut placed = lines.join("\n");
     if content.ends_with('\n') {
         placed.push('\n');
     }
-    Ok(placed)
+    placed
+}
+
+/// Appends each step's suppression to its `id:` line in `content`, the
+/// rendering of `workflow`.
+pub(crate) fn place(workflow: &Workflow, content: &str) -> Result<String> {
+    let mut lines: Vec<String> = content.lines().map(str::to_owned).collect();
+    let mut placed = false;
+    for (job, value) in workflow.jobs.iter().flat_map(|jobs| jobs.iter()) {
+        let owner = format!("job `{job}`");
+        let directives = directives(&owner, value.steps.iter().flatten())?;
+        if directives.is_empty() {
+            continue;
+        }
+        place_in_block(&mut lines, &owner, &format!("  {job}:"), &directives)?;
+        placed = true;
+    }
+    Ok(if placed {
+        rejoin(lines, content)
+    } else {
+        content.to_owned()
+    })
+}
+
+/// Appends each step's suppression to its `id:` line in `content`, the
+/// rendering of `action`, whose steps sit under `runs:`.
+pub(crate) fn place_in_action(action: &CompositeAction, content: &str) -> Result<String> {
+    let owner = format!("action `{}`", action.name);
+    let directives = directives(&owner, action.runs.steps.iter())?;
+    if directives.is_empty() {
+        return Ok(content.to_owned());
+    }
+    let mut lines: Vec<String> = content.lines().map(str::to_owned).collect();
+    place_in_block(&mut lines, &owner, "runs:", &directives)?;
+    Ok(rejoin(lines, content))
 }
 
 #[cfg(test)]
@@ -230,5 +267,27 @@ mod tests {
             }
         }
         assert_eq!(tagged_in, ["first", "third"]);
+    }
+
+    /// An action's steps sit under `runs:`, not a job; the mise action's
+    /// cache suppression lands on its step there.
+    #[test]
+    fn a_directive_in_an_action_lands_under_runs() {
+        let action = super::super::actions::all().remove(0);
+        let rendered = gh_workflow::to_yaml(&action).unwrap();
+        let placed = place_in_action(&action, &rendered).unwrap();
+
+        let runs = placed.find("\nruns:").expect("a runs block");
+        let tagged: Vec<(usize, &str)> = placed
+            .match_indices("zizmor: ignore[cache-poisoning]")
+            .collect();
+        assert_eq!(tagged.len(), 2, "{placed}");
+        for (at, _) in tagged {
+            assert!(at > runs, "{placed}");
+        }
+        assert!(
+            placed.contains("- id: setup-mise # zizmor: ignore[cache-poisoning]"),
+            "{placed}"
+        );
     }
 }

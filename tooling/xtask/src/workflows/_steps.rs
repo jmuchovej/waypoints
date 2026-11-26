@@ -92,6 +92,24 @@ pub fn nix_profile_install(packages: &[&str]) -> Step<Run> {
         .id("setup-nix-profile")
 }
 
+/// [`nix_profile_install`] for the setup action, whose package list is an
+/// input: it reaches the install through the environment, space-separated,
+/// so no name is spliced into the command line.
+pub fn nix_profile_install_from(packages: &str) -> Step<Run> {
+    let script = indoc! {r#"
+        refs=()
+        for package in ${PACKAGES}; do refs+=("nixpkgs#${package}"); done
+        nix profile install "${refs[@]}"
+    "#}
+    .trim_end();
+
+    Step::new("Install the profile packages")
+        .run(script)
+        .shell("bash")
+        .add_env(("PACKAGES", packages))
+        .id("setup-nix-profile")
+}
+
 /// Runs a `just` recipe, the way it runs locally: inside the devenv shell.
 ///
 /// The wrapper is not a convenience. `just` resolves every `mod` file at *parse*
@@ -409,6 +427,25 @@ pub fn setup_mise(with_cache: Option<bool>, version: &str) -> Step<Use> {
     }
 }
 
+/// [`setup_mise`] for the setup action, whose version and cache switch are
+/// its inputs. The cache is an expression here, so the suppression it may
+/// need is always carried.
+pub fn setup_mise_from(version: &str, cache: &str) -> Step<Use> {
+    Action::new(
+        "jdx",
+        "mise-action",
+        "c2a87611a18de5b3828c5652fe268e992400cb5c", // v4.3.0
+    )
+    .step("Setup mise")
+    .id("setup-mise")
+    .add_with(("version", version))
+    .add_with(("cache", cache))
+    .zizmor_ignore(
+        "cache-poisoning",
+        "mise's install cache under GitHub's default write rules, tools pinned by mise.lock",
+    )
+}
+
 /// Restores compiled registry dependencies between runs.
 ///
 /// Written only from `main`: caches are branch-scoped with fallback to the
@@ -477,7 +514,8 @@ pub(crate) fn pin_pnpm_store() -> Step<Run> {
 ///
 /// `drop_android` is a parameter rather than an assumption: the Android build
 /// job also runs on Linux, and the runtime this removes is exactly what it
-/// needs. Callers that build for Android pass `false`.
+/// needs. Callers that build for Android pass `false`; the setup action
+/// passes the expression over its input.
 ///
 /// Every input is set explicitly rather than left to the action's defaults, so
 /// bumping the pin cannot change what gets deleted without the diff saying so.
@@ -492,7 +530,7 @@ pub(crate) fn pin_pnpm_store() -> Step<Run> {
 ///
 /// `large-packages` costs a couple of minutes of apt removals. Worth it while
 /// the alternative is a job that cannot finish.
-pub fn free_disk_space(drop_android: bool) -> Step<Use> {
+pub fn free_disk_space(drop_android: impl ToString) -> Step<Use> {
     Action::new(
         "jlumbroso",
         "free-disk-space",

@@ -210,6 +210,16 @@ impl StepValue {
             ..Default::default()
         }
     }
+
+    /// Creates a new `StepValue` that uses an action by path — `./…` in the
+    /// checked-out tree, or the self-repository `$/…` form, which resolves to
+    /// the running commit.
+    pub fn uses_path<P: ToString>(path: P) -> Self {
+        Self {
+            uses: Some(path.to_string()),
+            ..Default::default()
+        }
+    }
 }
 
 /// Represents a step in the workflow.
