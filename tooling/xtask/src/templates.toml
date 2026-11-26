@@ -13,15 +13,15 @@
 # header per group; `.config/cliff.toml` keeps both out of the notes.
 [commit]
   # The app's version write on its series.
-  series  = "chore(release): {{ branch }} {{ channel }} {{ version }}"
+  series       = "chore(release): {{ branch }} {{ channel }} {{ version }}"
   # `main`'s provisional bump after a cut that moves no library.
-  main    = "chore(release): main now targets {{ next }}"
+  main         = "chore(release): main now targets {{ next }}"
   # One library minted alone.
-  library = "chore(release): {{ group }} {{ version }}"
+  library      = "chore(release): {{ group }} {{ version }}"
   # A cut that moves at least one library: the summary's subject.
-  summary = "summary: cut {{ version }}"
+  summary      = "summary: cut {{ version }}"
   # The release index's entry for a published tag.
-  index   = "chore(release): record {{ tag }} as the published {{ channel }}"
+  index        = "chore(release): record {{ tag }} as the published {{ channel }}"
   # A withdrawn release's write, reverted: on its series, or on `main` for a
   # cut that moved the app alone.
   undo         = "chore(release): revert {{ version }} on {{ branch }}"
