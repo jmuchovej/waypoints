@@ -21,7 +21,7 @@ Every build's version SHALL be the version `tooling/release-groups.toml` declare
 
 ### Requirement: A group's current version is the group file's declaration
 
-A planner SHALL take each group's current version — every library group's and the app's — from the group file's `version` key, not from any manifest. A build that embeds group versions SHALL, where it has no injected value, no pin, and no tag to describe, report the group file's declared version.
+A planner SHALL take each group's current version — every library group's and the app's — from the group file's `version` key, not from any manifest. A build that embeds group versions SHALL, where it has no injected value and no tag to describe, report the group file's declared version.
 
 #### Scenario: A cut reads the current version from the file
 
@@ -40,7 +40,7 @@ A planner SHALL take each group's current version — every library group's and 
 
 ### Requirement: A version write lands the group file and its projections together
 
-Every version write SHALL set a group's `version` in the group file and every member manifest's `[package].version` and lockfile entry in one commit. A cut SHALL write the file, every changed member manifest, and the lockfile in its one summary commit on `main`. Advance, promote, and patch SHALL write the app's version to the file and the app's manifests. A patch that moves a pin SHALL also write that group's version to the series' file, so the file on a series states what the series ships.
+Every version write SHALL set a group's `version` in the group file and every member manifest's `[package].version` and lockfile entry in one commit. A cut SHALL write the file, every changed member manifest, and the lockfile in its one summary commit on `main`. Advance, promote, and patch SHALL write the app's version to the file and the app's manifests, and no library group's; on a series the file's library versions stay what the cut minted, which is the series' bill of materials.
 
 #### Scenario: A cut writes the file with the manifests
 
@@ -52,15 +52,10 @@ Every version write SHALL set a group's `version` in the group file and every me
 - **WHEN** `advance` runs on `v0.2.x` from `0.2.0-pre.1`
 - **THEN** the commit sets the app to `0.2.0-pre.2` in the group file and in `src-tauri` and `crates/cartograph`, and no library group's version changes in the file
 
-#### Scenario: A patch writes a moved pin's version
+#### Scenario: A patch writes the app alone
 
-- **WHEN** `patch` on `v0.2.x` moves `bedrock`'s pin from `bedrock-v0.2.0` to `bedrock-v0.2.1`
-- **THEN** the same commit sets `bedrock` to `0.2.1` in the series' group file beside the app's patch bump
-
-#### Scenario: A held pin leaves the file alone
-
-- **WHEN** `patch` on `v0.2.x` holds `bedrock`'s pin because its line broke on `main`
-- **THEN** `bedrock`'s version in the series' group file is unchanged
+- **WHEN** `patch` runs on `v0.2.x` from `0.2.0`, after a `bedrock` fix was cherry-picked onto the series
+- **THEN** the commit sets the app to `0.2.1` in the group file and the app's manifests, and `bedrock`'s version in the series' group file is unchanged
 
 ### Requirement: A command projects the group file into the member manifests
 
@@ -83,17 +78,17 @@ A command SHALL write every group's declared version into its member manifests a
 
 ### Requirement: A dry run renders the group file's write
 
-A release-cycle transition run dry SHALL render the group file's version write alongside the manifest writes it already renders: in the `main`-side patch, each minted group's version and the app's next `main` version; in the series patch, the app's version and, on a patch, each moved pin's version. The working tree SHALL stay unchanged.
+A release-cycle transition run dry SHALL render the group file's version write alongside the manifest writes it already renders: in the `main`-side patch, each minted group's version and the app's next `main` version; in the series patch, the app's version. The working tree SHALL stay unchanged.
 
 #### Scenario: A dry cut renders the file
 
 - **WHEN** `cut` runs dry and would mint `bedrock-v0.2.0` and move `main` to `0.3.0-nightly`
 - **THEN** the `main`-side patch carries the group file's hunk setting `bedrock` to `0.2.0` and the app to `0.3.0-nightly`, beside every `bedrock` member's manifest and the app's
 
-#### Scenario: A dry patch renders the moved pin's version
+#### Scenario: A dry series transition renders the app's line
 
-- **WHEN** `patch` runs dry on `v0.2.x` and would move `bedrock`'s pin to `bedrock-v0.2.1`
-- **THEN** the series patch carries the group file's hunk setting `bedrock` to `0.2.1` beside the root manifest's pin and the app's bump
+- **WHEN** `patch` runs dry on `v0.2.x` from `0.2.0`
+- **THEN** the series patch carries the group file's hunk setting the app to `0.2.1` beside the app's manifests, and no library group's line
 
 ## MODIFIED Requirements
 

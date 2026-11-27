@@ -14,20 +14,6 @@ Every versioned member of a release group SHALL declare exactly the version its 
 - **WHEN** the release bot's pull request advances the app to `0.2.0-pre.2`
 - **THEN** the same commit sets the group file's app version and `src-tauri` and `crates/cartograph` to `0.2.0-pre.2`, and the check passes
 
-### Requirement: A series' group file names its pins
-
-On a series branch that pins a library group, the group file's `version` for that group SHALL equal the version the pin's tag names, and a pull request leaving them different SHALL fail naming the pin and the group file. A pinned group's in-tree crates are not workspace members and SHALL NOT be compared.
-
-#### Scenario: A series' file names its pins
-
-- **WHEN** a pull request against `v0.2.x`, which pins `bedrock-v0.2.0`, leaves the group file declaring `0.1.0` for `bedrock`
-- **THEN** the check fails and names the pin and the group file
-
-#### Scenario: A pinned group has no manifest to compare
-
-- **WHEN** a pull request against `v0.2.x` pins `bedrock-v0.2.0`, the group file declares `0.2.0` for `bedrock`, and the series' in-tree `crates/bedrock` is not a workspace member
-- **THEN** the check passes without reading that crate's manifest
-
 ## MODIFIED Requirements
 
 ### Requirement: Only the release bot writes versions
@@ -58,6 +44,6 @@ A pull request SHALL fail when it changes the `[package].version` of a versioned
 
 ### Requirement: Group members declare their anchor's version
 
-**Reason**: Groups no longer name an anchor; the group file declares each group's version, and every member is held to that declaration. The requirement continues under _Group members declare their group's version_, which carries both of its scenarios; _A series' group file names its pins_ adds the pin agreement a series needs.
+**Reason**: Groups no longer name an anchor; the group file declares each group's version, and every member is held to that declaration. The requirement continues under _Group members declare their group's version_, which carries both of its scenarios and holds a series' members to its file as it holds `main`'s.
 
 **Migration**: Remove `anchor` from `tooling/release-groups.toml` and declare `version` per group; run `cargo xtask generate versions` so every member manifest takes its group's declared version.

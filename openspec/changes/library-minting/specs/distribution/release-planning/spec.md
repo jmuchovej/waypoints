@@ -83,17 +83,17 @@ A group-scoped cut SHALL mint that group alone, SHALL create no branch, SHALL NO
 
 ### Requirement: Library tags are created only on main
 
-Library tags SHALL be created only on `main`. A series branch SHALL take a library change only by moving its pin to a tag on `main` whose line is compatible with the pin it replaces; where the group on `main` has taken a break since the series' pin, no such tag exists and the series SHALL NOT be patched for that group.
+Library tags SHALL be created only on `main`. A series branch SHALL take a library change as it takes any change, by cherry-pick of a commit already on `main` through a pull request, and SHALL NOT mint a library tag; its group file SHALL keep the library versions the cut minted.
 
-#### Scenario: A fix reaches a series by pin
+#### Scenario: A fix reaches a series by cherry-pick
 
-- **WHEN** a `bedrock` fix has landed on `main`, `bedrock` on `main` has taken no break since `bedrock-v0.2.0`, and `v0.2.x` pins `bedrock-v0.2.0`
-- **THEN** a cut scoped to `bedrock` mints `bedrock-v0.2.1` on `main`, and `patch` on `v0.2.x` moves the series' pin to it and bumps the app
+- **WHEN** a `bedrock` fix on `main` is cherry-picked onto `v0.2.x`, whose group file declares `bedrock` at `0.2.0`, and `patch` runs
+- **THEN** the app patch-bumps, `bedrock` stays `0.2.0` in the series' group file, and no library tag is created
 
-#### Scenario: A line broken on main cannot be patched into a series
+#### Scenario: A group-scoped cut after the series
 
-- **WHEN** `v0.2.x` pins `bedrock-v0.2.0` and `bedrock` on `main` has taken a break since
-- **THEN** `patch` on `v0.2.x` refuses for `bedrock`, names the breaking commit, and points at a new cut as the way to ship the fix
+- **WHEN** a cut scoped to `bedrock` mints `bedrock-v0.2.1` on `main` while `v0.2.x` is open
+- **THEN** `v0.2.x` is unchanged: no dependency, version, or tag on the series moves
 
 ### Requirement: A multi-group commit is a summary
 
@@ -173,7 +173,7 @@ The API check SHALL measure the surface compiled under the stable flavor, since 
 
 ### Requirement: Builds embed every group's version
 
-Every build SHALL embed each group's version alongside the app's build information. On `main` it is the group's latest tag as described from the tree; on a series branch it is the tag the branch pins. Where the source carries neither, the build SHALL take injected values instead. Only workspace groups SHALL be embedded.
+Every build SHALL embed each group's version alongside the app's build information. On `main` it is the group's latest tag as described from the tree; on a series branch it is the group's tag described from the tree the branch descends from, so a cherry-picked library change reads as commits past the tag. Where the source carries no tag, the build SHALL take injected values, and failing those the group file's declared version. Only workspace groups SHALL be embedded.
 
 #### Scenario: Built at a group tag
 
@@ -182,37 +182,46 @@ Every build SHALL embed each group's version alongside the app's build informati
 
 #### Scenario: Built on a series
 
-- **WHEN** a build is produced on `v0.4.x`, which pins `bedrock-v0.4.0`
-- **THEN** it reports `bedrock` as exactly `bedrock-v0.4.0`, read from the pin, whatever the branch's in-tree copy contains
+- **WHEN** a build is produced on `v0.4.x`, cut at the commit tagged `bedrock-v0.4.0`, after one `bedrock` fix was cherry-picked onto it
+- **THEN** it reports `bedrock` as `bedrock-v0.4.0-1-g…`, described from the tree, while the series' group file still declares `0.4.0`
 
 #### Scenario: Source without tags
 
 - **WHEN** a build runs from a shallow checkout or a Nix source with injected group versions
 - **THEN** it reports the injected values
 
-### Requirement: Each channel builds the library versions its branch pins
+### Requirement: Every channel builds its libraries in-tree
 
-A library group's released versions SHALL be addressable by tag, `<group>-v{version}`, distinct from the app's bare `v{version}`. A series branch SHALL build each library group at a tag it pins, and MAY pin a different tag per group than any other series branch pins; `main` SHALL build the in-tree libraries, so the nightly channel is where library work meets the app first. A cut SHALL pin the series it opens to the tags it minted.
+Every branch, `main` and each series, SHALL build each library group from its own `crates/`; no build SHALL fetch a library group by its tag. A cut SHALL NOT rewrite the series' dependencies or workspace members: its first write on the series SHALL be the app's version projection alone, with the group file carrying the versions the cut minted as the series' bill of materials.
 
-#### Scenario: Two series on different library versions
+#### Scenario: A series builds in-tree
 
-- **WHEN** `v0.3.x` pins `bedrock-v0.2.0` and `v0.2.x` still pins `bedrock-v0.1.0`
-- **THEN** each series builds the bedrock its own pin names, and neither is affected by `main`'s in-tree bedrock
+- **WHEN** `v0.1.x` builds the app
+- **THEN** every library group compiles from the series' own `crates/`, resolved by path, and the binary carries one copy of each group
+
+#### Scenario: The series' first write is the app's alone
+
+- **WHEN** a cut opens `v0.1.x` and writes its first pull request
+- **THEN** the pull request changes the group file's app version, the app's manifests, and the lockfile's app entries, and no dependency, member, or library version
 
 #### Scenario: Main builds in-tree
 
 - **WHEN** a nightly is built from `main` while `crates/bedrock` declares `0.3.0`
-- **THEN** the build uses the in-tree `crates/bedrock`, whatever tag any series pins
+- **THEN** the build uses the in-tree `crates/bedrock`
 
-#### Scenario: A cut starts pinned to what it minted
+### Requirement: A preview bump resumes a half-finished cut
 
-- **WHEN** a cut mints `bedrock-v0.2.0` and `domain-v0.1.1`
-- **THEN** the series branch it opens pins exactly those tags, and no other group's pin moves
+A series branch whose group file still declares the nightly version `main` carried when the branch was cut SHALL be read as a cut whose series write never landed. A preview bump SHALL then plan that write alone — the app at `{major}.{minor}.0-pre.1` from the branch's name, landed on the series and tagged as an advance is — and SHALL NOT land on `main`, mint a library tag, or create a branch. A dry run SHALL name the resume.
 
-#### Scenario: One copy of each group per binary
+#### Scenario: A preview bump resumes a half-finished cut
 
-- **WHEN** a series builds the app
-- **THEN** every crate the app ships resolves each group from the same tag, so the binary carries one copy of each group
+- **WHEN** `v0.3.x` exists, its group file declares `0.4.0-nightly` for the app, and a preview bump runs
+- **THEN** the plan is `resume`: the series pull request sets the app to `0.3.0-pre.1` in the group file and the app's manifests, `v0.3.0-pre.1` tags its merge commit, and nothing is written to `main`
+
+#### Scenario: A resume is refused while its landing is in flight
+
+- **WHEN** the bot's pull request writing `v0.3.x`'s version is open and a preview bump runs
+- **THEN** the bump refuses and names the open pull request
 
 ## MODIFIED Requirements
 
