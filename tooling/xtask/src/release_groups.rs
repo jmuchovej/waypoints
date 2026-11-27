@@ -132,8 +132,7 @@ impl GroupFile {
     /// declares here, prerelease included — `versions` being each workspace
     /// crate's declared version by its directory. The lockstep rule:
     /// `version-integrity` holds a pull request to it, and [`load`] a
-    /// planner's tree. A pinned group's members are out of the workspace and
-    /// declare nothing here.
+    /// planner's tree, on `main` and on a series alike.
     pub fn lockstep_problems(&self, versions: &BTreeMap<String, String>) -> Vec<String> {
         let mut found = Vec::new();
         for (name, group) in &self.group {
@@ -198,14 +197,11 @@ impl GroupFile {
     }
 
     /// What is wrong with this file as a description of a workspace whose
-    /// members sit at `directories` and whose root manifest pins the
-    /// `pinned` groups — a series' libraries, on disk and out of the
-    /// workspace, described by their pins rather than by membership.
+    /// members sit at `directories`.
     fn problems(
         &self,
         directories: &[(String, String)],
         exists: impl Fn(&str) -> bool,
-        pinned: &BTreeSet<String>,
     ) -> Vec<String> {
         let mut problems = Vec::new();
         if !self.group.contains_key(APP_GROUP) {
@@ -246,7 +242,7 @@ impl GroupFile {
                 ));
             }
             for path in group.members.iter().chain(&group.internals) {
-                if !pinned.contains(name) && !directories.iter().any(|(_, dir)| dir == path) {
+                if !directories.iter().any(|(_, dir)| dir == path) {
                     problems.push(format!(
                         "group `{name}`: `{path}` is not a workspace member"
                     ));
@@ -314,9 +310,7 @@ pub fn declared_versions(metadata: &Metadata) -> BTreeMap<String, String> {
 
 /// [`load`] without the lockstep rule: the file as it stands, for the
 /// projection that makes the members agree with it and for the check that
-/// reports a disagreement rather than refusing on it. A series' root
-/// manifest pins its library groups, whose crates are on disk and out of the
-/// workspace; those are described by their pins.
+/// reports a disagreement rather than refusing on it.
 pub fn load_unprojected(metadata: &Metadata) -> Result<GroupFile> {
     let root = metadata.workspace_root.as_std_path();
     let path = root.join(GROUP_FILE);
@@ -324,17 +318,9 @@ pub fn load_unprojected(metadata: &Metadata) -> Result<GroupFile> {
         fs::read_to_string(&path).with_context(|| format!("Failed to read {}", path.display()))?;
     let file = GroupFile::parse(&text)?;
 
-    let manifest = fs::read_to_string(root.join(ROOT_MANIFEST))
-        .with_context(|| format!("Failed to read {ROOT_MANIFEST}"))?;
-    let pinned = pins_in(ROOT_MANIFEST, &manifest, &file)?
-        .into_iter()
-        .map(|pin| pin.group)
-        .collect();
-    let problems = file.problems(
-        &test::package_directories(metadata),
-        |path| root.join(path).exists(),
-        &pinned,
-    );
+    let problems = file.problems(&test::package_directories(metadata), |path| {
+        root.join(path).exists()
+    });
     if !problems.is_empty() {
         bail!(
             "{GROUP_FILE} does not describe this workspace:\n  {}",
@@ -342,34 +328,6 @@ pub fn load_unprojected(metadata: &Metadata) -> Result<GroupFile> {
         );
     }
     Ok(file)
-}
-
-/// A library group a manifest pins: a `git` dependency naming the group's
-/// tag. Read by the tag's shape against each group's template, so no map
-/// from crate names to groups is needed — on a series the library crates are
-/// no longer workspace members.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Pin {
-    pub group: String,
-    pub tag: String,
-    /// The manifest declaring it, relative to the workspace root.
-    pub manifest: String,
-}
-
-/// The tables a manifest declares dependencies in.
-const DEPENDENCY_TABLES: [&[&str]; 4] = [
-    &["workspace", "dependencies"],
-    &["dependencies"],
-    &["dev-dependencies"],
-    &["build-dependencies"],
-];
-
-fn nested<'a>(table: &'a toml::Table, keys: &[&str]) -> Option<&'a toml::Table> {
-    let mut current = table;
-    for key in keys {
-        current = current.get(*key)?.as_table()?;
-    }
-    Some(current)
 }
 
 /// The part of a group's tag `template` before its version.
@@ -393,37 +351,6 @@ pub fn group_of_tag<'a>(tag: &str, groups: &'a GroupFile) -> Option<&'a str> {
                 .is_some_and(|(prefix, _)| !prefix.is_empty() && tag.starts_with(prefix))
         })
         .map(|(name, _)| name.as_str())
-}
-
-/// Every pin the manifest at `path` declares.
-pub fn pins_in(path: &str, manifest: &str, groups: &GroupFile) -> Result<Vec<Pin>> {
-    let table: toml::Table = manifest
-        .parse()
-        .with_context(|| format!("{path} is not TOML"))?;
-    let mut pins = Vec::new();
-    for keys in DEPENDENCY_TABLES {
-        let Some(dependencies) = nested(&table, keys) else {
-            continue;
-        };
-        for dependency in dependencies.values() {
-            let Some(spec) = dependency.as_table() else {
-                continue;
-            };
-            let git = spec.get("git").and_then(toml::Value::as_str);
-            let tag = spec.get("tag").and_then(toml::Value::as_str);
-            let (Some(_), Some(tag)) = (git, tag) else {
-                continue;
-            };
-            if let Some(group) = group_of_tag(tag, groups) {
-                pins.push(Pin {
-                    group: group.to_owned(),
-                    tag: tag.to_owned(),
-                    manifest: path.to_owned(),
-                });
-            }
-        }
-    }
-    Ok(pins)
 }
 
 /// The schema's bytes, as they are committed at [`SCHEMA_FILE`].
@@ -470,50 +397,23 @@ mod tests {
     }
 
     /// What's wrong with `toml` over a tree holding `members` and every other
-    /// named path, with no group pinned.
+    /// named path.
     fn problems(toml: &str, members: &[&str]) -> Vec<String> {
         GroupFile::parse(toml)
             .unwrap()
-            .problems(&directories(members), |_| true, &BTreeSet::new())
+            .problems(&directories(members), |_| true)
     }
 
-    /// A series: a pinned group's crates are on disk and out of the
-    /// workspace, and the file still describes it; unpinned, their absence
-    /// is refused as on `main`.
+    /// Every branch builds its libraries in-tree (library-minting D7), so a
+    /// group whose crates are missing from the workspace is refused on a
+    /// series as on `main`.
     #[test]
-    fn a_pinned_group_s_crates_may_leave_the_workspace() {
+    fn a_group_s_crates_are_workspace_members_on_every_branch() {
         let file = GroupFile::parse(GROUPS).unwrap();
         let without_bedrock = directories(&["crates/store", "src-tauri", "tooling/xtask"]);
-        let pinned: BTreeSet<String> = ["bedrock".to_owned()].into();
-        assert_eq!(
-            file.problems(&without_bedrock, |_| true, &pinned),
-            Vec::<String>::new()
-        );
         assert_refused(
-            &file.problems(&without_bedrock, |_| true, &BTreeSet::new()),
+            &file.problems(&without_bedrock, |_| true),
             &["bedrock", "crates/bedrock"],
-        );
-
-        let manifest = indoc::indoc! {r#"
-            [workspace]
-            members = [ "crates/store", "src-tauri" ]
-
-            [workspace.dependencies]
-            bedrock = { git = "https://github.com/jmuchovej/waypoints", tag = "bedrock-v0.2.0" }
-            bedrock-core = { git = "https://github.com/jmuchovej/waypoints", tag = "bedrock-v0.2.0" }
-            store = { path = "crates/store" }
-        "#};
-        let read: Vec<(String, String)> = pins_in("Cargo.toml", manifest, &file)
-            .unwrap()
-            .into_iter()
-            .map(|pin| (pin.group, pin.tag))
-            .collect();
-        assert_eq!(
-            read,
-            [
-                ("bedrock".to_owned(), "bedrock-v0.2.0".to_owned()),
-                ("bedrock".to_owned(), "bedrock-v0.2.0".to_owned()),
-            ]
         );
         assert_eq!(group_of_tag("outpost-v0.2.0", &file), None);
         assert_eq!(group_of_tag("bedrock-v0.2.0", &file), Some("bedrock"));
@@ -616,11 +516,7 @@ mod tests {
             "distribution/nix/releases/",
             ".git-blame-ignore-revs",
         ] {
-            let found = file.problems(
-                &directories(&tree(&[])),
-                |path| path != missing,
-                &BTreeSet::new(),
-            );
+            let found = file.problems(&directories(&tree(&[])), |path| path != missing);
             assert_refused(&found, &[missing]);
         }
     }
@@ -706,11 +602,7 @@ mod tests {
     #[test]
     fn a_listed_path_is_held_like_a_fixture() {
         let file = GroupFile::parse(GROUPS).unwrap();
-        let found = file.problems(
-            &directories(&tree(&[])),
-            |path| path != "src/",
-            &BTreeSet::new(),
-        );
+        let found = file.problems(&directories(&tree(&[])), |path| path != "src/");
         assert_refused(&found, &["waypoints", "src/", "does not exist"]);
 
         let under_tooling =

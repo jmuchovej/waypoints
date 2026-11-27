@@ -448,7 +448,7 @@ mod tests {
     /// A cut lands on `main` first and waits for it, mints the library tags
     /// at that merge commit, opens the series there, and only then lands the
     /// series: a library tag names a commit the walk contains, and a series
-    /// starts from the tree its pins describe.
+    /// starts from the tree the cut tagged.
     #[test]
     fn a_cut_lands_main_then_tags_then_opens_the_series() {
         let steps = steps();
@@ -526,6 +526,39 @@ mod tests {
             series["if"],
             format!("!({REHEARSING}) && steps.bump.outputs.tag != ''")
         );
+    }
+
+    /// A resume (design D9) publishes `transition=resume` with a tag and a
+    /// series landing, so the series steps run on it as on an advance, and
+    /// every cut-only step — which reads `== 'cut'` — stands down.
+    #[test]
+    fn a_resume_lands_on_its_series_and_cuts_nothing() {
+        let steps = steps();
+        let series_steps = [
+            "series-pull-request",
+            "merge-series",
+            "tag-token",
+            "tag-release",
+        ];
+        for id in series_steps {
+            let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
+            assert!(
+                !cond.contains("transition"),
+                "{id} reads the transition, so a resume would skip it: {cond}"
+            );
+        }
+        for id in [
+            "main-pull-request",
+            "merge-main",
+            "open-series",
+            "tag-groups",
+        ] {
+            let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
+            assert!(
+                cond.contains("== 'cut'"),
+                "{id} would run on a resume: {cond}"
+            );
+        }
     }
 
     /// The summary's per-group headers span lines, so the main pull request

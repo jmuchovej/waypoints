@@ -4,11 +4,12 @@
 //! `release bump`: the one planner a person or a schedule invokes, asked for
 //! a channel or a library group and never a transition. For a channel it
 //! reads the open series off the remote and infers the transition — a
-//! preview advances a series in preview or cuts one from `main`, a stable
-//! promotes or patches, nightly mints the day's nightly — refusing to move a
-//! tag over bookkeeping alone, and refusing everything while a withdrawal is
-//! in flight. For a group it is today's group-scoped cut. Run from `main`;
-//! see [`xtask::planners::release`].
+//! preview advances a series in preview or cuts one from `main`, a preview on
+//! a half-finished cut resumes it, a stable promotes or patches, nightly
+//! mints the day's nightly — refusing to move a tag over bookkeeping alone,
+//! refusing everything while a withdrawal is in flight, and refusing a write
+//! that is already landing. For a group it is today's group-scoped cut. Run
+//! from `main`; see [`xtask::planners::release`].
 
 use anyhow::{Context as _, Result, bail};
 use chrono::Utc;
@@ -147,14 +148,18 @@ pub fn run(args: Options) -> Result<()> {
     let states = planner::series_states(&series, &tagged, &groups, root)?;
     let newest = states.iter().max_by_key(|state| state.declared.target());
     let transition = planner::infer(channel, newest, args.major)?;
-    let headline = match newest {
-        Some(state) => format!(
+    let headline = match (transition, newest) {
+        (Transition::Resume, Some(state)) => format!(
+            "{channel} bump: resume — {} was cut and never wrote its version; it still declares {}",
+            state.branch, state.declared
+        ),
+        (_, Some(state)) => format!(
             "{channel} bump: {} — the newest series {} declares {}",
             name(transition),
             state.branch,
             state.declared
         ),
-        None => format!("{channel} bump: {} — no series is open", name(transition)),
+        (_, None) => format!("{channel} bump: {} — no series is open", name(transition)),
     };
     println!("{headline}");
     github::add_summary(&summary(&headline))?;
@@ -171,12 +176,7 @@ pub fn run(args: Options) -> Result<()> {
                 floor: None,
             },
         )?,
-        other => planner::plan_on_series(
-            other,
-            &newest.expect("a series transition has a series").declared,
-            &groups,
-            root,
-        )?,
+        other => planner::plan_on_series(other, newest.expect("a series transition has a series"))?,
     };
     carry_out(
         transition,
@@ -268,9 +268,10 @@ fn summary(headline: &str) -> String {
     }
 }
 
-/// Reports `plan`, then either renders it dry into `into` or writes it into
-/// the tree and publishes its landing — a cut's `main` landing with its body
-/// file, every other transition's series landing.
+/// Refuses `plan` while a landing of it is still open, naming the pull
+/// request; otherwise reports it, then either renders it dry into `into` or
+/// writes it into the tree and publishes its landing — a cut's `main`
+/// landing with its body file, every other transition's series landing.
 fn carry_out(
     transition: Transition,
     plan: &planner::Plan,
@@ -278,6 +279,19 @@ fn carry_out(
     dry_run: bool,
     into: Option<&Path>,
 ) -> Result<()> {
+    if let Some(head) =
+        planner::landing_in_flight(plan, groups, &planner::release_plan_heads_on_remote()?)?
+    {
+        let open = match github::open_pull_request_from(&head)? {
+            Some(number) => format!("pull request #{number}"),
+            None => format!("`{head}`, whose pull request has not been opened"),
+        };
+        bail!(
+            "the write of {} is already landing as {open}; nothing moves until it lands",
+            plan.version
+        );
+    }
+
     let landing = plan.landing(groups)?;
 
     match &landing {
@@ -306,9 +320,6 @@ fn carry_out(
     }
     for group in &plan.groups {
         println!("  {}", group.describe());
-    }
-    for pin in &plan.moves {
-        println!("  {}", pin.describe());
     }
 
     if dry_run {

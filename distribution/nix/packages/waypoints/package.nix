@@ -99,7 +99,7 @@ let
   # closure. It lives in data rather than in these expressions so `nix-pins`
   # refreshes it by writing a JSON key — see the header of
   # `tooling/bin/nix-pins`. The cargo side needs none: crane vendors the
-  # lockfile's crates by their checksums and its git pins by their revisions.
+  # lockfile's crates by their checksums.
   pins = lib.importJSON ./hashes.json;
 
   frontend = callPackage ./_frontend.nix {
@@ -142,25 +142,16 @@ let
   main-program = if flavor == "stable" then "waypoints" else "waypoints-${flavor}";
 
   # Each library group's version, injected as `build.rs` reads it first — a
-  # fetched tree carries no git metadata to describe one from: the tag the
-  # lockfile pins the group to on a series, the version the group file
-  # declares on `main` (library-minting design D6). The pin is read by the
-  # tag's shape, so no manifest is opened.
+  # fetched tree carries no git metadata to describe one from, so the group
+  # file's declaration is the answer on every ref (library-minting design D6).
   group-versions =
     let
       # Every group but the app's, by the name `release_groups::APP_GROUP`
       # gives it.
       groups = (fromTOML (read "/tooling/release-groups.toml")).group;
       libraries = lib.filterAttrs (name: _: name != "waypoints") groups;
-      pins = import ../../lockfile.nix workingTree;
-      version =
-        group:
-        let
-          pin = pins.pinWithTag (lib.removeSuffix "{version}" group.tag);
-        in
-        if pin == null then group.version else pin.tag;
     in
-    lib.concatStringsSep "," (lib.mapAttrsToList (name: group: "${name}=${version group}") libraries);
+    lib.concatStringsSep "," (lib.mapAttrsToList (name: group: "${name}=${group.version}") libraries);
 in
 crane.buildPackage {
   pname = main-program;

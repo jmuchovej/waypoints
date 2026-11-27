@@ -51,6 +51,9 @@ pub enum Transition {
     Promote,
     /// Take the next patch on a stable branch.
     Patch,
+    /// Finish a cut whose series write never landed: the series exists and
+    /// still declares `main`'s nightly version, and takes its own `-pre.1`.
+    Resume,
 }
 
 /// A version read the way the release tasks read one. Dereferences to the
@@ -144,7 +147,33 @@ impl Version {
             Transition::Advance => self.advance(),
             Transition::Promote => self.promote(),
             Transition::Patch => self.patch(),
+            Transition::Resume => Err(anyhow::anyhow!(
+                "a resume takes its version from the series' name, not from `{self}`; see `Version::from_series_branch`"
+            )),
         }
+    }
+
+    /// The first version a series takes: `v0.3.x` → `0.3.0-pre.1`, read off
+    /// the branch's name. A cut computes it from history; a resume, finishing
+    /// a cut whose series write never landed, has only the branch to read.
+    pub fn from_series_branch(branch: &str) -> Result<Self> {
+        let (major, minor) = branch
+            .strip_prefix('v')
+            .and_then(|rest| rest.strip_suffix(".x"))
+            .and_then(|rest| rest.split_once('.'))
+            .with_context(|| format!("`{branch}` is not a `v{{major}}.{{minor}}.x` series"))?;
+        let mut version = semver::Version::new(
+            major
+                .parse()
+                .with_context(|| format!("`{branch}`: `{major}` is not a major"))?,
+            minor
+                .parse()
+                .with_context(|| format!("`{branch}`: `{minor}` is not a minor"))?,
+            0,
+        );
+        version.pre = Prerelease::new(&format!("{PRE}.1"))
+            .with_context(|| format!("`{PRE}.1` is not a valid prerelease"))?;
+        Ok(Self(version))
     }
 
     /// `0.1.0` → `0.2.0-pre.1` after a feature, `0.1.1-pre.1` after fixes
@@ -381,6 +410,34 @@ mod tests {
         assert_eq!(next("0.2.0-pre.1", Transition::Advance, &[]), "0.2.0-pre.2");
         assert_eq!(next("0.2.0-pre.7", Transition::Promote, &[]), "0.2.0");
         assert_eq!(next("0.2.0", Transition::Patch, &[]), "0.2.1");
+    }
+
+    /// A resume reads the series' name, since the branch still declares the
+    /// nightly version it was cut from; the version dispatch refuses it, so a
+    /// planner cannot derive a resume from a declared version by accident.
+    #[test]
+    fn a_resume_takes_its_version_from_the_series_name() {
+        assert_eq!(
+            Version::from_series_branch("v0.3.x").unwrap(),
+            v("0.3.0-pre.1")
+        );
+        assert_eq!(
+            Version::from_series_branch("v12.0.x")
+                .unwrap()
+                .release_branch(),
+            "v12.0.x"
+        );
+        for not_a_series in ["main", "v0.3", "0.3.x", "v0.x.x", "va.3.x"] {
+            assert!(
+                Version::from_series_branch(not_a_series).is_err(),
+                "{not_a_series}"
+            );
+        }
+        assert!(
+            v("0.4.0-nightly")
+                .transition(Transition::Resume, &[])
+                .is_err()
+        );
     }
 
     /// The commits decide what a cut is heading toward, not the version it

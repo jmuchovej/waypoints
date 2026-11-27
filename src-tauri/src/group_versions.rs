@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Where a build's library group versions come from, in order: a value
-//! injected into the build, the tag the lockfile pins the group to, `git
-//! describe` against the group's tags on `main`, and the version the group
-//! file declares (library-minting design D6). A series builds nothing but
-//! its pins, so a build there never reports a described in-tree copy; a
-//! shallow clone never fails to compile, and never claims more than the file
-//! says.
+//! injected into the build, `git describe` against the group's tags, and the
+//! version the group file declares (library-minting design D6). Every branch
+//! builds its libraries in-tree, so on a series the description runs from the
+//! tag the branch descends from, and a cherry-picked fix reads as commits
+//! past it; a shallow clone never fails to compile, and never claims more
+//! than the file says.
 //!
 //! Shared between `build.rs`, which bakes the answer into the binary, and the
 //! crate, which reads it back — so the resolution can be held to its order
@@ -48,38 +48,16 @@ pub fn render(versions: &BTreeMap<String, String>) -> String {
         .join(",")
 }
 
-/// The tag `lockfile` pins a group to, read by the tag's shape: the first
-/// entry whose source is `git+<url>?tag=<prefix>…#<rev>`. Every member of a
-/// pinned group names the group's one tag, so any member's entry answers;
-/// a registry crate sharing a member's name has another source and never
-/// matches, and an in-tree crate has none.
-pub fn pinned(lockfile: &str, prefix: &str) -> Option<String> {
-    lockfile
-        .lines()
-        .filter_map(|line| {
-            line.strip_prefix("source = \"git+")
-                .and_then(|rest| rest.strip_suffix('"'))
-        })
-        .filter_map(|source| source.split_once("?tag=").map(|(_, rest)| rest))
-        .filter_map(|rest| rest.split('#').next())
-        .find(|tag| tag.starts_with(prefix) && tag.len() > prefix.len())
-        .map(str::to_owned)
-}
-
-/// The version `group` is built at: `injected` first, then the tag the
-/// `lockfile` pins it to, then what `describe` reports for its tags — asked
-/// only when needed — and last what the group file declares.
+/// The version `group` is built at: `injected` first, then what `describe`
+/// reports for its tags — asked only when needed — and last what the group
+/// file declares.
 pub fn resolve(
     group: &Group<'_>,
     injected: &BTreeMap<String, String>,
-    lockfile: &str,
     describe: impl FnOnce(&str) -> Option<String>,
 ) -> String {
     if let Some(version) = injected.get(group.name) {
         return version.clone();
-    }
-    if let Some(tag) = pinned(lockfile, group.prefix) {
-        return tag;
     }
     if let Some(described) = describe(group.prefix) {
         return described;
@@ -97,74 +75,30 @@ mod tests {
         declared: "0.3.0",
     };
 
-    const IN_TREE: &str = "\
-[[package]]
-name = \"bedrock\"
-version = \"0.3.0\"
-dependencies = [
- \"bedrock-core\",
-]
-
-[[package]]
-name = \"domain\"
-version = \"0.1.0\"
-source = \"registry+https://github.com/rust-lang/crates.io-index\"
-checksum = \"abc\"
-";
-
-    const PINNED: &str = "\
-[[package]]
-name = \"bedrock\"
-version = \"0.4.0\"
-source = \"git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.4.0#4444c8a593bf57e16e0ddca8fd05cdbbf7106c19\"
-dependencies = [
- \"bedrock-core\",
-]
-
-[[package]]
-name = \"bedrock-core\"
-version = \"0.4.0\"
-source = \"git+https://github.com/jmuchovej/waypoints?tag=bedrock-v0.4.0#4444c8a593bf57e16e0ddca8fd05cdbbf7106c19\"
-
-[[package]]
-name = \"domain\"
-version = \"0.2.1\"
-source = \"git+https://github.com/jmuchovej/waypoints?tag=domain-v0.2.1#4444c8a593bf57e16e0ddca8fd05cdbbf7106c19\"
-";
-
     /// Scenario _Built at a group tag_: on `main`, the in-tree crate is
     /// described by its tags, exactly at the tag or past it.
     #[test]
     fn main_reports_the_described_tag() {
-        let at_tag = resolve(&BEDROCK, &BTreeMap::new(), IN_TREE, |prefix| {
+        let at_tag = resolve(&BEDROCK, &BTreeMap::new(), |prefix| {
             assert_eq!(prefix, "bedrock-v");
             Some("bedrock-v0.4.0".to_owned())
         });
         assert_eq!(at_tag, "bedrock-v0.4.0");
-        let past = resolve(&BEDROCK, &BTreeMap::new(), IN_TREE, |_| {
+        let past = resolve(&BEDROCK, &BTreeMap::new(), |_| {
             Some("bedrock-v0.4.0-3-gabc1234".to_owned())
         });
         assert_eq!(past, "bedrock-v0.4.0-3-gabc1234");
     }
 
-    /// Scenario _Built on a series_: the pin is the answer, exactly, and git
-    /// is never asked — whatever the in-tree copy would describe as. The pin
-    /// is found among several members' entries by the tag's shape, and a
-    /// registry crate of a member's name is not one.
+    /// Scenario _Built on a series_: the series descends from the commit the
+    /// cut tagged, so the description is the tag plus whatever was
+    /// cherry-picked since — the drift is in the answer, not hidden by it.
     #[test]
-    fn a_series_reports_exactly_its_pin() {
-        assert_eq!(
-            pinned(PINNED, "bedrock-v").as_deref(),
-            Some("bedrock-v0.4.0")
-        );
-        assert_eq!(pinned(PINNED, "domain-v").as_deref(), Some("domain-v0.2.1"));
-        assert_eq!(pinned(PINNED, "outpost-v"), None);
-        assert_eq!(pinned(IN_TREE, "bedrock-v"), None);
-        assert_eq!(pinned(IN_TREE, "domain-v"), None);
-        let version = resolve(&BEDROCK, &BTreeMap::new(), PINNED, |_| {
-            panic!("a series never describes its in-tree copy")
+    fn a_series_reports_the_described_drift() {
+        let version = resolve(&BEDROCK, &BTreeMap::new(), |prefix| {
+            Some(format!("{prefix}0.4.0-1-g5c50d3a"))
         });
-        assert_eq!(version, "bedrock-v0.4.0");
+        assert_eq!(version, "bedrock-v0.4.0-1-g5c50d3a");
     }
 
     /// Scenario _Source without tags_ and _A shallow build falls back to the
@@ -175,12 +109,12 @@ source = \"git+https://github.com/jmuchovej/waypoints?tag=domain-v0.2.1#4444c8a5
     fn injected_values_win_and_the_declaration_is_the_floor() {
         let injected = parse("bedrock=bedrock-v0.5.0, domain=domain-v0.2.0,,broken");
         assert_eq!(injected.len(), 2);
-        let version = resolve(&BEDROCK, &injected, PINNED, |_| {
+        let version = resolve(&BEDROCK, &injected, |_| {
             panic!("an injected value is never second-guessed")
         });
         assert_eq!(version, "bedrock-v0.5.0");
 
-        let shallow = resolve(&BEDROCK, &BTreeMap::new(), IN_TREE, |_| None);
+        let shallow = resolve(&BEDROCK, &BTreeMap::new(), |_| None);
         assert_eq!(shallow, "0.3.0");
     }
 

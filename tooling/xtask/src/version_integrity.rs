@@ -286,104 +286,6 @@ fn summary_violations(
     found
 }
 
-/// A pin is read by the group file, whose tag templates it is read against;
-/// the check's callers find it here.
-pub use crate::release_groups::{Pin, pins_in};
-
-/// Every pin the checkout declares: the root manifest's workspace table and
-/// each member's own.
-pub fn pins(metadata: &Metadata, groups: &GroupFile) -> Result<Vec<Pin>> {
-    let root = metadata.workspace_root.as_std_path();
-    let mut manifests = vec!["Cargo.toml".to_owned()];
-    manifests.extend(metadata.workspace_packages().iter().filter_map(|package| {
-        let relative = package
-            .manifest_path
-            .as_std_path()
-            .strip_prefix(root)
-            .ok()?;
-        Some(relative.to_string_lossy().into_owned())
-    }));
-
-    let mut found = Vec::new();
-    for manifest in manifests {
-        let text = fs::read_to_string(root.join(&manifest))
-            .with_context(|| format!("Failed to read {manifest}"))?;
-        found.extend(pins_in(&manifest, &text, groups)?);
-    }
-    Ok(found)
-}
-
-/// What's wrong with a pull request against a tree that pins library groups.
-///
-/// A pinned group's own paths are inert — the series builds the tag — so a
-/// change under them could never reach the artifacts, and is refused naming
-/// the pin, unless the release bot is moving the pin. Every manifest pins one
-/// tag per group, since a binary carries one copy of each. And the group file
-/// says what the series ships: a pinned group's `version` there is the one
-/// its pin's tag names. A tree that pins nothing builds its libraries
-/// in-tree, and passes.
-pub fn pin_violations(
-    groups: &GroupFile,
-    changes: &[Change],
-    pins: &[Pin],
-    author: &str,
-) -> Vec<String> {
-    let mut found = Vec::new();
-    let mut by_group: BTreeMap<&str, BTreeMap<&str, Vec<&str>>> = BTreeMap::new();
-    for pin in pins {
-        by_group
-            .entry(pin.group.as_str())
-            .or_default()
-            .entry(pin.tag.as_str())
-            .or_default()
-            .push(pin.manifest.as_str());
-    }
-
-    for (group, tags) in &by_group {
-        if tags.len() > 1 {
-            let listed: Vec<String> = tags
-                .iter()
-                .map(|(tag, manifests)| format!("`{tag}` in `{}`", manifests.join("`, `")))
-                .collect();
-            found.push(format!(
-                "`{group}` is pinned to {}; one binary carries one copy of a group",
-                listed.join(" and ")
-            ));
-        }
-        let Some(declared) = groups.group.get(*group) else {
-            continue;
-        };
-        let Ok(prefix) = tag_prefix(&declared.tag) else {
-            continue;
-        };
-        for tag in tags.keys() {
-            if tag.strip_prefix(prefix) != Some(declared.version.as_str()) {
-                found.push(format!(
-                    "`{GROUP_FILE}` declares {version} for `{group}`, which this series pins to `{tag}`; the file names what the series ships",
-                    version = declared.version,
-                ));
-            }
-        }
-    }
-
-    if author != RELEASE_BOT {
-        for change in changes {
-            let Some(group) = groups.owner_of(&change.path) else {
-                continue;
-            };
-            let Some(tags) = by_group.get(group) else {
-                continue;
-            };
-            found.push(format!(
-                "`{path}` is `{group}` code, which this series builds from `{tag}`; a library change reaches a series by moving its pin",
-                path = change.path,
-                tag = tags.keys().copied().collect::<Vec<_>>().join("`, `"),
-            ));
-        }
-    }
-    found
-}
-
 /// What the check decides from.
 pub struct Evidence<'a> {
     pub pull_request: &'a PullRequest,
@@ -502,21 +404,14 @@ pub fn run(metadata: &Metadata, payload: &str, base: &str) -> Result<Vec<String>
         release_groups::schema().is_ok_and(|generated| committed == generated)
     });
 
-    let mut found = violations(&Evidence {
+    Ok(violations(&Evidence {
         pull_request: &pull_request,
         groups: &groups,
         changes: &changes,
         version_writes: &version_writes,
         versions: &declared_versions(metadata),
         schema_is_current,
-    });
-    found.extend(pin_violations(
-        &groups,
-        &changes,
-        &pins(metadata, &groups)?,
-        &pull_request.user.login,
-    ));
-    Ok(found)
+    }))
 }
 
 #[cfg(test)]
@@ -1096,6 +991,10 @@ mod tests {
         assert_names(&found, &[SCHEMA_FILE, "generate schemas"]);
     }
 
+    fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
+        groups.lockstep_problems(versions)
+    }
+
     fn versions(declared: &[(&str, &str)]) -> BTreeMap<String, String> {
         declared
             .iter()
@@ -1240,91 +1139,22 @@ mod tests {
         assert!(contributing.contains("Covenant: break"));
     }
 
-    fn pin(group: &str, tag: &str, manifest: &str) -> Pin {
-        Pin {
-            group: group.to_owned(),
-            tag: tag.to_owned(),
-            manifest: manifest.to_owned(),
-        }
-    }
-
-    /// Scenario _Library code cherry-picked onto a series_: the change names
-    /// the file and the pin the series builds from.
+    /// A library path on a series is a cherry-pick like any other change
+    /// (design D7): nothing about the path alone fails the check, and what
+    /// it may claim is bounded by lockstep, which holds the series' members
+    /// to the file as it holds `main`'s.
     #[test]
-    fn library_code_on_a_pinned_series_fails_naming_the_pin() {
-        let pins = [pin("bedrock", "bedrock-v0.2.0", "Cargo.toml")];
-        let found = pin_violations(
-            &groups(),
+    fn library_code_on_a_series_is_an_ordinary_change() {
+        let found = by_a_person(
+            "fix(bedrock): a cherry-pick",
+            "",
             &[modified("crates/bedrock/src/query.rs")],
-            &pins,
-            "jmuchovej",
         );
-        assert_names(
-            &found,
-            &["crates/bedrock/src/query.rs", "bedrock", "bedrock-v0.2.0"],
-        );
-    }
-
-    /// The group file with `bedrock` — the first group, so the first
-    /// `version` line — declared at `version`.
-    fn bedrock_at(version: &str) -> GroupFile {
-        GroupFile::parse(&GROUPS.replacen(
-            "version = \"0.1.0\"",
-            &format!("version = \"{version}\""),
-            1,
-        ))
-        .unwrap()
-    }
-
-    fn lockstep_violations(groups: &GroupFile, versions: &BTreeMap<String, String>) -> Vec<String> {
-        groups.lockstep_problems(versions)
-    }
-
-    /// Scenario _Pin moved by the release bot_: the file's `bedrock` moved
-    /// with the pin, in the same write.
-    #[test]
-    fn the_release_bot_moving_a_pin_passes() {
-        let pins = [pin("bedrock", "bedrock-v0.2.1", "Cargo.toml")];
-        let changes = [
-            modified(GROUP_FILE),
-            modified("Cargo.toml"),
-            modified("Cargo.lock"),
-            modified("crates/bedrock/src/lib.rs"),
-        ];
-        let groups = bedrock_at("0.2.1");
-        assert_eq!(
-            pin_violations(&groups, &changes, &pins, RELEASE_BOT),
-            Vec::<String>::new()
-        );
-        assert_names(
-            &pin_violations(&groups, &changes, &pins, "jmuchovej"),
-            &["crates/bedrock/src/lib.rs"],
-        );
-    }
-
-    /// Scenarios _A series' file names its pins_ and _A pinned group has no
-    /// manifest to compare_: the file's `bedrock` is held to the pin's tag,
-    /// naming both, and `bedrock`'s own crates, out of the workspace, are not
-    /// compared.
-    #[test]
-    fn a_series_file_is_held_to_its_pins() {
-        let pins = [pin("bedrock", "bedrock-v0.2.0", "Cargo.toml")];
-        let found = pin_violations(&bedrock_at("0.1.0"), &[], &pins, "jmuchovej");
-        assert_eq!(found.len(), 1, "{found:?}");
-        assert_names(&found, &["bedrock-v0.2.0", "0.1.0", GROUP_FILE]);
-
-        let at_pin = bedrock_at("0.2.0");
-        assert_eq!(
-            pin_violations(&at_pin, &[], &pins, "jmuchovej"),
-            Vec::<String>::new()
-        );
-        let declared = versions(&[
-            ("src-tauri", "0.1.0-nightly"),
-            ("crates/cartograph", "0.1.0-nightly"),
-        ]);
-        assert_eq!(
-            lockstep_violations(&at_pin, &declared),
-            Vec::<String>::new()
+        assert!(
+            !found
+                .iter()
+                .any(|line| line.contains("crates/bedrock/src/query.rs")),
+            "{found:?}"
         );
     }
 
@@ -1371,67 +1201,6 @@ mod tests {
             with_version_writes(RELEASE_BOT, &writes),
             Vec::<String>::new()
         );
-    }
-
-    /// Scenario _Pins diverge_: one binary cannot carry two copies of a
-    /// group, so both manifests are named.
-    #[test]
-    fn diverging_pins_name_both_manifests() {
-        let pins = [
-            pin("bedrock", "bedrock-v0.2.0", "src-tauri/Cargo.toml"),
-            pin("bedrock", "bedrock-v0.1.0", "crates/store/Cargo.toml"),
-        ];
-        assert_names(
-            &pin_violations(&groups(), &[], &pins, "jmuchovej"),
-            &[
-                "bedrock",
-                "src-tauri/Cargo.toml",
-                "crates/store/Cargo.toml",
-                "one copy",
-            ],
-        );
-    }
-
-    /// Scenario _A series that still builds in-tree_: `main`'s own root
-    /// manifest — what a series cut before minting inherits — declares every
-    /// group by path, so it pins nothing and a library change passes.
-    #[test]
-    fn a_path_dependency_series_passes_library_changes() {
-        let groups = release_groups::load(&crate::workspace::load().unwrap()).unwrap();
-        let pins = pins_in("Cargo.toml", &repository_file("Cargo.toml"), &groups).unwrap();
-        assert_eq!(pins, Vec::<Pin>::new());
-        assert_eq!(
-            pin_violations(
-                &groups,
-                &[modified("crates/bedrock/src/query.rs")],
-                &pins,
-                "jmuchovej"
-            ),
-            Vec::<String>::new()
-        );
-    }
-
-    /// A git dependency is a pin on the group whose tag template it fits;
-    /// a path dependency and a registry crate are not.
-    #[test]
-    fn a_git_dependency_is_a_pin_on_the_group_its_tag_names() {
-        let manifest = "[workspace.dependencies]\n\
-            bedrock = { git = \"https://github.com/jmuchovej/waypoints\", tag = \"bedrock-v0.2.0\" }\n\
-            bedrock-core = { git = \"https://github.com/jmuchovej/waypoints\", tag = \"bedrock-v0.2.0\" }\n\
-            domain = { path = \"crates/domain\" }\n\
-            serde = \"1\"\n\
-            [dev-dependencies]\n\
-            outpost = { git = \"https://github.com/jmuchovej/waypoints\", tag = \"outpost-v0.3.1\" }\n";
-        let pins = pins_in("Cargo.toml", manifest, &groups()).unwrap();
-        assert_eq!(
-            pins,
-            [
-                pin("bedrock", "bedrock-v0.2.0", "Cargo.toml"),
-                pin("bedrock", "bedrock-v0.2.0", "Cargo.toml"),
-                pin("outpost", "outpost-v0.3.1", "Cargo.toml"),
-            ]
-        );
-        assert!(pins_in("Cargo.toml", "not = = toml", &groups()).is_err());
     }
 
     /// A summary's per-group headers live in a body cliff does not parse as

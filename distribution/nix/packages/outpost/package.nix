@@ -8,12 +8,12 @@
 # manifest's, which is kept parseable by `builtins.fromTOML` (strict TOML
 # 1.0; see the nix-flake-overlay design, D10).
 #
-# Channel-less: outpost publishes no release of its own yet. On `main` the
-# overlay applies this recipe to its own tree; on a series, where the
-# workspace pins `outpost` to a tag, it applies the tag's copy of this file
-# to the tag's tree (library-minting design D7). This argument list is
-# therefore what a newer overlay calls on an older tag — add arguments with
-# defaults, never rename or remove one.
+# Channel-less: outpost publishes no release of its own yet. The overlay
+# applies this recipe to its own tree on every ref — `main` and each series
+# build the Station from their own `crates/outpost` (library-minting design
+# D7). A recorded release is built with the recipe its own tree carries, so
+# this argument list is what a newer overlay calls on an older tree — add
+# arguments with defaults, never rename or remove one.
 {
   lib,
   callPackage,

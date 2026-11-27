@@ -174,28 +174,25 @@ request:
 Branch commits are not checked, but they stay conventional: the release notes are
 rendered from them, and one unconventional commit fails the notes.
 
-### A series branch takes library code only by pin
+### A series takes library code by cherry-pick
 
-A `v{major}.{minor}.x` series pins each library group — `bedrock`, `outpost`,
-`domain`, `transload` — to a tag minted on `main`, in the root `Cargo.toml`'s
-`[workspace.dependencies]`. Its in-tree copies of those crates stay on disk so
-cherry-picks from `main` apply, and build nothing. A pull request against a
-series that changes a file under a pinned group's paths fails
-`version-integrity`:
+A `v{major}.{minor}.x` series builds every library group — `bedrock`,
+`outpost`, `domain`, `transload` — from its own `crates/`, exactly as `main`
+does. The tags a cut mints on `main` (`bedrock-v0.2.0`, …) are the series'
+bill of materials, recorded as each group's `version` in
+`tooling/release-groups.toml`, and the baselines the API check measures the
+next cut against; no build fetches one.
 
-> `crates/bedrock/src/query.rs` is `bedrock` code, which this series builds
-> from `bedrock-v0.2.0`; a library change reaches a series by moving its pin
+A library fix reaches a series the way an app fix does: it lands on `main`,
+soaks in nightly, and is cherry-picked onto the series through a pull request,
+which `version-integrity` holds to the group file like any other. The next
+`patch` bumps the app. The library's `version` on the series stays what the
+cut minted — the series' group file states its bill of materials, not its
+drift — and a build reports the drift itself, describing the group's tag:
+`bedrock-v0.2.0-2-g1a2b3c4` is the tag plus two cherry-picked commits.
 
-A library fix reaches a series in two steps: it lands on `main`, a cut scoped
-to its group (`release bump --group bedrock`) mints the next tag on its
-line, and `patch` on the series moves the pin to that tag and bumps the app in
-one pull request. Where `main` has broken the group's line since the pin, no
-tag on that line can carry the fix: `patch` holds the pin, names the breaking
-commit, and the fix ships as a new series.
-
-A cherry-pick whose summary touches both app and library paths is split: the
-app-group half is cherry-picked, and the library half reaches the series by
-pin.
+Nothing on a series mints a library tag; a cut scoped to a group
+(`release bump --group bedrock`) mints the next one on `main`.
 
 ### `Covenant: break`
 
