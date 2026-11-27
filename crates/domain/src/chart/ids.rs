@@ -7,13 +7,15 @@
 //! [F]: super::Feature
 //! [S]: super::Select
 use crate::{DomainError, DomainResult};
-use derive_more::{Debug, Display, FromStr};
+use derive_more::{AsRef, Debug, Display, FromStr};
+#[cfg(not(target_arch = "wasm32"))]
 use rand::RngExt;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use uuid::Uuid;
 
 const BASE36ID_LEN: usize = 4;
+const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
 const PREFIX: &str = "builtin";
 
 /// Base-36 encoded identifier newtype. (Currently 4-character limit.)
@@ -27,11 +29,11 @@ pub struct Base36ID(pub String);
 
 impl Base36ID {
     /// Generate a new random N-character base-36 ID
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         let mut rng = rand::rng();
         let mut id = String::with_capacity(BASE36ID_LEN);
 
-        const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
         for _ in 0..BASE36ID_LEN {
             let idx = rng.random_range(0..CHARS.len());
             id.push(CHARS[idx] as char);
@@ -45,7 +47,6 @@ impl Base36ID {
     pub fn derived(key: &str) -> Self {
         use sha2::{Digest, Sha256};
 
-        const CHARS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
         let digest = Sha256::digest(key.as_bytes());
         let mut prefix = [0u8; 8];
         prefix.copy_from_slice(&digest[..8]);
@@ -88,6 +89,7 @@ impl Base36ID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for Base36ID {
     fn default() -> Self {
         Self::new()
@@ -109,7 +111,19 @@ impl std::str::FromStr for Base36ID {
 ///
 /// [C]: super::Chart
 #[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display, Type, bedrock::Scalar,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Display,
+    Type,
+    bedrock::Scalar,
+    AsRef,
+    Ord,
+    PartialOrd,
 )]
 #[display("{}", self.name())]
 #[debug("ChartID({})", self.name())]
@@ -118,6 +132,7 @@ pub struct ChartID(pub String);
 
 impl ChartID {
     /// Generate a new random 4-character [`Base36ID`].
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Base36ID::new().to_string())
     }
@@ -140,6 +155,7 @@ impl ChartID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for ChartID {
     fn default() -> Self {
         Self::new()
@@ -185,6 +201,7 @@ pub struct FeatureID(pub Base36ID);
 
 impl FeatureID {
     /// Generate a new random 4-character base-36 field ID
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Base36ID::new())
     }
@@ -195,6 +212,7 @@ impl FeatureID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for FeatureID {
     fn default() -> Self {
         Self::new()
@@ -218,6 +236,7 @@ pub struct GlyphID(pub Base36ID);
 
 impl GlyphID {
     /// Generate a new random 4-character base-36 option ID
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Base36ID::new())
     }
@@ -228,6 +247,7 @@ impl GlyphID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for GlyphID {
     fn default() -> Self {
         Self::new()

@@ -27,6 +27,7 @@ pub struct TerrainID(pub Uuid);
 
 impl TerrainID {
     /// Create a new, random [`TerrainID`] (a [`Uuid::new_v4`]).
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
@@ -43,6 +44,7 @@ impl From<Uuid> for TerrainID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for TerrainID {
     fn default() -> Self {
         Self::new()

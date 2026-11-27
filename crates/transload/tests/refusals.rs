@@ -318,7 +318,7 @@ const SOURCES: &[&str] = &[
     "../domain/src/syntax/inline.rs",
     "../domain/src/syntax/block.rs",
     "src/document.rs",
-    "src/ingest.rs",
+    "src/store/ingest.rs",
     "src/identity.rs",
 ];
 

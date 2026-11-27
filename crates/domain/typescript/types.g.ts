@@ -1438,7 +1438,10 @@ export type Landmark = Landmark_Serialize;
  *  [T]: crate::TerrainKind::Child
  */
 export type Landmark_Deserialize = {
-  /**  The schema this landmark conforms to */
+  /**
+   *  The schema this landmark conforms to. Defaults to a freshly minted
+   *  `ChartID` off wasm32; a wasm32 build (an importer plugin) must name one.
+   */
   chart: ChartID;
   /**  Title (always present, rich text capable) */
   title: RichText_Deserialize;
@@ -1461,7 +1464,10 @@ export type Landmark_Deserialize = {
  *  [T]: crate::TerrainKind::Child
  */
 export type Landmark_Serialize = {
-  /**  The schema this landmark conforms to */
+  /**
+   *  The schema this landmark conforms to. Defaults to a freshly minted
+   *  `ChartID` off wasm32; a wasm32 build (an importer plugin) must name one.
+   */
   chart: ChartID;
   /**  Title (always present, rich text capable) */
   title: RichText_Serialize;
@@ -1529,7 +1535,7 @@ export type Mark_Deserialize = {
   extra: unknown | null;
   /**
    *  When the [`Mark`] was created. Defaults to now; a caller (e.g. an import)
-   *  may set it explicitly.
+   *  may set it explicitly. A wasm32 build has no clock and must set it.
    */
   created_at: string;
   /**
@@ -1564,7 +1570,7 @@ export type Mark_Serialize = {
   extra: unknown | null;
   /**
    *  When the [`Mark`] was created. Defaults to now; a caller (e.g. an import)
-   *  may set it explicitly.
+   *  may set it explicitly. A wasm32 build has no clock and must set it.
    */
   created_at: string;
   /**

@@ -16,6 +16,7 @@
     "crates/outpost-protocol",
     "crates/store",
     "crates/transload",
+    "crates/transload-fixtures/plain-markdown",
     "src-tauri",
     "tooling/gh-workflow",
     "tooling/xtask",
@@ -32,7 +33,9 @@
     publish       = false
 
   [workspace.dependencies]
-    bedrock          = { path = "crates/bedrock" }
+    # No default features: the façade alone. Crates that open a database
+    # enable `engine` on their own line, so the manifests say who reaches it.
+    bedrock          = { path = "crates/bedrock", default-features = false }
     bedrock-core     = { path = "crates/bedrock-core" }
     bedrock-derive   = { path = "crates/bedrock-derive" }
     cartograph       = { path = "crates/cartograph" }
@@ -79,6 +82,7 @@
     image              = "0.25.10"
     indexmap           = { version = "2.14", features = [ "serde" ] }
     indoc              = "2"
+    itertools          = "0.15.0"
     # No remote `$ref` resolution: a Bundle's schemas are self-contained, and an
     # ingester must never reach the network. `arbitrary-precision` tracks the
     # workspace's own `serde_json` feature — without it, numeric validation reads
@@ -107,6 +111,8 @@
     rustls             = { version = "0.23", default-features = false, features = [
       "ring"
     ] }
+    # JSON Schema Draft-07 from a plugin's configuration type (transload `sdk`).
+    schemars           = "1"
     serde              = { version = "1.0.228", features = [ "derive" ] }
     serde_json         = { version = "1.0.150", features = [
       "arbitrary_precision",
@@ -127,8 +133,21 @@
     tracing-subscriber = { version = "0.3.23", features = [ "env-filter" ] }
     trybuild           = "1"
     typed-builder      = "0.23.2"
-    uuid               = { version = "1.23.4", features = [ "js", "serde", "v4" ] }
+    # `serde` only. Minting (`v4`) is enabled by the crates that mint, off
+    # wasm32 — a plugin build never gets it, and `js` (a JavaScript host for
+    # randomness and timestamps) is nothing this workspace targets.
+    uuid               = { version = "1.23.4", features = [ "serde" ] }
     validator          = { version = "0.20.0", features = [ "indexmap" ] }
+    # The conformance harness's module backend (transload `harness`): an
+    # interpreter, so a plugin module runs under the test gate with no JIT.
+    # `auto-dispatch` falls back from tail-call dispatch to a loop in
+    # unoptimized builds, where LLVM makes no sibling calls and the tail-call
+    # executor overflows the native stack.
+    wasmi              = { version = "2", default-features = false, features = [
+      "auto-dispatch",
+      "std",
+      "validate"
+    ] }
     zeroize            = { version = "1", features = [ "zeroize_derive" ] }
 
     # The storage engine is pre-v1 and deliberately pinned — both halves of it.

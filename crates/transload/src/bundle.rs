@@ -40,21 +40,21 @@ pub mod layout {
     /// either as unknown content rather than guessing at it.
     pub const RESERVED: [&str; 2] = ["assets", "beacons"];
 
-    /// A Chart id as a Bundle spells it, `builtin.` prefix included. Not
-    /// `Display`, which strips the prefix and would collapse `builtin.page`
-    /// onto a custom Chart named `page`.
-    pub fn chart_id(chart: &ChartID) -> &str {
-        chart.0.as_str()
-    }
-
     /// `library/<ChartID>/<MarkID>.md`
     pub fn landmark(chart: &ChartID, mark: &MarkID) -> String {
-        format!("{LIBRARY}/{}/{mark}.md", chart_id(chart))
+        format!("{}/{mark}.md", chart_dir(chart))
     }
 
     /// `library/<ChartID>/_schema.json`
     pub fn schema(chart: &ChartID) -> String {
-        format!("{LIBRARY}/{}/{SCHEMA}", chart_id(chart))
+        format!("{}/{SCHEMA}", chart_dir(chart))
+    }
+
+    /// The id as the Bundle spells it, `builtin.` prefix included. The inner
+    /// value, not `Display`, which is the name: that strips the prefix and
+    /// would collapse `builtin.page` onto a custom Chart named `page`.
+    pub fn chart_id(chart: &ChartID) -> &str {
+        chart.as_ref()
     }
 
     /// `library/<ChartID>`
@@ -230,6 +230,20 @@ impl Bundle {
 /// Bundle spells a timestamp. Lossless: the engine stores milliseconds.
 pub(crate) fn render_timestamp(at: NaiveDateTime) -> String {
     at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+}
+
+/// A variant's serde tag — the name a census records. Grammar, not export:
+/// Fragment censuses count the same way.
+pub(crate) fn variant_name<T: serde::Serialize>(value: &T) -> String {
+    match serde_json::to_value(value) {
+        Ok(serde_json::Value::Object(map)) => map
+            .get("type")
+            .and_then(|tag| tag.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        Ok(serde_json::Value::String(tag)) => tag,
+        _ => "unknown".into(),
+    }
 }
 
 /// The inverse of [`render_timestamp`].
