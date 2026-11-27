@@ -59,10 +59,12 @@
 
 # the Bundle format: export to legible markdown, re-ingest without loss.
 [group.transload]
-  version  = "0.1.1"
-  members  = [ "crates/transload" ]
-  tag      = "transload-v{version}"
-  fixtures = "covenant/fixtures/transload/"
+  version   = "0.1.1"
+  members   = [ "crates/transload" ]
+  # fixture importer plugins: test subjects for the SDK and harness, never shipped.
+  internals = [ "crates/transload-fixtures/plain-markdown" ]
+  tag       = "transload-v{version}"
+  fixtures  = "covenant/fixtures/transload/"
 
 [group.waypoints]
   # the app version must carry the channel along with the version

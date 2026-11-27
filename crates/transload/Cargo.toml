@@ -16,19 +16,22 @@
   publish.workspace       = true
 
 [dependencies]
-  bedrock.workspace = true
-  domain            = { workspace = true, features = [ "syntax" ] }
+  bedrock = { workspace = true, features = [ "engine" ], optional = true }
+  domain  = { workspace = true, features = [ "syntax" ] }
 
   chrono.workspace     = true
   chumsky.workspace    = true
   derive_more          = { workspace = true, features = [ "display" ] }
   indexmap.workspace   = true
   indoc.workspace      = true
-  jsonschema.workspace = true
+  jsonschema           = { workspace = true, optional = true }
+  schemars             = { workspace = true, optional = true }
   serde.workspace      = true
   serde_json.workspace = true
   thiserror.workspace  = true
+  toml                 = { workspace = true, optional = true }
   uuid.workspace       = true
+  wasmi                = { workspace = true, optional = true }
 
 [dev-dependencies]
   domain             = { workspace = true, features = [ "fixtures" ] }
@@ -37,13 +40,24 @@
   tokio              = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
   trybuild.workspace = true
 
-# The app's flavors, forwarded to every workspace dependency that declares
-# them. Exactly one shipped flavor per build.
 [features]
-  development = [ "bedrock/development", "domain/development" ]
-  nightly     = [ "bedrock/nightly", "domain/nightly" ]
-  preview     = [ "bedrock/preview", "domain/preview" ]
-  stable      = [ "bedrock/stable", "domain/stable" ]
+  default = [ "store" ]
+  # The conformance harness: native and module backends. Never in a plugin.
+  harness = [ "dep:jsonschema", "dep:wasmi", "sdk" ]
+  # The plugin side: the `Importer` trait, the `importer!` macro, the TOML
+  # manifest loader, and the options-schema generator. What a plugin links.
+  sdk     = [ "dep:schemars", "dep:toml" ]
+  # Export and ingest, which open a store, and reading validation, which needs
+  # the schema validator. Off, the crate is the Bundle grammar alone — what a
+  # grammar-only consumer (a WebAssembly module) links.
+  store   = [ "dep:bedrock", "dep:jsonschema" ]
+
+  # The app's flavors, forwarded to every workspace dependency that declares
+  # them. Exactly one shipped flavor per build.
+  development = [ "bedrock?/development", "domain/development" ]
+  nightly     = [ "bedrock?/nightly", "domain/nightly" ]
+  preview     = [ "bedrock?/preview", "domain/preview" ]
+  stable      = [ "bedrock?/stable", "domain/stable" ]
 
 [lints]
   workspace = true

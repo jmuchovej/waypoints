@@ -15,6 +15,7 @@ use uuid::Uuid;
 pub struct AccountID(pub Uuid);
 
 impl AccountID {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
@@ -30,6 +31,7 @@ impl From<Uuid> for AccountID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for AccountID {
     fn default() -> Self {
         Self::new()
@@ -45,6 +47,7 @@ impl Default for AccountID {
 pub struct RealmID(pub Uuid);
 
 impl RealmID {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
@@ -60,6 +63,7 @@ impl From<Uuid> for RealmID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for RealmID {
     fn default() -> Self {
         Self::new()
@@ -75,6 +79,7 @@ impl Default for RealmID {
 pub struct DeviceID(pub Uuid);
 
 impl DeviceID {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
@@ -90,6 +95,7 @@ impl From<Uuid> for DeviceID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for DeviceID {
     fn default() -> Self {
         Self::new()
@@ -105,6 +111,7 @@ impl Default for DeviceID {
 pub struct OpID(pub Uuid);
 
 impl OpID {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
@@ -120,6 +127,7 @@ impl From<Uuid> for OpID {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for OpID {
     fn default() -> Self {
         Self::new()
