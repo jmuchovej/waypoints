@@ -108,6 +108,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET: ${{ github.event_name == 'schedule' && 'nightly' || inputs.target }}
           FLOOR: ${{ inputs.floor != 'none' && inputs.floor || '' }}
           CARGO_BUILD_RUSTC_WRAPPER: sccache
@@ -161,7 +162,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: series-token
         name: Mint a wp-botswain token for the series
-        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly'))"
+        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly')) && steps.bump.outputs.transition != 'nightly'"
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
@@ -188,7 +189,7 @@ jobs:
           GH_TOKEN: ${{ steps.series-token.outputs.token }}
       - id: series-pull-request
         name: Open a pull request
-        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly')) && steps.bump.outputs.tag != ''"
+        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly')) && steps.bump.outputs.transition != 'nightly' && steps.bump.outputs.tag != ''"
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ steps.series-token.outputs.token }}
@@ -210,7 +211,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - id: tag-token
         name: Mint a wp-botswain token for the tag
-        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly')) && steps.bump.outputs.tag != ''"
+        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly')) && steps.bump.outputs.transition != 'nightly' && steps.bump.outputs.tag != ''"
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
         with:
           app-id: ${{ env.WP_BOTSWAIN_APP_ID }}
@@ -218,7 +219,7 @@ jobs:
           permission-contents: write
       - id: tag-release
         name: cargo ci-task release tag
-        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly')) && steps.bump.outputs.tag != ''"
+        if: "!(github.event_name == 'workflow_dispatch' && (inputs.dry_run || inputs.target == 'nightly')) && steps.bump.outputs.transition != 'nightly' && steps.bump.outputs.tag != ''"
         run: cargo ci-task release tag --tags "${TAGS}" --commit "${COMMIT}"
         shell: bash
         env:
