@@ -101,7 +101,8 @@ fn value(root: &Path, channel: Channel, package_id: &str, manifest: &Manifest) -
                 .digests
                 .get(extension)
                 .ok_or_else(|| anyhow!("the release manifest records no digest for {file_name}"))?;
-            let key = distributables::object_key(channel, &manifest.series, &published, tag, extension);
+            let key =
+                distributables::object_key(channel, &manifest.series, &published, tag, extension);
             extensions.insert(
                 extension.replace('.', "_"),
                 json!({

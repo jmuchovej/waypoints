@@ -20,7 +20,7 @@ pub const APP_GROUP: &str = "waypoints";
 /// unset.
 pub const APP_MANIFEST: &str = "src-tauri/Cargo.toml";
 /// The workspace's root manifest: its members, and the one place a library
-/// dependency is declared — where a series pins its library groups.
+/// dependency is declared.
 pub const ROOT_MANIFEST: &str = "Cargo.toml";
 /// Records every workspace crate's version, so a version write moves it too.
 pub const LOCKFILE: &str = "Cargo.lock";
@@ -37,15 +37,15 @@ pub const BLAME_IGNORE_FILE: &str = ".git-blame-ignore-revs";
 
 // The repository and its bot.
 
-/// Where every group's tag is minted, and what a series pins a library from.
+/// Where every group's tag is minted.
 pub const REPOSITORY: &str = "https://github.com/jmuchovej/waypoints";
 /// The release bot's login: the only author who writes a version or a
 /// bookkeeping subject, and whose every commit is bookkeeping to the planners.
 pub const RELEASE_BOT: &str = "wp-botswain[bot]";
 /// The address the bot's commits carry.
 pub const RELEASE_BOT_EMAIL: &str = "3633092+wp-botswain[bot]@users.noreply.github.com";
-/// The default branch: where a cut's bump lands, and the history a patch
-/// reads a pin's line from.
+/// The default branch: where a cut's bump lands and every group's tag is
+/// minted.
 pub const MAIN: &str = "main";
 /// A release transition's pull requests come from here, one branch per
 /// target, since a cut opens one against the series and one against `main`.

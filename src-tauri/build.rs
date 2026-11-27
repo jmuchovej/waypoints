@@ -42,23 +42,20 @@ fn workspace_root() -> Option<PathBuf> {
 }
 
 /// Every library group's version, as `group_versions` orders the sources —
-/// injected, pinned, described, declared — rendered for the binary to read
-/// back. The app's own group carries no library version. Each file read is
-/// named for cargo to watch; a tree without the group file bakes nothing.
+/// injected, described, declared — rendered for the binary to read back. The
+/// app's own group carries no library version. The group file is named for
+/// cargo to watch; a tree without it bakes nothing.
 fn resolve_group_versions() -> String {
     let Some(root) = workspace_root() else {
         return String::new();
     };
     let group_file = root.join(GROUP_FILE);
-    let lockfile = root.join("Cargo.lock");
     println!("cargo:rerun-if-changed={}", group_file.display());
-    println!("cargo:rerun-if-changed={}", lockfile.display());
 
     let groups: toml::Table = fs::read_to_string(&group_file)
         .ok()
         .and_then(|text| text.parse().ok())
         .unwrap_or_default();
-    let lock = fs::read_to_string(&lockfile).unwrap_or_default();
     let injected = env_var(group_versions::ENV)
         .map(|value| group_versions::parse(&value))
         .unwrap_or_default();
@@ -85,7 +82,7 @@ fn resolve_group_versions() -> String {
             prefix,
             declared,
         };
-        let version = group_versions::resolve(&group, &injected, &lock, |prefix| {
+        let version = group_versions::resolve(&group, &injected, |prefix| {
             git(["describe", "--tags", "--match", &format!("{prefix}*")])
         });
         versions.insert(name.clone(), version);

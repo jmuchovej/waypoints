@@ -96,32 +96,6 @@ let
     else
       unavailable channel;
 
-  # The Station's recipe, as `root` carries it, applied to `root`.
-  station-of =
-    root:
-    final.callPackage (root + "/distribution/nix/packages/outpost/package.nix") {
-      inherit rustToolchain;
-      workingTree = root;
-    };
-
-  # The Station the tree ships: built from `crates/outpost` where the
-  # workspace holds it — `main` — and, where the lockfile pins `outpost` to a
-  # tag of this repository — a series, whose in-tree copy is inert — from
-  # that tag's tree with the tag's own recipe (library-minting design D7).
-  station =
-    let
-      pin = (import ./lockfile.nix tree).pinOf "outpost";
-      fetched = fetchGit {
-        inherit (pin) url rev;
-        ref = "refs/tags/${pin.tag}";
-      };
-    in
-    if pin == null then
-      station-of tree
-    else if pin.tag == null then
-      throw "outpost: Cargo.lock pins `outpost` from `${pin.url}` by something other than a tag"
-    else
-      station-of (/. + fetched.outPath);
 in
 {
   waypoints = lib.recurseIntoAttrs {
@@ -131,6 +105,10 @@ in
   };
 
   # The sync server's command-line binary — headless, and channel-less: it
-  # publishes no release of its own yet, so no recorded entry names it.
-  outpost = station;
+  # publishes no release of its own yet, so no recorded entry names it, and
+  # every ref builds it from its own `crates/outpost`.
+  outpost = final.callPackage ./packages/outpost/package.nix {
+    inherit rustToolchain;
+    workingTree = tree;
+  };
 }

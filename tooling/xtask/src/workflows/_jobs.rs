@@ -1025,12 +1025,11 @@ mod tests {
         assert!(!cond.contains("cancelled()"), "{cond}");
     }
 
-    /// A series' lockfile pins each library group to a tag of this
-    /// repository, which is public: cargo fetches the pins with nothing
-    /// configured, so no build step carries a git credential or a fetch
-    /// override (library-minting design D7).
+    /// Every branch builds its libraries from its own checkout (library-minting
+    /// design D7), so no build step carries a git credential or a fetch
+    /// override; nothing is fetched from this repository but the tree.
     #[test]
-    fn a_build_fetches_a_series_pin_with_nothing_configured() {
+    fn no_build_carries_a_git_credential() {
         for platform in Platform::iter() {
             let job = serde_json::to_string(&built(platform).job).expect("job serializes");
             for forbidden in [

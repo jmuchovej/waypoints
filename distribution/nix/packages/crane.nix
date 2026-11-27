@@ -7,10 +7,12 @@
 # recipe builds with the crane it was written for, and the overlay stays
 # flake-independent with no crane of its own.
 #
-# crane vendors a lockfile's registry crates by their checksums and its git
-# sources by their locked revisions, with no hash per pin: a series'
-# `Cargo.lock` pins each library group's tag, and the sandbox builds offline
-# from those checkouts (library-minting design D7).
+# crane vendors a lockfile's registry crates by their checksums and any git
+# source by its locked revision, with no hash per source, so the sandbox
+# builds offline from what the lockfile names. Every branch builds its
+# library groups in-tree (library-minting design D7), so today the lockfile
+# names no source of this repository; the vendoring is what the builder is
+# kept for.
 #
 # Neither recipe runs crane's dependency-only pass (`cargoArtifacts = null`):
 # it dummifies the sources by re-reading every manifest with `fromTOML`,

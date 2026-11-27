@@ -157,6 +157,17 @@ impl Fixture {
         fixture
     }
 
+    /// A cut that landed on `main` and never wrote its series: `main` at
+    /// `main_version` — already bumped past the series — and `v0.3.x` cut
+    /// from it, still declaring that nightly version, with no version commit
+    /// and no tag of its own (library-minting design D9).
+    fn half_cut(main_version: &str) -> Self {
+        let fixture = Self::new(main_version, false);
+        git(&fixture.root, &["branch", SERIES, "main"]);
+        git(&fixture.root, &["push", "-q", "origin", SERIES]);
+        fixture
+    }
+
     fn commit_versions(&self, version: &str, subject: &str) {
         write(&self.root, GROUP_FILE, &group_file(version, DOMAIN));
         write(
@@ -346,6 +357,54 @@ fn a_dry_run_names_the_pull_request_and_leaves_the_tree_clean() {
     assert_eq!(git(&fixture.root, &["branch", "--show-current"]), "main");
     // Without a landing the pull-request step has nothing to open.
     assert!(!published.contains("head="), "{published}");
+}
+
+/// Scenario _A preview bump resumes a half-finished cut_: the series exists
+/// and still declares the nightly version `main` carried when it was cut, so
+/// a preview bump writes the series' own `-pre.1` — the app's projection
+/// alone, no library version, nothing on `main` — and publishes the series
+/// landing under `transition=resume` (library-minting design D9).
+#[test]
+fn a_preview_bump_resumes_a_half_finished_cut() {
+    let fixture = Fixture::half_cut("0.3.0-nightly");
+
+    let (output, published) = fixture.xtask(&["release", "bump", "--channel", "preview"]);
+    assert_succeeded(&output);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("preview bump: resume") && stdout.contains("never wrote its version"),
+        "{stdout}"
+    );
+
+    assert_eq!(git(&fixture.root, &["branch", "--show-current"]), SERIES);
+    assert_eq!(
+        fixture.changed(),
+        [
+            "Cargo.lock",
+            "crates/cartograph/Cargo.toml",
+            "src-tauri/Cargo.toml",
+            GROUP_FILE,
+        ]
+    );
+    assert_eq!(fixture.read(GROUP_FILE), group_file(SERIES_VERSION, DOMAIN));
+    assert_eq!(
+        fixture.read("src-tauri/Cargo.toml"),
+        manifest("Waypoints", SERIES_VERSION)
+    );
+    assert_eq!(fixture.read("Cargo.lock"), lock(SERIES_VERSION, DOMAIN));
+    assert_cargo_agrees(&fixture.root);
+
+    assert_published(
+        &published,
+        &[
+            "transition=resume",
+            &format!("tag=v{SERIES_VERSION}"),
+            &format!("head=botswain/release-plan/{SERIES}"),
+            &format!("title=chore(release): {SERIES} preview {SERIES_VERSION}"),
+            "paths=tooling/release-groups.toml,src-tauri/Cargo.toml,crates/cartograph/Cargo.toml,Cargo.lock",
+        ],
+    );
+    assert!(!published.contains("next_main_version=0"), "{published}");
 }
 
 /// Scenario _A cut writes the file with the manifests_: with no series open,
