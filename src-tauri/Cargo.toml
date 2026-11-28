@@ -5,7 +5,7 @@
 
 [package]
   name                  = "Waypoints"
-  version               = "0.2.0-nightly"
+  version               = "0.1.0-pre.1"
   edition.workspace     = true
   description.workspace = true
   readme.workspace      = true
