@@ -126,6 +126,10 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     )
     .id("bump")
     .add_env(("GH_TOKEN", token.to_string()))
+    // git-cliff renders a rehearsal's notes and reads `GITHUB_TOKEN` for the
+    // pull-request metadata the template names; anonymous, it meets the
+    // API's rate limit. The planner's own calls prefer `GH_TOKEN`.
+    .add_env(("GITHUB_TOKEN", helpers::GITHUB_TOKEN))
     .add_env(("TARGET", TARGET))
     .add_env(("FLOOR", FLOOR));
     let output = |name| StepOutput::new_trusted(&planner, name);
@@ -134,6 +138,14 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let group_tags = output("group_tags");
     let version = output("version");
     let cutting = || Expression::new(format!("!({REHEARSING}) && {} == 'cut'", transition.expr()));
+    // A nightly publishes the tag it already minted, so everything past the
+    // planner stands down on it.
+    let past_a_mint = || {
+        Expression::new(format!(
+            "!({REHEARSING}) && {} != 'nightly'",
+            transition.expr()
+        ))
+    };
     let landing = |number: &StepOutput| {
         Expression::new(format!("!({REHEARSING}) && {} != ''", number.expr()))
     };
@@ -158,7 +170,7 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
     let series_token = steps::app_token(&[("contents", "write"), ("pull-requests", "write")])
         .name("Mint a wp-botswain token for the series")
         .id("series-token")
-        .if_condition(real());
+        .if_condition(past_a_mint());
     let series_token_output = StepOutput::new_trusted(&series_token, "token");
 
     let minting = || {
@@ -174,9 +186,15 @@ pub fn workflow(context: &WorkflowContext) -> Workflow {
 
     // Every transition but a cut wrote on its series in the planner step; a
     // cut opens its series here, from the merge commit, and a cut scoped to
-    // one library opens none. A nightly published no tag to land, so it ends
-    // at its mint.
-    let on_a_series = || Expression::new(format!("!({REHEARSING}) && {} != ''", tag.expr()));
+    // one library opens none. A nightly's tag is already minted, so it ends
+    // there.
+    let on_a_series = || {
+        Expression::new(format!(
+            "!({REHEARSING}) && {} != 'nightly' && {} != ''",
+            transition.expr(),
+            tag.expr()
+        ))
+    };
     let opening = || {
         Expression::new(format!(
             "!({REHEARSING}) && {} == 'cut' && {} != ''",
@@ -524,7 +542,43 @@ mod tests {
         }
         assert_eq!(
             series["if"],
-            format!("!({REHEARSING}) && steps.bump.outputs.tag != ''")
+            format!(
+                "!({REHEARSING}) && steps.bump.outputs.transition != 'nightly' && steps.bump.outputs.tag != ''"
+            )
+        );
+    }
+
+    /// A scheduled nightly is minted by the planner step itself and publishes
+    /// that tag, so every step past the planner — the series token, the
+    /// landing, and the tag — stands down on `transition=nightly` rather than
+    /// landing an empty head.
+    #[test]
+    fn a_nightly_ends_at_its_mint() {
+        let steps = steps();
+        for id in [
+            "series-token",
+            "series-pull-request",
+            "tag-token",
+            "tag-release",
+        ] {
+            let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
+            assert!(
+                cond.contains("steps.bump.outputs.transition != 'nightly'"),
+                "{id} would run on a nightly: {cond}"
+            );
+        }
+    }
+
+    /// git-cliff renders a rehearsal's notes under the runner's token; the
+    /// planner's own calls keep preferring the App token.
+    #[test]
+    fn the_planner_hands_git_cliff_the_runner_s_token() {
+        let steps = steps();
+        let planner = &steps[position(&steps, "bump")];
+        assert_eq!(planner["env"]["GITHUB_TOKEN"], helpers::GITHUB_TOKEN);
+        assert_eq!(
+            planner["env"]["GH_TOKEN"],
+            "${{ steps.app-token.outputs.token }}"
         );
     }
 
@@ -543,8 +597,8 @@ mod tests {
         for id in series_steps {
             let cond = steps[position(&steps, id)]["if"].as_str().unwrap_or("");
             assert!(
-                !cond.contains("transition"),
-                "{id} reads the transition, so a resume would skip it: {cond}"
+                !cond.contains("transition =="),
+                "{id} names a transition, so a resume would skip it: {cond}"
             );
         }
         for id in [
